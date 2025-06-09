@@ -99,4 +99,101 @@ public class BlockDAO {
             return query.uniqueResult() > 0;
         }
     }
+    
+    /**
+     * Delete a block by its number
+     */
+    public boolean deleteBlockByNumber(int blockNumber) {
+        Transaction transaction = null;
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            transaction = session.beginTransaction();
+            
+            Query<?> query = session.createQuery("DELETE FROM Block WHERE blockNumber = :blockNumber");
+            query.setParameter("blockNumber", blockNumber);
+            int deletedCount = query.executeUpdate();
+            
+            transaction.commit();
+            return deletedCount > 0;
+        } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            throw new RuntimeException("Error deleting block with number " + blockNumber, e);
+        }
+    }
+    
+    /**
+     * Delete blocks with block numbers greater than the specified number
+     */
+    public int deleteBlocksAfter(int blockNumber) {
+        Transaction transaction = null;
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            transaction = session.beginTransaction();
+            
+            Query<?> query = session.createQuery("DELETE FROM Block WHERE blockNumber > :blockNumber");
+            query.setParameter("blockNumber", blockNumber);
+            int deletedCount = query.executeUpdate();
+            
+            transaction.commit();
+            return deletedCount;
+        } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            throw new RuntimeException("Error deleting blocks after " + blockNumber, e);
+        }
+    }
+    
+    /**
+     * Delete all blocks (for import functionality)
+     */
+    public int deleteAllBlocks() {
+        Transaction transaction = null;
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            transaction = session.beginTransaction();
+            
+            Query<?> query = session.createQuery("DELETE FROM Block");
+            int deletedCount = query.executeUpdate();
+            
+            transaction.commit();
+            return deletedCount;
+        } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            throw new RuntimeException("Error deleting all blocks", e);
+        }
+    }
+    
+    /**
+     * Search blocks by content (case-insensitive)
+     */
+    public List<Block> searchBlocksByContent(String content) {
+        if (content == null || content.trim().isEmpty()) {
+            return new java.util.ArrayList<>();
+        }
+        
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Query<Block> query = session.createQuery(
+                "FROM Block WHERE LOWER(data) LIKE :content ORDER BY blockNumber ASC", Block.class);
+            query.setParameter("content", "%" + content.toLowerCase() + "%");
+            return query.list();
+        }
+    }
+    
+    /**
+     * Get block by hash
+     */
+    public Block getBlockByHash(String hash) {
+        if (hash == null || hash.trim().isEmpty()) {
+            return null;
+        }
+        
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Query<Block> query = session.createQuery(
+                "FROM Block WHERE hash = :hash", Block.class);
+            query.setParameter("hash", hash);
+            return query.uniqueResult();
+        }
+    }
 }

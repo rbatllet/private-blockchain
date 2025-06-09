@@ -4,22 +4,28 @@ A simple and secure private blockchain implementation using Java 21, SQLite, and
 
 ## 📋 Overview
 
-This project is a **private blockchain** designed for controlled environments where only authorized users can add blocks. Unlike public blockchains, there is no mining process - blocks are added directly by authorized parties.
+This is a **private blockchain** for controlled environments where only authorized users can add blocks. Unlike public blockchains, there is no mining - blocks are added directly by authorized users.
 
-## ✨ Features
+## ✨ Main Features
 
 ### Core Blockchain Features
-- **Genesis Block**: Automatically created when the blockchain starts
+- **Genesis Block**: Created automatically when blockchain starts
 - **Block Creation**: Add new blocks with data to the chain
-- **Hash Verification**: SHA-256 cryptographic hashing for data integrity
-- **Digital Signatures**: RSA signatures to verify block authenticity
+- **Hash Verification**: SHA-256 hashing ensures data integrity
+- **Digital Signatures**: RSA signatures verify block authenticity
 - **Chain Validation**: Complete blockchain integrity checking
 
 ### Security Features
 - **Authorized Keys**: Only approved users can add blocks
 - **Cryptographic Protection**: Each block is cryptographically signed
-- **Immutable Records**: Once added, blocks cannot be changed
-- **Sequential Validation**: Each block references the previous block
+- **Immutable Records**: Blocks cannot be changed once added
+- **Sequential Validation**: Each block links to the previous block
+
+### Advanced Features
+- **Block Size Validation**: Prevents oversized blocks
+- **Chain Export/Import**: Backup and restore complete blockchain
+- **Block Rollback**: Safe removal of recent blocks
+- **Advanced Search**: Find blocks by content, hash, or date range
 
 ### Technical Features
 - **Persistent Storage**: SQLite database with Hibernate ORM
@@ -35,23 +41,37 @@ This project is a **private blockchain** designed for controlled environments wh
 - **Hibernate** - Object-relational mapping (ORM)
 - **SHA-256** - Cryptographic hash function
 - **RSA** - Digital signature algorithm
+- **JUnit 5** - Testing framework
 
 ## 📦 Project Structure
 
 ```
 src/main/java/com/rbatllet/blockchain/
 ├── core/
-│   └── Blockchain.java          # Main blockchain logic
+│   └── Blockchain.java                           # Main blockchain logic
 ├── dao/
-│   ├── BlockDAO.java            # Database operations for blocks
-│   └── AuthorizedKeyDAO.java    # Database operations for keys
+│   ├── BlockDAO.java                            # Database operations for blocks
+│   └── AuthorizedKeyDAO.java                    # Database operations for keys
 ├── entity/
-│   ├── Block.java               # Block data model
-│   └── AuthorizedKey.java       # Authorized key data model
+│   ├── Block.java                               # Block data model
+│   └── AuthorizedKey.java                       # Authorized key data model
 ├── util/
-│   ├── CryptoUtil.java          # Cryptographic utilities
-│   └── HibernateUtil.java       # Database connection management
-└── BlockchainDemo.java          # Demo application
+│   ├── CryptoUtil.java                          # Cryptographic utilities
+│   └── HibernateUtil.java                       # Database connection management
+├── BlockchainDemo.java                          # Basic demo application
+├── AdditionalAdvancedFunctionsDemo.java         # Advanced features demo
+├── CoreFunctionsTest.java                       # Comprehensive core test
+├── SimpleTest.java                              # Basic functionality test
+└── QuickTest.java                               # Fast verification test
+
+src/test/java/com/rbatllet/blockchain/core/
+├── BlockchainAdditionalAdvancedFunctionsTest.java   # JUnit 5 test suite (22 tests)
+├── BlockchainAdditionalAdvancedFunctionsTestRunner.java # Test runner
+└── TestEnvironmentValidator.java                    # Environment validation
+
+Scripts:
+├── run_all_tests.sh                             # Run all tests (recommended)
+└── run_core_tests.sh                            # Run advanced functions tests only
 ```
 
 ## 🚀 How to Run
@@ -60,23 +80,22 @@ src/main/java/com/rbatllet/blockchain/
 - **Java 21** or higher
 - **Maven 3.6** or higher
 
-### Step 1: Clone and Navigate
+### Quick Start
 ```bash
-cd /path/to/your/directory
-# Project should be in: privateBockChain/
-```
+# 1. Navigate to project directory
+cd /path/to/privateBockChain
 
-### Step 2: Compile the Project
-```bash
+# 2. Compile the project
 mvn clean compile
-```
 
-### Step 3: Run the Demo
-```bash
+# 3. Run the basic demo
 mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.BlockchainDemo"
+
+# 4. Run advanced features demo
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.core.AdditionalAdvancedFunctionsDemo"
 ```
 
-### Expected Output
+### Expected Output (Basic Demo)
 ```
 === PRIVATE BLOCKCHAIN DEMO ===
 Genesis block created successfully!
@@ -95,20 +114,20 @@ Authorized keys: 2
 
 ## 💻 How It Works
 
-### 1. Initialize Blockchain
+### Step 1: Initialize Blockchain
 ```java
 Blockchain blockchain = new Blockchain();
 // Creates genesis block automatically
 ```
 
-### 2. Add Authorized Users
+### Step 2: Add Authorized Users
 ```java
 KeyPair userKeys = CryptoUtil.generateKeyPair();
 String publicKey = CryptoUtil.publicKeyToString(userKeys.getPublic());
 blockchain.addAuthorizedKey(publicKey, "UserName");
 ```
 
-### 3. Add Blocks
+### Step 3: Add Blocks
 ```java
 boolean success = blockchain.addBlock(
     "Your data here", 
@@ -117,9 +136,229 @@ boolean success = blockchain.addBlock(
 );
 ```
 
-### 4. Validate Chain
+### Step 4: Validate Chain
 ```java
 boolean isValid = blockchain.validateChain();
+```
+
+## 🧪 Testing
+
+The project includes comprehensive test suites to verify all functionality.
+
+### Recommended Testing Order
+
+#### 1. Run All Tests (Complete Validation) ⭐ **RECOMMENDED**
+```bash
+./run_all_tests.sh
+```
+This runs everything: basic core tests + advanced function tests.
+
+**Expected output:**
+```
+=== COMPREHENSIVE BLOCKCHAIN TEST RUNNER ===
+✅ Compilation successful!
+🎉 JUnit 5 Additional Advanced Functions tests: PASSED (22/22)
+✅ Basic Core Functions test: PASSED
+✅ Blockchain Demo: PASSED
+✅ Simple Test: PASSED
+✅ Quick Test: PASSED
+
+📊 Test suites passed: 5/5
+🎉 ALL TESTS PASSED SUCCESSFULLY!
+```
+
+#### 2. Advanced Functions Only (JUnit 5 Tests)
+```bash
+./run_core_tests.sh
+```
+Runs 22 professional JUnit 5 tests for advanced functions.
+
+**Expected output:**
+```
+Tests run: 22, Failures: 0, Errors: 0, Skipped: 0
+🎉 ALL TESTS PASSED!
+```
+
+#### 3. Interactive Demonstrations
+```bash
+# Advanced features demo with practical examples
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.core.AdditionalAdvancedFunctionsDemo"
+
+# Basic demo with multiple users
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.BlockchainDemo"
+
+# Core functions comprehensive test
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.CoreFunctionsTest"
+```
+
+#### 4. Quick Verification Tests
+```bash
+# Fast verification
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.QuickTest"
+
+# Basic functionality
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.SimpleTest"
+```
+
+### What Gets Tested
+
+#### Core Blockchain Functions
+- ✅ Genesis block creation
+- ✅ Add/revoke authorized keys  
+- ✅ Add blocks to chain
+- ✅ Chain validation and integrity
+- ✅ Security controls and authorization
+- ✅ Error handling and edge cases
+
+#### Advanced Functions (22 JUnit 5 Tests)
+- ✅ **Block Size Validation**: Prevents oversized blocks
+- ✅ **Chain Export**: Complete blockchain backup to JSON
+- ✅ **Chain Import**: Blockchain restore from backup
+- ✅ **Block Rollback**: Safe removal of recent blocks
+- ✅ **Advanced Search**: Content, hash, and date range search
+- ✅ **Integration**: All functions working together
+- ✅ **Error Handling**: Graceful failure handling
+- ✅ **Performance**: Execution time validation
+
+### Troubleshooting Tests
+
+#### If Tests Fail
+```bash
+# Reset database and try again
+rm blockchain.db
+./run_all_tests.sh
+
+# Check Java version
+java -version  # Should be 21+
+
+# Validate environment
+mvn clean compile test-compile
+```
+
+#### Database Issues
+```bash
+# Reset database
+rm blockchain.db
+
+# Check permissions
+ls -la blockchain.db
+```
+
+## 🎯 Core Functions Usage
+
+### Basic Operations
+
+#### Initialize and Setup
+```java
+// Create blockchain (automatic genesis block)
+Blockchain blockchain = new Blockchain();
+
+// Add authorized users
+KeyPair alice = CryptoUtil.generateKeyPair();
+String alicePublicKey = CryptoUtil.publicKeyToString(alice.getPublic());
+blockchain.addAuthorizedKey(alicePublicKey, "Alice");
+```
+
+#### Add Blocks
+```java
+// Add data to blockchain
+boolean success = blockchain.addBlock(
+    "Transaction: Alice sends payment to Bob",  // Your data
+    alice.getPrivate(),                         // Private key (for signing)
+    alice.getPublic()                          // Public key (for verification)
+);
+```
+
+#### Validate Chain
+```java
+// Check if blockchain is valid
+boolean isValid = blockchain.validateChain();
+System.out.println("Blockchain is valid: " + isValid);
+```
+
+### Advanced Operations
+
+#### Block Size Validation
+```java
+// Get size limits
+int maxBytes = blockchain.getMaxBlockSizeBytes();      // 1MB limit
+int maxChars = blockchain.getMaxBlockDataLength();     // 10K characters limit
+
+// Size validation happens automatically when adding blocks
+// Large blocks are rejected automatically
+```
+
+#### Chain Export/Import (Backup/Restore)
+```java
+// Export blockchain to JSON file
+boolean exported = blockchain.exportChain("backup.json");
+
+// Import blockchain from JSON file
+boolean imported = blockchain.importChain("backup.json");
+```
+
+#### Block Rollback
+```java
+// Remove last 3 blocks
+boolean success = blockchain.rollbackBlocks(3);
+
+// Rollback to specific block (keep blocks 0-5)
+boolean success = blockchain.rollbackToBlock(5);
+```
+
+#### Advanced Search
+```java
+// Search blocks by content (case-insensitive)
+List<Block> paymentBlocks = blockchain.searchBlocksByContent("payment");
+
+// Find block by hash
+Block block = blockchain.getBlockByHash("a1b2c3d4...");
+
+// Find blocks by date range
+LocalDate start = LocalDate.of(2024, 1, 1);
+LocalDate end = LocalDate.of(2024, 1, 31);
+List<Block> monthlyBlocks = blockchain.getBlocksByDateRange(start, end);
+```
+
+### Complete Example
+```java
+public class BlockchainExample {
+    public static void main(String[] args) {
+        try {
+            // 1. Initialize blockchain
+            Blockchain blockchain = new Blockchain();
+            
+            // 2. Add users
+            KeyPair alice = CryptoUtil.generateKeyPair();
+            KeyPair bob = CryptoUtil.generateKeyPair();
+            
+            String aliceKey = CryptoUtil.publicKeyToString(alice.getPublic());
+            String bobKey = CryptoUtil.publicKeyToString(bob.getPublic());
+            
+            blockchain.addAuthorizedKey(aliceKey, "Alice");
+            blockchain.addAuthorizedKey(bobKey, "Bob");
+            
+            // 3. Add blocks
+            blockchain.addBlock("Alice registers", alice.getPrivate(), alice.getPublic());
+            blockchain.addBlock("Bob joins network", bob.getPrivate(), bob.getPublic());
+            blockchain.addBlock("Alice sends payment", alice.getPrivate(), alice.getPublic());
+            
+            // 4. Search and validate
+            List<Block> payments = blockchain.searchBlocksByContent("payment");
+            System.out.println("Payment blocks found: " + payments.size());
+            
+            boolean isValid = blockchain.validateChain();
+            System.out.println("Blockchain is valid: " + isValid);
+            
+            // 5. Backup
+            blockchain.exportChain("blockchain_backup.json");
+            System.out.println("Blockchain backed up successfully!");
+            
+        } catch (Exception e) {
+            System.err.println("Error: " + e.getMessage());
+        }
+    }
+}
 ```
 
 ## 🔒 Security Model
@@ -143,373 +382,45 @@ boolean isValid = blockchain.validateChain();
 
 The application automatically creates these tables:
 
-### blocks
+### blocks table
 - `id` - Unique identifier
-- `block_number` - Sequential block number
+- `block_number` - Sequential block number (starts from 0)
 - `previous_hash` - Hash of the previous block
-- `data` - Block content
+- `data` - Block content (user data)
 - `hash` - SHA-256 hash of the block
-- `signature` - Digital signature
+- `signature` - Digital signature of the block
 - `signer_public_key` - Public key of the block creator
 - `timestamp` - When the block was created
 
-### authorized_keys
+### authorized_keys table
 - `id` - Unique identifier
 - `public_key` - User's public key (unique)
 - `owner_name` - Human-readable name
 - `is_active` - Whether the key is currently active
 - `created_at` - When the key was added
 
-## 🧪 Testing
-
-The project includes several test classes to verify functionality and demonstrate usage.
-
-### Available Test Classes
-
-#### 1. Complete Core Functions Test
-**File**: `CoreFunctionsTest.java`  
-**Purpose**: Tests ALL core blockchain functions with detailed validation
-
-```bash
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.CoreFunctionsTest"
-```
-
-**What it tests:**
-- ✅ Genesis block creation
-- ✅ Add/revoke authorized keys
-- ✅ Add blocks to chain
-- ✅ Chain validation
-- ✅ Security controls
-- ✅ Error handling
-
-**Expected output:**
-```
-=== TESTING ALL CORE FUNCTIONS ===
-1. TESTING: Initialize Blockchain + Genesis Block
-   ✓ Genesis block created
-   ✓ Initial block count: 1
-   SUCCESS: Blockchain initialized
-
-2. TESTING: Add Authorized Keys
-   ✓ Alice added: true
-   ✓ Bob added: true
-   ✓ Charlie added: true
-   SUCCESS: Authorized keys management working
-
-[... more detailed testing ...]
-
-🎉 ALL CORE FUNCTIONS WORKING PERFECTLY! 🎉
-```
-
-#### 2. Demo Application
-**File**: `BlockchainDemo.java`  
-**Purpose**: Complete demonstration with multiple users and transactions
-
-```bash
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.BlockchainDemo"
-```
-
-**What it demonstrates:**
-- Multi-user blockchain usage
-- Real transaction examples
-- Chain validation
-- Final statistics
-
-#### 3. Simple Test
-**File**: `SimpleTest.java`  
-**Purpose**: Basic functionality test with one user
-
-```bash
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.SimpleTest"
-```
-
-**What it shows:**
-- Basic blockchain operations
-- Single user workflow
-- Block creation and validation
-
-#### 4. Quick Test
-**File**: `QuickTest.java`  
-**Purpose**: Fast verification that blockchain works
-
-```bash
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.QuickTest"
-```
-
-**What it verifies:**
-- Blockchain initialization
-- Block addition
-- Basic functionality
-
-### Running Tests Step by Step
-
-#### Prerequisites
-1. Make sure you have Java 21+ and Maven installed
-2. Navigate to the project directory
-3. Compile the project first
-
-#### Complete Test Workflow
-```bash
-# 1. Navigate to project directory
-cd /path/to/privateBockChain
-
-# 2. Clean and compile
-mvn clean compile
-
-# 3. Run complete core functions test (RECOMMENDED)
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.CoreFunctionsTest"
-
-# 4. Optional: Run demo application
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.BlockchainDemo"
-
-# 5. Optional: Run simple tests
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.SimpleTest"
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.QuickTest"
-```
-
-#### Database Reset
-To start fresh between tests:
-```bash
-# Remove the database file
-rm blockchain.db
-
-# Then run any test
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.CoreFunctionsTest"
-```
-
-### Test Results Interpretation
-
-#### Success Indicators
-- ✅ All functions return `true` for successful operations
-- ✅ "Chain validation successful!" message appears
-- ✅ "Blockchain is valid: true" confirmation
-- ✅ Expected number of blocks and authorized keys
-
-#### Failure Indicators
-- ❌ Functions return `false` for failed operations
-- ❌ "Chain validation failed" error messages
-- ❌ Exception stack traces
-- ❌ Assertion errors in CoreFunctionsTest
-
-#### Common Test Outputs
-```bash
-# Successful block addition
-Block #1 added successfully!
-
-# Successful key management
-Authorized key added for: Alice
-
-# Successful validation
-Chain validation successful! Total blocks: 4
-Blockchain is valid: true
-
-# Security working correctly
-Unauthorized key attempting to add block  # This is expected!
-```
-
-### Troubleshooting Tests
-
-#### Test Compilation Issues
-```bash
-# Clean and recompile
-mvn clean compile
-
-# Check Java version
-java -version  # Should be 21+
-```
-
-#### Database Issues
-```bash
-# Reset database
-rm blockchain.db
-
-# Check file permissions
-ls -la blockchain.db
-```
-
-#### Memory or Performance Issues
-```bash
-# Run with more memory if needed
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.CoreFunctionsTest" -Dexec.args="-Xmx512m"
-```
-
-### Creating Custom Tests
-
-You can create your own test class following this pattern:
-
-```java
-public class MyCustomTest {
-    public static void main(String[] args) {
-        try {
-            Blockchain blockchain = new Blockchain();
-            
-            // Your custom test logic here
-            // Generate keys, add blocks, validate, etc.
-            
-            System.out.println("Custom test completed successfully!");
-        } catch (Exception e) {
-            System.err.println("Test failed: " + e.getMessage());
-        }
-    }
-}
-```
-
-Then run it with:
-```bash
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.MyCustomTest"
-```
-
-## 🎯 Core Functions Usage
-
-This section shows how to use each **CORE function** of the blockchain with practical examples.
-
-### 1. Initialize Blockchain (Genesis Block)
-```java
-// Creates blockchain and genesis block automatically
-Blockchain blockchain = new Blockchain();
-// Output: "Genesis block created successfully!"
-```
-
-### 2. Add Authorized Key
-```java
-// Generate key pair for a user
-KeyPair userKeys = CryptoUtil.generateKeyPair();
-String publicKey = CryptoUtil.publicKeyToString(userKeys.getPublic());
-
-// Add user to authorized list
-boolean success = blockchain.addAuthorizedKey(publicKey, "Alice");
-// Output: "Authorized key added for: Alice"
-```
-
-### 3. Add Block to Chain
-```java
-// Add a new block with data (requires authorized key)
-boolean blockAdded = blockchain.addBlock(
-    "Transaction: Alice sends 100 tokens to Bob",  // Your data
-    userKeys.getPrivate(),                         // Private key to sign
-    userKeys.getPublic()                          // Public key for verification
-);
-
-if (blockAdded) {
-    System.out.println("Block added successfully!");
-} else {
-    System.out.println("Failed to add block");
-}
-```
-
-### 4. Validate Individual Block
-```java
-// This is called automatically when adding blocks, but you can also:
-// Get a specific block
-Block block = blockchain.getBlock(1);  // Get block number 1
-
-// The validateBlock() method is private, but validation happens when:
-// - Adding new blocks
-// - Validating the entire chain
-```
-
-### 5. Validate Entire Chain
-```java
-// Check if the entire blockchain is valid
-boolean isValid = blockchain.validateChain();
-
-if (isValid) {
-    System.out.println("Blockchain is valid and secure!");
-} else {
-    System.out.println("Blockchain has been compromised!");
-}
-```
-
-### 6. Revoke Authorized Key
-```java
-// Remove access for a user
-boolean revoked = blockchain.revokeAuthorizedKey(publicKey);
-
-if (revoked) {
-    System.out.println("Key access revoked successfully");
-} else {
-    System.out.println("Key not found or already inactive");
-}
-```
-
-### Complete Example: Using All Core Functions
-```java
-public class BlockchainExample {
-    public static void main(String[] args) {
-        try {
-            // 1. CORE: Initialize blockchain (creates genesis block)
-            Blockchain blockchain = new Blockchain();
-            
-            // 2. CORE: Add authorized keys
-            KeyPair alice = CryptoUtil.generateKeyPair();
-            KeyPair bob = CryptoUtil.generateKeyPair();
-            
-            String alicePublicKey = CryptoUtil.publicKeyToString(alice.getPublic());
-            String bobPublicKey = CryptoUtil.publicKeyToString(bob.getPublic());
-            
-            blockchain.addAuthorizedKey(alicePublicKey, "Alice");
-            blockchain.addAuthorizedKey(bobPublicKey, "Bob");
-            
-            // 3. CORE: Add blocks to chain
-            blockchain.addBlock("Alice registers in system", 
-                              alice.getPrivate(), alice.getPublic());
-                              
-            blockchain.addBlock("Bob joins the network", 
-                              bob.getPrivate(), bob.getPublic());
-                              
-            blockchain.addBlock("Alice transfers data to Bob", 
-                              alice.getPrivate(), alice.getPublic());
-            
-            // 4. CORE: Validate entire chain
-            boolean isValid = blockchain.validateChain();
-            System.out.println("Blockchain is valid: " + isValid);
-            
-            // 5. CORE: Revoke access (optional)
-            // blockchain.revokeAuthorizedKey(bobPublicKey);
-            
-            // View results
-            System.out.println("Total blocks: " + blockchain.getBlockCount());
-            System.out.println("Authorized users: " + blockchain.getAuthorizedKeys().size());
-            
-        } catch (Exception e) {
-            System.err.println("Error: " + e.getMessage());
-        }
-    }
-}
-```
-
-### Core Function Summary
-
-| Function | Purpose | Returns | Notes |
-|----------|---------|---------|-------|
-| `new Blockchain()` | Initialize + Genesis Block | Blockchain object | Automatic genesis creation |
-| `addAuthorizedKey()` | Add user permissions | boolean | Required before adding blocks |
-| `addBlock()` | Add data to chain | boolean | Validates and signs automatically |
-| `validateChain()` | Check chain integrity | boolean | Verifies all blocks |
-| `revokeAuthorizedKey()` | Remove user access | boolean | Deactivates key |
-
-## 📝 API Usage
+## 📝 API Reference
 
 ### Core Methods
 
 #### Blockchain Management
 ```java
-// Get blockchain statistics
+// Basic information
 long totalBlocks = blockchain.getBlockCount();
 List<Block> allBlocks = blockchain.getAllBlocks();
 Block lastBlock = blockchain.getLastBlock();
+Block specificBlock = blockchain.getBlock(blockNumber);
 
-// Get blocks by time range
-List<Block> recentBlocks = blockchain.getBlocksByTimeRange(startTime, endTime);
+// Configuration
+int maxBytes = blockchain.getMaxBlockSizeBytes();
+int maxChars = blockchain.getMaxBlockDataLength();
 ```
 
 #### Key Management
 ```java
-// Add authorized key
-blockchain.addAuthorizedKey(publicKeyString, "User Name");
-
-// Revoke key access
-blockchain.revokeAuthorizedKey(publicKeyString);
+// Add/remove authorized keys
+boolean added = blockchain.addAuthorizedKey(publicKeyString, "User Name");
+boolean revoked = blockchain.revokeAuthorizedKey(publicKeyString);
 
 // List authorized keys
 List<AuthorizedKey> activeKeys = blockchain.getAuthorizedKeys();
@@ -517,76 +428,96 @@ List<AuthorizedKey> activeKeys = blockchain.getAuthorizedKeys();
 
 #### Block Operations
 ```java
-// Add block with data
+// Add block
 boolean success = blockchain.addBlock(data, privateKey, publicKey);
 
-// Get specific block
-Block block = blockchain.getBlock(blockNumber);
-
-// Validate entire chain
+// Validate
 boolean isValid = blockchain.validateChain();
+
+// Advanced operations
+boolean exported = blockchain.exportChain("backup.json");
+boolean imported = blockchain.importChain("backup.json");
+boolean rolledBack = blockchain.rollbackBlocks(numberOfBlocks);
+```
+
+#### Search Operations
+```java
+// Search methods
+List<Block> contentResults = blockchain.searchBlocksByContent("searchTerm");
+Block hashResult = blockchain.getBlockByHash("hashString");
+List<Block> dateResults = blockchain.getBlocksByDateRange(startDate, endDate);
 ```
 
 ## 🔧 Configuration
 
-### Database Location
-The SQLite database is created as `blockchain.db` in the project root directory.
+### Database Configuration
+- **Location**: `blockchain.db` in project root directory
+- **Type**: SQLite database
+- **ORM**: Hibernate with automatic table creation
+- **Logging**: SQL queries logged (can be disabled in hibernate.cfg.xml)
 
-### Hibernate Configuration
-Database settings are in `src/main/resources/hibernate.cfg.xml`:
-- Automatic table creation
-- SQL query logging (can be disabled)
-- Connection pooling
+### Size Limits
+- **Block Data**: 10,000 characters maximum
+- **Block Size**: 1MB (1,048,576 bytes) maximum
+- **Hash Length**: 64 characters (SHA-256)
+
+### Security Configuration
+- **Hash Algorithm**: SHA-256
+- **Signature Algorithm**: RSA
+- **Key Size**: 2048 bits (default)
 
 ## 🚨 Important Notes
 
 ### Production Considerations
-- **Key Management**: Secure private key storage is critical
+- **Key Management**: Store private keys securely
 - **Database Security**: Consider encryption for sensitive data
-- **Network Security**: Use HTTPS for any network communication
 - **Backup Strategy**: Regular database backups recommended
+- **Access Control**: Implement proper user authentication
 
-### Limitations
-- **Single Database**: Currently uses one SQLite file
+### Current Limitations
+- **Single Database**: Uses one SQLite file
 - **No Network**: Designed for single-application use
 - **No Consensus**: No multi-node consensus mechanism
-- **Key Recovery**: No built-in key recovery mechanism
+- **Key Recovery**: No built-in key recovery system
 
-## 🤝 Use Cases
+### Performance Notes
+- **Block Size**: Large blocks may affect performance
+- **Search Operations**: Content search is case-insensitive but may be slow with many blocks
+- **Rollback Operations**: Large rollbacks may take time
+- **Database Size**: Consider regular maintenance for large blockchains
 
-This private blockchain is ideal for:
-- **Document Tracking**: Immutable document version history
-- **Audit Trails**: Tamper-proof activity logging
-- **Supply Chain**: Product authenticity verification
-- **Internal Records**: Company transaction logging
-- **Compliance**: Regulatory requirement tracking
+## 🤝 Contributing
+
+### Development Setup
+1. Ensure Java 21+ and Maven 3.6+ are installed
+2. Clone the repository
+3. Run `mvn clean compile` to build
+4. Run `./run_all_tests.sh` to verify everything works
+
+### Testing New Features
+1. Add your feature to the appropriate class
+2. Create tests following the existing patterns
+3. Run all tests to ensure nothing is broken
+4. Update documentation as needed
+
+### Code Style
+- Use clear, descriptive variable names
+- Add comments for complex logic
+- Follow existing naming conventions
+- Ensure proper error handling
 
 ## 📄 License
 
-This project is for educational and development purposes.
+This project is provided as-is for educational and development purposes.
 
-## 🆘 Troubleshooting
+## 📞 Support
 
-### Common Issues
-
-**Compilation Errors**
-- Ensure Java 21+ is installed
-- Check Maven configuration
-- Verify all dependencies are downloaded
-
-**Database Issues**
-- Delete `blockchain.db` to reset
-- Check file permissions
-- Ensure SQLite JDBC driver is available
-
-**Runtime Errors**
-- Check that authorized keys are added before creating blocks
-- Verify private/public key pairs match
-- Ensure proper exception handling
-
-### Getting Help
-If you encounter issues:
-1. Check the console output for error messages
+For issues or questions:
+1. Check the troubleshooting section above
 2. Verify your Java and Maven versions
-3. Try deleting the database file and restarting
-4. Review the demo code for proper usage examples
+3. Run `./run_all_tests.sh` to identify problems
+4. Check the console output for specific error messages
+
+---
+
+**Ready to start?** Run `./run_all_tests.sh` to verify everything works, then try the demos!

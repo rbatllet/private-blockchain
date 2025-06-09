@@ -71,4 +71,25 @@ public class AuthorizedKeyDAO {
             throw new RuntimeException("Error deactivating key", e);
         }
     }
+    
+    /**
+     * Delete all authorized keys (for import functionality)
+     */
+    public int deleteAllAuthorizedKeys() {
+        Transaction transaction = null;
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            transaction = session.beginTransaction();
+            
+            Query<?> query = session.createQuery("DELETE FROM AuthorizedKey");
+            int deletedCount = query.executeUpdate();
+            
+            transaction.commit();
+            return deletedCount;
+        } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            throw new RuntimeException("Error deleting all authorized keys", e);
+        }
+    }
 }
