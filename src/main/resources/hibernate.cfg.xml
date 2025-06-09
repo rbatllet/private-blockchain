@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-configuration PUBLIC
+        "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+
+<hibernate-configuration>
+    <session-factory>
+        <!-- Database connection settings -->
+        <property name="hibernate.dialect">org.hibernate.community.dialect.SQLiteDialect</property>
+        <property name="hibernate.connection.driver_class">org.sqlite.JDBC</property>
+        <property name="hibernate.connection.url">jdbc:sqlite:blockchain.db</property>
+        
+        <!-- Hibernate settings -->
+        <property name="hibernate.hbm2ddl.auto">update</property>
+        <property name="hibernate.show_sql">true</property>
+        <property name="hibernate.format_sql">true</property>
+        
+        <!-- Connection pool settings -->
+        <property name="hibernate.connection.pool_size">1</property>
+        
+        <!-- Enable the query cache -->
+        <property name="hibernate.cache.use_query_cache">false</property>
+        
+        <!-- Entity mappings -->
+        <mapping class="com.rbatllet.blockchain.entity.Block"/>
+        <mapping class="com.rbatllet.blockchain.entity.AuthorizedKey"/>
+    </session-factory>
+</hibernate-configuration>
