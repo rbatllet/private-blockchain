@@ -370,6 +370,288 @@ public class BlockchainExample {
 }
 ```
 
+## 💼 Real-World Use Cases & Examples
+
+### Use Case 1: Document Verification System
+Track and verify document authenticity with immutable records.
+
+```java
+public class DocumentVerificationSystem {
+    public static void main(String[] args) {
+        try {
+            Blockchain blockchain = new Blockchain();
+            
+            // Setup document verification authorities
+            KeyPair notary = CryptoUtil.generateKeyPair();
+            KeyPair university = CryptoUtil.generateKeyPair();
+            KeyPair government = CryptoUtil.generateKeyPair();
+            
+            String notaryKey = CryptoUtil.publicKeyToString(notary.getPublic());
+            String universityKey = CryptoUtil.publicKeyToString(university.getPublic());
+            String governmentKey = CryptoUtil.publicKeyToString(government.getPublic());
+            
+            blockchain.addAuthorizedKey(notaryKey, "Public Notary Office");
+            blockchain.addAuthorizedKey(universityKey, "University of Barcelona");
+            blockchain.addAuthorizedKey(governmentKey, "Government Registry");
+            
+            // Record document verifications
+            blockchain.addBlock("Document: Birth Certificate #BC-2025-001 | Status: VERIFIED | Hash: sha256:a1b2c3...", 
+                              government.getPrivate(), government.getPublic());
+            
+            blockchain.addBlock("Document: University Diploma #UB-CS-2025-456 | Status: AUTHENTIC | Graduate: John Doe", 
+                              university.getPrivate(), university.getPublic());
+            
+            blockchain.addBlock("Document: Property Deed #PD-BCN-2025-789 | Property: Carrer Balmes 123 | Owner: Jane Smith", 
+                              notary.getPrivate(), notary.getPublic());
+            
+            // Verify document authenticity
+            List<Block> certificateRecords = blockchain.searchBlocksByContent("Birth Certificate");
+            System.out.println("Birth certificates found: " + certificateRecords.size());
+            
+            // Export for external verification
+            blockchain.exportChain("document_verification_backup.json");
+            System.out.println("Document verification chain backed up successfully!");
+            
+        } catch (Exception e) {
+            System.err.println("Document verification error: " + e.getMessage());
+        }
+    }
+}
+```
+
+### Use Case 2: Supply Chain Management
+Track products through the supply chain with full traceability.
+
+```java
+public class SupplyChainTracker {
+    public static void main(String[] args) {
+        try {
+            Blockchain blockchain = new Blockchain();
+            
+            // Setup supply chain participants
+            KeyPair manufacturer = CryptoUtil.generateKeyPair();
+            KeyPair distributor = CryptoUtil.generateKeyPair();
+            KeyPair retailer = CryptoUtil.generateKeyPair();
+            KeyPair qualityControl = CryptoUtil.generateKeyPair();
+            
+            blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(manufacturer.getPublic()), "Barcelona Electronics Mfg");
+            blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(distributor.getPublic()), "Iberian Distribution Ltd");
+            blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(retailer.getPublic()), "TechStore Barcelona");
+            blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(qualityControl.getPublic()), "EU Quality Assurance");
+            
+            // Track product lifecycle
+            blockchain.addBlock("MANUFACTURED: Product #PS5-2025-001 | Location: Barcelona Factory | Date: 2025-06-10 | Batch: B2025-156", 
+                              manufacturer.getPrivate(), manufacturer.getPublic());
+            
+            blockchain.addBlock("QUALITY_CHECK: Product #PS5-2025-001 | Status: PASSED | Tests: Safety, Performance | Inspector: QC-007", 
+                              qualityControl.getPrivate(), qualityControl.getPublic());
+            
+            blockchain.addBlock("SHIPPED: Product #PS5-2025-001 | From: Barcelona | To: Madrid | Carrier: Express Logistics | Tracking: EL123456", 
+                              distributor.getPrivate(), distributor.getPublic());
+            
+            blockchain.addBlock("RECEIVED: Product #PS5-2025-001 | Store: TechStore Madrid | Condition: Excellent | Shelf: A-15", 
+                              retailer.getPrivate(), retailer.getPublic());
+            
+            blockchain.addBlock("SOLD: Product #PS5-2025-001 | Customer: [ANONYMIZED] | Date: 2025-06-15 | Warranty: 2 years", 
+                              retailer.getPrivate(), retailer.getPublic());
+            
+            // Track product history
+            List<Block> productHistory = blockchain.searchBlocksByContent("PS5-2025-001");
+            System.out.println("Product lifecycle events: " + productHistory.size());
+            
+            // Generate compliance report
+            LocalDate startDate = LocalDate.of(2025, 6, 1);
+            LocalDate endDate = LocalDate.of(2025, 6, 30);
+            List<Block> monthlyActivity = blockchain.getBlocksByDateRange(startDate, endDate);
+            System.out.println("June 2025 supply chain activity: " + monthlyActivity.size() + " events");
+            
+        } catch (Exception e) {
+            System.err.println("Supply chain tracking error: " + e.getMessage());
+        }
+    }
+}
+```
+
+### Use Case 3: Medical Records Management
+Secure and auditable medical record system with privacy protection.
+
+```java
+public class MedicalRecordsSystem {
+    public static void main(String[] args) {
+        try {
+            Blockchain blockchain = new Blockchain();
+            
+            // Setup medical system participants
+            KeyPair hospital = CryptoUtil.generateKeyPair();
+            KeyPair doctor = CryptoUtil.generateKeyPair();
+            KeyPair pharmacy = CryptoUtil.generateKeyPair();
+            KeyPair insurance = CryptoUtil.generateKeyPair();
+            
+            blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(hospital.getPublic()), "Hospital Clínic Barcelona");
+            blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(doctor.getPublic()), "Dr. Maria Garcia - Cardiology");
+            blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(pharmacy.getPublic()), "Farmacia Central");
+            blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(insurance.getPublic()), "Sanitas Insurance");
+            
+            // Record medical events (anonymized)
+            blockchain.addBlock("PATIENT_ADMISSION: ID: P-[HASH] | Department: Cardiology | Condition: Routine Checkup | Date: 2025-06-10", 
+                              hospital.getPrivate(), hospital.getPublic());
+            
+            blockchain.addBlock("DIAGNOSIS: Patient: P-[HASH] | Condition: Hypertension Stage 1 | Treatment: Lifestyle + Medication | Doctor: Dr. Garcia", 
+                              doctor.getPrivate(), doctor.getPublic());
+            
+            blockchain.addBlock("PRESCRIPTION: Patient: P-[HASH] | Medication: Lisinopril 10mg | Quantity: 30 tablets | Duration: 30 days", 
+                              doctor.getPrivate(), doctor.getPublic());
+            
+            blockchain.addBlock("DISPENSED: Prescription: RX-2025-789 | Patient: P-[HASH] | Medication: Lisinopril 10mg | Pharmacist: PharmD Lopez", 
+                              pharmacy.getPrivate(), pharmacy.getPublic());
+            
+            blockchain.addBlock("CLAIM_PROCESSED: Patient: P-[HASH] | Service: Cardiology Consultation | Amount: €120.00 | Status: APPROVED", 
+                              insurance.getPrivate(), insurance.getPublic());
+            
+            // Audit medical records
+            List<Block> patientRecords = blockchain.searchBlocksByContent("P-[HASH]");
+            System.out.println("Patient record entries: " + patientRecords.size());
+            
+            // Compliance validation
+            boolean chainValid = blockchain.validateChain();
+            System.out.println("Medical records integrity: " + (chainValid ? "VERIFIED" : "COMPROMISED"));
+            
+            // Secure backup for regulatory compliance
+            blockchain.exportChain("medical_records_backup_" + java.time.LocalDate.now() + ".json");
+            
+        } catch (Exception e) {
+            System.err.println("Medical records system error: " + e.getMessage());
+        }
+    }
+}
+```
+
+### Use Case 4: Financial Audit Trail
+Create an immutable audit trail for financial transactions.
+
+```java
+public class FinancialAuditSystem {
+    public static void main(String[] args) {
+        try {
+            Blockchain blockchain = new Blockchain();
+            
+            // Setup financial system participants
+            KeyPair bank = CryptoUtil.generateKeyPair();
+            KeyPair auditor = CryptoUtil.generateKeyPair();
+            KeyPair compliance = CryptoUtil.generateKeyPair();
+            KeyPair regulator = CryptoUtil.generateKeyPair();
+            
+            blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(bank.getPublic()), "Banco Santander España");
+            blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(auditor.getPublic()), "PwC Auditing Services");
+            blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(compliance.getPublic()), "Internal Compliance Dept");
+            blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(regulator.getPublic()), "Banco de España");
+            
+            // Record financial transactions and audits
+            blockchain.addBlock("TRANSACTION: ID: TXN-2025-001 | Type: Wire Transfer | Amount: €50,000.00 | From: [ENCRYPTED] | To: [ENCRYPTED] | Status: COMPLETED", 
+                              bank.getPrivate(), bank.getPublic());
+            
+            blockchain.addBlock("AML_CHECK: Transaction: TXN-2025-001 | Status: CLEARED | Risk Score: LOW | Officer: Compliance-007 | Date: 2025-06-10", 
+                              compliance.getPrivate(), compliance.getPublic());
+            
+            blockchain.addBlock("AUDIT_REVIEW: Transaction: TXN-2025-001 | Auditor: PwC-Team-Alpha | Finding: COMPLIANT | Documentation: COMPLETE", 
+                              auditor.getPrivate(), auditor.getPublic());
+            
+            blockchain.addBlock("REGULATORY_FILING: Report: Q2-2025-WIRE-TRANSFERS | Transactions: 1,247 | Total Value: €12,500,000 | Status: SUBMITTED", 
+                              regulator.getPrivate(), regulator.getPublic());
+            
+            // Generate audit reports
+            List<Block> auditTrail = blockchain.searchBlocksByContent("TXN-2025-001");
+            System.out.println("Transaction audit trail: " + auditTrail.size() + " entries");
+            
+            // Validate audit integrity
+            boolean auditValid = blockchain.validateChain();
+            System.out.println("Audit trail integrity: " + (auditValid ? "VALID" : "COMPROMISED"));
+            
+            // Export for regulatory submission
+            blockchain.exportChain("financial_audit_Q2_2025.json");
+            
+        } catch (Exception e) {
+            System.err.println("Financial audit system error: " + e.getMessage());
+        }
+    }
+}
+```
+
+### Common Workflow Patterns
+
+#### Daily Backup Routine
+```java
+public void performDailyBackup(Blockchain blockchain) {
+    try {
+        // Generate timestamp-based backup filename
+        String backupFile = "blockchain_backup_" + 
+                           java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + 
+                           ".json";
+        
+        // Validate chain before backup
+        if (!blockchain.validateChain()) {
+            System.err.println("WARNING: Chain validation failed - backup may contain corrupted data");
+        }
+        
+        // Perform backup
+        if (blockchain.exportChain(backupFile)) {
+            System.out.println("Daily backup completed: " + backupFile);
+            
+            // Log backup statistics
+            long blockCount = blockchain.getBlockCount();
+            int keyCount = blockchain.getAuthorizedKeys().size();
+            System.out.println("Backup contains: " + blockCount + " blocks, " + keyCount + " authorized keys");
+        }
+        
+    } catch (Exception e) {
+        System.err.println("Daily backup failed: " + e.getMessage());
+    }
+}
+```
+
+#### Batch Transaction Processing
+```java
+public void processBatchTransactions(Blockchain blockchain, List<String> transactions, 
+                                   PrivateKey signerKey, PublicKey signerPublic) {
+    try {
+        int successCount = 0;
+        int failureCount = 0;
+        
+        for (String transaction : transactions) {
+            // Validate transaction size
+            if (transaction.length() > blockchain.getMaxBlockDataLength()) {
+                System.err.println("Transaction too large, skipping: " + transaction.substring(0, 50) + "...");
+                failureCount++;
+                continue;
+            }
+            
+            // Add transaction to blockchain
+            if (blockchain.addBlock(transaction, signerKey, signerPublic)) {
+                successCount++;
+                if (successCount % 100 == 0) {
+                    System.out.println("Processed " + successCount + " transactions...");
+                }
+            } else {
+                failureCount++;
+                System.err.println("Failed to add transaction: " + transaction.substring(0, 50) + "...");
+            }
+        }
+        
+        System.out.println("Batch processing complete: " + successCount + " successful, " + failureCount + " failed");
+        
+        // Validate chain after batch processing
+        if (blockchain.validateChain()) {
+            System.out.println("Chain validation successful after batch processing");
+        } else {
+            System.err.println("WARNING: Chain validation failed after batch processing");
+        }
+        
+    } catch (Exception e) {
+        System.err.println("Batch processing error: " + e.getMessage());
+    }
+}
+```
+
 ## 🔒 Security Model
 
 ### Block Security
