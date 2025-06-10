@@ -84,7 +84,7 @@ Scripts:
 ### Quick Start
 ```bash
 # 1. Navigate to project directory
-cd /path/to/privateBockChain
+cd /path/to/privateBlockchain
 
 # 2. Compile the project
 mvn clean compile
