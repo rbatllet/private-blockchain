@@ -73,6 +73,22 @@ public class AuthorizedKeyDAO {
     }
     
     /**
+     * Check if a public key was authorized at a specific time
+     * This is used for validating historical blocks that may have been signed
+     * by keys that have since been revoked
+     */
+    public boolean wasKeyAuthorizedAt(String publicKey, java.time.LocalDateTime timestamp) {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Query<Long> query = session.createQuery(
+                "SELECT COUNT(*) FROM AuthorizedKey WHERE publicKey = :publicKey AND createdAt <= :timestamp", 
+                Long.class);
+            query.setParameter("publicKey", publicKey);
+            query.setParameter("timestamp", timestamp);
+            return query.uniqueResult() > 0;
+        }
+    }
+    
+    /**
      * Delete all authorized keys (for import functionality)
      */
     public int deleteAllAuthorizedKeys() {

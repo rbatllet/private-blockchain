@@ -144,9 +144,9 @@ public class Blockchain {
                 return false;
             }
             
-            // 5. Verify that the key is authorized
-            if (!authorizedKeyDAO.isKeyAuthorized(block.getSignerPublicKey())) {
-                System.err.println("Block signed by unauthorized key for block #" + block.getBlockNumber());
+            // 5. Verify that the key was authorized at the time of block creation
+            if (!authorizedKeyDAO.wasKeyAuthorizedAt(block.getSignerPublicKey(), block.getTimestamp())) {
+                System.err.println("Block signed by key that was not authorized at time of creation for block #" + block.getBlockNumber());
                 return false;
             }
             
