@@ -353,14 +353,40 @@ public class Blockchain {
             blockDAO.deleteAllBlocks();
             authorizedKeyDAO.deleteAllAuthorizedKeys();
             
-            // Import authorized keys first
+            // Import authorized keys first with corrected timestamps
             if (importData.getAuthorizedKeys() != null) {
+                // First, find the earliest timestamp for each public key from the blocks
+                java.util.Map<String, LocalDateTime> earliestBlockTimestamps = new java.util.HashMap<>();
+                
+                for (Block block : importData.getBlocks()) {
+                    if (block.getSignerPublicKey() != null && !"GENESIS".equals(block.getSignerPublicKey())) {
+                        String publicKey = block.getSignerPublicKey();
+                        LocalDateTime blockTimestamp = block.getTimestamp();
+                        
+                        if (blockTimestamp != null) {
+                            earliestBlockTimestamps.merge(publicKey, blockTimestamp, 
+                                (existing, current) -> existing.isBefore(current) ? existing : current);
+                        }
+                    }
+                }
+                
+                // Import authorized keys with adjusted timestamps
                 for (AuthorizedKey key : importData.getAuthorizedKeys()) {
                     // Reset ID for new insertion
                     key.setId(null);
+                    
+                    // Adjust createdAt to be before the earliest block this key signed
+                    String publicKey = key.getPublicKey();
+                    if (earliestBlockTimestamps.containsKey(publicKey)) {
+                        LocalDateTime earliestBlock = earliestBlockTimestamps.get(publicKey);
+                        // Set key creation time to 1 minute before the earliest block it signed
+                        key.setCreatedAt(earliestBlock.minusMinutes(1));
+                    }
+                    // If no blocks found for this key, keep the original timestamp
+                    
                     authorizedKeyDAO.saveAuthorizedKey(key);
                 }
-                System.out.println("Imported " + importData.getAuthorizedKeys().size() + " authorized keys");
+                System.out.println("Imported " + importData.getAuthorizedKeys().size() + " authorized keys with adjusted timestamps");
             }
             
             // Import blocks
