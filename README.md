@@ -71,7 +71,8 @@ src/test/java/com/rbatllet/blockchain/core/
 
 Scripts:
 ├── run_all_tests.sh                             # Run all tests (recommended)
-└── run_core_tests.sh                            # Run advanced functions tests only
+├── run_advanced_tests.sh                        # Run advanced functions tests only
+└── run_basic_tests.sh                           # Run basic core functions tests only
 ```
 
 ## 🚀 How to Run
@@ -169,9 +170,17 @@ This runs everything: basic core tests + advanced function tests.
 
 #### 2. Advanced Functions Only (JUnit 5 Tests)
 ```bash
-./run_core_tests.sh
+./run_advanced_tests.sh
 ```
-Runs 22 professional JUnit 5 tests for advanced functions.
+Runs 22 professional JUnit 5 tests for additional advanced functions only.
+
+**Note**: You may see error messages like "Error exporting chain" or "Import file not found" during these tests. These are **intentional test cases** that verify proper error handling - they are not actual failures.
+
+#### 3. Basic Core Functions Only
+```bash
+./run_basic_tests.sh
+```
+Runs the comprehensive basic core functions test that validates fundamental blockchain operations.
 
 **Expected output:**
 ```
@@ -179,7 +188,7 @@ Tests run: 22, Failures: 0, Errors: 0, Skipped: 0
 🎉 ALL TESTS PASSED!
 ```
 
-#### 3. Interactive Demonstrations
+#### 4. Interactive Demonstrations
 ```bash
 # Advanced features demo with practical examples
 mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.core.AdditionalAdvancedFunctionsDemo"
@@ -191,7 +200,7 @@ mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.BlockchainDemo"
 mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.CoreFunctionsTest"
 ```
 
-#### 4. Quick Verification Tests
+#### 5. Quick Verification Tests
 ```bash
 # Fast verification
 mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.QuickTest"
