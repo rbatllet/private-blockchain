@@ -23,7 +23,7 @@ This is a **private blockchain** for controlled environments where only authoriz
 
 ### Advanced Features
 - **Block Size Validation**: Prevents oversized blocks
-- **Chain Export/Import**: Backup and restore complete blockchain
+- **Chain Export/Import**: Backup and restore complete blockchain with temporal consistency
 - **Block Rollback**: Safe removal of recent blocks
 - **Advanced Search**: Find blocks by content, hash, or date range
 
@@ -713,8 +713,14 @@ int maxChars = blockchain.getMaxBlockDataLength();
 boolean added = blockchain.addAuthorizedKey(publicKeyString, "User Name");
 boolean revoked = blockchain.revokeAuthorizedKey(publicKeyString);
 
+// Add authorized key with specific timestamp (for CLI operations)
+boolean added = blockchain.addAuthorizedKey(publicKeyString, "User Name", specificTimestamp);
+
 // List authorized keys
 List<AuthorizedKey> activeKeys = blockchain.getAuthorizedKeys();
+
+// Get all authorized keys (including revoked ones) for export functionality
+List<AuthorizedKey> allKeys = blockchain.getAllAuthorizedKeys();
 ```
 
 #### Block Operations
@@ -829,7 +835,7 @@ For issues or questions:
 ```java
 public class KeyManagementPatterns {
     
-    // Secure key generation with validation
+    // Secure key generation with validation and timestamp control
     public AuthorizedKeyInfo generateAndAuthorizeSecureKey(Blockchain blockchain, String ownerName, 
                                                          String department, String role) {
         try {
@@ -843,7 +849,7 @@ public class KeyManagementPatterns {
                                                 java.time.LocalDateTime.now().format(
                                                     java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
             
-            // Add to blockchain with validation
+            // Add to blockchain with validation (using current timestamp)
             if (blockchain.addAuthorizedKey(publicKeyString, fullOwnerName)) {
                 System.out.println("✅ Key authorized for: " + ownerName);
                 System.out.println("🔑 Public key fingerprint: " + publicKeyString.substring(0, 32) + "...");
@@ -859,6 +865,29 @@ public class KeyManagementPatterns {
         } catch (Exception e) {
             System.err.println("💥 Key generation error: " + e.getMessage());
             return null;
+        }
+    }
+    
+    // Add authorized key with specific timestamp for CLI or import operations
+    public boolean addKeyWithSpecificTimestamp(Blockchain blockchain, String publicKeyString, 
+                                             String ownerName, java.time.LocalDateTime specificTime) {
+        try {
+            // Add authorized key with specific creation time for import/CLI operations
+            boolean success = blockchain.addAuthorizedKey(publicKeyString, ownerName, specificTime);
+            
+            if (success) {
+                System.out.println("✅ Key authorized with timestamp: " + specificTime);
+                System.out.println("🔑 Owner: " + ownerName);
+                System.out.println("📅 Timestamp control ensures temporal consistency");
+            } else {
+                System.err.println("❌ Failed to authorize key with timestamp");
+            }
+            
+            return success;
+            
+        } catch (Exception e) {
+            System.err.println("💥 Timestamp key authorization error: " + e.getMessage());
+            return false;
         }
     }
     
@@ -997,6 +1026,7 @@ public class KeyManagementPatterns {
 - **Digital Signatures**: Each block is digitally signed with the user's private key using RSA
 - **Signature Verification**: All signatures are verified before accepting blocks into the chain
 - **Key Lifecycle**: Full tracking of key authorization, usage, and revocation history
+- **Temporal Consistency**: Enhanced timestamp control ensures proper key lifecycle management during export/import operations
 
 ### Data Integrity
 - **Complete Chain Validation**: All blocks are validated when checking the chain integrity
