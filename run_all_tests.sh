@@ -53,19 +53,57 @@ if [ -f "blockchain.db" ]; then
 fi
 echo
 
-echo "=== PART 1: ADDITIONAL ADVANCED FUNCTIONS TESTS (JUnit 5) ==="
-echo "🧪 Running 22 professional JUnit 5 tests for additional advanced functions..."
-echo
+echo "=== PART 1: JUNIT 5 TESTS ==="
 
+# Clear database before JUnit tests
+if [ -f "blockchain.db" ]; then
+    rm blockchain.db
+fi
+
+echo "🧪 Running JUnit 5 Additional Advanced Functions tests (22 tests)..."
 mvn test -Dtest=BlockchainAdditionalAdvancedFunctionsTest -q
-JUNIT_RESULT=$?
+ADVANCED_RESULT=$?
 
-if [ $JUNIT_RESULT -eq 0 ]; then
-    echo "🎉 JUnit 5 Additional Advanced Functions tests: PASSED (22/22)"
-    record_test "JUnit 5 Additional Advanced Functions (22 tests)" "PASS"
+if [ $ADVANCED_RESULT -eq 0 ]; then
+    echo "🎉 Additional Advanced Functions tests: PASSED (22/22)"
+    record_test "Additional Advanced Functions (22 tests)" "PASS"
 else
-    echo "❌ JUnit 5 Additional Advanced Functions tests: FAILED"
-    record_test "JUnit 5 Additional Advanced Functions (22 tests)" "FAIL"
+    echo "❌ Additional Advanced Functions tests: FAILED"
+    record_test "Additional Advanced Functions (22 tests)" "FAIL"
+fi
+
+# Clear database between test suites
+if [ -f "blockchain.db" ]; then
+    rm blockchain.db
+fi
+
+echo "🧪 Running JUnit 5 Simple Temporal Validation tests (3 tests)..."
+mvn test -Dtest=SimpleTemporalValidationTest -q
+SIMPLE_TEMPORAL_RESULT=$?
+
+if [ $SIMPLE_TEMPORAL_RESULT -eq 0 ]; then
+    echo "🎉 Simple Temporal Validation tests: PASSED (3/3)"
+    record_test "Simple Temporal Validation (3 tests)" "PASS"
+else
+    echo "❌ Simple Temporal Validation tests: FAILED"
+    record_test "Simple Temporal Validation (3 tests)" "FAIL"
+fi
+
+# Clear database between test suites
+if [ -f "blockchain.db" ]; then
+    rm blockchain.db
+fi
+
+echo "🧪 Running JUnit 5 Key Authorization tests (9 tests)..."
+mvn test -Dtest=BlockchainKeyAuthorizationTest -q
+AUTHORIZATION_RESULT=$?
+
+if [ $AUTHORIZATION_RESULT -eq 0 ]; then
+    echo "🎉 Key Authorization tests: PASSED (9/9)"
+    record_test "Key Authorization (9 tests)" "PASS"
+else
+    echo "❌ Key Authorization tests: FAILED"
+    record_test "Key Authorization (9 tests)" "FAIL"
 fi
 
 echo
@@ -167,6 +205,9 @@ if [ $FAILED_TESTS -eq 0 ]; then
     echo "   ✅ ADDITIONAL: Chain export/import"
     echo "   ✅ ADDITIONAL: Block rollback operations"
     echo "   ✅ ADDITIONAL: Advanced search (content, hash, date range)"
+    echo "   ✅ ADDITIONAL: Key authorization with temporal validation"
+    echo "   ✅ ADDITIONAL: Import with temporal consistency"
+    echo "   ✅ ADDITIONAL: Re-authorization scenarios"
     echo "   ✅ Integration and error handling"
     echo
     FINAL_EXIT_CODE=0
@@ -184,6 +225,7 @@ fi
 
 echo "📍 Test files location:"
 echo "   - JUnit 5 Advanced Function Tests: src/test/java/com/rbatllet/blockchain/core/"
+echo "   - JUnit 5 Key Authorization Tests: src/test/java/com/rbatllet/blockchain/core/"
 echo "   - Basic Core Function Tests: src/main/java/com/rbatllet/blockchain/"
 echo "📖 Documentation: README.md"
 echo

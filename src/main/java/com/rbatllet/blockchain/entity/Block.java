@@ -81,6 +81,8 @@ public class Block {
                 ", data='" + data + '\'' +
                 ", timestamp=" + timestamp +
                 ", hash='" + hash + '\'' +
+                ", signature='" + (signature != null ? signature.substring(0, Math.min(20, signature.length())) + "..." : "null") + '\'' +
+                ", signerPublicKey='" + (signerPublicKey != null ? signerPublicKey.substring(0, Math.min(20, signerPublicKey.length())) + "..." : "null") + '\'' +
                 '}';
     }
 }

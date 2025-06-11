@@ -19,8 +19,11 @@ public class Blockchain {
     private static final String GENESIS_PREVIOUS_HASH = "0";
     
     // CORE FUNCTION: Block size validation constants
-    private static final int MAX_BLOCK_SIZE_BYTES = 1024 * 1024; // 1MB max per block
-    private static final int MAX_BLOCK_DATA_LENGTH = 10000; // 10K characters max
+    // FIXED: Added clear documentation about the relationship between limits
+    private static final int MAX_BLOCK_SIZE_BYTES = 1024 * 1024; // 1MB max per block (for large binary data)
+    private static final int MAX_BLOCK_DATA_LENGTH = 10000; // 10K characters max (for text content)
+    // NOTE: Character limit is separate from byte limit to handle both text and binary data efficiently
+    // 10K UTF-8 characters typically use ~10-40KB, well within the 1MB byte limit
     
     public Blockchain() {
         this.blockDAO = new BlockDAO();
@@ -60,9 +63,10 @@ public class Blockchain {
                 return false;
             }
             
-            // 1. Verify that the key is authorized
+            // 1. Verify that the key is authorized at the time of block creation
             String publicKeyString = CryptoUtil.publicKeyToString(signerPublicKey);
-            if (!authorizedKeyDAO.isKeyAuthorized(publicKeyString)) {
+            LocalDateTime blockTimestamp = LocalDateTime.now();
+            if (!authorizedKeyDAO.wasKeyAuthorizedAt(publicKeyString, blockTimestamp)) {
                 System.err.println("Unauthorized key attempting to add block");
                 return false;
             }
@@ -74,12 +78,12 @@ public class Blockchain {
                 return false;
             }
             
-            // 3. Create the new block
+            // 3. Create the new block with the same timestamp used for validation
             Block newBlock = new Block();
             newBlock.setBlockNumber(lastBlock.getBlockNumber() + 1);
             newBlock.setPreviousHash(lastBlock.getHash());
             newBlock.setData(data);
-            newBlock.setTimestamp(LocalDateTime.now());
+            newBlock.setTimestamp(blockTimestamp); // Use the same timestamp
             newBlock.setSignerPublicKey(publicKeyString);
             
             // 4. Calculate block hash
@@ -216,15 +220,17 @@ public class Blockchain {
 
     /**
      * CORE FUNCTION: Add an authorized key
+     * IMPROVED: Now allows re-authorization of previously revoked keys
      */
     public boolean addAuthorizedKey(String publicKeyString, String ownerName) {
         try {
-            // Verify that the key doesn't already exist
+            // Check if key is currently authorized
             if (authorizedKeyDAO.isKeyAuthorized(publicKeyString)) {
                 System.err.println("Key already authorized");
                 return false;
             }
             
+            // Allow re-authorization: create new authorization record
             AuthorizedKey authorizedKey = new AuthorizedKey(publicKeyString, ownerName);
             authorizedKeyDAO.saveAuthorizedKey(authorizedKey);
             System.out.println("Authorized key added for: " + ownerName);
@@ -246,7 +252,7 @@ public class Blockchain {
                 return false;
             }
             
-            authorizedKeyDAO.deactivateKey(publicKeyString);
+            authorizedKeyDAO.revokeAuthorizedKey(publicKeyString);
             System.out.println("Key revoked successfully");
             return true;
             
@@ -355,8 +361,9 @@ public class Blockchain {
             
             // Import authorized keys first with corrected timestamps
             if (importData.getAuthorizedKeys() != null) {
-                // First, find the earliest timestamp for each public key from the blocks
+                // First, find the earliest and latest timestamp for each public key from the blocks
                 java.util.Map<String, LocalDateTime> earliestBlockTimestamps = new java.util.HashMap<>();
+                java.util.Map<String, LocalDateTime> latestBlockTimestamps = new java.util.HashMap<>();
                 
                 for (Block block : importData.getBlocks()) {
                     if (block.getSignerPublicKey() != null && !"GENESIS".equals(block.getSignerPublicKey())) {
@@ -366,6 +373,8 @@ public class Blockchain {
                         if (blockTimestamp != null) {
                             earliestBlockTimestamps.merge(publicKey, blockTimestamp, 
                                 (existing, current) -> existing.isBefore(current) ? existing : current);
+                            latestBlockTimestamps.merge(publicKey, blockTimestamp, 
+                                (existing, current) -> existing.isAfter(current) ? existing : current);
                         }
                     }
                 }
@@ -375,14 +384,29 @@ public class Blockchain {
                     // Reset ID for new insertion
                     key.setId(null);
                     
-                    // Adjust createdAt to be before the earliest block this key signed
+                    // IMPROVED: Maintain temporal consistency during import
                     String publicKey = key.getPublicKey();
                     if (earliestBlockTimestamps.containsKey(publicKey)) {
                         LocalDateTime earliestBlock = earliestBlockTimestamps.get(publicKey);
                         // Set key creation time to 1 minute before the earliest block it signed
                         key.setCreatedAt(earliestBlock.minusMinutes(1));
+                        
+                        // CRITICAL: If key was revoked, ensure revokedAt is after the latest block
+                        if (!key.isActive() && key.getRevokedAt() == null) {
+                            // Use the latest block timestamp for this key
+                            LocalDateTime latestBlockTime = latestBlockTimestamps.get(publicKey);
+                            if (latestBlockTime != null) {
+                                // Set revocation time after the latest block
+                                key.setRevokedAt(latestBlockTime.plusMinutes(1));
+                            }
+                        }
+                    } else {
+                        // For keys without blocks, ensure consistent state
+                        if (!key.isActive() && key.getRevokedAt() == null) {
+                            // Set a reasonable revocation time
+                            key.setRevokedAt(key.getCreatedAt().plusMinutes(1));
+                        }
                     }
-                    // If no blocks found for this key, keep the original timestamp
                     
                     authorizedKeyDAO.saveAuthorizedKey(key);
                 }

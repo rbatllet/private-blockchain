@@ -29,40 +29,66 @@ public class AuthorizedKeyDAO {
     
     /**
      * Check if a public key is authorized and active
+     * FIXED: Uses simple logic but consistent temporal validation
      */
     public boolean isKeyAuthorized(String publicKey) {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            Query<Long> query = session.createQuery(
-                "SELECT COUNT(*) FROM AuthorizedKey WHERE publicKey = :publicKey AND isActive = true", 
-                Long.class);
+            Query<AuthorizedKey> query = session.createQuery(
+                "FROM AuthorizedKey WHERE publicKey = :publicKey ORDER BY createdAt DESC", 
+                AuthorizedKey.class);
             query.setParameter("publicKey", publicKey);
-            return query.uniqueResult() > 0;
+            query.setMaxResults(1);
+            
+            AuthorizedKey key = query.uniqueResult();
+            if (key == null) {
+                return false;
+            }
+            
+            // Use temporal validation for current time
+            return key.wasActiveAt(java.time.LocalDateTime.now());
         }
     }
     
     /**
-     * Get all active authorized keys
+     * Get all currently active authorized keys (only the most recent for each public key)
+     * FIXED: Now returns only one record per public key
      */
     public List<AuthorizedKey> getActiveAuthorizedKeys() {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            // Get the most recent authorization for each public key that is currently active
             Query<AuthorizedKey> query = session.createQuery(
-                "FROM AuthorizedKey WHERE isActive = true ORDER BY createdAt ASC", 
+                "SELECT ak FROM AuthorizedKey ak WHERE ak.createdAt = " +
+                "(SELECT MAX(ak2.createdAt) FROM AuthorizedKey ak2 WHERE ak2.publicKey = ak.publicKey) " +
+                "AND ak.isActive = true ORDER BY ak.createdAt ASC", 
                 AuthorizedKey.class);
             return query.list();
         }
     }
     
     /**
-     * Deactivate an authorized key
+     * Revoke an authorized key with proper temporal tracking
+     * FIXED: Now only revokes the most recent active authorization
+     * RENAMED: Changed from deactivateKey to revokeAuthorizedKey for consistency
      */
-    public void deactivateKey(String publicKey) {
+    public void revokeAuthorizedKey(String publicKey) {
         Transaction transaction = null;
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
             transaction = session.beginTransaction();
-            Query query = session.createQuery(
-                "UPDATE AuthorizedKey SET isActive = false WHERE publicKey = :publicKey");
-            query.setParameter("publicKey", publicKey);
-            query.executeUpdate();
+            
+            // Find the most recent active authorization for this key
+            Query<AuthorizedKey> selectQuery = session.createQuery(
+                "FROM AuthorizedKey WHERE publicKey = :publicKey AND isActive = true ORDER BY createdAt DESC", 
+                AuthorizedKey.class);
+            selectQuery.setParameter("publicKey", publicKey);
+            selectQuery.setMaxResults(1);
+            
+            AuthorizedKey keyToRevoke = selectQuery.uniqueResult();
+            if (keyToRevoke != null) {
+                keyToRevoke.setActive(false);
+                keyToRevoke.setRevokedAt(java.time.LocalDateTime.now());
+                session.update(keyToRevoke);
+            }
+            
             transaction.commit();
         } catch (Exception e) {
             if (transaction != null) {
@@ -76,15 +102,37 @@ public class AuthorizedKeyDAO {
      * Check if a public key was authorized at a specific time
      * This is used for validating historical blocks that may have been signed
      * by keys that have since been revoked
+     * FIXED: Now finds the authorization that was valid at the specific timestamp
      */
     public boolean wasKeyAuthorizedAt(String publicKey, java.time.LocalDateTime timestamp) {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            Query<Long> query = session.createQuery(
-                "SELECT COUNT(*) FROM AuthorizedKey WHERE publicKey = :publicKey AND createdAt <= :timestamp", 
-                Long.class);
+            // Get all authorizations for this key, ordered by creation time
+            Query<AuthorizedKey> query = session.createQuery(
+                "FROM AuthorizedKey WHERE publicKey = :publicKey ORDER BY createdAt ASC", 
+                AuthorizedKey.class);
             query.setParameter("publicKey", publicKey);
-            query.setParameter("timestamp", timestamp);
-            return query.uniqueResult() > 0;
+            
+            List<AuthorizedKey> keys = query.list();
+            if (keys.isEmpty()) {
+                return false;
+            }
+            
+            // Find the authorization that was valid at the given timestamp
+            AuthorizedKey validKey = null;
+            for (AuthorizedKey key : keys) {
+                if (key.getCreatedAt() != null && !timestamp.isBefore(key.getCreatedAt())) {
+                    validKey = key; // This key could be valid
+                } else {
+                    break; // Keys are ordered by creation, so we can stop here
+                }
+            }
+            
+            if (validKey == null) {
+                return false;
+            }
+            
+            // Use the temporal validation method on the correct key
+            return validKey.wasActiveAt(timestamp);
         }
     }
     

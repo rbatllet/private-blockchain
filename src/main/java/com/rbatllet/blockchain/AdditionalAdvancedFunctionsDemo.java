@@ -1,4 +1,4 @@
-package com.rbatllet.blockchain.core;
+package com.rbatllet.blockchain;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;

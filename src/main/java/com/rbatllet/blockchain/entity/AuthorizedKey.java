@@ -10,7 +10,7 @@ public class AuthorizedKey {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(name = "public_key", columnDefinition = "TEXT", unique = true, nullable = false)
+    @Column(name = "public_key", columnDefinition = "TEXT", nullable = false)
     private String publicKey;
     
     @Column(name = "owner_name", length = 100)
@@ -21,6 +21,9 @@ public class AuthorizedKey {
     
     @Column(name = "created_at")
     private java.time.LocalDateTime createdAt;
+    
+    @Column(name = "revoked_at")
+    private java.time.LocalDateTime revokedAt;
 
     // Constructors
     public AuthorizedKey() {
@@ -49,13 +52,38 @@ public class AuthorizedKey {
     public java.time.LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(java.time.LocalDateTime createdAt) { this.createdAt = createdAt; }
 
+    public java.time.LocalDateTime getRevokedAt() { return revokedAt; }
+    public void setRevokedAt(java.time.LocalDateTime revokedAt) { this.revokedAt = revokedAt; }
+
+    /**
+     * Checks if the key was active at a specific point in time
+     * This is crucial for historical validation of blocks
+     * FIXED: Correct temporal logic
+     */
+    public boolean wasActiveAt(java.time.LocalDateTime timestamp) {
+        // Key must have been created before the timestamp
+        if (createdAt == null || timestamp.isBefore(createdAt)) {
+            return false;
+        }
+        
+        // If never revoked, it was active from creation until revocation (or still active)
+        if (revokedAt == null) {
+            return true; // Key was active from creation onwards
+        }
+        
+        // If revoked, check if timestamp was before revocation
+        return timestamp.isBefore(revokedAt);
+    }
+
     @Override
     public String toString() {
         return "AuthorizedKey{" +
                 "id=" + id +
+                ", publicKey='" + (publicKey != null ? publicKey.substring(0, Math.min(20, publicKey.length())) + "..." : "null") + '\'' +
                 ", ownerName='" + ownerName + '\'' +
                 ", isActive=" + isActive +
                 ", createdAt=" + createdAt +
+                ", revokedAt=" + revokedAt +
                 '}';
     }
 }
