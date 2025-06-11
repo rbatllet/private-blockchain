@@ -15,11 +15,19 @@
         <property name="hibernate.show_sql">false</property>
         <property name="hibernate.format_sql">false</property>
         
-        <!-- Silence connection warnings -->
-        <property name="hibernate.connection.autocommit">true</property>
+        <!-- Connection pool settings - FIXED: Increased for concurrent operations -->
+        <property name="hibernate.connection.pool_size">10</property>
         
-        <!-- Connection pool settings -->
-        <property name="hibernate.connection.pool_size">1</property>
+        <!-- SQLite specific settings for concurrency -->
+        <property name="hibernate.connection.url">jdbc:sqlite:blockchain.db?journal_mode=WAL</property>
+        
+        <!-- Improve transaction handling -->
+        <property name="hibernate.connection.autocommit">false</property>
+        <property name="hibernate.current_session_context_class">thread</property>
+        
+        <!-- Connection timeout and validation -->
+        <property name="hibernate.connection.timeout">20000</property>
+        <property name="hibernate.connection.validation_timeout">3000</property>
         
         <!-- Enable the query cache -->
         <property name="hibernate.cache.use_query_cache">false</property>

@@ -106,6 +106,23 @@ else
     record_test "Key Authorization (9 tests)" "FAIL"
 fi
 
+# Clear database between test suites
+if [ -f "blockchain.db" ]; then
+    rm blockchain.db
+fi
+
+echo "🧪 Running JUnit 5 Critical Consistency tests (7 tests)..."
+mvn test -Dtest=CriticalConsistencyTest -q
+CRITICAL_CONSISTENCY_RESULT=$?
+
+if [ $CRITICAL_CONSISTENCY_RESULT -eq 0 ]; then
+    echo "🎉 Critical Consistency tests: PASSED (7/7)"
+    record_test "Critical Consistency (7 tests)" "PASS"
+else
+    echo "❌ Critical Consistency tests: FAILED"
+    record_test "Critical Consistency (7 tests)" "FAIL"
+fi
+
 echo
 echo "=== PART 2: BASIC CORE FUNCTIONS TESTS ==="
 echo "🧪 Running basic core functions comprehensive test..."
@@ -208,6 +225,8 @@ if [ $FAILED_TESTS -eq 0 ]; then
     echo "   ✅ ADDITIONAL: Key authorization with temporal validation"
     echo "   ✅ ADDITIONAL: Import with temporal consistency"
     echo "   ✅ ADDITIONAL: Re-authorization scenarios"
+    echo "   ✅ CRITICAL: Concurrency and consistency tests"
+    echo "   ✅ CRITICAL: Mass operations and error recovery"
     echo "   ✅ Integration and error handling"
     echo
     FINAL_EXIT_CODE=0
@@ -226,6 +245,7 @@ fi
 echo "📍 Test files location:"
 echo "   - JUnit 5 Advanced Function Tests: src/test/java/com/rbatllet/blockchain/core/"
 echo "   - JUnit 5 Key Authorization Tests: src/test/java/com/rbatllet/blockchain/core/"
+echo "   - JUnit 5 Critical Consistency Tests: src/test/java/com/rbatllet/blockchain/core/"
 echo "   - Basic Core Function Tests: src/main/java/com/rbatllet/blockchain/"
 echo "📖 Documentation: README.md"
 echo

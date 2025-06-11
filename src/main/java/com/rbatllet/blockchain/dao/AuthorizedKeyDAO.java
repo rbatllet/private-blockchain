@@ -66,6 +66,19 @@ public class AuthorizedKeyDAO {
     }
     
     /**
+     * Get ALL authorized keys (including revoked ones) for export functionality
+     * This is needed to properly validate historical blocks during import
+     */
+    public List<AuthorizedKey> getAllAuthorizedKeys() {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Query<AuthorizedKey> query = session.createQuery(
+                "FROM AuthorizedKey ORDER BY createdAt ASC", 
+                AuthorizedKey.class);
+            return query.list();
+        }
+    }
+    
+    /**
      * Revoke an authorized key with proper temporal tracking
      * FIXED: Now only revokes the most recent active authorization
      * RENAMED: Changed from deactivateKey to revokeAuthorizedKey for consistency

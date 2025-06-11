@@ -812,3 +812,485 @@ For issues or questions:
 ---
 
 **Ready to start?** Run `./run_all_tests.sh` to verify everything works, then try the demos!
+ readPerformance) { this.readPerformance = readPerformance; }
+        public long getDatabaseSize() { return databaseSize; }
+        public void setDatabaseSize(long databaseSize) { this.databaseSize = databaseSize; }
+        public long getAverageBlockSize() { return averageBlockSize; }
+        public void setAverageBlockSize(long averageBlockSize) { this.averageBlockSize = averageBlockSize; }
+        public String getOverallHealth() { return overallHealth; }
+        public void setOverallHealth(String overallHealth) { this.overallHealth = overallHealth; }
+        public String getError() { return error; }
+        public void setError(String error) { this.error = error; }
+    }
+}
+```
+
+### Key Management Best Practices
+```java
+public class KeyManagementPatterns {
+    
+    // Secure key generation with validation
+    public AuthorizedKeyInfo generateAndAuthorizeSecureKey(Blockchain blockchain, String ownerName, 
+                                                         String department, String role) {
+        try {
+            // Generate cryptographically secure key pair
+            KeyPair keyPair = CryptoUtil.generateKeyPair();
+            String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
+            
+            // Create comprehensive owner identification
+            String fullOwnerName = String.format("%s | Dept: %s | Role: %s | Generated: %s", 
+                                                ownerName, department, role, 
+                                                java.time.LocalDateTime.now().format(
+                                                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+            
+            // Add to blockchain with validation
+            if (blockchain.addAuthorizedKey(publicKeyString, fullOwnerName)) {
+                System.out.println("✅ Key authorized for: " + ownerName);
+                System.out.println("🔑 Public key fingerprint: " + publicKeyString.substring(0, 32) + "...");
+                
+                // Return secure key information
+                return new AuthorizedKeyInfo(keyPair, publicKeyString, fullOwnerName, 
+                                           java.time.LocalDateTime.now());
+            } else {
+                System.err.println("❌ Failed to authorize key for: " + ownerName);
+                return null;
+            }
+            
+        } catch (Exception e) {
+            System.err.println("💥 Key generation error: " + e.getMessage());
+            return null;
+        }
+    }
+    
+    // Key rotation with overlap period
+    public boolean rotateKey(Blockchain blockchain, AuthorizedKeyInfo oldKey, String ownerName) {
+        try {
+            System.out.println("🔄 Starting key rotation for: " + ownerName);
+            
+            // Generate new key
+            AuthorizedKeyInfo newKey = generateAndAuthorizeSecureKey(blockchain, 
+                                                                   ownerName + " (Rotated)", 
+                                                                   "Security", "Updated");
+            if (newKey == null) {
+                return false;
+            }
+            
+            // Allow overlap period for transition (in production, this might be hours/days)
+            System.out.println("⏱️  Overlap period: Old and new keys both active");
+            Thread.sleep(1000); // Simulate overlap period
+            
+            // Revoke old key
+            if (blockchain.revokeAuthorizedKey(oldKey.getPublicKeyString())) {
+                System.out.println("✅ Key rotation completed successfully");
+                System.out.println("🗑️  Old key revoked: " + oldKey.getPublicKeyString().substring(0, 32) + "...");
+                System.out.println("🆕 New key active: " + newKey.getPublicKeyString().substring(0, 32) + "...");
+                return true;
+            } else {
+                System.err.println("❌ Failed to revoke old key during rotation");
+                return false;
+            }
+            
+        } catch (Exception e) {
+            System.err.println("💥 Key rotation error: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    // Bulk key management for organization setup
+    public OrganizationKeyResult setupOrganizationKeys(Blockchain blockchain, 
+                                                       java.util.Map<String, String> roleAssignments) {
+        OrganizationKeyResult result = new OrganizationKeyResult();
+        
+        try {
+            System.out.println("🏢 Setting up organization keys for " + roleAssignments.size() + " roles");
+            
+            for (java.util.Map.Entry<String, String> assignment : roleAssignments.entrySet()) {
+                String person = assignment.getKey();
+                String role = assignment.getValue();
+                
+                // Generate keys for each person/role
+                AuthorizedKeyInfo keyInfo = generateAndAuthorizeSecureKey(blockchain, person, 
+                                                                        "Organization", role);
+                if (keyInfo != null) {
+                    result.addSuccessfulKey(person, keyInfo);
+                    System.out.println("  ✅ " + person + " (" + role + ")");
+                } else {
+                    result.addFailedKey(person, "Key generation failed");
+                    System.err.println("  ❌ " + person + " (" + role + ") - FAILED");
+                }
+            }
+            
+            System.out.println("📊 Organization setup summary:");
+            System.out.println("  ✅ Successful: " + result.getSuccessfulKeys().size());
+            System.out.println("  ❌ Failed: " + result.getFailedKeys().size());
+            
+        } catch (Exception e) {
+            System.err.println("💥 Organization setup error: " + e.getMessage());
+            result.setError(e.getMessage());
+        }
+        
+        return result;
+    }
+    
+    // Supporting classes
+    public static class AuthorizedKeyInfo {
+        private final KeyPair keyPair;
+        private final String publicKeyString;
+        private final String ownerName;
+        private final java.time.LocalDateTime creationTime;
+        
+        public AuthorizedKeyInfo(KeyPair keyPair, String publicKeyString, String ownerName, 
+                               java.time.LocalDateTime creationTime) {
+            this.keyPair = keyPair;
+            this.publicKeyString = publicKeyString;
+            this.ownerName = ownerName;
+            this.creationTime = creationTime;
+        }
+        
+        // Getters
+        public KeyPair getKeyPair() { return keyPair; }
+        public String getPublicKeyString() { return publicKeyString; }
+        public String getOwnerName() { return ownerName; }
+        public java.time.LocalDateTime getCreationTime() { return creationTime; }
+        
+        // Security methods
+        public PrivateKey getPrivateKey() { return keyPair.getPrivate(); }
+        public PublicKey getPublicKey() { return keyPair.getPublic(); }
+        
+        // Utility methods
+        public String getKeyFingerprint() { 
+            return publicKeyString.substring(0, Math.min(32, publicKeyString.length())); 
+        }
+    }
+    
+    public static class OrganizationKeyResult {
+        private java.util.Map<String, AuthorizedKeyInfo> successfulKeys = new java.util.HashMap<>();
+        private java.util.Map<String, String> failedKeys = new java.util.HashMap<>();
+        private String error;
+        
+        public void addSuccessfulKey(String person, AuthorizedKeyInfo keyInfo) {
+            successfulKeys.put(person, keyInfo);
+        }
+        
+        public void addFailedKey(String person, String reason) {
+            failedKeys.put(person, reason);
+        }
+        
+        public java.util.Map<String, AuthorizedKeyInfo> getSuccessfulKeys() { return successfulKeys; }
+        public java.util.Map<String, String> getFailedKeys() { return failedKeys; }
+        public String getError() { return error; }
+        public void setError(String error) { this.error = error; }
+    }
+}
+```
+
+## 🔒 Security Model
+
+### Block Security
+- **Cryptographic Hashing**: Each block contains a SHA-256 hash of its content
+- **Chain Linking**: Blocks are cryptographically linked by including the previous block's hash
+- **Tamper Detection**: Any modification breaks the chain validation and is immediately detected
+- **Temporal Consistency**: Historical validation ensures blocks were signed by authorized keys at the time of creation
+
+### Access Control
+- **Authorization Management**: Only users with authorized public keys can add blocks
+- **Digital Signatures**: Each block is digitally signed with the user's private key using RSA
+- **Signature Verification**: All signatures are verified before accepting blocks into the chain
+- **Key Lifecycle**: Full tracking of key authorization, usage, and revocation history
+
+### Data Integrity
+- **Complete Chain Validation**: All blocks are validated when checking the chain integrity
+- **Hash Verification**: SHA-256 hash verification ensures no data has been modified
+- **Sequential Validation**: Confirms proper block order and linking
+- **Critical Consistency**: Advanced tests verify complex scenarios like concurrent operations and edge cases
+
+### Advanced Security Features
+- **Export/Import Security**: Complete blockchain state preservation including revoked keys for historical validation
+- **Temporal Validation**: Verify that blocks were signed by keys that were authorized at the time of block creation
+- **Rollback Protection**: Safe block removal with consistency checks and key state preservation
+- **Concurrency Safety**: Thread-safe operations prevent race conditions and data corruption
+
+## 📊 Database Schema
+
+The application automatically creates these tables with full audit capabilities:
+
+### blocks table
+- `id` - Unique identifier (Primary Key)
+- `block_number` - Sequential block number (starts from 0, indexed)
+- `previous_hash` - Hash of the previous block (64 chars, indexed)
+- `data` - Block content (user data, up to 10,000 characters)
+- `hash` - SHA-256 hash of the block (64 chars, unique)
+- `signature` - Digital signature of the block (Base64 encoded)
+- `signer_public_key` - Public key of the block creator (indexed)
+- `timestamp` - When the block was created (indexed for date range queries)
+
+### authorized_keys table
+- `id` - Unique identifier (Primary Key)
+- `public_key` - User's public key (unique, indexed)
+- `owner_name` - Human-readable name and role information
+- `is_active` - Whether the key is currently active (indexed)
+- `created_at` - When the key was authorized (indexed)
+- `revoked_at` - When the key was revoked (nullable, indexed)
+
+### Performance Indexes
+- `idx_blocks_number` - Fast block number lookups
+- `idx_blocks_hash` - Fast hash-based searches
+- `idx_blocks_signer` - Fast searches by signer
+- `idx_blocks_timestamp` - Fast date range queries
+- `idx_keys_public_key` - Fast key authorization checks
+- `idx_keys_active` - Fast active key listings
+
+## 📝 Complete API Reference
+
+### Core Blockchain Management
+```java
+// Initialization
+Blockchain blockchain = new Blockchain();  // Auto-creates genesis block
+
+// Basic information
+long totalBlocks = blockchain.getBlockCount();
+List<Block> allBlocks = blockchain.getAllBlocks();
+Block lastBlock = blockchain.getLastBlock();
+Block specificBlock = blockchain.getBlock(blockNumber);
+boolean isValid = blockchain.validateChain();
+
+// Configuration limits
+int maxBytes = blockchain.getMaxBlockSizeBytes();    // 1,048,576 bytes (1MB)
+int maxChars = blockchain.getMaxBlockDataLength();   // 10,000 characters
+```
+
+### Key Management Operations
+```java
+// Add/remove authorized keys
+boolean added = blockchain.addAuthorizedKey(publicKeyString, "User Name");
+boolean revoked = blockchain.revokeAuthorizedKey(publicKeyString);
+
+// Query key information
+List<AuthorizedKey> activeKeys = blockchain.getAuthorizedKeys();
+boolean isAuthorized = blockchain.isKeyAuthorized(publicKeyString);
+
+// Historical key validation (for audit purposes)
+boolean wasAuthorizedAt = blockchain.wasKeyAuthorizedAt(publicKeyString, timestamp);
+```
+
+### Block Operations
+```java
+// Add blocks with full validation
+boolean success = blockchain.addBlock(data, privateKey, publicKey);
+
+// Validation operations
+boolean isValid = blockchain.validateChain();
+boolean blockValid = blockchain.validateBlock(block, previousBlock);
+
+// Advanced block operations
+boolean exported = blockchain.exportChain("backup.json");
+boolean imported = blockchain.importChain("backup.json");
+boolean rolledBack = blockchain.rollbackBlocks(numberOfBlocks);
+boolean rolledBackTo = blockchain.rollbackToBlock(targetBlockNumber);
+```
+
+### Search and Query Operations
+```java
+// Content-based search (case-insensitive)
+List<Block> contentResults = blockchain.searchBlocksByContent("searchTerm");
+
+// Hash-based lookup
+Block hashResult = blockchain.getBlockByHash("hashString");
+
+// Date range queries
+LocalDate startDate = LocalDate.of(2025, 1, 1);
+LocalDate endDate = LocalDate.of(2025, 12, 31);
+List<Block> dateResults = blockchain.getBlocksByDateRange(startDate, endDate);
+
+// Advanced filtering (example implementation)
+List<Block> filteredBlocks = blockchain.getAllBlocks().stream()
+    .filter(block -> block.getData().contains("keyword"))
+    .filter(block -> block.getTimestamp().isAfter(someDateTime))
+    .collect(Collectors.toList());
+```
+
+### Utility and Helper Methods
+```java
+// Cryptographic utilities
+KeyPair keyPair = CryptoUtil.generateKeyPair();
+String publicKeyString = CryptoUtil.publicKeyToString(publicKey);
+PublicKey publicKey = CryptoUtil.stringToPublicKey(publicKeyString);
+String hash = CryptoUtil.calculateHash(data);
+boolean verified = CryptoUtil.verifySignature(data, signature, publicKey);
+
+// Block analysis
+String blockContent = blockchain.buildBlockContent(block);  // For custom validation
+long chainSize = blockchain.getBlockCount();
+Block genesisBlock = blockchain.getBlock(0);
+```
+
+## 🔧 Configuration
+
+### Database Configuration
+- **Location**: `blockchain.db` in project root directory
+- **Type**: SQLite database with WAL mode for better concurrency
+- **ORM**: Hibernate with automatic table creation and indexing
+- **Connection Pooling**: HikariCP with optimized settings
+- **Logging**: Configurable SQL query logging (hibernate.cfg.xml)
+
+### Security Configuration
+- **Hash Algorithm**: SHA-256 (256-bit)
+- **Signature Algorithm**: RSA with SHA-256
+- **Key Size**: 2048 bits (configurable to 4096 for high-security environments)
+- **Encoding**: Base64 for signatures, UTF-8 for text data
+
+### Performance Limits
+- **Block Data**: 10,000 characters maximum per block
+- **Block Size**: 1MB (1,048,576 bytes) total block size limit
+- **Hash Length**: 64 characters (SHA-256 hex representation)
+- **Signature Length**: Variable (typically ~344 characters for 2048-bit RSA)
+
+### Advanced Configuration Options
+```xml
+<!-- hibernate.cfg.xml customization -->
+<property name="hibernate.show_sql">false</property>          <!-- Disable SQL logging -->
+<property name="hibernate.hbm2ddl.auto">update</property>     <!-- Auto-update schema -->
+<property name="hibernate.connection.pool_size">10</property>  <!-- Connection pool size -->
+```
+
+## 🚨 Important Production Considerations
+
+### Security Best Practices
+- **Private Key Management**: Store private keys in secure hardware (HSMs) or encrypted storage
+- **Database Encryption**: Consider transparent database encryption for sensitive data
+- **Access Control**: Implement application-level authentication and authorization
+- **Network Security**: Use TLS/SSL for any network communications
+- **Audit Logging**: Log all blockchain operations for security monitoring
+
+### Backup and Recovery
+- **Regular Backups**: Implement automated daily/hourly backup schedules
+- **Backup Validation**: Always verify backup integrity before relying on them
+- **Offsite Storage**: Store backups in geographically separate locations
+- **Recovery Testing**: Regularly test backup restoration procedures
+- **Version Control**: Keep multiple backup versions for point-in-time recovery
+
+### Performance Optimization
+- **Database Maintenance**: Regular VACUUM and ANALYZE operations for SQLite
+- **Index Optimization**: Monitor query performance and add indexes as needed
+- **Connection Pooling**: Configure appropriate connection pool sizes
+- **Memory Management**: Monitor Java heap usage for large blockchains
+- **Concurrent Access**: Consider read replicas for high-read scenarios
+
+### Monitoring and Alerting
+- **Chain Validation**: Regular automated chain integrity checks
+- **Performance Metrics**: Monitor block addition times and query performance
+- **Storage Growth**: Track database size growth and plan capacity
+- **Error Monitoring**: Implement comprehensive error logging and alerting
+- **Health Checks**: Regular system health assessments
+
+### Current Limitations and Considerations
+- **Single Node**: Designed for single-application use (not distributed)
+- **No Consensus**: No multi-node consensus mechanism (by design for private blockchain)
+- **Storage Growth**: Database grows continuously (implement archiving for very large chains)
+- **Key Recovery**: No built-in key recovery system (implement according to organizational policies)
+- **Scalability**: Consider partitioning strategies for extremely large blockchains (millions of blocks)
+
+## 🤝 Contributing
+
+### Development Setup
+1. **Environment**: Ensure Java 21+ and Maven 3.6+ are installed
+2. **Clone**: Clone the repository to your local development environment
+3. **Build**: Run `mvn clean compile` to build the project
+4. **Test**: Run `./run_all_tests.sh` to verify everything works (41+ tests)
+5. **IDE**: Import as Maven project in your preferred IDE
+
+### Testing New Features
+1. **Feature Development**: Add your feature to the appropriate class following existing patterns
+2. **Unit Tests**: Create comprehensive JUnit 5 tests following existing test structures
+3. **Integration Tests**: Ensure your feature works with existing functionality
+4. **Consistency Tests**: Add critical consistency tests for complex scenarios
+5. **Documentation**: Update README.md and add code comments
+6. **Full Test Suite**: Run `./run_all_tests.sh` to ensure nothing is broken
+
+### Code Quality Standards
+- **Clear Naming**: Use descriptive variable and method names
+- **Comments**: Add comprehensive comments for complex logic
+- **Error Handling**: Implement proper exception handling and logging
+- **Consistency**: Follow existing naming conventions and code style
+- **Performance**: Consider performance implications of new features
+- **Security**: Ensure new features maintain security properties
+
+### Contribution Areas
+- **Performance Optimization**: Database query optimization, caching strategies
+- **Security Enhancements**: Additional cryptographic features, audit capabilities
+- **Monitoring**: Health check improvements, metrics collection
+- **Integration**: APIs for external systems, import/export formats
+- **Documentation**: Examples, tutorials, best practices guides
+
+## 📄 License
+
+This project is provided as-is for educational and development purposes. Feel free to use, modify, and distribute according to your organization's requirements.
+
+## 📞 Support and Troubleshooting
+
+### Common Issues and Solutions
+
+#### Build Issues
+```bash
+# Java version mismatch
+java -version  # Should show 21+
+mvn -version   # Verify Maven can see Java 21
+
+# Clean build
+mvn clean compile test-compile
+```
+
+#### Test Failures
+```bash
+# Reset environment
+rm blockchain.db blockchain.db-*
+./run_all_tests.sh
+
+# Check specific test
+mvn test -Dtest=CriticalConsistencyTest
+```
+
+#### Database Issues
+```bash
+# Check database permissions
+ls -la blockchain.db*
+
+# Reset database
+rm blockchain.db blockchain.db-shm blockchain.db-wal
+```
+
+#### Performance Issues
+```bash
+# Monitor database size
+du -h blockchain.db
+
+# Check Java memory usage
+jstat -gc [java_process_id]
+```
+
+### Getting Help
+1. **Check this documentation** for common use cases and examples
+2. **Review the test files** for comprehensive usage examples
+3. **Run the health check** using the workflow patterns above
+4. **Examine the console output** for specific error messages
+5. **Verify your environment** meets the prerequisites
+
+### Verification Steps
+```bash
+# Complete verification procedure
+cd /path/to/privateBlockchain
+mvn clean compile test-compile
+./run_all_tests.sh
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.BlockchainDemo"
+```
+
+---
+
+**🚀 Ready to start?** 
+
+1. Run `./run_all_tests.sh` to verify everything works perfectly
+2. Try the practical examples above for your use case
+3. Explore the comprehensive test suite to understand all features
+4. Build your own blockchain application using the patterns provided!
+
+**💡 Remember**: This blockchain includes **41+ comprehensive tests** covering everything from basic operations to critical consistency scenarios, ensuring enterprise-grade reliability for your applications.

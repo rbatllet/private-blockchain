@@ -54,8 +54,9 @@ public class Blockchain {
     
     /**
      * CORE FUNCTION: Add a new block to the chain (with size validation)
+     * FIXED: Added synchronization to prevent concurrent block number conflicts
      */
-    public boolean addBlock(String data, PrivateKey signerPrivateKey, PublicKey signerPublicKey) {
+    public synchronized boolean addBlock(String data, PrivateKey signerPrivateKey, PublicKey signerPublicKey) {
         try {
             // 0. CORE: Validate block size
             if (!validateBlockSize(data)) {
@@ -221,8 +222,9 @@ public class Blockchain {
     /**
      * CORE FUNCTION: Add an authorized key
      * IMPROVED: Now allows re-authorization of previously revoked keys
+     * FIXED: Added synchronization for thread safety
      */
-    public boolean addAuthorizedKey(String publicKeyString, String ownerName) {
+    public synchronized boolean addAuthorizedKey(String publicKeyString, String ownerName) {
         try {
             // Check if key is currently authorized
             if (authorizedKeyDAO.isKeyAuthorized(publicKeyString)) {
@@ -244,8 +246,9 @@ public class Blockchain {
     
     /**
      * CORE FUNCTION: Revoke an authorized key
+     * FIXED: Added synchronization for thread safety
      */
-    public boolean revokeAuthorizedKey(String publicKeyString) {
+    public synchronized boolean revokeAuthorizedKey(String publicKeyString) {
         try {
             if (!authorizedKeyDAO.isKeyAuthorized(publicKeyString)) {
                 System.err.println("Key not found or already inactive");
@@ -298,7 +301,7 @@ public class Blockchain {
     public boolean exportChain(String filePath) {
         try {
             List<Block> allBlocks = blockDAO.getAllBlocks();
-            List<AuthorizedKey> allKeys = authorizedKeyDAO.getActiveAuthorizedKeys();
+            List<AuthorizedKey> allKeys = authorizedKeyDAO.getAllAuthorizedKeys(); // FIXED: Export ALL keys, not just active ones
             
             // Create export data structure
             ChainExportData exportData = new ChainExportData();
@@ -384,26 +387,37 @@ public class Blockchain {
                     // Reset ID for new insertion
                     key.setId(null);
                     
-                    // IMPROVED: Maintain temporal consistency during import
+                    // FIXED: Maintain temporal consistency during import considering ALL events
                     String publicKey = key.getPublicKey();
+                    
+                    // Find the earliest event timestamp for this key (blocks or revocation)
+                    LocalDateTime earliestEventTime = null;
+                    
+                    // Check earliest block signed by this key
                     if (earliestBlockTimestamps.containsKey(publicKey)) {
-                        LocalDateTime earliestBlock = earliestBlockTimestamps.get(publicKey);
-                        // Set key creation time to 1 minute before the earliest block it signed
-                        key.setCreatedAt(earliestBlock.minusMinutes(1));
-                        
-                        // CRITICAL: If key was revoked, ensure revokedAt is after the latest block
-                        if (!key.isActive() && key.getRevokedAt() == null) {
-                            // Use the latest block timestamp for this key
-                            LocalDateTime latestBlockTime = latestBlockTimestamps.get(publicKey);
-                            if (latestBlockTime != null) {
-                                // Set revocation time after the latest block
-                                key.setRevokedAt(latestBlockTime.plusMinutes(1));
-                            }
+                        earliestEventTime = earliestBlockTimestamps.get(publicKey);
+                    }
+                    
+                    // Check if revocation time is earlier than first block
+                    if (key.getRevokedAt() != null) {
+                        if (earliestEventTime == null || key.getRevokedAt().isBefore(earliestEventTime)) {
+                            earliestEventTime = key.getRevokedAt();
                         }
-                    } else {
-                        // For keys without blocks, ensure consistent state
-                        if (!key.isActive() && key.getRevokedAt() == null) {
-                            // Set a reasonable revocation time
+                    }
+                    
+                    // Set key creation time to be before ALL events related to this key
+                    if (earliestEventTime != null) {
+                        key.setCreatedAt(earliestEventTime.minusMinutes(1));
+                    }
+                    
+                    // Handle revoked keys without revocation timestamp
+                    if (!key.isActive() && key.getRevokedAt() == null) {
+                        if (latestBlockTimestamps.containsKey(publicKey)) {
+                            // Set revocation time after the latest block
+                            LocalDateTime latestBlockTime = latestBlockTimestamps.get(publicKey);
+                            key.setRevokedAt(latestBlockTime.plusMinutes(1));
+                        } else {
+                            // For keys without blocks, set reasonable revocation time
                             key.setRevokedAt(key.getCreatedAt().plusMinutes(1));
                         }
                     }
