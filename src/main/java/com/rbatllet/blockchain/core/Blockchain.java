@@ -225,6 +225,14 @@ public class Blockchain {
      * FIXED: Added synchronization for thread safety
      */
     public synchronized boolean addAuthorizedKey(String publicKeyString, String ownerName) {
+        return addAuthorizedKey(publicKeyString, ownerName, null);
+    }
+    
+    /**
+     * CORE FUNCTION: Add an authorized key with specific timestamp (for CLI operations)
+     * FIXED: Allows setting specific creation time to avoid race conditions
+     */
+    public synchronized boolean addAuthorizedKey(String publicKeyString, String ownerName, LocalDateTime creationTime) {
         try {
             // Check if key is currently authorized
             if (authorizedKeyDAO.isKeyAuthorized(publicKeyString)) {
@@ -234,6 +242,12 @@ public class Blockchain {
             
             // Allow re-authorization: create new authorization record
             AuthorizedKey authorizedKey = new AuthorizedKey(publicKeyString, ownerName);
+            
+            // Set specific creation time if provided
+            if (creationTime != null) {
+                authorizedKey.setCreatedAt(creationTime);
+            }
+            
             authorizedKeyDAO.saveAuthorizedKey(authorizedKey);
             System.out.println("Authorized key added for: " + ownerName);
             return true;
@@ -652,6 +666,13 @@ public class Blockchain {
      */
     public List<AuthorizedKey> getAuthorizedKeys() {
         return authorizedKeyDAO.getActiveAuthorizedKeys();
+    }
+    
+    /**
+     * Get all authorized keys (including revoked ones) for export functionality
+     */
+    public List<AuthorizedKey> getAllAuthorizedKeys() {
+        return authorizedKeyDAO.getAllAuthorizedKeys();
     }
     
     /**

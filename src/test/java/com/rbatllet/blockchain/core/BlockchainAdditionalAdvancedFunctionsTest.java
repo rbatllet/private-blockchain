@@ -166,7 +166,7 @@ class BlockchainAdditionalAdvancedFunctionsTest {
 
         // Get current state before export
         long blockCountBefore = blockchain.getBlockCount();
-        List<AuthorizedKey> keysBefore = blockchain.getAuthorizedKeys();
+        List<AuthorizedKey> keysBefore = blockchain.getAllAuthorizedKeys(); // Use ALL keys for export comparison
 
         // Export the chain
         assertTrue(blockchain.exportChain(exportPath), "Chain export should succeed");
