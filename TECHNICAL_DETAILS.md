@@ -7,9 +7,9 @@ Comprehensive technical documentation covering database schema, security model, 
 - [Architecture Overview](#architecture-overview)
 - [Database Schema](#database-schema)
 - [Security Model](#security-model)
-- [Cryptographic Implementation](#cryptographic-implementation)
-- [Configuration Details](#configuration-details)
 - [Performance Characteristics](#performance-characteristics)
+- [Advanced Features Implementation](#advanced-features-implementation)
+- [Testing Architecture](#testing-architecture)
 
 ## 🏗️ Architecture Overview
 
