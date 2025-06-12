@@ -150,6 +150,21 @@ public class AuthorizedKeyDAO {
     }
     
     /**
+     * Find an authorized key by owner name
+     * Returns the most recent active authorization for the given owner
+     */
+    public AuthorizedKey getAuthorizedKeyByOwner(String ownerName) {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Query<AuthorizedKey> query = session.createQuery(
+                "FROM AuthorizedKey WHERE ownerName = :ownerName AND isActive = true ORDER BY createdAt DESC", 
+                AuthorizedKey.class);
+            query.setParameter("ownerName", ownerName);
+            query.setMaxResults(1);
+            return query.uniqueResult();
+        }
+    }
+
+    /**
      * Delete all authorized keys (for import functionality)
      */
     public int deleteAllAuthorizedKeys() {

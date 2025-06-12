@@ -676,6 +676,13 @@ public class Blockchain {
     }
     
     /**
+     * Get an authorized key by owner name
+     */
+    public com.rbatllet.blockchain.entity.AuthorizedKey getAuthorizedKeyByOwner(String ownerName) {
+        return authorizedKeyDAO.getAuthorizedKeyByOwner(ownerName);
+    }
+    
+    /**
      * Get blockchain size limits for validation
      */
     public int getMaxBlockSizeBytes() {
