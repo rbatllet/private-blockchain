@@ -2,6 +2,25 @@
 
 A comprehensive private blockchain implementation in Java with advanced features, security controls, and extensive testing.
 
+## 📋 Table of Contents
+
+- [Overview](#-overview)
+- [Key Features](#-key-features)
+- [Technologies Used](#-technologies-used)
+- [Prerequisites](#-prerequisites)
+- [Quick Start](#-quick-start)
+- [How It Works](#-how-it-works)
+- [Basic Testing](#-basic-testing)
+- [Project Structure](#-project-structure)
+- [Basic Usage Example](#-basic-usage-example)
+- [Complete Usage Example](#-complete-usage-example)
+- [Documentation](#-documentation)
+- [Configuration](#-configuration)
+- [Important Notes](#-important-notes)
+- [Contributing](#-contributing)
+- [License](#-license)
+- [Support](#-support)
+
 ## 📋 Overview
 
 This is a **private blockchain** for controlled environments where only authorized users can add blocks. Unlike public blockchains, there is no mining - blocks are added directly by authorized users through cryptographic authorization.
