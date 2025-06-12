@@ -377,7 +377,14 @@ This project includes comprehensive documentation for different use cases:
 
 ## 📄 License
 
-This project is provided as-is for educational and development purposes.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+### What this means:
+- ✅ **Commercial use** - Use in commercial projects
+- ✅ **Modification** - Modify and create derivative works  
+- ✅ **Distribution** - Distribute original or modified versions
+- ✅ **Private use** - Use privately without sharing source
+- ✅ **No warranty** - Software provided "as is"
 
 ## 📞 Support
 
