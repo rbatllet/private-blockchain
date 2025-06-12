@@ -4,12 +4,12 @@ Comprehensive technical documentation covering database schema, security model, 
 
 ## 📋 Table of Contents
 
-- [Architecture Overview](#architecture-overview)
-- [Database Schema](#database-schema)
-- [Security Model](#security-model)
-- [Performance Characteristics](#performance-characteristics)
-- [Advanced Features Implementation](#advanced-features-implementation)
-- [Testing Architecture](#testing-architecture)
+- [Architecture Overview](#-architecture-overview)
+- [Database Schema](#-database-schema)
+- [Security Model](#-security-model)
+- [Performance Characteristics](#-performance-characteristics)
+- [Advanced Features Implementation](#-advanced-features-implementation)
+- [Testing Architecture](#-testing-architecture)
 
 ## 🏗️ Architecture Overview
 

@@ -4,9 +4,9 @@ Comprehensive real-world examples and practical use cases for the Private Blockc
 
 ## 📋 Table of Contents
 
-- [Use Case Examples](#use-case-examples)
-- [Common Workflow Patterns](#common-workflow-patterns)
-- [Integration Examples](#integration-examples)
+- [Use Case Examples](#-use-case-examples)
+- [Common Workflow Patterns](#-common-workflow-patterns)
+- [Integration Examples](#-integration-examples)
 
 ## 🎯 Use Case Examples
 

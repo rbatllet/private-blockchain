@@ -4,11 +4,11 @@ Comprehensive testing guide for the Private Blockchain implementation with detai
 
 ## 📋 Table of Contents
 
-- [Testing Overview](#testing-overview)
-- [Test Execution Guide](#test-execution-guide)
-- [Test Suites Description](#test-suites-description)
-- [Troubleshooting Tests](#troubleshooting-tests)
-- [Performance Testing](#performance-testing)
+- [Testing Overview](#-testing-overview)
+- [Test Execution Guide](#-test-execution-guide)
+- [Test Suites Description](#-test-suites-description)
+- [Troubleshooting Tests](#-troubleshooting-tests)
+- [Performance Testing](#-performance-testing)
 
 ## 🧪 Testing Overview
 

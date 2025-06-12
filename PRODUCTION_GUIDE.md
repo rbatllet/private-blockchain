@@ -4,12 +4,12 @@ Comprehensive production deployment guide for the Private Blockchain implementat
 
 ## 📋 Table of Contents
 
-- [Production Setup](#production-setup)
-- [Security Configuration](#security-configuration)
-- [Performance Optimization](#performance-optimization)
-- [Monitoring and Maintenance](#monitoring-and-maintenance)
-- [Backup and Recovery](#backup-and-recovery)
-- [Troubleshooting](#troubleshooting)
+- [Production Setup](#-production-setup)
+- [Security Configuration](#-security-configuration)
+- [Performance Optimization](#-performance-optimization)
+- [Monitoring and Maintenance](#-monitoring-and-maintenance)
+- [Backup and Recovery](#-backup-and-recovery)
+- [Troubleshooting](#-troubleshooting)
 
 ## 🏗️ Production Setup
 

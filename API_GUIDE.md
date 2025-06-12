@@ -4,11 +4,11 @@ Comprehensive guide to the Private Blockchain API, core functions, and programmi
 
 ## 📋 Table of Contents
 
-- [Core Functions Usage](#core-functions-usage)
-- [API Reference](#api-reference)
-- [Configuration](#configuration)
-- [Configuration Parameters](#configuration-parameters)
-- [Best Practices](#best-practices)
+- [Core Functions Usage](#-core-functions-usage)
+- [API Reference](#-api-reference)
+- [Configuration](#-configuration)
+- [Configuration Parameters](#-configuration-parameters)
+- [Best Practices](#-best-practices)
 
 ## 🎯 Core Functions Usage
 
