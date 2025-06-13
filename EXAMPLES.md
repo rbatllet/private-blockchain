@@ -427,6 +427,84 @@ public class KeyManagementPatterns {
 }
 ```
 
+### Permanent Key Cleanup and Security Compliance
+
+```java
+public class KeyCleanupManager {
+    
+    // Secure permanent key deletion for compliance scenarios
+    public boolean permanentlyDeleteKey(Blockchain blockchain, String publicKey, String reason) {
+        try {
+            System.out.println("⚠️  CRITICAL: Initiating permanent key deletion");
+            System.out.println("🔑 Key: " + publicKey.substring(0, 32) + "...");
+            System.out.println("📝 Reason: " + reason);
+            
+            // Security verification - check current authorized status
+            List<AuthorizedKey> allKeys = blockchain.getAllAuthorizedKeys();
+            boolean keyExists = allKeys.stream()
+                .anyMatch(key -> key.getPublicKey().equals(publicKey));
+            
+            if (!keyExists) {
+                System.out.println("ℹ️  Key not found in database - nothing to delete");
+                return false;
+            }
+            
+            // Log key information before deletion for audit trail
+            allKeys.stream()
+                .filter(key -> key.getPublicKey().equals(publicKey))
+                .forEach(key -> {
+                    System.out.println("📋 Deleting key record:");
+                    System.out.println("   - Owner: " + key.getOwnerName());
+                    System.out.println("   - Created: " + key.getCreatedAt());
+                    System.out.println("   - Status: " + (key.isActive() ? "ACTIVE" : "REVOKED"));
+                    if (key.getRevokedAt() != null) {
+                        System.out.println("   - Revoked: " + key.getRevokedAt());
+                    }
+                });
+            
+            // Perform permanent deletion
+            boolean deleted = blockchain.deleteAuthorizedKey(publicKey);
+            
+            if (deleted) {
+                System.out.println("🗑️  ✅ Key permanently deleted from database");
+                System.out.println("⚠️  WARNING: This action is irreversible!");
+                System.out.println("📝 Audit log: Key deletion completed at " + 
+                                 java.time.LocalDateTime.now().format(
+                                     java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                return true;
+            } else {
+                System.err.println("❌ Failed to delete key from database");
+                return false;
+            }
+            
+        } catch (Exception e) {
+            System.err.println("💥 Key deletion error: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    // Bulk cleanup for security compliance
+    public void performSecurityCompliantCleanup(Blockchain blockchain, String complianceReason) {
+        System.out.println("🔒 Starting security compliance cleanup");
+        System.out.println("📋 Reason: " + complianceReason);
+        
+        List<AuthorizedKey> allKeys = blockchain.getAllAuthorizedKeys();
+        java.time.LocalDateTime cutoffDate = java.time.LocalDateTime.now().minusYears(7); // 7-year retention
+        
+        allKeys.stream()
+            .filter(key -> !key.isActive()) // Only process revoked keys
+            .filter(key -> key.getRevokedAt() != null && key.getRevokedAt().isBefore(cutoffDate))
+            .forEach(key -> {
+                System.out.println("🧹 Cleaning up old revoked key: " + key.getOwnerName());
+                permanentlyDeleteKey(blockchain, key.getPublicKey(), 
+                                   "Security compliance: " + complianceReason + " (Revoked " + key.getRevokedAt() + ")");
+            });
+        
+        System.out.println("✅ Security compliance cleanup completed");
+    }
+}
+```
+
 ### Health Check and Monitoring
 
 ```java

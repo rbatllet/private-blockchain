@@ -258,6 +258,13 @@ public boolean revokeAuthorizedKey(String publicKey)
 - **Description:** Marks a key as inactive (revoked keys cannot sign new blocks)
 
 ```java
+public boolean deleteAuthorizedKey(String publicKey)
+```
+- **Parameters:** `publicKey`: The public key to delete permanently
+- **Returns:** `true` if one or more keys were deleted, `false` if no keys were found
+- **Description:** **Permanently removes** all records for the specified public key (both active and revoked). ⚠️ **Use with caution**: This operation is irreversible and removes all historical authorization records.
+
+```java
 public List<AuthorizedKey> getAuthorizedKeys()
 ```
 - **Returns:** List of currently active authorized keys

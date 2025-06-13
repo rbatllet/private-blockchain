@@ -165,6 +165,29 @@ public class AuthorizedKeyDAO {
     }
 
     /**
+     * Delete a specific authorized key by public key
+     * This will delete ALL records for this public key (active and revoked)
+     */
+    public boolean deleteAuthorizedKey(String publicKey) {
+        Transaction transaction = null;
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            transaction = session.beginTransaction();
+            
+            Query<?> query = session.createQuery("DELETE FROM AuthorizedKey WHERE publicKey = :publicKey");
+            query.setParameter("publicKey", publicKey);
+            int deletedCount = query.executeUpdate();
+            
+            transaction.commit();
+            return deletedCount > 0;
+        } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            throw new RuntimeException("Error deleting authorized key", e);
+        }
+    }
+
+    /**
      * Delete all authorized keys (for import functionality)
      */
     public int deleteAllAuthorizedKeys() {
