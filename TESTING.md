@@ -262,6 +262,44 @@ mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.CoreFunctionsTest"
 
 ## 🔧 Troubleshooting Tests
 
+### Database Utilities and Cleanup
+
+#### Automatic Database Cleanup
+All test scripts now include automatic database cleanup to prevent SQLite corruption issues:
+
+```bash
+# All scripts include automatic cleanup
+./run_all_tests.sh      # Auto-cleans before execution
+./run_advanced_tests.sh # Auto-cleans before execution  
+./run_basic_tests.sh    # Auto-cleans before execution
+```
+
+#### Manual Database Cleanup
+For persistent database issues:
+
+```bash
+# Manual cleanup of corrupted database files
+./clean-database.sh
+
+# Skip automatic cleanup for debugging
+SKIP_DB_CLEANUP=true ./run_all_tests.sh
+```
+
+#### Database Cleanup Verification
+Verify all scripts have proper database cleanup:
+
+```bash
+# Check script compliance
+./scripts/check-db-cleanup.sh
+```
+
+**Expected Output:**
+```
+✅ All run_*.sh scripts are up to date! ✨
+  ✅ Up to date: 3 scripts  
+  🔧 Need update: 0 scripts
+```
+
 ### Common Test Issues and Solutions
 
 #### Issue: Tests Fail with "Database locked" Error
@@ -862,3 +900,47 @@ chmod +x health_check.sh
 For comprehensive API documentation, see [API_GUIDE.md](API_GUIDE.md).  
 For real-world usage examples, see [EXAMPLES.md](EXAMPLES.md).  
 For production deployment, see [PRODUCTION_GUIDE.md](PRODUCTION_GUIDE.md).
+
+## 🛠️ Script Development and Management
+
+### Creating New Test Scripts
+Use the provided template for consistent script structure:
+
+```bash
+# Copy template for new test script
+cp scripts/run_template.sh run_my_new_test.sh
+
+# Make executable and customize
+chmod +x run_my_new_test.sh
+# Edit the script to add your test logic
+```
+
+### Shared Functions Library
+All scripts now use a centralized functions library at `scripts/shared-functions.sh` providing:
+
+- **Database cleanup functions**: Prevent corruption issues
+- **Colored output functions**: Consistent formatting  
+- **Error handling utilities**: Robust script execution
+- **Test environment setup**: Standardized initialization
+
+### Environment Variables
+Control script behavior with environment variables:
+
+```bash
+# Skip database cleanup (for debugging)
+SKIP_DB_CLEANUP=true ./run_all_tests.sh
+
+# Skip Maven unit tests (if applicable)
+SKIP_UNIT_TESTS=true ./run_basic_tests.sh
+```
+
+### Script Compliance
+Verify all run_*.sh scripts follow best practices:
+
+```bash
+# Check all scripts have proper database cleanup
+./scripts/check-db-cleanup.sh
+```
+
+**Documentation References:**
+- [SCRIPTS_DATABASE_FIX.md](SCRIPTS_DATABASE_FIX.md) - Detailed fix implementation guide

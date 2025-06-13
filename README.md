@@ -11,6 +11,7 @@ A comprehensive private blockchain implementation in Java with advanced features
 - [Quick Start](#-quick-start)
 - [How It Works](#-how-it-works)
 - [Basic Testing](#-basic-testing)
+- [Database Utilities and Script Management](#️-database-utilities-and-script-management)
 - [Project Structure](#-project-structure)
 - [Basic Usage Example](#-basic-usage-example)
 - [Complete Usage Example](#-complete-usage-example)
@@ -229,11 +230,78 @@ src/test/java/com/rbatllet/blockchain/core/
 
 Configuration & Scripts:
 ├── hibernate.cfg.xml                            # Database configuration
+├── clean-database.sh                            # Database cleanup utility
 ├── run_all_tests.sh                             # Complete test runner
 ├── run_advanced_tests.sh                        # Advanced tests only
 ├── run_basic_tests.sh                           # Basic tests only
+├── scripts/                                     # Script utilities directory
+│   ├── shared-functions.sh                     # Common functions library
+│   ├── run_template.sh                         # Template for new scripts
+│   └── check-db-cleanup.sh                     # Script compliance checker
 └── pom.xml                                      # Maven configuration
 ```
+
+## 🛠️ Database Utilities and Script Management
+
+### Automatic Database Cleanup
+All test scripts now include automatic database cleanup to prevent SQLite corruption issues:
+
+```bash
+# All scripts automatically clean corrupted database files
+./run_all_tests.sh      # Includes automatic cleanup
+./run_advanced_tests.sh # Includes automatic cleanup  
+./run_basic_tests.sh    # Includes automatic cleanup
+```
+
+### Manual Database Cleanup
+If you encounter database corruption issues:
+
+```bash
+# Clean corrupted database files manually
+./clean-database.sh
+
+# Skip automatic cleanup (for debugging)
+SKIP_DB_CLEANUP=true ./run_all_tests.sh
+```
+
+### Script Development
+
+#### Creating New Test Scripts
+Use the provided template for consistent script structure:
+
+```bash
+# Copy template for new test script
+cp scripts/run_template.sh run_my_new_test.sh
+
+# Make executable and customize
+chmod +x run_my_new_test.sh
+# Edit the script to add your test logic
+```
+
+#### Verify Script Compliance
+Check that all run_*.sh scripts include database cleanup:
+
+```bash
+# Verify all scripts have proper database cleanup
+./scripts/check-db-cleanup.sh
+```
+
+**Expected Output:**
+```
+✅ All run_*.sh scripts are up to date! ✨
+  ✅ Up to date: 3 scripts  
+  🔧 Need update: 0 scripts
+```
+
+### Shared Functions Library
+All scripts now use a centralized functions library at `scripts/shared-functions.sh` providing:
+
+- **Database cleanup functions**: Prevent corruption issues
+- **Colored output functions**: Consistent formatting
+- **Error handling utilities**: Robust script execution
+- **Test environment setup**: Standardized initialization
+
+> 📚 **For detailed implementation information**, see [SCRIPTS_DATABASE_FIX.md](SCRIPTS_DATABASE_FIX.md)
 
 ## 💡 Basic Usage Example
 
@@ -315,6 +383,7 @@ This project includes comprehensive documentation for different use cases:
 ### 🏢 Technical & Production
 - **[TECHNICAL_DETAILS.md](TECHNICAL_DETAILS.md)** - Database schema, security model, architecture
 - **[PRODUCTION_GUIDE.md](PRODUCTION_GUIDE.md)** - Production deployment and operational guidelines
+- **[SCRIPTS_DATABASE_FIX.md](SCRIPTS_DATABASE_FIX.md)** - Database cleanup utilities implementation guide
 
 ### 🚀 Quick Navigation
 

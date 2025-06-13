@@ -3,6 +3,14 @@
 # Script to run Additional Advanced Functions tests for the Blockchain
 # Usage: ./run_advanced_tests.sh
 
+# Load shared functions for database cleanup (but preserve original structure)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$SCRIPT_DIR/scripts/shared-functions.sh" ]; then
+    source "$SCRIPT_DIR/scripts/shared-functions.sh"
+    # Clean database at start to prevent corruption
+    clean_database > /dev/null 2>&1
+fi
+
 echo "=== BLOCKCHAIN ADDITIONAL ADVANCED FUNCTIONS TEST RUNNER ==="
 echo "Project directory: $(pwd)"
 echo

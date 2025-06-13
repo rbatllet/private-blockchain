@@ -3,6 +3,14 @@
 # Comprehensive test runner for all Blockchain tests
 # Executes both basic core function tests and additional advanced function tests
 
+# Load shared functions for database cleanup (but preserve original structure)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$SCRIPT_DIR/scripts/shared-functions.sh" ]; then
+    source "$SCRIPT_DIR/scripts/shared-functions.sh"
+    # Clean database at start to prevent corruption
+    clean_database > /dev/null 2>&1
+fi
+
 echo "=== COMPREHENSIVE BLOCKCHAIN TEST RUNNER ==="
 echo "This script runs ALL available tests in the correct order"
 echo "Project directory: $(pwd)"
