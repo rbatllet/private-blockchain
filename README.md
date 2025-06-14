@@ -47,6 +47,12 @@ This is a **private blockchain** for controlled environments where only authoriz
 - **Rollback Operations**: Safe removal of recent blocks with genesis protection
 - **Block Size Validation**: Prevents oversized blocks
 
+### 🔐 Enhanced Security Features
+- **Safe Key Deletion**: Multi-layered protection against dangerous key removal
+- **Impact Analysis**: Pre-deletion analysis to assess blockchain integrity risks
+- **Emergency Key Deletion**: GDPR-compliant forced deletion with comprehensive audit trails
+- **Blockchain Integrity Protection**: Prevents accidental corruption of historical records
+
 ### Technical Features
 - **Persistence**: SQLite database with JPA standard for ORM (using Hibernate as provider)
 - **Comprehensive Testing**: More than 40 JUnit 5 tests + integration demos
@@ -309,6 +315,51 @@ All scripts now use a centralized functions library at `scripts/shared-functions
 - **Test environment setup**: Standardized initialization
 
 > 📚 **For detailed implementation information**, see [SCRIPTS_DATABASE_FIX.md](SCRIPTS_DATABASE_FIX.md)
+
+## 🔐 Safe Key Management
+
+The blockchain includes advanced safety features for key management to prevent accidental data corruption:
+
+### Key Deletion Safety Levels
+
+```java
+// 🟢 LEVEL 1: Impact Analysis (RECOMMENDED FIRST STEP)
+Blockchain.KeyDeletionImpact impact = blockchain.canDeleteAuthorizedKey(publicKey);
+System.out.println("Impact: " + impact);
+
+// 🟡 LEVEL 2: Safe Deletion (blocks dangerous operations)
+boolean safe = blockchain.deleteAuthorizedKey(publicKey);
+
+// 🟠 LEVEL 3: Dangerous with Safety (still protected by default)
+boolean dangerous = blockchain.dangerouslyDeleteAuthorizedKey(publicKey, "GDPR compliance");
+
+// 🔴 LEVEL 4: Nuclear Option (breaks validation - emergency use only)
+boolean forced = blockchain.dangerouslyDeleteAuthorizedKey(publicKey, true, "Security incident");
+```
+
+### Safe Usage Pattern
+
+```java
+// ALWAYS follow this pattern for key deletion:
+public void safeKeyDeletionWorkflow(String publicKey, String reason) {
+    // Step 1: Analyze impact
+    Blockchain.KeyDeletionImpact impact = blockchain.canDeleteAuthorizedKey(publicKey);
+    
+    // Step 2: Check if safe
+    if (impact.canSafelyDelete()) {
+        blockchain.deleteAuthorizedKey(publicKey);  // Safe deletion
+    } else {
+        System.out.println("⚠️ Key has " + impact.getAffectedBlocks() + " blocks");
+        // Only use dangerous deletion in emergencies:
+        // blockchain.dangerouslyDeleteAuthorizedKey(publicKey, true, reason);
+    }
+}
+```
+
+**⚠️ Important**: Forced deletion (`force=true`) will **permanently break** blockchain validation for historical blocks signed by the deleted key. Only use for:
+- GDPR "right to be forgotten" compliance
+- Security incidents with compromised keys  
+- Emergency situations requiring complete key removal
 
 ## 💡 Basic Usage Example
 

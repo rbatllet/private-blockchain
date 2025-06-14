@@ -404,22 +404,96 @@ public class BlockchainConfig {
 }
 ```
 
-## 🔐 Security Model
+**2. BlockDAO Impact Assessment:**
+```java
+// New methods for impact analysis
+public List<Block> getBlocksBySignerPublicKey(String signerPublicKey)
+public long countBlocksBySignerPublicKey(String signerPublicKey)
+```
 
-### Block Security
-- Each block contains a SHA-256 hash of its content
-- Blocks are linked by including the previous block's hash
-- Any tampering breaks the chain validation
+**3. Multi-Level Deletion API:**
+```java
+// Level 1: Analysis only
+public KeyDeletionImpact canDeleteAuthorizedKey(String publicKey)
 
-### Access Control
-- Only users with authorized public keys can add blocks
-- Each block is digitally signed with the user's private key
-- Signatures are verified before accepting blocks
+// Level 2: Safe deletion (blocks dangerous operations)
+public boolean deleteAuthorizedKey(String publicKey)
 
-### Data Integrity
-- All blocks are validated when checking the chain
-- Hash verification ensures no data has been modified
-- Sequential validation confirms proper block order
+// Level 3: Dangerous deletion with safety (default force=false)
+public boolean dangerouslyDeleteAuthorizedKey(String publicKey, String reason)
+
+// Level 4: Nuclear option (force=true, breaks validation)
+public boolean dangerouslyDeleteAuthorizedKey(String publicKey, boolean force, String reason)
+```
+
+#### Security Guarantees
+
+**Safe Deletion (Level 2):**
+- ✅ Never deletes keys with historical blocks
+- ✅ Maintains complete blockchain integrity
+- ✅ No risk of orphaned blocks
+- ✅ Reversible (key can be re-added)
+
+**Dangerous Deletion (Level 3):**
+- ⚠️ Still protected by safety checks
+- ⚠️ Refuses deletion if blocks would be orphaned
+- ✅ Comprehensive audit logging
+- ✅ Impact analysis before deletion
+
+**Forced Deletion (Level 4):**
+- 🔴 Bypasses all safety checks
+- 🔴 WILL break blockchain validation
+- 🔴 Creates orphaned blocks
+- ⚠️ Irreversible operation
+- ✅ Complete audit trail
+- ✅ Use only for GDPR/security incidents
+
+#### Audit Trail Implementation
+
+All dangerous operations generate comprehensive logs:
+
+```java
+// Example audit output
+🚨 CRITICAL OPERATION: Attempting to permanently delete authorized key
+🔑 Key fingerprint: MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A...
+📝 Reason: GDPR compliance request
+⚡ Force mode: true
+⏰ Timestamp: 2025-06-14 13:49:21
+📊 Deletion summary:
+   - Key records removed: 1
+   - Historical blocks affected: 3
+   - Force mode used: true
+   - Deletion reason: GDPR compliance request
+📝 Audit log: Key deletion completed at 2025-06-14 13:49:21
+```
+
+#### Temporal Validation Protection
+
+The system maintains temporal consistency even after key deletion:
+
+```java
+// Historical validation still works for remaining keys
+public boolean wasKeyAuthorizedAt(String publicKey, LocalDateTime timestamp)
+
+// But deleted keys will cause validation to fail
+public boolean validateChain() // Returns false if deleted keys signed blocks
+```
+
+#### Recovery Strategies
+
+**For Corrupted Chains (after forced deletion):**
+1. **Rollback**: Remove blocks signed by deleted keys
+2. **Re-authorization**: Re-add the deleted key if possible
+3. **Fork**: Create new chain from last valid block
+4. **Import**: Restore from backup before deletion
+
+**Prevention Best Practices:**
+1. Always use `canDeleteAuthorizedKey()` first
+2. Prefer `revokeAuthorizedKey()` over deletion
+3. Keep regular backups before dangerous operations
+4. Use `force=true` only for compliance/security incidents
+
+
 
 ## 📊 Performance Characteristics
 

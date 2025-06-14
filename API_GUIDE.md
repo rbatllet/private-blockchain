@@ -472,12 +472,58 @@ public boolean revokeAuthorizedKey(String publicKey)
 - **Returns:** `true` if key was revoked, `false` if key was not found
 - **Description:** Marks a key as inactive (revoked keys cannot sign new blocks)
 
+#### Key Deletion Methods ⚠️
+
+```java
+public KeyDeletionImpact canDeleteAuthorizedKey(String publicKey)
+```
+- **Parameters:** `publicKey`: The public key to analyze
+- **Returns:** `KeyDeletionImpact` object with safety information
+- **Description:** **RECOMMENDED FIRST STEP** - Analyzes the impact of deleting a key without actually deleting it. Shows how many historical blocks would be affected.
+
 ```java
 public boolean deleteAuthorizedKey(String publicKey)
 ```
-- **Parameters:** `publicKey`: The public key to delete permanently
-- **Returns:** `true` if one or more keys were deleted, `false` if no keys were found
-- **Description:** **Permanently removes** all records for the specified public key (both active and revoked). ⚠️ **Use with caution**: This operation is irreversible and removes all historical authorization records.
+- **Parameters:** `publicKey`: The public key to delete
+- **Returns:** `true` if key was safely deleted, `false` if deletion was blocked
+- **Description:** **SAFE DELETION** - Only deletes keys that haven't signed any blocks. Will refuse to delete keys with historical blocks and suggest using dangerous deletion if absolutely necessary.
+
+```java
+public boolean dangerouslyDeleteAuthorizedKey(String publicKey, String reason)
+```
+- **Parameters:** 
+  - `publicKey`: The public key to delete
+  - `reason`: Reason for deletion (for audit logging)
+- **Returns:** `true` if key was deleted, `false` if deletion was blocked
+- **Description:** **DANGEROUS DELETION (Safe Mode)** - Attempts to delete key but will still refuse if it affects historical blocks unless force is used.
+
+```java
+public boolean dangerouslyDeleteAuthorizedKey(String publicKey, boolean force, String reason)
+```
+- **Parameters:** 
+  - `publicKey`: The public key to delete permanently
+  - `force`: If `true`, deletes even if it affects historical blocks
+  - `reason`: Reason for deletion (for audit logging)
+- **Returns:** `true` if key was deleted, `false` if deletion failed
+- **Description:** **EXTREMELY DANGEROUS DELETION** - Can permanently remove keys even if they signed historical blocks. ⚠️ **WARNING**: Using `force=true` will break blockchain validation for affected blocks. This operation is **IRREVERSIBLE**. Only use for GDPR compliance, security incidents, or emergency situations.
+
+**Key Deletion Safety Levels:**
+1. 🟢 **`canDeleteAuthorizedKey()`** - Analysis only, no deletion
+2. 🟡 **`deleteAuthorizedKey()`** - Safe deletion, blocks dangerous operations
+3. 🟠 **`dangerouslyDeleteAuthorizedKey(key, reason)`** - Dangerous but still protected
+4. 🔴 **`dangerouslyDeleteAuthorizedKey(key, true, reason)`** - Nuclear option, breaks validation
+
+#### Key Deletion Impact Analysis
+
+```java
+public static class KeyDeletionImpact {
+    public boolean keyExists()           // Key exists in database
+    public boolean canSafelyDelete()     // Safe to delete (no blocks affected)
+    public boolean isSevereImpact()      // Would affect historical blocks
+    public long getAffectedBlocks()      // Number of blocks that would be affected
+    public String getMessage()           // Human-readable impact description
+}
+```
 
 ```java
 public List<AuthorizedKey> getAuthorizedKeys()

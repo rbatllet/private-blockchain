@@ -429,81 +429,182 @@ public class KeyManagementPatterns {
 }
 ```
 
-### Permanent Key Cleanup and Security Compliance
+### Safe and Dangerous Key Deletion Examples
 
 ```java
 public class KeyCleanupManager {
     
-    // Secure permanent key deletion for compliance scenarios
-    public boolean permanentlyDeleteKey(Blockchain blockchain, String publicKey, String reason) {
+    // RECOMMENDED: Safe key deletion with impact analysis
+    public boolean safeDeleteKey(Blockchain blockchain, String publicKey, String reason) {
         try {
-            System.out.println("⚠️  CRITICAL: Initiating permanent key deletion");
+            System.out.println("🔍 SAFE KEY DELETION: Analyzing impact first");
             System.out.println("🔑 Key: " + publicKey.substring(0, 32) + "...");
             System.out.println("📝 Reason: " + reason);
             
-            // Security verification - check current authorized status
-            List<AuthorizedKey> allKeys = blockchain.getAllAuthorizedKeys();
-            boolean keyExists = allKeys.stream()
-                .anyMatch(key -> key.getPublicKey().equals(publicKey));
+            // Step 1: Analyze impact before deletion
+            Blockchain.KeyDeletionImpact impact = blockchain.canDeleteAuthorizedKey(publicKey);
+            System.out.println("📊 Impact Analysis: " + impact);
             
-            if (!keyExists) {
-                System.out.println("ℹ️  Key not found in database - nothing to delete");
+            if (!impact.keyExists()) {
+                System.out.println("❌ Key not found in database");
                 return false;
             }
             
-            // Log key information before deletion for audit trail
-            allKeys.stream()
-                .filter(key -> key.getPublicKey().equals(publicKey))
-                .forEach(key -> {
-                    System.out.println("📋 Deleting key record:");
-                    System.out.println("   - Owner: " + key.getOwnerName());
-                    System.out.println("   - Created: " + key.getCreatedAt());
-                    System.out.println("   - Status: " + (key.isActive() ? "ACTIVE" : "REVOKED"));
-                    if (key.getRevokedAt() != null) {
-                        System.out.println("   - Revoked: " + key.getRevokedAt());
-                    }
-                });
+            if (!impact.canSafelyDelete()) {
+                System.out.println("⚠️ UNSAFE: Key has signed " + impact.getAffectedBlocks() + " historical blocks");
+                System.out.println("💡 Use dangerousDeleteKey() if deletion is absolutely necessary");
+                return false;
+            }
             
-            // Perform permanent deletion
+            // Step 2: Safe deletion (no blocks affected)
             boolean deleted = blockchain.deleteAuthorizedKey(publicKey);
             
             if (deleted) {
-                System.out.println("🗑️  ✅ Key permanently deleted from database");
-                System.out.println("⚠️  WARNING: This action is irreversible!");
-                System.out.println("📝 Audit log: Key deletion completed at " + 
-                                 java.time.LocalDateTime.now().format(
-                                     java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                System.out.println("✅ Key safely deleted - no historical blocks affected");
                 return true;
             } else {
-                System.err.println("❌ Failed to delete key from database");
+                System.err.println("❌ Safe deletion failed");
                 return false;
             }
             
         } catch (Exception e) {
-            System.err.println("💥 Key deletion error: " + e.getMessage());
+            System.err.println("💥 Safe deletion error: " + e.getMessage());
             return false;
         }
     }
     
-    // Bulk cleanup for security compliance
+    // DANGEROUS: Permanent key deletion for compliance scenarios
+    public boolean dangerousDeleteKey(Blockchain blockchain, String publicKey, String reason, boolean force) {
+        try {
+            System.out.println("⚠️ DANGEROUS KEY DELETION: Use with extreme caution");
+            System.out.println("🔑 Key: " + publicKey.substring(0, 32) + "...");
+            System.out.println("📝 Reason: " + reason);
+            System.out.println("⚡ Force mode: " + force);
+            
+            // Step 1: Always analyze impact first
+            Blockchain.KeyDeletionImpact impact = blockchain.canDeleteAuthorizedKey(publicKey);
+            System.out.println("📊 Impact Analysis: " + impact);
+            
+            if (!impact.keyExists()) {
+                System.out.println("❌ Key not found in database");
+                return false;
+            }
+            
+            // Step 2: Show warnings for severe impact
+            if (impact.isSevereImpact()) {
+                System.out.println("🚨 SEVERE IMPACT WARNING:");
+                System.out.println("   - " + impact.getAffectedBlocks() + " historical blocks will be orphaned");
+                System.out.println("   - Blockchain validation will FAIL for these blocks");
+                System.out.println("   - This action is IRREVERSIBLE");
+                
+                if (!force) {
+                    System.out.println("❌ Deletion blocked - use force=true to override safety");
+                    return false;
+                }
+            }
+            
+            // Step 3: Perform dangerous deletion
+            boolean deleted = blockchain.dangerouslyDeleteAuthorizedKey(publicKey, force, reason);
+            
+            if (deleted) {
+                System.out.println("🗑️ ✅ Key permanently deleted from database");
+                System.out.println("⚠️ WARNING: This action was IRREVERSIBLE!");
+                
+                if (impact.isSevereImpact()) {
+                    System.out.println("💡 RECOMMENDED: Run blockchain.validateChain() to verify integrity");
+                }
+                return true;
+            } else {
+                System.err.println("❌ Dangerous deletion failed or was blocked by safety checks");
+                return false;
+            }
+            
+        } catch (Exception e) {
+            System.err.println("💥 Dangerous deletion error: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    // Practical usage examples
+    public void demonstrateKeyDeletionWorkflow(Blockchain blockchain) {
+        // Example 1: Safe deletion workflow
+        System.out.println("=== EXAMPLE 1: Safe Deletion Workflow ===");
+        
+        // Create a test key that hasn't signed any blocks
+        KeyPair testKey = CryptoUtil.generateKeyPair();
+        String testPublicKey = CryptoUtil.publicKeyToString(testKey.getPublic());
+        blockchain.addAuthorizedKey(testPublicKey, "Test User - No Blocks");
+        
+        // Safe deletion - should succeed
+        boolean safeResult = safeDeleteKey(blockchain, testPublicKey, "Cleanup test keys");
+        System.out.println("Safe deletion result: " + (safeResult ? "SUCCESS ✅" : "FAILED ❌"));
+        
+        // Example 2: Blocked deletion workflow  
+        System.out.println("\n=== EXAMPLE 2: Blocked Deletion Workflow ===");
+        
+        // Create a key and use it to sign blocks
+        KeyPair activeKey = CryptoUtil.generateKeyPair();
+        String activePublicKey = CryptoUtil.publicKeyToString(activeKey.getPublic());
+        blockchain.addAuthorizedKey(activePublicKey, "Active User - Has Blocks");
+        blockchain.addBlock("Important transaction", activeKey.getPrivate(), activeKey.getPublic());
+        
+        // Attempt safe deletion - should be blocked
+        boolean blockedResult = safeDeleteKey(blockchain, activePublicKey, "Attempt to delete active key");
+        System.out.println("Blocked deletion result: " + (blockedResult ? "UNEXPECTED SUCCESS ⚠️" : "CORRECTLY BLOCKED ✅"));
+        
+        // Example 3: Forced dangerous deletion (emergency)
+        System.out.println("\n=== EXAMPLE 3: Emergency Forced Deletion ===");
+        
+        // This should only be done in emergencies (security incidents, GDPR)
+        boolean forcedResult = dangerousDeleteKey(blockchain, activePublicKey, 
+                                                "Security incident: key compromised", true);
+        System.out.println("Forced deletion result: " + (forcedResult ? "SUCCESS (DANGEROUS) ⚠️" : "FAILED ❌"));
+        
+        // Verify blockchain integrity after forced deletion
+        boolean chainValid = blockchain.validateChain();
+        System.out.println("Blockchain integrity after forced deletion: " + 
+                          (chainValid ? "VALID ✅" : "COMPROMISED ❌ (expected)"));
+    }
+    
+    // Bulk cleanup for security compliance (enhanced with new safety features)
     public void performSecurityCompliantCleanup(Blockchain blockchain, String complianceReason) {
-        System.out.println("🔒 Starting security compliance cleanup");
+        System.out.println("🔒 Starting ENHANCED security compliance cleanup");
         System.out.println("📋 Reason: " + complianceReason);
         
         List<AuthorizedKey> allKeys = blockchain.getAllAuthorizedKeys();
         java.time.LocalDateTime cutoffDate = java.time.LocalDateTime.now().minusYears(7); // 7-year retention
         
-        allKeys.stream()
-            .filter(key -> !key.isActive()) // Only process revoked keys
-            .filter(key -> key.getRevokedAt() != null && key.getRevokedAt().isBefore(cutoffDate))
-            .forEach(key -> {
-                System.out.println("🧹 Cleaning up old revoked key: " + key.getOwnerName());
-                permanentlyDeleteKey(blockchain, key.getPublicKey(), 
-                                   "Security compliance: " + complianceReason + " (Revoked " + key.getRevokedAt() + ")");
-            });
+        int safeDeleted = 0;
+        int dangerousSkipped = 0;
         
-        System.out.println("✅ Security compliance cleanup completed");
+        for (AuthorizedKey key : allKeys) {
+            // Only process revoked keys older than cutoff
+            if (!key.isActive() && key.getRevokedAt() != null && key.getRevokedAt().isBefore(cutoffDate)) {
+                System.out.println("🧹 Analyzing old revoked key: " + key.getOwnerName());
+                
+                // Use new safety analysis
+                Blockchain.KeyDeletionImpact impact = blockchain.canDeleteAuthorizedKey(key.getPublicKey());
+                
+                if (impact.canSafelyDelete()) {
+                    // Safe to delete
+                    boolean deleted = blockchain.deleteAuthorizedKey(key.getPublicKey());
+                    if (deleted) {
+                        safeDeleted++;
+                        System.out.println("✅ Safely deleted: " + key.getOwnerName());
+                    }
+                } else {
+                    // Has historical blocks - skip for safety
+                    dangerousSkipped++;
+                    System.out.println("⚠️ Skipped (has " + impact.getAffectedBlocks() + " blocks): " + key.getOwnerName());
+                    System.out.println("   Use manual review for forced deletion if absolutely necessary");
+                }
+            }
+        }
+        
+        System.out.println("✅ Enhanced security compliance cleanup completed");
+        System.out.println("📊 Results: " + safeDeleted + " safely deleted, " + dangerousSkipped + " skipped for safety");
     }
+}
 }
 ```
 

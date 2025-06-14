@@ -158,6 +158,40 @@ public class BlockDAO {
     /**
      * Delete blocks with block numbers greater than the specified number
      */
+    /**
+     * Get all blocks signed by a specific public key
+     * Used for impact assessment before key deletion
+     */
+    public List<Block> getBlocksBySignerPublicKey(String signerPublicKey) {
+        EntityManager em = JPAUtil.getEntityManager();
+        try {
+            TypedQuery<Block> query = em.createQuery(
+                "SELECT b FROM Block b WHERE b.signerPublicKey = :signerPublicKey ORDER BY b.blockNumber ASC", 
+                Block.class);
+            query.setParameter("signerPublicKey", signerPublicKey);
+            return query.getResultList();
+        } finally {
+            em.close();
+        }
+    }
+
+    /**
+     * Count blocks signed by a specific public key
+     * Optimized version for quick impact check
+     */
+    public long countBlocksBySignerPublicKey(String signerPublicKey) {
+        EntityManager em = JPAUtil.getEntityManager();
+        try {
+            TypedQuery<Long> query = em.createQuery(
+                "SELECT COUNT(b) FROM Block b WHERE b.signerPublicKey = :signerPublicKey", 
+                Long.class);
+            query.setParameter("signerPublicKey", signerPublicKey);
+            return query.getSingleResult();
+        } finally {
+            em.close();
+        }
+    }
+
     public int deleteBlocksAfter(int blockNumber) {
         EntityManager em = JPAUtil.getEntityManager();
         EntityTransaction transaction = null;

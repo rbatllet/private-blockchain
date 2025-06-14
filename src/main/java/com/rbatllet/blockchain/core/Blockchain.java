@@ -688,8 +688,267 @@ public class Blockchain {
     public int getMaxBlockSizeBytes() {
         return MAX_BLOCK_SIZE_BYTES;
     }
-    
+    /**
+     * Test utility: Clear all data and reinitialize with genesis block
+     * WARNING: This method is for testing purposes only
+     */
+    public void clearAndReinitialize() {
+        try {
+            // Clear all blocks and keys
+            blockDAO.deleteAllBlocks();
+            authorizedKeyDAO.deleteAllAuthorizedKeys();
+            
+            // Reinitialize genesis block
+            initializeGenesisBlock();
+            
+            System.out.println("Database cleared and reinitialized for testing");
+        } catch (Exception e) {
+            System.err.println("Error clearing database: " + e.getMessage());
+        }
+    }
+
     public int getMaxBlockDataLength() {
         return MAX_BLOCK_DATA_LENGTH;
+    }
+
+    // ===============================
+    // DANGEROUS KEY DELETION METHODS
+    // ===============================
+
+    /**
+     * Check if an authorized key can be safely deleted
+     * Returns information about the impact of deletion
+     * 
+     * @param publicKey The public key to analyze
+     * @return KeyDeletionImpact object with safety information
+     */
+    public KeyDeletionImpact canDeleteAuthorizedKey(String publicKey) {
+        try {
+            // Check if key exists and is active
+            boolean keyExists = authorizedKeyDAO.isKeyAuthorized(publicKey);
+            if (!keyExists) {
+                // Check if key existed but is revoked
+                List<AuthorizedKey> allKeys = authorizedKeyDAO.getAllAuthorizedKeys();
+                boolean keyExistedBefore = allKeys.stream()
+                    .anyMatch(key -> key.getPublicKey().equals(publicKey));
+                
+                if (keyExistedBefore) {
+                    long affectedBlocks = blockDAO.countBlocksBySignerPublicKey(publicKey);
+                    return new KeyDeletionImpact(true, affectedBlocks, 
+                        "Key is revoked but still has " + affectedBlocks + " historical blocks");
+                } else {
+                    return new KeyDeletionImpact(false, 0, "Key not found in database");
+                }
+            }
+            
+            // Count affected blocks for active key
+            long affectedBlocks = blockDAO.countBlocksBySignerPublicKey(publicKey);
+            
+            String message = affectedBlocks == 0 ? 
+                "Key can be safely deleted (no historical blocks)" : 
+                "Key deletion will affect " + affectedBlocks + " historical blocks";
+                
+            return new KeyDeletionImpact(true, affectedBlocks, message);
+            
+        } catch (Exception e) {
+            System.err.println("Error checking deletion impact: " + e.getMessage());
+            return new KeyDeletionImpact(false, -1, "Error checking deletion impact: " + e.getMessage());
+        }
+    }
+
+    /**
+     * DANGEROUS: Permanently delete an authorized key from the database
+     * ⚠️ WARNING: This operation is IRREVERSIBLE and may break blockchain validation
+     * 
+     * @param publicKey The public key to delete
+     * @param force If true, deletes even if it affects historical blocks
+     * @param reason Reason for deletion (for audit logging)
+     * @return true if key was deleted, false otherwise
+     */
+    public synchronized boolean dangerouslyDeleteAuthorizedKey(String publicKey, boolean force, String reason) {
+        try {
+            System.out.println("🚨 CRITICAL OPERATION: Attempting to permanently delete authorized key");
+            System.out.println("🔑 Key fingerprint: " + publicKey.substring(0, Math.min(32, publicKey.length())) + "...");
+            System.out.println("📝 Reason: " + (reason != null ? reason : "No reason provided"));
+            System.out.println("⚡ Force mode: " + force);
+            System.out.println("⏰ Timestamp: " + java.time.LocalDateTime.now().format(
+                java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            
+            // 1. Check deletion impact
+            KeyDeletionImpact impact = canDeleteAuthorizedKey(publicKey);
+            if (!impact.keyExists()) {
+                System.err.println("❌ " + impact.getMessage());
+                return false;
+            }
+            
+            // 2. Safety check for historical blocks
+            if (impact.isSevereImpact() && !force) {
+                System.err.println("❌ SAFETY BLOCK: Cannot delete key that signed " + 
+                                 impact.getAffectedBlocks() + " historical blocks");
+                System.err.println("💡 Use force=true to override this safety check");
+                System.err.println("⚠️ WARNING: Forcing deletion will break blockchain validation for these blocks!");
+                System.err.println("📊 Impact details: " + impact.getMessage());
+                return false;
+            }
+            
+            // 3. Show impact warning for forced deletions
+            if (impact.isSevereImpact()) {
+                System.out.println("⚠️ ⚠️ ⚠️ CRITICAL WARNING ⚠️ ⚠️ ⚠️");
+                System.out.println("This deletion will affect " + impact.getAffectedBlocks() + " historical blocks:");
+                
+                // Show sample of affected blocks
+                List<Block> affectedBlocks = blockDAO.getBlocksBySignerPublicKey(publicKey);
+                int sampleSize = Math.min(5, affectedBlocks.size());
+                for (int i = 0; i < sampleSize; i++) {
+                    Block block = affectedBlocks.get(i);
+                    String data = block.getData();
+                    String preview = data != null ? data.substring(0, Math.min(50, data.length())) : "null";
+                    System.out.println("  - Block #" + block.getBlockNumber() + 
+                                     " (" + block.getTimestamp() + "): " + preview + "...");
+                }
+                if (affectedBlocks.size() > sampleSize) {
+                    System.out.println("  ... and " + (affectedBlocks.size() - sampleSize) + " more blocks");
+                }
+                System.out.println("⚠️ These blocks will FAIL validation after key deletion!");
+                System.out.println("🔥 Proceeding with IRREVERSIBLE deletion...");
+            }
+            
+            // 4. Get key info for logging before deletion
+            List<AuthorizedKey> keyRecords = authorizedKeyDAO.getAllAuthorizedKeys().stream()
+                .filter(key -> key.getPublicKey().equals(publicKey))
+                .toList();
+            
+            // 5. Perform deletion
+            boolean deleted = authorizedKeyDAO.deleteAuthorizedKey(publicKey);
+            
+            // 6. Comprehensive audit logging
+            if (deleted) {
+                System.out.println("🗑️ ✅ Key permanently deleted from database");
+                System.out.println("📊 Deletion summary:");
+                System.out.println("   - Key records removed: " + keyRecords.size());
+                System.out.println("   - Historical blocks affected: " + impact.getAffectedBlocks());
+                System.out.println("   - Force mode used: " + force);
+                System.out.println("   - Deletion reason: " + reason);
+                
+                for (AuthorizedKey keyRecord : keyRecords) {
+                    System.out.println("   - Deleted record: " + keyRecord.getOwnerName() + 
+                                     " (created: " + keyRecord.getCreatedAt() + 
+                                     ", active: " + keyRecord.isActive() + ")");
+                }
+                
+                System.out.println("📝 Audit log: Key deletion completed at " + 
+                                 java.time.LocalDateTime.now().format(
+                                     java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                System.out.println("⚠️ WARNING: This action was IRREVERSIBLE!");
+                
+                // Recommend validation check if blocks were affected
+                if (impact.isSevereImpact()) {
+                    System.out.println("💡 STRONGLY RECOMMENDED: Run validateChain() to verify blockchain integrity");
+                    System.out.println("🔧 Consider running blockchain repair tools if validation fails");
+                }
+            } else {
+                System.err.println("❌ Failed to delete key from database");
+                System.err.println("💡 This might indicate the key was already deleted or a database error occurred");
+            }
+            
+            return deleted;
+            
+        } catch (Exception e) {
+            System.err.println("💥 Critical error during key deletion: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * Convenience method for dangerous key deletion with force=false
+     * @param publicKey The public key to delete
+     * @param reason Reason for deletion (for audit logging)
+     * @return true if key was deleted, false otherwise
+     */
+    public boolean dangerouslyDeleteAuthorizedKey(String publicKey, String reason) {
+        return dangerouslyDeleteAuthorizedKey(publicKey, false, reason);
+    }
+
+    /**
+     * Expose the regular deleteAuthorizedKey method referenced in documentation
+     * This is a safe wrapper that only deletes keys with no historical impact
+     * @param publicKey The public key to delete
+     * @return true if key was safely deleted, false otherwise
+     */
+    public boolean deleteAuthorizedKey(String publicKey) {
+        KeyDeletionImpact impact = canDeleteAuthorizedKey(publicKey);
+        
+        if (!impact.keyExists()) {
+            System.err.println("Cannot delete key: " + impact.getMessage());
+            return false;
+        }
+        
+        if (impact.isSevereImpact()) {
+            System.err.println("Cannot delete key: " + impact.getMessage());
+            System.err.println("Use dangerouslyDeleteAuthorizedKey() with force=true if deletion is absolutely necessary");
+            return false;
+        }
+        
+        // Safe to delete - no historical blocks affected
+        System.out.println("Safely deleting authorized key (no historical blocks affected)");
+        return authorizedKeyDAO.deleteAuthorizedKey(publicKey);
+    }
+
+    /**
+     * Information about the impact of deleting an authorized key
+     * Used to assess safety before performing dangerous key deletion operations
+     */
+    public static class KeyDeletionImpact {
+        private final boolean keyExists;
+        private final long affectedBlocks;
+        private final String message;
+        
+        public KeyDeletionImpact(boolean keyExists, long affectedBlocks, String message) {
+            this.keyExists = keyExists;
+            this.affectedBlocks = affectedBlocks;
+            this.message = message;
+        }
+        
+        /**
+         * @return true if the key exists in the database
+         */
+        public boolean keyExists() { 
+            return keyExists; 
+        }
+        
+        /**
+         * @return true if the key can be deleted without affecting any historical blocks
+         */
+        public boolean canSafelyDelete() { 
+            return keyExists && affectedBlocks == 0; 
+        }
+        
+        /**
+         * @return number of historical blocks that would be affected by deletion
+         */
+        public long getAffectedBlocks() { 
+            return affectedBlocks; 
+        }
+        
+        /**
+         * @return human-readable message describing the impact
+         */
+        public String getMessage() { 
+            return message; 
+        }
+        
+        /**
+         * @return true if deletion would have severe consequences (affects blocks)
+         */
+        public boolean isSevereImpact() {
+            return affectedBlocks > 0;
+        }
+        
+        @Override
+        public String toString() {
+            return String.format("KeyDeletionImpact{exists=%s, canSafelyDelete=%s, affectedBlocks=%d, message='%s'}", 
+                               keyExists, canSafelyDelete(), affectedBlocks, message);
+        }
     }
 }
