@@ -1,7 +1,6 @@
 package com.rbatllet.blockchain.core;
 
 import com.rbatllet.blockchain.entity.AuthorizedKey;
-import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;

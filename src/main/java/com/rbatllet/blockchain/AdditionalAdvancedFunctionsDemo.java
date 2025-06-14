@@ -126,8 +126,8 @@ public class AdditionalAdvancedFunctionsDemo {
             System.out.println("🔎 Search by date range:");
             LocalDate today = LocalDate.now();
             LocalDate yesterday = today.minusDays(1);
-            List<Block> todayBlocks = blockchain.getBlocksByDateRange(today, today);
-            System.out.println("   ✅ Found " + todayBlocks.size() + " blocks from today");
+            List<Block> recentBlocks = blockchain.getBlocksByDateRange(yesterday, today);
+            System.out.println("   ✅ Found " + recentBlocks.size() + " blocks from yesterday and today");
             
             System.out.println();
             

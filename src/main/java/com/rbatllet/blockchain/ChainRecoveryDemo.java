@@ -82,6 +82,9 @@ public class ChainRecoveryDemo {
             
             System.out.println("✅ Blockchain initialized successfully");
             System.out.println("✅ User key pairs generated");
+            System.out.println("   👤 Alice: " + getShortKey(aliceKey));
+            System.out.println("   👤 Bob: " + getShortKey(bobKey));
+            System.out.println("   👤 Charlie: " + getShortKey(charlieKey));
             System.out.println("📊 Genesis block count: " + blockchain.getBlockCount());
             System.out.println();
             
@@ -109,12 +112,14 @@ public class ChainRecoveryDemo {
             
             // Validation with detailed output
             boolean isValid = blockchain.validateChain();
-            int blockCount = (int) blockchain.getBlockCount();
-            int keyCount = blockchain.getAuthorizedKeys().size();
+            long blockCount = blockchain.getBlockCount();
             
             System.out.println("✅ Setup completed successfully:");
             System.out.println("   📊 Total blocks: " + blockCount + " (including genesis)");
-            System.out.println("   👥 Authorized users: " + keyCount);
+            System.out.println("✅ Added 3 authorized users: " + 
+                "Alice (" + getShortKey(aliceKey) + "), " + 
+                "Bob (" + getShortKey(bobKey) + "), " + 
+                "Charlie (" + getShortKey(charlieKey) + ")");
             System.out.println("   🔍 Chain validity: " + (isValid ? "✅ VALID" : "❌ INVALID"));
             
             if (!isValid) {
@@ -146,7 +151,7 @@ public class ChainRecoveryDemo {
                 System.out.println("   ⚠️ Corrupted block details:");
                 diagnostic.getCorruptedBlocksList().forEach(block -> 
                     System.out.println("      - Block #" + block.getBlockNumber() + 
-                                     " signed by: " + block.getSignerPublicKey().substring(0, 16) + "..."));
+                                     " signed by: " + getShortKey(block.getSignerPublicKey()) + ""));
             }
             
             // Verify diagnostic accuracy
@@ -334,6 +339,11 @@ public class ChainRecoveryDemo {
             System.out.println("   🏥 Overall health: " + (finalValid ? "✅ HEALTHY" : "❌ CORRUPTED"));
             System.out.println("   📈 Total blocks: " + finalBlockCount);
             System.out.println("   👥 Active keys: " + finalKeyCount);
+            
+            // Display recovered keys
+            blockchain.getAuthorizedKeys().forEach(key -> {
+                System.out.println("      - " + key.getOwnerName() + ": " + getShortKey(key.getPublicKey()));
+            });
             System.out.println("   📊 Valid/Corrupted: " + finalDiagnostic.getValidBlocks() + 
                              "/" + finalDiagnostic.getCorruptedBlocks());
             
@@ -431,6 +441,9 @@ public class ChainRecoveryDemo {
                 System.err.println("📊 Blockchain state at error:");
                 System.err.println("   🔢 Blocks: " + blockchain.getBlockCount());
                 System.err.println("   👥 Keys: " + blockchain.getAuthorizedKeys().size());
+                blockchain.getAuthorizedKeys().forEach(key -> {
+                    System.err.println("      - " + key.getOwnerName() + ": " + getShortKey(key.getPublicKey()));
+                });
                 System.err.println("   🏥 Valid: " + blockchain.validateChain());
             }
         } catch (Exception ex) {

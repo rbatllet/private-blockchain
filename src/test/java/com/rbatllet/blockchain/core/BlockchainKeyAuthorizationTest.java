@@ -10,7 +10,6 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.File;
 import java.nio.file.Path;
 import java.security.KeyPair;
-import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -484,6 +483,7 @@ class BlockchainKeyAuthorizationTest {
         
         // 2. Verify original chain is valid
         boolean originalValid = original.validateChain();
+        assertTrue(originalValid, "Original chain must be valid before export");
         
         // 3. Export
         File exportFile = tempDir.resolve("temporal_consistency.json").toFile();

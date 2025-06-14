@@ -10,7 +10,6 @@ import java.io.File;
 import java.nio.file.Path;
 import java.security.KeyPair;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -325,8 +324,6 @@ class BlockchainAdditionalAdvancedFunctionsTest {
         blockchain.addBlock("Rollback test 2", bobKeyPair.getPrivate(), bobKeyPair.getPublic());
         blockchain.addBlock("Rollback test 3", charlieKeyPair.getPrivate(), charlieKeyPair.getPublic());
 
-        long blockCountBefore = blockchain.getBlockCount();
-        
         // Rollback to block 2 (should remove blocks after block 2)
         assertTrue(blockchain.rollbackToBlock(2), "Rollback to block 2 should succeed");
         
@@ -433,6 +430,9 @@ class BlockchainAdditionalAdvancedFunctionsTest {
         blockchain.addBlock("Today's test block 1", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic());
         blockchain.addBlock("Today's test block 2", bobKeyPair.getPrivate(), bobKeyPair.getPublic());
         
+        // Verify that we've added exactly 2 blocks
+        assertEquals(initialBlockCount + 2, blockchain.getBlockCount(), "Should have added exactly 2 blocks");
+        
         // All blocks in the blockchain should be from today or have no old blocks from yesterday
         List<Block> todayBlocks = blockchain.getBlocksByDateRange(today, today);
         assertTrue(todayBlocks.size() >= 2, "Should find at least the 2 blocks we just added today");
@@ -447,6 +447,8 @@ class BlockchainAdditionalAdvancedFunctionsTest {
         List<Block> wideRangeBlocks = blockchain.getBlocksByDateRange(yesterday, tomorrow);
         assertEquals(blockchain.getBlockCount(), wideRangeBlocks.size(),
                 "Wide range should include all blocks");
+        assertEquals(initialBlockCount + 2, wideRangeBlocks.size(),
+                "Wide range should include initial blocks plus our 2 new blocks");
 
         // Test edge cases
         List<Block> nullStartDate = blockchain.getBlocksByDateRange(null, today);
