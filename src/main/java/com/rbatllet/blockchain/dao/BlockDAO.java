@@ -1,10 +1,10 @@
 package com.rbatllet.blockchain.dao;
 
 import com.rbatllet.blockchain.entity.Block;
-import com.rbatllet.blockchain.util.HibernateUtil;
-import org.hibernate.Session;
-import org.hibernate.Transaction;
-import org.hibernate.query.Query;
+import com.rbatllet.blockchain.util.JPAUtil;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityTransaction;
+import jakarta.persistence.TypedQuery;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -15,16 +15,23 @@ public class BlockDAO {
      * Save a new block to the database
      */
     public void saveBlock(Block block) {
-        Transaction transaction = null;
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            transaction = session.beginTransaction();
-            session.save(block);
+        EntityManager em = JPAUtil.getEntityManager();
+        EntityTransaction transaction = null;
+        
+        try {
+            transaction = em.getTransaction();
+            transaction.begin();
+            
+            em.persist(block);
+            
             transaction.commit();
         } catch (Exception e) {
-            if (transaction != null) {
+            if (transaction != null && transaction.isActive()) {
                 transaction.rollback();
             }
             throw new RuntimeException("Error saving block", e);
+        } finally {
+            em.close();
         }
     }
     
@@ -32,11 +39,16 @@ public class BlockDAO {
      * Get a block by its number
      */
     public Block getBlockByNumber(int blockNumber) {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            Query<Block> query = session.createQuery(
-                "FROM Block WHERE blockNumber = :blockNumber", Block.class);
+        EntityManager em = JPAUtil.getEntityManager();
+        try {
+            TypedQuery<Block> query = em.createQuery(
+                "SELECT b FROM Block b WHERE b.blockNumber = :blockNumber", Block.class);
             query.setParameter("blockNumber", blockNumber);
-            return query.uniqueResult();
+            
+            List<Block> results = query.getResultList();
+            return results.isEmpty() ? null : results.get(0);
+        } finally {
+            em.close();
         }
     }
     
@@ -44,12 +56,16 @@ public class BlockDAO {
      * Get the last block in the chain
      */
     public Block getLastBlock() {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            Query<Block> query = session.createQuery(
-                "FROM Block ORDER BY blockNumber DESC", Block.class);
+        EntityManager em = JPAUtil.getEntityManager();
+        try {
+            TypedQuery<Block> query = em.createQuery(
+                "SELECT b FROM Block b ORDER BY b.blockNumber DESC", Block.class);
             query.setMaxResults(1);
-            List<Block> blocks = query.list();
+            
+            List<Block> blocks = query.getResultList();
             return blocks.isEmpty() ? null : blocks.get(0);
+        } finally {
+            em.close();
         }
     }
     
@@ -57,10 +73,13 @@ public class BlockDAO {
      * Get all blocks in the chain ordered by number
      */
     public List<Block> getAllBlocks() {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            Query<Block> query = session.createQuery(
-                "FROM Block ORDER BY blockNumber ASC", Block.class);
-            return query.list();
+        EntityManager em = JPAUtil.getEntityManager();
+        try {
+            TypedQuery<Block> query = em.createQuery(
+                "SELECT b FROM Block b ORDER BY b.blockNumber ASC", Block.class);
+            return query.getResultList();
+        } finally {
+            em.close();
         }
     }
     
@@ -68,13 +87,16 @@ public class BlockDAO {
      * Get blocks within a time range
      */
     public List<Block> getBlocksByTimeRange(LocalDateTime startTime, LocalDateTime endTime) {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            Query<Block> query = session.createQuery(
-                "FROM Block WHERE timestamp BETWEEN :startTime AND :endTime ORDER BY blockNumber ASC", 
+        EntityManager em = JPAUtil.getEntityManager();
+        try {
+            TypedQuery<Block> query = em.createQuery(
+                "SELECT b FROM Block b WHERE b.timestamp BETWEEN :startTime AND :endTime ORDER BY b.blockNumber ASC", 
                 Block.class);
             query.setParameter("startTime", startTime);
             query.setParameter("endTime", endTime);
-            return query.list();
+            return query.getResultList();
+        } finally {
+            em.close();
         }
     }
     
@@ -82,9 +104,12 @@ public class BlockDAO {
      * Get the total number of blocks
      */
     public long getBlockCount() {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            Query<Long> query = session.createQuery("SELECT COUNT(*) FROM Block", Long.class);
-            return query.uniqueResult();
+        EntityManager em = JPAUtil.getEntityManager();
+        try {
+            TypedQuery<Long> query = em.createQuery("SELECT COUNT(b) FROM Block b", Long.class);
+            return query.getSingleResult();
+        } finally {
+            em.close();
         }
     }
     
@@ -92,11 +117,14 @@ public class BlockDAO {
      * Check if a block with a specific hash exists
      */
     public boolean existsBlockWithHash(String hash) {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            Query<Long> query = session.createQuery(
-                "SELECT COUNT(*) FROM Block WHERE hash = :hash", Long.class);
+        EntityManager em = JPAUtil.getEntityManager();
+        try {
+            TypedQuery<Long> query = em.createQuery(
+                "SELECT COUNT(b) FROM Block b WHERE b.hash = :hash", Long.class);
             query.setParameter("hash", hash);
-            return query.uniqueResult() > 0;
+            return query.getSingleResult() > 0;
+        } finally {
+            em.close();
         }
     }
     
@@ -104,21 +132,26 @@ public class BlockDAO {
      * Delete a block by its number
      */
     public boolean deleteBlockByNumber(int blockNumber) {
-        Transaction transaction = null;
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            transaction = session.beginTransaction();
+        EntityManager em = JPAUtil.getEntityManager();
+        EntityTransaction transaction = null;
+        
+        try {
+            transaction = em.getTransaction();
+            transaction.begin();
             
-            Query<?> query = session.createQuery("DELETE FROM Block WHERE blockNumber = :blockNumber");
-            query.setParameter("blockNumber", blockNumber);
-            int deletedCount = query.executeUpdate();
+            int deletedCount = em.createQuery("DELETE FROM Block b WHERE b.blockNumber = :blockNumber")
+                    .setParameter("blockNumber", blockNumber)
+                    .executeUpdate();
             
             transaction.commit();
             return deletedCount > 0;
         } catch (Exception e) {
-            if (transaction != null) {
+            if (transaction != null && transaction.isActive()) {
                 transaction.rollback();
             }
             throw new RuntimeException("Error deleting block with number " + blockNumber, e);
+        } finally {
+            em.close();
         }
     }
     
@@ -126,21 +159,26 @@ public class BlockDAO {
      * Delete blocks with block numbers greater than the specified number
      */
     public int deleteBlocksAfter(int blockNumber) {
-        Transaction transaction = null;
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            transaction = session.beginTransaction();
+        EntityManager em = JPAUtil.getEntityManager();
+        EntityTransaction transaction = null;
+        
+        try {
+            transaction = em.getTransaction();
+            transaction.begin();
             
-            Query<?> query = session.createQuery("DELETE FROM Block WHERE blockNumber > :blockNumber");
-            query.setParameter("blockNumber", blockNumber);
-            int deletedCount = query.executeUpdate();
+            int deletedCount = em.createQuery("DELETE FROM Block b WHERE b.blockNumber > :blockNumber")
+                    .setParameter("blockNumber", blockNumber)
+                    .executeUpdate();
             
             transaction.commit();
             return deletedCount;
         } catch (Exception e) {
-            if (transaction != null) {
+            if (transaction != null && transaction.isActive()) {
                 transaction.rollback();
             }
             throw new RuntimeException("Error deleting blocks after " + blockNumber, e);
+        } finally {
+            em.close();
         }
     }
     
@@ -148,20 +186,24 @@ public class BlockDAO {
      * Delete all blocks (for import functionality)
      */
     public int deleteAllBlocks() {
-        Transaction transaction = null;
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            transaction = session.beginTransaction();
+        EntityManager em = JPAUtil.getEntityManager();
+        EntityTransaction transaction = null;
+        
+        try {
+            transaction = em.getTransaction();
+            transaction.begin();
             
-            Query<?> query = session.createQuery("DELETE FROM Block");
-            int deletedCount = query.executeUpdate();
+            int deletedCount = em.createQuery("DELETE FROM Block b").executeUpdate();
             
             transaction.commit();
             return deletedCount;
         } catch (Exception e) {
-            if (transaction != null) {
+            if (transaction != null && transaction.isActive()) {
                 transaction.rollback();
             }
             throw new RuntimeException("Error deleting all blocks", e);
+        } finally {
+            em.close();
         }
     }
     
@@ -173,11 +215,15 @@ public class BlockDAO {
             return new java.util.ArrayList<>();
         }
         
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            Query<Block> query = session.createQuery(
-                "FROM Block WHERE LOWER(data) LIKE :content ORDER BY blockNumber ASC", Block.class);
+        EntityManager em = JPAUtil.getEntityManager();
+        try {
+            TypedQuery<Block> query = em.createQuery(
+                "SELECT b FROM Block b WHERE LOWER(b.data) LIKE :content ORDER BY b.blockNumber ASC", 
+                Block.class);
             query.setParameter("content", "%" + content.toLowerCase() + "%");
-            return query.list();
+            return query.getResultList();
+        } finally {
+            em.close();
         }
     }
     
@@ -189,11 +235,16 @@ public class BlockDAO {
             return null;
         }
         
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            Query<Block> query = session.createQuery(
-                "FROM Block WHERE hash = :hash", Block.class);
+        EntityManager em = JPAUtil.getEntityManager();
+        try {
+            TypedQuery<Block> query = em.createQuery(
+                "SELECT b FROM Block b WHERE b.hash = :hash", Block.class);
             query.setParameter("hash", hash);
-            return query.uniqueResult();
+            
+            List<Block> results = query.getResultList();
+            return results.isEmpty() ? null : results.get(0);
+        } finally {
+            em.close();
         }
     }
 }

@@ -48,8 +48,8 @@ This is a **private blockchain** for controlled environments where only authoriz
 - **Block Size Validation**: Prevents oversized blocks
 
 ### Technical Features
-- **Persistence**: SQLite database with Hibernate ORM
-- **Comprehensive Testing**: 22 JUnit 5 tests + integration demos
+- **Persistence**: SQLite database with JPA standard for ORM (using Hibernate as provider)
+- **Comprehensive Testing**: More than 40 JUnit 5 tests + integration demos
 - **Production Ready**: Complete documentation and deployment guides
 - **Clean Architecture**: Well-structured code with DAO pattern
 
@@ -58,7 +58,7 @@ This is a **private blockchain** for controlled environments where only authoriz
 - **Java 21** - Programming language with modern features
 - **Maven** - Build and dependency management
 - **SQLite** - Lightweight database for data storage
-- **Hibernate** - Object-relational mapping (ORM)
+- **JPA** - Java Persistence API with Hibernate as implementation provider
 - **SHA-256** - Cryptographic hash function for integrity
 - **RSA** - Digital signature algorithm for authentication
 - **JUnit 5** - Testing framework for comprehensive validation
@@ -160,7 +160,7 @@ boolean isValid = blockchain.validateChain();
 
 ### Comprehensive Test Suite
 
-The project includes extensive testing with **22 JUnit 5 tests** plus integration demos:
+The project includes extensive testing with **more than 40 JUnit 5 tests** plus integration demos:
 
 #### Run All Tests (Recommended)
 ```bash
@@ -171,7 +171,7 @@ The project includes extensive testing with **22 JUnit 5 tests** plus integratio
 ```
 === COMPREHENSIVE BLOCKCHAIN TEST RUNNER ===
 ✅ Compilation successful!
-🎉 JUnit 5 Additional Advanced Functions tests: PASSED (22/22)
+🎉 JUnit 5 tests: PASSED (more than 40 tests)
 ✅ Basic Core Functions test: PASSED
 ✅ Blockchain Demo: PASSED
 ✅ Simple Test: PASSED
@@ -183,7 +183,7 @@ The project includes extensive testing with **22 JUnit 5 tests** plus integratio
 
 #### Individual Test Categories
 ```bash
-# Advanced functions only (22 JUnit 5 tests)
+# Advanced functions only (JUnit 5 tests)
 ./run_advanced_tests.sh
 
 # Basic core functions only
@@ -216,7 +216,7 @@ src/main/java/com/rbatllet/blockchain/
 │   └── AuthorizedKey.java                       # Authorized key data model
 ├── util/
 │   ├── CryptoUtil.java                          # Cryptographic utilities
-│   └── HibernateUtil.java                       # Database connection management
+│   └── JPAUtil.java                             # JPA EntityManager management
 ├── BlockchainDemo.java                          # Basic demo application
 ├── AdditionalAdvancedFunctionsDemo.java         # Advanced features demo
 ├── CoreFunctionsTest.java                       # Comprehensive core test
@@ -224,12 +224,19 @@ src/main/java/com/rbatllet/blockchain/
 └── QuickTest.java                               # Fast verification test
 
 src/test/java/com/rbatllet/blockchain/core/
-├── BlockchainAdditionalAdvancedFunctionsTest.java   # JUnit 5 test suite (22 tests)
-├── BlockchainAdditionalAdvancedFunctionsTestRunner.java # Test runner
+├── BlockchainAdditionalAdvancedFunctionsTest.java   # JUnit 5 test suite
+├── BlockchainKeyAuthorizationTest.java             # Key authorization tests
+├── CriticalConsistencyTest.java                    # Consistency validation tests
+├── SimpleTemporalValidationTest.java               # Temporal validation tests
 └── TestEnvironmentValidator.java                    # Environment validation
 
+src/test/java/com/rbatllet/blockchain/dao/
+└── AuthorizedKeyDAODeleteTest.java                 # DAO delete operation tests
+
 Configuration & Scripts:
-├── hibernate.cfg.xml                            # Database configuration
+├── src/main/resources/META-INF/persistence.xml  # JPA configuration
+├── src/main/resources/logging.properties      # Logging configuration
+├── src/test/resources/test.properties         # Test configuration
 ├── clean-database.sh                            # Database cleanup utility
 ├── run_all_tests.sh                             # Complete test runner
 ├── run_advanced_tests.sh                        # Advanced tests only
@@ -405,7 +412,8 @@ This project includes comprehensive documentation for different use cases:
 ### Database
 - **Location**: `blockchain.db` in project root directory
 - **Type**: SQLite database with automatic table creation
-- **ORM**: Hibernate for database operations
+- **JPA Provider**: Hibernate as JPA implementation
+- **Configuration**: `persistence.xml` for JPA settings
 
 ### Security
 - **Hash Algorithm**: SHA-256 for block integrity
@@ -437,7 +445,7 @@ This project includes comprehensive documentation for different use cases:
 1. **Environment**: Ensure Java 21+ and Maven 3.6+ are installed
 2. **Clone**: Clone the repository to your local development environment
 3. **Build**: Run `mvn clean compile` to build the project
-4. **Test**: Run `./run_all_tests.sh` to verify everything works (22+ tests)
+4. **Test**: Run `./run_all_tests.sh` to verify everything works (more than 40 tests)
 5. **IDE**: Import as Maven project in your preferred IDE
 
 ### Testing New Features
@@ -521,4 +529,4 @@ mvn clean compile test-compile
 3. Explore the comprehensive test suite to understand all features
 4. Build your own blockchain application using the patterns provided!
 
-**💡 Remember**: This blockchain includes **22+ comprehensive tests** covering everything from basic operations to critical consistency scenarios, ensuring enterprise-grade reliability for your applications.
+**💡 Remember**: This blockchain includes **more than 40 comprehensive tests** covering everything from basic operations to critical consistency scenarios, ensuring enterprise-grade reliability for your applications.

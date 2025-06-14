@@ -1,10 +1,10 @@
 package com.rbatllet.blockchain.dao;
 
 import com.rbatllet.blockchain.entity.AuthorizedKey;
-import com.rbatllet.blockchain.util.HibernateUtil;
-import org.hibernate.Session;
-import org.hibernate.Transaction;
-import org.hibernate.query.Query;
+import com.rbatllet.blockchain.util.JPAUtil;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityTransaction;
+import jakarta.persistence.TypedQuery;
 
 import java.util.List;
 
@@ -14,16 +14,23 @@ public class AuthorizedKeyDAO {
      * Save a new authorized key
      */
     public void saveAuthorizedKey(AuthorizedKey authorizedKey) {
-        Transaction transaction = null;
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            transaction = session.beginTransaction();
-            session.save(authorizedKey);
+        EntityManager em = JPAUtil.getEntityManager();
+        EntityTransaction transaction = null;
+        
+        try {
+            transaction = em.getTransaction();
+            transaction.begin();
+            
+            em.persist(authorizedKey);
+            
             transaction.commit();
         } catch (Exception e) {
-            if (transaction != null) {
+            if (transaction != null && transaction.isActive()) {
                 transaction.rollback();
             }
             throw new RuntimeException("Error saving authorized key", e);
+        } finally {
+            em.close();
         }
     }
     
@@ -32,20 +39,25 @@ public class AuthorizedKeyDAO {
      * FIXED: Uses simple logic but consistent temporal validation
      */
     public boolean isKeyAuthorized(String publicKey) {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            Query<AuthorizedKey> query = session.createQuery(
-                "FROM AuthorizedKey WHERE publicKey = :publicKey ORDER BY createdAt DESC", 
+        EntityManager em = JPAUtil.getEntityManager();
+        try {
+            TypedQuery<AuthorizedKey> query = em.createQuery(
+                "SELECT ak FROM AuthorizedKey ak WHERE ak.publicKey = :publicKey ORDER BY ak.createdAt DESC", 
                 AuthorizedKey.class);
             query.setParameter("publicKey", publicKey);
             query.setMaxResults(1);
             
-            AuthorizedKey key = query.uniqueResult();
-            if (key == null) {
+            List<AuthorizedKey> results = query.getResultList();
+            if (results.isEmpty()) {
                 return false;
             }
             
+            AuthorizedKey key = results.get(0);
+            
             // Use temporal validation for current time
             return key.wasActiveAt(java.time.LocalDateTime.now());
+        } finally {
+            em.close();
         }
     }
     
@@ -54,14 +66,17 @@ public class AuthorizedKeyDAO {
      * FIXED: Now returns only one record per public key
      */
     public List<AuthorizedKey> getActiveAuthorizedKeys() {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        EntityManager em = JPAUtil.getEntityManager();
+        try {
             // Get the most recent authorization for each public key that is currently active
-            Query<AuthorizedKey> query = session.createQuery(
+            TypedQuery<AuthorizedKey> query = em.createQuery(
                 "SELECT ak FROM AuthorizedKey ak WHERE ak.createdAt = " +
                 "(SELECT MAX(ak2.createdAt) FROM AuthorizedKey ak2 WHERE ak2.publicKey = ak.publicKey) " +
                 "AND ak.isActive = true ORDER BY ak.createdAt ASC", 
                 AuthorizedKey.class);
-            return query.list();
+            return query.getResultList();
+        } finally {
+            em.close();
         }
     }
     
@@ -70,11 +85,14 @@ public class AuthorizedKeyDAO {
      * This is needed to properly validate historical blocks during import
      */
     public List<AuthorizedKey> getAllAuthorizedKeys() {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            Query<AuthorizedKey> query = session.createQuery(
-                "FROM AuthorizedKey ORDER BY createdAt ASC", 
+        EntityManager em = JPAUtil.getEntityManager();
+        try {
+            TypedQuery<AuthorizedKey> query = em.createQuery(
+                "SELECT ak FROM AuthorizedKey ak ORDER BY ak.createdAt ASC", 
                 AuthorizedKey.class);
-            return query.list();
+            return query.getResultList();
+        } finally {
+            em.close();
         }
     }
     
@@ -84,30 +102,36 @@ public class AuthorizedKeyDAO {
      * RENAMED: Changed from deactivateKey to revokeAuthorizedKey for consistency
      */
     public void revokeAuthorizedKey(String publicKey) {
-        Transaction transaction = null;
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            transaction = session.beginTransaction();
+        EntityManager em = JPAUtil.getEntityManager();
+        EntityTransaction transaction = null;
+        
+        try {
+            transaction = em.getTransaction();
+            transaction.begin();
             
             // Find the most recent active authorization for this key
-            Query<AuthorizedKey> selectQuery = session.createQuery(
-                "FROM AuthorizedKey WHERE publicKey = :publicKey AND isActive = true ORDER BY createdAt DESC", 
+            TypedQuery<AuthorizedKey> selectQuery = em.createQuery(
+                "SELECT ak FROM AuthorizedKey ak WHERE ak.publicKey = :publicKey AND ak.isActive = true ORDER BY ak.createdAt DESC", 
                 AuthorizedKey.class);
             selectQuery.setParameter("publicKey", publicKey);
             selectQuery.setMaxResults(1);
             
-            AuthorizedKey keyToRevoke = selectQuery.uniqueResult();
-            if (keyToRevoke != null) {
+            List<AuthorizedKey> results = selectQuery.getResultList();
+            if (!results.isEmpty()) {
+                AuthorizedKey keyToRevoke = results.get(0);
                 keyToRevoke.setActive(false);
                 keyToRevoke.setRevokedAt(java.time.LocalDateTime.now());
-                session.update(keyToRevoke);
+                em.merge(keyToRevoke);
             }
             
             transaction.commit();
         } catch (Exception e) {
-            if (transaction != null) {
+            if (transaction != null && transaction.isActive()) {
                 transaction.rollback();
             }
             throw new RuntimeException("Error deactivating key", e);
+        } finally {
+            em.close();
         }
     }
     
@@ -118,14 +142,15 @@ public class AuthorizedKeyDAO {
      * FIXED: Now finds the authorization that was valid at the specific timestamp
      */
     public boolean wasKeyAuthorizedAt(String publicKey, java.time.LocalDateTime timestamp) {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        EntityManager em = JPAUtil.getEntityManager();
+        try {
             // Get all authorizations for this key, ordered by creation time
-            Query<AuthorizedKey> query = session.createQuery(
-                "FROM AuthorizedKey WHERE publicKey = :publicKey ORDER BY createdAt ASC", 
+            TypedQuery<AuthorizedKey> query = em.createQuery(
+                "SELECT ak FROM AuthorizedKey ak WHERE ak.publicKey = :publicKey ORDER BY ak.createdAt ASC", 
                 AuthorizedKey.class);
             query.setParameter("publicKey", publicKey);
             
-            List<AuthorizedKey> keys = query.list();
+            List<AuthorizedKey> keys = query.getResultList();
             if (keys.isEmpty()) {
                 return false;
             }
@@ -146,6 +171,8 @@ public class AuthorizedKeyDAO {
             
             // Use the temporal validation method on the correct key
             return validKey.wasActiveAt(timestamp);
+        } finally {
+            em.close();
         }
     }
     
@@ -154,13 +181,18 @@ public class AuthorizedKeyDAO {
      * Returns the most recent active authorization for the given owner
      */
     public AuthorizedKey getAuthorizedKeyByOwner(String ownerName) {
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            Query<AuthorizedKey> query = session.createQuery(
-                "FROM AuthorizedKey WHERE ownerName = :ownerName AND isActive = true ORDER BY createdAt DESC", 
+        EntityManager em = JPAUtil.getEntityManager();
+        try {
+            TypedQuery<AuthorizedKey> query = em.createQuery(
+                "SELECT ak FROM AuthorizedKey ak WHERE ak.ownerName = :ownerName AND ak.isActive = true ORDER BY ak.createdAt DESC", 
                 AuthorizedKey.class);
             query.setParameter("ownerName", ownerName);
             query.setMaxResults(1);
-            return query.uniqueResult();
+            
+            List<AuthorizedKey> results = query.getResultList();
+            return results.isEmpty() ? null : results.get(0);
+        } finally {
+            em.close();
         }
     }
 
@@ -169,21 +201,26 @@ public class AuthorizedKeyDAO {
      * This will delete ALL records for this public key (active and revoked)
      */
     public boolean deleteAuthorizedKey(String publicKey) {
-        Transaction transaction = null;
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            transaction = session.beginTransaction();
+        EntityManager em = JPAUtil.getEntityManager();
+        EntityTransaction transaction = null;
+        
+        try {
+            transaction = em.getTransaction();
+            transaction.begin();
             
-            Query<?> query = session.createQuery("DELETE FROM AuthorizedKey WHERE publicKey = :publicKey");
-            query.setParameter("publicKey", publicKey);
-            int deletedCount = query.executeUpdate();
+            int deletedCount = em.createQuery("DELETE FROM AuthorizedKey ak WHERE ak.publicKey = :publicKey")
+                    .setParameter("publicKey", publicKey)
+                    .executeUpdate();
             
             transaction.commit();
             return deletedCount > 0;
         } catch (Exception e) {
-            if (transaction != null) {
+            if (transaction != null && transaction.isActive()) {
                 transaction.rollback();
             }
             throw new RuntimeException("Error deleting authorized key", e);
+        } finally {
+            em.close();
         }
     }
 
@@ -191,20 +228,24 @@ public class AuthorizedKeyDAO {
      * Delete all authorized keys (for import functionality)
      */
     public int deleteAllAuthorizedKeys() {
-        Transaction transaction = null;
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            transaction = session.beginTransaction();
+        EntityManager em = JPAUtil.getEntityManager();
+        EntityTransaction transaction = null;
+        
+        try {
+            transaction = em.getTransaction();
+            transaction.begin();
             
-            Query<?> query = session.createQuery("DELETE FROM AuthorizedKey");
-            int deletedCount = query.executeUpdate();
+            int deletedCount = em.createQuery("DELETE FROM AuthorizedKey ak").executeUpdate();
             
             transaction.commit();
             return deletedCount;
         } catch (Exception e) {
-            if (transaction != null) {
+            if (transaction != null && transaction.isActive()) {
                 transaction.rollback();
             }
             throw new RuntimeException("Error deleting all authorized keys", e);
+        } finally {
+            em.close();
         }
     }
 }

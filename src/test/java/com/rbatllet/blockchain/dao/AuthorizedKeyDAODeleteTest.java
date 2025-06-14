@@ -1,9 +1,9 @@
 package com.rbatllet.blockchain.dao;
 
 import com.rbatllet.blockchain.entity.AuthorizedKey;
-import com.rbatllet.blockchain.util.HibernateUtil;
-import org.hibernate.Session;
-import org.hibernate.Transaction;
+import com.rbatllet.blockchain.util.JPAUtil;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityTransaction;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,14 +13,15 @@ import static org.junit.jupiter.api.Assertions.*;
 class AuthorizedKeyDAODeleteTest {
 
     private AuthorizedKeyDAO keyDAO;
-    private Session session;
-    private Transaction transaction;
+    private EntityManager entityManager;
+    private EntityTransaction transaction;
 
     @BeforeEach
     void setUp() {
         keyDAO = new AuthorizedKeyDAO();
-        session = HibernateUtil.getSessionFactory().openSession();
-        transaction = session.beginTransaction();
+        entityManager = JPAUtil.getEntityManager();
+        transaction = entityManager.getTransaction();
+        transaction.begin();
     }
 
     @AfterEach
@@ -28,8 +29,8 @@ class AuthorizedKeyDAODeleteTest {
         if (transaction != null && transaction.isActive()) {
             transaction.rollback();
         }
-        if (session != null && session.isOpen()) {
-            session.close();
+        if (entityManager != null && entityManager.isOpen()) {
+            entityManager.close();
         }
     }
 

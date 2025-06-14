@@ -32,17 +32,16 @@ Comprehensive production deployment guide for the Private Blockchain implementat
 │   └── blockchain.pid          # Process ID file
 ├── config/                     # Configuration files
 │   ├── application.properties  # App configuration
-│   ├── hibernate.cfg.xml       # Database config
+│   ├── persistence.xml         # JPA configuration
 │   └── logging.properties      # Logging configuration
 ├── keys/                       # Cryptographic keys
 │   ├── master/                 # Master keys (highly restricted)
 │   ├── operational/            # Daily operation keys
 │   └── backup/                 # Key backups
-├── scripts/                    # Operational scripts
-│   ├── start.sh               # Application startup
-│   ├── stop.sh                # Application shutdown
-│   ├── health-check.sh        # Health monitoring
-│   └── backup.sh              # Backup operations
+├── scripts/                    # Script utilities directory
+│   ├── shared-functions.sh     # Common functions library
+│   ├── run_template.sh         # Template for new scripts
+│   └── check-db-cleanup.sh     # Script compliance checker
 ├── logs/                      # Application logs
 │   ├── application.log        # Main application log
 │   ├── security.log           # Security events
@@ -219,6 +218,54 @@ ANALYZE;
 
 -- Clean up fragmentation
 VACUUM;
+```
+
+#### JPA Configuration for Production
+```xml
+<!-- /opt/blockchain/config/persistence.xml - Production JPA configuration -->
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence xmlns="http://java.sun.com/xml/ns/persistence"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://java.sun.com/xml/ns/persistence
+             http://java.sun.com/xml/ns/persistence/persistence_2_0.xsd"
+             version="2.0">
+
+    <persistence-unit name="blockchainPU" transaction-type="RESOURCE_LOCAL">
+        <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
+        
+        <!-- Entities -->
+        <class>com.rbatllet.blockchain.entity.Block</class>
+        <class>com.rbatllet.blockchain.entity.AuthorizedKey</class>
+        
+        <properties>
+            <!-- Database connection settings -->
+            <property name="jakarta.persistence.jdbc.driver" value="org.sqlite.JDBC"/>
+            <property name="jakarta.persistence.jdbc.url" value="jdbc:sqlite:/opt/blockchain/application/blockchain.db?journal_mode=WAL"/>
+            
+            <!-- Hibernate specific settings -->
+            <property name="hibernate.dialect" value="org.hibernate.community.dialect.SQLiteDialect"/>
+            <property name="hibernate.hbm2ddl.auto" value="validate"/>  <!-- Use validate in production -->
+            <property name="hibernate.show_sql" value="false"/>
+            <property name="hibernate.format_sql" value="false"/>
+            
+            <!-- Connection pool settings - Increased for production -->
+            <property name="hibernate.connection.pool_size" value="20"/>
+            
+            <!-- Improve transaction handling -->
+            <property name="hibernate.connection.autocommit" value="false"/>
+            <property name="hibernate.current_session_context_class" value="thread"/>
+            
+            <!-- Connection timeout and validation -->
+            <property name="hibernate.connection.timeout" value="30000"/>
+            <property name="hibernate.connection.validation_timeout" value="5000"/>
+            
+            <!-- Enable the query cache for production -->
+            <property name="hibernate.cache.use_query_cache" value="true"/>
+            <property name="hibernate.cache.use_second_level_cache" value="true"/>
+            <property name="hibernate.cache.region.factory_class" value="org.hibernate.cache.jcache.JCacheRegionFactory"/>
+        </properties>
+    </persistence-unit>
+</persistence>
 ```
 
 #### Database Maintenance Script

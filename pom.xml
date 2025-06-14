@@ -10,13 +10,14 @@
     <packaging>jar</packaging>
 
     <name>Private Blockchain</name>
-    <description>A private blockchain implementation with SQLite and Hibernate</description>
+    <description>A private blockchain implementation with SQLite and JPA standard (Hibernate as provider)</description>
 
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <hibernate.version>6.6.17.Final</hibernate.version>
+        <jakarta.persistence.version>3.2.0</jakarta.persistence.version>
         <sqlite.version>3.50.1.0</sqlite.version>
         <jackson.version>2.19.0</jackson.version>
         <slf4j.version>2.0.17</slf4j.version>
@@ -24,7 +25,14 @@
     </properties>
 
     <dependencies>
-        <!-- Hibernate ORM -->
+        <!-- JPA API -->
+        <dependency>
+            <groupId>jakarta.persistence</groupId>
+            <artifactId>jakarta.persistence-api</artifactId>
+            <version>${jakarta.persistence.version}</version>
+        </dependency>
+        
+        <!-- Hibernate as JPA implementation -->
         <dependency>
             <groupId>org.hibernate</groupId>
             <artifactId>hibernate-core</artifactId>

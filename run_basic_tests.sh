@@ -38,7 +38,7 @@ echo
 # Run basic core functions test (suppress most logs)
 mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.CoreFunctionsTest" \
   -Djava.util.logging.config.file=src/main/resources/logging.properties \
-  -Dhibernate.show_sql=false \
+  -Djakarta.persistence.show_sql=false \
   -Dorg.slf4j.simpleLogger.defaultLogLevel=warn \
   -q 2>/dev/null || mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.CoreFunctionsTest" -q
 

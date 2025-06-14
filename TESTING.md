@@ -24,7 +24,7 @@ The project includes comprehensive test suites to verify all functionality and e
 - ✅ Security controls and authorization
 - ✅ Error handling and edge cases
 
-#### Advanced Functions (22 JUnit 5 Tests)
+#### Advanced Functions (More than 40 JUnit 5 Tests)
 - ✅ **Block Size Validation**: Prevents oversized blocks
 - ✅ **Chain Export**: Complete blockchain backup to JSON
 - ✅ **Chain Import**: Blockchain restore from backup
@@ -36,7 +36,7 @@ The project includes comprehensive test suites to verify all functionality and e
 
 ### Test Statistics
 - **Total Test Files**: 5 comprehensive test suites
-- **JUnit 5 Tests**: 22 professional unit tests
+- **JUnit 5 Tests**: More than 40 professional unit tests
 - **Demo Applications**: 3 interactive demonstrations
 - **Verification Tests**: 2 quick validation tests
 - **Total Coverage**: 100% of implemented functionality
@@ -56,7 +56,7 @@ This runs everything: basic core tests + advanced function tests.
 ```
 === COMPREHENSIVE BLOCKCHAIN TEST RUNNER ===
 ✅ Compilation successful!
-🎉 JUnit 5 Additional Advanced Functions tests: PASSED (22/22)
+🎉 JUnit 5 tests: PASSED (more than 40 tests)
 ✅ Basic Core Functions test: PASSED
 ✅ Blockchain Demo: PASSED
 ✅ Simple Test: PASSED
@@ -68,7 +68,7 @@ This runs everything: basic core tests + advanced function tests.
 
 **What it does:**
 1. Compiles the project
-2. Runs 22 JUnit 5 tests for advanced functions
+2. Runs JUnit 5 tests for advanced functions
 3. Executes core blockchain functionality test
 4. Runs demo applications to verify end-to-end functionality
 5. Performs quick verification tests
@@ -78,7 +78,7 @@ This runs everything: basic core tests + advanced function tests.
 ./run_advanced_tests.sh
 ```
 
-Runs 22 professional JUnit 5 tests for additional advanced functions only.
+Runs professional JUnit 5 tests for additional advanced functions only.
 
 **Expected output:**
 ```
@@ -86,7 +86,7 @@ Runs 22 professional JUnit 5 tests for additional advanced functions only.
 ✅ Compilation successful!
 
 Running JUnit 5 tests...
-[INFO] Tests run: 22, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Tests run: more than 40, Failures: 0, Errors: 0, Skipped: 0
 
 Test Results:
 ✅ testBlockSizeValidation - Block size limits enforced
@@ -153,11 +153,32 @@ mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.SimpleTest"
 
 ## 📝 Test Suites Description
 
-### 1. JUnit 5 Advanced Functions Test Suite
+### 1. JUnit 5 Test Suites
 
+#### 1.1 Advanced Functions Test Suite
 **File**: `BlockchainAdditionalAdvancedFunctionsTest.java`  
-**Tests**: 22 comprehensive unit tests  
+**Tests**: Comprehensive unit tests  
 **Coverage**: Advanced blockchain features
+
+#### 1.2 Key Authorization Test Suite
+**File**: `BlockchainKeyAuthorizationTest.java`  
+**Tests**: Key authorization functionality tests  
+**Coverage**: Key management and authorization
+
+#### 1.3 Critical Consistency Test Suite
+**File**: `CriticalConsistencyTest.java`  
+**Tests**: Data consistency validation tests  
+**Coverage**: Blockchain data integrity and consistency
+
+#### 1.4 Temporal Validation Test Suite
+**File**: `SimpleTemporalValidationTest.java`  
+**Tests**: Temporal validation tests  
+**Coverage**: Time-based operations and validations
+
+#### 1.5 DAO Delete Operations Test Suite
+**File**: `AuthorizedKeyDAODeleteTest.java`  
+**Tests**: DAO delete operations tests  
+**Coverage**: Key deletion and database operations
 
 #### Test Categories:
 
@@ -339,7 +360,7 @@ These are **intentional test cases** that verify proper error handling. They are
 **What to look for:**
 - Test result should still show `✅ PASSED`
 - Error messages should be followed by successful error handling
-- Final test count should show 22/22 tests passed
+- Final test count should show more than 40 tests passed
 
 #### Issue: Maven Build Fails
 
@@ -593,7 +614,7 @@ sqlite3 blockchain.db "VACUUM; ANALYZE;"
 
 **Symptoms:**
 ```
-[ERROR] Failed to read artifact descriptor for org.hibernate:hibernate-core:jar:6.2.5.Final
+[ERROR] Failed to read artifact descriptor for org.hibernate:hibernate-core:jar:6.6.17.Final
 ```
 
 **Solutions:**

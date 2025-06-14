@@ -2,6 +2,8 @@
 
 Comprehensive real-world examples and practical use cases for the Private Blockchain implementation.
 
+> **IMPORTANT NOTE**: The classes shown in these examples (DocumentVerificationSystem, SupplyChainTracker, MedicalRecordsSystem, FinancialAuditSystem, KeyManagementPatterns, KeyCleanupManager, AuthorizedKeyInfo) are conceptual and designed to illustrate potential use cases. They are not part of the actual project code. Only the Blockchain, Block, AuthorizedKey, CryptoUtil, and JPAUtil classes exist in the current implementation.
+
 ## 📋 Table of Contents
 
 - [Use Case Examples](#-use-case-examples)
@@ -588,6 +590,247 @@ public class BlockchainHealthMonitor {
 }
 ```
 
+## 🔧 Technical Implementation Examples
+
+### JPA Implementation Patterns
+
+#### Direct JPA EntityManager Usage
+```java
+// Example using JPA EntityManager for custom operations
+EntityManager em = JPAUtil.getEntityManager();
+EntityTransaction transaction = null;
+
+try {
+    transaction = em.getTransaction();
+    transaction.begin();
+    
+    // Persist a new block
+    Block newBlock = new Block(1, "0", "Genesis", LocalDateTime.now(), "hash", null, null);
+    em.persist(newBlock);
+    
+    transaction.commit();
+} catch (Exception e) {
+    if (transaction != null && transaction.isActive()) {
+        transaction.rollback();
+    }
+    throw new RuntimeException("Error saving block", e);
+} finally {
+    em.close();
+}
+```
+
+#### JPA Query Language (JPQL) Examples
+```java
+// Example using JPQL for custom queries
+EntityManager em = JPAUtil.getEntityManager();
+try {
+    // Find blocks within date range
+    TypedQuery<Block> query = em.createQuery(
+        "SELECT b FROM Block b WHERE b.timestamp BETWEEN :startTime AND :endTime ORDER BY b.blockNumber ASC", 
+        Block.class);
+    query.setParameter("startTime", startTime);
+    query.setParameter("endTime", endTime);
+    
+    List<Block> blocks = query.getResultList();
+    
+    // Count blocks by content
+    TypedQuery<Long> countQuery = em.createQuery(
+        "SELECT COUNT(b) FROM Block b WHERE LOWER(b.data) LIKE :content", 
+        Long.class);
+    countQuery.setParameter("content", "%" + searchTerm.toLowerCase() + "%");
+    
+    Long count = countQuery.getSingleResult();
+} finally {
+    em.close();
+}
+```
+
+#### Entity Configuration with JPA Annotations
+```java
+// Example of JPA entity annotations and lifecycle callbacks
+@Entity
+@Table(name = "blocks")
+public class Block {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @Column(name = "block_number", unique = true, nullable = false)
+    private int blockNumber;
+    
+    @Column(name = "data", columnDefinition = "TEXT")
+    private String data;
+    
+    @Column(name = "timestamp", nullable = false)
+    private LocalDateTime timestamp;
+    
+    @Column(name = "hash", length = 64, nullable = false)
+    private String hash;
+    
+    // JPA lifecycle callbacks
+    @PrePersist
+    public void prePersist() {
+        if (timestamp == null) {
+            timestamp = LocalDateTime.now();
+        }
+    }
+    
+    @PostLoad
+    public void postLoad() {
+        // Post-load operations if needed
+    }
+    
+    // ... getters and setters
+}
+```
+
+#### Advanced JPA Operations
+```java
+// Batch operations with JPA
+public class AdvancedJPAOperations {
+    
+    public void batchInsertBlocks(List<BlockData> blockDataList, 
+                                 PrivateKey signerKey, PublicKey signerPublic) {
+        EntityManager em = JPAUtil.getEntityManager();
+        EntityTransaction transaction = null;
+        
+        try {
+            transaction = em.getTransaction();
+            transaction.begin();
+            
+            for (int i = 0; i < blockDataList.size(); i++) {
+                Block block = createBlock(blockDataList.get(i), signerKey, signerPublic);
+                em.persist(block);
+                
+                // Flush every 25 blocks for memory management
+                if (i % 25 == 0) {
+                    em.flush();
+                    em.clear();
+                }
+            }
+            transaction.commit();
+        } catch (Exception e) {
+            if (transaction != null && transaction.isActive()) {
+                transaction.rollback();
+            }
+            throw e;
+        } finally {
+            em.close();
+        }
+    }
+    
+    // Native SQL queries when JPQL is not sufficient
+    public List<Object[]> getBlockStatistics() {
+        EntityManager em = JPAUtil.getEntityManager();
+        try {
+            Query nativeQuery = em.createNativeQuery(
+                "SELECT strftime('%Y-%m', timestamp) as month, " +
+                "COUNT(*) as block_count, " +
+                "AVG(length(data)) as avg_data_size " +
+                "FROM blocks " +
+                "GROUP BY strftime('%Y-%m', timestamp) " +
+                "ORDER BY month DESC");
+            
+            return nativeQuery.getResultList();
+        } finally {
+            em.close();
+        }
+    }
+    
+    // Criteria API for dynamic queries
+    public List<Block> dynamicBlockSearch(String content, LocalDateTime fromDate, 
+                                        LocalDateTime toDate, String signerPublicKey) {
+        EntityManager em = JPAUtil.getEntityManager();
+        try {
+            CriteriaBuilder cb = em.getCriteriaBuilder();
+            CriteriaQuery<Block> query = cb.createQuery(Block.class);
+            Root<Block> block = query.from(Block.class);
+            
+            List<Predicate> predicates = new ArrayList<>();
+            
+            if (content != null && !content.isEmpty()) {
+                predicates.add(cb.like(cb.lower(block.get("data")), 
+                                     "%" + content.toLowerCase() + "%"));
+            }
+            
+            if (fromDate != null) {
+                predicates.add(cb.greaterThanOrEqualTo(block.get("timestamp"), fromDate));
+            }
+            
+            if (toDate != null) {
+                predicates.add(cb.lessThanOrEqualTo(block.get("timestamp"), toDate));
+            }
+            
+            if (signerPublicKey != null && !signerPublicKey.isEmpty()) {
+                predicates.add(cb.equal(block.get("signerPublicKey"), signerPublicKey));
+            }
+            
+            query.where(predicates.toArray(new Predicate[0]));
+            query.orderBy(cb.desc(block.get("blockNumber")));
+            
+            return em.createQuery(query).getResultList();
+        } finally {
+            em.close();
+        }
+    }
+}
+```
+
+#### JPA Configuration Example
+```java
+// JPAUtil - EntityManager factory management
+public class JPAUtil {
+    private static EntityManagerFactory entityManagerFactory;
+    
+    static {
+        try {
+            // Create the EntityManagerFactory from persistence.xml
+            entityManagerFactory = Persistence.createEntityManagerFactory("blockchainPU");
+        } catch (Throwable ex) {
+            System.err.println("Initial EntityManagerFactory creation failed: " + ex);
+            throw new ExceptionInInitializerError(ex);
+        }
+    }
+    
+    public static EntityManagerFactory getEntityManagerFactory() {
+        return entityManagerFactory;
+    }
+    
+    public static EntityManager getEntityManager() {
+        return entityManagerFactory.createEntityManager();
+    }
+    
+    public static void shutdown() {
+        if (entityManagerFactory != null && entityManagerFactory.isOpen()) {
+            entityManagerFactory.close();
+        }
+    }
+    
+    // Utility method for transaction management
+    public static <T> T executeInTransaction(Function<EntityManager, T> operation) {
+        EntityManager em = getEntityManager();
+        EntityTransaction transaction = null;
+        
+        try {
+            transaction = em.getTransaction();
+            transaction.begin();
+            
+            T result = operation.apply(em);
+            
+            transaction.commit();
+            return result;
+        } catch (Exception e) {
+            if (transaction != null && transaction.isActive()) {
+                transaction.rollback();
+            }
+            throw new RuntimeException("Transaction failed", e);
+        } finally {
+            em.close();
+        }
+    }
+}
+```
+
 ## 🔧 Integration Examples
 
 ### Command Line Interface Integration
@@ -696,7 +939,7 @@ public class BlockchainCLI {
             System.out.println("Found " + results.size() + " blocks containing: " + searchTerm);
             
             for (Block block : results) {
-                System.out.println("Block #" + block.getBlockIndex() + ": " + 
+                System.out.println("Block #" + block.getBlockNumber() + ": " + 
                                  block.getData().substring(0, Math.min(50, block.getData().length())) + "...");
             }
         } catch (Exception e) {

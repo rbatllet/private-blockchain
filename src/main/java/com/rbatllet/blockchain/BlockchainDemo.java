@@ -1,12 +1,9 @@
 package com.rbatllet.blockchain;
 
 import com.rbatllet.blockchain.core.Blockchain;
-import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.util.CryptoUtil;
 
 import java.security.KeyPair;
-import java.security.PrivateKey;
-import java.security.PublicKey;
 
 /**
  * Demonstration of basic blockchain functionality

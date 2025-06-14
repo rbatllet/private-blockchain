@@ -2,6 +2,8 @@
 
 Comprehensive guide to the Private Blockchain API, core functions, and programming interface.
 
+> **IMPORTANT NOTE**: This guide references the actual classes and methods implemented in the project. All mentioned classes (Blockchain, Block, AuthorizedKey, JPAUtil, CryptoUtil) exist in the source code. The code examples show the correct usage of the current API based on the JPA standard with Hibernate as the implementation provider.
+
 ## 📋 Table of Contents
 
 - [Core Functions Usage](#-core-functions-usage)
@@ -11,6 +13,103 @@ Comprehensive guide to the Private Blockchain API, core functions, and programmi
 - [Best Practices](#-best-practices)
 
 ## 🎯 Core Functions Usage
+
+### JPA Integration Examples
+
+#### Direct JPA Operations
+```java
+// Using JPA EntityManager for custom operations
+EntityManager em = JPAUtil.getEntityManager();
+EntityTransaction transaction = null;
+
+try {
+    transaction = em.getTransaction();
+    transaction.begin();
+    
+    // Create and persist a new block
+    Block newBlock = new Block();
+    newBlock.setBlockNumber(1);
+    newBlock.setData("Custom block data");
+    newBlock.setTimestamp(LocalDateTime.now());
+    
+    em.persist(newBlock);
+    transaction.commit();
+    
+} catch (Exception e) {
+    if (transaction != null && transaction.isActive()) {
+        transaction.rollback();
+    }
+    throw new RuntimeException("Error in JPA operation", e);
+} finally {
+    em.close();
+}
+```
+
+#### JPA Query Language (JPQL) Examples
+```java
+// Custom JPQL queries for advanced operations
+EntityManager em = JPAUtil.getEntityManager();
+try {
+    // Find blocks by date range using JPQL
+    TypedQuery<Block> query = em.createQuery(
+        "SELECT b FROM Block b WHERE b.timestamp BETWEEN :startTime AND :endTime ORDER BY b.blockNumber ASC", 
+        Block.class);
+    query.setParameter("startTime", startDateTime);
+    query.setParameter("endTime", endDateTime);
+    List<Block> blocks = query.getResultList();
+    
+    // Count blocks with specific content
+    TypedQuery<Long> countQuery = em.createQuery(
+        "SELECT COUNT(b) FROM Block b WHERE LOWER(b.data) LIKE :content", 
+        Long.class);
+    countQuery.setParameter("content", "%" + searchTerm.toLowerCase() + "%");
+    Long count = countQuery.getSingleResult();
+    
+    // Get blocks by signer
+    TypedQuery<Block> signerQuery = em.createQuery(
+        "SELECT b FROM Block b WHERE b.signerPublicKey = :publicKey ORDER BY b.blockNumber ASC", 
+        Block.class);
+    signerQuery.setParameter("publicKey", publicKeyString);
+    List<Block> signerBlocks = signerQuery.getResultList();
+    
+} finally {
+    em.close();
+}
+```
+
+#### Entity Management with JPA Annotations
+```java
+// Example of JPA entity configuration
+@Entity
+@Table(name = "blocks")
+public class Block {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @Column(name = "block_number", unique = true, nullable = false)
+    private int blockNumber;
+    
+    @Column(name = "data", columnDefinition = "TEXT")
+    private String data;
+    
+    @Column(name = "timestamp", nullable = false)
+    private LocalDateTime timestamp;
+    
+    @Column(name = "hash", length = 64, nullable = false)
+    private String hash;
+    
+    // JPA lifecycle callbacks
+    @PrePersist
+    public void prePersist() {
+        if (timestamp == null) {
+            timestamp = LocalDateTime.now();
+        }
+    }
+    
+    // Getters and setters...
+}
+```
 
 ### Basic Operations
 
@@ -149,6 +248,122 @@ int maxChars = blockchain.getMaxBlockDataLength();
 // Add/remove authorized keys
 boolean added = blockchain.addAuthorizedKey(publicKeyString, "User Name");
 boolean revoked = blockchain.revokeAuthorizedKey(publicKeyString);
+
+// Get authorized keys
+List<AuthorizedKey> activeKeys = blockchain.getAllAuthorizedKeys();
+```
+
+### DAO Methods
+
+#### AuthorizedKeyDAO Methods
+```java
+// Save a new authorized key to the database
+public void saveAuthorizedKey(AuthorizedKey authorizedKey) {
+    // Persists a new authorized key with transaction management
+}
+
+// Check if a public key is currently authorized and active
+public boolean isKeyAuthorized(String publicKey) {
+    // Returns true if the key exists and is active
+}
+
+// Get all currently active authorized keys
+public List<AuthorizedKey> getActiveAuthorizedKeys() {
+    // Returns only the most recent authorization for each public key that is active
+}
+
+// Get ALL authorized keys (including revoked ones)
+public List<AuthorizedKey> getAllAuthorizedKeys() {
+    // Returns all keys for export functionality and historical validation
+}
+
+// Revoke an authorized key with proper temporal tracking
+public void revokeAuthorizedKey(String publicKey) {
+    // Sets isActive to false and records revocation timestamp
+}
+
+// Check if a public key was authorized at a specific time
+public boolean wasKeyAuthorizedAt(String publicKey, LocalDateTime timestamp) {
+    // Used for validating historical blocks
+}
+
+// Find an authorized key by owner name
+public AuthorizedKey getAuthorizedKeyByOwner(String ownerName) {
+    // Returns the most recent active authorization for the given owner
+}
+
+// Delete a specific authorized key by public key
+public boolean deleteAuthorizedKey(String publicKey) {
+    // Deletes ALL records for this public key (active and revoked)
+}
+
+// Delete all authorized keys (for import functionality)
+public int deleteAllAuthorizedKeys() {
+    // Removes all keys from the database
+}
+```
+
+#### BlockDAO Methods
+```java
+// Save a new block to the database
+public void saveBlock(Block block) {
+    // Persists a new block with transaction management
+}
+
+// Get a block by its number
+public Block getBlockByNumber(int blockNumber) {
+    // Returns the block with the specified number or null if not found
+}
+
+// Get the last block in the chain
+public Block getLastBlock() {
+    // Returns the block with the highest block number or null if chain is empty
+}
+
+// Get all blocks in the chain ordered by number
+public List<Block> getAllBlocks() {
+    // Returns all blocks in ascending order by block number
+}
+
+// Get blocks within a time range
+public List<Block> getBlocksByTimeRange(LocalDateTime startTime, LocalDateTime endTime) {
+    // Returns blocks with timestamps between startTime and endTime
+}
+
+// Get the total number of blocks
+public long getBlockCount() {
+    // Returns the total number of blocks in the chain
+}
+
+// Check if a block with a specific hash exists
+public boolean existsBlockWithHash(String hash) {
+    // Returns true if a block with the specified hash exists
+}
+
+// Delete a block by its number
+public boolean deleteBlockByNumber(int blockNumber) {
+    // Deletes the block with the specified number
+}
+
+// Delete blocks with block numbers greater than the specified number
+public int deleteBlocksAfter(int blockNumber) {
+    // Deletes all blocks with block numbers greater than the specified number
+}
+
+// Delete all blocks (for import functionality)
+public int deleteAllBlocks() {
+    // Removes all blocks from the database
+}
+
+// Search blocks by content (case-insensitive)
+public List<Block> searchBlocksByContent(String content) {
+    // Returns blocks containing the specified content (case-insensitive)
+}
+
+// Get block by hash
+public Block getBlockByHash(String hash) {
+    // Returns the block with the specified hash or null if not found
+}
 
 // Add authorized key with specific timestamp (for CLI operations)
 boolean added = blockchain.addAuthorizedKey(publicKeyString, "User Name", specificTimestamp);
@@ -418,6 +633,7 @@ public LocalDateTime getTimestamp()
 - `ownerName`: Human-readable owner name
 - `isActive`: Whether the key is currently active
 - `createdAt`: When the key was added
+- `revokedAt`: When the key was revoked (null if still active)
 
 #### Methods
 ```java
@@ -425,6 +641,7 @@ public String getPublicKey()
 public String getOwnerName()
 public boolean isActive()
 public LocalDateTime getCreatedAt()
+public LocalDateTime getRevokedAt()
 ```
 
 ## ⚙️ Configuration
@@ -432,8 +649,9 @@ public LocalDateTime getCreatedAt()
 ### Database Configuration
 - **Location**: `blockchain.db` in project root directory
 - **Type**: SQLite database
-- **ORM**: Hibernate with automatic table creation
-- **Logging**: SQL queries logged (can be disabled in hibernate.cfg.xml)
+- **JPA Standard**: Using JPA with Hibernate as implementation provider
+- **Configuration**: `persistence.xml` for JPA settings
+- **Logging**: SQL queries logged (can be disabled in persistence.xml)
 
 ### Size Limits
 - **Block Data**: 10,000 characters maximum
@@ -480,39 +698,39 @@ boolean verified = CryptoUtil.verifySignature(data, signature, publicKey);
 
 #### Block Content Analysis
 ```java
-// Build block content for custom validation
-String blockContent = blockchain.buildBlockContent(block);
+// Block content analysis (example)
+String blockContent = "Block #" + block.getBlockNumber() + ": " + block.getData();
 
-// Get block size information
-long blockSizeBytes = block.calculateSizeInBytes();
+// Get block size information (example)
 int blockDataLength = block.getData().length();
+long estimatedSize = blockDataLength * 2; // rough estimate
 
-// Verify block hash
-boolean hashValid = block.getHash().equals(block.calculateBlockHash());
+// Verify block hash manually (example for validation)
+boolean hashValid = block.getHash().equals(CryptoUtil.calculateHash(block.getData()));
 ```
 
 ### Advanced Configuration Methods
 
 #### Database Configuration
 ```java
-// Get current database statistics
-long databaseSize = blockchain.getDatabaseSizeBytes();
-int connectionPoolSize = blockchain.getConnectionPoolSize();
+// Get current database statistics (example)
+File dbFile = new File("blockchain.db");
+long databaseSize = dbFile.length();
 
-// Performance metrics
-long averageBlockAddTime = blockchain.getAverageBlockAddTime();
-long averageSearchTime = blockchain.getAverageSearchTime();
+// Performance monitoring example
+long blockCount = blockchain.getBlockCount();
+System.out.println("Current performance: " + blockCount + " blocks");
 ```
 
 #### Security Configuration
 ```java
-// Get security settings
-String hashAlgorithm = blockchain.getHashAlgorithm();        // "SHA-256"
-String signatureAlgorithm = blockchain.getSignatureAlgorithm(); // "SHA256withRSA"
-int keySize = blockchain.getDefaultKeySize();                // 2048
+// Security configuration constants (example)
+String hashAlgorithm = "SHA-256";        
+String signatureAlgorithm = "SHA256withRSA"; 
+int keySize = 2048;                
 
-// Validate security configuration
-boolean securityValid = blockchain.validateSecurityConfiguration();
+// Validate blockchain integrity
+boolean securityValid = blockchain.validateChain();
 ```
 
 ## 🔧 Configuration Parameters
@@ -626,27 +844,34 @@ private String sanitizeData(String data) {
 
 #### Batch Operations
 ```java
-// ✅ GOOD: Batch processing with transaction management
+// ✅ GOOD: Batch processing with JPA transaction management
 public void addBlocksBatch(List<BlockData> blockDataList, 
                           PrivateKey signerKey, PublicKey signerPublic) {
-    Session session = HibernateUtil.getSessionFactory().getCurrentSession();
-    Transaction transaction = session.beginTransaction();
+    EntityManager em = JPAUtil.getEntityManager();
+    EntityTransaction transaction = null;
     
     try {
+        transaction = em.getTransaction();
+        transaction.begin();
+        
         for (int i = 0; i < blockDataList.size(); i++) {
             Block block = createBlock(blockDataList.get(i), signerKey, signerPublic);
-            session.save(block);
+            em.persist(block);
             
             // Flush every 25 blocks for memory management
             if (i % 25 == 0) {
-                session.flush();
-                session.clear();
+                em.flush();
+                em.clear();
             }
         }
         transaction.commit();
     } catch (Exception e) {
-        transaction.rollback();
+        if (transaction != null && transaction.isActive()) {
+            transaction.rollback();
+        }
         throw e;
+    } finally {
+        em.close();
     }
 }
 
@@ -779,14 +1004,17 @@ public class BlockchainService {
 
 #### Connection Management
 ```java
-// ✅ GOOD: Proper session management
+// ✅ GOOD: Proper JPA EntityManager management
 public List<Block> getBlocksInRange(int startIndex, int endIndex) {
-    Session session = HibernateUtil.getSessionFactory().getCurrentSession();
-    Transaction transaction = session.beginTransaction();
+    EntityManager em = JPAUtil.getEntityManager();
+    EntityTransaction transaction = null;
     
     try {
-        Query<Block> query = session.createQuery(
-            "FROM Block WHERE blockIndex BETWEEN :start AND :end ORDER BY blockIndex",
+        transaction = em.getTransaction();
+        transaction.begin();
+        
+        TypedQuery<Block> query = em.createQuery(
+            "SELECT b FROM Block b WHERE b.blockNumber BETWEEN :start AND :end ORDER BY b.blockNumber",
             Block.class);
         query.setParameter("start", startIndex);
         query.setParameter("end", endIndex);
@@ -796,15 +1024,20 @@ public List<Block> getBlocksInRange(int startIndex, int endIndex) {
         return results;
         
     } catch (Exception e) {
-        transaction.rollback();
+        if (transaction != null && transaction.isActive()) {
+            transaction.rollback();
+        }
         throw e;
+    } finally {
+        em.close();
     }
 }
 
 // ❌ BAD: No transaction management
 public List<Block> getBlocksBad() {
-    Session session = HibernateUtil.getSessionFactory().getCurrentSession();
-    return session.createQuery("FROM Block", Block.class).getResultList(); // No transaction!
+    EntityManager em = JPAUtil.getEntityManager();
+    // No transaction management - dangerous!
+    return em.createQuery("SELECT b FROM Block b", Block.class).getResultList();
 }
 ```
 

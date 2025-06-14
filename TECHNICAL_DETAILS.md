@@ -13,6 +13,27 @@ Comprehensive technical documentation covering database schema, security model, 
 
 ## 🏗️ Architecture Overview
 
+### Project Classes
+
+The project includes the following main classes:
+
+#### Core Classes
+- `com.rbatllet.blockchain.core.Blockchain` - Main blockchain implementation
+- `com.rbatllet.blockchain.entity.Block` - JPA entity for blocks
+- `com.rbatllet.blockchain.entity.AuthorizedKey` - JPA entity for authorized keys
+- `com.rbatllet.blockchain.dao.BlockDAO` - DAO for block operations
+- `com.rbatllet.blockchain.dao.AuthorizedKeyDAO` - DAO for authorized key operations
+- `com.rbatllet.blockchain.util.JPAUtil` - Utility for EntityManager management
+- `com.rbatllet.blockchain.util.CryptoUtil` - Utility for cryptographic operations
+- `com.rbatllet.blockchain.dto.ChainExportData` - DTO for data export
+
+#### Demo and Test Classes
+- `com.rbatllet.blockchain.AdditionalAdvancedFunctionsDemo` - Advanced functions demonstration
+- `com.rbatllet.blockchain.BlockchainDemo` - Basic blockchain demonstration
+- `com.rbatllet.blockchain.CoreFunctionsTest` - Core functions testing
+- `com.rbatllet.blockchain.QuickTest` - Quick tests
+- `com.rbatllet.blockchain.SimpleTest` - Simple tests
+
 ### High-Level Architecture
 
 ```mermaid
@@ -37,9 +58,9 @@ graph TD
 - **Advanced Operations**: Export/Import, Search, Rollback capabilities
 
 #### 2. Data Access Layer
-- **BlockDAO**: Database operations for block entities
-- **AuthorizedKeyDAO**: Management of authorized cryptographic keys
-- **Hibernate Integration**: ORM mapping and transaction management
+- **BlockDAO**: Database operations for block entities using JPA
+- **AuthorizedKeyDAO**: Management of authorized cryptographic keys with JPA
+- **JPA Integration**: Entity mapping and transaction management with JPA standard
 
 #### 3. Entity Models
 - **Block Entity**: Represents blockchain blocks with metadata
@@ -47,7 +68,7 @@ graph TD
 
 #### 4. Utility Services
 - **CryptoUtil**: RSA key generation, signing, and verification
-- **HibernateUtil**: Database connection and session management
+- **JPAUtil**: JPA EntityManager and EntityManagerFactory management
 
 ## 🗄️ Database Schema
 
@@ -57,19 +78,17 @@ graph TD
 ```sql
 CREATE TABLE blocks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    block_index INTEGER NOT NULL UNIQUE,
+    block_number INTEGER NOT NULL UNIQUE,
+    previous_hash TEXT,
+    data TEXT,
     timestamp TEXT NOT NULL,
-    data TEXT NOT NULL,
-    previous_hash TEXT NOT NULL,
-    hash TEXT NOT NULL UNIQUE,
-    nonce INTEGER NOT NULL DEFAULT 0,
+    hash TEXT NOT NULL,
     signature TEXT,
-    signer_public_key TEXT,
-    FOREIGN KEY (signer_public_key) REFERENCES authorized_keys (public_key)
+    signer_public_key TEXT
 );
 
 -- Indexes for optimal performance
-CREATE INDEX idx_blocks_index ON blocks(block_index);
+CREATE INDEX idx_blocks_number ON blocks(block_number);
 CREATE INDEX idx_blocks_hash ON blocks(hash);
 CREATE INDEX idx_blocks_previous_hash ON blocks(previous_hash);
 CREATE INDEX idx_blocks_timestamp ON blocks(timestamp);
@@ -80,12 +99,11 @@ CREATE INDEX idx_blocks_signer ON blocks(signer_public_key);
 ```sql
 CREATE TABLE authorized_keys (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    public_key TEXT NOT NULL UNIQUE,
-    description TEXT,
-    created_at TEXT NOT NULL,
+    public_key TEXT NOT NULL,
+    owner_name TEXT,
     is_active BOOLEAN NOT NULL DEFAULT 1,
-    last_used TEXT,
-    usage_count INTEGER NOT NULL DEFAULT 0
+    created_at TEXT,
+    revoked_at TEXT
 );
 
 -- Indexes for key management
@@ -93,67 +111,275 @@ CREATE INDEX idx_keys_public_key ON authorized_keys(public_key);
 CREATE INDEX idx_keys_active ON authorized_keys(is_active);
 CREATE INDEX idx_keys_created ON authorized_keys(created_at);
 ```
-
-### Hibernate Configuration
-
-#### Development Configuration
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE hibernate-configuration PUBLIC
-    "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
-    "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
-<hibernate-configuration>
-    <session-factory>
-        <!-- Database connection settings -->
-        <property name="hibernate.connection.driver_class">org.sqlite.JDBC</property>
-        <property name="hibernate.connection.url">jdbc:sqlite:blockchain.db</property>
-        <property name="hibernate.dialect">org.hibernate.community.dialect.SQLiteDialect</property>
-        
-        <!-- Development settings -->
-        <property name="hibernate.hbm2ddl.auto">update</property>
-        <property name="hibernate.show_sql">true</property>
-        <property name="hibernate.format_sql">true</property>
-        
-        <!-- Entity mappings -->
-        <mapping class="com.rbatllet.blockchain.entity.Block"/>
-        <mapping class="com.rbatllet.blockchain.entity.AuthorizedKey"/>
-    </session-factory>
-</hibernate-configuration>
 ```
 
-#### Production Configuration Options
+### JPA Configuration
+
+#### JPA Persistence Configuration
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence xmlns="http://java.sun.com/xml/ns/persistence"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://java.sun.com/xml/ns/persistence
+             http://java.sun.com/xml/ns/persistence/persistence_2_0.xsd"
+             version="2.0">
+
+    <persistence-unit name="blockchainPU" transaction-type="RESOURCE_LOCAL">
+        <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
+        
+        <!-- Entities -->
+        <class>com.rbatllet.blockchain.entity.Block</class>
+        <class>com.rbatllet.blockchain.entity.AuthorizedKey</class>
+        
+        <properties>
+            <!-- Database connection settings -->
+            <property name="jakarta.persistence.jdbc.driver" value="org.sqlite.JDBC"/>
+            <property name="jakarta.persistence.jdbc.url" value="jdbc:sqlite:blockchain.db?journal_mode=WAL"/>
+            
+            <!-- JPA standard settings with Hibernate as provider -->
+            <property name="jakarta.persistence.schema-generation.database.action" value="update"/>
+            
+            <!-- Hibernate-specific settings (where JPA standard alternatives are not available) -->
+            <property name="hibernate.dialect" value="org.hibernate.community.dialect.SQLiteDialect"/>
+            <property name="hibernate.show_sql" value="false"/>
+            <property name="hibernate.format_sql" value="false"/>
+            <property name="hibernate.connection.pool_size" value="10"/>
+            <property name="hibernate.connection.autocommit" value="false"/>
+        </properties>
+    </persistence-unit>
+</persistence>
+```
+
+#### Production JPA Configuration Options
 ```xml
 <!-- For production environments -->
-<hibernate-configuration>
-    <session-factory>
-        <!-- Disable SQL logging for performance -->
-        <property name="show_sql">false</property>
-        <property name="format_sql">false</property>
-blockchain.block.max_size_bytes=1048576
-blockchain.block.max_hash_length=64
+<persistence-unit name="blockchainPU" transaction-type="RESOURCE_LOCAL">
+    <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
+    
+    <properties>
+        <!-- JPA standard settings -->
+        <property name="jakarta.persistence.schema-generation.database.action" value="validate"/>
+        
+        <!-- Hibernate-specific settings (where JPA standard alternatives are not available) -->
+        <property name="hibernate.show_sql" value="false"/>
+        <property name="hibernate.format_sql" value="false"/>
+        <property name="hibernate.connection.pool_size" value="10"/>
+        
+        <!-- Connection timeout and validation -->
+        <property name="hibernate.connection.timeout" value="20000"/>
+        <property name="hibernate.connection.validation_timeout" value="3000"/>
+        
+        <!-- Enable the query cache -->
+        <property name="hibernate.cache.use_query_cache" value="false"/>
+    </properties>
+</persistence-unit>
+```
+
+#### JPA Entity Classes
+```java
+// src/main/java/com/rbatllet/blockchain/entity/Block.java
+@Entity
+@Table(name = "blocks")
+public class Block {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @Column(name = "block_number", unique = true, nullable = false)
+    private int blockNumber;
+    
+    @Column(name = "previous_hash", length = 64)
+    private String previousHash;
+    
+    @Column(name = "hash", length = 64, nullable = false)
+    private String hash;
+    
+    @Column(name = "timestamp", nullable = false)
+    private LocalDateTime timestamp;
+    
+    @Column(name = "data", columnDefinition = "TEXT")
+    private String data;
+    
+    @Column(name = "signature", columnDefinition = "TEXT")
+    private String signature;
+    
+    @Column(name = "signer_public_key", columnDefinition = "TEXT")
+    private String signerPublicKey;
+    
+    // Getters and setters...
+}
+
+// src/main/java/com/rbatllet/blockchain/entity/AuthorizedKey.java
+@Entity
+@Table(name = "authorized_keys")
+public class AuthorizedKey {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @Column(name = "public_key", nullable = false, columnDefinition = "TEXT")
+    private String publicKey;
+    
+    @Column(name = "owner_name")
+    private String ownerName;
+    
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
+    
+    @Column(name = "is_active", nullable = false)
+    private boolean isActive;
+    
+    @Column(name = "revoked_at")
+    private LocalDateTime revokedAt;
+    
+    // Method to check if key was active at a specific time
+    public boolean wasActiveAt(LocalDateTime timestamp) {
+        if (!isActive && revokedAt != null && timestamp.isAfter(revokedAt)) {
+            return false;
+        }
+        return timestamp.isAfter(createdAt) || timestamp.isEqual(createdAt);
+    }
+    
+    // Getters and setters...
+}
+```
+
+#### JPA Configuration File
+```xml
+<!-- src/main/resources/META-INF/persistence.xml -->
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence xmlns="http://java.sun.com/xml/ns/persistence"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://java.sun.com/xml/ns/persistence
+             http://java.sun.com/xml/ns/persistence/persistence_2_0.xsd"
+             version="2.0">
+
+    <persistence-unit name="blockchainPU" transaction-type="RESOURCE_LOCAL">
+        <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
+        
+        <!-- Entities -->
+        <class>com.rbatllet.blockchain.entity.Block</class>
+        <class>com.rbatllet.blockchain.entity.AuthorizedKey</class>
+        
+        <properties>
+            <!-- Database connection settings -->
+            <property name="jakarta.persistence.jdbc.driver" value="org.sqlite.JDBC"/>
+            <property name="jakarta.persistence.jdbc.url" value="jdbc:sqlite:blockchain.db?journal_mode=WAL"/>
+            
+            <!-- Hibernate specific settings -->
+            <property name="hibernate.dialect" value="org.hibernate.community.dialect.SQLiteDialect"/>
+            <property name="hibernate.hbm2ddl.auto" value="update"/>
+            <property name="hibernate.show_sql" value="false"/>
+            <property name="hibernate.format_sql" value="false"/>
+            
+            <!-- Connection pool settings -->
+            <property name="hibernate.connection.pool_size" value="10"/>
+            
+            <!-- Improve transaction handling -->
+            <property name="hibernate.connection.autocommit" value="false"/>
+            <property name="hibernate.current_session_context_class" value="thread"/>
+            
+            <!-- Connection timeout and validation -->
+            <property name="hibernate.connection.timeout" value="20000"/>
+            <property name="hibernate.connection.validation_timeout" value="3000"/>
+            
+            <!-- Enable the query cache -->
+            <property name="hibernate.cache.use_query_cache" value="false"/>
+        </properties>
+    </persistence-unit>
+</persistence>
+```
+
+#### JPA Utility Class
+```java
+// src/main/java/com/rbatllet/blockchain/util/JPAUtil.java
+public class JPAUtil {
+    private static EntityManagerFactory entityManagerFactory;
+    
+    static {
+        try {
+            entityManagerFactory = Persistence.createEntityManagerFactory("blockchainPU");
+        } catch (Throwable ex) {
+            System.err.println("Initial EntityManagerFactory creation failed: " + ex);
+            throw new ExceptionInInitializerError(ex);
+        }
+    }
+    
+    public static EntityManagerFactory getEntityManagerFactory() {
+        return entityManagerFactory;
+    }
+    
+    public static EntityManager getEntityManager() {
+        return entityManagerFactory.createEntityManager();
+    }
+    
+    public static void shutdown() {
+        if (entityManagerFactory != null && entityManagerFactory.isOpen()) {
+            entityManagerFactory.close();
+        }
+    }
+}
+```
+
+## 📊 JSON Examples
+
+### Block JSON Example
+```json
+{
+  "id": 1,
+  "blockNumber": 1,
+  "previousHash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "data": "Genesis Block",
+  "timestamp": "2025-06-14T10:15:30",
+  "hash": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2",
+  "signature": "MIIB6wYJKoZIhvcNAQcCoIIB3DCCAdgCAQExDzANBglghkgBZQMEAgEFADATBgkq...",
+  "signerPublicKey": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAhk4rn9z+8XBnYLwCEgOH..."
+}
+```
+
+### AuthorizedKey JSON Example
+```json
+{
+  "id": 1,
+  "publicKey": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAhk4rn9z+8XBnYLwCEgOH...",
+  "ownerName": "Admin User",
+  "isActive": true,
+  "createdAt": "2025-06-01T09:00:00",
+  "revokedAt": null
+}
+```
+
+## 🛠️ Configuration Parameters
+
+### Size and Performance Limits
+```properties
+# Block constraints
+blockchain.block.max_data_size=10000           # 10,000 characters
+blockchain.block.max_size_bytes=1048576        # 1MB (1,048,576 bytes)
+blockchain.block.max_hash_length=64            # SHA-256 hash length
 
 # Database settings
-blockchain.database.connection_timeout=30000
-blockchain.database.max_connections=20
-blockchain.database.batch_size=25
+blockchain.database.connection_timeout=30000   # 30 seconds
+blockchain.database.max_connections=20         # Connection pool size
+blockchain.database.batch_size=25              # Batch operations
 
 # Security settings
-blockchain.security.min_key_size=2048
+blockchain.security.min_key_size=2048          # Minimum RSA key size
 blockchain.security.signature_algorithm=SHA256withRSA
 blockchain.security.hash_algorithm=SHA-256
 
 # Performance settings
-blockchain.performance.chain_validation_batch=100
-blockchain.performance.search_max_results=1000
-blockchain.performance.export_buffer_size=8192
+blockchain.performance.chain_validation_batch=100    # Batch validation size
+blockchain.performance.search_max_results=1000       # Max search results
+blockchain.performance.export_buffer_size=8192       # Export buffer size
 
 # Operational limits
-blockchain.operations.max_rollback_depth=100
-blockchain.operations.backup_retention_days=30
-blockchain.operations.log_retention_days=90
+blockchain.operations.max_rollback_depth=100         # Max rollback blocks
+blockchain.operations.backup_retention_days=30      # Backup retention
+blockchain.operations.log_retention_days=90         # Log retention
 ```
 
-#### Environment-Specific Configuration
+### Environment-Specific Configuration
 ```java
 public class BlockchainConfig {
     public static final class Development {
@@ -247,34 +473,41 @@ public class BlockchainCache {
             Integer oldestKey = blockCache.keySet().iterator().next();
             blockCache.remove(oldestKey);
         }
-        blockCache.put(block.getBlockIndex(), block);
+        blockCache.put(block.getBlockNumber(), block);
     }
 }
 ```
 
-#### Batch Operations
+#### Batch Operations with JPA
 ```java
 public class BatchOperations {
     public void batchAddBlocks(List<BlockData> blocks, PrivateKey signingKey, 
                               PublicKey publicKey) throws Exception {
-        Session session = HibernateUtil.getSessionFactory().getCurrentSession();
-        Transaction transaction = session.beginTransaction();
+        EntityManager em = JPAUtil.getEntityManager();
+        EntityTransaction transaction = null;
         
         try {
+            transaction = em.getTransaction();
+            transaction.begin();
+            
             for (int i = 0; i < blocks.size(); i++) {
                 Block block = createBlock(blocks.get(i), signingKey, publicKey);
-                session.save(block);
+                em.persist(block);
                 
                 // Flush batch every 25 blocks
                 if (i % 25 == 0) {
-                    session.flush();
-                    session.clear();
+                    em.flush();
+                    em.clear();
                 }
             }
             transaction.commit();
         } catch (Exception e) {
-            transaction.rollback();
+            if (transaction != null && transaction.isActive()) {
+                transaction.rollback();
+            }
             throw e;
+        } finally {
+            em.close();
         }
     }
 }
@@ -297,18 +530,18 @@ public class BatchOperations {
     "authorized_keys": [
         {
             "public_key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...",
-            "description": "Alice Admin Key",
+            "owner_name": "Alice Admin Key",
             "created_at": "2024-01-01T00:00:00Z",
             "is_active": true
         }
     ],
     "blocks": [
         {
-            "block_index": 0,
+            "block_number": 0,
             "timestamp": "2024-01-01T00:00:00Z",
             "data": "Genesis Block",
             "previous_hash": "0",
-            "hash": "000abc123...",
+            "hash": "000abc123..."
             "nonce": 0,
             "signature": null,
             "signer_public_key": null
@@ -332,7 +565,7 @@ public boolean importChain(String jsonFilePath) throws Exception {
     // 3. Validate all blocks before import
     for (Block block : export.getBlocks()) {
         if (!validateBlock(block)) {
-            throw new ValidationException("Invalid block: " + block.getBlockIndex());
+            throw new ValidationException("Invalid block: " + block.getBlockNumber());
         }
     }
     
@@ -353,16 +586,19 @@ public boolean importChain(String jsonFilePath) throws Exception {
 
 ### Search Implementation
 
-#### Content-Based Search
+#### Content-Based Search with JPQL
 ```java
 public List<Block> searchBlocksByContent(String searchTerm) {
-    Session session = HibernateUtil.getSessionFactory().getCurrentSession();
-    Transaction transaction = session.beginTransaction();
+    EntityManager em = JPAUtil.getEntityManager();
+    EntityTransaction transaction = null;
     
     try {
-        Query<Block> query = session.createQuery(
-            "FROM Block b WHERE LOWER(b.data) LIKE LOWER(:searchTerm) " +
-            "ORDER BY b.blockIndex DESC", Block.class);
+        transaction = em.getTransaction();
+        transaction.begin();
+        
+        TypedQuery<Block> query = em.createQuery(
+            "SELECT b FROM Block b WHERE LOWER(b.data) LIKE LOWER(:searchTerm) " +
+            "ORDER BY b.blockNumber DESC", Block.class);
         query.setParameter("searchTerm", "%" + searchTerm + "%");
         query.setMaxResults(1000); // Limit results for performance
         
@@ -370,77 +606,88 @@ public List<Block> searchBlocksByContent(String searchTerm) {
         transaction.commit();
         return results;
     } catch (Exception e) {
-        transaction.rollback();
+        if (transaction != null && transaction.isActive()) {
+            transaction.rollback();
+        }
         throw e;
+    } finally {
+        em.close();
     }
 }
 ```
 
-#### Advanced Search with Filters
+#### Advanced Search with JPQL Filters
 ```java
 public List<Block> advancedSearch(SearchCriteria criteria) {
-    StringBuilder hql = new StringBuilder("FROM Block b WHERE 1=1");
+    StringBuilder jpql = new StringBuilder("SELECT b FROM Block b WHERE 1=1");
     Map<String, Object> parameters = new HashMap<>();
     
     if (criteria.getContentFilter() != null) {
-        hql.append(" AND LOWER(b.data) LIKE LOWER(:content)");
+        jpql.append(" AND LOWER(b.data) LIKE LOWER(:content)");
         parameters.put("content", "%" + criteria.getContentFilter() + "%");
     }
     
     if (criteria.getFromDate() != null) {
-        hql.append(" AND b.timestamp >= :fromDate");
+        jpql.append(" AND b.timestamp >= :fromDate");
         parameters.put("fromDate", criteria.getFromDate());
     }
     
     if (criteria.getToDate() != null) {
-        hql.append(" AND b.timestamp <= :toDate");
+        jpql.append(" AND b.timestamp <= :toDate");
         parameters.put("toDate", criteria.getToDate());
     }
     
     if (criteria.getSignerPublicKey() != null) {
-        hql.append(" AND b.signerPublicKey = :signer");
+        jpql.append(" AND b.signerPublicKey = :signer");
         parameters.put("signer", criteria.getSignerPublicKey());
     }
     
-    hql.append(" ORDER BY b.blockIndex DESC");
+    jpql.append(" ORDER BY b.blockNumber DESC");
     
-    Session session = HibernateUtil.getSessionFactory().getCurrentSession();
-    Query<Block> query = session.createQuery(hql.toString(), Block.class);
-    
-    parameters.forEach(query::setParameter);
-    query.setMaxResults(criteria.getMaxResults());
-    
-    return query.getResultList();
+    EntityManager em = JPAUtil.getEntityManager();
+    try {
+        TypedQuery<Block> query = em.createQuery(jpql.toString(), Block.class);
+        
+        parameters.forEach(query::setParameter);
+        query.setMaxResults(criteria.getMaxResults());
+        
+        return query.getResultList();
+    } finally {
+        em.close();
+    }
 }
 ```
 
 ### Rollback Implementation
 
-#### Safe Rollback with Validation
+#### Safe Rollback with JPA Validation
 ```java
-public boolean rollbackToBlock(int targetBlockIndex) throws Exception {
+public boolean rollbackToBlock(int targetBlockNumber) throws Exception {
     // 1. Validation checks
-    if (targetBlockIndex < 0) {
+    if (targetBlockNumber < 0) {
         throw new IllegalArgumentException("Cannot rollback before genesis block");
     }
     
-    Block targetBlock = getBlockByIndex(targetBlockIndex);
+    Block targetBlock = getBlockByNumber(targetBlockNumber);
     if (targetBlock == null) {
-        throw new BlockNotFoundException("Target block not found: " + targetBlockIndex);
+        throw new BlockNotFoundException("Target block not found: " + targetBlockNumber);
     }
     
     // 2. Create backup before rollback
     String backupPath = "rollback_backup_" + System.currentTimeMillis() + ".json";
     exportChain(backupPath);
     
-    // 3. Remove blocks after target
-    Session session = HibernateUtil.getSessionFactory().getCurrentSession();
-    Transaction transaction = session.beginTransaction();
+    // 3. Remove blocks after target using JPA
+    EntityManager em = JPAUtil.getEntityManager();
+    EntityTransaction transaction = null;
     
     try {
-        Query deleteQuery = session.createQuery(
-            "DELETE FROM Block WHERE blockIndex > :targetIndex");
-        deleteQuery.setParameter("targetIndex", targetBlockIndex);
+        transaction = em.getTransaction();
+        transaction.begin();
+        
+        Query deleteQuery = em.createQuery(
+            "DELETE FROM Block b WHERE b.blockNumber > :targetNumber");
+        deleteQuery.setParameter("targetNumber", targetBlockNumber);
         int deletedCount = deleteQuery.executeUpdate();
         
         transaction.commit();
@@ -452,13 +699,17 @@ public boolean rollbackToBlock(int targetBlockIndex) throws Exception {
             throw new ValidationException("Chain validation failed after rollback");
         }
         
-        logger.info("Successfully rolled back {} blocks to index {}", 
-                   deletedCount, targetBlockIndex);
+        logger.info("Successfully rolled back {} blocks to number {}", 
+                   deletedCount, targetBlockNumber);
         return true;
         
     } catch (Exception e) {
-        transaction.rollback();
+        if (transaction != null && transaction.isActive()) {
+            transaction.rollback();
+        }
         throw e;
+    } finally {
+        em.close();
     }
 }
 ```
@@ -468,7 +719,7 @@ public boolean rollbackToBlock(int targetBlockIndex) throws Exception {
 ### Test Suite Structure
 
 #### Unit Test Categories
-1. **Core Functionality Tests** (22 JUnit 5 tests)
+1. **Core Functionality Tests** (More than 40 JUnit 5 tests)
    - Genesis block creation and validation
    - Authorized key management operations
    - Block addition with proper authorization
@@ -486,7 +737,7 @@ public boolean rollbackToBlock(int targetBlockIndex) throws Exception {
    - Memory usage under load
    - Database optimization effectiveness
 
-#### Test Environment Configuration
+#### Test Environment Configuration with JPA
 ```java
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class BlockchainTest {
@@ -495,12 +746,17 @@ public class BlockchainTest {
     
     @BeforeAll
     static void setupTestEnvironment() {
-        // Configure test-specific Hibernate settings
-        Configuration config = new Configuration();
-        config.setProperty("hibernate.connection.url", "jdbc:sqlite:" + TEST_DB);
-        config.setProperty("hibernate.hbm2ddl.auto", "create-drop");
+        // Configure test-specific JPA settings
+        Map<String, Object> testProperties = new HashMap<>();
+        testProperties.put("jakarta.persistence.jdbc.url", "jdbc:sqlite:" + TEST_DB);
+        testProperties.put("jakarta.persistence.schema-generation.database.action", "drop-and-create");
+        testProperties.put("hibernate.show_sql", "true");
         
-        HibernateUtil.setConfiguration(config);
+        // Create test EntityManagerFactory
+        EntityManagerFactory testEMF = Persistence.createEntityManagerFactory(
+            "blockchainPU", testProperties);
+        JPAUtil.setEntityManagerFactory(testEMF); // Test-only method
+        
         blockchain = new Blockchain();
     }
     
@@ -512,7 +768,7 @@ public class BlockchainTest {
     
     @AfterAll
     static void teardownTestEnvironment() {
-        HibernateUtil.shutdown();
+        JPAUtil.shutdown();
         new File(TEST_DB).delete();
     }
 }
