@@ -140,15 +140,15 @@ if [ -f "blockchain.db" ]; then
     rm blockchain.db
 fi
 
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.CoreFunctionsTest" -q
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.CoreFunctionsDemo" -q
 BASIC_RESULT=$?
 
 if [ $BASIC_RESULT -eq 0 ]; then
-    echo "✅ Basic Core Functions test: PASSED"
-    record_test "Basic Core Functions Test" "PASS"
+    echo "✅ Core Functions Demo: PASSED"
+    record_test "Core Functions Demo" "PASS"
 else
-    echo "❌ Basic Core Functions test: FAILED"
-    record_test "Basic Core Functions Test" "FAIL"
+    echo "❌ Core Functions Demo: FAILED"
+    record_test "Core Functions Demo" "FAIL"
 fi
 
 echo
@@ -196,16 +196,16 @@ if [ -f "blockchain.db" ]; then
     rm blockchain.db
 fi
 
-echo "🧪 Running Simple Test..."
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.SimpleTest" -q
+echo "🧪 Running Simple Demo..."
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.SimpleDemo" -q
 SIMPLE_RESULT=$?
 
 if [ $SIMPLE_RESULT -eq 0 ]; then
-    echo "✅ Simple Test: PASSED"
-    record_test "Simple Test" "PASS"
+    echo "✅ Simple Demo: PASSED"
+    record_test "Simple Demo" "PASS"
 else
-    echo "❌ Simple Test: FAILED"
-    record_test "Simple Test" "FAIL"
+    echo "❌ Simple Demo: FAILED"
+    record_test "Simple Demo" "FAIL"
 fi
 
 # Clear database
@@ -213,16 +213,16 @@ if [ -f "blockchain.db" ]; then
     rm blockchain.db
 fi
 
-echo "🧪 Running Quick Test..."
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.QuickTest" -q
+echo "🧪 Running Quick Demo..."
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.QuickDemo" -q
 QUICK_RESULT=$?
 
 if [ $QUICK_RESULT -eq 0 ]; then
-    echo "✅ Quick Test: PASSED"
-    record_test "Quick Test" "PASS"
+    echo "✅ Quick Demo: PASSED"
+    record_test "Quick Demo" "PASS"
 else
-    echo "❌ Quick Test: FAILED"
-    record_test "Quick Test" "FAIL"
+    echo "❌ Quick Demo: FAILED"
+    record_test "Quick Demo" "FAIL"
 fi
 
 # Clear database

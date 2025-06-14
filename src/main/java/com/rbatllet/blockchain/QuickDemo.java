@@ -5,10 +5,10 @@ import com.rbatllet.blockchain.util.CryptoUtil;
 
 import java.security.KeyPair;
 
-public class QuickTest {
+public class QuickDemo {
     
     public static void main(String[] args) {
-        System.out.println("=== QUICK TEST ===");
+        System.out.println("=== QUICK DEMO ===");
         
         try {
             Blockchain blockchain = new Blockchain();

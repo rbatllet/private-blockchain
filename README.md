@@ -124,13 +124,31 @@ Authorized keys: 2
 ### 3. Run Advanced Features Demo
 ```bash
 # Run advanced features demonstration
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.core.AdditionalAdvancedFunctionsDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.AdditionalAdvancedFunctionsDemo"
 ```
 
-### 4. Quick Functionality Test
+### 4. Run Chain Recovery Demo
+```bash
+# Run blockchain chain recovery demonstration
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.ChainRecoveryDemo"
+```
+
+### 5. Run Key Deletion Safety Features Demo
+```bash
+# Run demonstration of key deletion safety features
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.DangerousDeleteDemo"
+```
+
+### 6. Run Enhanced Recovery Example
+```bash
+# Run example of advanced recovery techniques
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.EnhancedRecoveryExample"
+```
+
+### 7. Quick Functionality Test
 ```bash
 # Run quick verification test
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.QuickTest"
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.QuickDemo"
 ```
 
 ## 💻 How It Works
@@ -196,7 +214,7 @@ The project includes extensive testing with **more than 40 JUnit 5 tests** plus 
 ./run_basic_tests.sh
 
 # Core functions comprehensive test
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.CoreFunctionsTest"
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.CoreFunctionsDemo"
 ```
 
 ### What Gets Tested
@@ -225,9 +243,12 @@ src/main/java/com/rbatllet/blockchain/
 │   └── JPAUtil.java                             # JPA EntityManager management
 ├── BlockchainDemo.java                          # Basic demo application
 ├── AdditionalAdvancedFunctionsDemo.java         # Advanced features demo
-├── CoreFunctionsTest.java                       # Comprehensive core test
-├── SimpleTest.java                              # Basic functionality test
-└── QuickTest.java                               # Fast verification test
+├── ChainRecoveryDemo.java                       # Chain recovery demonstration
+├── DangerousDeleteDemo.java                     # Key deletion safety features demo
+├── EnhancedRecoveryExample.java                 # Advanced recovery techniques example
+├── CoreFunctionsDemo.java                       # Comprehensive core test
+├── SimpleDemo.java                              # Basic functionality test
+└── QuickDemo.java                               # Fast verification test
 
 src/test/java/com/rbatllet/blockchain/core/
 ├── BlockchainAdditionalAdvancedFunctionsTest.java   # JUnit 5 test suite
@@ -314,7 +335,7 @@ All scripts now use a centralized functions library at `scripts/shared-functions
 - **Error handling utilities**: Robust script execution
 - **Test environment setup**: Standardized initialization
 
-> 📚 **For detailed implementation information**, see [SCRIPTS_DATABASE_FIX.md](SCRIPTS_DATABASE_FIX.md)
+> 📚 **For detailed implementation information**, see [SCRIPTS_DATABASE_FIX.md](docs/SCRIPTS_DATABASE_FIX.md)
 
 ## 🔐 Safe Key Management
 
@@ -434,24 +455,24 @@ public class BlockchainExample {
 This project includes comprehensive documentation for different use cases:
 
 ### 📖 User Guides
-- **[EXAMPLES.md](EXAMPLES.md)** - Real-world use cases and workflow patterns
-- **[API_GUIDE.md](API_GUIDE.md)** - Complete API reference and core functions
-- **[TESTING.md](TESTING.md)** - Comprehensive testing guide and troubleshooting
+- **[EXAMPLES.md](docs/EXAMPLES.md)** - Real-world use cases and workflow patterns
+- **[API_GUIDE.md](docs/API_GUIDE.md)** - Complete API reference and core functions
+- **[TESTING.md](docs/TESTING.md)** - Comprehensive testing guide and troubleshooting
 
 ### 🏢 Technical & Production
-- **[TECHNICAL_DETAILS.md](TECHNICAL_DETAILS.md)** - Database schema, security model, architecture
-- **[PRODUCTION_GUIDE.md](PRODUCTION_GUIDE.md)** - Production deployment and operational guidelines
-- **[SCRIPTS_DATABASE_FIX.md](SCRIPTS_DATABASE_FIX.md)** - Database cleanup utilities implementation guide
+- **[TECHNICAL_DETAILS.md](docs/TECHNICAL_DETAILS.md)** - Database schema, security model, architecture
+- **[PRODUCTION_GUIDE.md](docs/PRODUCTION_GUIDE.md)** - Production deployment and operational guidelines
+- **[SCRIPTS_DATABASE_FIX.md](docs/SCRIPTS_DATABASE_FIX.md)** - Database cleanup utilities implementation guide
 
 ### 🚀 Quick Navigation
 
 | What you want to do | Go to |
 |---------------------|-------|
-| See real-world examples and use cases | [EXAMPLES.md](EXAMPLES.md) |
-| Learn the API and core functions | [API_GUIDE.md](API_GUIDE.md) |
-| Run tests and troubleshoot issues | [TESTING.md](TESTING.md) |
-| Understand technical implementation | [TECHNICAL_DETAILS.md](TECHNICAL_DETAILS.md) |
-| Deploy to production | [PRODUCTION_GUIDE.md](PRODUCTION_GUIDE.md) |
+| See real-world examples and use cases | [EXAMPLES.md](docs/EXAMPLES.md) |
+| Learn the API and core functions | [API_GUIDE.md](docs/API_GUIDE.md) |
+| Run tests and troubleshoot issues | [TESTING.md](docs/TESTING.md) |
+| Understand technical implementation | [TECHNICAL_DETAILS.md](docs/TECHNICAL_DETAILS.md) |
+| Deploy to production | [PRODUCTION_GUIDE.md](docs/PRODUCTION_GUIDE.md) |
 
 ## 🔧 Configuration
 
@@ -536,11 +557,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📞 Support
 
 For issues or questions:
-1. Check the [TESTING.md](TESTING.md) troubleshooting section
+1. Check the [TESTING.md](docs/TESTING.md) troubleshooting section
 2. Verify your Java and Maven versions meet requirements
 3. Run `./run_all_tests.sh` to identify problems
 4. Check console output for specific error messages
-5. Review [TECHNICAL_DETAILS.md](TECHNICAL_DETAILS.md) for implementation details
+5. Review [TECHNICAL_DETAILS.md](docs/TECHNICAL_DETAILS.md) for implementation details
 
 ### Getting Help
 1. **Check this documentation** for common use cases and examples
@@ -576,7 +597,7 @@ mvn clean compile test-compile
 **🚀 Ready to start?** 
 
 1. Run `./run_all_tests.sh` to verify everything works perfectly
-2. Try the practical examples in [EXAMPLES.md](EXAMPLES.md) for your use case
+2. Try the practical examples in [EXAMPLES.md](docs/EXAMPLES.md) for your use case
 3. Explore the comprehensive test suite to understand all features
 4. Build your own blockchain application using the patterns provided!
 

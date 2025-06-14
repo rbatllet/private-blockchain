@@ -6,10 +6,10 @@ import com.rbatllet.blockchain.util.CryptoUtil;
 
 import java.security.KeyPair;
 
-public class SimpleTest {
+public class SimpleDemo {
     
     public static void main(String[] args) {
-        System.out.println("=== SIMPLE BLOCKCHAIN TEST ===\n");
+        System.out.println("=== SIMPLE BLOCKCHAIN DEMO ===\n");
         
         try {
             // 1. Create blockchain instance

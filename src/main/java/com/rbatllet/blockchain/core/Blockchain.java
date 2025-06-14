@@ -164,6 +164,30 @@ public class Blockchain {
     }
     
     /**
+     * PUBLIC: Validate a single block (used by recovery manager)
+     * @param block The block to validate
+     * @return true if block is valid, false otherwise
+     */
+    public boolean validateSingleBlock(Block block) {
+        try {
+            // Skip validation for genesis block
+            if (block.getBlockNumber() == 0) {
+                return true;
+            }
+            
+            // Find the previous block for validation
+            Block previousBlock = blockDAO.getBlockByNumber(block.getBlockNumber() - 1);
+            if (previousBlock == null) {
+                return false; // Previous block not found
+            }
+            
+            return validateBlock(block, previousBlock);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
      * CORE FUNCTION: Validate the entire blockchain
      */
     public boolean validateChain() {
@@ -893,6 +917,52 @@ public class Blockchain {
         // Safe to delete - no historical blocks affected
         System.out.println("Safely deleting authorized key (no historical blocks affected)");
         return authorizedKeyDAO.deleteAuthorizedKey(publicKey);
+    }
+
+    // ===============================
+    // CHAIN RECOVERY METHODS
+    // ===============================
+
+    /**
+     * Manual recovery method for corrupted chains
+     * @param deletedPublicKey The key that was deleted and caused corruption
+     * @param ownerName Original owner name for re-authorization
+     * @return RecoveryResult with success status and details
+     */
+    public com.rbatllet.blockchain.recovery.ChainRecoveryManager.RecoveryResult recoverCorruptedChain(String deletedPublicKey, String ownerName) {
+        com.rbatllet.blockchain.recovery.ChainRecoveryManager recovery = 
+            new com.rbatllet.blockchain.recovery.ChainRecoveryManager(this);
+        return recovery.recoverCorruptedChain(deletedPublicKey, ownerName);
+    }
+
+    /**
+     * Diagnose chain corruption
+     * @return ChainDiagnostic with detailed information about corruption
+     */
+    public com.rbatllet.blockchain.recovery.ChainRecoveryManager.ChainDiagnostic diagnoseCorruption() {
+        com.rbatllet.blockchain.recovery.ChainRecoveryManager recovery = 
+            new com.rbatllet.blockchain.recovery.ChainRecoveryManager(this);
+        return recovery.diagnoseCorruption();
+    }
+
+    /**
+     * Validate chain with automatic recovery attempt
+     * @return true if chain is valid or was successfully recovered, false otherwise
+     */
+    public boolean validateChainWithRecovery() {
+        if (validateChain()) {
+            return true;
+        }
+        
+        System.out.println("🔧 Chain validation failed, attempting diagnostic...");
+        com.rbatllet.blockchain.recovery.ChainRecoveryManager.ChainDiagnostic diagnostic = diagnoseCorruption();
+        System.out.println("📊 Diagnostic: " + diagnostic);
+        
+        if (!diagnostic.isHealthy()) {
+            System.out.println("💡 Use recoverCorruptedChain() for manual recovery");
+        }
+        
+        return false;
     }
 
     /**

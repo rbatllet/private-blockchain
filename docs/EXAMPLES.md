@@ -2,7 +2,14 @@
 
 Comprehensive real-world examples and practical use cases for the Private Blockchain implementation.
 
-> **IMPORTANT NOTE**: The classes shown in these examples (DocumentVerificationSystem, SupplyChainTracker, MedicalRecordsSystem, FinancialAuditSystem, KeyManagementPatterns, KeyCleanupManager, AuthorizedKeyInfo) are conceptual and designed to illustrate potential use cases. They are not part of the actual project code. Only the Blockchain, Block, AuthorizedKey, CryptoUtil, and JPAUtil classes exist in the current implementation.
+> **IMPORTANT NOTE**: The classes shown in these examples (DocumentVerificationSystem, SupplyChainTracker, MedicalRecordsSystem, FinancialAuditSystem, KeyRotationExample, KeyCleanupManager, BlockchainHealthMonitor, HealthStatus) are conceptual and designed to illustrate potential use cases. They are not part of the actual project code. Only the Blockchain, Block, AuthorizedKey, Blockchain.KeyDeletionImpact, CryptoUtil, and JPAUtil classes exist in the current implementation.
+>
+> For real working examples, refer to the following classes in the source code:
+> - `BlockchainDemo.java` - Basic blockchain demonstration
+> - `AdditionalAdvancedFunctionsDemo.java` - Advanced features demonstration
+> - `ChainRecoveryDemo.java` - Chain recovery demonstration
+> - `DangerousDeleteDemo.java` - Key deletion safety features demo
+> - `EnhancedRecoveryExample.java` - Advanced recovery techniques example
 
 ## 📋 Table of Contents
 
@@ -17,6 +24,12 @@ Comprehensive real-world examples and practical use cases for the Private Blockc
 Track and verify document authenticity with immutable records.
 
 ```java
+// Required imports
+import java.security.KeyPair;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.util.List;
+
 public class DocumentVerificationSystem {
     public static void main(String[] args) {
         try {
@@ -71,6 +84,13 @@ public class DocumentVerificationSystem {
 Track products through the supply chain with full traceability.
 
 ```java
+// Required imports
+import java.security.KeyPair;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.time.LocalDate;
+import java.util.List;
+
 public class SupplyChainTracker {
     public static void main(String[] args) {
         try {
@@ -131,6 +151,12 @@ public class SupplyChainTracker {
 Secure and auditable medical record system with privacy protection.
 
 ```java
+// Required imports
+import java.security.KeyPair;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.util.List;
+
 public class MedicalRecordsSystem {
     public static void main(String[] args) {
         try {
@@ -192,6 +218,12 @@ public class MedicalRecordsSystem {
 Create an immutable audit trail for financial transactions.
 
 ```java
+// Required imports
+import java.security.KeyPair;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.util.List;
+
 public class FinancialAuditSystem {
     public static void main(String[] args) {
         try {
@@ -327,63 +359,44 @@ For more detailed API information and technical specifications, see [API_GUIDE.m
 ### Key Management Patterns
 
 ```java
-public class KeyManagementPatterns {
+// Required imports
+import java.security.KeyPair;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+
+/**
+ * Example class demonstrating key rotation best practices using the Blockchain API.
+ * This shows how to safely rotate keys with an overlap period to ensure continuity.
+ */
+public class KeyRotationExample {
     
-    // Secure key generation with validation
-    public AuthorizedKeyInfo generateAndAuthorizeSecureKey(Blockchain blockchain, String ownerName, 
-                                                         String department, String role) {
-        try {
-            // Generate cryptographically secure key pair
-            KeyPair keyPair = CryptoUtil.generateKeyPair();
-            String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
-            
-            // Create comprehensive owner identification
-            String fullOwnerName = String.format("%s | Dept: %s | Role: %s | Generated: %s", 
-                                                ownerName, department, role, 
-                                                java.time.LocalDateTime.now().format(
-                                                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
-            
-            // Add to blockchain with validation
-            if (blockchain.addAuthorizedKey(publicKeyString, fullOwnerName)) {
-                System.out.println("✅ Key authorized for: " + ownerName);
-                System.out.println("🔑 Public key fingerprint: " + publicKeyString.substring(0, 32) + "...");
-                
-                // Return secure key information
-                return new AuthorizedKeyInfo(keyPair, publicKeyString, fullOwnerName, 
-                                           java.time.LocalDateTime.now());
-            } else {
-                System.err.println("❌ Failed to authorize key for: " + ownerName);
-                return null;
-            }
-            
-        } catch (Exception e) {
-            System.err.println("💥 Key generation error: " + e.getMessage());
-            return null;
-        }
-    }
-    
-    // Key rotation with overlap period
-    public boolean rotateKey(Blockchain blockchain, AuthorizedKeyInfo oldKey, String ownerName) {
+    // Simple key rotation example with overlap period for security
+    public boolean rotateKey(Blockchain blockchain, String oldPublicKey, String ownerName) {
         try {
             System.out.println("🔄 Starting key rotation for: " + ownerName);
             
             // Generate new key
-            AuthorizedKeyInfo newKey = generateAndAuthorizeSecureKey(blockchain, 
-                                                                   ownerName + " (Rotated)", 
-                                                                   "Security", "Updated");
-            if (newKey == null) {
+            KeyPair newKeyPair = CryptoUtil.generateKeyPair();
+            String newPublicKey = CryptoUtil.publicKeyToString(newKeyPair.getPublic());
+            
+            // Add new key to blockchain
+            String fullOwnerName = ownerName + " (Rotated Key)";
+            if (!blockchain.addAuthorizedKey(newPublicKey, fullOwnerName)) {
+                System.err.println("❌ Failed to authorize new key");
                 return false;
             }
+            
+            System.out.println("✅ New key authorized for: " + fullOwnerName);
+            System.out.println("🔑 New public key: " + newPublicKey.substring(0, 32) + "...");
             
             // Allow overlap period for transition
             System.out.println("⏱️  Overlap period: Old and new keys both active");
             Thread.sleep(1000); // Simulate overlap period
             
             // Revoke old key
-            if (blockchain.revokeAuthorizedKey(oldKey.getPublicKeyString())) {
+            if (blockchain.revokeAuthorizedKey(oldPublicKey)) {
                 System.out.println("✅ Key rotation completed successfully");
-                System.out.println("🗑️  Old key revoked: " + oldKey.getPublicKeyString().substring(0, 32) + "...");
-                System.out.println("🆕 New key active: " + newKey.getPublicKeyString().substring(0, 32) + "...");
+                System.out.println("🗑️  Old key revoked: " + oldPublicKey.substring(0, 32) + "...");
                 return true;
             } else {
                 System.err.println("❌ Failed to revoke old key during rotation");
@@ -395,43 +408,23 @@ public class KeyManagementPatterns {
             return false;
         }
     }
-    
-    // Supporting class
-    public static class AuthorizedKeyInfo {
-        private final KeyPair keyPair;
-        private final String publicKeyString;
-        private final String ownerName;
-        private final java.time.LocalDateTime creationTime;
-        
-        public AuthorizedKeyInfo(KeyPair keyPair, String publicKeyString, String ownerName, 
-                               java.time.LocalDateTime creationTime) {
-            this.keyPair = keyPair;
-            this.publicKeyString = publicKeyString;
-            this.ownerName = ownerName;
-            this.creationTime = creationTime;
-        }
-        
-        // Getters
-        public KeyPair getKeyPair() { return keyPair; }
-        public String getPublicKeyString() { return publicKeyString; }
-        public String getOwnerName() { return ownerName; }
-        public java.time.LocalDateTime getCreationTime() { return creationTime; }
-        
-        // Security methods
-        public PrivateKey getPrivateKey() { return keyPair.getPrivate(); }
-        public PublicKey getPublicKey() { return keyPair.getPublic(); }
-        
-        // Utility methods
-        public String getKeyFingerprint() { 
-            return publicKeyString.substring(0, Math.min(32, publicKeyString.length())); 
-        }
-    }
 }
 ```
 
 ### Safe and Dangerous Key Deletion Examples
 
 ```java
+// Required imports
+import java.security.KeyPair;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.util.List;
+
+/**
+ * Example class demonstrating the multi-level key deletion API.
+ * Shows proper usage of the KeyDeletionImpact analysis and various deletion methods
+ * with appropriate safety checks.
+ */
 public class KeyCleanupManager {
     
     // RECOMMENDED: Safe key deletion with impact analysis
@@ -474,7 +467,7 @@ public class KeyCleanupManager {
     }
     
     // DANGEROUS: Permanent key deletion for compliance scenarios
-    public boolean dangerousDeleteKey(Blockchain blockchain, String publicKey, String reason, boolean force) {
+    public boolean dangerousDeleteKey(Blockchain blockchain, String publicKey, boolean force, String reason) {
         try {
             System.out.println("⚠️ DANGEROUS KEY DELETION: Use with extreme caution");
             System.out.println("🔑 Key: " + publicKey.substring(0, 32) + "...");
@@ -504,6 +497,7 @@ public class KeyCleanupManager {
             }
             
             // Step 3: Perform dangerous deletion
+            // Use the correct API method name and parameter order
             boolean deleted = blockchain.dangerouslyDeleteAuthorizedKey(publicKey, force, reason);
             
             if (deleted) {
@@ -548,7 +542,7 @@ public class KeyCleanupManager {
         blockchain.addAuthorizedKey(activePublicKey, "Active User - Has Blocks");
         blockchain.addBlock("Important transaction", activeKey.getPrivate(), activeKey.getPublic());
         
-        // Attempt safe deletion - should be blocked
+        // Attempt safe deletion - should be blocked because key has signed blocks
         boolean blockedResult = safeDeleteKey(blockchain, activePublicKey, "Attempt to delete active key");
         System.out.println("Blocked deletion result: " + (blockedResult ? "UNEXPECTED SUCCESS ⚠️" : "CORRECTLY BLOCKED ✅"));
         
@@ -556,8 +550,8 @@ public class KeyCleanupManager {
         System.out.println("\n=== EXAMPLE 3: Emergency Forced Deletion ===");
         
         // This should only be done in emergencies (security incidents, GDPR)
-        boolean forcedResult = dangerousDeleteKey(blockchain, activePublicKey, 
-                                                "Security incident: key compromised", true);
+        boolean forcedResult = dangerousDeleteKey(blockchain, activePublicKey, true,
+                                                "Security incident: key compromised");
         System.out.println("Forced deletion result: " + (forcedResult ? "SUCCESS (DANGEROUS) ⚠️" : "FAILED ❌"));
         
         // Verify blockchain integrity after forced deletion
@@ -605,15 +599,28 @@ public class KeyCleanupManager {
         System.out.println("📊 Results: " + safeDeleted + " safely deleted, " + dangerousSkipped + " skipped for safety");
     }
 }
-}
 ```
 
 ### Health Check and Monitoring
 
 ```java
+// Required imports
+import java.io.File;
+import java.util.List;
+
+/**
+ * Example monitoring class for blockchain health checks.
+ * This is a conceptual class to demonstrate monitoring patterns.
+ */
 public class BlockchainHealthMonitor {
     
-    public HealthStatus performHealthCheck(Blockchain blockchain) {
+    /**
+     * Performs a comprehensive health check on the blockchain.
+     * @param blockchain The blockchain instance to check
+     * @return A HealthStatus object containing various health metrics
+     */
+public HealthStatus performHealthCheck(Blockchain blockchain) {
+        // HealthStatus is a conceptual class for this example
         HealthStatus status = new HealthStatus();
         
         try {
@@ -630,7 +637,8 @@ public class BlockchainHealthMonitor {
             status.setActiveKeys(activeKeys.size());
             
             // Check database file properties
-            File dbFile = new File("blockchain.db");
+            // Note: In production, the database path should be configurable
+            File dbFile = new File(blockchain.getDatabasePath());
             if (dbFile.exists()) {
                 status.setDatabaseSize(dbFile.length());
                 status.setFreeSpace(dbFile.getFreeSpace());
@@ -659,7 +667,10 @@ public class BlockchainHealthMonitor {
         return status;
     }
     
-    // Supporting class for health status
+    /**
+     * Conceptual class representing blockchain health metrics.
+     * This is for example purposes only.
+     */
     public static class HealthStatus {
         private long blockCount;
         private boolean chainValid;

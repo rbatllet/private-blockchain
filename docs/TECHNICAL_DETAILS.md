@@ -30,9 +30,12 @@ The project includes the following main classes:
 #### Demo and Test Classes
 - `com.rbatllet.blockchain.AdditionalAdvancedFunctionsDemo` - Advanced functions demonstration
 - `com.rbatllet.blockchain.BlockchainDemo` - Basic blockchain demonstration
-- `com.rbatllet.blockchain.CoreFunctionsTest` - Core functions testing
-- `com.rbatllet.blockchain.QuickTest` - Quick tests
-- `com.rbatllet.blockchain.SimpleTest` - Simple tests
+- `com.rbatllet.blockchain.ChainRecoveryDemo` - Chain recovery demonstration
+- `com.rbatllet.blockchain.DangerousDeleteDemo` - Key deletion safety features demo
+- `com.rbatllet.blockchain.EnhancedRecoveryExample` - Advanced recovery techniques example
+- `com.rbatllet.blockchain.CoreFunctionsDemo` - Core functions demonstration
+- `com.rbatllet.blockchain.QuickDemo` - Quick blockchain demonstration
+- `com.rbatllet.blockchain.SimpleDemo` - Simple blockchain demonstration
 
 ### High-Level Architecture
 

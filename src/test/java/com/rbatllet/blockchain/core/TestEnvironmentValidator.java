@@ -47,6 +47,15 @@ public class TestEnvironmentValidator {
             boolean hasRollbackBlocks = false;
             boolean hasSearchByContent = false;
             boolean hasGetBlockByHash = false;
+            boolean hasRevokeAuthorizedKey = false;
+            boolean hasCanDeleteAuthorizedKey = false;
+            boolean hasDeleteAuthorizedKey = false;
+            boolean hasDangerouslyDeleteAuthorizedKey = false;
+            boolean hasGetBlocksByDateRange = false;
+            boolean hasGetBlocksByTimeRange = false;
+            boolean hasGetAuthorizedKeyByOwner = false;
+            boolean hasGetAllAuthorizedKeys = false;
+            boolean hasClearAndReinitialize = false;
             
             for (java.lang.reflect.Method method : methods) {
                 switch (method.getName()) {
@@ -55,14 +64,43 @@ public class TestEnvironmentValidator {
                     case "rollbackBlocks" -> hasRollbackBlocks = true;
                     case "searchBlocksByContent" -> hasSearchByContent = true;
                     case "getBlockByHash" -> hasGetBlockByHash = true;
+                    case "revokeAuthorizedKey" -> hasRevokeAuthorizedKey = true;
+                    case "canDeleteAuthorizedKey" -> hasCanDeleteAuthorizedKey = true;
+                    case "deleteAuthorizedKey" -> hasDeleteAuthorizedKey = true;
+                    case "dangerouslyDeleteAuthorizedKey" -> hasDangerouslyDeleteAuthorizedKey = true;
+                    case "getBlocksByDateRange" -> hasGetBlocksByDateRange = true;
+                    case "getBlocksByTimeRange" -> hasGetBlocksByTimeRange = true;
+                    case "getAuthorizedKeyByOwner" -> hasGetAuthorizedKeyByOwner = true;
+                    case "getAllAuthorizedKeys" -> hasGetAllAuthorizedKeys = true;
+                    case "clearAndReinitialize" -> hasClearAndReinitialize = true;
                 }
             }
             
+            // Verify basic advanced functions
+            System.out.println("\n🔍 Verifying basic advanced functions...");
             allChecksPass &= checkMethod(hasExportChain, "exportChain");
             allChecksPass &= checkMethod(hasImportChain, "importChain");
             allChecksPass &= checkMethod(hasRollbackBlocks, "rollbackBlocks");
             allChecksPass &= checkMethod(hasSearchByContent, "searchBlocksByContent");
             allChecksPass &= checkMethod(hasGetBlockByHash, "getBlockByHash");
+            
+            // Verify authorized key management functions
+            System.out.println("\n🔑 Verifying authorized key management functions...");
+            allChecksPass &= checkMethod(hasRevokeAuthorizedKey, "revokeAuthorizedKey");
+            allChecksPass &= checkMethod(hasCanDeleteAuthorizedKey, "canDeleteAuthorizedKey");
+            allChecksPass &= checkMethod(hasDeleteAuthorizedKey, "deleteAuthorizedKey");
+            allChecksPass &= checkMethod(hasDangerouslyDeleteAuthorizedKey, "dangerouslyDeleteAuthorizedKey");
+            
+            // Verify temporal query functions
+            System.out.println("\n⏰ Verifying temporal query functions...");
+            allChecksPass &= checkMethod(hasGetBlocksByDateRange, "getBlocksByDateRange");
+            allChecksPass &= checkMethod(hasGetBlocksByTimeRange, "getBlocksByTimeRange");
+            
+            // Verify additional functions
+            System.out.println("\n🔍 Verifying additional functions...");
+            allChecksPass &= checkMethod(hasGetAuthorizedKeyByOwner, "getAuthorizedKeyByOwner");
+            allChecksPass &= checkMethod(hasGetAllAuthorizedKeys, "getAllAuthorizedKeys");
+            allChecksPass &= checkMethod(hasClearAndReinitialize, "clearAndReinitialize");
             
         } catch (Exception e) {
             System.out.println("   ❌ Error initializing Blockchain: " + e.getMessage());
@@ -96,17 +134,17 @@ public class TestEnvironmentValidator {
             System.out.println("   ✅ " + description);
             return true;
         } catch (ClassNotFoundException e) {
-            System.out.println("   ❌ " + description + " - No trobat: " + className);
+            System.out.println("   ❌ " + description + " - Not found: " + className);
             return false;
         }
     }
     
     private static boolean checkMethod(boolean exists, String methodName) {
         if (exists) {
-            System.out.println("   ✅ Mètode " + methodName + " disponible");
+            System.out.println("   ✅ Method " + methodName + " available");
             return true;
         } else {
-            System.out.println("   ❌ Mètode " + methodName + " no trobat");
+            System.out.println("   ❌ Method " + methodName + " not found");
             return false;
         }
     }

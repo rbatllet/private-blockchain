@@ -133,22 +133,31 @@ Running basic core functionality tests...
 #### 4. Interactive Demonstrations
 ```bash
 # Advanced features demo with practical examples
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.core.AdditionalAdvancedFunctionsDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.AdditionalAdvancedFunctionsDemo"
 
 # Basic demo with multiple users
 mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.BlockchainDemo"
 
+# Chain recovery demonstration
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.ChainRecoveryDemo"
+
+# Key deletion safety features demo
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.DangerousDeleteDemo"
+
+# Advanced recovery techniques example
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.EnhancedRecoveryExample"
+
 # Core functions comprehensive test
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.CoreFunctionsTest"
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.CoreFunctionsDemo"
 ```
 
 #### 5. Quick Verification Tests
 ```bash
 # Fast verification
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.QuickTest"
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.QuickDemo"
 
 # Basic functionality
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.SimpleTest"
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.SimpleDemo"
 ```
 
 ## 📝 Test Suites Description
@@ -231,7 +240,7 @@ mvn test -Dtest=BlockchainAdditionalAdvancedFunctionsTest -X
 
 ### 2. Core Functions Test
 
-**File**: `CoreFunctionsTest.java`  
+**File**: `CoreFunctionsDemo.java`  
 **Type**: Interactive demonstration with comprehensive validation  
 **Coverage**: Fundamental blockchain operations
 
@@ -245,7 +254,7 @@ mvn test -Dtest=BlockchainAdditionalAdvancedFunctionsTest -X
 
 **Sample execution:**
 ```bash
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.CoreFunctionsTest"
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.CoreFunctionsDemo"
 ```
 
 ### 3. Basic Demo Application
@@ -275,7 +284,7 @@ mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.CoreFunctionsTest"
 
 ### 5. Quick Validation Tests
 
-**Files**: `SimpleTest.java`, `QuickTest.java`  
+**Files**: `SimpleDemo.java`, `QuickDemo.java`  
 **Type**: Fast verification tests  
 **Coverage**: Basic functionality verification
 
@@ -398,7 +407,7 @@ rm blockchain.db*
 ./run_all_tests.sh
 
 # Check for data corruption
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.CoreFunctionsTest"
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.CoreFunctionsDemo"
 
 # Validate specific components
 mvn test -Dtest=BlockchainAdditionalAdvancedFunctionsTest#testCompleteWorkflow
@@ -779,7 +788,7 @@ bash ./run_all_tests.sh
 # Or run Maven commands directly
 mvn clean compile
 mvn test -Dtest=BlockchainAdditionalAdvancedFunctionsTest
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.CoreFunctionsTest"
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.CoreFunctionsDemo"
 ```
 
 **Issue: Path Separator Issues**
