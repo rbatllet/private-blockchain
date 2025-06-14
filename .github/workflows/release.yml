@@ -46,15 +46,19 @@ jobs:
         name: Release ${{ steps.get_version.outputs.VERSION }}
         body: |
           ## Changes in this Release
-          - Automated release of Private Blockchain ${{ steps.get_version.outputs.VERSION }}
+          - Complete migration from Hibernate to JPA standard
+          - Implement multi-layered key deletion security system
+          - Add comprehensive security test scripts
+          - Implement blockchain recovery functionality with enhanced validation and reorganize project structure
+          - Enhance blockchain recovery system and data validation: implement intelligent rollback strategy, advanced recovery configuration, and strict null block policy.
           
           ## Download
-          - **private-blockchain-1.0.0.jar**: Standard JAR (requires dependencies)
-          - **private-blockchain-1.0.0-jar-with-dependencies.jar**: Executable JAR with all dependencies included
+          - **private-blockchain-1.0.1.jar**: Standard JAR (requires dependencies)
+          - **private-blockchain-1.0.1-jar-with-dependencies.jar**: Executable JAR with all dependencies included
           
           ## Usage
           ```bash
-          java -jar private-blockchain-1.0.0-jar-with-dependencies.jar
+          java -jar private-blockchain-1.0.1-jar-with-dependencies.jar
           ```
         files: |
           target/private-blockchain-*.jar
