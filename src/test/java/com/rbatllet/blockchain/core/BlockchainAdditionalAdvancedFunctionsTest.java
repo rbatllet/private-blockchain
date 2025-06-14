@@ -66,9 +66,9 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @Order(1)
     @DisplayName("Test Block Size Validation - Valid Sizes")
     void testValidBlockSizes() {
-        // Test null data (should be valid)
-        assertTrue(blockchain.addBlock(null, aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()),
-                "Null data should be accepted");
+        // Test null data (should be rejected - use empty string for system blocks)
+        assertFalse(blockchain.addBlock(null, aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()),
+                "Null data should be rejected");
 
         // Test empty string
         assertTrue(blockchain.addBlock("", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()),
@@ -92,6 +92,10 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @Order(2)
     @DisplayName("Test Block Size Validation - Invalid Sizes")
     void testInvalidBlockSizes() {
+        // Test null data (should be rejected)
+        assertFalse(blockchain.addBlock(null, aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()),
+                "Null data should be rejected");
+
         // Test data exceeding character limit
         StringBuilder tooLongData = new StringBuilder();
         for (int i = 0; i <= blockchain.getMaxBlockDataLength(); i++) {

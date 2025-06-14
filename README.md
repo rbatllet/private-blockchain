@@ -251,6 +251,7 @@ src/main/java/com/rbatllet/blockchain/
 └── QuickDemo.java                               # Fast verification test
 
 src/test/java/com/rbatllet/blockchain/core/
+├── BlockchainTest.java                             # Core blockchain tests
 ├── BlockchainAdditionalAdvancedFunctionsTest.java   # JUnit 5 test suite
 ├── BlockchainKeyAuthorizationTest.java             # Key authorization tests
 ├── CriticalConsistencyTest.java                    # Consistency validation tests
@@ -260,6 +261,11 @@ src/test/java/com/rbatllet/blockchain/core/
 src/test/java/com/rbatllet/blockchain/dao/
 └── AuthorizedKeyDAODeleteTest.java                 # DAO delete operation tests
 
+src/test/java/com/rbatllet/blockchain/recovery/
+├── ChainRecoveryManagerTest.java                   # Recovery manager tests
+├── ImprovedRollbackStrategyTest.java              # Enhanced rollback strategy tests
+└── RecoveryConfigTest.java                         # Recovery configuration tests
+
 Configuration & Scripts:
 ├── src/main/resources/META-INF/persistence.xml  # JPA configuration
 ├── src/main/resources/logging.properties      # Logging configuration
@@ -268,6 +274,8 @@ Configuration & Scripts:
 ├── run_all_tests.sh                             # Complete test runner
 ├── run_advanced_tests.sh                        # Advanced tests only
 ├── run_basic_tests.sh                           # Basic tests only
+├── run_recovery_tests.sh                        # Recovery tests runner
+├── run_improved_rollback_test.sh                # Improved rollback tests
 ├── scripts/                                     # Script utilities directory
 │   ├── shared-functions.sh                     # Common functions library
 │   ├── run_template.sh                         # Template for new scripts

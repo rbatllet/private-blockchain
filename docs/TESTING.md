@@ -35,10 +35,11 @@ The project includes comprehensive test suites to verify all functionality and e
 - ✅ **Performance**: Execution time validation
 
 ### Test Statistics
-- **Total Test Files**: 5 comprehensive test suites
-- **JUnit 5 Tests**: More than 40 professional unit tests
+- **Total Test Files**: 9 comprehensive test suites
+- **JUnit 5 Tests**: More than 60 professional unit tests
 - **Demo Applications**: 3 interactive demonstrations
 - **Verification Tests**: 2 quick validation tests
+- **Script Test Runners**: 5 specialized test scripts
 - **Total Coverage**: 100% of implemented functionality
 
 ## 🚀 Test Execution Guide
@@ -102,7 +103,55 @@ Test Results:
 
 **Note**: You may see error messages like "Error exporting chain" or "Import file not found" during these tests. These are **intentional test cases** that verify proper error handling - they are not actual failures.
 
-#### 3. Basic Core Functions Only
+#### 3. Recovery Tests (Chain Recovery & Rollback)
+```bash
+./run_recovery_tests.sh
+```
+
+Runs all recovery-related tests including chain recovery manager, recovery configuration, and improved rollback strategy.
+
+**Expected output:**
+```
+🔄 BLOCKCHAIN RECOVERY TESTS
+============================
+
+🧪 Running Chain Recovery Manager Tests...
+✅ Chain Recovery Manager Tests: PASSED
+
+🧪 Running Recovery Configuration Tests...
+✅ Recovery Configuration Tests: PASSED
+
+🧠 Running Improved Rollback Strategy Tests...
+✅ Improved Rollback Strategy Tests: PASSED
+
+📊 Test suites passed: 3/3
+🎉 ALL RECOVERY TESTS PASSED SUCCESSFULLY!
+```
+
+#### 4. Improved Rollback Strategy Test
+```bash
+./run_improved_rollback_test.sh
+```
+
+Runs only the improved rollback strategy tests that verify the intelligent rollback analysis.
+
+**Expected output:**
+```
+🧪 IMPROVED ROLLBACK STRATEGY TEST
+==================================
+
+Running ImprovedRollbackStrategyTest...
+
+✅ Improved Rollback Strategy Test: PASSED
+
+🎯 Test verified:
+   • Intelligent rollback analysis
+   • Security-first approach with data preservation
+   • Hash chain integrity verification
+   • Multiple safety checks and fallbacks
+```
+
+#### 5. Basic Tests Only (Quick Verification)
 ```bash
 ./run_basic_tests.sh
 ```
@@ -164,37 +213,59 @@ mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.SimpleDemo"
 
 ### 1. JUnit 5 Test Suites
 
-#### 1.1 Advanced Functions Test Suite
+#### 1.1 Core Blockchain Test Suite
+**File**: `BlockchainTest.java`  
+**Tests**: Comprehensive core functionality tests  
+**Coverage**: Basic blockchain operations, initialization, and validation
+
+#### 1.2 Advanced Functions Test Suite
 **File**: `BlockchainAdditionalAdvancedFunctionsTest.java`  
 **Tests**: Comprehensive unit tests  
 **Coverage**: Advanced blockchain features
 
-#### 1.2 Key Authorization Test Suite
+#### 1.3 Key Authorization Test Suite
 **File**: `BlockchainKeyAuthorizationTest.java`  
 **Tests**: Key authorization functionality tests  
 **Coverage**: Key management and authorization
 
-#### 1.3 Critical Consistency Test Suite
+#### 1.4 Critical Consistency Test Suite
 **File**: `CriticalConsistencyTest.java`  
 **Tests**: Data consistency validation tests  
 **Coverage**: Blockchain data integrity and consistency
 
-#### 1.4 Temporal Validation Test Suite
+#### 1.5 Temporal Validation Test Suite
 **File**: `SimpleTemporalValidationTest.java`  
 **Tests**: Temporal validation tests  
 **Coverage**: Time-based operations and validations
 
-#### 1.5 DAO Delete Operations Test Suite
+#### 1.6 DAO Delete Operations Test Suite
 **File**: `AuthorizedKeyDAODeleteTest.java`  
 **Tests**: DAO delete operations tests  
 **Coverage**: Key deletion and database operations
 
+#### 1.7 Chain Recovery Manager Test Suite
+**File**: `ChainRecoveryManagerTest.java`  
+**Tests**: Recovery functionality tests  
+**Coverage**: Chain recovery strategies, error handling, and multi-user scenarios
+
+#### 1.8 Recovery Configuration Test Suite
+**File**: `RecoveryConfigTest.java`  
+**Tests**: Recovery configuration tests  
+**Coverage**: Configuration validation, presets, and builder pattern
+
+#### 1.9 Improved Rollback Strategy Test Suite
+**File**: `ImprovedRollbackStrategyTest.java`  
+**Tests**: Enhanced rollback strategy tests  
+**Coverage**: Intelligent rollback analysis, security-first approach, hash chain integrity verification
+
 #### Test Categories:
 
 **Block Size Validation Tests**
-- `testBlockSizeValidation()` - Ensures blocks respect size limits
-- `testOversizedBlockRejection()` - Large blocks are properly rejected
+- `testValidBlockSizes()` - Ensures blocks respect size limits
+- `testInvalidBlockSizes()` - Tests rejection of null data and oversized blocks
 - `testBlockDataLengthLimits()` - Character limits enforced
+- `testEmptyStringAccepted()` - Empty strings allowed for system blocks
+- `testNullDataRejected()` - Null data properly rejected
 
 **Chain Export/Import Tests**
 - `testChainExport()` - Export functionality works correctly

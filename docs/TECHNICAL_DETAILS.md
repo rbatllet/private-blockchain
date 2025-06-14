@@ -23,6 +23,8 @@ The project includes the following main classes:
 - `com.rbatllet.blockchain.entity.AuthorizedKey` - JPA entity for authorized keys
 - `com.rbatllet.blockchain.dao.BlockDAO` - DAO for block operations
 - `com.rbatllet.blockchain.dao.AuthorizedKeyDAO` - DAO for authorized key operations
+- `com.rbatllet.blockchain.recovery.ChainRecoveryManager` - Chain recovery implementation
+- `com.rbatllet.blockchain.recovery.RecoveryConfig` - Recovery configuration settings
 - `com.rbatllet.blockchain.util.JPAUtil` - Utility for EntityManager management
 - `com.rbatllet.blockchain.util.CryptoUtil` - Utility for cryptographic operations
 - `com.rbatllet.blockchain.dto.ChainExportData` - DTO for data export
@@ -591,6 +593,38 @@ public class BatchOperations {
 ```
 
 ## 🔍 Advanced Features Implementation
+
+### Block Data Policy
+
+#### Null vs Empty Data Policy
+```java
+private boolean validateBlockSize(String data) {
+    if (data == null) {
+        System.err.println("Block data cannot be null. Use empty string \"\" for system blocks");
+        return false; // SECURITY: Reject null data but allow empty strings
+    }
+    
+    // Allow empty strings for system/configuration blocks
+    if (data.isEmpty()) {
+        System.out.println("System block with empty data created");
+        return true; // Allow system blocks with empty data
+    }
+    
+    // Check character length for normal content
+    if (data.length() > MAX_BLOCK_DATA_LENGTH) {
+        System.err.println("Block data length exceeds maximum allowed");
+        return false;
+    }
+    
+    return true;
+}
+```
+
+#### Data Validation Rules
+- **Null Data**: Explicitly rejected for security reasons
+- **Empty String**: Allowed for system blocks and configuration blocks
+- **Normal Content**: Must be within size limits (MAX_BLOCK_DATA_LENGTH characters)
+- **UTF-8 Encoding**: All data is stored as UTF-8 with byte size validation
 
 ### Export/Import Functionality
 

@@ -58,13 +58,23 @@ public class Blockchain {
      */
     public synchronized boolean addBlock(String data, PrivateKey signerPrivateKey, PublicKey signerPublicKey) {
         try {
-            // 0. CORE: Validate block size
+            // 0. Validate input parameters (but allow null data)
+            if (signerPrivateKey == null) {
+                System.err.println("Signer private key cannot be null");
+                return false;
+            }
+            if (signerPublicKey == null) {
+                System.err.println("Signer public key cannot be null");
+                return false;
+            }
+            
+            // 1. CORE: Validate block size (this method already handles null data correctly)
             if (!validateBlockSize(data)) {
                 System.err.println("Block data exceeds maximum allowed size");
                 return false;
             }
             
-            // 1. Verify that the key is authorized at the time of block creation
+            // 2. Verify that the key is authorized at the time of block creation
             String publicKeyString = CryptoUtil.publicKeyToString(signerPublicKey);
             LocalDateTime blockTimestamp = LocalDateTime.now();
             if (!authorizedKeyDAO.wasKeyAuthorizedAt(publicKeyString, blockTimestamp)) {
@@ -258,6 +268,16 @@ public class Blockchain {
      */
     public synchronized boolean addAuthorizedKey(String publicKeyString, String ownerName, LocalDateTime creationTime) {
         try {
+            // Validate input parameters
+            if (publicKeyString == null || publicKeyString.trim().isEmpty()) {
+                System.err.println("Public key cannot be null or empty");
+                return false;
+            }
+            if (ownerName == null || ownerName.trim().isEmpty()) {
+                System.err.println("Owner name cannot be null or empty");
+                return false;
+            }
+            
             // Check if key is currently authorized
             if (authorizedKeyDAO.isKeyAuthorized(publicKeyString)) {
                 System.err.println("Key already authorized");
@@ -288,6 +308,12 @@ public class Blockchain {
      */
     public synchronized boolean revokeAuthorizedKey(String publicKeyString) {
         try {
+            // Validate input parameter
+            if (publicKeyString == null || publicKeyString.trim().isEmpty()) {
+                System.err.println("Public key cannot be null or empty");
+                return false;
+            }
+            
             if (!authorizedKeyDAO.isKeyAuthorized(publicKeyString)) {
                 System.err.println("Key not found or already inactive");
                 return false;
@@ -312,10 +338,17 @@ public class Blockchain {
      */
     private boolean validateBlockSize(String data) {
         if (data == null) {
-            return true; // Allow null data
+            System.err.println("Block data cannot be null. Use empty string \"\" for system blocks");
+            return false; // SECURITY: Reject null data but allow empty strings
         }
         
-        // Check character length
+        // Allow empty strings for system/configuration blocks
+        if (data.isEmpty()) {
+            System.out.println("System block with empty data created");
+            return true; // Allow system blocks with empty data
+        }
+        
+        // Check character length for normal content
         if (data.length() > MAX_BLOCK_DATA_LENGTH) {
             System.err.println("Block data length (" + data.length() + 
                              ") exceeds maximum allowed (" + MAX_BLOCK_DATA_LENGTH + " characters)");
