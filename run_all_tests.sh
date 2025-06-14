@@ -152,7 +152,27 @@ else
 fi
 
 echo
-echo "=== PART 3: DEMO AND BASIC TESTS ==="
+echo "=== PART 3: KEY DELETION SECURITY TESTS ==="
+
+# Clear database before security tests
+if [ -f "blockchain.db" ]; then
+    rm blockchain.db
+fi
+
+echo "🔐 Running Key Deletion Security tests (12 tests)..."
+mvn test -Dtest=DangerousDeleteAuthorizedKeyTest -q
+SECURITY_TEST_RESULT=$?
+
+if [ $SECURITY_TEST_RESULT -eq 0 ]; then
+    echo "🎉 Key Deletion Security tests: PASSED (12/12)"
+    record_test "Key Deletion Security (12 tests)" "PASS"
+else
+    echo "❌ Key Deletion Security tests: FAILED"
+    record_test "Key Deletion Security (12 tests)" "FAIL"
+fi
+
+echo
+echo "=== PART 4: DEMO AND BASIC TESTS ==="
 
 # Clear database
 if [ -f "blockchain.db" ]; then
@@ -203,6 +223,23 @@ if [ $QUICK_RESULT -eq 0 ]; then
 else
     echo "❌ Quick Test: FAILED"
     record_test "Quick Test" "FAIL"
+fi
+
+# Clear database
+if [ -f "blockchain.db" ]; then
+    rm blockchain.db
+fi
+
+echo "🔐 Running Key Deletion Security Demo..."
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.DangerousDeleteDemo" -q
+SECURITY_DEMO_RESULT=$?
+
+if [ $SECURITY_DEMO_RESULT -eq 0 ]; then
+    echo "✅ Security Demo: PASSED"
+    record_test "Key Deletion Security Demo" "PASS"
+else
+    echo "❌ Security Demo: FAILED"
+    record_test "Key Deletion Security Demo" "FAIL"
 fi
 
 echo
