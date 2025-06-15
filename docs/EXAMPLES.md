@@ -5,11 +5,11 @@ Comprehensive real-world examples and practical use cases for the Private Blockc
 > **IMPORTANT NOTE**: The classes shown in these examples (DocumentVerificationSystem, SupplyChainTracker, MedicalRecordsSystem, FinancialAuditSystem, KeyRotationExample, KeyCleanupManager, BlockchainHealthMonitor, HealthStatus) are conceptual and designed to illustrate potential use cases. They are not part of the actual project code. Only the Blockchain, Block, AuthorizedKey, Blockchain.KeyDeletionImpact, CryptoUtil, and JPAUtil classes exist in the current implementation.
 >
 > For real working examples, refer to the following classes in the source code:
-> - `BlockchainDemo.java` - Basic blockchain demonstration
-> - `AdditionalAdvancedFunctionsDemo.java` - Advanced features demonstration
-> - `ChainRecoveryDemo.java` - Chain recovery demonstration
-> - `DangerousDeleteDemo.java` - Key deletion safety features demo
-> - `EnhancedRecoveryExample.java` - Advanced recovery techniques example
+> - `com.rbatllet.blockchain.demo.BlockchainDemo.java` - Basic blockchain demonstration
+> - `com.rbatllet.blockchain.demo.AdditionalAdvancedFunctionsDemo.java` - Advanced features demonstration
+> - `com.rbatllet.blockchain.demo.ChainRecoveryDemo.java` - Chain recovery demonstration
+> - `com.rbatllet.blockchain.demo.DangerousDeleteDemo.java` - Key deletion safety features demo
+> - `com.rbatllet.blockchain.demo.EnhancedRecoveryExample.java` - Advanced recovery techniques example
 
 ## 📋 Table of Contents
 

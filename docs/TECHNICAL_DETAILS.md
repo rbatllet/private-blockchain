@@ -30,14 +30,14 @@ The project includes the following main classes:
 - `com.rbatllet.blockchain.dto.ChainExportData` - DTO for data export
 
 #### Demo and Test Classes
-- `com.rbatllet.blockchain.AdditionalAdvancedFunctionsDemo` - Advanced functions demonstration
-- `com.rbatllet.blockchain.BlockchainDemo` - Basic blockchain demonstration
-- `com.rbatllet.blockchain.ChainRecoveryDemo` - Chain recovery demonstration
-- `com.rbatllet.blockchain.DangerousDeleteDemo` - Key deletion safety features demo
-- `com.rbatllet.blockchain.EnhancedRecoveryExample` - Advanced recovery techniques example
-- `com.rbatllet.blockchain.CoreFunctionsDemo` - Core functions demonstration
-- `com.rbatllet.blockchain.QuickDemo` - Quick blockchain demonstration
-- `com.rbatllet.blockchain.SimpleDemo` - Simple blockchain demonstration
+- `com.rbatllet.blockchain.demo.AdditionalAdvancedFunctionsDemo` - Advanced functions demonstration
+- `com.rbatllet.blockchain.demo.BlockchainDemo` - Basic blockchain demonstration
+- `com.rbatllet.blockchain.demo.ChainRecoveryDemo` - Chain recovery demonstration
+- `com.rbatllet.blockchain.demo.DangerousDeleteDemo` - Key deletion safety features demo
+- `com.rbatllet.blockchain.demo.CoreFunctionsDemo` - Core functions demonstration
+- `com.rbatllet.blockchain.demo.QuickDemo` - Quick blockchain demonstration
+- `com.rbatllet.blockchain.demo.SimpleDemo` - Simple blockchain demonstration
+- `com.rbatllet.blockchain.demo.EnhancedRecoveryExample` - Enhanced recovery demonstration
 
 ### High-Level Architecture
 

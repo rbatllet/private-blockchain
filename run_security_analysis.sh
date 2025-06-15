@@ -92,7 +92,7 @@ echo "🎬 SECURITY DEMONSTRATION ANALYSIS"
 echo "==================================="
 echo "Running comprehensive security demo..."
 echo
-mvn compile exec:java -Dexec.mainClass="com.rbatllet.blockchain.DangerousDeleteDemo" -q
+mvn compile exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.DangerousDeleteDemo" -q
 DEMO_RESULT=$?
 
 if [ $DEMO_RESULT -eq 0 ]; then

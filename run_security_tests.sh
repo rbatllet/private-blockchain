@@ -44,7 +44,7 @@ echo
 echo "🎬 Running Key Deletion Security Demo..."
 echo "========================================="
 echo
-mvn compile exec:java -Dexec.mainClass="com.rbatllet.blockchain.DangerousDeleteDemo" -q
+mvn compile exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.DangerousDeleteDemo" -q
 DEMO_RESULT=$?
 echo
 

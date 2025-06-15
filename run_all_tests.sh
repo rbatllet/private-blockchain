@@ -140,7 +140,7 @@ if [ -f "blockchain.db" ]; then
     rm blockchain.db
 fi
 
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.CoreFunctionsDemo" -q
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.CoreFunctionsDemo" -q
 BASIC_RESULT=$?
 
 if [ $BASIC_RESULT -eq 0 ]; then
@@ -180,7 +180,7 @@ if [ -f "blockchain.db" ]; then
 fi
 
 echo "🧪 Running Blockchain Demo..."
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.BlockchainDemo" -q
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.BlockchainDemo" -q
 DEMO_RESULT=$?
 
 if [ $DEMO_RESULT -eq 0 ]; then
@@ -197,7 +197,7 @@ if [ -f "blockchain.db" ]; then
 fi
 
 echo "🧪 Running Simple Demo..."
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.SimpleDemo" -q
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.SimpleDemo" -q
 SIMPLE_RESULT=$?
 
 if [ $SIMPLE_RESULT -eq 0 ]; then
@@ -214,7 +214,7 @@ if [ -f "blockchain.db" ]; then
 fi
 
 echo "🧪 Running Quick Demo..."
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.QuickDemo" -q
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.QuickDemo" -q
 QUICK_RESULT=$?
 
 if [ $QUICK_RESULT -eq 0 ]; then
@@ -231,7 +231,7 @@ if [ -f "blockchain.db" ]; then
 fi
 
 echo "🔐 Running Key Deletion Security Demo..."
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.DangerousDeleteDemo" -q
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.DangerousDeleteDemo" -q
 SECURITY_DEMO_RESULT=$?
 
 if [ $SECURITY_DEMO_RESULT -eq 0 ]; then
@@ -291,7 +291,7 @@ echo "📍 Test files location:"
 echo "   - JUnit 5 Advanced Function Tests: src/test/java/com/rbatllet/blockchain/core/"
 echo "   - JUnit 5 Key Authorization Tests: src/test/java/com/rbatllet/blockchain/core/"
 echo "   - JUnit 5 Critical Consistency Tests: src/test/java/com/rbatllet/blockchain/core/"
-echo "   - Basic Core Function Tests: src/main/java/com/rbatllet/blockchain/"
+echo "   - Basic Core Function Tests: src/main/java/com/rbatllet/blockchain/demo/"
 echo "📖 Documentation: README.md"
 echo
 

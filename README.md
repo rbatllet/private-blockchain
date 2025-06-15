@@ -101,7 +101,7 @@ mvn package
 ### 2. Run Basic Demo
 ```bash
 # Run the basic blockchain demo
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.BlockchainDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.BlockchainDemo"
 ```
 
 **Expected Output:**
@@ -124,19 +124,19 @@ Authorized keys: 2
 ### 3. Run Advanced Features Demo
 ```bash
 # Run advanced features demonstration
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.AdditionalAdvancedFunctionsDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.AdditionalAdvancedFunctionsDemo"
 ```
 
 ### 4. Run Chain Recovery Demo
 ```bash
 # Run blockchain chain recovery demonstration
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.ChainRecoveryDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.ChainRecoveryDemo"
 ```
 
 ### 5. Run Key Deletion Safety Features Demo
 ```bash
 # Run demonstration of key deletion safety features
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.DangerousDeleteDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.DangerousDeleteDemo"
 ```
 
 ### 6. Run Enhanced Recovery Example
@@ -148,7 +148,7 @@ mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.EnhancedRecoveryExample"
 ### 7. Quick Functionality Test
 ```bash
 # Run quick verification test
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.QuickDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.QuickDemo"
 ```
 
 ## 💻 How It Works
@@ -214,7 +214,7 @@ The project includes extensive testing with **more than 40 JUnit 5 tests** plus 
 ./run_basic_tests.sh
 
 # Core functions comprehensive test
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.CoreFunctionsDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.CoreFunctionsDemo"
 ```
 
 ### What Gets Tested
@@ -241,14 +241,15 @@ src/main/java/com/rbatllet/blockchain/
 ├── util/
 │   ├── CryptoUtil.java                          # Cryptographic utilities
 │   └── JPAUtil.java                             # JPA EntityManager management
-├── BlockchainDemo.java                          # Basic demo application
-├── AdditionalAdvancedFunctionsDemo.java         # Advanced features demo
-├── ChainRecoveryDemo.java                       # Chain recovery demonstration
-├── DangerousDeleteDemo.java                     # Key deletion safety features demo
-├── EnhancedRecoveryExample.java                 # Advanced recovery techniques example
-├── CoreFunctionsDemo.java                       # Comprehensive core test
-├── SimpleDemo.java                              # Basic functionality test
-└── QuickDemo.java                               # Fast verification test
+├── demo/
+│   ├── BlockchainDemo.java                      # Basic demo application
+│   ├── AdditionalAdvancedFunctionsDemo.java     # Advanced features demo
+│   ├── ChainRecoveryDemo.java                   # Chain recovery demonstration
+│   ├── DangerousDeleteDemo.java                 # Key deletion safety features demo
+│   ├── EnhancedRecoveryExample.java             # Advanced recovery techniques example
+│   ├── CoreFunctionsDemo.java                   # Comprehensive core test
+│   ├── SimpleDemo.java                          # Basic functionality test
+│   └── QuickDemo.java                           # Fast verification test
 
 src/test/java/com/rbatllet/blockchain/core/
 ├── BlockchainTest.java                             # Core blockchain tests
@@ -584,7 +585,7 @@ For issues or questions:
 cd /path/to/privateBlockchain
 mvn clean compile test-compile
 ./run_all_tests.sh
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.BlockchainDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.BlockchainDemo"
 ```
 
 ### Quick Troubleshooting

@@ -36,11 +36,11 @@ echo "🧪 Running Basic Core Functions demo..."
 echo
 
 # Run basic core functions test (suppress most logs)
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.CoreFunctionsDemo" \
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.CoreFunctionsDemo" \
   -Djava.util.logging.config.file=src/main/resources/logging.properties \
   -Djakarta.persistence.show_sql=false \
   -Dorg.slf4j.simpleLogger.defaultLogLevel=warn \
-  -q 2>/dev/null || mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.CoreFunctionsDemo" -q
+  -q 2>/dev/null || mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.CoreFunctionsDemo" -q
 
 TEST_RESULT=$?
 
@@ -56,7 +56,7 @@ else
 fi
 
 echo
-echo "📍 Test location: src/main/java/com/rbatllet/blockchain/CoreFunctionsDemo.java"
+echo "📍 Test location: src/main/java/com/rbatllet/blockchain/demo/CoreFunctionsDemo.java"
 echo "📖 Documentation: README.md"
 
 exit $TEST_RESULT

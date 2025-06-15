@@ -182,31 +182,31 @@ Running basic core functionality tests...
 #### 4. Interactive Demonstrations
 ```bash
 # Advanced features demo with practical examples
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.AdditionalAdvancedFunctionsDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.AdditionalAdvancedFunctionsDemo"
 
 # Basic demo with multiple users
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.BlockchainDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.BlockchainDemo"
 
 # Chain recovery demonstration
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.ChainRecoveryDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.ChainRecoveryDemo"
 
 # Key deletion safety features demo
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.DangerousDeleteDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.DangerousDeleteDemo"
 
 # Advanced recovery techniques example
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.EnhancedRecoveryExample"
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.EnhancedRecoveryExample"
 
 # Core functions comprehensive test
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.CoreFunctionsDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.CoreFunctionsDemo"
 ```
 
 #### 5. Quick Verification Tests
 ```bash
 # Fast verification
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.QuickDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.QuickDemo"
 
 # Basic functionality
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.SimpleDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.SimpleDemo"
 ```
 
 ## 📝 Test Suites Description
@@ -325,7 +325,7 @@ mvn test -Dtest=BlockchainAdditionalAdvancedFunctionsTest -X
 
 **Sample execution:**
 ```bash
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.CoreFunctionsDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.CoreFunctionsDemo"
 ```
 
 ### 3. Basic Demo Application
@@ -478,7 +478,7 @@ rm blockchain.db*
 ./run_all_tests.sh
 
 # Check for data corruption
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.CoreFunctionsDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.CoreFunctionsDemo"
 
 # Validate specific components
 mvn test -Dtest=BlockchainAdditionalAdvancedFunctionsTest#testCompleteWorkflow
@@ -638,7 +638,7 @@ Exception in thread "main" java.lang.OutOfMemoryError: GC overhead limit exceede
 ```bash
 # Increase JVM heap size
 export MAVEN_OPTS="-Xmx2g -Xms512m"
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.BlockchainDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.BlockchainDemo"
 
 # For persistent issues, edit Maven configuration
 echo 'export MAVEN_OPTS="-Xmx4g -Xms1g"' >> ~/.bashrc
@@ -832,7 +832,7 @@ df -h .
 touch test_write.tmp && rm test_write.tmp
 
 # Test export manually
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.BlockchainDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.BlockchainDemo"
 # Then check if export files are created
 
 # Validate JSON format
@@ -859,7 +859,7 @@ bash ./run_all_tests.sh
 # Or run Maven commands directly
 mvn clean compile
 mvn test -Dtest=BlockchainAdditionalAdvancedFunctionsTest
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.CoreFunctionsDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.CoreFunctionsDemo"
 ```
 
 **Issue: Path Separator Issues**
