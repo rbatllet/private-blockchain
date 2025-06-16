@@ -295,7 +295,7 @@ class BlockchainAdditionalAdvancedFunctionsTest {
         assertEquals(initialBlockCount + 2, afterAddingBlocks, "Should have 2 more blocks");
 
         // Test rollback of 1 block
-        assertTrue(blockchain.rollbackBlocks(1), "Rollback should succeed");
+        assertTrue(blockchain.rollbackBlocks(1L), "Rollback should succeed");
         assertEquals(afterAddingBlocks - 1, blockchain.getBlockCount(),
                 "Should have 1 less block after rollback");
 
@@ -308,14 +308,14 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @DisplayName("Test Block Rollback Edge Cases")
     void testBlockRollbackEdgeCases() {
         // Test rollback with zero blocks
-        assertFalse(blockchain.rollbackBlocks(0), "Rollback of 0 blocks should fail");
+        assertFalse(blockchain.rollbackBlocks(0L), "Rollback of 0 blocks should fail");
 
         // Test rollback with negative number
-        assertFalse(blockchain.rollbackBlocks(-1), "Rollback of negative blocks should fail");
+        assertFalse(blockchain.rollbackBlocks(-1L), "Rollback of negative blocks should fail");
 
         // Test rollback more blocks than available (excluding genesis)
         long currentBlocks = blockchain.getBlockCount();
-        assertFalse(blockchain.rollbackBlocks((int) currentBlocks), 
+        assertFalse(blockchain.rollbackBlocks(currentBlocks), 
                 "Rollback of all blocks should fail (genesis protection)");
     }
 
@@ -329,7 +329,7 @@ class BlockchainAdditionalAdvancedFunctionsTest {
         blockchain.addBlock("Rollback test 3", charlieKeyPair.getPrivate(), charlieKeyPair.getPublic());
 
         // Rollback to block 2 (should remove blocks after block 2)
-        assertTrue(blockchain.rollbackToBlock(2), "Rollback to block 2 should succeed");
+        assertTrue(blockchain.rollbackToBlock(2L), "Rollback to block 2 should succeed");
         
         assertEquals(3, blockchain.getBlockCount(), "Should have blocks 0, 1, 2 remaining");
         assertTrue(blockchain.validateChain(), "Chain should remain valid");
@@ -340,15 +340,15 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @DisplayName("Test Rollback to Block Edge Cases")
     void testRollbackToBlockEdgeCases() {
         // Test rollback to negative block number
-        assertFalse(blockchain.rollbackToBlock(-1), "Rollback to negative block should fail");
+        assertFalse(blockchain.rollbackToBlock(-1L), "Rollback to negative block should fail");
 
         // Test rollback to non-existent block
         long maxBlock = blockchain.getBlockCount() - 1;
-        assertFalse(blockchain.rollbackToBlock((int) maxBlock + 10), 
+        assertFalse(blockchain.rollbackToBlock(maxBlock + 10L), 
                 "Rollback to non-existent block should fail");
 
         // Test rollback to current block (should be no-op)
-        assertTrue(blockchain.rollbackToBlock((int) maxBlock), 
+        assertTrue(blockchain.rollbackToBlock(maxBlock), 
                 "Rollback to current block should succeed");
     }
 
@@ -395,7 +395,7 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @DisplayName("Test Get Block by Hash")
     void testGetBlockByHash() {
         // Get a known block
-        Block knownBlock = blockchain.getBlock(1);
+        Block knownBlock = blockchain.getBlock(1L);
         assertNotNull(knownBlock, "Known block should exist");
 
         // Search for block by hash
@@ -530,7 +530,7 @@ class BlockchainAdditionalAdvancedFunctionsTest {
         assertEquals(1, willBeRemoved.size(), "Should find 'Will be removed' block");
 
         // Perform rollback
-        assertTrue(blockchain.rollbackBlocks(1), "Rollback should succeed");
+        assertTrue(blockchain.rollbackBlocks(1L), "Rollback should succeed");
 
         // Verify search results after rollback
         List<Block> afterRollback = blockchain.searchBlocksByContent("rollback");
@@ -557,8 +557,8 @@ class BlockchainAdditionalAdvancedFunctionsTest {
             blockchain.exportChain(null);
             blockchain.importChain("");
             blockchain.importChain(null);
-            blockchain.rollbackBlocks(-1);
-            blockchain.rollbackToBlock(-1);
+            blockchain.rollbackBlocks(-1L);
+            blockchain.rollbackToBlock(-1L);
             blockchain.searchBlocksByContent(null);
             blockchain.getBlockByHash(null);
             blockchain.getBlocksByDateRange(null, null);
@@ -574,9 +574,9 @@ class BlockchainAdditionalAdvancedFunctionsTest {
                 "Chain should remain valid after all test operations");
         
         // Verify genesis block is still intact
-        Block genesisBlock = blockchain.getBlock(0);
+        Block genesisBlock = blockchain.getBlock(0L);
         assertNotNull(genesisBlock, "Genesis block should still exist");
-        assertEquals(0, genesisBlock.getBlockNumber(), "Genesis block should have number 0");
+        assertEquals(0L, genesisBlock.getBlockNumber(), "Genesis block should have number 0");
         assertEquals("0", genesisBlock.getPreviousHash(), "Genesis block should have correct previous hash");
     }
 }

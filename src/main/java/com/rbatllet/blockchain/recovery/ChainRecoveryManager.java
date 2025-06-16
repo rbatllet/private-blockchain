@@ -194,7 +194,7 @@ public class ChainRecoveryManager {
             
             // Find all blocks signed by the deleted key
             List<Block> allBlocks = blockchain.getAllBlocks();
-            List<Integer> corruptedBlockNumbers = new ArrayList<>();
+            List<Long> corruptedBlockNumbers = new ArrayList<>();
             
             for (Block block : allBlocks) {
                 if (deletedPublicKey.equals(block.getSignerPublicKey())) {
@@ -214,7 +214,7 @@ public class ChainRecoveryManager {
             
             // SECURITY: Intelligent rollback strategy
             // Try to find the latest valid block we can keep
-            int rollbackTarget = findSafeRollbackTarget(corruptedBlockNumbers, allBlocks);
+            Long rollbackTarget = findSafeRollbackTarget(corruptedBlockNumbers, allBlocks);
             
             System.out.println("🎯 Rolling back to block #" + rollbackTarget);
             
@@ -265,27 +265,27 @@ public class ChainRecoveryManager {
      * SECURITY: Find the safest rollback target that preserves maximum valid data
      * while maintaining blockchain integrity and cryptographic security
      */
-    private int findSafeRollbackTarget(List<Integer> corruptedBlockNumbers, List<Block> allBlocks) {
+    private Long findSafeRollbackTarget(List<Long> corruptedBlockNumbers, List<Block> allBlocks) {
         System.out.println("🧠 ANALYZING OPTIMAL ROLLBACK STRATEGY...");
         
         // Sort corrupted blocks to analyze pattern
-        corruptedBlockNumbers.sort(Integer::compareTo);
-        int earliestCorruptedBlock = corruptedBlockNumbers.get(0);
+        corruptedBlockNumbers.sort(Long::compareTo);
+        Long earliestCorruptedBlock = corruptedBlockNumbers.get(0);
         
         // SECURITY ANALYSIS: Multiple strategies with safety verification
         
         // Strategy 1: Conservative rollback (current approach - always safe)
-        int conservativeTarget = Math.max(0, earliestCorruptedBlock - 1);
+        Long conservativeTarget = Math.max(0L, earliestCorruptedBlock - 1L);
         
         // Strategy 2: Intelligent analysis for optimal preservation
-        int intelligentTarget = findIntelligentRollbackTarget(corruptedBlockNumbers, allBlocks);
+        Long intelligentTarget = findIntelligentRollbackTarget(corruptedBlockNumbers, allBlocks);
         
         // Strategy 3: Hash integrity verification
-        int hashSafeTarget = findHashIntegrityTarget(corruptedBlockNumbers, allBlocks);
+        Long hashSafeTarget = findHashIntegrityTarget(corruptedBlockNumbers, allBlocks);
         
         // SECURITY DECISION: Choose the most conservative of all valid options
         // This ensures we never compromise blockchain integrity for data preservation
-        int optimalTarget = Math.min(Math.min(conservativeTarget, intelligentTarget), hashSafeTarget);
+        Long optimalTarget = Math.min(Math.min(conservativeTarget, intelligentTarget), hashSafeTarget);
         
         // Additional safety verification
         if (!isRollbackTargetSafe(optimalTarget, corruptedBlockNumbers, allBlocks)) {
@@ -310,23 +310,23 @@ public class ChainRecoveryManager {
      * SECURITY: Intelligent rollback analysis that attempts to preserve valid blocks
      * while maintaining cryptographic and temporal integrity
      */
-    private int findIntelligentRollbackTarget(List<Integer> corruptedBlockNumbers, List<Block> allBlocks) {
+    private Long findIntelligentRollbackTarget(List<Long> corruptedBlockNumbers, List<Block> allBlocks) {
         try {
             System.out.println("🔍 Performing intelligent block analysis...");
             
             // Build corruption map for O(1) lookup
-            Set<Integer> corruptedSet = new HashSet<>(corruptedBlockNumbers);
+            Set<Long> corruptedSet = new HashSet<>(corruptedBlockNumbers);
             
             // Find the longest valid prefix that can be safely preserved
-            int maxSafeTarget = -1;
+            Long maxSafeTarget = -1L;
             
-            for (int i = 0; i < allBlocks.size(); i++) {
-                if (corruptedSet.contains(i)) {
+            for (Long i = 0L; i < allBlocks.size(); i++) {
+                if (corruptedSet.contains(allBlocks.get(i.intValue()).getBlockNumber())) {
                     // Found corrupted block - cannot preserve beyond this point safely
                     break;
                 }
                 
-                Block block = allBlocks.get(i);
+                Block block = allBlocks.get(i.intValue());
                 
                 // SECURITY CHECK 1: Block must be independently valid
                 if (!blockchain.validateSingleBlock(block)) {
@@ -335,13 +335,13 @@ public class ChainRecoveryManager {
                 }
                 
                 // SECURITY CHECK 2: Hash chain integrity up to this point
-                if (i > 0 && !verifyHashChainIntegrity(allBlocks, 0, i)) {
+                if (i > 0L && !verifyHashChainIntegrity(allBlocks, 0L, i)) {
                     System.out.println("⚠️ Hash chain integrity broken at block #" + i);
                     break;
                 }
                 
                 // SECURITY CHECK 3: Temporal consistency
-                if (i > 0 && allBlocks.get(i).getTimestamp().isBefore(allBlocks.get(i-1).getTimestamp())) {
+                if (i > 0L && allBlocks.get(i.intValue()).getTimestamp().isBefore(allBlocks.get(i.intValue()-1).getTimestamp())) {
                     System.out.println("⚠️ Temporal inconsistency detected at block #" + i);
                     break;
                 }
@@ -351,22 +351,22 @@ public class ChainRecoveryManager {
             }
             
             System.out.println("🎯 Intelligent analysis found safe target: block #" + maxSafeTarget);
-            return Math.max(0, maxSafeTarget);
+            return Math.max(0L, maxSafeTarget);
             
         } catch (Exception e) {
             System.out.println("⚠️ Intelligent analysis failed: " + e.getMessage() + ", using conservative approach");
-            return Math.max(0, corruptedBlockNumbers.get(0) - 1);
+            return Math.max(0L, corruptedBlockNumbers.get(0) - 1L);
         }
     }
     
     /**
      * SECURITY: Verify hash chain integrity for a range of blocks
      */
-    private boolean verifyHashChainIntegrity(List<Block> blocks, int startIndex, int endIndex) {
+    private boolean verifyHashChainIntegrity(List<Block> blocks, Long startIndex, Long endIndex) {
         try {
-            for (int i = startIndex + 1; i <= endIndex && i < blocks.size(); i++) {
-                Block currentBlock = blocks.get(i);
-                Block previousBlock = blocks.get(i - 1);
+            for (Long i = startIndex + 1L; i <= endIndex && i < blocks.size(); i++) {
+                Block currentBlock = blocks.get(i.intValue());
+                Block previousBlock = blocks.get(i.intValue() - 1);
                 
                 // Critical security check: hash chain must be intact
                 if (!currentBlock.getPreviousHash().equals(previousBlock.getHash())) {
@@ -385,13 +385,13 @@ public class ChainRecoveryManager {
     /**
      * SECURITY: Find rollback target that maintains hash integrity
      */
-    private int findHashIntegrityTarget(List<Integer> corruptedBlockNumbers, List<Block> allBlocks) {
+    private Long findHashIntegrityTarget(List<Long> corruptedBlockNumbers, List<Block> allBlocks) {
         try {
             System.out.println("🔗 Analyzing hash chain integrity...");
             
             // Start from the end and work backwards to find the largest safe segment
-            for (int target = corruptedBlockNumbers.get(0) - 1; target >= 0; target--) {
-                if (verifyHashChainIntegrity(allBlocks, 0, target)) {
+            for (Long target = corruptedBlockNumbers.get(0) - 1L; target >= 0L; target--) {
+                if (verifyHashChainIntegrity(allBlocks, 0L, target)) {
                     System.out.println("✅ Hash integrity verified up to block #" + target);
                     return target;
                 }
@@ -399,11 +399,11 @@ public class ChainRecoveryManager {
             
             // If no segment maintains integrity, rollback to genesis
             System.out.println("⚠️ No hash-safe segment found, rolling back to genesis");
-            return 0;
+            return 0L;
             
         } catch (Exception e) {
             System.out.println("⚠️ Hash integrity analysis failed: " + e.getMessage());
-            return 0; // Safe fallback
+            return 0L; // Safe fallback
         }
     }
     
@@ -411,12 +411,12 @@ public class ChainRecoveryManager {
      * SECURITY: Final safety verification for rollback target
      * This is the last line of defense against data corruption
      */
-    private boolean isRollbackTargetSafe(int target, List<Integer> corruptedBlockNumbers, List<Block> allBlocks) {
+    private boolean isRollbackTargetSafe(Long target, List<Long> corruptedBlockNumbers, List<Block> allBlocks) {
         try {
             System.out.println("🛡️ Performing final safety verification for target #" + target + "...");
             
             // SAFETY CHECK 1: Target must not be negative
-            if (target < 0) {
+            if (target < 0L) {
                 System.out.println("❌ Safety check failed: negative target");
                 return false;
             }
@@ -428,21 +428,21 @@ public class ChainRecoveryManager {
             }
             
             // SAFETY CHECK 3: Target must be before any corrupted block
-            int earliestCorrupted = corruptedBlockNumbers.get(0);
+            Long earliestCorrupted = corruptedBlockNumbers.get(0);
             if (target >= earliestCorrupted) {
                 System.out.println("❌ Safety check failed: target would preserve corrupted blocks");
                 return false;
             }
             
             // SAFETY CHECK 4: Resulting chain segment must be valid
-            if (!verifyHashChainIntegrity(allBlocks, 0, target)) {
+            if (!verifyHashChainIntegrity(allBlocks, 0L, target)) {
                 System.out.println("❌ Safety check failed: resulting chain would have broken hash integrity");
                 return false;
             }
             
             // SAFETY CHECK 5: All blocks up to target must be independently valid
-            for (int i = 0; i <= target; i++) {
-                if (!blockchain.validateSingleBlock(allBlocks.get(i))) {
+            for (Long i = 0L; i <= target; i++) {
+                if (!blockchain.validateSingleBlock(allBlocks.get(i.intValue()))) {
                     System.out.println("❌ Safety check failed: block #" + i + " is not independently valid");
                     return false;
                 }
@@ -466,7 +466,7 @@ public class ChainRecoveryManager {
             
             List<Block> allBlocks = blockchain.getAllBlocks();
             List<Block> validBlocks = new ArrayList<>();
-            int lastValidBlockNumber = -1;
+            Long lastValidBlockNumber = -1L;
             
             // Find valid blocks (stop at first corruption)
             for (Block block : allBlocks) {

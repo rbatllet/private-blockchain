@@ -52,6 +52,15 @@ This is a **private blockchain** for controlled environments where only authoriz
 - **Impact Analysis**: Pre-deletion analysis to assess blockchain integrity risks
 - **Emergency Key Deletion**: GDPR-compliant forced deletion with comprehensive audit trails
 - **Blockchain Integrity Protection**: Prevents accidental corruption of historical records
+- **Secure Key Storage**: AES encrypted private key storage
+- **Password Validation**: Strong password requirements and handling
+- **Key File Loading**: Secure loading of keys from files
+
+### 🧰️ Utility Classes
+- **ExitUtil**: Test-compatible system exit handling
+- **BlockValidationUtil**: Utilities for block validation
+- **BlockValidationResult**: Representation of validation results
+- **FormatUtil**: Formatting of blockchain data for display
 
 ### Technical Features
 - **Persistence**: SQLite database with JPA standard for ORM (using Hibernate as provider)
@@ -467,6 +476,8 @@ This project includes comprehensive documentation for different use cases:
 - **[EXAMPLES.md](docs/EXAMPLES.md)** - Real-world use cases and workflow patterns
 - **[API_GUIDE.md](docs/API_GUIDE.md)** - Complete API reference and core functions
 - **[TESTING.md](docs/TESTING.md)** - Comprehensive testing guide and troubleshooting
+- **[SECURITY_CLASSES_GUIDE.md](docs/SECURITY_CLASSES_GUIDE.md)** - Guía de uso de las clases de seguridad (migradas desde CLI)
+- **[UTILITY_CLASSES_GUIDE.md](docs/UTILITY_CLASSES_GUIDE.md)** - Guía de uso de las clases de utilidad (migradas desde CLI)
 
 ### 🏢 Technical & Production
 - **[TECHNICAL_DETAILS.md](docs/TECHNICAL_DETAILS.md)** - Database schema, security model, architecture

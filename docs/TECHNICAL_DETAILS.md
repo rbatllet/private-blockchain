@@ -191,7 +191,7 @@ public class Block {
     private Long id;
     
     @Column(name = "block_number", unique = true, nullable = false)
-    private int blockNumber;
+    private Long blockNumber;
     
     @Column(name = "previous_hash", length = 64)
     private String previousHash;
@@ -332,7 +332,7 @@ public class JPAUtil {
 ```json
 {
   "id": 1,
-  "blockNumber": 1,
+  "blockNumber": 1,  // Now using Long instead of int
   "previousHash": "0000000000000000000000000000000000000000000000000000000000000000",
   "data": "Genesis Block",
   "timestamp": "2025-06-14T10:15:30",
@@ -773,9 +773,9 @@ public List<Block> advancedSearch(SearchCriteria criteria) {
 
 #### Safe Rollback with JPA Validation
 ```java
-public boolean rollbackToBlock(int targetBlockNumber) throws Exception {
+public boolean rollbackToBlock(Long targetBlockNumber) throws Exception {
     // 1. Validation checks
-    if (targetBlockNumber < 0) {
+    if (targetBlockNumber < 0L) {
         throw new IllegalArgumentException("Cannot rollback before genesis block");
     }
     

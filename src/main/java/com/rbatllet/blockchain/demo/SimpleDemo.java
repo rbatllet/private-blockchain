@@ -31,7 +31,7 @@ public class SimpleDemo {
             // 5. Get all blocks and print details
             System.out.println("\n=== BLOCKS ===");
             for (Block block : blockchain.getAllBlocks()) {
-                System.out.println("Block #" + block.getBlockNumber() + ": " + block.getData());
+                System.out.println("Block #" + Long.toString(block.getBlockNumber()) + ": " + block.getData());
                 System.out.println("  Hash: " + block.getHash());
                 System.out.println("  Previous: " + block.getPreviousHash());
                 System.out.println("  Signer: " + (block.getSignerPublicKey() != null ? 

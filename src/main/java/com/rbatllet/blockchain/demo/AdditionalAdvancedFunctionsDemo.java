@@ -108,8 +108,8 @@ public class AdditionalAdvancedFunctionsDemo {
             List<Block> paymentBlocks = blockchain.searchBlocksByContent("payment");
             System.out.println("   ✅ Found " + paymentBlocks.size() + " blocks containing 'payment'");
             for (Block block : paymentBlocks) {
-                System.out.println("      - Block #" + block.getBlockNumber() + ": " + 
-                                 block.getData().substring(0, Math.min(50, block.getData().length())) + "...");
+                System.out.println("      - Block #" + Long.toString(block.getBlockNumber()) + ": " + 
+                                  block.getData().substring(0, Math.min(50, block.getData().length())) + "...");
             }
             
             // Search by hash
@@ -117,7 +117,7 @@ public class AdditionalAdvancedFunctionsDemo {
             Block lastBlock = blockchain.getLastBlock();
             Block foundByHash = blockchain.getBlockByHash(lastBlock.getHash());
             if (foundByHash != null) {
-                System.out.println("   ✅ Found block by hash: #" + foundByHash.getBlockNumber());
+                System.out.println("   ✅ Found block by hash: #" + Long.toString(foundByHash.getBlockNumber()));
             } else {
                 System.out.println("   ❌ Block not found by hash");
             }
@@ -172,9 +172,9 @@ public class AdditionalAdvancedFunctionsDemo {
             System.out.println("   📊 Blocks after adding test blocks: " + blocksBeforeRollbackTest);
             
             // Test rollback of 2 blocks
-            boolean rolledBack = blockchain.rollbackBlocks(2);
+            boolean rolledBack = blockchain.rollbackBlocks(2L);
             if (rolledBack) {
-                System.out.println("   ✅ Successfully rolled back 2 blocks");
+                System.out.println("   ✅ Successfully rolled back 2L blocks");
                 System.out.println("   📊 Blocks after rollback: " + blockchain.getBlockCount());
                 
                 // Validate chain after rollback
@@ -186,9 +186,9 @@ public class AdditionalAdvancedFunctionsDemo {
             
             // Test rollback to specific block
             System.out.println("   🎯 Testing rollback to specific block...");
-            boolean rolledToBlock = blockchain.rollbackToBlock(3);
+            boolean rolledToBlock = blockchain.rollbackToBlock(3L);
             if (rolledToBlock) {
-                System.out.println("   ✅ Successfully rolled back to block 3");
+                System.out.println("   ✅ Successfully rolled back to block 3L");
                 System.out.println("   📊 Final block count: " + blockchain.getBlockCount());
             } else {
                 System.out.println("   ❌ Rollback to block failed");

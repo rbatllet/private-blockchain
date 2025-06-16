@@ -28,7 +28,7 @@ try {
     
     // Create and persist a new block
     Block newBlock = new Block();
-    newBlock.setBlockNumber(1);
+    newBlock.setBlockNumber(1L);
     newBlock.setData("Custom block data");
     newBlock.setTimestamp(LocalDateTime.now());
     
@@ -88,7 +88,7 @@ public class Block {
     private Long id;
     
     @Column(name = "block_number", unique = true, nullable = false)
-    private int blockNumber;
+    private Long blockNumber;
     
     @Column(name = "data", columnDefinition = "TEXT")
     private String data;
@@ -311,7 +311,7 @@ public void saveBlock(Block block) {
 }
 
 // Get a block by its number
-public Block getBlockByNumber(int blockNumber) {
+public Block getBlockByNumber(Long blockNumber) {
     // Returns the block with the specified number or null if not found
 }
 
@@ -341,12 +341,12 @@ public boolean existsBlockWithHash(String hash) {
 }
 
 // Delete a block by its number
-public boolean deleteBlockByNumber(int blockNumber) {
+public boolean deleteBlockByNumber(Long blockNumber) {
     // Deletes the block with the specified number
 }
 
 // Delete blocks with block numbers greater than the specified number
-public int deleteBlocksAfter(int blockNumber) {
+public int deleteBlocksAfter(Long blockNumber) {
     // Deletes all blocks with block numbers greater than the specified number
 }
 
@@ -748,7 +748,7 @@ boolean verified = CryptoUtil.verifySignature(data, signature, publicKey);
 String blockContent = "Block #" + block.getBlockNumber() + ": " + block.getData();
 
 // Get block size information (example)
-int blockDataLength = block.getData().length();
+Long blockDataLength = (long) block.getData().length();
 long estimatedSize = blockDataLength * 2; // rough estimate
 
 // Verify block hash manually (example for validation)

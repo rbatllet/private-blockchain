@@ -768,7 +768,7 @@ public class Block {
     private Long id;
     
     @Column(name = "block_number", unique = true, nullable = false)
-    private int blockNumber;
+    private Long blockNumber;
     
     @Column(name = "data", columnDefinition = "TEXT")
     private String data;

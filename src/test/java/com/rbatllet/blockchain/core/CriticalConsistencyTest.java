@@ -154,7 +154,7 @@ class CriticalConsistencyTest {
         assertTrue(blockchain.revokeAuthorizedKey(alicePublicKey));
         
         // Rollback some blocks
-        assertTrue(blockchain.rollbackBlocks(5));
+        assertTrue(blockchain.rollbackBlocks(5L));
         
         // CRITICAL: Keys should retain their status after rollback
         assertFalse(blockchain.addBlock("Alice should fail", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()));
@@ -180,7 +180,7 @@ class CriticalConsistencyTest {
         assertEquals(51, blockchain.getBlockCount()); // Genesis + 50
         
         // Mass rollback
-        assertTrue(blockchain.rollbackBlocks(25));
+        assertTrue(blockchain.rollbackBlocks(25L));
         assertTrue(blockchain.validateChain(), "Chain should be valid after mass rollback");
         
         System.out.println("✅ Mass operations test passed");
@@ -242,7 +242,7 @@ class CriticalConsistencyTest {
         assertFalse(imported.addBlock("Alice should fail", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()));
         
         // Rollback
-        assertTrue(imported.rollbackBlocks(2));
+        assertTrue(imported.rollbackBlocks(2L));
         
         // Re-authorization
         assertTrue(imported.addAuthorizedKey(alicePublicKey, "Alice-Reauth"));

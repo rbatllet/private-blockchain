@@ -37,7 +37,7 @@ public class Blockchain {
     private void initializeGenesisBlock() {
         if (blockDAO.getBlockCount() == 0) {
             Block genesisBlock = new Block();
-            genesisBlock.setBlockNumber(0);
+            genesisBlock.setBlockNumber(0L);
             genesisBlock.setPreviousHash(GENESIS_PREVIOUS_HASH);
             genesisBlock.setData("Genesis Block - Private Blockchain Initialized");
             genesisBlock.setTimestamp(LocalDateTime.now());
@@ -125,10 +125,17 @@ public class Blockchain {
     /**
      * CORE FUNCTION: Validate an individual block
      */
-    private boolean validateBlock(Block block, Block previousBlock) {
+    /**
+     * Valida un bloque individual contra el bloque anterior
+     * 
+     * @param block El bloque a validar
+     * @param previousBlock El bloque anterior en la cadena
+     * @return true si el bloque es válido, false en caso contrario
+     */
+    public boolean validateBlock(Block block, Block previousBlock) {
         try {
             // Skip validation for genesis block
-            if (block.getBlockNumber() == 0) {
+            if (block.getBlockNumber() != null && block.getBlockNumber().equals(0L)) {
                 return true;
             }
             
@@ -139,7 +146,7 @@ public class Blockchain {
             }
             
             // 2. Verify that the block number is sequential
-            if (block.getBlockNumber() != previousBlock.getBlockNumber() + 1) {
+            if (!block.getBlockNumber().equals(previousBlock.getBlockNumber() + 1L)) {
                 System.err.println("Block number sequence error");
                 return false;
             }
@@ -181,12 +188,12 @@ public class Blockchain {
     public boolean validateSingleBlock(Block block) {
         try {
             // Skip validation for genesis block
-            if (block.getBlockNumber() == 0) {
+            if (block.getBlockNumber() != null && block.getBlockNumber().equals(0L)) {
                 return true;
             }
             
             // Find the previous block for validation
-            Block previousBlock = blockDAO.getBlockByNumber(block.getBlockNumber() - 1);
+            Block previousBlock = blockDAO.getBlockByNumber(block.getBlockNumber() - 1L);
             if (previousBlock == null) {
                 return false; // Previous block not found
             }
@@ -211,7 +218,7 @@ public class Blockchain {
             
             // Verify genesis block
             Block genesisBlock = allBlocks.get(0);
-            if (genesisBlock.getBlockNumber() != 0 || 
+            if (!genesisBlock.getBlockNumber().equals(0L) || 
                 !genesisBlock.getPreviousHash().equals(GENESIS_PREVIOUS_HASH)) {
                 System.err.println("Invalid genesis block");
                 return false;
@@ -240,7 +247,13 @@ public class Blockchain {
     /**
      * CORE FUNCTION: Build block content for hashing and signing (without signature)
      */
-    private String buildBlockContent(Block block) {
+    /**
+     * Construye el contenido del bloque para verificación de hash y firma
+     * 
+     * @param block El bloque del que construir el contenido
+     * @return El contenido del bloque como string
+     */
+    public String buildBlockContent(Block block) {
         // Use epoch seconds for timestamp to ensure consistency
         long timestampSeconds = block.getTimestamp() != null ? 
             block.getTimestamp().toEpochSecond(java.time.ZoneOffset.UTC) : 0;
@@ -336,7 +349,13 @@ public class Blockchain {
     /**
      * CORE FUNCTION 1: Block Size Validation
      */
-    private boolean validateBlockSize(String data) {
+    /**
+     * Valida que el tamaño del bloque no exceda el límite máximo
+     * 
+     * @param data Los datos del bloque a validar
+     * @return true si el tamaño es válido, false si excede el límite
+     */
+    public boolean validateBlockSize(String data) {
         if (data == null) {
             System.err.println("Block data cannot be null. Use empty string \"\" for system blocks");
             return false; // SECURITY: Reject null data but allow empty strings
@@ -527,7 +546,7 @@ public class Blockchain {
     /**
      * CORE FUNCTION 4: Block Rollback - Remove last N blocks
      */
-    public boolean rollbackBlocks(int numberOfBlocks) {
+    public boolean rollbackBlocks(Long numberOfBlocks) {
         try {
             if (numberOfBlocks <= 0) {
                 System.err.println("Number of blocks to rollback must be positive");
@@ -579,9 +598,9 @@ public class Blockchain {
     /**
      * CORE FUNCTION 4b: Rollback to specific block number
      */
-    public boolean rollbackToBlock(int targetBlockNumber) {
+    public boolean rollbackToBlock(Long targetBlockNumber) {
         try {
-            if (targetBlockNumber < 0) {
+            if (targetBlockNumber == null || targetBlockNumber < 0L) {
                 System.err.println("Target block number cannot be negative");
                 return false;
             }
@@ -593,7 +612,7 @@ public class Blockchain {
                 return false;
             }
             
-            int blocksToRemove = (int)(currentBlockCount - targetBlockNumber - 1);
+            int blocksToRemove = (int)(currentBlockCount - targetBlockNumber - 1L);
             if (blocksToRemove <= 0) {
                 System.out.println("Chain is already at or before block " + targetBlockNumber);
                 return true;
@@ -686,7 +705,7 @@ public class Blockchain {
     /**
      * Get a block by number
      */
-    public Block getBlock(int blockNumber) {
+    public Block getBlock(Long blockNumber) {
         return blockDAO.getBlockByNumber(blockNumber);
     }
     
@@ -731,12 +750,20 @@ public class Blockchain {
     public List<AuthorizedKey> getAllAuthorizedKeys() {
         return authorizedKeyDAO.getAllAuthorizedKeys();
     }
+
+    public AuthorizedKey getAuthorizedKeyByOwner(String ownerName) {
+        return authorizedKeyDAO.getAuthorizedKeyByOwner(ownerName);
+    }
     
     /**
-     * Get an authorized key by owner name
+     * Verifica si una clave estaba autorizada en un momento específico
+     * 
+     * @param publicKeyString La clave pública a verificar
+     * @param timestamp El momento en el que se quiere verificar la autorización
+     * @return true si la clave estaba autorizada en ese momento, false en caso contrario
      */
-    public com.rbatllet.blockchain.entity.AuthorizedKey getAuthorizedKeyByOwner(String ownerName) {
-        return authorizedKeyDAO.getAuthorizedKeyByOwner(ownerName);
+    public boolean wasKeyAuthorizedAt(String publicKeyString, LocalDateTime timestamp) {
+        return authorizedKeyDAO.wasKeyAuthorizedAt(publicKeyString, timestamp);
     }
     
     /**

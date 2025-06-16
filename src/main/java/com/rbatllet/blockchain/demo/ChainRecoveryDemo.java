@@ -150,7 +150,7 @@ public class ChainRecoveryDemo {
             if (!diagnostic.isHealthy()) {
                 System.out.println("   ⚠️ Corrupted block details:");
                 diagnostic.getCorruptedBlocksList().forEach(block -> 
-                    System.out.println("      - Block #" + block.getBlockNumber() + 
+                    System.out.println("      - Block #" + Long.toString(block.getBlockNumber()) + 
                                      " signed by: " + getShortKey(block.getSignerPublicKey()) + ""));
             }
             

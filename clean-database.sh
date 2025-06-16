@@ -2,7 +2,7 @@
 
 # Clean Database Script for Private Blockchain
 # Quick script to clean corrupted SQLite database files
-# Version: 1.0
+# Version: 1.0.0
 
 # Colors for output
 RED='\033[0;31m'

@@ -24,6 +24,13 @@ The project includes comprehensive test suites to verify all functionality and e
 - ✅ Security controls and authorization
 - ✅ Error handling and edge cases
 
+#### Security Functions (Migrated from CLI)
+- ✅ **Secure Key Storage**: AES encrypted private key storage
+- ✅ **Password Validation**: Strong password requirements and handling
+- ✅ **Key File Loading**: Secure loading of keys from files
+- ✅ **Concurrency Testing**: Thread-safe key operations
+- ✅ **Performance Testing**: Key operation benchmarks
+
 #### Advanced Functions (More than 40 JUnit 5 Tests)
 - ✅ **Block Size Validation**: Prevents oversized blocks
 - ✅ **Chain Export**: Complete blockchain backup to JSON

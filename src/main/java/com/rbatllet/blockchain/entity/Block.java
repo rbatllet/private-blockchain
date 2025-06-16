@@ -12,7 +12,7 @@ public class Block {
     private Long id;
     
     @Column(name = "block_number", unique = true, nullable = false)
-    private int blockNumber;
+    private Long blockNumber;
     
     @Column(name = "previous_hash", length = 64)
     private String previousHash;
@@ -35,7 +35,7 @@ public class Block {
     // Constructors
     public Block() {}
 
-    public Block(int blockNumber, String previousHash, String data, 
+    public Block(Long blockNumber, String previousHash, String data, 
                  LocalDateTime timestamp, String hash, String signature, 
                  String signerPublicKey) {
         this.blockNumber = blockNumber;
@@ -51,8 +51,8 @@ public class Block {
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
-    public int getBlockNumber() { return blockNumber; }
-    public void setBlockNumber(int blockNumber) { this.blockNumber = blockNumber; }
+    public Long getBlockNumber() { return blockNumber; }
+    public void setBlockNumber(Long blockNumber) { this.blockNumber = blockNumber; }
 
     public String getPreviousHash() { return previousHash; }
     public void setPreviousHash(String previousHash) { this.previousHash = previousHash; }

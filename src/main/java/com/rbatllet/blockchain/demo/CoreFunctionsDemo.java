@@ -27,7 +27,7 @@ public class CoreFunctionsDemo {
             System.out.println("   ✓ Initial block count: " + initialBlocks);
             assert initialBlocks == 1 : "Genesis block should exist";
             
-            Block genesisBlock = blockchain.getBlock(0);
+            Block genesisBlock = blockchain.getBlock(0L);
             System.out.println("   ✓ Genesis block hash: " + genesisBlock.getHash().substring(0, 16) + "...");
             System.out.println("   ✓ Genesis block data: " + genesisBlock.getData());
             System.out.println("   SUCCESS: Blockchain initialized\n");
@@ -92,7 +92,7 @@ public class CoreFunctionsDemo {
             // ===============================
             System.out.println("5. DEMONSTRATING: Get Block by Number");
             
-            Block block = blockchain.getBlock(1);
+            Block block = blockchain.getBlock(1L);
             System.out.println("   ✓ Block #1 hash: " + block.getHash().substring(0, 16) + "...");
             System.out.println("   ✓ Block #1 data: " + block.getData());
             System.out.println("   ✓ Block #1 signer: " + block.getSignerPublicKey().substring(0, 16) + "...");

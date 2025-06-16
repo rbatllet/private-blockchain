@@ -38,7 +38,7 @@ public class BlockDAO {
     /**
      * Get a block by its number
      */
-    public Block getBlockByNumber(int blockNumber) {
+    public Block getBlockByNumber(Long blockNumber) {
         EntityManager em = JPAUtil.getEntityManager();
         try {
             TypedQuery<Block> query = em.createQuery(
@@ -131,7 +131,7 @@ public class BlockDAO {
     /**
      * Delete a block by its number
      */
-    public boolean deleteBlockByNumber(int blockNumber) {
+    public boolean deleteBlockByNumber(Long blockNumber) {
         EntityManager em = JPAUtil.getEntityManager();
         EntityTransaction transaction = null;
         
@@ -192,7 +192,7 @@ public class BlockDAO {
         }
     }
 
-    public int deleteBlocksAfter(int blockNumber) {
+    public int deleteBlocksAfter(Long blockNumber) {
         EntityManager em = JPAUtil.getEntityManager();
         EntityTransaction transaction = null;
         
