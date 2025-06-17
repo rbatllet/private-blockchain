@@ -59,6 +59,7 @@ jobs:
           - Update block number type from int to Long and integrate utility classes.
           - Add KeyFileLoader Tests and Update Mockito.
           - Migrate shell scripts from Bash to ZSH and standardize version numbering.
+          - Migrate to ZSH and Standardize Output with Emojis Across Project
           
           ## Download
           - **private-blockchain-1.0.2.jar**: Standard JAR (requires dependencies)
