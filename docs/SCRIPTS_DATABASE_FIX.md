@@ -19,6 +19,11 @@ All existing `run_*.sh` scripts have been refactored:
 | `run_all_tests.sh` | ✅ Updated | Complete test with shared functions |
 | `run_basic_tests.sh` | ✅ Updated | Basic test with shared functions |
 | `run_advanced_tests.sh` | ✅ Updated | Advanced test with shared functions |
+| `run_improved_rollback_test.sh` | ✅ Updated | Rollback test with shared functions |
+| `run_recovery_tests.sh` | ✅ Updated | Recovery test with shared functions |
+| `run_security_analysis.sh` | ✅ Updated | Security analysis with shared functions |
+| `run_security_tests.sh` | ✅ Updated | Security test with shared functions |
+| `clean-database.sh` | ✅ Updated | Database cleanup utility |
 
 ### 3. **Template for New Scripts**
 - **Location**: `scripts/run_template.sh`
@@ -29,19 +34,21 @@ All existing `run_*.sh` scripts have been refactored:
 - **Functionality**: Verifies that all `run_*.sh` scripts have the fix applied
 
 ### 5. **Database Maintenance Scripts**
-- **Script**: `scripts/db-cleanup.sh`
+- **Script**: `clean-database.sh` (en el directorio raíz)
 - **Functionality**: Comprehensive database cleanup and optimization
 
-- **Script**: `scripts/optimize-database.sql`
-- **Functionality**: SQLite optimization commands for performance
+- **Script**: `scripts/shared-functions.sh`
+- **Functionality**: Contains database cleanup functions and other utilities
 
-- **Script**: `scripts/consistency-check.sh`
-- **Functionality**: Verifies blockchain integrity and consistency
+- **Script**: `scripts/check-db-cleanup.sh`
+- **Functionality**: Verifies that all scripts include proper database cleanup
 
 ## 🚀 Main Functions
 
 ### Database Cleanup Functions
 ```bash
+#!/usr/bin/env zsh
+
 # Comprehensive database cleanup function - handles corrupted files
 clean_database() {
     print_info "Cleaning database files..."
@@ -84,6 +91,8 @@ clear_database_between_tests() {
 
 ### Utility Functions
 ```bash
+#!/usr/bin/env zsh
+
 # Initialize the complete test environment
 init_test_environment() {
     print_header "Initializing Test Environment"
@@ -276,7 +285,7 @@ log_test_result() {
 
 ### Example Script Using All Functions
 ```bash
-#!/bin/bash
+#!/usr/bin/env zsh
 # run_template.sh - Template for new test scripts with database fix
 
 # Load shared functions
@@ -335,7 +344,7 @@ chmod +x run_my_new_test.sh
 
 ### Example Structure for New Script:
 ```bash
-#!/bin/bash
+#!/usr/bin/env zsh
 
 # Load shared functions (includes database cleanup)
 source "$(dirname "$0")/scripts/shared-functions.sh"

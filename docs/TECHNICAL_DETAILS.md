@@ -10,6 +10,7 @@ Comprehensive technical documentation covering database schema, security model, 
 - [Performance Characteristics](#-performance-characteristics)
 - [Advanced Features Implementation](#-advanced-features-implementation)
 - [Testing Architecture](#-testing-architecture)
+- [Script Implementation](#-script-implementation)
 
 ## 🏗️ Architecture Overview
 
@@ -884,6 +885,58 @@ public class BlockchainTest {
     }
 }
 ```
+
+---
+
+## 📝 Script Implementation
+
+### Shell Script Architecture
+
+All shell scripts in the project use ZSH (Z Shell) with a standardized structure and error handling:
+
+```zsh
+#!/usr/bin/env zsh
+
+# Script Name
+# Brief description of script purpose
+# Version: 1.0.1
+
+# Get the script directory using ZSH-compatible approach
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Source shared functions
+source "$SCRIPT_DIR/scripts/shared-functions.sh"
+```
+
+### Shared Functions Library
+
+The `scripts/shared-functions.sh` file provides centralized utilities for all scripts:
+
+- Database cleanup and maintenance functions
+- Colored output formatting
+- Error handling and reporting
+- Environment validation
+
+### Error Handling Standard
+
+All scripts follow a standardized error handling approach:
+
+- Consistent error messages with visual indicators (colored output and emojis)
+- Centralized `error_exit()` function for fatal errors
+- Standardized output functions for different message types (error, warning, info, success)
+- Early validation of prerequisites and dependencies
+
+For detailed information on error handling standards, see [ERROR_HANDLING_STANDARD.md](ERROR_HANDLING_STANDARD.md).
+
+### Script Versioning
+
+All scripts follow a standardized versioning scheme:
+- Current version: 1.0.1
+- Version format: MAJOR.MINOR.PATCH
+
+### ZSH Migration
+
+The project has migrated all scripts from Bash to ZSH. For details on this migration, implementation changes, and compatibility considerations, see [BASH_TO_ZSH_MIGRATION.md](BASH_TO_ZSH_MIGRATION.md).
 
 ---
 

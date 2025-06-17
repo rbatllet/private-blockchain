@@ -12,29 +12,27 @@ if [ -f "$SCRIPT_DIR/scripts/shared-functions.sh" ]; then
     clean_database > /dev/null 2>&1
 fi
 
-echo "=== BLOCKCHAIN BASIC CORE FUNCTIONS TEST RUNNER ==="
-echo "Project directory: $(pwd)"
-echo
+print_step "=== 🧪 BLOCKCHAIN BASIC CORE FUNCTIONS TEST RUNNER ==="
+print_info "Project directory: $(pwd)"
+print_info ""
 
 # Check if we're in the correct directory
 if [ ! -f "pom.xml" ]; then
-    echo "❌ Error: pom.xml not found. Make sure to run this script from the project root directory."
-    exit 1
+    error_exit "pom.xml not found. Make sure to run this script from the project root directory."
 fi
 
-echo "📦 Compiling the project..."
+print_step "Compiling the project..."
 mvn clean compile test-compile -q
 
 if [ $? -ne 0 ]; then
-    echo "❌ Compilation error. Please review the errors above."
-    exit 1
+    error_exit "Compilation error. Please review the errors above."
 fi
 
-echo "✅ Compilation successful!"
-echo
+print_success "Compilation successful!"
+print_info ""
 
-echo "🧪 Running Basic Core Functions demo..."
-echo
+print_info "🧪 Running Basic Core Functions demo..."
+print_info ""
 
 # Run basic core functions test (suppress most logs)
 mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.CoreFunctionsDemo" \
@@ -45,19 +43,19 @@ mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.CoreFunctionsDemo" 
 
 TEST_RESULT=$?
 
-echo
-echo "=== SUMMARY ==="
+print_info ""
+print_step "=== 📊 SUMMARY ==="
 
 if [ $TEST_RESULT -eq 0 ]; then
-    echo "🎉 BASIC CORE FUNCTIONS TEST PASSED!"
-    echo "✅ The basic core functions of the blockchain work correctly."
+    print_success "🎉 BASIC CORE FUNCTIONS TEST PASSED!"
+    print_success "The basic core functions of the blockchain work correctly."
 else
-    echo "❌ BASIC CORE FUNCTIONS TEST FAILED."
-    echo "📝 Review the results above to see error details."
+    print_error "❌ BASIC CORE FUNCTIONS TEST FAILED."
+    print_info "Review the results above to see error details."
 fi
 
-echo
-echo "📍 Test location: src/main/java/com/rbatllet/blockchain/demo/CoreFunctionsDemo.java"
-echo "📖 Documentation: README.md"
+print_info ""
+print_info "Test location: src/main/java/com/rbatllet/blockchain/demo/CoreFunctionsDemo.java"
+print_info "Documentation: README.md"
 
 exit $TEST_RESULT

@@ -12,67 +12,65 @@ if [ -f "$SCRIPT_DIR/scripts/shared-functions.sh" ]; then
     clean_database > /dev/null 2>&1
 fi
 
-echo "=== 🔐 BLOCKCHAIN KEY DELETION SECURITY TEST RUNNER ==="
-echo "Project directory: $(pwd)"
-echo
+print_step "=== 🔐 BLOCKCHAIN KEY DELETION SECURITY TEST RUNNER ==="
+print_info "Project directory: $(pwd)"
+print_info ""
 
 # Check if we're in the correct directory
 if [ ! -f "pom.xml" ]; then
-    echo "❌ Error: pom.xml not found. Make sure to run this script from the project root directory."
-    exit 1
+    error_exit "pom.xml not found. Make sure to run this script from the project root directory."
 fi
 
 # Clean and compile
-echo "📦 Compiling project..."
+print_step "Compiling project..."
 mvn clean compile -q > /dev/null 2>&1
 if [ $? -ne 0 ]; then
-    echo "❌ Compilation failed!"
     mvn clean compile
-    exit 1
+    error_exit "Compilation failed!"
 fi
-echo "✅ Compilation successful"
-echo
+print_success "Compilation successful"
+print_info ""
 
 # Run Key Deletion Security Tests
-echo "🔐 Running Key Deletion Security Tests..."
-echo "================================================="
-echo
+print_info "🔐 Running Key Deletion Security Tests..."
+print_step "================================================="
+print_info ""
 mvn test -Dtest=DangerousDeleteAuthorizedKeyTest
 SECURITY_TEST_RESULT=$?
-echo
+print_info ""
 
 # Run the interactive demo
-echo "🎬 Running Key Deletion Security Demo..."
-echo "========================================="
-echo
+print_info "🎬 Running Key Deletion Security Demo..."
+print_step "========================================="
+print_info ""
 mvn compile exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.DangerousDeleteDemo" -q
 DEMO_RESULT=$?
-echo
+print_info ""
 
 # Summary
-echo "📊 SECURITY TEST SUMMARY"
-echo "========================="
+print_step "📊 SECURITY TEST SUMMARY"
+print_step "========================="
 if [ $SECURITY_TEST_RESULT -eq 0 ]; then
-    echo "✅ Key Deletion Security Tests: PASSED"
+    print_success "✅ Key Deletion Security Tests: PASSED"
 else
-    echo "❌ Key Deletion Security Tests: FAILED"
+    print_error "❌ Key Deletion Security Tests: FAILED"
 fi
 
 if [ $DEMO_RESULT -eq 0 ]; then
-    echo "✅ Security Demo: COMPLETED"
+    print_success "✅ Security Demo: COMPLETED"
 else
-    echo "❌ Security Demo: FAILED"
+    print_error "❌ Security Demo: FAILED"
 fi
 
-echo
-echo "🔍 Security Features Tested:"
-echo "  • Impact analysis (canDeleteAuthorizedKey)"
-echo "  • Safe deletion (deleteAuthorizedKey)"
-echo "  • Dangerous deletion with safety (dangerouslyDeleteAuthorizedKey)"
-echo "  • Forced deletion with blockchain corruption"
-echo "  • Multi-level protection scenarios"
-echo "  • Comprehensive audit logging"
-echo
+print_info ""
+print_info "🔍 Security Features Tested:"
+print_info "  • Impact analysis (canDeleteAuthorizedKey)"
+print_info "  • Safe deletion (deleteAuthorizedKey)"
+print_info "  • Dangerous deletion with safety (dangerouslyDeleteAuthorizedKey)"
+print_info "  • Forced deletion with blockchain corruption"
+print_info "  • Multi-level protection scenarios"
+print_info "  • Comprehensive audit logging"
+print_info ""
 
 # Final cleanup
 if command -v clean_database &> /dev/null; then
@@ -81,9 +79,8 @@ fi
 
 # Exit with appropriate code
 if [ $SECURITY_TEST_RESULT -eq 0 ] && [ $DEMO_RESULT -eq 0 ]; then
-    echo "🎉 All security tests completed successfully!"
+    print_success "All security tests completed successfully!"
     exit 0
 else
-    echo "⚠️  Some security tests failed. Check the output above."
-    exit 1
+    error_exit "Some security tests failed. Check the output above."
 fi

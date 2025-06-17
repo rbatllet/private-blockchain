@@ -145,7 +145,7 @@ public class DangerousDeleteDemo {
             System.out.println("6. 🛡️ Use force=true only in extreme circumstances (GDPR, security incidents)");
             
         } catch (Exception e) {
-            System.err.println("Demo error: " + e.getMessage());
+            System.err.println("❌ Demo error: " + e.getMessage());
             e.printStackTrace();
         }
     }

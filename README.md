@@ -305,6 +305,29 @@ All test scripts now include automatic database cleanup to prevent SQLite corrup
 ./run_basic_tests.sh    # Includes automatic cleanup
 ```
 
+### ZSH Script Implementation
+All scripts in this project use ZSH (Z Shell) instead of Bash for improved compatibility and features:
+
+```bash
+# All scripts use the portable shebang format
+#!/usr/bin/env zsh
+```
+
+**Key ZSH Features Used:**
+- Improved function handling (no need for `export -f` as in Bash)
+- Better error handling and debugging capabilities
+- Enhanced portability across different Unix-like systems
+- Consistent script behavior across environments
+- Standardized error handling with colored output
+
+**Error Handling Standard:**
+- All scripts use a consistent error handling approach
+- Centralized `error_exit()` function for fatal errors
+- Standardized output functions with visual indicators
+- See [ERROR_HANDLING_STANDARD.md](docs/ERROR_HANDLING_STANDARD.md) for details
+
+> **Note:** Make sure ZSH is installed on your system to run these scripts. Most macOS systems have ZSH installed by default.
+
 ### Manual Database Cleanup
 If you encounter database corruption issues:
 

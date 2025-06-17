@@ -20,14 +20,25 @@ print_success() {
 }
 
 print_warning() {
-    echo -e "${YELLOW}⚠️  $1${NC}"
+    echo -e "${YELLOW}⚠️ $1${NC}"
 }
 
 print_error() {
     echo -e "${RED}❌ $1${NC}"
 }
 
-echo -e "${BLUE}🧹 Private Blockchain Database Cleanup Script${NC}"
+# Standardized function to exit with error
+error_exit() {
+    print_error "❌ ERROR: $1"
+    print_error "❌ Aborting operation."
+    exit 1
+}
+
+print_step() {
+    echo -e "${BLUE}📝 $1${NC}"
+}
+
+print_step "🧹 Private Blockchain Database Cleanup Script"
 echo "=================================================="
 
 # Get the script directory
@@ -38,8 +49,7 @@ print_info "Working directory: $(pwd)"
 
 # Check if we're in the correct directory
 if [ ! -f "pom.xml" ]; then
-    print_error "pom.xml not found. Please run this script from the project root directory."
-    exit 1
+    error_exit "pom.xml not found. Please run this script from the project root directory."
 fi
 
 # Function to clean corrupted database files

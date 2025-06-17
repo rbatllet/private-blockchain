@@ -12,19 +12,19 @@ import java.security.KeyPair;
 public class BlockchainDemo {
     
     public static void main(String[] args) {
-        System.out.println("=== PRIVATE BLOCKCHAIN DEMO ===\n");
+        System.out.println("=== 📊 PRIVATE BLOCKCHAIN DEMO ===\n");
         
         try {
             // 1. Create blockchain instance
             Blockchain blockchain = new Blockchain();
             
             // 2. Generate key pairs for two users
-            System.out.println("Generating key pairs...");
+            System.out.println("🔐 Generating key pairs...");
             KeyPair userAlice = CryptoUtil.generateKeyPair();
             KeyPair userBob = CryptoUtil.generateKeyPair();
             
             // 3. Authorize the keys
-            System.out.println("\nAuthorizing keys...");
+            System.out.println("\n🔑 Authorizing keys...");
             String alicePublicKey = CryptoUtil.publicKeyToString(userAlice.getPublic());
             String bobPublicKey = CryptoUtil.publicKeyToString(userBob.getPublic());
             
@@ -32,7 +32,7 @@ public class BlockchainDemo {
             blockchain.addAuthorizedKey(bobPublicKey, "Bob");
             
             // 4. Add some blocks to the chain
-            System.out.println("\nAdding blocks to blockchain...");
+            System.out.println("\n🧱 Adding blocks to blockchain...");
             
             blockchain.addBlock("First transaction: Alice sends data", 
                               userAlice.getPrivate(), userAlice.getPublic());
@@ -44,17 +44,17 @@ public class BlockchainDemo {
                               userAlice.getPrivate(), userAlice.getPublic());
             
             // 5. Validate the entire chain
-            System.out.println("\nValidating blockchain...");
+            System.out.println("\n✅ Validating blockchain...");
             boolean isValid = blockchain.validateChain();
-            System.out.println("Blockchain is valid: " + isValid);
+            System.out.println("✅ Blockchain is valid: " + isValid);
             
             // 6. Display chain information
-            System.out.println("\n=== BLOCKCHAIN STATUS ===");
-            System.out.println("Total blocks: " + blockchain.getBlockCount());
-            System.out.println("Authorized keys: " + blockchain.getAuthorizedKeys().size());
+            System.out.println("\n=== 📊 BLOCKCHAIN STATUS ===");
+            System.out.println("📦 Total blocks: " + blockchain.getBlockCount());
+            System.out.println("🔑 Authorized keys: " + blockchain.getAuthorizedKeys().size());
             
         } catch (Exception e) {
-            System.err.println("Demo error: " + e.getMessage());
+            System.err.println("❌ Demo error: " + e.getMessage());
             e.printStackTrace();
         }
         

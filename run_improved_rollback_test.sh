@@ -8,19 +8,21 @@ echo "🧪 IMPROVED ROLLBACK STRATEGY TEST"
 echo "=================================="
 echo ""
 
-# Colors for output
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# Load shared functions for consistent output formatting and error handling
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$SCRIPT_DIR/scripts/shared-functions.sh" ]; then
+    source "$SCRIPT_DIR/scripts/shared-functions.sh"
+else
+    echo "❌ Error: shared-functions.sh not found. Please ensure the scripts directory exists."
+    exit 1
+fi
 
-echo -e "${BLUE}Running ImprovedRollbackStrategyTest...${NC}"
+print_info "Running ImprovedRollbackStrategyTest..."
 echo ""
 
 # Check if we're in the correct directory
 if [ ! -f "pom.xml" ]; then
-    echo -e "${RED}❌ Error: pom.xml not found. Please run this script from the project root directory.${NC}"
-    exit 1
+    error_exit "pom.xml not found. Please run this script from the project root directory."
 fi
 
 # Run the specific test
@@ -30,15 +32,15 @@ TEST_EXIT_CODE=$?
 
 echo ""
 if [ $TEST_EXIT_CODE -eq 0 ]; then
-    echo -e "${GREEN}✅ Improved Rollback Strategy Test: PASSED${NC}"
+    print_success "Improved Rollback Strategy Test: PASSED"
     echo ""
-    echo -e "${BLUE}🎯 Test verified:${NC}"
+    print_info "Test verified:"
     echo "   • Intelligent rollback analysis"
     echo "   • Security-first approach with data preservation"
     echo "   • Hash chain integrity verification"
     echo "   • Multiple safety checks and fallbacks"
 else
-    echo -e "${RED}❌ Improved Rollback Strategy Test: FAILED${NC}"
+    print_error "Improved Rollback Strategy Test: FAILED"
 fi
 
 exit $TEST_EXIT_CODE

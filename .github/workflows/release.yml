@@ -29,15 +29,24 @@ jobs:
         key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
         restore-keys: ${{ runner.os }}-m2
     
+    - name: Install ZSH
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y zsh
+      shell: bash
+        
     - name: Run tests
       run: mvn clean test
+      shell: zsh {0}
     
     - name: Build JAR with dependencies
       run: mvn clean package
+      shell: zsh {0}
     
     - name: Get version from tag
       id: get_version
       run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      shell: zsh {0}
     
     - name: Create Release
       uses: softprops/action-gh-release@v1
@@ -46,19 +55,20 @@ jobs:
         name: Release ${{ steps.get_version.outputs.VERSION }}
         body: |
           ## Changes in this Release
-          - Complete migration from Hibernate to JPA standard
-          - Implement multi-layered key deletion security system
-          - Add comprehensive security test scripts
-          - Implement blockchain recovery functionality with enhanced validation and reorganize project structure
-          - Enhance blockchain recovery system and data validation: implement intelligent rollback strategy, advanced recovery configuration, and strict null block policy.
+          - Add JaCoCo code coverage and exclude demo classes.
+          - Update block number type from int to Long and integrate utility classes.
+          - Add KeyFileLoader Tests and Update Mockito.
+          - Migrate shell scripts from Bash to ZSH and standardize version numbering.
           
           ## Download
-          - **private-blockchain-1.0.1.jar**: Standard JAR (requires dependencies)
-          - **private-blockchain-1.0.1-jar-with-dependencies.jar**: Executable JAR with all dependencies included
+          - **private-blockchain-1.0.2.jar**: Standard JAR (requires dependencies)
+          - **private-blockchain-1.0.2-jar-with-dependencies.jar**: Executable JAR with all dependencies included
           
           ## Usage
           ```bash
-          java -jar private-blockchain-1.0.1-jar-with-dependencies.jar
+          #!/usr/bin/env zsh
+          
+          java -jar private-blockchain-1.0.2-jar-with-dependencies.jar
           ```
         files: |
           target/private-blockchain-*.jar

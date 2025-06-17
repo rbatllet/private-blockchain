@@ -12,57 +12,52 @@ if [ -f "$SCRIPT_DIR/scripts/shared-functions.sh" ]; then
     clean_database > /dev/null 2>&1
 fi
 
-echo "=== BLOCKCHAIN ADDITIONAL ADVANCED FUNCTIONS TEST RUNNER ==="
-echo "Project directory: $(pwd)"
-echo
+print_step "=== 🔍 BLOCKCHAIN ADDITIONAL ADVANCED FUNCTIONS TEST RUNNER ==="
+print_info "Project directory: $(pwd)"
+print_info ""
 
 # Check if we're in the correct directory
 if [ ! -f "pom.xml" ]; then
-    echo "❌ Error: pom.xml not found. Make sure to run this script from the project root directory."
-    exit 1
+    error_exit "pom.xml not found. Make sure to run this script from the project root directory."
 fi
 
-echo "📦 Compiling the project..."
+print_step "Compiling the project..."
 mvn clean compile test-compile -q
 
 if [ $? -ne 0 ]; then
-    echo "❌ Compilation error. Please review the errors above."
-    exit 1
+    error_exit "Compilation error. Please review the errors above."
 fi
 
-echo "✅ Compilation successful!"
-echo
+print_success "Compilation successful!"
 
 # Clear any existing database to start fresh
 if [ -f "blockchain.db" ]; then
-    echo "🗑️ Removing existing database for fresh test start..."
+    print_info "💡 Removing existing database for fresh test start..."
     rm blockchain.db
-    echo "✅ Database cleared"
+    print_success "Database cleared"
 fi
-echo
 
-echo "🧪 Running Additional Advanced Functions tests..."
-echo "ℹ️  Note: 'Error exporting' and 'Import file not found' messages are intentional test cases for error handling"
-echo
+print_info "🧪 Running Additional Advanced Functions tests..."
+print_info "Note: 'Error exporting' and 'Import file not found' messages are intentional test cases for error handling"
 
 # Run tests with Maven (suppress error output that's expected in tests)
 mvn test -Dtest=BlockchainAdditionalAdvancedFunctionsTest -Djava.util.logging.config.file=src/main/resources/logging.properties
 
 TEST_RESULT=$?
 
-echo
-echo "=== SUMMARY ==="
+print_info ""
+print_step "=== 📊 SUMMARY ==="
 
 if [ $TEST_RESULT -eq 0 ]; then
-    echo "🎉 ALL TESTS PASSED!"
-    echo "✅ The additional advanced functions of the blockchain work correctly."
+    print_success "🎉 ALL TESTS PASSED!"
+    print_success "The additional advanced functions of the blockchain work correctly."
 else
-    echo "❌ SOME TESTS FAILED."
-    echo "📝 Review the results above to see error details."
+    print_error "❌ SOME TESTS FAILED."
+    print_info "Review the results above to see error details."
 fi
 
-echo
-echo "📍 Test location: src/test/java/com/rbatllet/blockchain/core/"
-echo "📖 Documentation: README.md"
+print_info ""
+print_info "Test location: src/test/java/com/rbatllet/blockchain/core/"
+print_info "Documentation: README.md"
 
 exit $TEST_RESULT

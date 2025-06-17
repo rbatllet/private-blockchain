@@ -18,6 +18,8 @@ else
     exit 1
 fi
 
+# Note: We don't use error_exit here because we haven't loaded shared-functions.sh yet
+
 # Script configuration
 SCRIPT_NAME="$(basename "$0")"
 SCRIPT_DESCRIPTION="Description of what this script does"
@@ -53,12 +55,12 @@ main() {
     # Example test execution:
     # clear_database_between_tests  # Call between test suites if needed
     # 
-    # print_step "Running your test..."
+    # print_step "🧪 Running your test..."
     # if mvn test -Dtest=YourTestClass -q; then
-    #     print_success "Your test: PASSED"
+    #     print_success "✅ Your test: PASSED"
     #     ((passed_tests++))
     # else
-    #     print_error "Your test: FAILED"
+    #     print_error "❌ Your test: FAILED"
     #     ((failed_tests++))
     # fi
     # ((total_tests++))
@@ -74,7 +76,7 @@ main() {
     if [ "$failed_tests" -eq 0 ]; then
         exit 0
     else
-        exit 1
+        error_exit "Some tests have failed. Check the results above."
     fi
 }
 

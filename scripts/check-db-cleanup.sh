@@ -27,7 +27,18 @@ print_error() {
     echo -e "${RED}❌ $1${NC}"
 }
 
-echo -e "${BLUE}🔧 Database Cleanup Fix Applicator${NC}"
+# Standardized function to exit with error
+error_exit() {
+    print_error "❌ ERROR: $1"
+    print_error "❌ Aborting operation."
+    exit 1
+}
+
+print_step() {
+    echo -e "${BLUE}📝 $1${NC}"
+}
+
+print_step "🔧 Database Cleanup Fix Applicator"
 echo "========================================"
 
 # Get the script directory and go to project root
@@ -39,14 +50,12 @@ print_info "Working directory: $(pwd)"
 
 # Check if we're in the correct directory
 if [ ! -f "pom.xml" ]; then
-    print_error "pom.xml not found. Please run this script from the project root directory."
-    exit 1
+    error_exit "pom.xml not found. Please run this script from the project root directory."
 fi
 
 # Check if shared functions exist
 if [ ! -f "scripts/shared-functions.sh" ]; then
-    print_error "scripts/shared-functions.sh not found. Please ensure the shared functions are installed."
-    exit 1
+    error_exit "scripts/shared-functions.sh not found. Please ensure the shared functions are installed."
 fi
 
 print_info "Scanning for run_*.sh scripts..."

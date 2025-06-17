@@ -955,7 +955,7 @@ grep -i warn test_complete.log
 #### Health Check Script
 
 ```bash
-#!/bin/bash
+#!/usr/bin/env zsh
 # health_check.sh - Comprehensive environment validation
 
 echo "🔍 Blockchain Environment Health Check"

@@ -55,7 +55,7 @@ Comprehensive production deployment guide for the Private Blockchain implementat
 
 ### Initial Setup Script
 ```bash
-#!/bin/bash
+#!/usr/bin/env zsh
 # production-setup.sh - Initial production environment setup
 
 set -e
@@ -111,7 +111,7 @@ echo "5. Set up backup schedule"
 
 #### Master Key Generation
 ```bash
-#!/bin/bash
+#!/usr/bin/env zsh
 # generate-master-keys.sh - Generate master cryptographic keys
 
 APP_HOME="/opt/blockchain"
@@ -270,7 +270,7 @@ VACUUM;
 
 #### Database Maintenance Script
 ```bash
-#!/bin/bash
+#!/usr/bin/env zsh
 # database-maintenance.sh - Weekly database optimization
 
 APP_HOME="/opt/blockchain"
@@ -355,7 +355,7 @@ echo "✅ Database maintenance completed"
 
 #### Health Check Script
 ```bash
-#!/bin/bash
+#!/usr/bin/env zsh
 # health-check.sh - Application health monitoring
 
 APP_HOME="/opt/blockchain"
@@ -406,7 +406,7 @@ echo "📊 Process: $PID, Memory: ${MEMORY_USAGE}%, Disk: ${FREE_SPACE_MB}MB fre
 
 #### Metrics Collection
 ```bash
-#!/bin/bash
+#!/usr/bin/env zsh
 # collect-metrics.sh - System metrics collection
 
 APP_HOME="/opt/blockchain"
@@ -491,7 +491,7 @@ fi
 
 #### Daily Backup Script
 ```bash
-#!/bin/bash
+#!/usr/bin/env zsh
 # daily-backup.sh - Automated daily backups
 
 set -e
@@ -559,7 +559,7 @@ echo "🎉 Daily backup completed successfully"
 
 #### Disaster Recovery Script
 ```bash
-#!/bin/bash
+#!/usr/bin/env zsh
 # disaster-recovery.sh - Complete system recovery from backup
 
 set -e
@@ -703,7 +703,7 @@ watch -n 30 'ps -p $(cat /opt/blockchain/application/blockchain.pid) -o pid,vsz,
 
 #### Emergency Restart Protocol
 ```bash
-#!/bin/bash
+#!/usr/bin/env zsh
 # emergency-restart.sh - Emergency application restart
 
 echo "🚨 EMERGENCY RESTART INITIATED"

@@ -16,8 +16,8 @@ NC='\033[0m' # No Color
 
 # Utility functions for colored output
 print_header() {
-    echo -e "${BLUE}$1${NC}"
-    echo "=============================================="
+    echo -e "${BLUE}📊 $1${NC}"
+    echo "==============================================="
 }
 
 print_info() {
@@ -36,6 +36,13 @@ print_error() {
     echo -e "${RED}❌ $1${NC}"
 }
 
+# Standardized function to exit with error
+error_exit() {
+    print_error "❌ ERROR: $1"
+    print_error "❌ Aborting operation."
+    exit 1
+}
+
 print_step() {
     echo -e "${PURPLE}📋 $1${NC}"
 }
@@ -43,8 +50,7 @@ print_step() {
 # Function to check if we're in the correct project directory
 check_project_directory() {
     if [ ! -f "pom.xml" ]; then
-        print_error "pom.xml not found. Please run this script from the project root directory."
-        exit 1
+        error_exit "pom.xml not found. Please run this script from the project root directory."
     fi
 }
 
@@ -91,8 +97,7 @@ compile_project() {
     mvn clean compile test-compile -q
     
     if [ $? -ne 0 ]; then
-        print_error "Compilation failed. Please check the errors above."
-        exit 1
+        error_exit "Compilation failed. Please check the errors above."
     fi
     
     print_success "Compilation successful!"
@@ -103,18 +108,20 @@ compile_project() {
 init_test_environment() {
     print_header "INITIALIZING TEST ENVIRONMENT"
     print_info "Project directory: $(pwd)"
-    echo
+    print_info ""
     
     check_project_directory
     clean_database
     
-    echo
+    print_info ""
 }
 
 # Function to clear database between test suites
 clear_database_between_tests() {
     if [ -f "blockchain.db" ]; then
+        print_info "🗑️ Clearing database between tests..."
         rm -f blockchain.db blockchain.db-shm blockchain.db-wal 2>/dev/null || true
+        print_success "✅ Database cleared"
     fi
 }
 
@@ -135,9 +142,7 @@ check_dependencies() {
     fi
     
     if [ ${#missing_deps[@]} -ne 0 ]; then
-        print_error "Missing required dependencies: ${missing_deps[*]}"
-        print_info "Please install the missing dependencies and try again."
-        exit 1
+        error_exit "Missing required dependencies: ${missing_deps[*]}. Please install the missing dependencies and try again."
     fi
 }
 
@@ -146,17 +151,17 @@ show_usage() {
     local script_name="$1"
     local description="$2"
     
-    echo -e "${BLUE}Usage: $script_name${NC}"
-    echo "Description: $description"
-    echo
-    echo "Environment Variables:"
-    echo "  SKIP_DB_CLEANUP=true     - Skip database cleanup (for debugging)"
-    echo "  SKIP_UNIT_TESTS=true     - Skip Maven unit tests (if applicable)"
-    echo
-    echo "Examples:"
-    echo "  ./$script_name                    # Normal execution"
-    echo "  SKIP_DB_CLEANUP=true ./$script_name  # Skip database cleanup"
-    echo
+    echo -e "${BLUE}📖 Usage: $script_name${NC}"
+    echo -e "${BLUE}📝 Description: $description${NC}"
+    print_info ""
+    print_info "🔰 Environment Variables:"
+    print_info "  🔑 SKIP_DB_CLEANUP=true     - Skip database cleanup (for debugging)"
+    print_info "  🔑 SKIP_UNIT_TESTS=true     - Skip Maven unit tests (if applicable)"
+    print_info ""
+    print_info "💬 Examples:"
+    print_info "  ./$script_name                    # Normal execution"
+    print_info "  SKIP_DB_CLEANUP=true ./$script_name  # Skip database cleanup"
+    print_info ""
 }
 
 # Function to create a test summary
@@ -166,17 +171,17 @@ print_test_summary() {
     local failed_tests="$3"
     
     print_header "TEST SUMMARY"
-    echo "🎯 Total Tests: $total_tests"
-    echo "✅ Passed: $passed_tests"
-    echo "❌ Failed: $failed_tests"
+    print_info "🎯 Total Tests: $total_tests"
+    print_info "✅ Passed: $passed_tests"
+    print_info "❌ Failed: $failed_tests"
     
     if [ "$failed_tests" -eq 0 ]; then
-        echo "📈 Success Rate: 100%"
+        print_info "📈 Success Rate: 100%"
         print_success "ALL TESTS PASSED! 🎉"
     else
         local success_rate=$((passed_tests * 100 / total_tests))
-        echo "📈 Success Rate: ${success_rate}%"
-        print_warning "Some tests failed. Please review the output above."
+        print_info "📈 Success Rate: ${success_rate}%"
+        print_warning "⚠️ Some tests failed. Please review the output above."
     fi
 }
 
