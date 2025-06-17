@@ -1,8 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env zsh
 
 # Clean Database Script for Private Blockchain
 # Quick script to clean corrupted SQLite database files
-# Version: 1.0.0
+# Version: 1.0.1
 
 # Colors for output
 RED='\033[0;31m'
@@ -31,7 +31,7 @@ echo -e "${BLUE}🧹 Private Blockchain Database Cleanup Script${NC}"
 echo "=================================================="
 
 # Get the script directory
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
 print_info "Working directory: $(pwd)"

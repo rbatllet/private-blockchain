@@ -1,7 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env zsh
 
 # Simple script to run the improved rollback strategy test
 # Executes the ImprovedRollbackStrategyTest JUnit5 test
+# Version: 1.0.1
 
 echo "🧪 IMPROVED ROLLBACK STRATEGY TEST"
 echo "=================================="

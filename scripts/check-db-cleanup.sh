@@ -1,8 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env zsh
 
 # Script to automatically apply database cleanup fix to all run_*.sh scripts
 # This script ensures ALL run_*.sh scripts include the database cleanup functionality
-# Version: 1.0
+# Version: 1.0.1
 
 # Colors for output
 RED='\033[0;31m'
@@ -31,7 +31,7 @@ echo -e "${BLUE}🔧 Database Cleanup Fix Applicator${NC}"
 echo "========================================"
 
 # Get the script directory and go to project root
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_ROOT"
 

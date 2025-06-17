@@ -1,8 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env zsh
 
 # Template for new run_*.sh scripts in Private Blockchain project
 # Copy this template when creating new test scripts
-# Version: 1.0
+# Version: 1.0.1
 #
 # Usage: 
 #   1. Copy this file to run_your_test_name.sh
@@ -10,7 +10,7 @@
 #   3. Make it executable: chmod +x run_your_test_name.sh
 
 # Load shared functions (includes database cleanup functionality)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 if [ -f "$SCRIPT_DIR/scripts/shared-functions.sh" ]; then
     source "$SCRIPT_DIR/scripts/shared-functions.sh"
 else

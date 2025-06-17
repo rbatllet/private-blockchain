@@ -1,10 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env zsh
 
 # Script to run Basic Core Functions tests for the Blockchain
 # Usage: ./run_basic_tests.sh
+# Version: 1.0.1
 
 # Load shared functions for database cleanup (but preserve original structure)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 if [ -f "$SCRIPT_DIR/scripts/shared-functions.sh" ]; then
     source "$SCRIPT_DIR/scripts/shared-functions.sh"
     # Clean database at start to prevent corruption

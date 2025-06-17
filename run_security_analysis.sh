@@ -1,10 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env zsh
 
 # Advanced Security Test Runner with detailed analysis
 # Usage: ./run_security_analysis.sh
+# Version: 1.0.1
 
 # Load shared functions for database cleanup
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 if [ -f "$SCRIPT_DIR/scripts/shared-functions.sh" ]; then
     source "$SCRIPT_DIR/scripts/shared-functions.sh"
     clean_database > /dev/null 2>&1

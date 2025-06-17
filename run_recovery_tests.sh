@@ -1,7 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env zsh
 
 # Recovery-focused test runner
 # Runs all recovery-related tests including the improved rollback strategy
+# Version: 1.0.1
 
 echo "🔄 BLOCKCHAIN RECOVERY TESTS"
 echo "============================"

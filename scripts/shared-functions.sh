@@ -1,8 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env zsh
 
 # Shared Functions Library for Private Blockchain Scripts
 # This file contains common utility functions used by all test scripts
-# Version: 1.0
+# Version: 1.0.1
 #
 # Usage: source ./scripts/shared-functions.sh
 
@@ -180,7 +180,5 @@ print_test_summary() {
     fi
 }
 
-# Export functions so they can be used by sourcing scripts
-export -f print_header print_info print_success print_warning print_error print_step
-export -f check_project_directory clean_database compile_project init_test_environment
-export -f clear_database_between_tests check_dependencies show_usage print_test_summary
+# In ZSH, functions are automatically exported when sourced
+# No need for export -f as in Bash
