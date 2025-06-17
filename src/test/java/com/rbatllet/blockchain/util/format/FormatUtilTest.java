@@ -2,12 +2,12 @@ package com.rbatllet.blockchain.util.format;
 
 import com.rbatllet.blockchain.entity.Block;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+
+// Using test doubles instead of Mockito to avoid dependency issues
 
 /**
  * Test class for FormatUtil
@@ -61,19 +61,32 @@ public class FormatUtilTest {
                 "Long hash should be truncated with ellipsis in the middle");
     }
     
+    // Test implementation of Block
+    private static class TestBlock extends Block {
+        
+        public TestBlock(Long blockNumber, LocalDateTime timestamp, String hash, String previousHash, String data) {
+            // Set all required fields directly
+            setBlockNumber(blockNumber);
+            setTimestamp(timestamp);
+            setHash(hash);
+            setPreviousHash(previousHash);
+            setData(data);
+        }
+    }
+    
     @Test
     public void testFormatBlockInfo() {
-        // Create mock block
-        Block mockBlock = Mockito.mock(Block.class);
+        // Create test block
         LocalDateTime timestamp = LocalDateTime.of(2025, 6, 16, 19, 30, 0);
+        Block testBlock = new TestBlock(
+            42L,
+            timestamp,
+            "abcdef1234567890abcdef1234567890",
+            "0123456789abcdef0123456789abcdef",
+            "Test block data"
+        );
         
-        when(mockBlock.getBlockNumber()).thenReturn(42L);
-        when(mockBlock.getTimestamp()).thenReturn(timestamp);
-        when(mockBlock.getHash()).thenReturn("abcdef1234567890abcdef1234567890");
-        when(mockBlock.getPreviousHash()).thenReturn("0123456789abcdef0123456789abcdef");
-        when(mockBlock.getData()).thenReturn("Test block data");
-        
-        String result = FormatUtil.formatBlockInfo(mockBlock);
+        String result = FormatUtil.formatBlockInfo(testBlock);
         
         assertTrue(result.contains("Block #42"), "Block info should contain block number");
         assertTrue(result.contains("2025-06-16 19:30:00"), "Block info should contain formatted timestamp");

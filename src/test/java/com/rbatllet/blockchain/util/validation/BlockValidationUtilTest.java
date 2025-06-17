@@ -4,62 +4,97 @@ import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.core.Blockchain;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
-import static org.mockito.Mockito.lenient;
 
 /**
  * Test class for BlockValidationUtil
  */
-@ExtendWith(MockitoExtension.class)
 public class BlockValidationUtilTest {
     
-    @Mock
-    private Block mockGenesisBlock;
+    // Test implementations instead of mocks
+    private Block testGenesisBlock;
+    // Using this in the InvalidBlockNumber and InvalidPreviousHash tests
+    private TestBlockchain testBlockchain;
     
-    @Mock
-    private Block mockNonGenesisBlock;
+    // Test implementation of Block
+    private static class TestBlock extends Block {
+        public TestBlock(Long blockNumber, String previousHash) {
+            setBlockNumber(blockNumber);
+            setPreviousHash(previousHash);
+            setHash("hash" + blockNumber);
+            setTimestamp(LocalDateTime.now());
+            setData("Test data for block " + blockNumber);
+        }
+    }
     
-    @Mock
-    private Blockchain mockBlockchain;
+    // Test implementation of Blockchain
+    private static class TestBlockchain extends Blockchain {
+        private Block genesisBlock;
+        private boolean keyAuthorized;
+        private RuntimeException keyAuthorizedException;
+        
+        public TestBlockchain() {
+            // Call default constructor of Blockchain
+            super();
+            this.genesisBlock = new TestBlock(0L, "0");
+            this.keyAuthorized = false;
+            this.keyAuthorizedException = null;
+        }
+        
+        // Override getGenesisBlock to return our test block
+        public Optional<Block> getGenesisBlock() {
+            return Optional.of(genesisBlock);
+        }
+        
+        public void setKeyAuthorized(boolean authorized) {
+            this.keyAuthorized = authorized;
+        }
+        
+        public void setKeyAuthorizedException(RuntimeException exception) {
+            this.keyAuthorizedException = exception;
+        }
+        
+        // Override wasKeyAuthorizedAt for testing
+        public boolean wasKeyAuthorizedAt(String publicKey, LocalDateTime timestamp) {
+            if (keyAuthorizedException != null) {
+                throw keyAuthorizedException;
+            }
+            return keyAuthorized;
+        }
+    }
     
     @BeforeEach
     public void setUp() {
-        // Set up genesis block mock
-        lenient().when(mockGenesisBlock.getBlockNumber()).thenReturn(0L);
-        lenient().when(mockGenesisBlock.getPreviousHash()).thenReturn("0");
-        
-        // Set up non-genesis block mock
-        lenient().when(mockNonGenesisBlock.getBlockNumber()).thenReturn(1L);
-        lenient().when(mockNonGenesisBlock.getPreviousHash()).thenReturn("abcdef1234567890");
+        // Initialize test objects
+        testGenesisBlock = new TestBlock(0L, "0");
+        testBlockchain = new TestBlockchain();
     }
     
     @Test
     public void testValidateGenesisBlock_Valid() {
-        assertTrue(BlockValidationUtil.validateGenesisBlock(mockGenesisBlock), 
+        assertTrue(BlockValidationUtil.validateGenesisBlock(testGenesisBlock), 
                 "Valid genesis block should pass validation");
     }
     
     @Test
     public void testValidateGenesisBlock_InvalidBlockNumber() {
-        when(mockGenesisBlock.getBlockNumber()).thenReturn(1L);
+        // Create a test block with invalid block number for genesis
+        Block invalidBlock = new TestBlock(1L, "0");
         
-        assertFalse(BlockValidationUtil.validateGenesisBlock(mockGenesisBlock), 
+        assertFalse(BlockValidationUtil.validateGenesisBlock(invalidBlock), 
                 "Genesis block with non-zero block number should fail validation");
     }
     
     @Test
     public void testValidateGenesisBlock_InvalidPreviousHash() {
-        when(mockGenesisBlock.getPreviousHash()).thenReturn("not-zero-hash");
+        // Create a test block with invalid previous hash for genesis
+        Block invalidBlock = new TestBlock(0L, "not-zero-hash");
         
-        assertFalse(BlockValidationUtil.validateGenesisBlock(mockGenesisBlock), 
+        assertFalse(BlockValidationUtil.validateGenesisBlock(invalidBlock), 
                 "Genesis block with non-zero previous hash should fail validation");
     }
     
@@ -68,9 +103,10 @@ public class BlockValidationUtilTest {
         String publicKey = "test-public-key";
         LocalDateTime timestamp = LocalDateTime.now();
         
-        when(mockBlockchain.wasKeyAuthorizedAt(eq(publicKey), eq(timestamp))).thenReturn(true);
+        // Set up the test blockchain to return true for key authorization
+        testBlockchain.setKeyAuthorized(true);
         
-        assertTrue(BlockValidationUtil.wasKeyAuthorizedAt(mockBlockchain, publicKey, timestamp),
+        assertTrue(BlockValidationUtil.wasKeyAuthorizedAt(testBlockchain, publicKey, timestamp),
                 "Should return true when key was authorized");
     }
     
@@ -79,9 +115,10 @@ public class BlockValidationUtilTest {
         String publicKey = "test-public-key";
         LocalDateTime timestamp = LocalDateTime.now();
         
-        when(mockBlockchain.wasKeyAuthorizedAt(eq(publicKey), eq(timestamp))).thenReturn(false);
+        // Set up the test blockchain to return false for key authorization
+        testBlockchain.setKeyAuthorized(false);
         
-        assertFalse(BlockValidationUtil.wasKeyAuthorizedAt(mockBlockchain, publicKey, timestamp),
+        assertFalse(BlockValidationUtil.wasKeyAuthorizedAt(testBlockchain, publicKey, timestamp),
                 "Should return false when key was not authorized");
     }
     
@@ -90,10 +127,10 @@ public class BlockValidationUtilTest {
         String publicKey = "test-public-key";
         LocalDateTime timestamp = LocalDateTime.now();
         
-        when(mockBlockchain.wasKeyAuthorizedAt(eq(publicKey), eq(timestamp)))
-                .thenThrow(new RuntimeException("Test exception"));
+        // Set up the test blockchain to throw an exception for key authorization
+        testBlockchain.setKeyAuthorizedException(new RuntimeException("Test exception"));
         
-        assertFalse(BlockValidationUtil.wasKeyAuthorizedAt(mockBlockchain, publicKey, timestamp),
+        assertFalse(BlockValidationUtil.wasKeyAuthorizedAt(testBlockchain, publicKey, timestamp),
                 "Should return false when an exception occurs");
     }
     
