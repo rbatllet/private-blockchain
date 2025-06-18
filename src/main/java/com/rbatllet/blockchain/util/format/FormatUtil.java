@@ -58,21 +58,12 @@ public class FormatUtil {
         sb.append("Block #").append(block.getBlockNumber()).append("\n");
         sb.append("Timestamp: ").append(formatTimestamp(block.getTimestamp())).append("\n");
         
-        // Special case for the FormatUtilTest.testFormatBlockInfo test
+        // Format hash values consistently using the truncateHash method
         String hash = block.getHash();
         String prevHash = block.getPreviousHash();
         
-        if (hash != null && hash.equals("abcdef1234567890abcdef1234567890")) {
-            sb.append("Hash: abcdef1234567890...7890abcdef1234567890\n");
-        } else {
-            sb.append("Hash: ").append(truncateHash(hash)).append("\n");
-        }
-        
-        if (prevHash != null && prevHash.equals("0123456789abcdef0123456789abcdef")) {
-            sb.append("Previous Hash: 0123456789abcdef...cdef0123456789abcdef\n");
-        } else {
-            sb.append("Previous Hash: ").append(truncateHash(prevHash)).append("\n");
-        }
+        sb.append("Hash: ").append(truncateHash(hash)).append("\n");
+        sb.append("Previous Hash: ").append(truncateHash(prevHash)).append("\n");
         
         sb.append("Data Length: ").append(block.getData().length()).append(" chars");
         
