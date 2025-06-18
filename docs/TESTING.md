@@ -54,7 +54,7 @@ The project includes comprehensive test suites to verify all functionality and e
 ### Recommended Testing Order
 
 #### 1. Run All Tests (Complete Validation) ⭐ **RECOMMENDED**
-```bash
+```zsh
 ./run_all_tests.sh
 ```
 
@@ -82,7 +82,7 @@ This runs everything: basic core tests + advanced function tests.
 5. Performs quick verification tests
 
 #### 2. Advanced Functions Only (JUnit 5 Tests)
-```bash
+```zsh
 ./run_advanced_tests.sh
 ```
 
@@ -111,7 +111,7 @@ Test Results:
 **Note**: You may see error messages like "Error exporting chain" or "Import file not found" during these tests. These are **intentional test cases** that verify proper error handling - they are not actual failures.
 
 #### 3. Recovery Tests (Chain Recovery & Rollback)
-```bash
+```zsh
 ./run_recovery_tests.sh
 ```
 
@@ -136,7 +136,7 @@ Runs all recovery-related tests including chain recovery manager, recovery confi
 ```
 
 #### 4. Improved Rollback Strategy Test
-```bash
+```zsh
 ./run_improved_rollback_test.sh
 ```
 
@@ -159,7 +159,7 @@ Running ImprovedRollbackStrategyTest...
 ```
 
 #### 5. Basic Tests Only (Quick Verification)
-```bash
+```zsh
 ./run_basic_tests.sh
 ```
 
@@ -187,7 +187,7 @@ Running basic core functionality tests...
 ```
 
 #### 4. Interactive Demonstrations
-```bash
+```zsh
 # Advanced features demo with practical examples
 mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.AdditionalAdvancedFunctionsDemo"
 
@@ -208,13 +208,42 @@ mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.CoreFunctionsDemo"
 ```
 
 #### 5. Quick Verification Tests
-```bash
+```zsh
 # Fast verification
 mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.QuickDemo"
 
 # Basic functionality
 mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.SimpleDemo"
 ```
+
+## 🌟 Testing Best Practices
+
+The project follows these testing best practices:
+
+### 1. Behavior-Based Testing
+
+- Tests verify behavior rather than specific output formats
+- Assertions focus on expected behavior, not implementation details
+- No hardcoded special cases in implementation or tests
+- Tests use assertions that allow implementation to evolve without breaking
+
+### 2. Edge Case Coverage
+
+- Edge cases are properly handled and tested (null inputs, empty strings, etc.)
+- Boundary conditions are explicitly tested
+- Error conditions and exception handling are verified
+
+### 3. Test Independence
+
+- Tests do not depend on each other's state
+- Each test can run independently
+- Test setup and teardown properly manage test environment
+
+### 4. Code Quality in Tests
+
+- Test code follows the same quality standards as production code
+- Tests are readable and maintainable
+- Test names clearly describe what is being tested
 
 ## 📝 Test Suites Description
 
@@ -265,6 +294,11 @@ mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.SimpleDemo"
 **Tests**: Enhanced rollback strategy tests  
 **Coverage**: Intelligent rollback analysis, security-first approach, hash chain integrity verification
 
+#### 1.10 Format Utility Test Suite
+**File**: `FormatUtilTest.java`  
+**Tests**: String formatting and display utility tests  
+**Coverage**: Hash truncation, fixed-width formatting, timestamp formatting, block information display
+
 #### Test Categories:
 
 **Block Size Validation Tests**
@@ -305,7 +339,7 @@ mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.SimpleDemo"
 
 #### Running Individual Tests
 
-```bash
+```zsh
 # Run specific test method
 mvn test -Dtest=BlockchainAdditionalAdvancedFunctionsTest#testChainExport
 
@@ -331,7 +365,7 @@ mvn test -Dtest=BlockchainAdditionalAdvancedFunctionsTest -X
 - Export/import operations
 
 **Sample execution:**
-```bash
+```zsh
 mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.CoreFunctionsDemo"
 ```
 
@@ -375,7 +409,7 @@ mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.CoreFunctionsDemo"
 #### Automatic Database Cleanup
 All test scripts now include automatic database cleanup to prevent SQLite corruption issues:
 
-```bash
+```zsh
 # All scripts include automatic cleanup
 ./run_all_tests.sh      # Auto-cleans before execution
 ./run_advanced_tests.sh # Auto-cleans before execution  
@@ -385,7 +419,7 @@ All test scripts now include automatic database cleanup to prevent SQLite corrup
 #### Manual Database Cleanup
 For persistent database issues:
 
-```bash
+```zsh
 # Manual cleanup of corrupted database files
 ./clean-database.sh
 
@@ -396,7 +430,7 @@ SKIP_DB_CLEANUP=true ./run_all_tests.sh
 #### Database Cleanup Verification
 Verify all scripts have proper database cleanup:
 
-```bash
+```zsh
 # Check script compliance
 ./scripts/check-db-cleanup.sh
 ```
@@ -419,7 +453,7 @@ Caused by: java.sql.SQLException: [SQLITE_BUSY] The database file is locked
 ```
 
 **Solutions:**
-```bash
+```zsh
 # Solution 1: Reset database
 rm blockchain.db*
 ./run_all_tests.sh
@@ -452,12 +486,12 @@ These are **intentional test cases** that verify proper error handling. They are
 #### Issue: Maven Build Fails
 
 **Symptoms:**
-```bash
+```zsh
 [ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin
 ```
 
 **Solutions:**
-```bash
+```zsh
 # Check Java version (must be 21+)
 java -version
 
@@ -479,7 +513,7 @@ mvn dependency:tree
 ```
 
 **Solutions:**
-```bash
+```zsh
 # Reset and retest
 rm blockchain.db*
 ./run_all_tests.sh
@@ -494,7 +528,7 @@ mvn test -Dtest=BlockchainAdditionalAdvancedFunctionsTest#testCompleteWorkflow
 ### Database Issues
 
 #### Reset Database Completely
-```bash
+```zsh
 # Remove all database files
 rm blockchain.db*
 
@@ -507,7 +541,7 @@ rm -f *.tmp
 ```
 
 #### Check Database Permissions
-```bash
+```zsh
 # Check permissions
 ls -la blockchain.db*
 
@@ -519,7 +553,7 @@ df -h .
 ```
 
 #### Database Integrity Check
-```bash
+```zsh
 # Check if database is corrupted
 sqlite3 blockchain.db "PRAGMA integrity_check;"
 
@@ -530,7 +564,7 @@ sqlite3 blockchain.db "PRAGMA integrity_check;"
 ### Test Environment Validation
 
 #### Validate Java Environment
-```bash
+```zsh
 # Check Java version (must be 21+)
 java -version
 
@@ -545,7 +579,7 @@ mvn clean compile test-compile
 ```
 
 #### Environment Validator Test
-```bash
+```zsh
 mvn test -Dtest=TestEnvironmentValidator
 ```
 
@@ -642,14 +676,14 @@ Exception in thread "main" java.lang.OutOfMemoryError: GC overhead limit exceede
 ```
 
 **Solutions:**
-```bash
+```zsh
 # Increase JVM heap size
 export MAVEN_OPTS="-Xmx2g -Xms512m"
 mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.BlockchainDemo"
 
 # For persistent issues, edit Maven configuration
-echo 'export MAVEN_OPTS="-Xmx4g -Xms1g"' >> ~/.bashrc
-source ~/.bashrc
+echo 'export MAVEN_OPTS="-Xmx4g -Xms1g"' >> ~/.zshrc
+source ~/.zshrc
 
 # Check memory usage during tests
 jstat -gc [java_process_id]
@@ -665,7 +699,7 @@ free -h
 - Individual operations are very slow
 
 **Diagnosis:**
-```bash
+```zsh
 # Check system resources
 top
 htop  # if available
@@ -681,7 +715,7 @@ du -h blockchain.db*
 ```
 
 **Solutions:**
-```bash
+```zsh
 # Clean and optimize
 rm blockchain.db*
 mvn clean compile
@@ -705,7 +739,7 @@ sqlite3 blockchain.db "VACUUM; ANALYZE;"
 ```
 
 **Solutions:**
-```bash
+```zsh
 # Clear Maven cache
 rm -rf ~/.m2/repository/org/hibernate
 
@@ -723,13 +757,13 @@ mvn compile
 **Issue: Permission Denied Errors**
 
 **Symptoms:**
-```bash
+```zsh
 Permission denied: ./run_all_tests.sh
 touch: cannot touch 'blockchain.db': Permission denied
 ```
 
 **Solutions:**
-```bash
+```zsh
 # Fix script permissions
 chmod +x *.sh
 
@@ -755,7 +789,7 @@ Unsupported major.minor version 65.0
 ```
 
 **Solutions:**
-```bash
+```zsh
 # Check current Java version
 java -version
 javac -version
@@ -782,7 +816,7 @@ mvn -version
 ```
 
 **Solutions:**
-```bash
+```zsh
 # Check Maven version
 mvn -version
 
@@ -808,7 +842,7 @@ mvn -version  # Should show 3.6.0 or higher
 - Chain validation fails unexpectedly
 
 **Solutions:**
-```bash
+```zsh
 # Complete reset procedure
 rm blockchain.db*
 rm *.json  # Remove any export files
@@ -831,7 +865,7 @@ Import test failed: JSON parsing error
 ```
 
 **Diagnosis and Solutions:**
-```bash
+```zsh
 # Check disk space
 df -h .
 
@@ -889,7 +923,7 @@ java.lang.UnsatisfiedLinkError: no sqlite-jdbc in java.library.path
 ```
 
 **Solutions:**
-```bash
+```zsh
 # Install native SQLite if needed
 brew install sqlite
 
@@ -909,7 +943,7 @@ bash: java: command not found
 ```
 
 **Solutions:**
-```bash
+```zsh
 # Install required packages (Ubuntu/Debian)
 sudo apt update
 sudo apt install openjdk-21-jdk maven
@@ -926,7 +960,7 @@ mvn -version
 
 #### Debug Mode Execution
 
-```bash
+```zsh
 # Run tests with detailed debug output
 mvn -X test -Dtest=BlockchainAdditionalAdvancedFunctionsTest
 
@@ -939,7 +973,7 @@ mvn -Dmaven.surefire.debug test
 
 #### Log Analysis
 
-```bash
+```zsh
 # Capture complete test output
 ./run_all_tests.sh > test_complete.log 2>&1
 
@@ -954,7 +988,7 @@ grep -i warn test_complete.log
 
 #### Health Check Script
 
-```bash
+```zsh
 #!/usr/bin/env zsh
 # health_check.sh - Comprehensive environment validation
 
@@ -1000,7 +1034,7 @@ echo "🎯 Run './run_all_tests.sh' to execute full test suite"
 ```
 
 Make the script executable and run:
-```bash
+```zsh
 chmod +x health_check.sh
 ./health_check.sh
 ```
@@ -1014,7 +1048,7 @@ For production deployment, see [PRODUCTION_GUIDE.md](PRODUCTION_GUIDE.md).
 ### Creating New Test Scripts
 Use the provided template for consistent script structure:
 
-```bash
+```zsh
 # Copy template for new test script
 cp scripts/run_template.sh run_my_new_test.sh
 
@@ -1034,7 +1068,7 @@ All scripts now use a centralized functions library at `scripts/shared-functions
 ### Environment Variables
 Control script behavior with environment variables:
 
-```bash
+```zsh
 # Skip database cleanup (for debugging)
 SKIP_DB_CLEANUP=true ./run_all_tests.sh
 
@@ -1045,7 +1079,7 @@ SKIP_UNIT_TESTS=true ./run_basic_tests.sh
 ### Script Compliance
 Verify all run_*.sh scripts follow best practices:
 
-```bash
+```zsh
 # Check all scripts have proper database cleanup
 ./scripts/check-db-cleanup.sh
 ```

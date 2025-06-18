@@ -143,30 +143,43 @@ com.rbatllet.blockchain.util.format.FormatUtil
 
 | Method | Description |
 |--------|-------------|
-| `formatHash(String)` | Formats a hash for display |
-| `formatTimestamp(LocalDateTime)` | Formats a timestamp for display |
-| `formatBlockInfo(Block)` | Formats block information for display |
-| `fixedWidth(String, int)` | Formats a string to a fixed width by truncating or padding |
+| `truncateHash(String)` | Truncates a hash for display purposes with ellipsis in the middle |
+| `formatTimestamp(LocalDateTime)` | Formats a timestamp using the default format (yyyy-MM-dd HH:mm:ss) |
+| `formatTimestamp(LocalDateTime, String)` | Formats a timestamp using a custom pattern |
+| `formatBlockInfo(Block)` | Formats complete block information for display with proper truncation |
+| `fixedWidth(String, int)` | Formats a string to a fixed width by truncating with ellipsis or padding with spaces |
 
 #### Usage Example
 
 ```java
-// Format a hash
+// Truncate a hash for display
 String hash = "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2";
-String formattedHash = FormatUtil.formatHash(hash);
+String truncatedHash = FormatUtil.truncateHash(hash); // "a1b2c3d4e5f6a1b2...4e5f6a1b2c3d4e5f6a1b2"
 
-// Format a timestamp
+// Format a timestamp with default format
 LocalDateTime timestamp = LocalDateTime.now();
-String formattedTimestamp = FormatUtil.formatTimestamp(timestamp);
+String formattedTimestamp = FormatUtil.formatTimestamp(timestamp); // "2025-06-18 13:30:37"
 
-// Format block information
+// Format a timestamp with custom pattern
+String customFormatted = FormatUtil.formatTimestamp(timestamp, "dd/MM/yyyy"); // "18/06/2025"
+
+// Format complete block information
 Block block = blockchain.getBlockByNumber(1L);
-String blockInfo = FormatUtil.formatBlockInfo(block);
+String blockInfo = FormatUtil.formatBlockInfo(block); // Multi-line formatted block info
 
-// Format to fixed width
+// Format to fixed width with intelligent truncation
 String text = "Very long text that needs to be truncated";
-String fixedWidthText = FormatUtil.fixedWidth(text, 20); // "Very long text that..."
+String fixedWidthText = FormatUtil.fixedWidth(text, 20); // Will truncate at word boundary if possible
 ```
+
+#### Testing Best Practices
+
+The FormatUtil class follows these testing best practices:
+
+- Tests verify behavior rather than specific output formats
+- No hardcoded special cases in implementation or tests
+- Tests use assertions that allow implementation to evolve without breaking
+- Edge cases are properly handled and tested (null inputs, empty strings, etc.)
 
 ## Testing
 
@@ -179,7 +192,7 @@ The utility classes are fully tested with JUnit to ensure their correct operatio
 
 Example of running tests:
 
-```bash
+```zsh
 mvn test -Dtest=com.rbatllet.blockchain.util.*Test
 ```
 

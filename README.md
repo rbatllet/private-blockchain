@@ -85,7 +85,7 @@ This is a **private blockchain** for controlled environments where only authoriz
 - At least **50MB** of free disk space
 
 ### Checking Prerequisites
-```bash
+```zsh
 # Check Java version (must be 21+)
 java -version
 
@@ -96,7 +96,7 @@ mvn -version
 ## 🚀 Quick Start
 
 ### 1. Clone and Build
-```bash
+```zsh
 # Navigate to project directory
 cd /path/to/privateBlockchain
 
@@ -108,7 +108,7 @@ mvn package
 ```
 
 ### 2. Run Basic Demo
-```bash
+```zsh
 # Run the basic blockchain demo
 mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.BlockchainDemo"
 ```
@@ -131,31 +131,31 @@ Authorized keys: 2
 ```
 
 ### 3. Run Advanced Features Demo
-```bash
+```zsh
 # Run advanced features demonstration
 mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.AdditionalAdvancedFunctionsDemo"
 ```
 
 ### 4. Run Chain Recovery Demo
-```bash
+```zsh
 # Run blockchain chain recovery demonstration
 mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.ChainRecoveryDemo"
 ```
 
 ### 5. Run Key Deletion Safety Features Demo
-```bash
+```zsh
 # Run demonstration of key deletion safety features
 mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.DangerousDeleteDemo"
 ```
 
 ### 6. Run Enhanced Recovery Example
-```bash
+```zsh
 # Run example of advanced recovery techniques
 mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.EnhancedRecoveryExample"
 ```
 
 ### 7. Quick Functionality Test
-```bash
+```zsh
 # Run quick verification test
 mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.QuickDemo"
 ```
@@ -196,7 +196,7 @@ boolean isValid = blockchain.validateChain();
 The project includes extensive testing with **more than 40 JUnit 5 tests** plus integration demos:
 
 #### Run All Tests (Recommended)
-```bash
+```zsh
 ./run_all_tests.sh
 ```
 
@@ -215,7 +215,7 @@ The project includes extensive testing with **more than 40 JUnit 5 tests** plus 
 ```
 
 #### Individual Test Categories
-```bash
+```zsh
 # Advanced functions only (JUnit 5 tests)
 ./run_advanced_tests.sh
 
@@ -298,7 +298,7 @@ Configuration & Scripts:
 ### Automatic Database Cleanup
 All test scripts now include automatic database cleanup to prevent SQLite corruption issues:
 
-```bash
+```zsh
 # All scripts automatically clean corrupted database files
 ./run_all_tests.sh      # Includes automatic cleanup
 ./run_advanced_tests.sh # Includes automatic cleanup  
@@ -308,7 +308,7 @@ All test scripts now include automatic database cleanup to prevent SQLite corrup
 ### ZSH Script Implementation
 All scripts in this project use ZSH (Z Shell) instead of Bash for improved compatibility and features:
 
-```bash
+```zsh
 # All scripts use the portable shebang format
 #!/usr/bin/env zsh
 ```
@@ -331,7 +331,7 @@ All scripts in this project use ZSH (Z Shell) instead of Bash for improved compa
 ### Manual Database Cleanup
 If you encounter database corruption issues:
 
-```bash
+```zsh
 # Clean corrupted database files manually
 ./clean-database.sh
 
@@ -344,7 +344,7 @@ SKIP_DB_CLEANUP=true ./run_all_tests.sh
 #### Creating New Test Scripts
 Use the provided template for consistent script structure:
 
-```bash
+```zsh
 # Copy template for new test script
 cp scripts/run_template.sh run_my_new_test.sh
 
@@ -356,7 +356,7 @@ chmod +x run_my_new_test.sh
 #### Verify Script Compliance
 Check that all run_*.sh scripts include database cleanup:
 
-```bash
+```zsh
 # Verify all scripts have proper database cleanup
 ./scripts/check-db-cleanup.sh
 ```
@@ -614,7 +614,7 @@ For issues or questions:
 5. **Verify your environment** meets the prerequisites
 
 ### Complete Verification Procedure
-```bash
+```zsh
 # Complete verification steps
 cd /path/to/privateBlockchain
 mvn clean compile test-compile
@@ -623,7 +623,7 @@ mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.BlockchainDemo"
 ```
 
 ### Quick Troubleshooting
-```bash
+```zsh
 # Reset environment if tests fail
 rm blockchain.db blockchain.db-*
 ./run_all_tests.sh
