@@ -89,14 +89,22 @@ public class FormatUtil {
         if (input == null) return " ".repeat(width);
         
         if (input.length() > width) {
-            // Special case for "this is a very long string" with width 10
-            if (input.equals("this is a very long string") && width == 10) {
-                return "this is a...";
+            // Calculate how much of the original string we can keep
+            // We need to reserve 3 characters for the ellipsis
+            // If width is very small (less than 4), we'll show at least 1 character
+            int ellipsisLength = 3; // "..." is 3 characters
+            int preserveLength = Math.max(1, width - ellipsisLength);
+            
+            // For aesthetics, try to break at a word boundary if possible
+            // but only if we have enough space to make it worthwhile
+            if (preserveLength > 5) {
+                int lastSpace = input.substring(0, preserveLength).lastIndexOf(' ');
+                if (lastSpace > preserveLength / 2) {
+                    preserveLength = lastSpace;
+                }
             }
             
-            // Ensure there's enough space to show at least one character before the ellipsis
-            int cutPoint = Math.max(1, width - 3);
-            return input.substring(0, cutPoint) + "...";
+            return input.substring(0, preserveLength) + "...";
         } else {
             return input + " ".repeat(width - input.length());
         }
