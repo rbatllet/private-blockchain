@@ -46,16 +46,16 @@ fi
 print_info ""
 print_step "🚀 Running EXTREME THREAD SAFETY TEST (200 threads x 5 blocks = 1000 blocks)..."
 print_info "This is the exact scenario that revealed the race condition..."
-print_info "The RaceConditionTest.java class is located in src/main/java/com.rbatllet.demo/"
+print_info "The RaceConditionTest.java class is located in src/demo/"
 print_info ""
 
 # Compile and run the test
 print_step "🔨 Compiling and running race condition test..."
-mvn exec:java -Dexec.mainClass="com.rbatllet.demo.RaceConditionTest" \
+mvn exec:java -Dexec.mainClass="RaceConditionTest" \
   -Djava.util.logging.config.file=src/main/resources/logging.properties \
   -Djakarta.persistence.show_sql=false \
   -Dorg.slf4j.simpleLogger.defaultLogLevel=warn \
-  -q 2>/dev/null || mvn exec:java -Dexec.mainClass="com.rbatllet.demo.RaceConditionTest" -q
+  -q 2>/dev/null || mvn exec:java -Dexec.mainClass="RaceConditionTest" -q
 
 TEST_RESULT=$?
 
@@ -73,7 +73,7 @@ else
 fi
 
 print_info ""
-print_info "Test location: src/main/java/com.rbatllet.demo/RaceConditionTest.java"
+print_info "Test location: src/demo/RaceConditionTest.java"
 print_info "Documentation: README.md"
 
 exit $TEST_RESULT

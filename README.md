@@ -120,7 +120,7 @@ mvn package
 ### 2. Run Basic Demo
 ```zsh
 # Run the basic blockchain demo
-mvn exec:java -Dexec.mainClass="com.rbatllet.demo.BlockchainDemo"
+mvn exec:java -Dexec.mainClass="BlockchainDemo"
 ```
 
 **Expected Output:**
@@ -143,31 +143,31 @@ Authorized keys: 2
 ### 3. Run Advanced Features Demo
 ```zsh
 # Run advanced features demonstration
-mvn exec:java -Dexec.mainClass="com.rbatllet.demo.AdditionalAdvancedFunctionsDemo"
+mvn exec:java -Dexec.mainClass="AdditionalAdvancedFunctionsDemo"
 ```
 
 ### 4. Run Chain Recovery Demo
 ```zsh
 # Run blockchain chain recovery demonstration
-mvn exec:java -Dexec.mainClass="com.rbatllet.demo.ChainRecoveryDemo"
+mvn exec:java -Dexec.mainClass="ChainRecoveryDemo"
 ```
 
 ### 5. Run Key Deletion Safety Features Demo
 ```zsh
 # Run demonstration of key deletion safety features
-mvn exec:java -Dexec.mainClass="com.rbatllet.demo.DangerousDeleteDemo"
+mvn exec:java -Dexec.mainClass="DangerousDeleteDemo"
 ```
 
 ### 6. Run Enhanced Recovery Example
 ```zsh
 # Run example of advanced recovery techniques
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.EnhancedRecoveryExample"
+mvn exec:java -Dexec.mainClass="EnhancedRecoveryExample"
 ```
 
 ### 7. Quick Functionality Test
 ```zsh
 # Run quick verification test
-mvn exec:java -Dexec.mainClass="com.rbatllet.demo.QuickDemo"
+mvn exec:java -Dexec.mainClass="QuickDemo"
 ```
 
 ## 💻 How It Works
@@ -304,7 +304,7 @@ Threads: 10, Blocks per thread: 5
 ./run_basic_tests.sh
 
 # Core functions comprehensive test
-mvn exec:java -Dexec.mainClass="com.rbatllet.demo.CoreFunctionsDemo"
+mvn exec:java -Dexec.mainClass="CoreFunctionsDemo"
 ```
 
 ### What Gets Tested
@@ -717,7 +717,7 @@ For issues or questions:
 cd /path/to/privateBlockchain
 mvn clean compile test-compile
 ./run_all_tests.sh
-mvn exec:java -Dexec.mainClass="com.rbatllet.demo.BlockchainDemo"
+mvn exec:java -Dexec.mainClass="BlockchainDemo"
 ```
 
 ### Quick Troubleshooting

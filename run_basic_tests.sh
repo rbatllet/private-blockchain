@@ -35,11 +35,11 @@ print_info "🧪 Running Basic Core Functions demo..."
 print_info ""
 
 # Run basic core functions test (suppress most logs)
-mvn exec:java -Dexec.mainClass="com.rbatllet.demo.CoreFunctionsDemo" \
+mvn exec:java -Dexec.mainClass="CoreFunctionsDemo" \
   -Djava.util.logging.config.file=src/main/resources/logging.properties \
   -Djakarta.persistence.show_sql=false \
   -Dorg.slf4j.simpleLogger.defaultLogLevel=warn \
-  -q 2>/dev/null || mvn exec:java -Dexec.mainClass="com.rbatllet.demo.CoreFunctionsDemo" -q
+  -q 2>/dev/null || mvn exec:java -Dexec.mainClass="CoreFunctionsDemo" -q
 
 TEST_RESULT=$?
 
@@ -55,7 +55,7 @@ else
 fi
 
 print_info ""
-print_info "Test location: src/main/java/com.rbatllet.demo/CoreFunctionsDemo.java"
+print_info "Test location: src/demo/CoreFunctionsDemo.java"
 print_info "Documentation: README.md"
 
 exit $TEST_RESULT

@@ -189,31 +189,31 @@ Running basic core functionality tests...
 #### 4. Interactive Demonstrations
 ```zsh
 # Advanced features demo with practical examples
-mvn exec:java -Dexec.mainClass="com.rbatllet.demo.AdditionalAdvancedFunctionsDemo"
+mvn exec:java -Dexec.mainClass="AdditionalAdvancedFunctionsDemo"
 
 # Basic demo with multiple users
-mvn exec:java -Dexec.mainClass="com.rbatllet.demo.BlockchainDemo"
+mvn exec:java -Dexec.mainClass="BlockchainDemo"
 
 # Chain recovery demonstration
-mvn exec:java -Dexec.mainClass="com.rbatllet.demo.ChainRecoveryDemo"
+mvn exec:java -Dexec.mainClass="ChainRecoveryDemo"
 
 # Key deletion safety features demo
-mvn exec:java -Dexec.mainClass="com.rbatllet.demo.DangerousDeleteDemo"
+mvn exec:java -Dexec.mainClass="DangerousDeleteDemo"
 
 # Advanced recovery techniques example
-mvn exec:java -Dexec.mainClass="com.rbatllet.demo.EnhancedRecoveryExample"
+mvn exec:java -Dexec.mainClass="EnhancedRecoveryExample"
 
 # Core functions comprehensive test
-mvn exec:java -Dexec.mainClass="com.rbatllet.demo.CoreFunctionsDemo"
+mvn exec:java -Dexec.mainClass="CoreFunctionsDemo"
 ```
 
 #### 5. Quick Verification Tests
 ```zsh
 # Fast verification
-mvn exec:java -Dexec.mainClass="com.rbatllet.demo.QuickDemo"
+mvn exec:java -Dexec.mainClass="QuickDemo"
 
 # Basic functionality
-mvn exec:java -Dexec.mainClass="com.rbatllet.demo.SimpleDemo"
+mvn exec:java -Dexec.mainClass="SimpleDemo"
 ```
 
 ## 🌟 Testing Best Practices
@@ -407,7 +407,7 @@ mvn test -Dtest=BlockchainAdditionalAdvancedFunctionsTest -X
 
 **Sample execution:**
 ```zsh
-mvn exec:java -Dexec.mainClass="com.rbatllet.demo.CoreFunctionsDemo"
+mvn exec:java -Dexec.mainClass="CoreFunctionsDemo"
 ```
 
 ### 3. Basic Demo Application
@@ -566,7 +566,7 @@ rm blockchain.db*
 ./run_all_tests.sh
 
 # Check for data corruption
-mvn exec:java -Dexec.mainClass="com.rbatllet.demo.CoreFunctionsDemo"
+mvn exec:java -Dexec.mainClass="CoreFunctionsDemo"
 
 # Validate specific components
 mvn test -Dtest=BlockchainAdditionalAdvancedFunctionsTest#testCompleteWorkflow
@@ -726,7 +726,7 @@ Exception in thread "main" java.lang.OutOfMemoryError: GC overhead limit exceede
 ```zsh
 # Increase JVM heap size
 export MAVEN_OPTS="-Xmx2g -Xms512m"
-mvn exec:java -Dexec.mainClass="com.rbatllet.demo.BlockchainDemo"
+mvn exec:java -Dexec.mainClass="BlockchainDemo"
 
 # For persistent issues, edit Maven configuration
 echo 'export MAVEN_OPTS="-Xmx4g -Xms1g"' >> ~/.zshrc
@@ -920,7 +920,7 @@ df -h .
 touch test_write.tmp && rm test_write.tmp
 
 # Test export manually
-mvn exec:java -Dexec.mainClass="com.rbatllet.demo.BlockchainDemo"
+mvn exec:java -Dexec.mainClass="BlockchainDemo"
 # Then check if export files are created
 
 # Validate JSON format
@@ -947,7 +947,7 @@ bash ./run_all_tests.sh
 # Or run Maven commands directly
 mvn clean compile
 mvn test -Dtest=BlockchainAdditionalAdvancedFunctionsTest
-mvn exec:java -Dexec.mainClass="com.rbatllet.demo.CoreFunctionsDemo"
+mvn exec:java -Dexec.mainClass="CoreFunctionsDemo"
 ```
 
 **Issue: Path Separator Issues**

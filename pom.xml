@@ -175,7 +175,7 @@
                     </descriptorRefs>
                     <archive>
                         <manifest>
-                            <mainClass>com.rbatllet.demo.BlockchainDemo</mainClass>
+                            <mainClass>BlockchainDemo</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
@@ -206,7 +206,7 @@
                     <!-- Configure exclusions for all executions -->
                     <excludes>
                         <!-- Exclude all demo classes -->
-                        <exclude>com/rbatllet/demo/**/*</exclude>
+                        <exclude>demo/**/*</exclude>
                     </excludes>
                 </configuration>
                 <executions>

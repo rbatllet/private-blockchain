@@ -43,7 +43,7 @@ print_info ""
 print_info "🎬 Running Cryptographic Security Demo..."
 print_step "========================================="
 print_info ""
-mvn compile exec:java -Dexec.mainClass="com.rbatllet.demo.CryptoSecurityDemo" -q
+mvn compile exec:java -Dexec.mainClass="CryptoSecurityDemo" -q
 DEMO_RESULT=$?
 print_info ""
 
