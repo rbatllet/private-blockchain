@@ -33,10 +33,11 @@ fi
 print_success "Compilation successful"
 print_info ""
 
-# Run ALL Migrated Demos (11/11)
+# Run ALL Migrated Demos (11/11) with database cleanup between tests
 print_info "🎬 Running Simple Demo (basic migration showcase)..."
 print_step "====================================================="
 print_info ""
+clear_database_between_tests
 mvn compile exec:java -Dexec.mainClass="SimpleDemo" -q
 SIMPLE_RESULT=$?
 print_info ""
@@ -44,6 +45,7 @@ print_info ""
 print_info "🎬 Running Blockchain Demo (comprehensive showcase)..."
 print_step "======================================================"
 print_info ""
+clear_database_between_tests
 mvn compile exec:java -Dexec.mainClass="BlockchainDemo" -q
 BLOCKCHAIN_RESULT=$?
 print_info ""
@@ -51,6 +53,7 @@ print_info ""
 print_info "🎬 Running Core Functions Demo (enhanced core features)..."
 print_step "==========================================================="
 print_info ""
+clear_database_between_tests
 mvn compile exec:java -Dexec.mainClass="CoreFunctionsDemo" -q
 CORE_RESULT=$?
 print_info ""
@@ -58,6 +61,7 @@ print_info ""
 print_info "🎬 Running Dangerous Delete Demo (granular impact analysis)..."
 print_step "=============================================================="
 print_info ""
+clear_database_between_tests
 mvn compile exec:java -Dexec.mainClass="DangerousDeleteDemo" -q
 DANGEROUS_RESULT=$?
 print_info ""
@@ -65,6 +69,7 @@ print_info ""
 print_info "🎬 Running Advanced Functions Demo (enhanced operations)..."
 print_step "==========================================================="
 print_info ""
+clear_database_between_tests
 mvn compile exec:java -Dexec.mainClass="AdditionalAdvancedFunctionsDemo" -q
 ADVANCED_RESULT=$?
 print_info ""
@@ -72,6 +77,7 @@ print_info ""
 print_info "🎬 Running Recovery Demo (detailed recovery tracking)..."
 print_step "========================================================"
 print_info ""
+clear_database_between_tests
 mvn compile exec:java -Dexec.mainClass="ChainRecoveryDemo" -q
 RECOVERY_RESULT=$?
 print_info ""
@@ -79,6 +85,7 @@ print_info ""
 print_info "🎬 Running Enhanced Recovery Example (recovery patterns)..."
 print_step "==========================================================="
 print_info ""
+clear_database_between_tests
 mvn compile exec:java -Dexec.mainClass="EnhancedRecoveryExample" -q
 ENHANCED_RECOVERY_RESULT=$?
 print_info ""
@@ -86,6 +93,7 @@ print_info ""
 print_info "🎬 Running Race Condition Test (concurrency validation)..."
 print_step "=========================================================="
 print_info ""
+clear_database_between_tests
 mvn compile exec:java -Dexec.mainClass="RaceConditionTest" -q
 RACE_RESULT=$?
 print_info ""
