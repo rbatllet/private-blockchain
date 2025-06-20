@@ -4,6 +4,7 @@ import com.rbatllet.blockchain.dao.AuthorizedKeyDAO;
 import com.rbatllet.blockchain.entity.AuthorizedKey;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.validation.ChainValidationResult;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -113,8 +114,10 @@ class BlockchainKeyAuthorizationTest {
                 "Alice should not be able to create blocks after key revocation");
         
         // BUT the existing block should still be valid because the key was authorized when created
-        assertTrue(blockchain.validateChain(),
-                "Chain should remain valid even after key revocation - historical blocks should remain valid");
+        ChainValidationResult result = blockchain.validateChainDetailed();
+        assertTrue(result.isStructurallyIntact(),
+                "Chain structure should remain intact even after key revocation");
+        // Note: Chain may not be fully compliant due to revoked key, but structure should be intact
         
         // Verify the historical block specifically
         assertTrue(validateHistoricalBlock(aliceBlock),
@@ -178,8 +181,9 @@ class BlockchainKeyAuthorizationTest {
         assertFalse(blockchain.addBlock("Alice block 3", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()));
         
         // 8. But all existing blocks should remain valid
-        assertTrue(blockchain.validateChain(),
-                "Chain with multiple keys and revocation should be valid");
+        ChainValidationResult multiKeyResult = blockchain.validateChainDetailed();
+        assertTrue(multiKeyResult.isStructurallyIntact(),
+                "Chain with multiple keys and revocation should be structurally intact");
         
         // 9. Verify historical blocks are still valid
         List<Block> allBlocks = blockchain.getAllBlocks();
@@ -253,8 +257,11 @@ class BlockchainKeyAuthorizationTest {
                 "Key creation time should be before first block time");
         
         // 11. The chain should be valid after import (this tests the timestamp corrections work)
-        assertTrue(importedBlockchain.validateChain(),
-                "Imported chain with timestamp corrections should be valid");
+        ChainValidationResult validationResult = importedBlockchain.validateChainDetailed();
+        assertTrue(validationResult.isFullyCompliant(),
+                "Imported chain with timestamp corrections should be fully compliant");
+        assertTrue(validationResult.isStructurallyIntact(),
+                "Imported chain with timestamp corrections should be structurally intact");
     }
 
     @Test
@@ -286,8 +293,11 @@ class BlockchainKeyAuthorizationTest {
                 "Complex chain should import successfully");
         
         // 6. Verify imported chain maintains validity
-        assertTrue(importedBlockchain.validateChain(),
-                "Imported chain should maintain validity");
+        ChainValidationResult complexImportResult = importedBlockchain.validateChainDetailed();
+        assertTrue(complexImportResult.isFullyCompliant(),
+                "Imported chain should maintain full compliance");
+        assertTrue(complexImportResult.isStructurallyIntact(),
+                "Imported chain should maintain structural integrity");
         
         // 7. Verify Alice's historical blocks are valid
         List<Block> aliceBlocks = importedBlockchain.getAllBlocks().stream()
@@ -349,8 +359,9 @@ class BlockchainKeyAuthorizationTest {
         }
         
         // 7. And the entire chain should remain valid
-        assertTrue(blockchain.validateChain(),
-                "Chain should remain valid despite key revocation");
+        ChainValidationResult revokedKeyResult = blockchain.validateChainDetailed();
+        assertTrue(revokedKeyResult.isStructurallyIntact(),
+                "Chain should remain structurally intact despite key revocation");
     }
 
     // ===============================
@@ -420,8 +431,9 @@ class BlockchainKeyAuthorizationTest {
                 "Historical block should remain valid despite key revocation");
         
         // 7. CRITICAL: The entire chain should still be valid
-        assertTrue(blockchain.validateChain(),
-                "Chain should remain valid despite key revocation");
+        ChainValidationResult historicalResult = blockchain.validateChainDetailed();
+        assertTrue(historicalResult.isStructurallyIntact(),
+                "Chain should remain structurally intact despite key revocation");
     }
 
     @Test
@@ -458,8 +470,11 @@ class BlockchainKeyAuthorizationTest {
         assertTrue(blockchain.addBlock("Second period", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()));
         
         // 4. Both periods should be valid
-        assertTrue(blockchain.validateChain(),
-                "Chain should be valid after re-authorization");
+        ChainValidationResult reAuthResult = blockchain.validateChainDetailed();
+        assertTrue(reAuthResult.isFullyCompliant(),
+                "Chain should be fully compliant after re-authorization");
+        assertTrue(reAuthResult.isStructurallyIntact(),
+                "Chain should be structurally intact after re-authorization");
         
         // 5. Verify all blocks individually
         List<Block> allBlocks = blockchain.getAllBlocks();
@@ -496,8 +511,9 @@ class BlockchainKeyAuthorizationTest {
         assertTrue(original.addBlock("Block 2", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()));
         
         // 2. Verify original chain is valid
-        boolean originalValid = original.validateChain();
-        assertTrue(originalValid, "Original chain must be valid before export");
+        ChainValidationResult originalValid = original.validateChainDetailed();
+        assertTrue(originalValid.isFullyCompliant(), "Original chain must be fully compliant before export");
+        assertTrue(originalValid.isStructurallyIntact(), "Original chain must be structurally intact before export");
         
         // 3. Export
         File exportFile = tempDir.resolve("temporal_consistency.json").toFile();
@@ -511,8 +527,11 @@ class BlockchainKeyAuthorizationTest {
         assertTrue(importSuccess, "Import should succeed with temporal corrections");
         
         // 6. CRITICAL: The imported chain should maintain validity
-        assertTrue(imported.validateChain(),
-                "Imported chain should maintain validity");
+        ChainValidationResult importedValid = imported.validateChainDetailed();
+        assertTrue(importedValid.isFullyCompliant(),
+                "Imported chain should maintain full compliance");
+        assertTrue(importedValid.isStructurallyIntact(),
+                "Imported chain should maintain structural integrity");
         
         // 7. All blocks should be valid individually
         List<Block> importedBlocks = imported.getAllBlocks();

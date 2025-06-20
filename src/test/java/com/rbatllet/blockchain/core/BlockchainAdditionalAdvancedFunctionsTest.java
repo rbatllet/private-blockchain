@@ -245,7 +245,9 @@ class BlockchainAdditionalAdvancedFunctionsTest {
                 "Imported blockchain should have same block count");
         assertEquals(blockchain.getAuthorizedKeys().size(), newBlockchain.getAuthorizedKeys().size(),
                 "Imported blockchain should have same authorized key count");
-        assertTrue(newBlockchain.validateChain(), "Imported chain should be valid");
+        var importValidation = newBlockchain.validateChainDetailed();
+        assertTrue(importValidation.isStructurallyIntact(), "Imported chain should be structurally intact");
+        assertTrue(importValidation.isFullyCompliant(), "Imported chain should be fully compliant");
     }
 
     @Test
@@ -327,7 +329,9 @@ class BlockchainAdditionalAdvancedFunctionsTest {
                 "Should have 1 less block after rollback");
 
         // Verify chain is still valid
-        assertTrue(blockchain.validateChain(), "Chain should remain valid after rollback");
+        var rollbackValidation = blockchain.validateChainDetailed();
+        assertTrue(rollbackValidation.isStructurallyIntact(), "Chain should be structurally intact after rollback");
+        assertTrue(rollbackValidation.isFullyCompliant(), "Chain should be fully compliant after rollback");
     }
 
     @Test
@@ -359,7 +363,9 @@ class BlockchainAdditionalAdvancedFunctionsTest {
         assertTrue(blockchain.rollbackToBlock(2L), "Rollback to block 2 should succeed");
         
         assertEquals(3, blockchain.getBlockCount(), "Should have blocks 0, 1, 2 remaining");
-        assertTrue(blockchain.validateChain(), "Chain should remain valid");
+        var rollbackToBlockValidation = blockchain.validateChainDetailed();
+        assertTrue(rollbackToBlockValidation.isStructurallyIntact(), "Chain should be structurally intact");
+        assertTrue(rollbackToBlockValidation.isFullyCompliant(), "Chain should be fully compliant");
     }
 
     @Test
@@ -597,8 +603,11 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @DisplayName("Test Chain Validation After All Operations")
     void testChainValidationAfterAllOperations() {
         // Final verification that the chain remains valid after all test operations
-        assertTrue(blockchain.validateChain(), 
-                "Chain should remain valid after all test operations");
+        var finalValidation = blockchain.validateChainDetailed();
+        assertTrue(finalValidation.isStructurallyIntact(), 
+                "Chain should be structurally intact after all test operations");
+        assertTrue(finalValidation.isFullyCompliant(), 
+                "Chain should be fully compliant after all test operations");
         
         // Verify genesis block is still intact
         Block genesisBlock = blockchain.getBlock(0L);

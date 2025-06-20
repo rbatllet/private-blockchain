@@ -128,7 +128,9 @@ public class EdgeCaseThreadSafetyTest {
         }
 
         // Final consistency check
-        assertTrue(blockchain.validateChain(), "Chain should remain valid after stress operations");
+        var validationResult = blockchain.validateChainDetailed();
+        assertTrue(validationResult.isStructurallyIntact(), "Chain should be structurally intact after stress operations");
+        assertTrue(validationResult.isFullyCompliant(), "Chain should be fully compliant after stress operations");
     }
 
     @Test
@@ -190,7 +192,9 @@ public class EdgeCaseThreadSafetyTest {
         System.out.println("   - Total blocks: " + blockchain.getBlockCount());
         System.out.println("   - Expected blocks: " + (successfulBursts.get() + 1)); // +1 for genesis
 
-        assertTrue(blockchain.validateChain(), "Chain should remain valid after extreme concurrency");
+        var validationResult = blockchain.validateChainDetailed();
+        assertTrue(validationResult.isStructurallyIntact(), "Chain should be structurally intact after extreme concurrency");
+        assertTrue(validationResult.isFullyCompliant(), "Chain should be fully compliant after extreme concurrency");
         assertEquals(successfulBursts.get() + 1, blockchain.getBlockCount(), 
             "Block count should match successful operations plus genesis");
     }
@@ -217,7 +221,10 @@ public class EdgeCaseThreadSafetyTest {
     
     private void performValidationUnderLoad(int threadId) {
         // Multiple validation calls to stress the system
-        blockchain.validateChain();
+        var validationResult = blockchain.validateChainDetailed();
+        // Just checking the boolean values without asserting to avoid interference
+        validationResult.isStructurallyIntact();
+        validationResult.isFullyCompliant();
         blockchain.getBlockCount();
         blockchain.getAllBlocks();
         blockchain.getLastBlock();

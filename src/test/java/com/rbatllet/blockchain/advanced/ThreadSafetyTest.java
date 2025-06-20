@@ -51,15 +51,26 @@ public class ThreadSafetyTest {
             // Test concurrent read operations
             testConcurrentReadOperations(blockchain);
             
-            // Final validation
-            boolean isValid = blockchain.validateChain();
-            System.out.println("🔍 Final chain validation: " + (isValid ? "✅ SUCCESS" : "❌ FAILED"));
+            // Final validation with detailed results
+            var validationResult = blockchain.validateChainDetailed();
+            boolean isStructurallyIntact = validationResult.isStructurallyIntact();
+            boolean isFullyCompliant = validationResult.isFullyCompliant();
+            
+            System.out.println("🔍 Final chain validation:");
+            System.out.println("   - Structurally intact: " + (isStructurallyIntact ? "✅ YES" : "❌ NO"));
+            System.out.println("   - Fully compliant: " + (isFullyCompliant ? "✅ YES" : "❌ NO"));
+            if (!isFullyCompliant) {
+                System.out.println("   - Revoked blocks: " + validationResult.getRevokedBlocks());
+            }
+            if (!isStructurallyIntact) {
+                System.out.println("   - Invalid blocks: " + validationResult.getInvalidBlocks());
+            }
             
             System.out.println("📊 Final blockchain stats:");
             System.out.println("   - Total blocks: " + blockchain.getBlockCount());
             System.out.println("   - Expected blocks: " + (1 + THREAD_COUNT * BLOCKS_PER_THREAD)); // +1 for genesis
             
-            if (isValid && blockchain.getBlockCount() == (1 + THREAD_COUNT * BLOCKS_PER_THREAD)) {
+            if (isStructurallyIntact && blockchain.getBlockCount() == (1 + THREAD_COUNT * BLOCKS_PER_THREAD)) {
                 System.out.println("🎉 Thread-safety test PASSED!");
             } else {
                 System.out.println("💥 Thread-safety test FAILED!");

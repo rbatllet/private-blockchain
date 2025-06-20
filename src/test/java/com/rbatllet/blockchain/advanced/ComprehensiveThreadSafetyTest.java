@@ -243,6 +243,8 @@ class ComprehensiveThreadSafetyTest {
             chainNumbers.add(block.getBlockNumber());
         }
         
-        assertTrue(blockchain.validateChain(), "Chain must be valid after extreme load");
+        var validationResult = blockchain.validateChainDetailed();
+        assertTrue(validationResult.isStructurallyIntact(), "Chain must be structurally intact after extreme load");
+        assertTrue(validationResult.isFullyCompliant(), "Chain must be fully compliant after extreme load");
     }
 }

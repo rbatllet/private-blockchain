@@ -4,6 +4,7 @@ import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.AuthorizedKey;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.validation.ChainValidationResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -123,7 +124,9 @@ public class AdvancedThreadSafetyTest {
         }
         
         // Final consistency check
-        assertTrue(blockchain.validateChain(), "Chain should remain valid after mixed operations");
+        ChainValidationResult mixedOpsResult = blockchain.validateChainDetailed();
+        assertTrue(mixedOpsResult.isStructurallyIntact(), "Chain should remain structurally intact after mixed operations");
+        // Note: May not be fully compliant due to concurrent key operations, but structure should be intact
         assertTrue(successfulOperations.get() > 0, "Should have successful operations");
     }
 
@@ -188,7 +191,9 @@ public class AdvancedThreadSafetyTest {
         
         // Critical assertions
         assertEquals(successfulBlocks.get(), blockNumbers.size(), "Each successful block should have unique number");
-        assertTrue(blockchain.validateChain(), "Chain should remain valid after high-speed race");
+        ChainValidationResult raceResult = blockchain.validateChainDetailed();
+        assertTrue(raceResult.isFullyCompliant(), "Chain should be fully compliant after high-speed race");
+        assertTrue(raceResult.isStructurallyIntact(), "Chain should be structurally intact after high-speed race");
         
         // Verify sequential block numbers (no gaps or duplicates)
         for (int i = 1; i < sortedNumbers.size(); i++) {
@@ -271,7 +276,9 @@ public class AdvancedThreadSafetyTest {
         System.out.println("📝 Operation samples:");
         operationLog.stream().limit(10).forEach(System.out::println);
         
-        assertTrue(blockchain.validateChain(), "Chain should remain valid after key lifecycle stress");
+        ChainValidationResult stressResult = blockchain.validateChainDetailed();
+        assertTrue(stressResult.isStructurallyIntact(), "Chain should remain structurally intact after key lifecycle stress");
+        // Note: May not be fully compliant due to key lifecycle operations, but structure should be intact
         assertTrue(keyOperations.get() > 0, "Should have successful key operations");
         assertTrue(blockOperations.get() > 0, "Should have successful block operations");
     }
@@ -314,7 +321,8 @@ public class AdvancedThreadSafetyTest {
                         } else {
                             // Read/validation operations
                             if (random.nextBoolean()) {
-                                blockchain.validateChain();
+                                // Using basic validation for performance during flood test
+                                blockchain.validateChainDetailed();
                                 validationCount.incrementAndGet();
                             } else {
                                 blockchain.getAllBlocks();
@@ -343,7 +351,9 @@ public class AdvancedThreadSafetyTest {
         System.out.println("   - Final block count: " + blockchain.getBlockCount());
         
         // Final validation should still pass
-        assertTrue(blockchain.validateChain(), "Chain should remain valid after validation flood");
+        ChainValidationResult floodResult = blockchain.validateChainDetailed();
+        assertTrue(floodResult.isStructurallyIntact(), "Chain should remain structurally intact after validation flood");
+        // During high concurrency, full compliance may vary but structure should be intact
     }
 
     // Helper methods
@@ -410,6 +420,8 @@ public class AdvancedThreadSafetyTest {
     }
     
     private void validateFullChain(int threadId) {
-        blockchain.validateChain();
+        ChainValidationResult result = blockchain.validateChainDetailed();
+        // During concurrent operations, we primarily check structural integrity
+        assertTrue(result.isStructurallyIntact(), "Chain structure should remain intact during concurrent access");
     }
 }

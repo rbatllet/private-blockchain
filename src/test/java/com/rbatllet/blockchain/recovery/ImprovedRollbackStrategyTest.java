@@ -68,16 +68,30 @@ class ImprovedRollbackStrategyTest {
             blockchain.addBlock("User2-Block2", user2.getPrivate(), user2.getPublic()); // #4 - Should preserve ideally
             
             int initialBlocks = blockchain.getAllBlocks().size();
-            assertTrue(blockchain.validateChain(), "Initial chain should be valid");
+            var initialValidation = blockchain.validateChainDetailed();
+            assertTrue(initialValidation.isStructurallyIntact() && initialValidation.isFullyCompliant(), 
+                "Initial chain should be valid");
             
             System.out.println("Initial chain: " + initialBlocks + " blocks");
-            System.out.println("Chain valid: " + blockchain.validateChain());
+            System.out.println("Chain structurally intact: " + initialValidation.isStructurallyIntact());
+            System.out.println("Chain fully compliant: " + initialValidation.isFullyCompliant());
             
             // Create corruption
             blockchain.dangerouslyDeleteAuthorizedKey(user1Key, true, "Test interleaved corruption");
-            assertFalse(blockchain.validateChain(), "Chain should be invalid after key deletion");
+            var corruptedValidation = blockchain.validateChainDetailed();
+            assertFalse(corruptedValidation.isFullyCompliant(), 
+                "Chain should not be fully compliant after key deletion");
+            assertTrue(corruptedValidation.isStructurallyIntact(), 
+                "Chain should still be structurally intact after key deletion");
             
-            System.out.println("After corruption - Chain valid: " + blockchain.validateChain());
+            System.out.println("After corruption - Chain structurally intact: " + corruptedValidation.isStructurallyIntact());
+            System.out.println("After corruption - Chain fully compliant: " + corruptedValidation.isFullyCompliant());
+            if (!corruptedValidation.isFullyCompliant()) {
+                System.out.println("Revoked blocks: " + corruptedValidation.getRevokedBlocks());
+            }
+            if (!corruptedValidation.isStructurallyIntact()) {
+                System.out.println("Invalid blocks: " + corruptedValidation.getInvalidBlocks());
+            }
             
             // Attempt recovery
             ChainRecoveryManager.RecoveryResult result = 
@@ -85,13 +99,16 @@ class ImprovedRollbackStrategyTest {
             
             // Verify recovery succeeded
             assertTrue(result.isSuccess(), "Recovery should succeed");
-            assertTrue(blockchain.validateChain(), "Chain should be valid after recovery");
+            var recoveredValidation = blockchain.validateChainDetailed();
+            assertTrue(recoveredValidation.isStructurallyIntact(), "Chain should be structurally intact after recovery");
+            assertTrue(recoveredValidation.isFullyCompliant(), "Chain should be fully compliant after recovery");
             assertNotNull(result.getMethod(), "Recovery method should be specified");
             
             System.out.println("Recovery successful: " + result.isSuccess());
             System.out.println("Recovery method: " + result.getMethod());
             System.out.println("Final chain: " + blockchain.getAllBlocks().size() + " blocks");
-            System.out.println("Final chain valid: " + blockchain.validateChain());
+            System.out.println("Final chain structurally intact: " + recoveredValidation.isStructurallyIntact());
+            System.out.println("Final chain fully compliant: " + recoveredValidation.isFullyCompliant());
             
             // Check preservation efficiency
             int finalBlocks = blockchain.getAllBlocks().size();
@@ -142,13 +159,19 @@ class ImprovedRollbackStrategyTest {
             blockchain.addBlock("Corrupt", corruptUser.getPrivate(), corruptUser.getPublic()); // #4 - Will corrupt
             
             int initialBlocks = blockchain.getAllBlocks().size();
-            assertTrue(blockchain.validateChain(), "Initial chain should be valid");
+            var initialValidation = blockchain.validateChainDetailed();
+            assertTrue(initialValidation.isStructurallyIntact() && initialValidation.isFullyCompliant(), 
+                "Initial chain should be valid");
             
             System.out.println("Initial chain: " + initialBlocks + " blocks");
             
             // Create corruption
             blockchain.dangerouslyDeleteAuthorizedKey(corruptKey, true, "Test end corruption");
-            assertFalse(blockchain.validateChain(), "Chain should be invalid after corruption");
+            var corruptedValidation = blockchain.validateChainDetailed();
+            assertFalse(corruptedValidation.isFullyCompliant(), 
+                "Chain should not be fully compliant after corruption");
+            assertTrue(corruptedValidation.isStructurallyIntact(), 
+                "Chain should still be structurally intact after corruption");
             
             // Attempt recovery
             ChainRecoveryManager.RecoveryResult result = 
@@ -156,7 +179,9 @@ class ImprovedRollbackStrategyTest {
             
             // Verify recovery succeeded
             assertTrue(result.isSuccess(), "Recovery should succeed for end corruption");
-            assertTrue(blockchain.validateChain(), "Chain should be valid after recovery");
+            var recoveredValidation = blockchain.validateChainDetailed();
+            assertTrue(recoveredValidation.isStructurallyIntact(), "Chain should be structurally intact after recovery");
+            assertTrue(recoveredValidation.isFullyCompliant(), "Chain should be fully compliant after recovery");
             
             System.out.println("Recovery successful: " + result.isSuccess());
             System.out.println("Recovery method: " + result.getMethod());
@@ -195,11 +220,17 @@ class ImprovedRollbackStrategyTest {
             blockchain.addAuthorizedKey(userKey, "Test User");
             blockchain.addBlock("Test Block", user.getPrivate(), user.getPublic());
             
-            assertTrue(blockchain.validateChain(), "Initial chain should be valid");
+            var initialValidation = blockchain.validateChainDetailed();
+            assertTrue(initialValidation.isStructurallyIntact() && initialValidation.isFullyCompliant(), 
+                "Initial chain should be valid");
             
             // Create corruption
             blockchain.dangerouslyDeleteAuthorizedKey(userKey, true, "Security test");
-            assertFalse(blockchain.validateChain(), "Chain should be invalid after corruption");
+            var corruptedValidation = blockchain.validateChainDetailed();
+            assertFalse(corruptedValidation.isFullyCompliant(), 
+                "Chain should not be fully compliant after corruption");
+            assertTrue(corruptedValidation.isStructurallyIntact(), 
+                "Chain should still be structurally intact after corruption");
             
             // Attempt recovery
             ChainRecoveryManager.RecoveryResult result = 
@@ -207,7 +238,9 @@ class ImprovedRollbackStrategyTest {
             
             // Verify recovery prioritizes security
             assertTrue(result.isSuccess(), "Recovery should always succeed");
-            assertTrue(blockchain.validateChain(), "Recovered chain must be valid");
+            var recoveredValidation = blockchain.validateChainDetailed();
+            assertTrue(recoveredValidation.isStructurallyIntact(), "Recovered chain must be structurally intact");
+            assertTrue(recoveredValidation.isFullyCompliant(), "Recovered chain must be fully compliant");
             
             // Most important: verify the recovered chain is cryptographically sound
             List<Block> finalBlocks = blockchain.getAllBlocks();
@@ -307,7 +340,9 @@ class ImprovedRollbackStrategyTest {
                 recoveryManager.recoverCorruptedChain(userKey, "Test User");
             
             assertTrue(result2.isSuccess(), "Should handle short chain corruption");
-            assertTrue(blockchain.validateChain(), "Recovered short chain should be valid");
+            var shortChainValidation = blockchain.validateChainDetailed();
+            assertTrue(shortChainValidation.isStructurallyIntact(), "Recovered short chain should be structurally intact");
+            assertTrue(shortChainValidation.isFullyCompliant(), "Recovered short chain should be fully compliant");
             
             System.out.println("✅ EDGE CASES VERIFIED: Graceful handling of unusual scenarios");
         }

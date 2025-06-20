@@ -173,13 +173,16 @@ class ExtremeThreadSafetyTest {
                     
                     for (int j = 0; j < 20 && !stopOperations.get(); j++) {
                         try {
-                            boolean isValid = blockchain.validateChain();
+                            var validationResult = blockchain.validateChainDetailed();
+                            boolean isValid = validationResult.isStructurallyIntact() && validationResult.isFullyCompliant();
                             if (isValid) {
                                 validationPasses.incrementAndGet();
                             } else {
                                 validationFails.incrementAndGet();
+                                String details = !validationResult.isStructurallyIntact() ? 
+                                    "structural issues" : "compliance issues";
                                 inconsistencies.offer("VALIDATION-FAIL-T" + threadId + "-Iter" + j + 
-                                    ": Chain invalid at " + System.currentTimeMillis());
+                                    ": Chain invalid (" + details + ") at " + System.currentTimeMillis());
                             }
                             
                             Thread.sleep(ThreadLocalRandom.current().nextInt(25, 75));
@@ -222,7 +225,15 @@ class ExtremeThreadSafetyTest {
         System.out.println("      ❌ Invalid: " + validationFails.get());
         System.out.println("   🏗️  Final blockchain state:");
         System.out.println("      📦 Total blocks: " + blockchain.getBlockCount());
-        System.out.println("      🔗 Chain valid: " + blockchain.validateChain());
+        var finalValidation = blockchain.validateChainDetailed();
+        System.out.println("      🔗 Chain structurally intact: " + finalValidation.isStructurallyIntact());
+        System.out.println("      🔗 Chain fully compliant: " + finalValidation.isFullyCompliant());
+        if (!finalValidation.isFullyCompliant()) {
+            System.out.println("      ⚠️  Revoked blocks: " + finalValidation.getRevokedBlocks());
+        }
+        if (!finalValidation.isStructurallyIntact()) {
+            System.out.println("      ❌ Invalid blocks: " + finalValidation.getInvalidBlocks());
+        }
         System.out.println("   ⚠️  Inconsistencies detected: " + inconsistencies.size());
         
         // Show inconsistencies if they exist
@@ -239,8 +250,11 @@ class ExtremeThreadSafetyTest {
         assertTrue(inconsistencies.isEmpty(), 
             "No inconsistencies should be detected: " + inconsistencies.size() + " found");
         
-        assertTrue(blockchain.validateChain(), 
-            "Chain must be valid at the end of test");
+        var finalValidationResult = blockchain.validateChainDetailed();
+        assertTrue(finalValidationResult.isStructurallyIntact(), 
+            "Chain must be structurally intact at the end of test");
+        assertTrue(finalValidationResult.isFullyCompliant(), 
+            "Chain must be fully compliant at the end of test");
         
         // At least some operations should be successful
         assertTrue(successfulInsertions.get() > 0, 
@@ -330,11 +344,14 @@ class ExtremeThreadSafetyTest {
                                     break;
                                     
                                 case 3: // Validate chain
-                                    success = blockchain.validateChain();
+                                    var validationResult = blockchain.validateChainDetailed();
+                                    success = validationResult.isStructurallyIntact() && validationResult.isFullyCompliant();
                                     operationLog.offer("T" + threadId + ": VALIDATE " + (success ? "✅" : "❌"));
                                     if (!success) {
                                         criticalError.set(true);
-                                        operationLog.offer("T" + threadId + ": 🚨 CRITICAL: Chain invalid!");
+                                        String details = !validationResult.isStructurallyIntact() ? 
+                                            "structural" : "compliance";
+                                        operationLog.offer("T" + threadId + ": 🚨 CRITICAL: Chain invalid (" + details + ")!");
                                     }
                                     break;
                                     
@@ -398,7 +415,9 @@ class ExtremeThreadSafetyTest {
         System.out.println("   📈 Success rate: " + 
             String.format("%.2f%%", 100.0 * successfulOperations.get() / totalOperations.get()));
         System.out.println("   🏗️  Final blocks: " + blockchain.getBlockCount());
-        System.out.println("   🔗 Chain valid: " + blockchain.validateChain());
+        var finalValidationResult = blockchain.validateChainDetailed();
+        System.out.println("   🔗 Chain structurally intact: " + finalValidationResult.isStructurallyIntact());
+        System.out.println("   🔗 Chain fully compliant: " + finalValidationResult.isFullyCompliant());
         System.out.println("   🔑 Authorized keys: " + blockchain.getAuthorizedKeys().size());
         
         // Show operation log (last 20)
@@ -409,7 +428,9 @@ class ExtremeThreadSafetyTest {
         // Critical validations
         assertTrue(completed, "Test must complete on time");
         assertFalse(criticalError.get(), "No critical errors should occur");
-        assertTrue(blockchain.validateChain(), "Final chain must be valid");
+        var finalValidation = blockchain.validateChainDetailed();
+        assertTrue(finalValidation.isStructurallyIntact(), "Final chain must be structurally intact");
+        assertTrue(finalValidation.isFullyCompliant(), "Final chain must be fully compliant");
         assertTrue(successfulOperations.get() > totalOperations.get() * 0.7, 
             "At least 70% of operations must be successful");
         

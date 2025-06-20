@@ -123,9 +123,12 @@ public class RaceConditionFixTest {
         assertEquals(successfulBlocks.get() + 1, blockchain.getBlockCount(), 
             "Block count should match successful operations plus genesis block");
         
-        // Verify chain integrity
-        assertTrue(blockchain.validateChain(), 
-            "Blockchain should remain valid after high-concurrency operations");
+        // Verify chain integrity with detailed validation
+        var validationResult = blockchain.validateChainDetailed();
+        assertTrue(validationResult.isStructurallyIntact(), 
+            "Blockchain should be structurally intact after high-concurrency operations");
+        assertTrue(validationResult.isFullyCompliant(), 
+            "Blockchain should be fully compliant after high-concurrency operations");
             
         // Verify block number sequence
         if (successfulBlocks.get() > 0) {
@@ -197,7 +200,10 @@ public class RaceConditionFixTest {
         // Verify reasonable performance (should be able to handle at least 10 blocks/second under concurrency)
         assertTrue(blocksPerSecond >= 5.0, 
             "Performance should be reasonable: " + blocksPerSecond + " blocks/second");
-        assertTrue(blockchain.validateChain(), "Chain should remain valid");
+        
+        var validationResult = blockchain.validateChainDetailed();
+        assertTrue(validationResult.isStructurallyIntact(), "Chain should be structurally intact");
+        assertTrue(validationResult.isFullyCompliant(), "Chain should be fully compliant");
         
         System.out.println("✅ Performance impact assessment: ACCEPTABLE");
     }

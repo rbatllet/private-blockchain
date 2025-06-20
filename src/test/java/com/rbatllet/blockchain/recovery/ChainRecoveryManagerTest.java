@@ -2,6 +2,7 @@ package com.rbatllet.blockchain.recovery;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.validation.ChainValidationResult;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -97,13 +98,17 @@ class ChainRecoveryManagerTest {
             blockchain.addBlock("Test data", testKeyPair.getPrivate(), testKeyPair.getPublic());
             
             // Verify chain is valid
-            assertTrue(blockchain.validateChain());
+            ChainValidationResult beforeCorruption = blockchain.validateChainDetailed();
+            assertTrue(beforeCorruption.isFullyCompliant());
+            assertTrue(beforeCorruption.isStructurallyIntact());
             
             // Delete the key to create corruption
             blockchain.dangerouslyDeleteAuthorizedKey(testPublicKey, true, "Test corruption");
             
             // Verify chain is now invalid
-            assertFalse(blockchain.validateChain());
+            ChainValidationResult afterCorruption = blockchain.validateChainDetailed();
+            assertTrue(afterCorruption.isStructurallyIntact()); // Structure still intact
+            assertFalse(afterCorruption.isFullyCompliant()); // But not fully compliant
 
             // Attempt recovery
             ChainRecoveryManager.RecoveryResult result = 
@@ -137,11 +142,15 @@ class ChainRecoveryManagerTest {
             blockchain.addBlock("User 1 block", user1.getPrivate(), user1.getPublic());
             blockchain.addBlock("User 2 block", user2.getPrivate(), user2.getPublic());
             
-            assertTrue(blockchain.validateChain());
+            ChainValidationResult beforeRollback = blockchain.validateChainDetailed();
+            assertTrue(beforeRollback.isFullyCompliant());
+            assertTrue(beforeRollback.isStructurallyIntact());
             
             // Delete user 1's key
             blockchain.dangerouslyDeleteAuthorizedKey(user1Key, true, "Test corruption");
-            assertFalse(blockchain.validateChain());
+            ChainValidationResult afterCorruption = blockchain.validateChainDetailed();
+            assertTrue(afterCorruption.isStructurallyIntact());
+            assertFalse(afterCorruption.isFullyCompliant());
             
             // Attempt recovery
             ChainRecoveryManager.RecoveryResult result = 
@@ -149,7 +158,9 @@ class ChainRecoveryManagerTest {
             
             assertTrue(result.isSuccess());
             assertEquals("ROLLBACK", result.getMethod());
-            assertTrue(blockchain.validateChain());
+            ChainValidationResult afterRecovery = blockchain.validateChainDetailed();
+            assertTrue(afterRecovery.isFullyCompliant());
+            assertTrue(afterRecovery.isStructurallyIntact());
         }
 
         @Test
@@ -188,7 +199,9 @@ class ChainRecoveryManagerTest {
             blockchain.addAuthorizedKey(testPublicKey, "Test User");
             blockchain.addBlock("Test block", testKeyPair.getPrivate(), testKeyPair.getPublic());
             
-            assertTrue(blockchain.validateChain());
+            ChainValidationResult healthyResult = blockchain.validateChainDetailed();
+            assertTrue(healthyResult.isFullyCompliant());
+            assertTrue(healthyResult.isStructurallyIntact());
             
             ChainRecoveryManager.ChainDiagnostic diagnostic = 
                 recoveryManager.diagnoseCorruption();
@@ -206,11 +219,15 @@ class ChainRecoveryManagerTest {
             blockchain.addAuthorizedKey(testPublicKey, "Test User");
             blockchain.addBlock("Test block", testKeyPair.getPrivate(), testKeyPair.getPublic());
             
-            assertTrue(blockchain.validateChain());
+            ChainValidationResult beforeDiagnostic = blockchain.validateChainDetailed();
+            assertTrue(beforeDiagnostic.isFullyCompliant());
+            assertTrue(beforeDiagnostic.isStructurallyIntact());
             
             // Delete key to create corruption
             blockchain.dangerouslyDeleteAuthorizedKey(testPublicKey, true, "Test corruption");
-            assertFalse(blockchain.validateChain());
+            ChainValidationResult afterDiagnostic = blockchain.validateChainDetailed();
+            assertTrue(afterDiagnostic.isStructurallyIntact());
+            assertFalse(afterDiagnostic.isFullyCompliant());
             
             ChainRecoveryManager.ChainDiagnostic diagnostic = 
                 recoveryManager.diagnoseCorruption();
@@ -325,13 +342,17 @@ class ChainRecoveryManagerTest {
             blockchain.addBlock("User 3 block 1", user3.getPrivate(), user3.getPublic());
             blockchain.addBlock("User 1 block 2", user1.getPrivate(), user1.getPublic());
             
-            assertTrue(blockchain.validateChain());
+            ChainValidationResult beforeMultipleCorruption = blockchain.validateChainDetailed();
+            assertTrue(beforeMultipleCorruption.isFullyCompliant());
+            assertTrue(beforeMultipleCorruption.isStructurallyIntact());
             
             // Delete multiple keys
             blockchain.dangerouslyDeleteAuthorizedKey(user1Key, true, "Test corruption 1");
             blockchain.dangerouslyDeleteAuthorizedKey(user3Key, true, "Test corruption 3");
             
-            assertFalse(blockchain.validateChain());
+            ChainValidationResult afterMultipleCorruption = blockchain.validateChainDetailed();
+            assertTrue(afterMultipleCorruption.isStructurallyIntact());
+            assertFalse(afterMultipleCorruption.isFullyCompliant());
             
             // Recover first user
             ChainRecoveryManager.RecoveryResult result1 = 

@@ -843,12 +843,19 @@ public class Blockchain {
                     System.out.println("Chain imported successfully from: " + filePath);
                     System.out.println("Imported " + importData.getBlocks().size() + " blocks");
                     
-                    // Validate imported chain
-                    boolean isValid = validateChain();
+                    // Validate imported chain with detailed validation
+                    var importValidation = validateChainDetailed();
+                    boolean isValid = importValidation.isStructurallyIntact() && importValidation.isFullyCompliant();
                     if (isValid) {
                         System.out.println("Imported chain validation: SUCCESS");
                     } else {
                         System.err.println("Imported chain validation: FAILED");
+                        if (!importValidation.isStructurallyIntact()) {
+                            System.err.println("  - Structural issues: " + importValidation.getInvalidBlocks() + " invalid blocks");
+                        }
+                        if (!importValidation.isFullyCompliant()) {
+                            System.err.println("  - Compliance issues: " + importValidation.getRevokedBlocks() + " revoked blocks");
+                        }
                     }
                     
                     return isValid;
@@ -1483,7 +1490,8 @@ public class Blockchain {
         GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
         boolean isValid;
         try {
-            isValid = validateChain();
+            var validation = validateChainDetailed();
+            isValid = validation.isStructurallyIntact() && validation.isFullyCompliant();
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
         }

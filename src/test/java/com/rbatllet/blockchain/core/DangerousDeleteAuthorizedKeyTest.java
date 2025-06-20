@@ -2,6 +2,7 @@ package com.rbatllet.blockchain.core;
 
 import com.rbatllet.blockchain.entity.AuthorizedKey;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.validation.ChainValidationResult;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -162,7 +163,9 @@ class DangerousDeleteAuthorizedKeyTest {
         blockchain.addBlock("Block to be orphaned", keyPair.getPrivate(), keyPair.getPublic());
         
         // Verify blockchain is valid before deletion
-        assertTrue(blockchain.validateChain());
+        ChainValidationResult resultBefore = blockchain.validateChainDetailed();
+        assertTrue(resultBefore.isFullyCompliant());
+        assertTrue(resultBefore.isStructurallyIntact());
         
         // Should succeed with force
         boolean deleted = blockchain.dangerouslyDeleteAuthorizedKey(publicKey, true, "Forced test deletion");
@@ -172,8 +175,11 @@ class DangerousDeleteAuthorizedKeyTest {
         assertFalse(blockchain.getAuthorizedKeys().stream()
             .anyMatch(key -> key.getPublicKey().equals(publicKey)));
         
-        // Verify blockchain validation now fails (as expected)
-        assertFalse(blockchain.validateChain());
+        // Verify blockchain validation changes after force deletion
+        ChainValidationResult resultAfter = blockchain.validateChainDetailed();
+        assertTrue(resultAfter.isStructurallyIntact()); // Chain structure is still intact
+        assertFalse(resultAfter.isFullyCompliant()); // But not fully compliant due to orphaned blocks
+        assertTrue(resultAfter.getRevokedBlocks() > 0); // Should have revoked blocks
     }
 
     @Test
@@ -202,7 +208,9 @@ class DangerousDeleteAuthorizedKeyTest {
             .anyMatch(key -> key.getPublicKey().equals(publicKey)));
         
         // Verify blockchain is still valid
-        assertTrue(blockchain.validateChain());
+        ChainValidationResult result = blockchain.validateChainDetailed();
+        assertTrue(result.isFullyCompliant());
+        assertTrue(result.isStructurallyIntact());
     }
 
     @Test
@@ -227,7 +235,9 @@ class DangerousDeleteAuthorizedKeyTest {
         blockchain.addBlock("Another block by user 1", keyPair1.getPrivate(), keyPair1.getPublic());
         
         // Initial state: blockchain should be valid
-        assertTrue(blockchain.validateChain());
+        ChainValidationResult initialResult = blockchain.validateChainDetailed();
+        assertTrue(initialResult.isFullyCompliant());
+        assertTrue(initialResult.isStructurallyIntact());
         
         // Test impact analysis
         Blockchain.KeyDeletionImpact impact1 = blockchain.canDeleteAuthorizedKey(publicKey1);
@@ -246,15 +256,22 @@ class DangerousDeleteAuthorizedKeyTest {
         
         // Delete safe key (key 2)
         assertTrue(blockchain.deleteAuthorizedKey(publicKey2));
-        assertTrue(blockchain.validateChain()); // Should still be valid
+        ChainValidationResult afterSafeDeletion = blockchain.validateChainDetailed();
+        assertTrue(afterSafeDeletion.isFullyCompliant()); // Should still be valid
+        assertTrue(afterSafeDeletion.isStructurallyIntact());
         
         // Try to delete key with blocks (should fail without force)
         assertFalse(blockchain.deleteAuthorizedKey(publicKey1));
-        assertTrue(blockchain.validateChain()); // Should still be valid
+        ChainValidationResult afterFailedDeletion = blockchain.validateChainDetailed();
+        assertTrue(afterFailedDeletion.isFullyCompliant()); // Should still be valid
+        assertTrue(afterFailedDeletion.isStructurallyIntact());
         
         // Force delete key with blocks
         assertTrue(blockchain.dangerouslyDeleteAuthorizedKey(publicKey1, true, "Test force deletion"));
-        assertFalse(blockchain.validateChain()); // Should now be invalid
+        ChainValidationResult afterForceDeletion = blockchain.validateChainDetailed();
+        assertTrue(afterForceDeletion.isStructurallyIntact()); // Structure still intact
+        assertFalse(afterForceDeletion.isFullyCompliant()); // But not fully compliant
+        assertTrue(afterForceDeletion.getRevokedBlocks() > 0); // Should have revoked blocks
         
         // Verify only key 3 remains
         List<AuthorizedKey> remainingKeys = blockchain.getAuthorizedKeys();

@@ -2,6 +2,7 @@ package com.rbatllet.blockchain.core;
 
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.validation.ChainValidationResult;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -46,7 +47,9 @@ class BlockchainTest {
         @DisplayName("Should initialize with genesis block")
         void shouldInitializeWithGenesisBlock() {
             assertEquals(1, blockchain.getBlockCount());
-            assertTrue(blockchain.validateChain());
+            ChainValidationResult result = blockchain.validateChainDetailed();
+            assertTrue(result.isFullyCompliant());
+            assertTrue(result.isStructurallyIntact());
         }
 
         @Test
@@ -62,7 +65,9 @@ class BlockchainTest {
             blockchain.clearAndReinitialize();
             
             assertEquals(1, blockchain.getBlockCount());
-            assertTrue(blockchain.validateChain());
+            ChainValidationResult result = blockchain.validateChainDetailed();
+            assertTrue(result.isFullyCompliant());
+            assertTrue(result.isStructurallyIntact());
             assertEquals(0, blockchain.getAuthorizedKeys().size());
         }
     }
@@ -161,7 +166,9 @@ class BlockchainTest {
             
             assertTrue(result);
             assertEquals(2, blockchain.getBlockCount());
-            assertTrue(blockchain.validateChain());
+            ChainValidationResult validation = blockchain.validateChainDetailed();
+            assertTrue(validation.isFullyCompliant());
+            assertTrue(validation.isStructurallyIntact());
         }
 
         @Test
@@ -216,7 +223,9 @@ class BlockchainTest {
             blockchain.addBlock("Test data 1", testKeyPair.getPrivate(), testKeyPair.getPublic());
             blockchain.addBlock("Test data 2", testKeyPair.getPrivate(), testKeyPair.getPublic());
             
-            assertTrue(blockchain.validateChain());
+            ChainValidationResult result = blockchain.validateChainDetailed();
+            assertTrue(result.isFullyCompliant());
+            assertTrue(result.isStructurallyIntact());
         }
 
         @Test
@@ -225,12 +234,17 @@ class BlockchainTest {
             blockchain.addAuthorizedKey(testPublicKey, "Test User");
             blockchain.addBlock("Test data", testKeyPair.getPrivate(), testKeyPair.getPublic());
             
-            assertTrue(blockchain.validateChain());
+            ChainValidationResult beforeCorruption = blockchain.validateChainDetailed();
+            assertTrue(beforeCorruption.isFullyCompliant());
+            assertTrue(beforeCorruption.isStructurallyIntact());
             
             // Delete the key to corrupt the chain
             blockchain.dangerouslyDeleteAuthorizedKey(testPublicKey, true, "Test corruption");
             
-            assertFalse(blockchain.validateChain());
+            ChainValidationResult afterCorruption = blockchain.validateChainDetailed();
+            assertTrue(afterCorruption.isStructurallyIntact()); // Structure still intact
+            assertFalse(afterCorruption.isFullyCompliant()); // But not fully compliant
+            assertTrue(afterCorruption.getRevokedBlocks() > 0); // Should have revoked blocks
         }
     }
 
@@ -244,11 +258,15 @@ class BlockchainTest {
             blockchain.addAuthorizedKey(testPublicKey, "Test User");
             blockchain.addBlock("Test data", testKeyPair.getPrivate(), testKeyPair.getPublic());
             
-            assertTrue(blockchain.validateChain());
+            ChainValidationResult beforeCorruption = blockchain.validateChainDetailed();
+            assertTrue(beforeCorruption.isFullyCompliant());
+            assertTrue(beforeCorruption.isStructurallyIntact());
             
             // Create corruption
             blockchain.dangerouslyDeleteAuthorizedKey(testPublicKey, true, "Test corruption");
-            assertFalse(blockchain.validateChain());
+            ChainValidationResult afterCorruption = blockchain.validateChainDetailed();
+            assertTrue(afterCorruption.isStructurallyIntact());
+            assertFalse(afterCorruption.isFullyCompliant());
             
             // Test diagnostic method
             var diagnostic = blockchain.diagnoseCorruption();
@@ -310,7 +328,9 @@ class BlockchainTest {
             
             // Empty data should be allowed (for system blocks)
             assertTrue(blockchain.addBlock("", testKeyPair.getPrivate(), testKeyPair.getPublic()));
-            assertTrue(blockchain.validateChain());
+            ChainValidationResult result = blockchain.validateChainDetailed();
+            assertTrue(result.isFullyCompliant());
+            assertTrue(result.isStructurallyIntact());
             
             // Verify the block was created
             assertEquals(2, blockchain.getAllBlocks().size()); // Genesis + system block

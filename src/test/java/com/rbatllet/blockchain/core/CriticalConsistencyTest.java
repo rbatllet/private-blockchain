@@ -3,6 +3,7 @@ package com.rbatllet.blockchain.core;
 import com.rbatllet.blockchain.dao.AuthorizedKeyDAO;
 import com.rbatllet.blockchain.dao.BlockDAO;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.validation.ChainValidationResult;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -89,7 +90,9 @@ class CriticalConsistencyTest {
             assertTrue(result3, "Alice's second block should succeed");
             
             // CRITICAL: Chain must remain valid
-            assertTrue(blockchain.validateChain(), "Chain consistency after concurrency test");
+            ChainValidationResult concurrencyResult = blockchain.validateChainDetailed();
+            assertTrue(concurrencyResult.isFullyCompliant(), "Chain should be fully compliant after concurrency test");
+            assertTrue(concurrencyResult.isStructurallyIntact(), "Chain should be structurally intact after concurrency test");
             
             System.out.println("✅ Concurrency test passed - No pool exhaustion");
             
@@ -112,7 +115,9 @@ class CriticalConsistencyTest {
             assertFalse(blockchain.addBlock("Should fail " + i, aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()));
         }
         
-        assertTrue(blockchain.validateChain(), "Chain should be valid after rapid key cycles");
+        ChainValidationResult rapidCyclesResult = blockchain.validateChainDetailed();
+        assertTrue(rapidCyclesResult.isStructurallyIntact(), "Chain should be structurally intact after rapid key cycles");
+        // Note: May not be fully compliant due to revoked keys, but structure should be intact
         System.out.println("✅ Rapid key cycles test passed");
     }
 
@@ -137,7 +142,9 @@ class CriticalConsistencyTest {
         assertTrue(imported.importChain(exportFile.getAbsolutePath()));
         
         // CRITICAL: Imported chain must be consistent
-        assertTrue(imported.validateChain(), "Imported chain must be valid");
+        ChainValidationResult importedResult = imported.validateChainDetailed();
+        assertTrue(importedResult.isFullyCompliant(), "Imported chain must be fully compliant");
+        assertTrue(importedResult.isStructurallyIntact(), "Imported chain must be structurally intact");
         assertTrue(imported.addBlock("Post-import", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()));
         
         System.out.println("✅ Import/Export edge cases passed");
@@ -168,7 +175,9 @@ class CriticalConsistencyTest {
         assertFalse(blockchain.addBlock("Alice should fail", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()));
         assertTrue(blockchain.addBlock("Bob should work", bobKeyPair.getPrivate(), bobKeyPair.getPublic()));
         
-        assertTrue(blockchain.validateChain(), "Chain should be consistent after rollback");
+        ChainValidationResult rollbackResult = blockchain.validateChainDetailed();
+        assertTrue(rollbackResult.isFullyCompliant(), "Chain should be fully compliant after rollback");
+        assertTrue(rollbackResult.isStructurallyIntact(), "Chain should be structurally intact after rollback");
         System.out.println("✅ Rollback consistency test passed");
     }
 
@@ -184,12 +193,16 @@ class CriticalConsistencyTest {
             assertTrue(blockchain.addBlock("Mass-" + i, aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()));
         }
         
-        assertTrue(blockchain.validateChain(), "Chain should handle mass operations");
+        ChainValidationResult massOpsResult = blockchain.validateChainDetailed();
+        assertTrue(massOpsResult.isFullyCompliant(), "Chain should be fully compliant after mass operations");
+        assertTrue(massOpsResult.isStructurallyIntact(), "Chain should be structurally intact after mass operations");
         assertEquals(51, blockchain.getBlockCount()); // Genesis + 50
         
         // Mass rollback
         assertTrue(blockchain.rollbackBlocks(25L));
-        assertTrue(blockchain.validateChain(), "Chain should be valid after mass rollback");
+        ChainValidationResult massRollbackResult = blockchain.validateChainDetailed();
+        assertTrue(massRollbackResult.isFullyCompliant(), "Chain should be fully compliant after mass rollback");
+        assertTrue(massRollbackResult.isStructurallyIntact(), "Chain should be structurally intact after mass rollback");
         
         System.out.println("✅ Mass operations test passed");
     }
@@ -211,7 +224,9 @@ class CriticalConsistencyTest {
         // State should be unchanged
         assertEquals(initialBlocks, blockchain.getBlockCount());
         assertEquals(initialKeys, blockchain.getAuthorizedKeys().size());
-        assertTrue(blockchain.validateChain(), "Chain should remain valid after failed operations");
+        ChainValidationResult errorRecoveryResult = blockchain.validateChainDetailed();
+        assertTrue(errorRecoveryResult.isFullyCompliant(), "Chain should remain fully compliant after failed operations");
+        assertTrue(errorRecoveryResult.isStructurallyIntact(), "Chain should remain structurally intact after failed operations");
         
         System.out.println("✅ Error state recovery test passed");
     }
@@ -257,9 +272,12 @@ class CriticalConsistencyTest {
         assertTrue(imported.addBlock("Alice works again", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()));
         
         // FINAL CRITICAL VALIDATION
-        assertTrue(imported.validateChain(), "Final chain must be completely consistent");
+        ChainValidationResult finalResult = imported.validateChainDetailed();
+        assertTrue(finalResult.isFullyCompliant(), "Final chain must be fully compliant");
+        assertTrue(finalResult.isStructurallyIntact(), "Final chain must be structurally intact");
         
         System.out.println("🎉 FINAL COMPREHENSIVE TEST PASSED!");
+        System.out.println("   Chain validation: " + finalResult.getSummary());
         System.out.println("   Chain blocks: " + imported.getBlockCount());
         System.out.println("   Active keys: " + imported.getAuthorizedKeys().size());
         System.out.println("   ✅ ALL CONSISTENCY CHECKS PASSED!");

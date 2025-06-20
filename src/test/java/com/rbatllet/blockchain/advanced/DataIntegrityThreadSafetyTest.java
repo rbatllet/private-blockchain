@@ -107,7 +107,8 @@ public class DataIntegrityThreadSafetyTest {
         assertTrue(completed, "Data integrity test should complete within timeout");
 
         // Final comprehensive integrity check
-        boolean finalIntegrityCheck = blockchain.validateChain();
+        var validationResult = blockchain.validateChainDetailed();
+        boolean finalIntegrityCheck = validationResult.isStructurallyIntact() && validationResult.isFullyCompliant();
 
         System.out.println("🔐 Data Integrity Results:");
         System.out.println("   - Total operations: " + totalOperations.get());
@@ -116,6 +117,8 @@ public class DataIntegrityThreadSafetyTest {
         System.out.println("   - Signature failures: " + signatureFailures.get());
         System.out.println("   - Final block count: " + blockchain.getBlockCount());
         System.out.println("   - Final integrity check: " + (finalIntegrityCheck ? "✅ PASS" : "❌ FAIL"));
+        System.out.println("   - Structurally intact: " + validationResult.isStructurallyIntact());
+        System.out.println("   - Fully compliant: " + validationResult.isFullyCompliant());
 
         if (!integrityErrors.isEmpty()) {
             System.out.println("⚠️ Integrity errors:");
@@ -125,7 +128,8 @@ public class DataIntegrityThreadSafetyTest {
         assertEquals(0, dataCorruptions.get(), "No data corruptions should occur");
         assertEquals(0, hashMismatches.get(), "No hash mismatches should occur");
         assertEquals(0, signatureFailures.get(), "No signature failures should occur");
-        assertTrue(finalIntegrityCheck, "Final chain integrity check should pass");
+        assertTrue(validationResult.isStructurallyIntact(), "Final chain should be structurally intact");
+        assertTrue(validationResult.isFullyCompliant(), "Final chain should be fully compliant");
     }
 
     @Test

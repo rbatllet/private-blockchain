@@ -60,7 +60,8 @@ public class ChainRecoveryManager {
         }
         
         // SECURITY: Check if the chain is actually corrupted
-        boolean chainIsValid = blockchain.validateChain();
+        var chainValidation = blockchain.validateChainDetailed();
+        boolean chainIsValid = chainValidation.isStructurallyIntact() && chainValidation.isFullyCompliant();
         
         // If chain is invalid, identify ALL missing keys that signed blocks
         if (!chainIsValid) {
@@ -174,7 +175,8 @@ public class ChainRecoveryManager {
             }
             
             // Verify chain is now valid
-            if (blockchain.validateChain()) {
+            var reauthorizationValidation = blockchain.validateChainDetailed();
+            if (reauthorizationValidation.isStructurallyIntact() && reauthorizationValidation.isFullyCompliant()) {
                 System.out.println("✅ Chain recovered by re-authorization!");
                 return new RecoveryResult(true, "RE_AUTHORIZATION", 
                     "Chain successfully recovered by re-authorizing key as: " + recoveryOwnerName);
@@ -227,14 +229,21 @@ public class ChainRecoveryManager {
             // Perform rollback
             boolean rollbackSuccess = blockchain.rollbackToBlock(rollbackTarget);
             
-            if (rollbackSuccess && blockchain.validateChain()) {
-                return new RecoveryResult(true, "ROLLBACK", 
-                    "Chain recovered by rolling back to block #" + rollbackTarget + 
-                    ". Removed " + (allBlocks.size() - rollbackTarget - 1) + " blocks to ensure integrity.");
-            } else {
-                return new RecoveryResult(false, "ROLLBACK", 
-                    "Rollback completed but chain still invalid");
+            if (rollbackSuccess) {
+                var rollbackValidation = blockchain.validateChainDetailed();
+                if (rollbackValidation.isStructurallyIntact() && rollbackValidation.isFullyCompliant()) {
+                    return new RecoveryResult(true, "ROLLBACK", 
+                        "Chain recovered by rolling back to block #" + rollbackTarget + 
+                        ". Removed " + (allBlocks.size() - rollbackTarget - 1) + " blocks to ensure integrity.");
+                } else {
+                    return new RecoveryResult(false, "ROLLBACK", 
+                        "Rollback completed but chain still invalid");
+                }
             }
+            
+            // If we reach here, the chain could not be recovered
+            return new RecoveryResult(false, "ROLLBACK", 
+                "Unable to find a valid rollback point to recover the chain");
             
         } catch (Exception e) {
             return new RecoveryResult(false, "ROLLBACK", 
