@@ -55,22 +55,19 @@ jobs:
         name: Release ${{ steps.get_version.outputs.VERSION }}
         body: |
           ## Changes in this Release
-          - Add JaCoCo code coverage and exclude demo classes.
-          - Update block number type from int to Long and integrate utility classes.
-          - Add KeyFileLoader Tests and Update Mockito.
-          - Migrate shell scripts from Bash to ZSH and standardize version numbering.
-          - Migrate to ZSH and Standardize Output with Emojis Across Project.
-          - Replace Mockito with custom test implementations for improved stability.
-          
+          - Refactor FormatUtil tests to use behavior verification instead of hardcoded expectations.
+          - Update documentation to use zsh instead of bash and improve FormatUtil documentation.
+          - Comprehensive Project Restructuring and Documentation Update: JPA Migration, Thread Safety Implementation and Demo Reorganization. 
+
           ## Download
-          - **private-blockchain-1.0.2.jar**: Standard JAR (requires dependencies)
-          - **private-blockchain-1.0.2-jar-with-dependencies.jar**: Executable JAR with all dependencies included
+          - **private-blockchain-${{ steps.get_version.outputs.VERSION }}.jar**: Standard JAR (requires dependencies)
+          - **private-blockchain-${{ steps.get_version.outputs.VERSION }}-jar-with-dependencies.jar**: Executable JAR with all dependencies included
           
           ## Usage
           ```bash
           #!/usr/bin/env zsh
           
-          java -jar private-blockchain-1.0.2-jar-with-dependencies.jar
+          java -jar private-blockchain-${{ steps.get_version.outputs.VERSION }}-jar-with-dependencies.jar
           ```
         files: |
           target/private-blockchain-*.jar
