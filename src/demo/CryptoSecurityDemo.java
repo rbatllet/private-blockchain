@@ -1,5 +1,3 @@
-package com.rbatllet.demo;
-
 import com.rbatllet.blockchain.dao.AuthorizedKeyDAO;
 import com.rbatllet.blockchain.dao.BlockDAO;
 import com.rbatllet.blockchain.util.CryptoUtil;

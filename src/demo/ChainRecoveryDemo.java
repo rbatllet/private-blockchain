@@ -1,5 +1,3 @@
-package com.rbatllet.demo;
-
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.recovery.ChainRecoveryManager;
 import com.rbatllet.blockchain.util.CryptoUtil;
