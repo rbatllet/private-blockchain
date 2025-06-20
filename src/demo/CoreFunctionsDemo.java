@@ -2,6 +2,7 @@ import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.AuthorizedKey;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.validation.ChainValidationResult;
 
 import java.security.KeyPair;
 
@@ -76,14 +77,24 @@ public class CoreFunctionsDemo {
             System.out.println("   SUCCESS: Blocks added\n");
             
             // ===============================
-            // 4. CORE FUNCTION: Validate Chain
+            // 4. ENHANCED FUNCTION: Validate Chain
             // ===============================
-            System.out.println("4. DEMONSTRATING: Validate Chain");
+            System.out.println("4. DEMONSTRATING: Enhanced Chain Validation");
             
+            // Old method (deprecated but still works)
             boolean isValid = blockchain.validateChain();
-            System.out.println("   ✅ Chain validation: " + isValid);
-            assert isValid : "Chain should be valid";
-            System.out.println("   SUCCESS: Chain validated\n");
+            System.out.println("   📊 Old validation: " + (isValid ? "✅ Valid" : "❌ Invalid"));
+            
+            // New enhanced method
+            ChainValidationResult result = blockchain.validateChainDetailed();
+            System.out.println("   📈 Enhanced validation:");
+            System.out.println("     🏗️ Structurally intact: " + (result.isStructurallyIntact() ? "✅ Yes" : "❌ No"));
+            System.out.println("     ✅ Fully compliant: " + (result.isFullyCompliant() ? "✅ Yes" : "⚠️ No"));
+            System.out.println("     📊 Summary: " + result.getSummary());
+            System.out.println("     📋 Blocks: " + result.getValidBlocks() + "/" + result.getTotalBlocks() + " valid");
+            
+            assert result.isStructurallyIntact() : "Chain should be structurally intact";
+            System.out.println("   SUCCESS: Enhanced chain validation completed\n");
             
             // ===============================
             // 5. CORE FUNCTION: Get Block by Number
@@ -135,12 +146,22 @@ public class CoreFunctionsDemo {
             System.out.println("   SUCCESS: Unauthorized key rejected\n");
             
             // ===============================
-            // FINAL VERIFICATION
+            // FINAL ENHANCED VERIFICATION
             // ===============================
             System.out.println("FINAL VERIFICATION:");
             System.out.println("   ✅ Total blocks: " + blockchain.getBlockCount());
             System.out.println("   ✅ Authorized keys: " + blockchain.getAuthorizedKeys().size());
-            System.out.println("   ✅ Chain is valid: " + blockchain.validateChain());
+            
+            // Enhanced final validation
+            ChainValidationResult finalResult = blockchain.validateChainDetailed();
+            System.out.println("   📊 Enhanced validation: " + finalResult.getSummary());
+            System.out.println("   🏗️ Structural integrity: " + (finalResult.isStructurallyIntact() ? "✅ Intact" : "❌ Compromised"));
+            System.out.println("   ✅ Full compliance: " + (finalResult.isFullyCompliant() ? "✅ Compliant" : "⚠️ Issues"));
+            
+            System.out.println("\n💡 Core Functions Enhanced with New Validation API:");
+            System.out.println("   • Detailed validation results instead of simple boolean");
+            System.out.println("   • Clear structural vs compliance distinction");
+            System.out.println("   • Rich information for debugging and monitoring");
             
             System.out.println("\n=== ALL CORE FUNCTIONS DEMONSTRATED SUCCESSFULLY ===");
             

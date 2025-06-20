@@ -1,6 +1,7 @@
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.validation.ChainValidationResult;
 
 import java.security.KeyPair;
 
@@ -38,9 +39,28 @@ public class SimpleDemo {
                         block.getSignerPublicKey()) : "null"));
             }
             
-            // 6. Validate chain
+            // 6. Enhanced chain validation
+            System.out.println("\n=== 🔍 ENHANCED VALIDATION ===");
+            
+            // Old way (still works but deprecated)
             boolean isValid = blockchain.validateChain();
-            System.out.println("\n✅ Chain is valid: " + isValid);
+            System.out.println("📊 Old API result: " + (isValid ? "✅ Valid" : "❌ Invalid"));
+            
+            // New way (detailed information)
+            ChainValidationResult result = blockchain.validateChainDetailed();
+            System.out.println("📈 New API results:");
+            System.out.println("   🏗️ Structurally intact: " + (result.isStructurallyIntact() ? "✅ Yes" : "❌ No"));
+            System.out.println("   ✅ Fully compliant: " + (result.isFullyCompliant() ? "✅ Yes" : "⚠️ No"));
+            System.out.println("   📊 Summary: " + result.getSummary());
+            System.out.println("   📋 Total blocks: " + result.getTotalBlocks());
+            System.out.println("   ✅ Valid blocks: " + result.getValidBlocks());
+            System.out.println("   ⚠️ Revoked blocks: " + result.getRevokedBlocks());
+            
+            System.out.println("\n💡 Benefits of new API:");
+            System.out.println("   • Clear distinction between structural and compliance issues");
+            System.out.println("   • Detailed statistics for monitoring and debugging");
+            System.out.println("   • Better decision-making for applications");
+            System.out.println("   • Comprehensive audit trail information");
             
         } catch (Exception e) {
             System.err.println("❌ Error: " + e.getMessage());

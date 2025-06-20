@@ -1,5 +1,6 @@
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.validation.ChainValidationResult;
 
 import java.security.KeyPair;
 
@@ -41,15 +42,59 @@ public class BlockchainDemo {
             blockchain.addBlock("Third transaction: Alice updates record", 
                               userAlice.getPrivate(), userAlice.getPublic());
             
-            // 5. Validate the entire chain
-            System.out.println("\n✅ Validating blockchain...");
-            boolean isValid = blockchain.validateChain();
-            System.out.println("✅ Blockchain is valid: " + isValid);
+            // 5. Enhanced validation with detailed information
+            System.out.println("\n🔍 Enhanced blockchain validation...");
             
-            // 6. Display chain information
-            System.out.println("\n=== 📊 BLOCKCHAIN STATUS ===");
-            System.out.println("📦 Total blocks: " + blockchain.getBlockCount());
+            // Show the evolution from old to new API
+            System.out.println("📊 Old API (deprecated):");
+            boolean isValid = blockchain.validateChain();
+            System.out.println("   Result: " + (isValid ? "✅ Valid" : "❌ Invalid") + " (limited information)");
+            
+            System.out.println("\n📈 New API (recommended):");
+            ChainValidationResult result = blockchain.validateChainDetailed();
+            System.out.println("   🏗️ Structural integrity: " + (result.isStructurallyIntact() ? "✅ Intact" : "❌ Compromised"));
+            System.out.println("   ✅ Full compliance: " + (result.isFullyCompliant() ? "✅ Compliant" : "⚠️ Non-compliant"));
+            System.out.println("   📋 Detailed summary: " + result.getSummary());
+            
+            // Show additional insights available with new API
+            if (result.getRevokedBlocks() > 0) {
+                System.out.println("   ⚠️ Found " + result.getRevokedBlocks() + " revoked blocks (audit trail preserved)");
+            }
+            
+            // 6. Generate audit report
+            System.out.println("\n📋 Generating audit report...");
+            String auditReport = blockchain.getValidationReport();
+            System.out.println("✅ Audit report generated (" + auditReport.split("\n").length + " lines)");
+            
+            // Show first few lines of audit report
+            String[] reportLines = auditReport.split("\n");
+            System.out.println("📄 Report preview:");
+            for (int i = 0; i < Math.min(3, reportLines.length); i++) {
+                System.out.println("   " + reportLines[i]);
+            }
+            if (reportLines.length > 3) {
+                System.out.println("   ... (see full report for complete details)");
+            }
+            
+            // 7. Display enhanced chain information
+            System.out.println("\n=== 📊 ENHANCED BLOCKCHAIN STATUS ===");
+            System.out.println("📦 Total blocks: " + result.getTotalBlocks());
+            System.out.println("✅ Valid blocks: " + result.getValidBlocks());
+            System.out.println("⚠️ Revoked blocks: " + result.getRevokedBlocks());
             System.out.println("🔑 Authorized keys: " + blockchain.getAuthorizedKeys().size());
+            
+            // Show different chain views available
+            System.out.println("\n🔍 Available chain views:");
+            System.out.println("   📁 Full chain: " + blockchain.getFullChain().size() + " blocks (audit trail)");
+            System.out.println("   ✅ Valid chain: " + blockchain.getValidChain().size() + " blocks (operational use)");
+            System.out.println("   ⚠️ Orphaned blocks: " + blockchain.getOrphanedBlocks().size() + " blocks");
+            
+            System.out.println("\n💡 Migration Benefits Demonstrated:");
+            System.out.println("   ✅ More informative validation results");
+            System.out.println("   ✅ Clear separation of structural vs compliance issues");
+            System.out.println("   ✅ Automatic audit report generation");
+            System.out.println("   ✅ Multiple chain perspectives for different use cases");
+            System.out.println("   ✅ Better debugging and monitoring capabilities");
             
         } catch (Exception e) {
             System.err.println("❌ Demo error: " + e.getMessage());

@@ -1,6 +1,7 @@
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.recovery.ChainRecoveryManager;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.validation.ChainValidationResult;
 
 import java.security.KeyPair;
 import java.time.LocalDateTime;
@@ -108,19 +109,21 @@ public class ChainRecoveryDemo {
             blockchain.addBlock("Charlie's business agreement Q1-2024", charlie.getPrivate(), charlie.getPublic());
             blockchain.addBlock("Alice's follow-up document v1.1", alice.getPrivate(), alice.getPublic());
             
-            // Validation with detailed output
-            boolean isValid = blockchain.validateChain();
+            // Enhanced validation with detailed output
+            ChainValidationResult setupResult = blockchain.validateChainDetailed();
             long blockCount = blockchain.getBlockCount();
             
             System.out.println("✅ Setup completed successfully:");
             System.out.println("   📊 Total blocks: " + blockCount + " (including genesis)");
+            System.out.println("   📈 Enhanced validation: " + setupResult.getSummary());
+            System.out.println("   🏗️ Structural integrity: " + (setupResult.isStructurallyIntact() ? "✅ Intact" : "❌ Compromised"));
             System.out.println("✅ Added 3 authorized users: " + 
                 "Alice (" + getShortKey(aliceKey) + "), " + 
                 "Bob (" + getShortKey(bobKey) + "), " + 
                 "Charlie (" + getShortKey(charlieKey) + ")");
-            System.out.println("   🔍 Chain validity: " + (isValid ? "✅ VALID" : "❌ INVALID"));
+            System.out.println("   🔍 Chain validity: " + (setupResult.isStructurallyIntact() ? "✅ VALID" : "❌ INVALID"));
             
-            if (!isValid) {
+            if (!setupResult.isStructurallyIntact()) {
                 throw new IllegalStateException("Chain became invalid during setup");
             }
             
@@ -152,10 +155,13 @@ public class ChainRecoveryDemo {
                                      " signed by: " + getShortKey(block.getSignerPublicKey()) + ""));
             }
             
-            // Verify diagnostic accuracy
-            boolean actualValidity = blockchain.validateChain();
+            // Enhanced verification of diagnostic accuracy
+            ChainValidationResult actualResult = blockchain.validateChainDetailed();
+            boolean actualValidity = actualResult.isStructurallyIntact();
             if (diagnostic.isHealthy() != actualValidity) {
                 System.out.println("⚠️ WARNING: Diagnostic mismatch with actual validation!");
+                System.out.println("   Diagnostic says: " + (diagnostic.isHealthy() ? "Healthy" : "Corrupted"));
+                System.out.println("   Enhanced validation: " + actualResult.getSummary());
             }
             
         } catch (Exception e) {
@@ -187,9 +193,14 @@ public class ChainRecoveryDemo {
             
             if (deleted) {
                 // Check immediate impact
-                boolean isValidAfterDeletion = blockchain.validateChain();
-                System.out.println("🔍 Chain validity after deletion: " + 
-                                 (isValidAfterDeletion ? "✅ STILL VALID" : "❌ CORRUPTED (as expected)"));
+                // Enhanced validation after deletion
+                ChainValidationResult deletionResult = blockchain.validateChainDetailed();
+                boolean isValidAfterDeletion = deletionResult.isStructurallyIntact();
+                System.out.println("🔍 Enhanced validation after deletion:");
+                System.out.println("   📊 Summary: " + deletionResult.getSummary());
+                System.out.println("   🏗️ Structural integrity: " + (isValidAfterDeletion ? "✅ STILL VALID" : "❌ CORRUPTED (as expected)"));
+                System.out.println("   ✅ Full compliance: " + (deletionResult.isFullyCompliant() ? "✅ Compliant" : "⚠️ Issues"));
+                System.out.println("   ⚠️ Revoked blocks: " + deletionResult.getRevokedBlocks());
                 
                 if (!isValidAfterDeletion) {
                     System.out.println("✅ Corruption successfully introduced for demo purposes");
@@ -210,9 +221,13 @@ public class ChainRecoveryDemo {
         System.out.println("==========================================");
         
         try {
-            // Check if manual recovery is needed
-            boolean needsRecovery = !blockchain.validateChain();
-            System.out.println("🩺 Recovery assessment: " + (needsRecovery ? "REQUIRED" : "NOT NEEDED"));
+            // Enhanced assessment of recovery needs
+            ChainValidationResult recoveryAssessment = blockchain.validateChainDetailed();
+            boolean needsRecovery = !recoveryAssessment.isStructurallyIntact();
+            System.out.println("🩺 Enhanced recovery assessment:");
+            System.out.println("   📊 Summary: " + recoveryAssessment.getSummary());
+            System.out.println("   🏗️ Structural integrity: " + (recoveryAssessment.isStructurallyIntact() ? "✅ Intact" : "❌ Compromised"));
+            System.out.println("   ✅ Needs recovery: " + (needsRecovery ? "⚠️ REQUIRED" : "✅ NOT NEEDED"));
             
             if (needsRecovery) {
                 System.out.println("🚀 Initiating manual recovery process...");
@@ -230,9 +245,13 @@ public class ChainRecoveryDemo {
                 
                 // Verify recovery effectiveness
                 if (result.isSuccess()) {
-                    boolean isValidAfterRecovery = blockchain.validateChain();
-                    System.out.println("   🔍 Post-recovery validation: " + 
-                                     (isValidAfterRecovery ? "✅ CHAIN RESTORED" : "❌ STILL CORRUPTED"));
+                    // Enhanced verification of recovery effectiveness
+                    ChainValidationResult recoveryVerification = blockchain.validateChainDetailed();
+                    boolean isValidAfterRecovery = recoveryVerification.isStructurallyIntact();
+                    System.out.println("   🔍 Enhanced post-recovery validation:");
+                    System.out.println("      📊 Summary: " + recoveryVerification.getSummary());
+                    System.out.println("      🏗️ Result: " + (isValidAfterRecovery ? "✅ CHAIN RESTORED" : "❌ STILL CORRUPTED"));
+                    System.out.println("      ✅ Full compliance: " + (recoveryVerification.isFullyCompliant() ? "✅ Compliant" : "⚠️ Issues"));
                     
                     if (!isValidAfterRecovery) {
                         System.out.println("   ⚠️ WARNING: Recovery reported success but chain still invalid!");
@@ -326,10 +345,17 @@ public class ChainRecoveryDemo {
         System.out.println("==============================================");
         
         try {
-            // Comprehensive final analysis
-            boolean finalValid = blockchain.validateChain();
+            // Enhanced comprehensive final analysis
+            ChainValidationResult finalAnalysis = blockchain.validateChainDetailed();
+            boolean finalValid = finalAnalysis.isStructurallyIntact();
             int finalBlockCount = (int) blockchain.getBlockCount();
             int finalKeyCount = blockchain.getAuthorizedKeys().size();
+            
+            System.out.println("📊 Enhanced Final Analysis:");
+            System.out.println("   Summary: " + finalAnalysis.getSummary());
+            System.out.println("   Structural integrity: " + (finalValid ? "✅ Intact" : "❌ Compromised"));
+            System.out.println("   Full compliance: " + (finalAnalysis.isFullyCompliant() ? "✅ Compliant" : "⚠️ Issues"));
+            System.out.println("   Valid/Total blocks: " + finalAnalysis.getValidBlocks() + "/" + finalAnalysis.getTotalBlocks());
             
             ChainRecoveryManager.ChainDiagnostic finalDiagnostic = blockchain.diagnoseCorruption();
             
@@ -412,11 +438,20 @@ public class ChainRecoveryDemo {
         
         // Final health check
         try {
-            boolean finalHealth = blockchain.validateChain();
+            // Enhanced final health check
+            ChainValidationResult finalHealthCheck = blockchain.validateChainDetailed();
+            boolean finalHealth = finalHealthCheck.isStructurallyIntact();
             System.out.println();
-            System.out.println("🏁 FINAL STATUS: " + (finalHealth ? 
+            System.out.println("🏁 ENHANCED FINAL STATUS:");
+            System.out.println("   📊 Summary: " + finalHealthCheck.getSummary());
+            System.out.println("   🏗️ Overall health: " + (finalHealth ? 
                 "✅ BLOCKCHAIN HEALTHY AND OPERATIONAL" : 
                 "⚠️ BLOCKCHAIN REQUIRES MANUAL ATTENTION"));
+            System.out.println("   ✅ Compliance: " + (finalHealthCheck.isFullyCompliant() ? "✅ Fully compliant" : "⚠️ Has issues"));
+            
+            if (finalHealthCheck.getRevokedBlocks() > 0) {
+                System.out.println("   ⚠️ Note: " + finalHealthCheck.getRevokedBlocks() + " revoked blocks present (audit trail preserved)");
+            }
         } catch (Exception e) {
             System.out.println("🏁 FINAL STATUS: ❌ UNABLE TO DETERMINE (ERROR: " + e.getMessage() + ")");
         }

@@ -1,5 +1,6 @@
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.validation.ChainValidationResult;
 
 import java.security.KeyPair;
 
@@ -46,7 +47,12 @@ public class DangerousDeleteDemo {
             System.out.println("   - Bob: 0 blocks signed");  
             System.out.println("   - Charlie: 3 blocks signed");
             System.out.println("   - Total blocks: " + blockchain.getBlockCount());
-            System.out.println("   - Chain valid: " + blockchain.validateChain());
+            
+            // Enhanced validation for initial state
+            ChainValidationResult initialResult = blockchain.validateChainDetailed();
+            System.out.println("   - Enhanced validation: " + initialResult.getSummary());
+            System.out.println("   - Structural integrity: " + (initialResult.isStructurallyIntact() ? "✅ Intact" : "❌ Compromised"));
+            System.out.println("   - Full compliance: " + (initialResult.isFullyCompliant() ? "✅ Compliant" : "⚠️ Issues"));
             System.out.println();
             
             // Scenario 2: Analysis before deletion
@@ -75,7 +81,11 @@ public class DangerousDeleteDemo {
             System.out.println("🎯 Attempting to safely delete Bob's key...");
             boolean bobDeleted = blockchain.deleteAuthorizedKey(publicKey2);
             System.out.println("Result: " + (bobDeleted ? "✅ SUCCESS" : "❌ FAILED"));
-            System.out.println("Chain still valid: " + blockchain.validateChain());
+            
+            // Enhanced validation after Bob's deletion
+            ChainValidationResult bobResult = blockchain.validateChainDetailed();
+            System.out.println("Enhanced validation: " + bobResult.getSummary());
+            System.out.println("Structural integrity: " + (bobResult.isStructurallyIntact() ? "✅ Intact" : "❌ Compromised"));
             System.out.println("Active keys remaining: " + blockchain.getAuthorizedKeys().size());
             System.out.println();
             
@@ -86,7 +96,11 @@ public class DangerousDeleteDemo {
             System.out.println("🎯 Attempting to safely delete Alice's key...");
             boolean aliceDeleted = blockchain.deleteAuthorizedKey(publicKey1);
             System.out.println("Result: " + (aliceDeleted ? "✅ SUCCESS" : "❌ BLOCKED (as expected)"));
-            System.out.println("Chain still valid: " + blockchain.validateChain());
+            
+            // Enhanced validation after Alice's blocked deletion
+            ChainValidationResult aliceResult = blockchain.validateChainDetailed();
+            System.out.println("Enhanced validation: " + aliceResult.getSummary());
+            System.out.println("Structural integrity: " + (aliceResult.isStructurallyIntact() ? "✅ Intact" : "❌ Compromised"));
             System.out.println();
             
             // Scenario 5: Dangerous deletion without force (should fail)
@@ -103,7 +117,12 @@ public class DangerousDeleteDemo {
             System.out.println("=========================================================");
             
             System.out.println("🎯 Before forced deletion:");
-            System.out.println("   - Chain valid: " + blockchain.validateChain());
+            
+            // Enhanced validation before forced deletion
+            ChainValidationResult beforeForced = blockchain.validateChainDetailed();
+            System.out.println("   - Enhanced validation: " + beforeForced.getSummary());
+            System.out.println("   - Structural integrity: " + (beforeForced.isStructurallyIntact() ? "✅ Intact" : "❌ Compromised"));
+            System.out.println("   - Full compliance: " + (beforeForced.isFullyCompliant() ? "✅ Compliant" : "⚠️ Issues"));
             System.out.println("   - Charlie's blocks: " + charlieImpact.getAffectedBlocks());
             
             System.out.println("\n🔥 Performing FORCED deletion of Charlie's key...");
@@ -112,7 +131,14 @@ public class DangerousDeleteDemo {
             
             System.out.println("\n🎯 After forced deletion:");
             System.out.println("   - Deletion result: " + (charlieForcedDeleted ? "✅ SUCCESS" : "❌ FAILED"));
-            System.out.println("   - Chain valid: " + blockchain.validateChain());
+            
+            // Enhanced validation after forced deletion
+            ChainValidationResult afterForced = blockchain.validateChainDetailed();
+            System.out.println("   - Enhanced validation: " + afterForced.getSummary());
+            System.out.println("   - Structural integrity: " + (afterForced.isStructurallyIntact() ? "✅ Intact" : "❌ Compromised"));
+            System.out.println("   - Full compliance: " + (afterForced.isFullyCompliant() ? "✅ Compliant" : "⚠️ Issues"));
+            System.out.println("   - Valid blocks: " + afterForced.getValidBlocks() + "/" + afterForced.getTotalBlocks());
+            System.out.println("   - Revoked blocks: " + afterForced.getRevokedBlocks());
             System.out.println("   - Active keys remaining: " + blockchain.getAuthorizedKeys().size());
             
             // Show the damage
@@ -130,17 +156,39 @@ public class DangerousDeleteDemo {
             blockchain.getAuthorizedKeys().forEach(key -> 
                 System.out.println("   - " + key.getOwnerName() + " (created: " + key.getCreatedAt() + ")"));
             
-            System.out.println("\nBlockchain integrity: " + (blockchain.validateChain() ? "✅ VALID" : "❌ COMPROMISED"));
-            System.out.println("Total blocks: " + blockchain.getBlockCount());
+            // Enhanced final state analysis
+            ChainValidationResult finalState = blockchain.validateChainDetailed();
+            System.out.println("\nEnhanced final blockchain analysis:");
+            System.out.println("   📊 Summary: " + finalState.getSummary());
+            System.out.println("   🏗️ Structural integrity: " + (finalState.isStructurallyIntact() ? "✅ Intact" : "❌ Compromised"));
+            System.out.println("   ✅ Full compliance: " + (finalState.isFullyCompliant() ? "✅ Compliant" : "⚠️ Issues"));
+            System.out.println("   📋 Total blocks: " + finalState.getTotalBlocks());
+            System.out.println("   ✅ Valid blocks: " + finalState.getValidBlocks());
+            System.out.println("   ⚠️ Revoked blocks: " + finalState.getRevokedBlocks());
             
-            System.out.println("\n🎓 LESSONS LEARNED:");
+            // Show audit report capability
+            System.out.println("\n📋 Generated audit report:");
+            String auditReport = blockchain.getValidationReport();
+            String[] reportLines = auditReport.split("\n");
+            for (int i = 0; i < Math.min(5, reportLines.length); i++) {
+                System.out.println("   " + reportLines[i]);
+            }
+            if (reportLines.length > 5) {
+                System.out.println("   ... (report continues)");
+            }
+            
+            System.out.println("\n🎓 ENHANCED LESSONS LEARNED:");
             System.out.println("===================");
             System.out.println("1. ✅ Safe deletion works for keys without historical blocks");
             System.out.println("2. 🚫 Regular deletion is blocked for keys with signed blocks");
             System.out.println("3. ⚠️ Dangerous deletion without force is still safely blocked");
-            System.out.println("4. 💀 Forced deletion works but BREAKS blockchain validation");
+            System.out.println("4. 💀 Forced deletion works but impacts validation compliance");
             System.out.println("5. 🔍 Always use canDeleteAuthorizedKey() to assess impact first");
             System.out.println("6. 🛡️ Use force=true only in extreme circumstances (GDPR, security incidents)");
+            System.out.println("7. 📊 NEW: Enhanced validation API provides granular impact analysis");
+            System.out.println("8. 🏗️ NEW: Structural integrity vs compliance distinction is crucial");
+            System.out.println("9. 📋 NEW: Automatic audit reports help with compliance and debugging");
+            System.out.println("10. ⚠️ NEW: Revoked blocks are tracked but chain structure remains intact");
             
         } catch (Exception e) {
             System.err.println("❌ Demo error: " + e.getMessage());

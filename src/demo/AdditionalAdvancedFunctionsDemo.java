@@ -1,6 +1,7 @@
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.validation.ChainValidationResult;
 
 import java.security.KeyPair;
 import java.time.LocalDate;
@@ -145,9 +146,11 @@ public class AdditionalAdvancedFunctionsDemo {
                 System.out.println("   📊 Imported blockchain now has " + newBlockchain.getBlockCount() + " blocks");
                 System.out.println("   📊 Imported " + newBlockchain.getAuthorizedKeys().size() + " authorized keys");
                 
-                // Validate imported chain
-                boolean importedValid = newBlockchain.validateChain();
-                System.out.println("   ✅ Imported chain validation: " + (importedValid ? "PASSED" : "FAILED"));
+                // Enhanced validation of imported chain
+                ChainValidationResult importResult = newBlockchain.validateChainDetailed();
+                System.out.println("   📊 Enhanced import validation: " + importResult.getSummary());
+                System.out.println("   🏗️ Structural integrity: " + (importResult.isStructurallyIntact() ? "✅ Intact" : "❌ Compromised"));
+                System.out.println("   ✅ Full compliance: " + (importResult.isFullyCompliant() ? "✅ Compliant" : "⚠️ Issues"));
             } else {
                 System.out.println("   ❌ Import failed");
             }
@@ -175,9 +178,11 @@ public class AdditionalAdvancedFunctionsDemo {
                 System.out.println("   ✅ Successfully rolled back 2L blocks");
                 System.out.println("   📊 Blocks after rollback: " + blockchain.getBlockCount());
                 
-                // Validate chain after rollback
-                boolean validAfterRollback = blockchain.validateChain();
-                System.out.println("   ✅ Chain valid after rollback: " + validAfterRollback);
+                // Enhanced validation after rollback
+                ChainValidationResult rollbackResult = blockchain.validateChainDetailed();
+                System.out.println("   📊 Enhanced rollback validation: " + rollbackResult.getSummary());
+                System.out.println("   🏗️ Structural integrity: " + (rollbackResult.isStructurallyIntact() ? "✅ Intact" : "❌ Compromised"));
+                System.out.println("   ✅ Full compliance: " + (rollbackResult.isFullyCompliant() ? "✅ Compliant" : "⚠️ Issues"));
             } else {
                 System.out.println("   ❌ Rollback failed");
             }
@@ -200,9 +205,12 @@ public class AdditionalAdvancedFunctionsDemo {
             System.out.println("🔍 FINAL VALIDATION: Testing Integration");
             System.out.println("Verifying all ADDITIONAL ADVANCED functions work together...");
             
-            // Final chain validation
-            boolean finalValid = blockchain.validateChain();
-            System.out.println("   ✅ Final chain validation: " + (finalValid ? "PASSED" : "FAILED"));
+            // Enhanced final validation
+            ChainValidationResult finalResult = blockchain.validateChainDetailed();
+            System.out.println("   📊 Enhanced final validation: " + finalResult.getSummary());
+            System.out.println("   🏗️ Structural integrity: " + (finalResult.isStructurallyIntact() ? "✅ Intact" : "❌ Compromised"));
+            System.out.println("   ✅ Full compliance: " + (finalResult.isFullyCompliant() ? "✅ Compliant" : "⚠️ Issues"));
+            System.out.println("   📋 Final statistics: " + finalResult.getValidBlocks() + "/" + finalResult.getTotalBlocks() + " blocks valid");
             
             // Test search still works after rollback
             List<Block> finalPaymentBlocks = blockchain.searchBlocksByContent("payment");
@@ -228,12 +236,22 @@ public class AdditionalAdvancedFunctionsDemo {
             System.out.println();
             System.out.println("🎉 ALL ADDITIONAL ADVANCED FUNCTIONS WORKING PERFECTLY!");
             System.out.println();
-            System.out.println("📊 Final Statistics:");
+            System.out.println("📊 Enhanced Final Statistics:");
             System.out.println("   - Total blocks: " + blockchain.getBlockCount());
             System.out.println("   - Authorized keys: " + blockchain.getAuthorizedKeys().size());
-            System.out.println("   - Chain integrity: " + (blockchain.validateChain() ? "VALID" : "INVALID"));
+            
+            // Enhanced final statistics
+            ChainValidationResult statsResult = blockchain.validateChainDetailed();
+            System.out.println("   - Enhanced validation: " + statsResult.getSummary());
+            System.out.println("   - Valid blocks: " + statsResult.getValidBlocks() + "/" + statsResult.getTotalBlocks());
+            System.out.println("   - Revoked blocks: " + statsResult.getRevokedBlocks());
             System.out.println("   - Size limits: " + blockchain.getMaxBlockSizeBytes() + " bytes, " + 
                              blockchain.getMaxBlockDataLength() + " chars");
+            
+            System.out.println("\n💡 Enhanced Features Demonstrated:");
+            System.out.println("   • Rich validation results with detailed breakdowns");
+            System.out.println("   • Clear separation of structural vs compliance issues");
+            System.out.println("   • Better monitoring and debugging capabilities");
             
             // Cleanup demo files
             try {

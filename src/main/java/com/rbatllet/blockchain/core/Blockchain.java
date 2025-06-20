@@ -10,6 +10,9 @@ import com.rbatllet.blockchain.recovery.ChainRecoveryManager.ChainDiagnostic;
 import com.rbatllet.blockchain.recovery.ChainRecoveryManager.RecoveryResult;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.JPAUtil;
+import com.rbatllet.blockchain.validation.BlockStatus;
+import com.rbatllet.blockchain.validation.BlockValidationResult;
+import com.rbatllet.blockchain.validation.ChainValidationResult;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -274,6 +277,118 @@ public class Blockchain {
     }
     
     /**
+     * ENHANCED: Detailed validation of an individual block
+     * Returns comprehensive information about validation status
+     */
+    public BlockValidationResult validateBlockDetailed(Block block, Block previousBlock) {
+        String threadName = Thread.currentThread().getName();
+        BlockValidationResult.Builder builder = new BlockValidationResult.Builder(block);
+        
+        try {
+            System.out.println("🔍 [" + threadName + "] Detailed validation of block #" + block.getBlockNumber());
+            
+            // Skip detailed validation for genesis block
+            if (block.getBlockNumber() != null && block.getBlockNumber().equals(0L)) {
+                System.out.println("✅ [" + threadName + "] Genesis block validation passed");
+                return builder
+                    .structurallyValid(true)
+                    .cryptographicallyValid(true)
+                    .authorizationValid(true)
+                    .status(BlockStatus.VALID)
+                    .build();
+            }
+            
+            boolean structurallyValid = true;
+            boolean cryptographicallyValid = true;
+            boolean authorizationValid = true;
+            String errorMessage = null;
+            String warningMessage = null;
+            
+            // 1. Verify that the previous block hash matches
+            if (!block.getPreviousHash().equals(previousBlock.getHash())) {
+                structurallyValid = false;
+                errorMessage = "Previous hash mismatch";
+                System.err.println("❌ [" + threadName + "] VALIDATION FAILURE: " + errorMessage);
+            }
+            
+            // 2. Verify that the block number is sequential
+            if (structurallyValid && !block.getBlockNumber().equals(previousBlock.getBlockNumber() + 1L)) {
+                structurallyValid = false;
+                errorMessage = "Block number sequence error";
+                System.err.println("❌ [" + threadName + "] VALIDATION FAILURE: " + errorMessage);
+            }
+            
+            // 3. Verify hash integrity
+            if (structurallyValid) {
+                String calculatedHash = CryptoUtil.calculateHash(buildBlockContent(block));
+                if (!block.getHash().equals(calculatedHash)) {
+                    cryptographicallyValid = false;
+                    errorMessage = "Block hash integrity check failed";
+                    System.err.println("❌ [" + threadName + "] VALIDATION FAILURE: " + errorMessage);
+                }
+            }
+            
+            // 4. Verify digital signature
+            if (cryptographicallyValid) {
+                try {
+                    PublicKey signerPublicKey = CryptoUtil.stringToPublicKey(block.getSignerPublicKey());
+                    String blockContent = buildBlockContent(block);
+                    if (!CryptoUtil.verifySignature(blockContent, block.getSignature(), signerPublicKey)) {
+                        cryptographicallyValid = false;
+                        errorMessage = "Block signature verification failed";
+                        System.err.println("❌ [" + threadName + "] VALIDATION FAILURE: " + errorMessage);
+                    }
+                } catch (Exception e) {
+                    cryptographicallyValid = false;
+                    errorMessage = "Signature verification error: " + e.getMessage();
+                    System.err.println("❌ [" + threadName + "] VALIDATION FAILURE: " + errorMessage);
+                }
+            }
+            
+            // 5. Verify that the key was authorized at the time of block creation
+            if (structurallyValid && cryptographicallyValid) {
+                if (!authorizedKeyDAO.wasKeyAuthorizedAt(block.getSignerPublicKey(), block.getTimestamp())) {
+                    authorizationValid = false;
+                    warningMessage = "Block signed by key that was revoked after creation";
+                    System.err.println("⚠️ [" + threadName + "] AUTHORIZATION WARNING: " + warningMessage);
+                    System.err.println("🔍 Signer: " + block.getSignerPublicKey());
+                    System.err.println("🔍 Block timestamp: " + block.getTimestamp());
+                }
+            }
+            
+            // Build result
+            BlockValidationResult result = builder
+                .structurallyValid(structurallyValid)
+                .cryptographicallyValid(cryptographicallyValid)
+                .authorizationValid(authorizationValid)
+                .errorMessage(errorMessage)
+                .warningMessage(warningMessage)
+                .build();
+            
+            if (result.isFullyValid()) {
+                System.out.println("✅ [" + threadName + "] Block #" + block.getBlockNumber() + " is fully valid");
+            } else if (result.isValid()) {
+                System.out.println("⚠️ [" + threadName + "] Block #" + block.getBlockNumber() + " is structurally valid but has authorization issues");
+            } else {
+                System.out.println("❌ [" + threadName + "] Block #" + block.getBlockNumber() + " is invalid");
+            }
+            
+            return result;
+            
+        } catch (Exception e) {
+            System.err.println("💥 [" + threadName + "] EXCEPTION during detailed block validation: " + e.getMessage());
+            e.printStackTrace();
+            return builder
+                .structurallyValid(false)
+                .cryptographicallyValid(false)
+                .authorizationValid(false)
+                .errorMessage("Validation exception: " + e.getMessage())
+                .status(BlockStatus.INVALID)
+                .build();
+        }
+    }
+    
+    /**
      * PUBLIC: Validate a single block (used by recovery manager)
      * @param block The block to validate
      * @return true if block is valid, false otherwise
@@ -303,45 +418,129 @@ public class Blockchain {
     /**
      * CORE FUNCTION: Validate the entire blockchain
      * FIXED: Added thread-safety with read lock
+     * 
+     * @deprecated Use {@link #isStructurallyIntact()} or {@link #isFullyCompliant()} instead.
+     * This method provides limited information and is being phased out.
+     * For detailed validation information, use {@link #validateChainDetailed()}.
      */
+    @Deprecated
     public boolean validateChain() {
+        // DEPRECATED: Use the new detailed validation API for better insights
+        // This method now delegates to isStructurallyIntact() for compatibility
+        return isStructurallyIntact();
+    }
+    
+    /**
+     * ENHANCED: Detailed validation of the entire blockchain
+     * Returns comprehensive information about validation status
+     */
+    public ChainValidationResult validateChainDetailed() {
         GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
         try {
             List<Block> allBlocks = blockDAO.getAllBlocks();
+            List<BlockValidationResult> blockResults = new ArrayList<>();
             
             if (allBlocks.isEmpty()) {
                 System.err.println("No blocks found in chain");
-                return false;
+                return new ChainValidationResult(blockResults);
             }
             
-            // Verify genesis block
+            // Validate genesis block  
             Block genesisBlock = allBlocks.get(0);
+            BlockValidationResult.Builder genesisBuilder = new BlockValidationResult.Builder(genesisBlock);
+            
             if (!genesisBlock.getBlockNumber().equals(0L) || 
                 !genesisBlock.getPreviousHash().equals(GENESIS_PREVIOUS_HASH)) {
                 System.err.println("Invalid genesis block");
-                return false;
+                blockResults.add(genesisBuilder
+                    .structurallyValid(false)
+                    .cryptographicallyValid(false)
+                    .authorizationValid(false)
+                    .errorMessage("Invalid genesis block")
+                    .status(BlockStatus.INVALID)
+                    .build());
+            } else {
+                blockResults.add(genesisBuilder
+                    .structurallyValid(true)
+                    .cryptographicallyValid(true)
+                    .authorizationValid(true)
+                    .status(BlockStatus.VALID)
+                    .build());
             }
             
-            // Verify all blocks sequentially
+            // Validate all blocks sequentially using detailed validation
             for (int i = 1; i < allBlocks.size(); i++) {
                 Block currentBlock = allBlocks.get(i);
                 Block previousBlock = allBlocks.get(i - 1);
                 
-                if (!validateBlock(currentBlock, previousBlock)) {
-                    System.err.println("Chain validation failed at block #" + currentBlock.getBlockNumber());
-                    return false;
-                }
+                BlockValidationResult result = validateBlockDetailed(currentBlock, previousBlock);
+                blockResults.add(result);
             }
             
-            System.out.println("Chain validation successful! Total blocks: " + allBlocks.size());
-            return true;
+            ChainValidationResult chainResult = new ChainValidationResult(blockResults);
+            System.out.println("📊 Chain validation completed: " + chainResult.getSummary());
+            
+            return chainResult;
             
         } catch (Exception e) {
-            System.err.println("Error validating chain: " + e.getMessage());
-            return false;
+            System.err.println("Error during detailed chain validation: " + e.getMessage());
+            e.printStackTrace();
+            return new ChainValidationResult(new ArrayList<>());
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
         }
+    }
+    
+    /**
+     * ENHANCED: Check if chain is structurally intact (ignoring authorization issues)
+     */
+    public boolean isStructurallyIntact() {
+        ChainValidationResult result = validateChainDetailed();
+        return result.isStructurallyIntact();
+    }
+    
+    /**
+     * ENHANCED: Check if chain is fully compliant (structure + authorization)
+     */
+    public boolean isFullyCompliant() {
+        ChainValidationResult result = validateChainDetailed();
+        return result.isFullyCompliant();
+    }
+    
+    /**
+     * ENHANCED: Get blocks that have been orphaned by key revocations
+     */
+    public List<Block> getOrphanedBlocks() {
+        ChainValidationResult result = validateChainDetailed();
+        return result.getOrphanedBlocks();
+    }
+    
+    /**
+     * ENHANCED: Get only valid blocks (excludes revoked and invalid)
+     */
+    public List<Block> getValidChain() {
+        ChainValidationResult result = validateChainDetailed();
+        return result.getValidBlocksList();
+    }
+    
+    /**
+     * ENHANCED: Get all blocks with their validation status
+     */
+    public List<Block> getFullChain() {
+        GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
+        try {
+            return blockDAO.getAllBlocks();
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
+        }
+    }
+    
+    /**
+     * ENHANCED: Get detailed validation report for auditing
+     */
+    public String getValidationReport() {
+        ChainValidationResult result = validateChainDetailed();
+        return result.getDetailedReport();
     }
     
     /**
