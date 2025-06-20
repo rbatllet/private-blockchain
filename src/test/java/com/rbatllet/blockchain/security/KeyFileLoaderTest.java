@@ -1,5 +1,6 @@
 package com.rbatllet.blockchain.security;
 
+import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -32,8 +33,8 @@ public class KeyFileLoaderTest {
      * Helper method to generate a test key pair
      */
     private KeyPair generateKeyPair() throws Exception {
-        KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
-        keyPairGenerator.initialize(2048);
+        KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance(CryptoUtil.EC_ALGORITHM);
+        keyPairGenerator.initialize(new java.security.spec.ECGenParameterSpec(CryptoUtil.EC_CURVE));
         return keyPairGenerator.generateKeyPair();
     }
 

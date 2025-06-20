@@ -2,6 +2,7 @@ package com.rbatllet.blockchain.recovery;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
@@ -29,6 +30,14 @@ class ChainRecoveryManagerTest {
         recoveryManager = new ChainRecoveryManager(blockchain);
         testKeyPair = CryptoUtil.generateKeyPair();
         testPublicKey = CryptoUtil.publicKeyToString(testKeyPair.getPublic());
+    }
+
+    @AfterEach
+    void tearDown() {
+        // Clean database after each test to ensure test isolation
+        if (blockchain != null) {
+            blockchain.clearAndReinitialize();
+        }
     }
 
     @Nested

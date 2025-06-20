@@ -1,5 +1,6 @@
 package com.rbatllet.blockchain.security;
 
+import com.rbatllet.blockchain.util.CryptoUtil;
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.File;
@@ -90,7 +91,7 @@ public class SecureKeyStorage {
             
             // Reconstruct PrivateKey
             PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(decryptedKey);
-            KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+            KeyFactory keyFactory = KeyFactory.getInstance(CryptoUtil.EC_ALGORITHM);
             
             return keyFactory.generatePrivate(keySpec);
             
@@ -127,10 +128,10 @@ public class SecureKeyStorage {
     }
     
     /**
-     * Generate secret key from password using SHA-256
+     * Generate secret key from password using SHA3-256
      */
     private static SecretKeySpec generateSecretKey(String password) throws Exception {
-        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        MessageDigest digest = MessageDigest.getInstance(CryptoUtil.HASH_ALGORITHM);
         byte[] hash = digest.digest(password.getBytes("UTF-8"));
         // Use first 16 bytes for AES-128
         byte[] keyBytes = new byte[16];

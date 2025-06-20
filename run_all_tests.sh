@@ -139,7 +139,7 @@ if [ -f "blockchain.db" ]; then
     rm blockchain.db
 fi
 
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.CoreFunctionsDemo" -q
+mvn exec:java -Dexec.mainClass="com.rbatllet.demo.CoreFunctionsDemo" -q
 BASIC_RESULT=$?
 
 if [ $BASIC_RESULT -eq 0 ]; then
@@ -179,7 +179,7 @@ if [ -f "blockchain.db" ]; then
 fi
 
 print_info "🧪 Running Blockchain Demo..."
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.BlockchainDemo" -q
+mvn exec:java -Dexec.mainClass="com.rbatllet.demo.BlockchainDemo" -q
 DEMO_RESULT=$?
 
 if [ $DEMO_RESULT -eq 0 ]; then
@@ -196,7 +196,7 @@ if [ -f "blockchain.db" ]; then
 fi
 
 print_info "🧪 Running Simple Demo..."
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.SimpleDemo" -q
+mvn exec:java -Dexec.mainClass="com.rbatllet.demo.SimpleDemo" -q
 SIMPLE_RESULT=$?
 
 if [ $SIMPLE_RESULT -eq 0 ]; then
@@ -213,7 +213,7 @@ if [ -f "blockchain.db" ]; then
 fi
 
 print_info "🧪 Running Quick Demo..."
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.QuickDemo" -q
+mvn exec:java -Dexec.mainClass="com.rbatllet.demo.QuickDemo" -q
 QUICK_RESULT=$?
 
 if [ $QUICK_RESULT -eq 0 ]; then
@@ -230,7 +230,7 @@ if [ -f "blockchain.db" ]; then
 fi
 
 print_info "🔐 Running Key Deletion Security Demo..."
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.DangerousDeleteDemo" -q
+mvn exec:java -Dexec.mainClass="com.rbatllet.demo.DangerousDeleteDemo" -q
 SECURITY_DEMO_RESULT=$?
 
 if [ $SECURITY_DEMO_RESULT -eq 0 ]; then
@@ -239,6 +239,38 @@ if [ $SECURITY_DEMO_RESULT -eq 0 ]; then
 else
     print_error "❌ Security Demo: FAILED"
     record_test "Key Deletion Security Demo" "FAIL"
+fi
+
+# Thorough database cleanup before running crypto demo
+if command -v clean_database &> /dev/null; then
+    clean_database > /dev/null 2>&1
+else
+    # Fallback if clean_database function is not available
+    if [ -f "blockchain.db" ]; then
+        rm -f blockchain.db blockchain.db-shm blockchain.db-wal 2>/dev/null || true
+    fi
+fi
+
+print_info "🔐 Running Cryptographic Security Demo..."
+mvn exec:java -Dexec.mainClass="com.rbatllet.demo.CryptoSecurityDemo" -q
+CRYPTO_SECURITY_DEMO_RESULT=$?
+
+if [ $CRYPTO_SECURITY_DEMO_RESULT -eq 0 ]; then
+    print_success "✅ Crypto Security Demo: PASSED"
+    record_test "Cryptographic Security Demo" "PASS"
+else
+    print_error "❌ Crypto Security Demo: FAILED"
+    record_test "Cryptographic Security Demo" "FAIL"
+fi
+
+# Thorough database cleanup after running crypto demo
+if command -v clean_database &> /dev/null; then
+    clean_database > /dev/null 2>&1
+else
+    # Fallback if clean_database function is not available
+    if [ -f "blockchain.db" ]; then
+        rm -f blockchain.db blockchain.db-shm blockchain.db-wal 2>/dev/null || true
+    fi
 fi
 
 print_info ""
@@ -271,6 +303,7 @@ if [ $FAILED_TESTS -eq 0 ]; then
     print_info "   ✅ ADDITIONAL: Re-authorization scenarios"
     print_info "   ✅ CRITICAL: Concurrency and consistency tests"
     print_info "   ✅ CRITICAL: Mass operations and error recovery"
+    print_info "   ✅ SECURITY: Enhanced cryptographic features (SHA-3, ECDSA, key management)"
     print_info "   ✅ Integration and error handling"
     print_info ""
     FINAL_EXIT_CODE=0
@@ -290,7 +323,7 @@ print_info "📍 Test files location:"
 print_info "   - JUnit 5 Advanced Function Tests: src/test/java/com/rbatllet/blockchain/core/"
 print_info "   - JUnit 5 Key Authorization Tests: src/test/java/com/rbatllet/blockchain/core/"
 print_info "   - JUnit 5 Critical Consistency Tests: src/test/java/com/rbatllet/blockchain/core/"
-print_info "   - Basic Core Function Tests: src/main/java/com/rbatllet/blockchain/demo/"
+print_info "   - Basic Core Function Tests: src/main/java/com.rbatllet.demo/"
 print_info "📖 Documentation: README.md"
 print_info ""
 

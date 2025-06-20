@@ -31,14 +31,14 @@ The project includes the following main classes:
 - `com.rbatllet.blockchain.dto.ChainExportData` - DTO for data export
 
 #### Demo and Test Classes
-- `com.rbatllet.blockchain.demo.AdditionalAdvancedFunctionsDemo` - Advanced functions demonstration
-- `com.rbatllet.blockchain.demo.BlockchainDemo` - Basic blockchain demonstration
-- `com.rbatllet.blockchain.demo.ChainRecoveryDemo` - Chain recovery demonstration
-- `com.rbatllet.blockchain.demo.DangerousDeleteDemo` - Key deletion safety features demo
-- `com.rbatllet.blockchain.demo.CoreFunctionsDemo` - Core functions demonstration
-- `com.rbatllet.blockchain.demo.QuickDemo` - Quick blockchain demonstration
-- `com.rbatllet.blockchain.demo.SimpleDemo` - Simple blockchain demonstration
-- `com.rbatllet.blockchain.demo.EnhancedRecoveryExample` - Enhanced recovery demonstration
+- `com.rbatllet.demo.AdditionalAdvancedFunctionsDemo` - Advanced functions demonstration
+- `com.rbatllet.demo.BlockchainDemo` - Basic blockchain demonstration
+- `com.rbatllet.demo.ChainRecoveryDemo` - Chain recovery demonstration
+- `com.rbatllet.demo.DangerousDeleteDemo` - Key deletion safety features demo
+- `com.rbatllet.demo.CoreFunctionsDemo` - Core functions demonstration
+- `com.rbatllet.demo.QuickDemo` - Quick blockchain demonstration
+- `com.rbatllet.demo.SimpleDemo` - Simple blockchain demonstration
+- `com.rbatllet.demo.EnhancedRecoveryExample` - Enhanced recovery demonstration
 
 ### High-Level Architecture
 
@@ -48,8 +48,8 @@ graph TD
     B --> C[Data Access Layer]
     C --> D[SQLite Database]
     B --> E[Cryptographic Utils]
-    E --> F[RSA Key Management]
-    E --> G[SHA-256 Hashing]
+    E --> F[ECDSA Key Management]
+    E --> G[SHA3-256 Hashing]
     B --> H[Validation Engine]
     H --> I[Chain Integrity]
     H --> J[Authorization Checks]
@@ -73,7 +73,7 @@ graph TD
 - **AuthorizedKey Entity**: Stores authorized public keys and metadata
 
 #### 4. Utility Services
-- **CryptoUtil**: RSA key generation, signing, and verification
+- **CryptoUtil**: ECDSA key generation, signing, and verification
 - **JPAUtil**: JPA EntityManager and EntityManagerFactory management
 
 ## 🗄️ Database Schema
@@ -117,6 +117,16 @@ CREATE INDEX idx_keys_public_key ON authorized_keys(public_key);
 CREATE INDEX idx_keys_active ON authorized_keys(is_active);
 CREATE INDEX idx_keys_created ON authorized_keys(created_at);
 ```
+
+#### Block Sequence Table
+```sql
+CREATE TABLE block_sequence (
+    sequence_name TEXT PRIMARY KEY,
+    next_value INTEGER NOT NULL
+);
+
+-- This table is used for thread-safe block number generation
+-- It prevents race conditions in high-concurrency scenarios
 ```
 
 ### JPA Configuration
@@ -131,23 +141,53 @@ CREATE INDEX idx_keys_created ON authorized_keys(created_at);
              version="2.0">
 
     <persistence-unit name="blockchainPU" transaction-type="RESOURCE_LOCAL">
+        <!-- Use the newer Hibernate 6 provider -->
         <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
         
         <!-- Entities -->
         <class>com.rbatllet.blockchain.entity.Block</class>
         <class>com.rbatllet.blockchain.entity.AuthorizedKey</class>
+        <class>com.rbatllet.blockchain.entity.BlockSequence</class>
         
         <properties>
-            <!-- Database connection settings -->
+            <!-- Database connection settings - Enhanced for thread-safety -->
             <property name="jakarta.persistence.jdbc.driver" value="org.sqlite.JDBC"/>
-            <property name="jakarta.persistence.jdbc.url" value="jdbc:sqlite:blockchain.db?journal_mode=WAL"/>
+            <property name="jakarta.persistence.jdbc.url" value="jdbc:sqlite:blockchain.db?journal_mode=WAL&amp;synchronous=NORMAL&amp;cache_size=10000&amp;temp_store=memory&amp;mmap_size=268435456"/>
             
-            <!-- JPA standard settings with Hibernate as provider -->
-            <property name="jakarta.persistence.schema-generation.database.action" value="update"/>
-            
-            <!-- Hibernate-specific settings (where JPA standard alternatives are not available) -->
+            <!-- Hibernate specific settings -->
             <property name="hibernate.dialect" value="org.hibernate.community.dialect.SQLiteDialect"/>
+            <property name="hibernate.hbm2ddl.auto" value="update"/>
             <property name="hibernate.show_sql" value="false"/>
+            <property name="hibernate.format_sql" value="false"/>
+            
+            <!-- HikariCP Connection Pool Configuration -->
+            <property name="hibernate.connection.provider_class" value="org.hibernate.hikaricp.internal.HikariCPConnectionProvider"/>
+            
+            <!-- HikariCP specific settings - Optimized for high concurrency -->
+            <property name="hibernate.hikari.minimumIdle" value="10"/>
+            <property name="hibernate.hikari.maximumPoolSize" value="60"/>
+            <property name="hibernate.hikari.idleTimeout" value="300000"/>
+            <property name="hibernate.hikari.poolName" value="BlockchainHikariCP"/>
+            <property name="hibernate.hikari.maxLifetime" value="900000"/>
+            <property name="hibernate.hikari.connectionTimeout" value="20000"/>
+            <property name="hibernate.hikari.leakDetectionThreshold" value="300000"/>
+            
+            <!-- Enhanced transaction handling for thread-safety -->
+            <property name="hibernate.connection.autocommit" value="false"/>
+            <property name="hibernate.current_session_context_class" value="thread"/>
+            
+            <!-- Disable caching for thread-safety -->
+            <property name="hibernate.cache.use_query_cache" value="false"/>
+            <property name="hibernate.cache.use_second_level_cache" value="false"/>
+            
+            <!-- Enhanced locking and isolation -->
+            <property name="hibernate.connection.isolation" value="2"/> <!-- READ_COMMITTED -->
+            <property name="hibernate.order_updates" value="true"/>
+            <property name="hibernate.order_inserts" value="true"/>
+            <property name="hibernate.jdbc.batch_versioned_data" value="true"/>
+            
+            <!-- Statistics for monitoring -->
+            <property name="hibernate.generate_statistics" value="false"/>
             <property name="hibernate.format_sql" value="false"/>
             <property name="hibernate.connection.pool_size" value="10"/>
             <property name="hibernate.connection.autocommit" value="false"/>
@@ -223,31 +263,41 @@ public class AuthorizedKey {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(name = "public_key", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "public_key", columnDefinition = "TEXT", nullable = false)
     private String publicKey;
     
-    @Column(name = "owner_name")
+    @Column(name = "owner_name", length = 100)
     private String ownerName;
     
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
-    
     @Column(name = "is_active", nullable = false)
-    private boolean isActive;
+    private boolean isActive = true;
+    
+    @Column(name = "created_at")
+    private java.time.LocalDateTime createdAt;
     
     @Column(name = "revoked_at")
-    private LocalDateTime revokedAt;
-    
-    // Method to check if key was active at a specific time
-    public boolean wasActiveAt(LocalDateTime timestamp) {
-        if (!isActive && revokedAt != null && timestamp.isAfter(revokedAt)) {
-            return false;
-        }
-        return timestamp.isAfter(createdAt) || timestamp.isEqual(createdAt);
-    }
+    private java.time.LocalDateTime revokedAt;
     
     // Getters and setters...
 }
+
+// src/main/java/com/rbatllet/blockchain/entity/BlockSequence.java
+@Entity
+@Table(name = "block_sequence")
+public class BlockSequence {
+    
+    @Id
+    @Column(name = "sequence_name")
+    private String sequenceName = "block_number";
+    
+    @Column(name = "next_value")
+    private Long nextValue = 1L;
+    
+    // Getters and setters...
+}
+```
+
+### JPA Entity Usage Examples
 ```
 
 #### JPA Configuration File
@@ -362,7 +412,7 @@ public class JPAUtil {
 # Block constraints
 blockchain.block.max_data_size=10000           # 10,000 characters
 blockchain.block.max_size_bytes=1048576        # 1MB (1,048,576 bytes)
-blockchain.block.max_hash_length=64            # SHA-256 hash length
+blockchain.block.max_hash_length=64            # SHA3-256 hash length
 
 # Database settings
 blockchain.database.connection_timeout=30000   # 30 seconds
@@ -370,9 +420,9 @@ blockchain.database.max_connections=20         # Connection pool size
 blockchain.database.batch_size=25              # Batch operations
 
 # Security settings
-blockchain.security.min_key_size=2048          # Minimum RSA key size
-blockchain.security.signature_algorithm=SHA256withRSA
-blockchain.security.hash_algorithm=SHA-256
+blockchain.security.curve_name=secp256r1         # EC curve for ECDSA
+blockchain.security.signature_algorithm=SHA3withECDSA
+blockchain.security.hash_algorithm=SHA3-256
 
 # Performance settings
 blockchain.performance.chain_validation_batch=100    # Batch validation size
@@ -518,10 +568,10 @@ public boolean validateChain() // Returns false if deleted keys signed blocks
 - **GC Impact**: <10ms pause times with G1GC
 
 #### Cryptographic Performance
-- **Key Generation**: ~100ms for 2048-bit RSA key pair
+- **Key Generation**: ~50ms for EC key pair (secp256r1)
 - **Block Signing**: ~5ms per block signature
 - **Signature Verification**: ~2ms per verification
-- **Hash Calculation**: ~0.1ms per SHA-256 hash
+- **Hash Calculation**: ~0.15ms per SHA3-256 hash
 
 ### Performance Optimization Techniques
 

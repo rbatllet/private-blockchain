@@ -6,16 +6,18 @@
              version="2.0">
 
     <persistence-unit name="blockchainPU" transaction-type="RESOURCE_LOCAL">
+        <!-- Use the newer Hibernate 6 provider -->
         <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
         
         <!-- Entities -->
         <class>com.rbatllet.blockchain.entity.Block</class>
         <class>com.rbatllet.blockchain.entity.AuthorizedKey</class>
+        <class>com.rbatllet.blockchain.entity.BlockSequence</class>
         
         <properties>
-            <!-- Database connection settings -->
+            <!-- Database connection settings - FIXED: Enhanced for thread-safety -->
             <property name="jakarta.persistence.jdbc.driver" value="org.sqlite.JDBC"/>
-            <property name="jakarta.persistence.jdbc.url" value="jdbc:sqlite:blockchain.db?journal_mode=WAL"/>
+            <property name="jakarta.persistence.jdbc.url" value="jdbc:sqlite:blockchain.db?journal_mode=WAL&amp;synchronous=NORMAL&amp;cache_size=10000&amp;temp_store=memory&amp;mmap_size=268435456"/>
             
             <!-- Hibernate specific settings -->
             <property name="hibernate.dialect" value="org.hibernate.community.dialect.SQLiteDialect"/>
@@ -23,19 +25,34 @@
             <property name="hibernate.show_sql" value="false"/>
             <property name="hibernate.format_sql" value="false"/>
             
-            <!-- Connection pool settings - FIXED: Increased for concurrent operations -->
-            <property name="hibernate.connection.pool_size" value="10"/>
+            <!-- HikariCP Connection Pool Configuration -->
+            <property name="hibernate.connection.provider_class" value="org.hibernate.hikaricp.internal.HikariCPConnectionProvider"/>
             
-            <!-- Improve transaction handling -->
+            <!-- HikariCP specific settings - Optimized for high concurrency -->
+            <property name="hibernate.hikari.minimumIdle" value="10"/>
+            <property name="hibernate.hikari.maximumPoolSize" value="60"/>
+            <property name="hibernate.hikari.idleTimeout" value="300000"/>
+            <property name="hibernate.hikari.poolName" value="BlockchainHikariCP"/>
+            <property name="hibernate.hikari.maxLifetime" value="900000"/>
+            <property name="hibernate.hikari.connectionTimeout" value="20000"/>
+            <property name="hibernate.hikari.leakDetectionThreshold" value="300000"/>
+            
+            <!-- Enhanced transaction handling for thread-safety -->
             <property name="hibernate.connection.autocommit" value="false"/>
             <property name="hibernate.current_session_context_class" value="thread"/>
             
-            <!-- Connection timeout and validation -->
-            <property name="hibernate.connection.timeout" value="20000"/>
-            <property name="hibernate.connection.validation_timeout" value="3000"/>
-            
-            <!-- Enable the query cache -->
+            <!-- Disable caching for thread-safety -->
             <property name="hibernate.cache.use_query_cache" value="false"/>
+            <property name="hibernate.cache.use_second_level_cache" value="false"/>
+            
+            <!-- Enhanced locking and isolation -->
+            <property name="hibernate.connection.isolation" value="2"/> <!-- READ_COMMITTED -->
+            <property name="hibernate.order_updates" value="true"/>
+            <property name="hibernate.order_inserts" value="true"/>
+            <property name="hibernate.jdbc.batch_versioned_data" value="true"/>
+            
+            <!-- Statistics for monitoring -->
+            <property name="hibernate.generate_statistics" value="false"/>
         </properties>
     </persistence-unit>
 </persistence>

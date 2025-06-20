@@ -37,15 +37,34 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     void setUp() {
         // Initialize blockchain and key pairs for each test
         blockchain = new Blockchain();
+        blockchain.clearAndReinitialize(); // Ensure clean state
         
-        // Generate test key pairs
-        aliceKeyPair = CryptoUtil.generateKeyPair();
-        bobKeyPair = CryptoUtil.generateKeyPair();
-        charlieKeyPair = CryptoUtil.generateKeyPair();
+        // Generate test key pairs using the new hierarchical key system
+        // Create root keys for each test user
+        CryptoUtil.KeyInfo aliceKeyInfo = CryptoUtil.createRootKey();
+        CryptoUtil.KeyInfo bobKeyInfo = CryptoUtil.createRootKey();
+        CryptoUtil.KeyInfo charlieKeyInfo = CryptoUtil.createRootKey();
         
-        alicePublicKey = CryptoUtil.publicKeyToString(aliceKeyPair.getPublic());
-        bobPublicKey = CryptoUtil.publicKeyToString(bobKeyPair.getPublic());
-        charliePublicKey = CryptoUtil.publicKeyToString(charlieKeyPair.getPublic());
+        // Convert the stored key info to key pairs
+        aliceKeyPair = new KeyPair(
+            CryptoUtil.stringToPublicKey(aliceKeyInfo.getPublicKeyEncoded()),
+            CryptoUtil.stringToPrivateKey(aliceKeyInfo.getPrivateKeyEncoded())
+        );
+        
+        bobKeyPair = new KeyPair(
+            CryptoUtil.stringToPublicKey(bobKeyInfo.getPublicKeyEncoded()),
+            CryptoUtil.stringToPrivateKey(bobKeyInfo.getPrivateKeyEncoded())
+        );
+        
+        charlieKeyPair = new KeyPair(
+            CryptoUtil.stringToPublicKey(charlieKeyInfo.getPublicKeyEncoded()),
+            CryptoUtil.stringToPrivateKey(charlieKeyInfo.getPrivateKeyEncoded())
+        );
+        
+        // Get public key strings
+        alicePublicKey = aliceKeyInfo.getPublicKeyEncoded();
+        bobPublicKey = bobKeyInfo.getPublicKeyEncoded();
+        charliePublicKey = charlieKeyInfo.getPublicKeyEncoded();
         
         // Add authorized keys
         blockchain.addAuthorizedKey(alicePublicKey, "Alice");
@@ -56,6 +75,14 @@ class BlockchainAdditionalAdvancedFunctionsTest {
         blockchain.addBlock("Alice's first transaction", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic());
         blockchain.addBlock("Bob joins the network", bobKeyPair.getPrivate(), bobKeyPair.getPublic());
         blockchain.addBlock("Charlie sends data", charlieKeyPair.getPrivate(), charlieKeyPair.getPublic());
+    }
+
+    @AfterEach
+    void tearDown() {
+        // Clean database after each test to ensure test isolation
+        if (blockchain != null) {
+            blockchain.clearAndReinitialize();
+        }
     }
 
     // ===============================

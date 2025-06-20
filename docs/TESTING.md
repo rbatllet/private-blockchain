@@ -42,11 +42,11 @@ The project includes comprehensive test suites to verify all functionality and e
 - ✅ **Performance**: Execution time validation
 
 ### Test Statistics
-- **Total Test Files**: 9 comprehensive test suites
+- **Total Test Files**: 27 comprehensive test suites
 - **JUnit 5 Tests**: More than 60 professional unit tests
-- **Demo Applications**: 3 interactive demonstrations
+- **Demo Applications**: 8 interactive demonstrations
 - **Verification Tests**: 2 quick validation tests
-- **Script Test Runners**: 5 specialized test scripts
+- **Script Test Runners**: 11 specialized test scripts
 - **Total Coverage**: 100% of implemented functionality
 
 ## 🚀 Test Execution Guide
@@ -189,31 +189,31 @@ Running basic core functionality tests...
 #### 4. Interactive Demonstrations
 ```zsh
 # Advanced features demo with practical examples
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.AdditionalAdvancedFunctionsDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.demo.AdditionalAdvancedFunctionsDemo"
 
 # Basic demo with multiple users
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.BlockchainDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.demo.BlockchainDemo"
 
 # Chain recovery demonstration
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.ChainRecoveryDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.demo.ChainRecoveryDemo"
 
 # Key deletion safety features demo
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.DangerousDeleteDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.demo.DangerousDeleteDemo"
 
 # Advanced recovery techniques example
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.EnhancedRecoveryExample"
+mvn exec:java -Dexec.mainClass="com.rbatllet.demo.EnhancedRecoveryExample"
 
 # Core functions comprehensive test
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.CoreFunctionsDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.demo.CoreFunctionsDemo"
 ```
 
 #### 5. Quick Verification Tests
 ```zsh
 # Fast verification
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.QuickDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.demo.QuickDemo"
 
 # Basic functionality
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.SimpleDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.demo.SimpleDemo"
 ```
 
 ## 🌟 Testing Best Practices
@@ -337,6 +337,47 @@ The project follows these testing best practices:
 - `testLargeChainPerformance()` - Performance with many blocks
 - `testBulkOperationPerformance()` - Bulk operations execute efficiently
 
+### Complete Test Files Inventory
+
+#### Thread Safety Test Files
+- `AdvancedThreadSafetyTest.java` - Advanced concurrency testing
+- `ComprehensiveThreadSafetyTest.java` - Comprehensive thread safety validation
+- `DataIntegrityThreadSafetyTest.java` - Data integrity under concurrent operations
+- `EdgeCaseThreadSafetyTest.java` - Edge case handling in concurrent scenarios
+- `ExtremeThreadSafetyTest.java` - Extreme load testing for thread safety
+- `RaceConditionFixTest.java` - Validation of race condition fixes
+- `ThreadSafetyTest.java` - Basic thread safety testing
+
+#### Core Functionality Test Files
+- `BlockchainAdditionalAdvancedFunctionsTest.java` - Advanced blockchain functions
+- `BlockchainKeyAuthorizationTest.java` - Key authorization functionality
+- `BlockchainTest.java` - Core blockchain functionality
+- `CriticalConsistencyTest.java` - Data consistency validation
+- `DangerousDeleteAuthorizedKeyTest.java` - Safe key deletion testing
+- `SimpleTemporalValidationTest.java` - Temporal validation testing
+- `TestEnvironmentValidator.java` - Test environment validation
+
+#### DAO Test Files
+- `AuthorizedKeyDAODeleteTest.java` - Key deletion in DAO layer
+
+#### Recovery Test Files
+- `ChainRecoveryManagerTest.java` - Chain recovery functionality
+- `ImprovedRollbackStrategyTest.java` - Improved rollback strategy
+- `RecoveryConfigTest.java` - Recovery configuration testing
+
+#### Security Test Files
+- `KeyFileLoaderTest.java` - Key file loading functionality
+- `PasswordUtilTest.java` - Password utility testing
+- `SecureKeyStorageAdvancedTest.java` - Advanced key storage security
+- `SecureKeyStorageTest.java` - Basic key storage security
+
+#### Utility Test Files
+- `CryptoUtilTest.java` - Cryptographic utility testing
+- `ExitUtilTest.java` - Exit utility testing
+- `FormatUtilTest.java` - Format utility testing
+- `BlockValidationResultTest.java` - Block validation result testing
+- `BlockValidationUtilTest.java` - Block validation utility testing
+
 #### Running Individual Tests
 
 ```zsh
@@ -366,7 +407,7 @@ mvn test -Dtest=BlockchainAdditionalAdvancedFunctionsTest -X
 
 **Sample execution:**
 ```zsh
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.CoreFunctionsDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.demo.CoreFunctionsDemo"
 ```
 
 ### 3. Basic Demo Application
@@ -411,9 +452,15 @@ All test scripts now include automatic database cleanup to prevent SQLite corrup
 
 ```zsh
 # All scripts include automatic cleanup
-./run_all_tests.sh      # Auto-cleans before execution
-./run_advanced_tests.sh # Auto-cleans before execution  
-./run_basic_tests.sh    # Auto-cleans before execution
+./run_all_tests.sh                   # Auto-cleans before execution
+./run_advanced_tests.sh              # Auto-cleans before execution  
+./run_advanced_thread_safety_tests.sh # Advanced thread safety tests
+./run_basic_tests.sh                 # Auto-cleans before execution
+./run_crypto_security_demo.sh        # Cryptographic security demo
+./run_security_analysis.sh           # Security analysis tests
+./run_security_tests.sh              # Security tests runner
+./run_thread_safety_test.sh          # Thread-safety testing
+./test_race_condition_fix.sh         # Race condition testing
 ```
 
 #### Manual Database Cleanup
@@ -519,7 +566,7 @@ rm blockchain.db*
 ./run_all_tests.sh
 
 # Check for data corruption
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.CoreFunctionsDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.demo.CoreFunctionsDemo"
 
 # Validate specific components
 mvn test -Dtest=BlockchainAdditionalAdvancedFunctionsTest#testCompleteWorkflow
@@ -679,7 +726,7 @@ Exception in thread "main" java.lang.OutOfMemoryError: GC overhead limit exceede
 ```zsh
 # Increase JVM heap size
 export MAVEN_OPTS="-Xmx2g -Xms512m"
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.BlockchainDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.demo.BlockchainDemo"
 
 # For persistent issues, edit Maven configuration
 echo 'export MAVEN_OPTS="-Xmx4g -Xms1g"' >> ~/.zshrc
@@ -873,7 +920,7 @@ df -h .
 touch test_write.tmp && rm test_write.tmp
 
 # Test export manually
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.BlockchainDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.demo.BlockchainDemo"
 # Then check if export files are created
 
 # Validate JSON format
@@ -900,7 +947,7 @@ bash ./run_all_tests.sh
 # Or run Maven commands directly
 mvn clean compile
 mvn test -Dtest=BlockchainAdditionalAdvancedFunctionsTest
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.CoreFunctionsDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.demo.CoreFunctionsDemo"
 ```
 
 **Issue: Path Separator Issues**

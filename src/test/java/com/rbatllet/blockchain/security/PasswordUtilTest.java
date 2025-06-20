@@ -258,11 +258,26 @@ public class PasswordUtilTest {
         assertTrue(PasswordUtil.isValidPassword("Päßwort123"));  // German
         
         // Unicode should count properly for length
-        String unicodePassword = "测试密码123"; // Chinese characters + numbers
+        String unicodePassword = "测试密码123好"; // Chinese characters + numbers (8 characters)
+        
+        // Print each character's Unicode value for debugging
+        System.err.println("Unicode password: " + unicodePassword);
+        System.err.println("Unicode password length: " + unicodePassword.length());
+        
+        // Print Unicode code points for each character
+        StringBuilder debug = new StringBuilder("Unicode code points: ");
+        for (int i = 0; i < unicodePassword.length(); i++) {
+            debug.append(String.format("\\u%04x ", (int)unicodePassword.charAt(i)));
+        }
+        System.err.println(debug.toString());
+        
         // This should be valid if it meets the criteria
         boolean result = PasswordUtil.isValidPassword(unicodePassword);
+        System.err.println("Password validation result: " + result);
+        
         // Result depends on whether Unicode letters count as "letters"
         // Current implementation should handle this correctly
+        assertTrue(result, "Unicode password should be valid");
     }
 
     @Test

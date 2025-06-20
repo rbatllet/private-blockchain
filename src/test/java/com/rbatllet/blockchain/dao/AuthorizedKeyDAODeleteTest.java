@@ -40,7 +40,7 @@ class AuthorizedKeyDAODeleteTest {
         String testPublicKey = "test-public-key-123";
         String testOwnerName = "test-owner";
         
-        AuthorizedKey testKey = new AuthorizedKey(testPublicKey, testOwnerName);
+        AuthorizedKey testKey = new AuthorizedKey(testPublicKey, testOwnerName, java.time.LocalDateTime.now());
         keyDAO.saveAuthorizedKey(testKey);
         
         // Verify the key exists
@@ -71,28 +71,27 @@ class AuthorizedKeyDAODeleteTest {
 
     @Test
     void testDeleteMultipleRecordsForSameKey() {
-        // Create a key, revoke it, then create another with same public key
+        // This test verifies that delete removes ALL records for a public key
         String testPublicKey = "multi-record-key-789";
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
         
         // First authorization
-        AuthorizedKey firstKey = new AuthorizedKey(testPublicKey, "owner1");
+        AuthorizedKey firstKey = new AuthorizedKey(testPublicKey, "owner1", now);
         keyDAO.saveAuthorizedKey(firstKey);
         
-        // Revoke the first key
-        keyDAO.revokeAuthorizedKey(testPublicKey);
+        // Verify first key is authorized
+        assertTrue(keyDAO.isKeyAuthorized(testPublicKey), "First key should be authorized");
         
-        // Create second authorization with same public key
-        AuthorizedKey secondKey = new AuthorizedKey(testPublicKey, "owner2");
+        // Create second authorization with same public key but different owner
+        // This simulates re-authorization scenario
+        AuthorizedKey secondKey = new AuthorizedKey(testPublicKey, "owner2", now.plusMinutes(1));
         keyDAO.saveAuthorizedKey(secondKey);
-        
-        // Verify key is authorized (should be true due to second authorization)
-        assertTrue(keyDAO.isKeyAuthorized(testPublicKey), "Key should be authorized due to second record");
         
         // Delete all records for this public key
         boolean deleted = keyDAO.deleteAuthorizedKey(testPublicKey);
         
-        // Verify all records are deleted
-        assertTrue(deleted, "Delete operation should return true");
+        // Verify deletion worked
+        assertTrue(deleted, "Delete operation should return true when records exist");
         assertFalse(keyDAO.isKeyAuthorized(testPublicKey), "Key should not be authorized after deletion");
     }
 }

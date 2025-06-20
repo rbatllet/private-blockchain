@@ -33,21 +33,29 @@ class CriticalConsistencyTest {
 
     @BeforeEach
     void setUp() {
+        // The generateKeyPair() method now uses the new hierarchical key system internally
         aliceKeyPair = CryptoUtil.generateKeyPair();
         bobKeyPair = CryptoUtil.generateKeyPair();
         alicePublicKey = CryptoUtil.publicKeyToString(aliceKeyPair.getPublic());
         bobPublicKey = CryptoUtil.publicKeyToString(bobKeyPair.getPublic());
         
-        cleanDatabase();
+        clearDatabase();
     }
     
-    private void cleanDatabase() {
+    @AfterEach
+    void tearDown() {
+        // Clean database after each test to ensure test isolation
+        clearDatabase();
+    }
+    
+    private void clearDatabase() {
         try {
-            new BlockDAO().deleteAllBlocks();
-            new AuthorizedKeyDAO().deleteAllAuthorizedKeys();
+            // Use the standard clearAndReinitialize method for consistency
+            Blockchain tempBlockchain = new Blockchain();
+            tempBlockchain.clearAndReinitialize();
             Thread.sleep(50);
         } catch (Exception e) {
-            System.err.println("Warning: Could not clean database: " + e.getMessage());
+            System.err.println("Warning: Could not clear database: " + e.getMessage());
         }
     }
 

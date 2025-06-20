@@ -27,13 +27,24 @@ public class AuthorizedKey {
 
     // Constructors
     public AuthorizedKey() {
-        this.createdAt = java.time.LocalDateTime.now();
+        // Don't set timestamp here - it should be set explicitly for thread safety
+        // this.createdAt = java.time.LocalDateTime.now();
     }
 
     public AuthorizedKey(String publicKey, String ownerName) {
-        this();
         this.publicKey = publicKey;
         this.ownerName = ownerName;
+        // Don't set timestamp here - it should be set explicitly for thread safety
+    }
+    
+    /**
+     * Thread-safe constructor with explicit timestamp
+     * FIXED: Allows setting specific creation time to avoid race conditions
+     */
+    public AuthorizedKey(String publicKey, String ownerName, java.time.LocalDateTime createdAt) {
+        this.publicKey = publicKey;
+        this.ownerName = ownerName;
+        this.createdAt = createdAt;
     }
 
     // Getters and Setters

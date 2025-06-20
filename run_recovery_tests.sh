@@ -4,10 +4,6 @@
 # Runs all recovery-related tests including the improved rollback strategy
 # Version: 1.0.1
 
-print_step "BLOCKCHAIN RECOVERY TESTS"
-echo "============================"
-echo ""
-
 # Load shared functions for consistent output formatting and error handling
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 if [ -f "$SCRIPT_DIR/scripts/shared-functions.sh" ]; then
@@ -16,6 +12,10 @@ else
     echo "❌ Error: shared-functions.sh not found. Please ensure the scripts directory exists."
     exit 1
 fi
+
+print_step "BLOCKCHAIN RECOVERY TESTS"
+echo "============================"
+echo ""
 
 # Check if we're in the correct directory
 if [ ! -f "pom.xml" ]; then

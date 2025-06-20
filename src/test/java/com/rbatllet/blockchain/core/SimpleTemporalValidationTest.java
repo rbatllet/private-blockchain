@@ -18,21 +18,35 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("Simple Temporal Validation Test")
 class SimpleTemporalValidationTest {
 
+    private Blockchain blockchain;
     private KeyPair aliceKeyPair;
     private String alicePublicKey;
 
     @BeforeEach
     void setUp() {
-        // Generate fresh key pair
-        aliceKeyPair = CryptoUtil.generateKeyPair();
-        alicePublicKey = CryptoUtil.publicKeyToString(aliceKeyPair.getPublic());
+        // Generate fresh key pair using the new hierarchical key system
+        CryptoUtil.KeyInfo aliceKeyInfo = CryptoUtil.createRootKey();
+        
+        // Convert to KeyPair object
+        aliceKeyPair = new KeyPair(
+            CryptoUtil.stringToPublicKey(aliceKeyInfo.getPublicKeyEncoded()),
+            CryptoUtil.stringToPrivateKey(aliceKeyInfo.getPrivateKeyEncoded())
+        );
+        
+        // Get public key string
+        alicePublicKey = aliceKeyInfo.getPublicKeyEncoded();
     }
 
     @AfterEach
     void tearDown() {
-        // Do minimal cleanup
+        // Clean database state for next test
+        if (blockchain != null) {
+            blockchain.clearAndReinitialize();
+        }
+        
+        // Allow connections to close properly
         try {
-            Thread.sleep(100); // Allow connections to close properly
+            Thread.sleep(50);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
@@ -42,15 +56,16 @@ class SimpleTemporalValidationTest {
     @Order(1)
     @DisplayName("Test Basic Temporal Validation")
     void testBasicTemporalValidation() {
-        // Create a fresh blockchain
-        Blockchain blockchain = new Blockchain();
+        // Create a fresh blockchain with clean state
+        blockchain = new Blockchain();
+        blockchain.clearAndReinitialize();
         
         // 1. Authorize Alice
         assertTrue(blockchain.addAuthorizedKey(alicePublicKey, "Alice"));
         
         // 2. Alice creates a block
-        assertTrue(blockchain.addBlock("Historical block", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()));
-        Block historicalBlock = blockchain.getLastBlock();
+        Block historicalBlock = blockchain.addBlockAndReturn("Historical block", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic());
+        assertNotNull(historicalBlock, "Alice should be able to create a block with authorized key");
         
         // 3. Verify the block exists and is valid
         assertNotNull(historicalBlock);

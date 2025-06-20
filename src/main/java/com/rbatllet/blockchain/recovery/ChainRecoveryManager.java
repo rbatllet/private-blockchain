@@ -5,20 +5,26 @@ import com.rbatllet.blockchain.entity.Block;
 
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 /**
  * Chain Recovery Manager for handling blockchain corruption after key deletion
  * Provides multiple recovery strategies when forced key deletion breaks chain validation
+ * FIXED: Thread-safe with proper synchronization
  */
 public class ChainRecoveryManager {
     
     private final Blockchain blockchain;
-    // Track keys that were involved in corruption but lost their blocks due to rollback
-    private final Set<String> keysInvolvedInCorruption = new HashSet<>();
+    // FIXED: Thread-safe set for tracking corruption keys
+    private final Set<String> keysInvolvedInCorruption = Collections.synchronizedSet(new HashSet<>());
+    
+    // FIXED: Lock for thread-safe operations on complex methods
+    private final ReentrantReadWriteLock recoveryLock = new ReentrantReadWriteLock();
     
     public ChainRecoveryManager(Blockchain blockchain) {
         if (blockchain == null) {

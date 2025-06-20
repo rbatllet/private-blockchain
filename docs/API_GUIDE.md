@@ -305,6 +305,38 @@ public int deleteAllAuthorizedKeys() {
 
 #### BlockDAO Methods
 ```java
+// Get the next block number atomically (thread-safe)
+public Long getNextBlockNumberAtomic() {
+    // Atomically increments and returns the next block number from the sequence
+    // Uses BlockSequence entity with pessimistic locking for true atomicity
+    // This method is fully thread-safe and prevents race conditions in concurrent environments
+}
+
+// Get the last block with pessimistic locking to prevent race conditions
+public Block getLastBlockWithLock() {
+    // Returns the last block with a pessimistic lock to prevent concurrent modifications
+    // Used in high-concurrency scenarios where consistency is critical
+}
+
+// Get the last block with forced refresh to see latest committed data
+public Block getLastBlockWithRefresh() {
+    // Returns the last block with a forced refresh from the database
+    // Ensures we see the most recent data even in high-concurrency scenarios
+    // Prevents race conditions where reads happen before writes are fully committed
+}
+
+// Check if a block with specific number exists
+public boolean existsBlockWithNumber(Long blockNumber) {
+    // Returns true if a block with the specified number exists
+    // Used for race condition detection in concurrent environments
+}
+
+// Synchronize the block sequence with the actual max block number
+public void synchronizeBlockSequence() {
+    // Synchronizes the BlockSequence with the actual max block number in the database
+    // Useful for initialization or after manual database operations
+}
+
 // Save a new block to the database
 public void saveBlock(Block block) {
     // Persists a new block with transaction management
@@ -416,6 +448,21 @@ public boolean addBlock(String data, PrivateKey privateKey, PublicKey publicKey)
   - `publicKey`: Public key for verification (must be authorized)
 - **Returns:** `true` if block was added successfully, `false` otherwise
 - **Throws:** `IllegalArgumentException` if data is too large or keys are invalid
+
+```java
+public Block addBlockAndReturn(String data, PrivateKey privateKey, PublicKey publicKey)
+```
+- **Parameters:**
+  - `data`: The content to store in the block (max 10,000 characters)
+  - `privateKey`: Private key for signing the block
+  - `publicKey`: Public key for verification (must be authorized)
+- **Returns:** The created `Block` object if successful, `null` if failed
+- **Description:** Similar to `addBlock()` but returns the actual created block. Useful for concurrent scenarios where you need immediate access to block metadata (number, hash, timestamp).
+- **Thread-Safety:** Fully thread-safe, uses the same global locking as `addBlock()`
+- **Use Cases:**
+  - ✅ Concurrent testing scenarios where you need the exact block created
+  - ✅ Applications that need immediate access to block metadata
+  - ✅ When you need to verify block creation success AND get block details
 
 ```java
 public boolean validateChain()
@@ -549,7 +596,7 @@ public List<Block> searchBlocksByContent(String searchTerm)
 ```java
 public Block getBlockByHash(String hash)
 ```
-- **Parameters:** `hash`: SHA-256 hash of the block
+- **Parameters:** `hash`: SHA3-256 hash of the block
 - **Returns:** The block with matching hash, or null if not found
 
 ```java
@@ -608,7 +655,7 @@ public int getMaxBlockDataLength()
 ```java
 public static KeyPair generateKeyPair()
 ```
-- **Returns:** A new RSA key pair (2048-bit)
+- **Returns:** A new EC key pair (curve secp256r1)
 - **Description:** Generates cryptographically secure key pair for blockchain operations
 
 ```java
@@ -629,7 +676,7 @@ public static PublicKey stringToPublicKey(String publicKeyString)
 public static String calculateHash(String data)
 ```
 - **Parameters:** `data`: The data to hash
-- **Returns:** SHA-256 hash as hexadecimal string
+- **Returns:** SHA3-256 hash as hexadecimal string
 
 ```java
 public static String signData(String data, PrivateKey privateKey)
@@ -655,7 +702,7 @@ public static boolean verifySignature(String data, String signature, PublicKey p
 - `blockNumber`: Sequential number in the chain (0 = genesis)
 - `previousHash`: Hash of the previous block
 - `data`: The block content (user data)
-- `hash`: SHA-256 hash of this block
+- `hash`: SHA3-256 hash of this block
 - `signature`: Digital signature of the block
 - `signerPublicKey`: Public key that signed this block
 - `timestamp`: When the block was created
@@ -702,11 +749,11 @@ public LocalDateTime getRevokedAt()
 ### Size Limits
 - **Block Data**: 10,000 characters maximum
 - **Block Size**: 1MB (1,048,576 bytes) maximum
-- **Hash Length**: 64 characters (SHA-256)
+- **Hash Length**: 64 characters (SHA3-256)
 
 ### Security Configuration
-- **Hash Algorithm**: SHA-256
-- **Signature Algorithm**: RSA
+- **Hash Algorithm**: SHA3-256
+- **Signature Algorithm**: ECDSA
 - **Key Size**: 2048 bits (default)
 
 For detailed technical specifications and production considerations, see [TECHNICAL_DETAILS.md](TECHNICAL_DETAILS.md) and [PRODUCTION_GUIDE.md](PRODUCTION_GUIDE.md).
@@ -725,7 +772,7 @@ List<Block> filteredBlocks = blockchain.getAllBlocks().stream()
 
 #### Key Generation and Management
 ```java
-// Generate new RSA key pair
+// Generate new EC key pair
 KeyPair keyPair = CryptoUtil.generateKeyPair();
 
 // Convert keys to/from string format
@@ -771,9 +818,9 @@ System.out.println("Current performance: " + blockCount + " blocks");
 #### Security Configuration
 ```java
 // Security configuration constants (example)
-String hashAlgorithm = "SHA-256";        
-String signatureAlgorithm = "SHA256withRSA"; 
-int keySize = 2048;                
+String hashAlgorithm = "SHA3-256";        
+String signatureAlgorithm = "SHA3withECDSA"; 
+String curveName = "secp256r1";                
 
 // Validate blockchain integrity
 boolean securityValid = blockchain.validateChain();
@@ -794,9 +841,9 @@ blockchain.database.max_connections=20         # Connection pool size
 blockchain.database.batch_size=25              # Batch operations
 
 # Security settings
-blockchain.security.min_key_size=2048          # Minimum RSA key size
-blockchain.security.signature_algorithm=SHA256withRSA
-blockchain.security.hash_algorithm=SHA-256
+blockchain.security.curve_name=secp256r1          # ECDSA curve name
+blockchain.security.signature_algorithm=SHA3withECDSA
+blockchain.security.hash_algorithm=SHA3-256
 
 # Performance settings
 blockchain.performance.chain_validation_batch=100    # Batch validation size
@@ -834,7 +881,106 @@ public class BlockchainConfig {
 }
 ```
 
-## 💡 Best Practices
+## 🔒 Thread-Safety and Concurrent Usage
+
+The Private Blockchain is **fully thread-safe** and designed for concurrent multi-threaded applications. All operations use a global `ReentrantReadWriteLock` for synchronization.
+
+### Thread-Safety Guarantees
+
+- ✅ **Global Synchronization**: All blockchain instances share the same lock
+- ✅ **Read-Write Separation**: Multiple reads can occur simultaneously
+- ✅ **Exclusive Writes**: Write operations have exclusive access
+- ✅ **Atomic Operations**: All operations are atomic and consistent
+- ✅ **ACID Compliance**: Database operations use proper JPA transactions
+- ✅ **Atomic Block Numbering**: Block numbers are generated atomically using the `BlockSequence` entity
+
+### Block Sequence for Thread-Safe Block Numbering
+
+The `BlockSequence` entity provides atomic, thread-safe block number generation to prevent race conditions in high-concurrency environments:
+
+```java
+// Thread-safe block number generation using BlockSequence
+public Long getNextBlockNumber() {
+    EntityManager em = JPAUtil.getEntityManager();
+    EntityTransaction tx = em.getTransaction();
+    
+    try {
+        tx.begin();
+        
+        // Use pessimistic locking to prevent concurrent updates
+        BlockSequence sequence = em.find(BlockSequence.class, "block_number", 
+                                      LockModeType.PESSIMISTIC_WRITE);
+        
+        if (sequence == null) {
+            // Initialize if not exists
+            sequence = new BlockSequence();
+            sequence.setSequenceName("block_number");
+            sequence.setNextValue(1L);
+            em.persist(sequence);
+        } else {
+            // Increment the sequence
+            Long nextVal = sequence.getNextValue();
+            sequence.setNextValue(nextVal + 1);
+        }
+        
+        Long result = sequence.getNextValue();
+        tx.commit();
+        return result;
+    } catch (Exception e) {
+        if (tx.isActive()) {
+            tx.rollback();
+        }
+        throw new RuntimeException("Failed to get next block number", e);
+    } finally {
+        em.close();
+    }
+}
+
+### Concurrent Usage Patterns
+
+#### Basic Concurrent Block Addition
+```java
+// Both methods are fully thread-safe
+CompletableFuture<Boolean> future1 = CompletableFuture.supplyAsync(() -> 
+    blockchain.addBlock(data1, privateKey, publicKey));
+
+CompletableFuture<Block> future2 = CompletableFuture.supplyAsync(() -> 
+    blockchain.addBlockAndReturn(data2, privateKey, publicKey));
+```
+
+#### When to Use addBlock() vs addBlockAndReturn()
+
+**Use `addBlock()` when:**
+- You only need to know if the operation succeeded
+- You're doing simple sequential operations
+- You don't need immediate access to block metadata
+
+**Use `addBlockAndReturn()` when:**
+- You need the created block's details (number, hash, timestamp)
+- You're doing concurrent operations and need immediate results
+- You're building applications that display block information
+- You're doing testing that needs to verify specific block creation
+
+#### Concurrent Read Operations
+```java
+// Multiple threads can read simultaneously (no blocking)
+CompletableFuture<Long> blockCount = CompletableFuture.supplyAsync(blockchain::getBlockCount);
+CompletableFuture<List<Block>> allBlocks = CompletableFuture.supplyAsync(blockchain::getAllBlocks);
+CompletableFuture<Boolean> isValid = CompletableFuture.supplyAsync(blockchain::validateChain);
+
+// All these can execute in parallel
+CompletableFuture.allOf(blockCount, allBlocks, isValid)
+    .thenRun(() -> System.out.println("All reads completed"));
+```
+
+### Performance Characteristics
+
+- **Read Operations**: Excellent scalability with multiple concurrent readers
+- **Write Operations**: Serialized for safety, optimized for throughput
+- **Mixed Workloads**: Read-heavy applications perform very well
+- **High Concurrency**: Tested and verified with 20+ concurrent threads
+
+For practical concurrent usage examples, see [EXAMPLES.md](EXAMPLES.md#thread-safe-concurrent-usage-patterns).
 
 ### Security Best Practices
 
@@ -921,30 +1067,57 @@ public void addBlocksBatch(List<BlockData> blockDataList,
     }
 }
 
-// ❌ BAD: Individual transactions for each block
+// ❌ BAD: Individual transactions for each block (inefficient in concurrent scenarios)
 for (BlockData data : blockDataList) {
-    blockchain.addBlock(data.getContent(), privateKey, publicKey); // Too slow!
+    blockchain.addBlock(data.getContent(), privateKey, publicKey); // Works but not optimal
+}
+
+// ✅ BETTER: Concurrent batch processing for improved performance
+public void addBlocksBatchConcurrent(List<BlockData> blockDataList, 
+                                   PrivateKey signerKey, PublicKey signerPublic) {
+    ExecutorService executor = Executors.newFixedThreadPool(4);
+    List<CompletableFuture<Block>> futures = new ArrayList<>();
+    
+    for (BlockData data : blockDataList) {
+        CompletableFuture<Block> future = CompletableFuture.supplyAsync(() -> {
+            return blockchain.addBlockAndReturn(data.getContent(), signerKey, signerPublic);
+        }, executor);
+        futures.add(future);
+    }
+    
+    // Wait for completion and collect results
+    try {
+        List<Block> results = futures.stream()
+            .map(CompletableFuture::join)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toList());
+        
+        System.out.println("Successfully added " + results.size() + "/" + blockDataList.size() + " blocks");
+    } finally {
+        executor.shutdown();
+    }
 }
 ```
 
 #### Search Optimization
 ```java
-// ✅ GOOD: Efficient search with caching
-private Map<String, List<Block>> searchCache = new ConcurrentHashMap<>();
+// ✅ GOOD: Efficient search with thread-safe caching
+private final Map<String, List<Block>> searchCache = new ConcurrentHashMap<>();
 
 public List<Block> searchWithCache(String searchTerm) {
-    // Check cache first
+    // Check cache first (thread-safe)
     String cacheKey = searchTerm.toLowerCase();
-    if (searchCache.containsKey(cacheKey)) {
-        return searchCache.get(cacheKey);
+    List<Block> cachedResults = searchCache.get(cacheKey);
+    if (cachedResults != null) {
+        return new ArrayList<>(cachedResults); // Return defensive copy
     }
     
-    // Perform search
+    // Perform search (blockchain.searchBlocksByContent is thread-safe)
     List<Block> results = blockchain.searchBlocksByContent(searchTerm);
     
-    // Cache results (with size limit)
+    // Cache results (with size limit) - atomic operation
     if (searchCache.size() < 100) {
-        searchCache.put(cacheKey, results);
+        searchCache.put(cacheKey, new ArrayList<>(results)); // Store defensive copy
     }
     
     return results;

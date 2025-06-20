@@ -23,6 +23,7 @@ All existing `run_*.sh` scripts have been refactored:
 | `run_recovery_tests.sh` | ✅ Updated | Recovery test with shared functions |
 | `run_security_analysis.sh` | ✅ Updated | Security analysis with shared functions |
 | `run_security_tests.sh` | ✅ Updated | Security test with shared functions |
+| `run_thread_safety_test.sh` | ✅ Updated | **NEW!** Thread-safety test with ZSH support |
 | `clean-database.sh` | ✅ Updated | Database cleanup utility |
 
 ### 3. **Template for New Scripts**
@@ -80,6 +81,13 @@ clear_database_between_tests() {
     # Verify database is clean
     local block_count=$(sqlite3 blockchain.db "SELECT COUNT(*) FROM blocks;" 2>/dev/null || echo "0")
     local key_count=$(sqlite3 blockchain.db "SELECT COUNT(*) FROM authorized_keys;" 2>/dev/null || echo "0")
+    
+    # Reset block sequence to initial value
+    local seq_exists=$(sqlite3 blockchain.db "SELECT COUNT(*) FROM block_sequence WHERE sequence_name='block_number';" 2>/dev/null || echo "0")
+    if [ "$seq_exists" -gt "0" ]; then
+        sqlite3 blockchain.db "UPDATE block_sequence SET next_value=1 WHERE sequence_name='block_number';" 2>/dev/null
+        print_info "Block sequence reset to 1"
+    fi
     
     if [ "$block_count" -eq "0" ] && [ "$key_count" -eq "0" ]; then
         print_success "Database cleared successfully"

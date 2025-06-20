@@ -35,33 +35,49 @@ class BlockchainKeyAuthorizationTest {
 
     @BeforeEach
     void setUp() {
-        // Generate test key pairs - these will be fresh for each test
-        aliceKeyPair = CryptoUtil.generateKeyPair();
-        bobKeyPair = CryptoUtil.generateKeyPair();
+        // Generate test key pairs using the new hierarchical key system
+        // Create root keys for each test user
+        CryptoUtil.KeyInfo aliceKeyInfo = CryptoUtil.createRootKey();
+        CryptoUtil.KeyInfo bobKeyInfo = CryptoUtil.createRootKey();
         
-        alicePublicKey = CryptoUtil.publicKeyToString(aliceKeyPair.getPublic());
-        bobPublicKey = CryptoUtil.publicKeyToString(bobKeyPair.getPublic());
+        // Convert the stored key info to key pairs
+        aliceKeyPair = new KeyPair(
+            CryptoUtil.stringToPublicKey(aliceKeyInfo.getPublicKeyEncoded()),
+            CryptoUtil.stringToPrivateKey(aliceKeyInfo.getPrivateKeyEncoded())
+        );
         
-        // FIXED: Clean database before each test to ensure test isolation
-        cleanDatabase();
+        bobKeyPair = new KeyPair(
+            CryptoUtil.stringToPublicKey(bobKeyInfo.getPublicKeyEncoded()),
+            CryptoUtil.stringToPrivateKey(bobKeyInfo.getPrivateKeyEncoded())
+        );
+        
+        // Get public key strings
+        alicePublicKey = aliceKeyInfo.getPublicKeyEncoded();
+        bobPublicKey = bobKeyInfo.getPublicKeyEncoded();
+        
+        // Clean database before each test to ensure test isolation
+        clearDatabase();
+    }
+    
+    @AfterEach
+    void tearDown() {
+        // Clean database after each test to ensure test isolation
+        clearDatabase();
     }
     
     /**
-     * Clean the database to ensure test isolation
+     * Clear the database to ensure test isolation using the standard method
      */
-    private void cleanDatabase() {
+    private void clearDatabase() {
         try {
-            // Clear all data using DAO methods
-            com.rbatllet.blockchain.dao.BlockDAO blockDAO = new com.rbatllet.blockchain.dao.BlockDAO();
-            com.rbatllet.blockchain.dao.AuthorizedKeyDAO keyDAO = new com.rbatllet.blockchain.dao.AuthorizedKeyDAO();
-            
-            blockDAO.deleteAllBlocks();
-            keyDAO.deleteAllAuthorizedKeys();
+            // Use the standard Blockchain clearAndReinitialize method
+            Blockchain tempBlockchain = new Blockchain();
+            tempBlockchain.clearAndReinitialize();
             
             // Small delay to ensure database operations complete
             Thread.sleep(50);
         } catch (Exception e) {
-            System.err.println("Warning: Could not clean database: " + e.getMessage());
+            System.err.println("Warning: Could not clear database: " + e.getMessage());
         }
     }
 
@@ -81,11 +97,9 @@ class BlockchainKeyAuthorizationTest {
                 "Alice's key should be authorized successfully");
         
         // Alice creates a block (should succeed)
-        assertTrue(blockchain.addBlock("Alice's transaction", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()),
-                "Alice should be able to create a block with authorized key");
+        Block aliceBlock = blockchain.addBlockAndReturn("Alice's transaction", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic());
         
         // Verify the block was created
-        Block aliceBlock = blockchain.getLastBlock();
         assertNotNull(aliceBlock, "Alice's block should exist");
         assertEquals("Alice's transaction", aliceBlock.getData(), "Block data should match");
         assertEquals(alicePublicKey, aliceBlock.getSignerPublicKey(), "Block should be signed by Alice");
@@ -384,8 +398,8 @@ class BlockchainKeyAuthorizationTest {
         assertTrue(blockchain.addAuthorizedKey(alicePublicKey, "Alice"));
         
         // 2. Alice creates a block - should be valid
-        assertTrue(blockchain.addBlock("Historical block", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()));
-        Block historicalBlock = blockchain.getLastBlock();
+        Block historicalBlock = blockchain.addBlockAndReturn("Historical block", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic());
+        assertNotNull(historicalBlock);
         
         // 3. Wait a moment to ensure temporal separation
         try {

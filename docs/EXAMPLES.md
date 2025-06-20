@@ -5,11 +5,16 @@ Comprehensive real-world examples and practical use cases for the Private Blockc
 > **IMPORTANT NOTE**: The classes shown in these examples (DocumentVerificationSystem, SupplyChainTracker, MedicalRecordsSystem, FinancialAuditSystem, KeyRotationExample, KeyCleanupManager, BlockchainHealthMonitor, HealthStatus) are conceptual and designed to illustrate potential use cases. They are not part of the actual project code. Only the Blockchain, Block, AuthorizedKey, Blockchain.KeyDeletionImpact, CryptoUtil, and JPAUtil classes exist in the current implementation.
 >
 > For real working examples, refer to the following classes in the source code:
-> - `com.rbatllet.blockchain.demo.BlockchainDemo.java` - Basic blockchain demonstration
-> - `com.rbatllet.blockchain.demo.AdditionalAdvancedFunctionsDemo.java` - Advanced features demonstration
-> - `com.rbatllet.blockchain.demo.ChainRecoveryDemo.java` - Chain recovery demonstration
-> - `com.rbatllet.blockchain.demo.DangerousDeleteDemo.java` - Key deletion safety features demo
-> - `com.rbatllet.blockchain.demo.EnhancedRecoveryExample.java` - Advanced recovery techniques example
+> - `/src/demo/BlockchainDemo.java` - Basic blockchain demonstration
+> - `/src/demo/AdditionalAdvancedFunctionsDemo.java` - Advanced features demonstration
+> - `/src/demo/ChainRecoveryDemo.java` - Chain recovery demonstration
+> - `/src/demo/DangerousDeleteDemo.java` - Key deletion safety features demo
+> - `/src/demo/EnhancedRecoveryExample.java` - Advanced recovery techniques example
+> - `/src/demo/CoreFunctionsDemo.java` - Comprehensive core test
+> - `/src/demo/SimpleDemo.java` - Basic functionality test
+> - `/src/demo/QuickDemo.java` - Fast verification test
+> - `/src/demo/RaceConditionTest.java` - Thread safety testing
+> - `/src/demo/CryptoSecurityDemo.java` - Cryptographic security demo
 
 ## 📋 Table of Contents
 
@@ -49,7 +54,7 @@ public class DocumentVerificationSystem {
             blockchain.addAuthorizedKey(governmentKey, "Government Registry");
             
             // Record document verifications
-            blockchain.addBlock("Document: Birth Certificate #BC-2025-001 | Status: VERIFIED | Hash: sha256:a1b2c3...", 
+            blockchain.addBlock("Document: Birth Certificate #BC-2025-001 | Status: VERIFIED | Hash: sha3-256:a1b2c3...", 
                               government.getPrivate(), government.getPublic());
             
             blockchain.addBlock("Document: University Diploma #UB-CS-2025-456 | Status: AUTHENTIC | Graduate: John Doe", 
@@ -327,7 +332,7 @@ public void processBatchTransactions(Blockchain blockchain, List<String> transac
                 continue;
             }
             
-            // Add transaction to blockchain
+            // Add transaction to blockchain (thread-safe operation)
             if (blockchain.addBlock(transaction, signerKey, signerPublic)) {
                 successCount++;
                 if (successCount % 100 == 0) {
@@ -352,6 +357,71 @@ public void processBatchTransactions(Blockchain blockchain, List<String> transac
         System.err.println("Batch processing error: " + e.getMessage());
     }
 }
+
+// ✅ THREAD-SAFE: Concurrent Batch Processing
+public void processConcurrentBatchTransactions(Blockchain blockchain, List<String> transactions, 
+                                             PrivateKey signerKey, PublicKey signerPublic) {
+    try {
+        ExecutorService executor = Executors.newFixedThreadPool(4); // Limit concurrent threads
+        List<CompletableFuture<Boolean>> futures = new ArrayList<>();
+        AtomicInteger successCount = new AtomicInteger(0);
+        AtomicInteger failureCount = new AtomicInteger(0);
+        
+        for (String transaction : transactions) {
+            // Validate transaction size before submitting
+            if (transaction.length() > blockchain.getMaxBlockDataLength()) {
+                System.err.println("Transaction too large, skipping: " + transaction.substring(0, 50) + "...");
+                failureCount.incrementAndGet();
+                continue;
+            }
+            
+            // Submit transaction to thread pool
+            CompletableFuture<Boolean> future = CompletableFuture.supplyAsync(() -> {
+                return blockchain.addBlock(transaction, signerKey, signerPublic);
+            }, executor);
+            
+            futures.add(future);
+        }
+        
+        // Wait for all transactions to complete and collect results
+        for (CompletableFuture<Boolean> future : futures) {
+            try {
+                if (future.get()) {
+                    int current = successCount.incrementAndGet();
+                    if (current % 100 == 0) {
+                        System.out.println("Processed " + current + " transactions...");
+                    }
+                } else {
+                    failureCount.incrementAndGet();
+                }
+            } catch (Exception e) {
+                failureCount.incrementAndGet();
+                System.err.println("Transaction failed: " + e.getMessage());
+            }
+        }
+        
+        executor.shutdown();
+        try {
+            if (!executor.awaitTermination(60, TimeUnit.SECONDS)) {
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+        }
+        
+        System.out.println("Concurrent batch processing complete: " + successCount.get() + " successful, " + failureCount.get() + " failed");
+        
+        // Validate chain after concurrent processing
+        if (blockchain.validateChain()) {
+            System.out.println("Chain validation successful after concurrent batch processing");
+        } else {
+            System.err.println("WARNING: Chain validation failed after concurrent batch processing");
+        }
+        
+    } catch (Exception e) {
+        System.err.println("Concurrent batch processing error: " + e.getMessage());
+    }
+}
 ```
 
 For more detailed API information and technical specifications, see [API_GUIDE.md](API_GUIDE.md) and [TECHNICAL_DETAILS.md](TECHNICAL_DETAILS.md).
@@ -370,7 +440,7 @@ import java.security.PublicKey;
  */
 public class KeyRotationExample {
     
-    // Simple key rotation example with overlap period for security
+    // Simple key rotation example with overlap period for security and thread-safety
     public boolean rotateKey(Blockchain blockchain, String oldPublicKey, String ownerName) {
         try {
             System.out.println("🔄 Starting key rotation for: " + ownerName);
@@ -389,17 +459,47 @@ public class KeyRotationExample {
             System.out.println("✅ New key authorized for: " + fullOwnerName);
             System.out.println("🔑 New public key: " + newPublicKey.substring(0, 32) + "...");
             
-            // Allow overlap period for transition
-            System.out.println("⏱️  Overlap period: Old and new keys both active");
-            Thread.sleep(1000); // Simulate overlap period
+            // ✅ THREAD-SAFE: Verify new key is properly activated before revoking old key
+            System.out.println("⏱️  Verifying new key activation...");
             
-            // Revoke old key
+            // Verify the new key is active in the blockchain
+            List<AuthorizedKey> activeKeys = blockchain.getAuthorizedKeys();
+            boolean newKeyActive = activeKeys.stream()
+                .anyMatch(k -> k.getPublicKey().equals(newPublicKey) && k.isActive());
+            
+            if (!newKeyActive) {
+                System.err.println("❌ New key not properly activated, aborting rotation");
+                // Attempt to clean up the failed key addition
+                blockchain.revokeAuthorizedKey(newPublicKey);
+                return false;
+            }
+            
+            // Test the new key by adding a test block (optional but recommended)
+            try {
+                Block testBlock = blockchain.addBlockAndReturn("Key rotation test block", 
+                                                              newKeyPair.getPrivate(), 
+                                                              newKeyPair.getPublic());
+                if (testBlock == null) {
+                    System.err.println("❌ New key failed functional test, aborting rotation");
+                    blockchain.revokeAuthorizedKey(newPublicKey);
+                    return false;
+                }
+                System.out.println("✅ New key passed functional test (Block #" + testBlock.getBlockNumber() + ")");
+            } catch (Exception e) {
+                System.err.println("❌ New key functional test failed: " + e.getMessage());
+                blockchain.revokeAuthorizedKey(newPublicKey);
+                return false;
+            }
+            
+            // Now it's safe to revoke the old key
             if (blockchain.revokeAuthorizedKey(oldPublicKey)) {
                 System.out.println("✅ Key rotation completed successfully");
                 System.out.println("🗑️  Old key revoked: " + oldPublicKey.substring(0, 32) + "...");
                 return true;
             } else {
                 System.err.println("❌ Failed to revoke old key during rotation");
+                // Both keys remain active - this is safer than leaving no keys
+                System.out.println("⚠️  Both old and new keys remain active for safety");
                 return false;
             }
             
@@ -1073,3 +1173,393 @@ public class BlockchainCLI {
 For detailed API documentation, see [API_GUIDE.md](API_GUIDE.md).  
 For production deployment guidance, see [PRODUCTION_GUIDE.md](PRODUCTION_GUIDE.md).  
 For testing and troubleshooting, see [TESTING.md](TESTING.md).
+        
+        // Wait for all read operations to complete
+        CompletableFuture.allOf(readOperations.toArray(new CompletableFuture[0]))
+            .thenRun(() -> System.out.println("✅ All concurrent read operations completed"))
+            .join();
+    }
+    
+    /**
+     * ✅ THREAD-SAFE: Safe search with concurrent caching
+     */
+    private final Map<String, List<Block>> searchCache = new ConcurrentHashMap<>();
+    
+    public List<Block> searchWithThreadSafeCache(String searchTerm) {
+        // Check cache first (thread-safe)
+        String cacheKey = searchTerm.toLowerCase();
+        List<Block> cachedResults = searchCache.get(cacheKey);
+        if (cachedResults != null) {
+            System.out.println("Cache hit for: " + searchTerm);
+            return new ArrayList<>(cachedResults); // Return copy to avoid external modification
+        }
+        
+        // Perform search (blockchain.searchBlocksByContent is thread-safe)
+        List<Block> results = blockchain.searchBlocksByContent(searchTerm);
+        
+        // Cache results with size limit (atomic operation)
+        if (searchCache.size() < 100) {
+            searchCache.put(cacheKey, new ArrayList<>(results)); // Store copy
+        }
+        
+        System.out.println("Search completed for: " + searchTerm + " (" + results.size() + " results)");
+        return results;
+    }
+    
+    /**
+     * ✅ THREAD-SAFE: Cleanup method
+     */
+    public void shutdown() {
+        executor.shutdown();
+        try {
+            if (!executor.awaitTermination(30, TimeUnit.SECONDS)) {
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+    }
+    
+    /**
+     * Simple data class for transaction information
+     */
+    public static class TransactionData {
+        private final String data;
+        private final PrivateKey privateKey;
+        private final PublicKey publicKey;
+        
+        public TransactionData(String data, PrivateKey privateKey, PublicKey publicKey) {
+            this.data = data;
+            this.privateKey = privateKey;
+            this.publicKey = publicKey;
+        }
+        
+        public String getData() { return data; }
+        public PrivateKey getPrivateKey() { return privateKey; }
+        public PublicKey getPublicKey() { return publicKey; }
+    }
+}
+```
+
+### Producer-Consumer Pattern Example
+
+```java
+/**
+ * ✅ THREAD-SAFE: Producer-Consumer pattern with blockchain
+ * Multiple producers add transactions, single consumer processes them
+ */
+public class BlockchainProducerConsumer {
+    private final Blockchain blockchain;
+    private final BlockingQueue<TransactionData> transactionQueue;
+    private final ExecutorService producerPool;
+    private volatile boolean running = true;
+    
+    public BlockchainProducerConsumer() {
+        this.blockchain = new Blockchain();
+        this.transactionQueue = new LinkedBlockingQueue<>(1000); // Bounded queue
+        this.producerPool = Executors.newFixedThreadPool(5);
+    }
+    
+    /**
+     * Start multiple producer threads
+     */
+    public void startProducers(int numberOfProducers, KeyPair signerKeys) {
+        for (int i = 0; i < numberOfProducers; i++) {
+            final int producerId = i;
+            producerPool.submit(() -> {
+                while (running) {
+                    try {
+                        // Generate transaction data
+                        String transactionData = "Producer-" + producerId + "-Transaction-" + System.currentTimeMillis();
+                        TransactionData transaction = new TransactionData(
+                            transactionData, 
+                            signerKeys.getPrivate(), 
+                            signerKeys.getPublic()
+                        );
+                        
+                        // Add to queue (blocking if queue is full)
+                        transactionQueue.put(transaction);
+                        System.out.println("Producer " + producerId + " queued transaction");
+                        
+                        // Simulate work
+                        Thread.sleep(100 + (int)(Math.random() * 200));
+                        
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            });
+        }
+    }
+    
+    /**
+     * Consumer thread that processes transactions
+     */
+    public void startConsumer() {
+        Thread consumerThread = new Thread(() -> {
+            while (running || !transactionQueue.isEmpty()) {
+                try {
+                    // Take from queue (blocking if queue is empty)
+                    TransactionData transaction = transactionQueue.poll(1, TimeUnit.SECONDS);
+                    if (transaction != null) {
+                        // Process transaction using thread-safe blockchain
+                        Block createdBlock = blockchain.addBlockAndReturn(
+                            transaction.getData(),
+                            transaction.getPrivateKey(),
+                            transaction.getPublicKey()
+                        );
+                        
+                        if (createdBlock != null) {
+                            System.out.println("✅ Consumer processed transaction -> Block #" + createdBlock.getBlockNumber());
+                        } else {
+                            System.err.println("❌ Consumer failed to process transaction");
+                        }
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+            System.out.println("Consumer thread finished");
+        });
+        
+        consumerThread.start();
+    }
+    
+    public void stop() {
+        running = false;
+        producerPool.shutdown();
+    }
+}
+```
+
+### High-Performance Concurrent Testing Example
+
+```java
+/**
+ * ✅ THREAD-SAFE: High-performance concurrent testing
+ * Demonstrates blockchain performance under heavy concurrent load
+ */
+public class ConcurrentPerformanceTest {
+    
+    public static void testHighConcurrency() {
+        Blockchain blockchain = new Blockchain();
+        
+        // Setup test keys
+        KeyPair testKeys = CryptoUtil.generateKeyPair();
+        String publicKeyString = CryptoUtil.publicKeyToString(testKeys.getPublic());
+        blockchain.addAuthorizedKey(publicKeyString, "Performance Test User");
+        
+        // Test parameters
+        int numberOfThreads = 20;
+        int blocksPerThread = 10;
+        int expectedBlocks = numberOfThreads * blocksPerThread;
+        
+        System.out.println("🧪 Starting high-concurrency test:");
+        System.out.println("   Threads: " + numberOfThreads);
+        System.out.println("   Blocks per thread: " + blocksPerThread);
+        System.out.println("   Expected total blocks: " + expectedBlocks);
+        
+        ExecutorService executor = Executors.newFixedThreadPool(numberOfThreads);
+        CountDownLatch latch = new CountDownLatch(numberOfThreads);
+        AtomicInteger successCount = new AtomicInteger(0);
+        AtomicInteger failureCount = new AtomicInteger(0);
+        
+        long startTime = System.currentTimeMillis();
+        
+        // Submit concurrent tasks
+        for (int i = 0; i < numberOfThreads; i++) {
+            final int threadId = i;
+            executor.submit(() -> {
+                try {
+                    for (int j = 0; j < blocksPerThread; j++) {
+                        String data = "Thread-" + threadId + "-Block-" + j + "-" + System.currentTimeMillis();
+                        
+                        // Use addBlockAndReturn for better testing
+                        Block createdBlock = blockchain.addBlockAndReturn(
+                            data, 
+                            testKeys.getPrivate(), 
+                            testKeys.getPublic()
+                        );
+                        
+                        if (createdBlock != null) {
+                            int current = successCount.incrementAndGet();
+                            if (current % 50 == 0) {
+                                System.out.println("Progress: " + current + "/" + expectedBlocks + " blocks created");
+                            }
+                        } else {
+                            failureCount.incrementAndGet();
+                        }
+                        
+                        // Small random delay to increase concurrency stress
+                        Thread.sleep((int)(Math.random() * 10));
+                    }
+                } catch (Exception e) {
+                    System.err.println("Thread " + threadId + " failed: " + e.getMessage());
+                    failureCount.addAndGet(blocksPerThread);
+                } finally {
+                    latch.countDown();
+                }
+            });
+        }
+        
+        try {
+            // Wait for all threads to complete
+            latch.await();
+            executor.shutdown();
+            
+            long endTime = System.currentTimeMillis();
+            long duration = endTime - startTime;
+            
+            // Final validation
+            boolean chainValid = blockchain.validateChain();
+            long actualBlockCount = blockchain.getBlockCount();
+            
+            System.out.println("\n📊 Performance Test Results:");
+            System.out.println("   Duration: " + duration + "ms");
+            System.out.println("   Successful blocks: " + successCount.get());
+            System.out.println("   Failed blocks: " + failureCount.get());
+            System.out.println("   Actual block count: " + actualBlockCount + " (including genesis)");
+            System.out.println("   Expected count: " + (expectedBlocks + 1));
+            System.out.println("   Chain valid: " + (chainValid ? "✅ YES" : "❌ NO"));
+            System.out.println("   Throughput: " + (successCount.get() * 1000.0 / duration) + " blocks/second");
+            
+            if (chainValid && actualBlockCount == (expectedBlocks + 1)) {
+                System.out.println("🎉 HIGH-CONCURRENCY TEST PASSED!");
+            } else {
+                System.out.println("💥 HIGH-CONCURRENCY TEST FAILED!");
+            }
+            
+        } catch (InterruptedException e) {
+            System.err.println("Test interrupted: " + e.getMessage());
+        }
+    }
+}
+```
+
+### Best Practices for Concurrent Usage
+
+```java
+/**
+ * ✅ THREAD-SAFE: Best practices for concurrent blockchain usage
+ */
+public class ConcurrentBestPractices {
+    
+    /**
+     * ✅ GOOD: Use addBlockAndReturn() for concurrent scenarios where you need immediate block info
+     */
+    public void goodConcurrentBlockAddition(Blockchain blockchain, String data, 
+                                          PrivateKey privateKey, PublicKey publicKey) {
+        CompletableFuture<Block> future = CompletableFuture.supplyAsync(() -> {
+            return blockchain.addBlockAndReturn(data, privateKey, publicKey);
+        });
+        
+        future.thenAccept(block -> {
+            if (block != null) {
+                System.out.println("Block created: #" + block.getBlockNumber() + " with hash: " + block.getHash());
+            } else {
+                System.err.println("Block creation failed");
+            }
+        });
+    }
+    
+    /**
+     * ✅ GOOD: Proper error handling in concurrent scenarios
+     */
+    public void robustConcurrentOperation(Blockchain blockchain, List<String> dataList, 
+                                        PrivateKey privateKey, PublicKey publicKey) {
+        ExecutorService executor = Executors.newFixedThreadPool(4);
+        List<CompletableFuture<String>> futures = new ArrayList<>();
+        
+        for (String data : dataList) {
+            CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
+                try {
+                    Block block = blockchain.addBlockAndReturn(data, privateKey, publicKey);
+                    return block != null ? "SUCCESS: Block #" + block.getBlockNumber() : "FAILED: " + data;
+                } catch (Exception e) {
+                    return "ERROR: " + data + " - " + e.getMessage();
+                }
+            }, executor);
+            
+            futures.add(future);
+        }
+        
+        // Collect results with proper timeout
+        CompletableFuture<List<String>> allResults = CompletableFuture.allOf(
+            futures.toArray(new CompletableFuture[0])
+        ).thenApply(v -> futures.stream()
+                                .map(CompletableFuture::join)
+                                .collect(Collectors.toList()));
+        
+        try {
+            List<String> results = allResults.get(30, TimeUnit.SECONDS);
+            results.forEach(System.out::println);
+        } catch (TimeoutException e) {
+            System.err.println("Operations timed out");
+        } catch (Exception e) {
+            System.err.println("Error collecting results: " + e.getMessage());
+        } finally {
+            executor.shutdown();
+        }
+    }
+    
+    /**
+     * ✅ GOOD: Concurrent read operations take advantage of ReadWriteLock
+     */
+    public void efficientConcurrentReads(Blockchain blockchain) {
+        // Multiple read operations can execute simultaneously
+        CompletableFuture<Long> blockCountFuture = CompletableFuture.supplyAsync(blockchain::getBlockCount);
+        CompletableFuture<List<Block>> allBlocksFuture = CompletableFuture.supplyAsync(blockchain::getAllBlocks);
+        CompletableFuture<List<AuthorizedKey>> keysFuture = CompletableFuture.supplyAsync(blockchain::getAuthorizedKeys);
+        CompletableFuture<Boolean> validationFuture = CompletableFuture.supplyAsync(blockchain::validateChain);
+        
+        // Combine results
+        CompletableFuture.allOf(blockCountFuture, allBlocksFuture, keysFuture, validationFuture)
+            .thenRun(() -> {
+                try {
+                    System.out.println("Blockchain Status:");
+                    System.out.println("  Block count: " + blockCountFuture.get());
+                    System.out.println("  Total blocks retrieved: " + allBlocksFuture.get().size());
+                    System.out.println("  Active keys: " + keysFuture.get().size());
+                    System.out.println("  Chain valid: " + validationFuture.get());
+                } catch (Exception e) {
+                    System.err.println("Error retrieving results: " + e.getMessage());
+                }
+            })
+            .join();
+    }
+}
+```
+
+### Thread-Safety Guarantees
+
+The Private Blockchain provides the following thread-safety guarantees:
+
+- ✅ **Global Synchronization**: All operations are protected by a global `ReentrantReadWriteLock`
+- ✅ **Multiple Reader Support**: Multiple threads can read simultaneously
+- ✅ **Exclusive Writer Access**: Write operations have exclusive access
+- ✅ **Transaction Consistency**: All database operations use JPA transactions
+- ✅ **Atomic Block Numbers**: Block numbering is atomic and prevents duplicates
+- ✅ **Safe Key Management**: Key operations are fully synchronized
+- ✅ **Chain Integrity**: Validation operations are consistent during concurrent access
+
+### Performance Characteristics
+
+- **Read Operations**: Scale well with multiple concurrent threads
+- **Write Operations**: Serialized for safety, but optimized for performance
+- **Mixed Workloads**: Read-heavy workloads perform excellently
+- **High Concurrency**: Tested with 20+ concurrent threads
+- **Memory Efficiency**: ThreadLocal EntityManager management
+- **Database Optimization**: WAL mode enabled for better concurrent access
+
+For more technical details about the thread-safety implementation, see [TECHNICAL_DETAILS.md](TECHNICAL_DETAILS.md).
+
+For detailed API information including the thread-safe `addBlockAndReturn()` method, see [API_GUIDE.md](API_GUIDE.md).
+
+For testing concurrent scenarios, see [TESTING.md](TESTING.md) and run `./run_thread_safety_test.sh` or `./run_advanced_thread_safety_tests.sh` for more complex concurrency tests. For race condition testing, use `./test_race_condition_fix.sh`.
+
+To explore cryptographic security features, run `./run_crypto_security_demo.sh` which demonstrates the security mechanisms in action.
+
+For security analysis and testing, use `./run_security_analysis.sh` and `./run_security_tests.sh`.

@@ -36,7 +36,7 @@ This is a **private blockchain** for controlled environments where only authoriz
 
 ### Core Blockchain Features
 - **Genesis Block**: Created automatically when blockchain starts
-- **Secure Blockchain**: SHA-256 hashing with RSA digital signatures
+- **Secure Blockchain**: SHA3-256 hashing with ECDSA digital signatures
 - **Access Control**: Authorized key management for secure operations
 - **Chain Validation**: Complete blockchain integrity checking
 - **Immutable Records**: Blocks cannot be changed once added
@@ -48,6 +48,16 @@ This is a **private blockchain** for controlled environments where only authoriz
 - **Block Size Validation**: Prevents oversized blocks
 
 ### 🔐 Enhanced Security Features
+
+### ⚡ Thread-Safety (ENHANCED!)
+- **Complete Concurrency Support**: Safe for multi-threaded environments
+- **Global Synchronization**: Prevents race conditions across multiple instances
+- **Pessimistic Locking**: Database-level locks for critical operations
+- **Atomic Transactions**: All operations are ACID-compliant
+- **Deadlock Prevention**: Optimized lock hierarchy
+- **High Performance**: Read-write locks for optimal concurrent reads
+- **Concurrent API**: Both `addBlock()` and `addBlockAndReturn()` methods available
+- **Thread-Safe Examples**: All documentation examples updated for concurrent usage
 - **Safe Key Deletion**: Multi-layered protection against dangerous key removal
 - **Impact Analysis**: Pre-deletion analysis to assess blockchain integrity risks
 - **Emergency Key Deletion**: GDPR-compliant forced deletion with comprehensive audit trails
@@ -74,8 +84,8 @@ This is a **private blockchain** for controlled environments where only authoriz
 - **Maven** - Build and dependency management
 - **SQLite** - Lightweight database for data storage
 - **JPA** - Java Persistence API with Hibernate as implementation provider
-- **SHA-256** - Cryptographic hash function for integrity
-- **RSA** - Digital signature algorithm for authentication
+- **SHA3-256** - Modern cryptographic hash function for integrity
+- **ECDSA** - Elliptic Curve Digital Signature Algorithm for authentication
 - **JUnit 5** - Testing framework for comprehensive validation
 
 ## 📦 Prerequisites
@@ -110,7 +120,7 @@ mvn package
 ### 2. Run Basic Demo
 ```zsh
 # Run the basic blockchain demo
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.BlockchainDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.demo.BlockchainDemo"
 ```
 
 **Expected Output:**
@@ -133,19 +143,19 @@ Authorized keys: 2
 ### 3. Run Advanced Features Demo
 ```zsh
 # Run advanced features demonstration
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.AdditionalAdvancedFunctionsDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.demo.AdditionalAdvancedFunctionsDemo"
 ```
 
 ### 4. Run Chain Recovery Demo
 ```zsh
 # Run blockchain chain recovery demonstration
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.ChainRecoveryDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.demo.ChainRecoveryDemo"
 ```
 
 ### 5. Run Key Deletion Safety Features Demo
 ```zsh
 # Run demonstration of key deletion safety features
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.DangerousDeleteDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.demo.DangerousDeleteDemo"
 ```
 
 ### 6. Run Enhanced Recovery Example
@@ -157,7 +167,7 @@ mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.EnhancedRecoveryExample"
 ### 7. Quick Functionality Test
 ```zsh
 # Run quick verification test
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.QuickDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.demo.QuickDemo"
 ```
 
 ## 💻 How It Works
@@ -214,6 +224,77 @@ The project includes extensive testing with **more than 40 JUnit 5 tests** plus 
 🎉 ALL TESTS PASSED SUCCESSFULLY!
 ```
 
+## 🔄 Thread-Safety Testing
+
+### **NEW! Concurrent Operations Testing**
+The blockchain now supports **complete thread-safety** for multi-threaded environments.
+
+#### Run Thread-Safety Test (ZSH/Bash Compatible)
+```bash
+./run_thread_safety_test.sh
+```
+
+**✨ Script Features:**
+- 🐚 **Shell Compatible**: Works with both Bash and ZSH
+- 🔄 **Auto-cleanup**: Removes previous test databases  
+- 🔨 **Auto-compile**: Compiles project before testing
+- 📊 **Live monitoring**: Shows concurrent operations in real-time
+
+**Expected Output:**
+```
+🧪 Private Blockchain - Thread-Safety Test
+===========================================
+🔨 Compiling project...
+✅ Compilation successful!
+
+🚀 Running Thread-Safety Test...
+================================
+🧪 Starting Thread-Safety Test for Blockchain
+Threads: 10, Blocks per thread: 5
+✅ Authorized key added successfully
+
+🧪 Testing concurrent block addition...
+✅ Thread 0 added block 0
+✅ Thread 1 added block 0
+... (50 blocks total)
+
+📊 Concurrent block addition results:
+   - Successful blocks: 50
+   - Failed blocks: 0
+   - Expected blocks: 50
+
+🔍 Final chain validation: ✅ SUCCESS
+📊 Final blockchain stats:
+   - Total blocks: 51
+   - Expected blocks: 51
+🎉 Thread-safety test PASSED!
+```
+
+#### What Gets Tested
+- ✅ **Concurrent block addition** (10 threads adding 5 blocks each)
+- ✅ **Race condition prevention** (no duplicate block numbers)
+- ✅ **Concurrent key operations** (add/revoke simultaneous)
+- ✅ **Consistent reads** during writes
+- ✅ **Database integrity** under high load
+- ✅ **Transaction isolation** verification
+
+#### Thread-Safety Features
+- 🔒 **Global synchronization** across multiple Blockchain instances
+- 🔄 **Pessimistic locking** for critical database operations
+- ⚡ **Read-Write locks** for optimal concurrent read performance
+- 🛡️ **ACID transactions** with automatic rollback on failures
+- 📊 **Consistent timestamps** preventing temporal anomalies
+
+#### Performance Characteristics
+- **High-Read Workloads**: Multiple threads can read simultaneously
+- **Write Operations**: Serialized with exclusive locks for safety
+- **Database Optimizations**: Connection pooling and WAL mode enabled
+- **Memory Efficiency**: ThreadLocal EntityManager management
+
+---
+
+```
+
 #### Individual Test Categories
 ```zsh
 # Advanced functions only (JUnit 5 tests)
@@ -223,7 +304,7 @@ The project includes extensive testing with **more than 40 JUnit 5 tests** plus 
 ./run_basic_tests.sh
 
 # Core functions comprehensive test
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.CoreFunctionsDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.demo.CoreFunctionsDemo"
 ```
 
 ### What Gets Tested
@@ -238,18 +319,7 @@ mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.CoreFunctionsDemo"
 ## 📊 Project Structure
 
 ```
-src/main/java/com/rbatllet/blockchain/
-├── core/
-│   └── Blockchain.java                           # Main blockchain logic
-├── dao/
-│   ├── BlockDAO.java                            # Database operations for blocks
-│   └── AuthorizedKeyDAO.java                    # Database operations for keys
-├── entity/
-│   ├── Block.java                               # Block data model
-│   └── AuthorizedKey.java                       # Authorized key data model
-├── util/
-│   ├── CryptoUtil.java                          # Cryptographic utilities
-│   └── JPAUtil.java                             # JPA EntityManager management
+src/
 ├── demo/
 │   ├── BlockchainDemo.java                      # Basic demo application
 │   ├── AdditionalAdvancedFunctionsDemo.java     # Advanced features demo
@@ -258,7 +328,29 @@ src/main/java/com/rbatllet/blockchain/
 │   ├── EnhancedRecoveryExample.java             # Advanced recovery techniques example
 │   ├── CoreFunctionsDemo.java                   # Comprehensive core test
 │   ├── SimpleDemo.java                          # Basic functionality test
-│   └── QuickDemo.java                           # Fast verification test
+│   ├── QuickDemo.java                           # Fast verification test
+│   ├── RaceConditionTest.java                   # Thread safety testing
+│   └── CryptoSecurityDemo.java                  # Cryptographic security demo
+
+src/main/java/com/rbatllet/blockchain/
+├── core/
+│   └── Blockchain.java                           # Main blockchain logic
+├── dao/
+│   ├── BlockDAO.java                            # Database operations for blocks with thread-safe block number generation
+│   └── AuthorizedKeyDAO.java                    # Database operations for keys
+├── entity/
+│   ├── Block.java                               # Block data model
+│   ├── AuthorizedKey.java                       # Authorized key data model
+│   └── BlockSequence.java                       # Atomic block numbering entity
+├── util/
+│   ├── CryptoUtil.java                          # Cryptographic utilities
+│   ├── ExitUtil.java                            # Exit handling utilities
+│   ├── JPAUtil.java                             # JPA EntityManager management
+│   ├── format/
+│   │   └── FormatUtil.java                      # Formatting utilities
+│   └── validation/
+│       ├── BlockValidationResult.java           # Block validation result model
+│       └── BlockValidationUtil.java             # Block validation utilities
 
 src/test/java/com/rbatllet/blockchain/core/
 ├── BlockchainTest.java                             # Core blockchain tests
@@ -283,9 +375,15 @@ Configuration & Scripts:
 ├── clean-database.sh                            # Database cleanup utility
 ├── run_all_tests.sh                             # Complete test runner
 ├── run_advanced_tests.sh                        # Advanced tests only
+├── run_advanced_thread_safety_tests.sh          # Advanced thread safety tests
 ├── run_basic_tests.sh                           # Basic tests only
+├── run_crypto_security_demo.sh                  # Cryptographic security demo
+├── run_thread_safety_test.sh                    # Thread-safety testing (NEW!)
 ├── run_recovery_tests.sh                        # Recovery tests runner
 ├── run_improved_rollback_test.sh                # Improved rollback tests
+├── run_security_analysis.sh                     # Security analysis tests
+├── run_security_tests.sh                        # Security tests runner
+├── test_race_condition_fix.sh                   # Race condition testing
 ├── scripts/                                     # Script utilities directory
 │   ├── shared-functions.sh                     # Common functions library
 │   ├── run_template.sh                         # Template for new scripts
@@ -522,7 +620,7 @@ This project includes comprehensive documentation for different use cases:
 ### Size Limits
 - **Block Data**: 10,000 characters maximum
 - **Block Size**: 1MB (1,048,576 bytes) maximum
-- **Hash Length**: 64 characters (SHA-256)
+- **Hash Length**: 64 characters (SHA3-256)
 
 ### Database
 - **Location**: `blockchain.db` in project root directory
@@ -531,8 +629,8 @@ This project includes comprehensive documentation for different use cases:
 - **Configuration**: `persistence.xml` for JPA settings
 
 ### Security
-- **Hash Algorithm**: SHA-256 for block integrity
-- **Signature Algorithm**: RSA with 2048-bit keys
+- **Hash Algorithm**: SHA3-256 for block integrity
+- **Signature Algorithm**: ECDSA with secp256r1 curve
 - **Access Control**: Authorized public key validation
 
 ## 🚨 Important Notes
@@ -619,7 +717,7 @@ For issues or questions:
 cd /path/to/privateBlockchain
 mvn clean compile test-compile
 ./run_all_tests.sh
-mvn exec:java -Dexec.mainClass="com.rbatllet.blockchain.demo.BlockchainDemo"
+mvn exec:java -Dexec.mainClass="com.rbatllet.demo.BlockchainDemo"
 ```
 
 ### Quick Troubleshooting

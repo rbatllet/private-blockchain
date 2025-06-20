@@ -55,8 +55,8 @@ import java.security.KeyPairGenerator;
 import java.security.PrivateKey;
 
 // Generate a key pair for the example
-KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-keyGen.initialize(2048);
+KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC");
+keyGen.initialize(new ECGenParameterSpec("secp256r1"));
 KeyPair keyPair = keyGen.generateKeyPair();
 PrivateKey privateKey = keyPair.getPrivate();
 
@@ -155,8 +155,8 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 
 // Generate a key pair for the example
-KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-keyGen.initialize(2048);
+KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC");
+keyGen.initialize(new ECGenParameterSpec("secp256r1"));
 KeyPair keyPair = keyGen.generateKeyPair();
 PrivateKey privateKey = keyPair.getPrivate();
 PublicKey publicKey = keyPair.getPublic();
@@ -185,8 +185,8 @@ import java.security.*;
 public class SecurityExample {
     public static void main(String[] args) throws Exception {
         // 1. Generate a key pair
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(2048);
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC");
+        keyGen.initialize(new ECGenParameterSpec("secp256r1"));
         KeyPair keyPair = keyGen.generateKeyPair();
         
         // 2. Validate the password

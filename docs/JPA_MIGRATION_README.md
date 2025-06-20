@@ -11,7 +11,7 @@ The project has been **completely migrated** from native Hibernate to **JPA stan
    - ✅ `JPAUtil.java` - JPA EntityManager factory utility
 
 2. **Updated DAOs**:
-   - ✅ `BlockDAO.java` - Migrated to use EntityManager + JPQL
+   - ✅ `BlockDAO.java` - Migrated to use EntityManager + JPQL with thread-safe block number generation
    - ✅ `AuthorizedKeyDAO.java` - Migrated to use EntityManager + JPQL
 
 3. **Updated Dependencies**:

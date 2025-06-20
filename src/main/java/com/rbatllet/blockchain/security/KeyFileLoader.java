@@ -1,5 +1,6 @@
 package com.rbatllet.blockchain.security;
 
+import com.rbatllet.blockchain.util.CryptoUtil;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,10 +21,10 @@ public class KeyFileLoader {
     
     // PEM format patterns
     private static final Pattern PRIVATE_KEY_PEM_PATTERN = Pattern.compile(
-        "-----BEGIN (RSA )?PRIVATE KEY-----([\\s\\S]*?)-----END (RSA )?PRIVATE KEY-----");
+        "-----BEGIN (EC )?PRIVATE KEY-----([\\s\\S]*?)-----END (EC )?PRIVATE KEY-----");
     
     private static final Pattern PUBLIC_KEY_PEM_PATTERN = Pattern.compile(
-        "-----BEGIN (RSA )?PUBLIC KEY-----([\\s\\S]*?)-----END (RSA )?PUBLIC KEY-----");
+        "-----BEGIN (EC )?PUBLIC KEY-----([\\s\\S]*?)-----END (EC )?PUBLIC KEY-----");
     
     private static final Pattern PKCS8_PRIVATE_KEY_PEM_PATTERN = Pattern.compile(
         "-----BEGIN PRIVATE KEY-----([\\s\\S]*?)-----END PRIVATE KEY-----");
@@ -133,14 +134,13 @@ public class KeyFileLoader {
                 return parsePrivateKeyPKCS8(base64Key);
             }
             
-            // Try traditional RSA format (BEGIN RSA PRIVATE KEY)
-            var rsaMatcher = PRIVATE_KEY_PEM_PATTERN.matcher(pemContent);
-            if (rsaMatcher.find()) {
-                String base64Key = rsaMatcher.group(2).replaceAll("\\s", "");
-                // This would require BouncyCastle for PKCS#1 parsing
+            // Try traditional EC format (BEGIN EC PRIVATE KEY)
+            var ecMatcher = PRIVATE_KEY_PEM_PATTERN.matcher(pemContent);
+            if (ecMatcher.find()) {
+                // This would require BouncyCastle for specific EC format parsing
                 // For now, we'll assume PKCS#8 format
-                System.err.println("RSA PRIVATE KEY format detected. Please convert to PKCS#8 format:");
-                System.err.println("openssl pkcs8 -topk8 -nocrypt -in rsa_key.pem -out pkcs8_key.pem");
+                System.err.println("EC PRIVATE KEY format detected. Please convert to PKCS#8 format:");
+                System.err.println("openssl pkcs8 -topk8 -nocrypt -in ec_key.pem -out pkcs8_key.pem");
                 return null;
             }
             
@@ -170,7 +170,7 @@ public class KeyFileLoader {
         try {
             byte[] keyBytes = Files.readAllBytes(keyFilePath);
             PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(keyBytes);
-            KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+            KeyFactory keyFactory = KeyFactory.getInstance(CryptoUtil.EC_ALGORITHM);
             return keyFactory.generatePrivate(keySpec);
         } catch (Exception e) {
             return null;
@@ -183,7 +183,7 @@ public class KeyFileLoader {
     private static PrivateKey parsePrivateKeyPKCS8(String base64Key) throws Exception {
         byte[] keyBytes = Base64.getDecoder().decode(base64Key);
         PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(keyBytes);
-        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+        KeyFactory keyFactory = KeyFactory.getInstance(CryptoUtil.EC_ALGORITHM);
         return keyFactory.generatePrivate(keySpec);
     }
     
@@ -215,7 +215,7 @@ public class KeyFileLoader {
                 String base64Key = matcher.group(2).replaceAll("\\s", "");
                 byte[] keyBytes = Base64.getDecoder().decode(base64Key);
                 X509EncodedKeySpec keySpec = new X509EncodedKeySpec(keyBytes);
-                KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+                KeyFactory keyFactory = KeyFactory.getInstance(CryptoUtil.EC_ALGORITHM);
                 return keyFactory.generatePublic(keySpec);
             }
             
@@ -224,7 +224,7 @@ public class KeyFileLoader {
                 String cleanBase64 = content.replaceAll("\\s", "");
                 byte[] keyBytes = Base64.getDecoder().decode(cleanBase64);
                 X509EncodedKeySpec keySpec = new X509EncodedKeySpec(keyBytes);
-                KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+                KeyFactory keyFactory = KeyFactory.getInstance(CryptoUtil.EC_ALGORITHM);
                 return keyFactory.generatePublic(keySpec);
             } catch (Exception e) {
                 // Ignore and return null
@@ -296,8 +296,8 @@ public class KeyFileLoader {
                 
                 if (content.contains("-----BEGIN PRIVATE KEY-----")) {
                     return "PEM (PKCS#8)";
-                } else if (content.contains("-----BEGIN RSA PRIVATE KEY-----")) {
-                    return "PEM (PKCS#1/RSA)";
+                } else if (content.contains("-----BEGIN EC PRIVATE KEY-----")) {
+                    return "PEM (PKCS#1/EC)";
                 } else if (content.contains("-----BEGIN PUBLIC KEY-----")) {
                     return "PEM (Public Key)";
                 } else if (content.matches("^[A-Za-z0-9+/=\\s]+$")) {

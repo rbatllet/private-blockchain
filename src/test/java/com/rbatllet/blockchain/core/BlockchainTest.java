@@ -2,6 +2,7 @@ package com.rbatllet.blockchain.core;
 
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
@@ -27,6 +28,14 @@ class BlockchainTest {
         blockchain.clearAndReinitialize();
         testKeyPair = CryptoUtil.generateKeyPair();
         testPublicKey = CryptoUtil.publicKeyToString(testKeyPair.getPublic());
+    }
+
+    @AfterEach
+    void tearDown() {
+        // Clean database after each test to ensure test isolation
+        if (blockchain != null) {
+            blockchain.clearAndReinitialize();
+        }
     }
 
     @Nested
