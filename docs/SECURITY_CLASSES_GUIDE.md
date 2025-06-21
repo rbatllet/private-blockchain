@@ -5,11 +5,75 @@ This guide provides detailed information about the security classes available in
 ## 📋 Table of Contents
 
 - [Overview](#-overview)
+- [ECKeyDerivation](#-eckeyderivation)
 - [SecureKeyStorage](#-securekeystorage)
 - [PasswordUtil](#-passwordutil)
 - [KeyFileLoader](#-keyfileloader)
 - [Usage Examples](#-usage-examples)
 - [Testing](#-testing)
+
+## 🚀 Overview
+
+The security classes provide essential functionalities for:
+
+- Secure storage of private keys with AES encryption
+- Password validation with security requirements
+- Loading keys from files
+- Elliptic curve key derivation and validation
+
+## 🔑 ECKeyDerivation
+
+High-performance, thread-safe EC key derivation utility for secure cryptographic operations.
+
+### Features
+
+- **Thread Safety**: Fully thread-safe with synchronized provider initialization
+- **Performance**: Uses `ConcurrentHashMap` for curve parameter caching and `ThreadLocal` for `KeyFactory` instances
+- **Reliability**: Leverages BouncyCastle for proven EC point multiplication
+- **Validation**: Comprehensive input validation and curve point verification
+- **Flexibility**: Supports multiple EC curves and key types
+
+### Key Methods
+
+- `derivePublicKey(PrivateKey privateKey)`: Derives a public key from a private key
+- `derivePublicKeyFromPrivate(PrivateKey privateKey, ECParameterSpec curveParams)`: Derives a public key with custom curve parameters
+- `verifyKeyPair(PrivateKey privateKey, PublicKey publicKey)`: Verifies if a private and public key form a valid pair
+- `isPointOnCurve(ECPoint point, ECParameterSpec curveParams)`: Validates if a point lies on the specified curve
+
+### Thread Safety
+
+All public methods are thread-safe with the following characteristics:
+- No shared mutable state
+- Thread-local `KeyFactory` instances to prevent contention
+- Synchronized BouncyCastle provider initialization
+- Concurrent caching of curve parameters
+
+### Example Usage
+
+```java
+// Generate a key pair
+KeyPair keyPair = CryptoUtil.generateKeyPair();
+
+// Derive public key from private key
+ECKeyDerivation keyDerivation = new ECKeyDerivation();
+PublicKey derivedPublic = keyDerivation.derivePublicKey(keyPair.getPrivate());
+
+// Verify the key pair
+boolean isValid = keyDerivation.verifyKeyPair(keyPair.getPrivate(), derivedPublic);
+```
+
+### Performance Considerations
+
+- Curve parameters are cached in a `ConcurrentHashMap` for efficient lookups
+- Each thread gets its own `KeyFactory` instance via `ThreadLocal`
+- BouncyCastle provider initialization is synchronized to prevent race conditions
+- Point validation is optimized to fail fast with minimal computations
+
+### Error Handling
+
+- All methods throw `ECKeyDerivationException` for cryptographic operations
+- Input validation throws `IllegalArgumentException` for invalid parameters
+- Curve validation throws `IllegalStateException` for unsupported curves
 
 ## 🚀 Overview
 

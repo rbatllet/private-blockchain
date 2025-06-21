@@ -30,6 +30,7 @@ The project includes comprehensive test suites to verify all functionality and e
 - ✅ **Key File Loading**: Secure loading of keys from files
 - ✅ **Concurrency Testing**: Thread-safe key operations
 - ✅ **Performance Testing**: Key operation benchmarks
+- ✅ **EC Key Derivation**: Comprehensive tests for elliptic curve key generation and validation
 
 #### Advanced Functions (More than 40 JUnit 5 Tests)
 - ✅ **Block Size Validation**: Prevents oversized blocks
@@ -46,8 +47,15 @@ The project includes comprehensive test suites to verify all functionality and e
 #### Core Components
 - **Blockchain Core**: 15+ test classes
 - **DAO Layer**: 5+ test classes
-- **Security Module**: 6+ test classes
+- **Security Module**: 8+ test classes
 - **Recovery Module**: 4+ test classes
+
+#### New ECKeyDerivation Tests
+- **Basic Key Derivation**: 5+ test cases
+- **Input Validation**: 4+ test cases
+- **Thread Safety**: 3+ test cases
+- **Edge Cases**: 3+ test cases
+- **Performance**: 2+ test cases
 - **Validation**: 3+ test classes
 
 #### Test Types
@@ -317,7 +325,51 @@ The project follows these testing best practices:
 **Tests**: Enhanced rollback strategy tests  
 **Coverage**: Intelligent rollback analysis, security-first approach, hash chain integrity verification
 
-#### 1.10 Format Utility Test Suite
+#### 1.10 EC Key Derivation Test Suite
+**File**: `ECKeyDerivationTest.java` and `ECKeyDerivationThreadSafetyTest.java`  
+**Tests**: Comprehensive validation of elliptic curve key derivation  
+**Key Features Tested**:
+- Basic key derivation from private keys
+- Input validation and error conditions
+- Thread safety under concurrent access
+- Cryptographic correctness
+- Performance characteristics  
+**Coverage**: 95%+ line and branch coverage
+
+**Test Cases**:
+
+1. **Basic Key Derivation**
+   - Derives valid public key from EC private key
+   - Verifies derived key matches original key pair
+   - Ensures consistent derivation results across multiple runs
+   - Validates key pair verification
+   - Tests with different key sizes and curves
+
+2. **Input Validation**
+   - Handles null private key input
+   - Validates curve parameters
+   - Rejects invalid key formats
+   - Validates point on curve checks
+
+3. **Thread Safety**
+   - Concurrent key derivation (10+ threads)
+   - Thread-local resource management
+   - No race conditions in provider initialization
+   - Consistent results under high concurrency
+
+4. **Edge Cases**
+   - Handles key at infinity
+   - Validates boundary values for curve parameters
+   - Recovers from temporary resource constraints
+   - Graceful handling of invalid states
+
+5. **Performance**
+   - Meets throughput requirements (1000+ ops/sec)
+   - Minimal memory overhead
+   - Efficient caching of curve parameters
+   - Linear scaling with thread count
+
+#### 1.11 Format Utility Test Suite
 **File**: `FormatUtilTest.java`  
 **Tests**: String formatting and display utility tests  
 **Coverage**: Hash truncation, fixed-width formatting, timestamp formatting, block information display
