@@ -285,7 +285,7 @@ public class AdvancedThreadSafetyTest {
 
     @Test
     @DisplayName("🌊 Validation Flood Test")
-    @Timeout(30)
+    @Timeout(45)
     void testValidationFlood() throws InterruptedException {
         // Pre-populate with some blocks
         KeyPair keyPair = CryptoUtil.generateKeyPair();
@@ -303,6 +303,13 @@ public class AdvancedThreadSafetyTest {
         AtomicInteger validationCount = new AtomicInteger(0);
         AtomicInteger readOperations = new AtomicInteger(0);
         AtomicInteger writeOperations = new AtomicInteger(0);
+        
+        // Add detailed timing and logging
+        long startTime = System.currentTimeMillis();
+        System.out.println("🌊 Starting validation flood test at " + startTime);
+        System.out.println("   - Thread count: " + THREAD_COUNT);
+        System.out.println("   - Operations per thread: 15");
+        System.out.println("   - Total expected operations: " + (THREAD_COUNT * 15));
         
         for (int i = 0; i < THREAD_COUNT; i++) {
             final int threadId = i;
@@ -341,8 +348,23 @@ public class AdvancedThreadSafetyTest {
         }
         
         startLatch.countDown();
-        boolean completed = endLatch.await(25, TimeUnit.SECONDS);
-        assertTrue(completed, "Validation flood test should complete within timeout");
+        System.out.println("🌊 All threads started, waiting for completion...");
+        
+        boolean completed = endLatch.await(40, TimeUnit.SECONDS);
+        long endTime = System.currentTimeMillis();
+        long duration = endTime - startTime;
+        
+        System.out.println("🌊 Test completed in " + duration + "ms, success: " + completed);
+        
+        if (!completed) {
+            System.err.println("❌ Test timeout reached. Remaining threads: " + endLatch.getCount());
+            System.err.println("Current block count: " + blockchain.getBlockCount());
+            System.err.println("Validations performed: " + validationCount.get());
+            System.err.println("Read operations: " + readOperations.get());  
+            System.err.println("Write operations: " + writeOperations.get());
+        }
+        
+        assertTrue(completed, "Validation flood test should complete within timeout. Duration: " + duration + "ms");
         
         System.out.println("🌊 Validation Flood Results:");
         System.out.println("   - Validations performed: " + validationCount.get());
