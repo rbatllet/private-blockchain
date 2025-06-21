@@ -114,6 +114,7 @@ public class RaceConditionFixTest {
         System.out.println("   - Race conditions detected: " + raceConditionsDetected.get());
         System.out.println("   - Total blockchain blocks: " + blockchain.getBlockCount());
         System.out.println("   - Expected total: " + (successfulBlocks.get() + 1)); // +1 for genesis
+        System.out.println("   - Theoretical maximum: " + EXPECTED_TOTAL_BLOCKS);
 
         // Critical assertions
         assertEquals(0, raceConditionsDetected.get(), 
@@ -122,6 +123,8 @@ public class RaceConditionFixTest {
             "Each successful block should have a unique number");
         assertEquals(successfulBlocks.get() + 1, blockchain.getBlockCount(), 
             "Block count should match successful operations plus genesis block");
+        assertTrue(successfulBlocks.get() <= EXPECTED_TOTAL_BLOCKS, 
+            "Successful blocks should not exceed theoretical maximum: " + successfulBlocks.get() + " <= " + EXPECTED_TOTAL_BLOCKS);
         
         // Verify chain integrity with detailed validation
         var validationResult = blockchain.validateChainDetailed();

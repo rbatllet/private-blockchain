@@ -1,7 +1,5 @@
 package com.rbatllet.blockchain.core;
 
-import com.rbatllet.blockchain.dao.AuthorizedKeyDAO;
-import com.rbatllet.blockchain.dao.BlockDAO;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.validation.ChainValidationResult;
 import org.junit.jupiter.api.*;

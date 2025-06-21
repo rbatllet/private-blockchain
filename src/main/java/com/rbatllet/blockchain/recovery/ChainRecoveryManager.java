@@ -40,6 +40,8 @@ public class ChainRecoveryManager {
      * @return RecoveryResult with success status and details
      */
     public RecoveryResult recoverCorruptedChain(String deletedPublicKey, String ownerName) {
+        recoveryLock.writeLock().lock();
+        try {
         // Validate input parameters
         if (deletedPublicKey == null || deletedPublicKey.trim().isEmpty()) {
             return new RecoveryResult(false, "VALIDATION_ERROR", 
@@ -154,6 +156,9 @@ public class ChainRecoveryManager {
         // All strategies failed
         return new RecoveryResult(false, "FAILED", 
             "All recovery strategies failed. Manual intervention required.");
+        } finally {
+            recoveryLock.writeLock().unlock();
+        }
     }
     
     /**
@@ -529,6 +534,7 @@ public class ChainRecoveryManager {
      * Diagnostic method to analyze chain corruption
      */
     public ChainDiagnostic diagnoseCorruption() {
+        recoveryLock.readLock().lock();
         try {
             List<Block> allBlocks = blockchain.getAllBlocks();
             List<Block> corruptedBlocks = new ArrayList<>();
@@ -551,6 +557,8 @@ public class ChainRecoveryManager {
             
         } catch (Exception e) {
             return new ChainDiagnostic(0, 0, -1, new ArrayList<>());
+        } finally {
+            recoveryLock.readLock().unlock();
         }
     }
     

@@ -3,7 +3,6 @@ package com.rbatllet.blockchain.advanced;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.BeforeEach;
 
 import java.security.KeyPair;
 import java.util.concurrent.CountDownLatch;
@@ -206,7 +205,7 @@ public class ThreadSafetyTest {
                     var authorizedKeys = blockchain.getAuthorizedKeys();
                     
                     // Validate consistency
-                    if (allBlocks.size() == blockCount && lastBlock != null) {
+                    if (allBlocks.size() == blockCount && lastBlock != null && authorizedKeys != null) {
                         System.out.println("✅ Thread " + threadId + " read operations consistent");
                         successCount.incrementAndGet();
                     } else {

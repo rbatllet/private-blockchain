@@ -9,7 +9,6 @@ import java.security.KeyPair;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -23,10 +22,6 @@ class ComprehensiveThreadSafetyTest {
     private Blockchain blockchain;
     private ExecutorService executorService;
     
-    // Test configurations for different stress levels
-    private static final int LIGHT_THREAD_COUNT = 10;
-    private static final int MEDIUM_THREAD_COUNT = 25;
-    private static final int HEAVY_THREAD_COUNT = 50;
     private static final int EXTREME_THREAD_COUNT = 100;
     
     @BeforeEach

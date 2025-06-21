@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -33,21 +32,14 @@ public class BlockValidationUtilTest {
     
     // Test implementation of Blockchain
     private static class TestBlockchain extends Blockchain {
-        private Block genesisBlock;
         private boolean keyAuthorized;
         private RuntimeException keyAuthorizedException;
         
         public TestBlockchain() {
             // Call default constructor of Blockchain
             super();
-            this.genesisBlock = new TestBlock(0L, "0");
             this.keyAuthorized = false;
             this.keyAuthorizedException = null;
-        }
-        
-        // Override getGenesisBlock to return our test block
-        public Optional<Block> getGenesisBlock() {
-            return Optional.of(genesisBlock);
         }
         
         public void setKeyAuthorized(boolean authorized) {

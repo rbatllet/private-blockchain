@@ -290,7 +290,6 @@ public class DataIntegrityThreadSafetyTest {
         // Verify final sequence integrity
         List<Block> allBlocks = blockchain.getAllBlocks();
         int sequenceGaps = 0;
-        int duplicateNumbers = 0;
         
         for (int i = 1; i < allBlocks.size(); i++) {
             Long prevNumber = allBlocks.get(i-1).getBlockNumber();
