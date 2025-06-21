@@ -5,16 +5,16 @@ Comprehensive real-world examples and practical use cases for the Private Blockc
 > **IMPORTANT NOTE**: The classes shown in these examples (DocumentVerificationSystem, SupplyChainTracker, MedicalRecordsSystem, FinancialAuditSystem, KeyRotationExample, KeyCleanupManager, BlockchainHealthMonitor, HealthStatus) are conceptual and designed to illustrate potential use cases. They are not part of the actual project code. Only the Blockchain, Block, AuthorizedKey, Blockchain.KeyDeletionImpact, CryptoUtil, and JPAUtil classes exist in the current implementation.
 >
 > For real working examples, refer to the following classes in the source code:
-> - `/src/demo/BlockchainDemo.java` - Basic blockchain demonstration
-> - `/src/demo/AdditionalAdvancedFunctionsDemo.java` - Advanced features demonstration
-> - `/src/demo/ChainRecoveryDemo.java` - Chain recovery demonstration
-> - `/src/demo/DangerousDeleteDemo.java` - Key deletion safety features demo
-> - `/src/demo/EnhancedRecoveryExample.java` - Advanced recovery techniques example
-> - `/src/demo/CoreFunctionsDemo.java` - Comprehensive core test
-> - `/src/demo/SimpleDemo.java` - Basic functionality test
-> - `/src/demo/QuickDemo.java` - Fast verification test
-> - `/src/demo/RaceConditionTest.java` - Thread safety testing
-> - `/src/demo/CryptoSecurityDemo.java` - Cryptographic security demo
+> - `/src/main/java/demo/BlockchainDemo.java` - Basic blockchain demonstration
+> - `/src/main/java/demo/AdditionalAdvancedFunctionsDemo.java` - Advanced features demonstration
+> - `/src/main/java/demo/ChainRecoveryDemo.java` - Chain recovery demonstration
+> - `/src/main/java/demo/DangerousDeleteDemo.java` - Key deletion safety features demo
+> - `/src/main/java/demo/EnhancedRecoveryExample.java` - Advanced recovery techniques example
+> - `/src/main/java/demo/CoreFunctionsDemo.java` - Comprehensive core test
+> - `/src/main/java/demo/SimpleDemo.java` - Basic functionality test
+> - `/src/main/java/demo/QuickDemo.java` - Fast verification test
+> - `/src/main/java/demo/RaceConditionTest.java` - Thread safety testing
+> - `/src/main/java/demo/CryptoSecurityDemo.java` - Cryptographic security demo
 
 ## 📋 Table of Contents
 
@@ -66,6 +66,18 @@ public class DocumentVerificationSystem {
             // Verify document authenticity
             List<Block> certificateRecords = blockchain.searchBlocksByContent("Birth Certificate");
             System.out.println("Birth certificates found: " + certificateRecords.size());
+            
+            // Validate the blockchain integrity before export
+            ChainValidationResult validationResult = blockchain.validateChainDetailed();
+            if (!validationResult.isStructurallyIntact()) {
+                System.err.println("WARNING: Blockchain structure is compromised! Invalid blocks: " + 
+                                validationResult.getInvalidBlocks().size());
+            } else if (!validationResult.isFullyCompliant()) {
+                System.out.println("WARNING: Some blocks have authorization issues. Revoked blocks: " + 
+                                 validationResult.getRevokedBlocks().size());
+            } else {
+                System.out.println("Blockchain validation: All documents are properly verified and authorized");
+            }
             
             // Export for external verification
             blockchain.exportChain("document_verification_backup.json");
@@ -132,10 +144,30 @@ public class SupplyChainTracker {
             List<Block> productHistory = blockchain.searchBlocksByContent("PS5-2025-001");
             System.out.println("Product lifecycle events: " + productHistory.size());
             
-            // Generate compliance report
+            // Validate supply chain integrity before generating compliance report
+            ChainValidationResult validation = blockchain.validateChainDetailed();
+            if (!validation.isStructurallyIntact()) {
+                System.err.println("CRITICAL: Supply chain integrity compromised! " +
+                                validation.getInvalidBlocks().size() + " invalid blocks found.");
+                // In a real application, you might want to trigger an alert or stop further processing
+            } else if (!validation.isFullyCompliant()) {
+                System.out.println("WARNING: Some supply chain events have authorization issues. " +
+                                 validation.getRevokedBlocks().size() + " blocks affected.");
+                // Log the issue but continue with the report
+            } else {
+                System.out.println("Supply chain validation: All events are properly authorized and verified");
+            }
+            
+            // Generate compliance report for the specified date range
             LocalDate startDate = LocalDate.of(2025, 6, 1);
             LocalDate endDate = LocalDate.of(2025, 6, 30);
             List<Block> monthlyActivity = blockchain.getBlocksByDateRange(startDate, endDate);
+            
+            // Add a verification block to the chain
+            blockchain.addBlock("COMPLIANCE_CHECK: Supply chain verified | Date: " + LocalDate.now() + 
+                             " | Status: " + (validation.isStructurallyIntact() ? "VALID" : "INVALID") + 
+                             " | Blocks: " + blockchain.getBlockCount(),
+                             qualityControl.getPrivate(), qualityControl.getPublic());
             System.out.println("June 2025 supply chain activity: " + monthlyActivity.size() + " events");
             
         } catch (Exception e) {
@@ -199,8 +231,11 @@ public class MedicalRecordsSystem {
             System.out.println("Patient record entries: " + patientRecords.size());
             
             // Compliance validation
-            boolean chainValid = blockchain.validateChain();
-            System.out.println("Medical records integrity: " + (chainValid ? "VERIFIED" : "COMPROMISED"));
+            ChainValidationResult validationResult = blockchain.validateChainDetailed();
+            boolean structurallyIntact = validationResult.isStructurallyIntact();
+            boolean fullyCompliant = validationResult.isFullyCompliant();
+            System.out.println("Medical records structural integrity: " + (structurallyIntact ? "VERIFIED" : "COMPROMISED"));
+            System.out.println("Medical records full compliance: " + (fullyCompliant ? "VERIFIED" : "COMPROMISED"));
             
             // Secure backup for regulatory compliance
             blockchain.exportChain("medical_records_backup_" + java.time.LocalDate.now() + ".json");
@@ -263,8 +298,11 @@ public class FinancialAuditSystem {
             System.out.println("Transaction audit trail: " + auditTrail.size() + " entries");
             
             // Validate audit integrity
-            boolean auditValid = blockchain.validateChain();
-            System.out.println("Audit trail integrity: " + (auditValid ? "VALID" : "COMPROMISED"));
+            ChainValidationResult auditResult = blockchain.validateChainDetailed();
+            boolean structurallyIntact = auditResult.isStructurallyIntact();
+            boolean fullyCompliant = auditResult.isFullyCompliant();
+            System.out.println("Audit trail structural integrity: " + (structurallyIntact ? "VALID" : "COMPROMISED"));
+            System.out.println("Audit trail full compliance: " + (fullyCompliant ? "VALID" : "COMPROMISED"));
             
             // Export for regulatory submission
             blockchain.exportChain("financial_audit_Q2_2025.json");
@@ -295,8 +333,13 @@ public void performDailyBackup(Blockchain blockchain) {
                            ".json";
         
         // Validate chain before backup
-        if (!blockchain.validateChain()) {
-            System.err.println("WARNING: Chain validation failed - backup may contain corrupted data");
+        ChainValidationResult validationResult = blockchain.validateChainDetailed();
+        if (!validationResult.isStructurallyIntact()) {
+            System.err.println("WARNING: Chain structural validation failed - backup may contain corrupted data");
+            System.err.println("Invalid blocks: " + validationResult.getInvalidBlocks());
+        } else if (!validationResult.isFullyCompliant()) {
+            System.err.println("WARNING: Chain contains authorization issues - backup contains revoked blocks");
+            System.err.println("Revoked blocks: " + validationResult.getRevokedBlocks());
         }
         
         // Perform backup
@@ -347,10 +390,17 @@ public void processBatchTransactions(Blockchain blockchain, List<String> transac
         System.out.println("Batch processing complete: " + successCount + " successful, " + failureCount + " failed");
         
         // Validate chain after batch processing
-        if (blockchain.validateChain()) {
-            System.out.println("Chain validation successful after batch processing");
+        ChainValidationResult result = blockchain.validateChainDetailed();
+        if (result.isStructurallyIntact()) {
+            if (result.isFullyCompliant()) {
+                System.out.println("Chain validation fully successful after batch processing");
+            } else {
+                System.out.println("Chain is structurally intact but has authorization issues after batch processing");
+                System.out.println("Revoked blocks: " + result.getRevokedBlocks());
+            }
         } else {
-            System.err.println("WARNING: Chain validation failed after batch processing");
+            System.err.println("WARNING: Chain has structural problems after batch processing");
+            System.err.println("Invalid blocks: " + result.getInvalidBlocks());
         }
         
     } catch (Exception e) {
@@ -412,10 +462,17 @@ public void processConcurrentBatchTransactions(Blockchain blockchain, List<Strin
         System.out.println("Concurrent batch processing complete: " + successCount.get() + " successful, " + failureCount.get() + " failed");
         
         // Validate chain after concurrent processing
-        if (blockchain.validateChain()) {
-            System.out.println("Chain validation successful after concurrent batch processing");
+        ChainValidationResult result = blockchain.validateChainDetailed();
+        if (result.isStructurallyIntact()) {
+            if (result.isFullyCompliant()) {
+                System.out.println("Chain validation fully successful after concurrent batch processing");
+            } else {
+                System.out.println("Chain is structurally intact but has authorization issues after concurrent batch processing");
+                System.out.println("Revoked blocks: " + result.getRevokedBlocks());
+            }
         } else {
-            System.err.println("WARNING: Chain validation failed after concurrent batch processing");
+            System.err.println("WARNING: Chain has structural problems after concurrent batch processing");
+            System.err.println("Invalid blocks: " + result.getInvalidBlocks());
         }
         
     } catch (Exception e) {
@@ -604,9 +661,28 @@ public class KeyCleanupManager {
                 System.out.println("🗑️ ✅ Key permanently deleted from database");
                 System.out.println("⚠️ WARNING: This action was IRREVERSIBLE!");
                 
-                if (impact.isSevereImpact()) {
-                    System.out.println("💡 RECOMMENDED: Run blockchain.validateChain() to verify integrity");
+                // Validate the chain after deletion
+                ChainValidationResult result = blockchain.validateChainDetailed();
+                if (!result.isStructurallyIntact()) {
+                    System.err.println("❌ CRITICAL: Chain validation failed after key deletion!");
+                    System.err.println("   - Invalid blocks: " + result.getInvalidBlocks().size());
+                    // In a real application, you might want to trigger a rollback or alert here
+                } else if (!result.isFullyCompliant()) {
+                    System.out.println("⚠️ WARNING: Chain has compliance issues after deletion");
+                    System.out.println("   - Revoked blocks: " + result.getRevokedBlocks().size());
+                } else {
+                    System.out.println("✅ Chain validation passed after key deletion");
                 }
+                
+                // Log the deletion event to the blockchain itself
+                try {
+                    blockchain.addBlock("SECURITY_EVENT: Key permanently deleted | Key ID: " + 
+                                    publicKey.substring(0, 32) + "... | Reason: " + reason,
+                                    null, null); // Using system account
+                } catch (Exception e) {
+                    System.err.println("⚠️ Failed to log deletion event: " + e.getMessage());
+                }
+                
                 return true;
             } else {
                 System.err.println("❌ Dangerous deletion failed or was blocked by safety checks");
@@ -655,9 +731,16 @@ public class KeyCleanupManager {
         System.out.println("Forced deletion result: " + (forcedResult ? "SUCCESS (DANGEROUS) ⚠️" : "FAILED ❌"));
         
         // Verify blockchain integrity after forced deletion
-        boolean chainValid = blockchain.validateChain();
-        System.out.println("Blockchain integrity after forced deletion: " + 
-                          (chainValid ? "VALID ✅" : "COMPROMISED ❌ (expected)"));
+        ChainValidationResult validationResult = blockchain.validateChainDetailed();
+        boolean structurallyIntact = validationResult.isStructurallyIntact();
+        boolean fullyCompliant = validationResult.isFullyCompliant();
+        System.out.println("Blockchain structural integrity after forced deletion: " + 
+                           (structurallyIntact ? "INTACT ✅" : "COMPROMISED ❌"));
+        System.out.println("Blockchain full compliance after forced deletion: " + 
+                           (fullyCompliant ? "COMPLIANT ✅" : "NON-COMPLIANT ❌ (expected)"));
+        if (!fullyCompliant) {
+            System.out.println("Revoked blocks: " + validationResult.getRevokedBlocks());
+        }
     }
     
     // Bulk cleanup for security compliance (enhanced with new safety features)
@@ -729,8 +812,17 @@ public HealthStatus performHealthCheck(Blockchain blockchain) {
             status.setBlockCount(blockCount);
             
             // Validate chain integrity
-            boolean chainValid = blockchain.validateChain();
-            status.setChainValid(chainValid);
+            ChainValidationResult validationResult = blockchain.validateChainDetailed();
+            boolean structurallyIntact = validationResult.isStructurallyIntact();
+            boolean fullyCompliant = validationResult.isFullyCompliant();
+            status.setStructurallyIntact(structurallyIntact);
+            status.setFullyCompliant(fullyCompliant);
+            if (!structurallyIntact) {
+                status.setInvalidBlocks(validationResult.getInvalidBlocks());
+            }
+            if (!fullyCompliant) {
+                status.setRevokedBlocks(validationResult.getRevokedBlocks());
+            }
             
             // Check authorized keys
             List<AuthorizedKey> activeKeys = blockchain.getAuthorizedKeys();
@@ -751,10 +843,14 @@ public HealthStatus performHealthCheck(Blockchain blockchain) {
             }
             
             // Overall health assessment
-            if (chainValid && status.getFreeSpace() > 1000000000 && status.getActiveKeys() > 0) {
+            if (structurallyIntact && status.getFreeSpace() > 1000000000 && status.getActiveKeys() > 0) {
                 status.setOverallHealth("HEALTHY");
-            } else if (chainValid) {
+                System.out.println("✅ Blockchain is healthy and fully operational");
+            } else if (structurallyIntact) {
                 status.setOverallHealth("WARNING");
+                System.out.println("⚠️  Warning: " + 
+                    (status.getFreeSpace() <= 1000000000 ? "Low disk space. " : "") +
+                    (status.getActiveKeys() == 0 ? "No active keys configured. " : ""));
             } else {
                 status.setOverallHealth("CRITICAL");
             }
@@ -1120,14 +1216,69 @@ public class BlockchainCLI {
     
     private void handleValidate() {
         try {
-            boolean isValid = blockchain.validateChain();
-            System.out.println("Chain validation: " + (isValid ? "✅ VALID" : "❌ INVALID"));
+            System.out.println("\n🔍 Starting blockchain validation...");
+            long startTime = System.currentTimeMillis();
             
-            if (isValid) {
-                long blockCount = blockchain.getBlockCount();
-                int keyCount = blockchain.getAuthorizedKeys().size();
-                System.out.println("Blocks: " + blockCount + ", Active keys: " + keyCount);
+            ChainValidationResult result = blockchain.validateChainDetailed();
+            boolean structurallyIntact = result.isStructurallyIntact();
+            boolean fullyCompliant = result.isFullyCompliant();
+            
+            long validationTime = System.currentTimeMillis() - startTime;
+            
+            // Print summary header
+            System.out.println("\n" + "=".repeat(60));
+            System.out.println("🔗 BLOCKCHAIN VALIDATION REPORT");
+            System.out.println("📊 " + blockchain.getBlockCount() + " blocks analyzed in " + validationTime + "ms");
+            System.out.println("-".repeat(60));
+            
+            // Structural validation results
+            System.out.println("1. STRUCTURAL INTEGRITY: " + 
+                (structurallyIntact ? "✅ INTACT" : "❌ COMPROMISED"));
+            
+            // Compliance validation results
+            System.out.println("2. AUTHORIZATION COMPLIANCE: " + 
+                (fullyCompliant ? "✅ FULLY COMPLIANT" : "⚠️  PARTIALLY COMPLIANT"));
+            
+            // Detailed issues
+            if (!structurallyIntact) {
+                System.out.println("\n❌ INVALID BLOCKS DETECTED (" + result.getInvalidBlocks().size() + "):");
+                result.getInvalidBlocks().forEach(block -> 
+                    System.out.println("   - Block " + block.getIndex() + 
+                                    " | Hash: " + block.getHash().substring(0, 16) + "..." +
+                                    " | Issue: " + block.getValidationMessage()));
             }
+            
+            if (!fullyCompliant) {
+                System.out.println("\n⚠️  REVOKED KEYS DETECTED (" + result.getRevokedBlocks().size() + " blocks affected):");
+                result.getRevokedBlocks().stream()
+                    .limit(5) // Show first 5 for brevity
+                    .forEach(block -> 
+                        System.out.println("   - Block " + block.getIndex() + 
+                                        " | Signed by: " + block.getSignedBy().substring(0, 16) + "..."));
+                
+                if (result.getRevokedBlocks().size() > 5) {
+                    System.out.println("   ... and " + (result.getRevokedBlocks().size() - 5) + " more");
+                }
+            }
+            
+            // Chain statistics
+            System.out.println("\n📊 CHAIN STATISTICS:");
+            System.out.println("   • Total blocks: " + blockchain.getBlockCount());
+            System.out.println("   • Active keys: " + blockchain.getAuthorizedKeys().size());
+            
+            // Recommendations
+            System.out.println("\n💡 RECOMMENDATIONS:");
+            if (!structurallyIntact) {
+                System.out.println("   • Run recovery procedures to fix invalid blocks");
+            }
+            if (!fullyCompliant) {
+                System.out.println("   • Review and update authorized keys configuration");
+            }
+            if (structurallyIntact && fullyCompliant) {
+                System.out.println("   • No issues detected. Your blockchain is healthy!");
+            }
+            
+            System.out.println("=".repeat(60) + "\n")
         } catch (Exception e) {
             System.err.println("Validation error: " + e.getMessage());
         }
@@ -1414,7 +1565,9 @@ public class ConcurrentPerformanceTest {
             long duration = endTime - startTime;
             
             // Final validation
-            boolean chainValid = blockchain.validateChain();
+            ChainValidationResult validationResult = blockchain.validateChainDetailed();
+            boolean structurallyIntact = validationResult.isStructurallyIntact();
+            boolean fullyCompliant = validationResult.isFullyCompliant();
             long actualBlockCount = blockchain.getBlockCount();
             
             System.out.println("\n📊 Performance Test Results:");
@@ -1423,10 +1576,11 @@ public class ConcurrentPerformanceTest {
             System.out.println("   Failed blocks: " + failureCount.get());
             System.out.println("   Actual block count: " + actualBlockCount + " (including genesis)");
             System.out.println("   Expected count: " + (expectedBlocks + 1));
-            System.out.println("   Chain valid: " + (chainValid ? "✅ YES" : "❌ NO"));
+            System.out.println("   Chain structurally intact: " + (structurallyIntact ? "✅ YES" : "❌ NO"));
+            System.out.println("   Chain fully compliant: " + (fullyCompliant ? "✅ YES" : "❌ NO"));
             System.out.println("   Throughput: " + (successCount.get() * 1000.0 / duration) + " blocks/second");
             
-            if (chainValid && actualBlockCount == (expectedBlocks + 1)) {
+            if (structurallyIntact && fullyCompliant && actualBlockCount == (expectedBlocks + 1)) {
                 System.out.println("🎉 HIGH-CONCURRENCY TEST PASSED!");
             } else {
                 System.out.println("💥 HIGH-CONCURRENCY TEST FAILED!");
@@ -1513,7 +1667,7 @@ public class ConcurrentBestPractices {
         CompletableFuture<Long> blockCountFuture = CompletableFuture.supplyAsync(blockchain::getBlockCount);
         CompletableFuture<List<Block>> allBlocksFuture = CompletableFuture.supplyAsync(blockchain::getAllBlocks);
         CompletableFuture<List<AuthorizedKey>> keysFuture = CompletableFuture.supplyAsync(blockchain::getAuthorizedKeys);
-        CompletableFuture<Boolean> validationFuture = CompletableFuture.supplyAsync(blockchain::validateChain);
+        CompletableFuture<ChainValidationResult> validationFuture = CompletableFuture.supplyAsync(blockchain::validateChainDetailed);
         
         // Combine results
         CompletableFuture.allOf(blockCountFuture, allBlocksFuture, keysFuture, validationFuture)
@@ -1523,7 +1677,9 @@ public class ConcurrentBestPractices {
                     System.out.println("  Block count: " + blockCountFuture.get());
                     System.out.println("  Total blocks retrieved: " + allBlocksFuture.get().size());
                     System.out.println("  Active keys: " + keysFuture.get().size());
-                    System.out.println("  Chain valid: " + validationFuture.get());
+                    ChainValidationResult result = validationFuture.get();
+                    System.out.println("  Chain structurally intact: " + result.isStructurallyIntact());
+                    System.out.println("  Chain fully compliant: " + result.isFullyCompliant());
                 } catch (Exception e) {
                     System.err.println("Error retrieving results: " + e.getMessage());
                 }

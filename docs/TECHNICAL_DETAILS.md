@@ -31,14 +31,14 @@ The project includes the following main classes:
 - `com.rbatllet.blockchain.dto.ChainExportData` - DTO for data export
 
 #### Demo and Test Classes
-- `AdditionalAdvancedFunctionsDemo` - Advanced functions demonstration
-- `BlockchainDemo` - Basic blockchain demonstration
-- `ChainRecoveryDemo` - Chain recovery demonstration
-- `DangerousDeleteDemo` - Key deletion safety features demo
-- `CoreFunctionsDemo` - Core functions demonstration
-- `QuickDemo` - Quick blockchain demonstration
-- `SimpleDemo` - Simple blockchain demonstration
-- `EnhancedRecoveryExample` - Enhanced recovery demonstration
+- `demo.AdditionalAdvancedFunctionsDemo` - Advanced functions demonstration
+- `demo.BlockchainDemo` - Basic blockchain demonstration
+- `demo.ChainRecoveryDemo` - Chain recovery demonstration
+- `demo.DangerousDeleteDemo` - Key deletion safety features demo
+- `demo.CoreFunctionsDemo` - Core functions demonstration
+- `demo.QuickDemo` - Quick blockchain demonstration
+- `demo.SimpleDemo` - Simple blockchain demonstration
+- `demo.EnhancedRecoveryExample` - Enhanced recovery demonstration
 
 ### High-Level Architecture
 
@@ -531,8 +531,29 @@ The system maintains temporal consistency even after key deletion:
 // Historical validation still works for remaining keys
 public boolean wasKeyAuthorizedAt(String publicKey, LocalDateTime timestamp)
 
-// But deleted keys will cause validation to fail
-public boolean validateChain() // Returns false if deleted keys signed blocks
+/**
+ * Performs a comprehensive validation of the blockchain, checking both structural integrity
+ * and authorization compliance.
+ * 
+ * <p>This method validates:
+ * <ul>
+ *   <li>Hash chain integrity (each block's previous hash matches the previous block's hash)</li>
+ *   <li>Block hashes are correctly calculated</li>
+ *   <li>Digital signatures are valid for each block</li>
+ *   <li>All blocks were signed by authorized keys at the time of creation</li>
+ *   <li>No blocks have been tampered with</li>
+ * </ul>
+ * 
+ * @return ChainValidationResult containing detailed validation results, including:
+ *         - isStructurallyIntact(): true if the blockchain structure is valid
+ *         - isFullyCompliant(): true if all blocks are properly authorized
+ *         - getInvalidBlocks(): list of blocks with structural issues
+ *         - getRevokedBlocks(): list of blocks with authorization issues
+ *         - getValidationReport(): detailed validation report
+ * 
+ * @see ChainValidationResult for more information on the validation results
+ */
+public ChainValidationResult validateChainDetailed()
 ```
 
 #### Recovery Strategies
@@ -855,10 +876,16 @@ public boolean rollbackToBlock(Long targetBlockNumber) throws Exception {
         transaction.commit();
         
         // 4. Validate chain integrity after rollback
-        if (!validateChain()) {
-            // Restore from backup if validation fails
+        ChainValidationResult result = validateChainDetailed();
+        if (!result.isStructurallyIntact()) {
+            // Restore from backup if structural validation fails
             importChain(backupPath);
-            throw new ValidationException("Chain validation failed after rollback");
+            throw new ValidationException("Chain structural validation failed after rollback. Invalid blocks: " + 
+                result.getInvalidBlocks());
+        } else if (!result.isFullyCompliant()) {
+            // Log warning but don't restore if it's just a compliance issue
+            System.err.println("Warning: Chain has compliance issues after rollback. Revoked blocks: " + 
+                result.getRevokedBlocks());
         }
         
         logger.info("Successfully rolled back {} blocks to number {}", 

@@ -91,7 +91,7 @@ print_step "SECURITY DEMONSTRATION ANALYSIS"
 echo "==================================="
 print_info "Running comprehensive security demo..."
 echo
-mvn compile exec:java -Dexec.mainClass="DangerousDeleteDemo" -q
+mvn compile exec:java -Dexec.mainClass="demo.DangerousDeleteDemo" -q
 DEMO_RESULT=$?
 
 if [ $DEMO_RESULT -eq 0 ]; then

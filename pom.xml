@@ -120,7 +120,7 @@
     </dependencies>
 
     <build>
-        <!-- Include the new demo directory as a source directory -->
+        <!-- Standard Maven directory structure -->
         <sourceDirectory>src/main/java</sourceDirectory>
         <resources>
             <resource>
@@ -134,27 +134,7 @@
             </testResource>
         </testResources>
         
-        <!-- Additional source directory for demo classes -->
         <plugins>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>build-helper-maven-plugin</artifactId>
-                <version>3.6.1</version>
-                <executions>
-                    <execution>
-                        <id>add-source</id>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>add-source</goal>
-                        </goals>
-                        <configuration>
-                            <sources>
-                                <source>src/demo</source>
-                            </sources>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -175,7 +155,7 @@
                     </descriptorRefs>
                     <archive>
                         <manifest>
-                            <mainClass>BlockchainDemo</mainClass>
+                            <mainClass>demo.BlockchainDemo</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

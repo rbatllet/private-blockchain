@@ -35,7 +35,7 @@ print_info ""
 print_info "🎬 Running Enhanced Dangerous Delete Demo..."
 print_step "============================================"
 print_info ""
-mvn compile exec:java -Dexec.mainClass="EnhancedDangerousDeleteDemo" -q
+mvn compile exec:java -Dexec.mainClass="demo.EnhancedDangerousDeleteDemo" -q
 DEMO_RESULT=$?
 print_info ""
 
@@ -74,7 +74,7 @@ fi
 # Exit with appropriate code
 if [ $DEMO_RESULT -eq 0 ]; then
     print_success "Enhanced dangerous delete demo completed successfully!"
-    print_info "Demo location: src/demo/EnhancedDangerousDeleteDemo.java"
+    print_info "Demo location: src/main/java/demo/EnhancedDangerousDeleteDemo.java"
     print_info "Documentation: README.md"
     exit 0
 else

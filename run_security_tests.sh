@@ -43,7 +43,7 @@ print_info ""
 print_info "🎬 Running Key Deletion Security Demo..."
 print_step "========================================="
 print_info ""
-mvn compile exec:java -Dexec.mainClass="DangerousDeleteDemo" -q
+mvn compile exec:java -Dexec.mainClass="demo.DangerousDeleteDemo" -q
 DEMO_RESULT=$?
 print_info ""
 

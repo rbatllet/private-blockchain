@@ -1,7 +1,8 @@
+package demo;
+
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.validation.ChainValidationResult;
-import com.rbatllet.blockchain.validation.BlockValidationResult;
 import com.rbatllet.blockchain.entity.Block;
 
 import java.security.KeyPair;

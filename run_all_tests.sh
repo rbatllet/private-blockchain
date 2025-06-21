@@ -139,7 +139,7 @@ if [ -f "blockchain.db" ]; then
     rm blockchain.db
 fi
 
-mvn exec:java -Dexec.mainClass="CoreFunctionsDemo" -q
+mvn exec:java -Dexec.mainClass="demo.CoreFunctionsDemo" -q
 BASIC_RESULT=$?
 
 if [ $BASIC_RESULT -eq 0 ]; then
@@ -179,7 +179,7 @@ if [ -f "blockchain.db" ]; then
 fi
 
 print_info "🧪 Running Blockchain Demo..."
-mvn exec:java -Dexec.mainClass="BlockchainDemo" -q
+mvn exec:java -Dexec.mainClass="demo.BlockchainDemo" -q
 DEMO_RESULT=$?
 
 if [ $DEMO_RESULT -eq 0 ]; then
@@ -196,7 +196,7 @@ if [ -f "blockchain.db" ]; then
 fi
 
 print_info "🧪 Running Simple Demo..."
-mvn exec:java -Dexec.mainClass="SimpleDemo" -q
+mvn exec:java -Dexec.mainClass="demo.SimpleDemo" -q
 SIMPLE_RESULT=$?
 
 if [ $SIMPLE_RESULT -eq 0 ]; then
@@ -213,7 +213,7 @@ if [ -f "blockchain.db" ]; then
 fi
 
 print_info "🧪 Running Quick Demo..."
-mvn exec:java -Dexec.mainClass="QuickDemo" -q
+mvn exec:java -Dexec.mainClass="demo.QuickDemo" -q
 QUICK_RESULT=$?
 
 if [ $QUICK_RESULT -eq 0 ]; then
@@ -230,7 +230,7 @@ if [ -f "blockchain.db" ]; then
 fi
 
 print_info "🔐 Running Key Deletion Security Demo..."
-mvn exec:java -Dexec.mainClass="DangerousDeleteDemo" -q
+mvn exec:java -Dexec.mainClass="demo.DangerousDeleteDemo" -q
 SECURITY_DEMO_RESULT=$?
 
 if [ $SECURITY_DEMO_RESULT -eq 0 ]; then
@@ -252,7 +252,7 @@ else
 fi
 
 print_info "🔐 Running Cryptographic Security Demo..."
-mvn exec:java -Dexec.mainClass="CryptoSecurityDemo" -q
+mvn exec:java -Dexec.mainClass="demo.CryptoSecurityDemo" -q
 CRYPTO_SECURITY_DEMO_RESULT=$?
 
 if [ $CRYPTO_SECURITY_DEMO_RESULT -eq 0 ]; then
@@ -323,7 +323,7 @@ print_info "📍 Test files location:"
 print_info "   - JUnit 5 Advanced Function Tests: src/test/java/com/rbatllet/blockchain/core/"
 print_info "   - JUnit 5 Key Authorization Tests: src/test/java/com/rbatllet/blockchain/core/"
 print_info "   - JUnit 5 Critical Consistency Tests: src/test/java/com/rbatllet/blockchain/core/"
-print_info "   - Basic Core Function Tests: src/demo/"
+print_info "   - Basic Core Function Tests: src/main/java/demo/"
 print_info "📖 Documentation: README.md"
 print_info ""
 

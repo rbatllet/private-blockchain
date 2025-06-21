@@ -27,7 +27,7 @@ Comprehensive production deployment guide for the Private Blockchain implementat
 ```bash
 /opt/blockchain/
 ├── application/                 # Application binaries
-│   ├── blockchain.jar          # Main application
+│   ├── private-blockchain.jar  # Main application
 │   ├── blockchain.db           # SQLite database
 │   └── blockchain.pid          # Process ID file
 ├── config/                     # Configuration files
@@ -364,6 +364,130 @@ echo "✅ Database maintenance completed"
 -Djava.security.egd=file:/dev/./urandom  # Entropy source
 ```
 
+## 🔍 Blockchain Validation in Production
+
+### Validation Strategies
+
+#### Scheduled Chain Validation
+```bash
+# Add to crontab -e
+# Run comprehensive validation daily at 2 AM
+0 2 * * * /opt/blockchain/scripts/validate-chain.sh
+
+# Run quick validation hourly
+0 * * * * /opt/blockchain/scripts/quick-validate.sh
+```
+
+#### Detailed Validation Script (`validate-chain.sh`)
+```zsh
+#!/usr/bin/env zsh
+# Full chain validation with detailed reporting
+
+# Enable error handling
+emulate -L zsh
+set -euo pipefail
+
+# Load environment
+SCRIPT_DIR=${0:a:h}
+source "$SCRIPT_DIR/shared-functions.sh"
+
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+LOG_FILE="/opt/blockchain/logs/validation_${TIMESTAMP}.log"
+
+{
+    echo "=== Starting Full Chain Validation at $(date) ==="
+    
+    # Run detailed validation
+    java -jar /opt/blockchain/application/private-blockchain.jar validate-chain --detailed \
+        --config /opt/blockchain/config/application.properties \
+        --output /opt/blockchain/logs/validation_report_${TIMESTAMP}.json
+    
+    VALIDATION_EXIT_CODE=$?
+    
+    if [ $VALIDATION_EXIT_CODE -eq 0 ]; then
+        echo "✅ Validation completed successfully"
+    else
+        echo "❌ Validation failed with exit code $VALIDATION_EXIT_CODE"
+        # Send alert to monitoring system
+        send_alert "Blockchain validation failed" "Check logs: $LOG_FILE"
+    fi
+    
+    echo "=== Validation completed at $(date) ==="
+} >> "$LOG_FILE" 2>&1
+```
+
+#### Quick Validation Script (`quick-validate.sh`)
+```zsh
+#!/usr/bin/env zsh
+# Fast validation for production monitoring
+
+# Enable error handling
+emulate -L zsh
+set -euo pipefail
+
+# Load environment
+SCRIPT_DIR=${0:a:h}
+source "$SCRIPT_DIR/shared-functions.sh"
+
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+LOG_FILE="/opt/blockchain/logs/quick_validate_${TIMESTAMP}.log"
+
+{
+    echo "=== Starting Quick Validation at $(date) ==="
+    
+    # Run quick validation (checks only recent blocks and structure)
+    java -jar /opt/blockchain/application/private-blockchain.jar validate-chain --quick \
+        --config /opt/blockchain/config/application.properties \
+        --max-blocks 100  # Only check last 100 blocks for performance
+    
+    VALIDATION_EXIT_CODE=$?
+    
+    if [ $VALIDATION_EXIT_CODE -ne 0 ]; then
+        echo "❌ Quick validation failed, triggering full validation"
+        # Trigger full validation if quick check fails
+        /opt/blockchain/scripts/validate-chain.sh
+    fi
+    
+    echo "=== Quick validation completed at $(date) ==="
+} >> "$LOG_FILE" 2>&1
+```
+
+### Monitoring Validation Results
+
+#### Integration with Monitoring Systems
+
+1. **Prometheus Metrics**
+   ```yaml
+   # Sample prometheus.yml configuration
+   scrape_configs:
+     - job_name: 'blockchain_validation'
+       static_configs:
+         - targets: ['localhost:9091']  # Blockchain metrics endpoint
+   ```
+
+2. **Grafana Dashboard**
+   - Create a dashboard with the following panels:
+     - Validation status (OK/WARNING/CRITICAL)
+     - Validation duration over time
+     - Number of invalid/revoked blocks
+     - Block validation time distribution
+
+3. **Alerting Rules**
+   ```yaml
+   # Sample alert rules
+   groups:
+   - name: blockchain.rules
+     rules:
+     - alert: BlockchainValidationFailed
+       expr: blockchain_validation_failed == 1
+       for: 5m
+       labels:
+         severity: critical
+       annotations:
+         summary: "Blockchain validation failed"
+         description: "Blockchain validation has failed. Check logs for details."
+   ```
+
 ## 📊 Monitoring and Maintenance
 
 ### Application Monitoring
@@ -573,57 +697,96 @@ echo "🎉 Daily backup completed successfully"
 ```
 
 #### Disaster Recovery Script
-```bash
+```zsh
 #!/usr/bin/env zsh
 # disaster-recovery.sh - Complete system recovery from backup
 
-set -e
+# Enable strict error handling and better error messages
+emulate -L zsh
+set -euo pipefail
 
+# Configuration
 APP_HOME="/opt/blockchain"
-BACKUP_PATH="$1"
+BACKUP_PATH="${1:-}"
+LOG_FILE="$APP_HOME/logs/disaster_recovery_$(date +%Y%m%d_%H%M%S).log"
 
-if [ -z "$BACKUP_PATH" ]; then
-    echo "Usage: $0 <backup_file.db.gz>"
-    echo "Available backups:"
-    ls -la "$APP_HOME/backups/daily/"
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Logging function
+log() {
+    local level=$1
+    local message=$2
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    
+    case $level in
+        "INFO") echo -e "[${timestamp}] ${GREEN}INFO${NC} - ${message}" | tee -a "$LOG_FILE" ;;
+        "WARN") echo -e "[${timestamp}] ${YELLOW}WARN${NC} - ${message}" | tee -a "$LOG_FILE" >&2 ;;
+        "ERROR") echo -e "[${timestamp}] ${RED}ERROR${NC} - ${message}" | tee -a "$LOG_FILE" >&2 ;;
+    esac
+}
+
+# Check if running as root
+if [[ $EUID -ne 0 ]]; then
+    log "ERROR" "This script must be run as root"
     exit 1
 fi
 
-if [ ! -f "$BACKUP_PATH" ]; then
-    echo "❌ Backup file not found: $BACKUP_PATH"
+# Check backup path
+if [[ -z "$BACKUP_PATH" ]]; then
+    log "INFO" "Usage: $0 <backup_file.db.gz>"
+    log "INFO" "Available backups in $APP_HOME/backups/daily/:"
+    ls -la "$APP_HOME/backups/daily/" | tee -a "$LOG_FILE"
     exit 1
 fi
 
-echo "🚨 Starting disaster recovery from: $(basename "$BACKUP_PATH")"
-echo "⚠️  This will replace the current database!"
-read -p "Are you sure? (yes/no): " confirm
+if [[ ! -f "$BACKUP_PATH" ]]; then
+    log "ERROR" "Backup file not found: $BACKUP_PATH"
+    exit 1
+fi
 
-if [ "$confirm" != "yes" ]; then
-    echo "Recovery cancelled"
+# Confirm action
+log "WARN" "🚨 Starting disaster recovery from: $(basename "$BACKUP_PATH")"
+log "WARN" "⚠️  This will replace the current database!"
+read -r "?Are you sure you want to continue? (y/N): " confirm
+
+if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+    log "INFO" "Recovery cancelled by user"
     exit 0
 fi
 
 # Stop application
-echo "🛑 Stopping application..."
-"$APP_HOME/scripts/stop.sh"
+log "INFO" "🛑 Stopping application..."
+if ! "$APP_HOME/scripts/stop.sh" >> "$LOG_FILE" 2>&1; then
+    log "WARN" "Failed to stop application, attempting to continue..."
+fi
 
-# Backup current state (if exists)
+# Backup current state
 CURRENT_DB="$APP_HOME/application/blockchain.db"
-if [ -f "$CURRENT_DB" ]; then
+if [[ -f "$CURRENT_DB" ]]; then
     DISASTER_BACKUP="$APP_HOME/backups/disaster_backup_$(date +%Y%m%d_%H%M%S).db"
-    cp "$CURRENT_DB" "$DISASTER_BACKUP"
-    echo "💾 Current database backed up to: $DISASTER_BACKUP"
+    if ! cp "$CURRENT_DB" "$DISASTER_BACKUP"; then
+        log "ERROR" "Failed to create backup of current database"
+        exit 1
+    fi
+    log "INFO" "💾 Current database backed up to: $DISASTER_BACKUP"
 fi
 
 # Restore from backup
-echo "📥 Restoring database from backup..."
-gunzip -c "$BACKUP_PATH" > "$CURRENT_DB"
+log "INFO" "📥 Restoring database from backup..."
+if ! gunzip -c "$BACKUP_PATH" > "$CURRENT_DB"; then
+    log "ERROR" "Failed to restore from backup"
+    exit 1
+fi
 
 # Verify restored database
-echo "🔍 Verifying restored database..."
-INTEGRITY_CHECK=$(sqlite3 "$CURRENT_DB" "PRAGMA integrity_check;")
-if [ "$INTEGRITY_CHECK" != "ok" ]; then
-    echo "❌ Restored database integrity check failed"
+log "INFO" "🔍 Verifying restored database..."
+INTEGRITY_CHECK=$(sqlite3 "$CURRENT_DB" "PRAGMA integrity_check;" 2>> "$LOG_FILE" || echo "error")
+if [[ "$INTEGRITY_CHECK" != "ok" ]]; then
+    log "ERROR" "Restored database integrity check failed: $INTEGRITY_CHECK"
     exit 1
 fi
 
@@ -632,32 +795,159 @@ chmod 600 "$CURRENT_DB"
 chown blockchain:blockchain "$CURRENT_DB"
 
 # Start application
-echo "🚀 Starting application..."
-"$APP_HOME/scripts/start.sh"
-
-# Verify application startup
-sleep 10
-if "$APP_HOME/scripts/health-check.sh"; then
-    echo "✅ Disaster recovery completed successfully"
-    
-    # Log recovery details
-    BLOCK_COUNT=$(sqlite3 "$CURRENT_DB" "SELECT COUNT(*) FROM blocks;")
-    KEY_COUNT=$(sqlite3 "$CURRENT_DB" "SELECT COUNT(*) FROM authorized_keys;")
-    echo "📊 Recovered: $BLOCK_COUNT blocks, $KEY_COUNT keys"
-else
-    echo "❌ Application health check failed after recovery"
+log "INFO" "🚀 Starting application..."
+if ! "$APP_HOME/scripts/start.sh" >> "$LOG_FILE" 2>&1; then
+    log "ERROR" "Failed to start application"
     exit 1
 fi
-```
 
-## 🔧 Troubleshooting
+# Verify application startup
+log "INFO" "⏳ Verifying application health..."
+sleep 10
+if "$APP_HOME/scripts/health-check.sh" >> "$LOG_FILE" 2>&1; then
+    # Get recovery stats
+    BLOCK_COUNT=$(sqlite3 "$CURRENT_DB" "SELECT COUNT(*) FROM blocks;" 2>> "$LOG_FILE" || echo "unknown")
+    KEY_COUNT=$(sqlite3 "$CURRENT_DB" "SELECT COUNT(*) FROM authorized_keys;" 2>> "$LOG_FILE" || echo "unknown")
+    
+    log "INFO" "✅ Disaster recovery completed successfully"
+    log "INFO" "📊 Recovery stats: $BLOCK_COUNT blocks, $KEY_COUNT keys"
+    log "INFO" "📝 Detailed logs available at: $LOG_FILE"
+else
+    log "ERROR" "Application health check failed after recovery"
+    log "ERROR" "Check the logs for more details: $LOG_FILE"
+    exit 1
+fi
 
-### Common Production Issues
+## 🚨 Troubleshooting
+
+### Chain Validation Issues
+
+#### Problem: Validation Fails with Invalid Blocks
+
+**Symptoms:**
+- `isStructurallyIntact()` returns `false`
+- `getInvalidBlocks()` returns one or more blocks
+
+**Possible Causes and Solutions:**
+
+1. **Corrupted Block Data**
+   ```bash
+   # Check block data integrity
+   java -jar private-blockchain.jar check-block-integrity --block-number <block-number>
+   
+   # If corruption is confirmed, restore from backup
+   java -jar private-blockchain.jar restore-block --from-backup <backup-file> --block-number <block-number>
+   ```
+
+2. **Invalid Previous Hash**
+   - The `previousHash` of a block doesn't match the hash of the previous block
+   - This usually indicates data corruption or tampering
+   ```bash
+   # Verify hash chain
+   java -jar private-blockchain.jar verify-hash-chain --start <block-number> --end <block-number>
+   ```
+
+3. **Invalid Signatures**
+   - Block signatures don't match the block data
+   - May indicate key compromise or data corruption
+   ```bash
+   # Verify signatures for a range of blocks
+   java -jar private-blockchain.jar verify-signatures --start <block-number> --end <block-number>
+   ```
+
+#### Problem: Validation Shows Revoked Keys
+
+**Symptoms:**
+- `isFullyCompliant()` returns `false`
+- `getRevokedBlocks()` returns blocks signed by revoked keys
+
+**Solutions:**
+
+1. **Review Key Revocation**
+   ```bash
+   # List all revoked keys
+   java -jar private-blockchain.jar list-keys --status revoked
+   
+   # Check impact of key revocation
+   java -jar private-blockchain.jar key-impact <public-key>
+   ```
+
+2. **Re-sign Blocks (if needed)**
+   ```bash
+   # Re-sign blocks with a new key
+   java -jar private-blockchain.jar re-sign-blocks --old-key <old-key> --new-key <new-key> --start <block-number> --end <block-number>
+   ```
+
+### Performance Issues
+
+#### Problem: Validation Takes Too Long
+
+**Symptoms:**
+- Validation process takes longer than expected
+- High CPU usage during validation
+
+**Solutions:**
+
+1. **Optimize Validation**
+   ```bash
+   # Run validation with performance profiling
+   java -jar private-blockchain.jar validate-chain --profile --output validation-report.json
+   ```
+
+2. **Adjust JVM Settings**
+   ```properties
+   # Increase heap size
+   -Xmx4G -Xms4G
+   
+   # Enable parallel GC
+   -XX:+UseG1GC -XX:MaxGCPauseMillis=200
+   ```
+
+3. **Validate in Parallel**
+   ```bash
+   # Validate different ranges in parallel
+   java -jar private-blockchain.jar validate-chain --start 0 --end 9999 &
+   java -jar private-blockchain.jar validate-chain --start 10000 --end 19999 &
+   # ...
+   ```
+
+### Recovery Procedures
+
+#### Block Recovery
+
+1. **From Backup**
+   ```bash
+   # Restore a single block from backup
+   java -jar private-blockchain.jar restore-block --from-backup backup_20230601.bak --block-number 1234
+   ```
+
+2. **From Export**
+   ```bash
+   # Import block from JSON export
+   java -jar private-blockchain.jar import-block --file block_1234.json
+   ```
+
+#### Chain Recovery
+
+1. **Partial Recovery**
+   ```bash
+   # Rebuild chain from last good block
+   java -jar private-blockchain.jar rebuild-chain --from-block <last-good-block>
+   ```
+
+2. **Full Recovery**
+   ```bash
+   # Restore entire chain from backup
+   java -jar private-blockchain.jar restore-chain --backup full_backup_20230601.bak
+   ```
+
+### Common Issues and Solutions Issues
 
 #### Issue: High CPU Usage
 **Symptoms:**
 - CPU usage consistently above 80%
 - Slow response times
+{{ ... }}
 - Application timeouts
 
 **Solutions:**

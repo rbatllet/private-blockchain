@@ -120,7 +120,7 @@ mvn package
 ### 2. Run Basic Demo
 ```zsh
 # Run the basic blockchain demo
-mvn exec:java -Dexec.mainClass="BlockchainDemo"
+mvn exec:java -Dexec.mainClass="demo.BlockchainDemo"
 ```
 
 **Expected Output:**
@@ -143,31 +143,31 @@ Authorized keys: 2
 ### 3. Run Advanced Features Demo
 ```zsh
 # Run advanced features demonstration
-mvn exec:java -Dexec.mainClass="AdditionalAdvancedFunctionsDemo"
+mvn exec:java -Dexec.mainClass="demo.AdditionalAdvancedFunctionsDemo"
 ```
 
 ### 4. Run Chain Recovery Demo
 ```zsh
 # Run blockchain chain recovery demonstration
-mvn exec:java -Dexec.mainClass="ChainRecoveryDemo"
+mvn exec:java -Dexec.mainClass="demo.ChainRecoveryDemo"
 ```
 
 ### 5. Run Key Deletion Safety Features Demo
 ```zsh
 # Run demonstration of key deletion safety features
-mvn exec:java -Dexec.mainClass="DangerousDeleteDemo"
+mvn exec:java -Dexec.mainClass="demo.DangerousDeleteDemo"
 ```
 
 ### 6. Run Enhanced Recovery Example
 ```zsh
 # Run example of advanced recovery techniques
-mvn exec:java -Dexec.mainClass="EnhancedRecoveryExample"
+mvn exec:java -Dexec.mainClass="demo.EnhancedRecoveryExample"
 ```
 
 ### 7. Quick Functionality Test
 ```zsh
 # Run quick verification test
-mvn exec:java -Dexec.mainClass="QuickDemo"
+mvn exec:java -Dexec.mainClass="demo.QuickDemo"
 ```
 
 ## 💻 How It Works
@@ -196,7 +196,17 @@ boolean success = blockchain.addBlock(
 
 ### Step 4: Validate Chain
 ```java
-boolean isValid = blockchain.validateChain();
+// Get detailed validation information
+ChainValidationResult result = blockchain.validateChainDetailed();
+
+// Check structural integrity
+boolean isStructurallyIntact = result.isStructurallyIntact();
+
+// Check full compliance (includes authorization)
+boolean isFullyCompliant = result.isFullyCompliant();
+
+// Get detailed validation report
+String report = result.getDetailedReport();
 ```
 
 ## 🧪 Basic Testing
@@ -304,7 +314,7 @@ Threads: 10, Blocks per thread: 5
 ./run_basic_tests.sh
 
 # Core functions comprehensive test
-mvn exec:java -Dexec.mainClass="CoreFunctionsDemo"
+mvn exec:java -Dexec.mainClass="demo.CoreFunctionsDemo"
 ```
 
 ### What Gets Tested
@@ -320,19 +330,19 @@ mvn exec:java -Dexec.mainClass="CoreFunctionsDemo"
 
 ```
 src/
-├── demo/
-│   ├── BlockchainDemo.java                      # Basic demo application
-│   ├── AdditionalAdvancedFunctionsDemo.java     # Advanced features demo
-│   ├── ChainRecoveryDemo.java                   # Chain recovery demonstration
-│   ├── DangerousDeleteDemo.java                 # Key deletion safety features demo
-│   ├── EnhancedRecoveryExample.java             # Advanced recovery techniques example
-│   ├── CoreFunctionsDemo.java                   # Comprehensive core test
-│   ├── SimpleDemo.java                          # Basic functionality test
-│   ├── QuickDemo.java                           # Fast verification test
-│   ├── RaceConditionTest.java                   # Thread safety testing
-│   └── CryptoSecurityDemo.java                  # Cryptographic security demo
-
-src/main/java/com/rbatllet/blockchain/
+├── main/java/
+│   ├── demo/
+│   │   ├── BlockchainDemo.java                      # Basic demo application
+│   │   ├── AdditionalAdvancedFunctionsDemo.java     # Advanced features demo
+│   │   ├── ChainRecoveryDemo.java                   # Chain recovery demonstration
+│   │   ├── DangerousDeleteDemo.java                 # Key deletion safety features demo
+│   │   ├── EnhancedRecoveryExample.java             # Advanced recovery techniques example
+│   │   ├── CoreFunctionsDemo.java                   # Comprehensive core test
+│   │   ├── SimpleDemo.java                          # Basic functionality test
+│   │   ├── QuickDemo.java                           # Fast verification test
+│   │   ├── RaceConditionTest.java                   # Thread safety testing
+│   │   └── CryptoSecurityDemo.java                  # Cryptographic security demo
+│   └── com/rbatllet/blockchain/
 ├── core/
 │   └── Blockchain.java                           # Main blockchain logic
 ├── dao/
@@ -342,6 +352,14 @@ src/main/java/com/rbatllet/blockchain/
 │   ├── Block.java                               # Block data model
 │   ├── AuthorizedKey.java                       # Authorized key data model
 │   └── BlockSequence.java                       # Atomic block numbering entity
+├── recovery/
+│   ├── ChainRecoveryManager.java               # Handles blockchain recovery operations
+│   └── RecoveryConfig.java                      # Configuration for recovery processes
+├── security/
+│   ├── ECKeyDerivation.java                    # Elliptic Curve key derivation utilities
+│   ├── KeyFileLoader.java                       # Secure key file loading
+│   ├── PasswordUtil.java                        # Password hashing and verification
+│   └── SecureKeyStorage.java                    # Secure storage for cryptographic keys
 ├── util/
 │   ├── CryptoUtil.java                          # Cryptographic utilities
 │   ├── ExitUtil.java                            # Exit handling utilities
@@ -351,22 +369,25 @@ src/main/java/com/rbatllet/blockchain/
 │   └── validation/
 │       ├── BlockValidationResult.java           # Block validation result model
 │       └── BlockValidationUtil.java             # Block validation utilities
+└── validation/
+    ├── BlockStatus.java                        # Block status enumeration
+    ├── BlockValidationResult.java               # Block validation results
+    └── ChainValidationResult.java               # Chain validation results
 
-src/test/java/com/rbatllet/blockchain/core/
-├── BlockchainTest.java                             # Core blockchain tests
-├── BlockchainAdditionalAdvancedFunctionsTest.java   # JUnit 5 test suite
-├── BlockchainKeyAuthorizationTest.java             # Key authorization tests
-├── CriticalConsistencyTest.java                    # Consistency validation tests
-├── SimpleTemporalValidationTest.java               # Temporal validation tests
-└── TestEnvironmentValidator.java                    # Environment validation
-
-src/test/java/com/rbatllet/blockchain/dao/
-└── AuthorizedKeyDAODeleteTest.java                 # DAO delete operation tests
-
-src/test/java/com/rbatllet/blockchain/recovery/
-├── ChainRecoveryManagerTest.java                   # Recovery manager tests
-├── ImprovedRollbackStrategyTest.java              # Enhanced rollback strategy tests
-└── RecoveryConfigTest.java                         # Recovery configuration tests
+src/test/java/com/rbatllet/blockchain/
+├── core/
+│   ├── BlockchainTest.java                             # Core blockchain tests
+│   ├── BlockchainAdditionalAdvancedFunctionsTest.java   # JUnit 5 test suite
+│   ├── BlockchainKeyAuthorizationTest.java             # Key authorization tests
+│   ├── CriticalConsistencyTest.java                    # Consistency validation tests
+│   ├── SimpleTemporalValidationTest.java               # Temporal validation tests
+│   └── TestEnvironmentValidator.java                   # Validates test environment
+├── dao/
+│   └── AuthorizedKeyDAOTest.java                     # Tests for key management
+└── recovery/
+    ├── ChainRecoveryManagerTest.java               # Tests for recovery scenarios
+    ├── ImprovedRollbackStrategyTest.java              # Enhanced rollback strategy tests
+    └── RecoveryConfigTest.java                        # Recovery configuration tests
 
 Configuration & Scripts:
 ├── src/main/resources/META-INF/persistence.xml  # JPA configuration
@@ -390,6 +411,118 @@ Configuration & Scripts:
 │   └── check-db-cleanup.sh                     # Script compliance checker
 └── pom.xml                                      # Maven configuration
 ```
+
+## 🔐 Security Module
+
+The security module provides essential cryptographic operations and secure key management for the blockchain implementation.
+
+### Key Components
+
+1. **ECKeyDerivation**
+   - Generates secure EC key pairs using Bouncy Castle provider
+   - Thread-safe implementation with proper provider registration
+   - Supports standard EC curves (secp256k1, prime256v1)
+   - Example usage:
+     ```java
+     KeyPair keyPair = ECKeyDerivation.generateKeyPair();
+     ```
+
+2. **KeyFileLoader**
+   - Loads cryptographic keys from various file formats (PEM, DER, raw Base64)
+   - Supports both private and public keys
+   - Handles different key encodings and formats
+   - Example usage:
+     ```java
+     PrivateKey privateKey = KeyFileLoader.loadPrivateKey("private.pem");
+     PublicKey publicKey = KeyFileLoader.loadPublicKey("public.pem");
+     ```
+
+3. **PasswordUtil**
+   - Secure password input handling
+   - Works in both console and IDE environments
+   - Password strength validation
+   - Example usage:
+     ```java
+     String password = PasswordUtil.readPassword("Enter your password: ");
+     ```
+
+4. **SecureKeyStorage**
+   - Encrypted storage for private keys
+   - Uses AES-256 encryption with PBKDF2 key derivation
+   - Secure file handling with proper permissions
+   - Example usage:
+     ```java
+     SecureKeyStorage.storeKey("mykey", privateKey, password);
+     PrivateKey loadedKey = SecureKeyStorage.loadKey("mykey", password);
+     ```
+
+### Security Best Practices
+
+- All cryptographic operations use strong algorithms and key lengths
+- Sensitive data is zeroed out after use
+- Thread-safe implementations where needed
+- Secure defaults for all cryptographic parameters
+
+## 🔄 Recovery Module
+
+The recovery module provides robust mechanisms for handling blockchain corruption and recovery scenarios, particularly after key deletions or other disruptive operations.
+
+### Key Components
+
+1. **ChainRecoveryManager**
+   - Handles blockchain corruption scenarios after key deletion
+   - Implements multiple recovery strategies:
+     - Reauthorization of blocks with new keys
+     - Rollback to last valid state
+     - Partial export of valid chain segments
+   - Thread-safe implementation with proper synchronization
+   - Example usage:
+     ```java
+     ChainRecoveryManager recoveryManager = new ChainRecoveryManager(blockchain);
+     RecoveryResult result = recoveryManager.recoverChain("compromised_key_id");
+     if (result.isSuccessful()) {
+         System.out.println("Recovery completed: " + result.getRecoverySummary());
+     }
+     ```
+
+2. **RecoveryConfig**
+   - Configurable parameters for recovery operations
+   - Strategy enablement flags (reauthorization, rollback, etc.)
+   - Logging and audit configuration
+   - Export and backup settings
+   - Example usage:
+     ```java
+     RecoveryConfig config = new RecoveryConfig()
+         .setRollbackEnabled(true)
+         .setAutoRecoveryEnabled(true)
+         .setMaxRecoveryAttempts(3)
+         .setBackupDirectory("recovery_backups");
+     ```
+
+### Recovery Strategies
+
+1. **Reauthorization**
+   - Re-signs blocks with new authorized keys
+   - Preserves blockchain history when possible
+   - Configurable owner name suffix for recovered blocks
+
+2. **Rollback**
+   - Reverts to last known valid state
+   - Creates backup of rolled-back blocks
+   - Configurable rollback depth
+
+3. **Partial Export**
+   - Exports valid chain segments
+   - Creates importable backups
+   - Preserves as much data as possible
+
+### Best Practices
+
+- Always enable audit logging for recovery operations
+- Set appropriate recovery timeouts
+- Regularly test recovery procedures
+- Maintain secure backups of authorized keys
+- Monitor for recovery events in production
 
 ## 🛠️ Database Utilities and Script Management
 
@@ -536,9 +669,12 @@ blockchain.addAuthorizedKey(alicePublicKey, "Alice");
 blockchain.addBlock("Transaction: Payment to Bob", 
                    alice.getPrivate(), alice.getPublic());
 
-// 4. Validate chain
-boolean isValid = blockchain.validateChain();
-System.out.println("Blockchain is valid: " + isValid);
+// 4. Validate chain with detailed information
+ChainValidationResult result = blockchain.validateChainDetailed();
+boolean isStructurallyIntact = result.isStructurallyIntact();
+boolean isFullyCompliant = result.isFullyCompliant();
+System.out.println("Blockchain is structurally intact: " + isStructurallyIntact);
+System.out.println("Blockchain is fully compliant: " + isFullyCompliant);
 
 // 5. Search blocks
 List<Block> results = blockchain.searchBlocksByContent("Payment");
@@ -575,8 +711,21 @@ public class BlockchainExample {
             List<Block> payments = blockchain.searchBlocksByContent("payment");
             System.out.println("Payment blocks found: " + payments.size());
             
-            boolean isValid = blockchain.validateChain();
-            System.out.println("Blockchain is valid: " + isValid);
+            // Validate blockchain with detailed results
+            ChainValidationResult result = blockchain.validateChainDetailed();
+            boolean isStructurallyIntact = result.isStructurallyIntact();
+            boolean isFullyCompliant = result.isFullyCompliant();
+            
+            System.out.println("Blockchain validation results:");
+            System.out.println("- Structural integrity: " + (isStructurallyIntact ? "✅ Valid" : "❌ Compromised"));
+            System.out.println("- Full compliance: " + (isFullyCompliant ? "✅ Compliant" : "❌ Non-compliant"));
+            
+            if (!isStructurallyIntact) {
+                System.out.println("Invalid blocks detected: " + result.getInvalidBlocks());
+            }
+            if (!isFullyCompliant) {
+                System.out.println("Revoked blocks detected: " + result.getRevokedBlocks());
+            }
             
             // 5. Backup
             blockchain.exportChain("blockchain_backup.json");
@@ -717,7 +866,7 @@ For issues or questions:
 cd /path/to/privateBlockchain
 mvn clean compile test-compile
 ./run_all_tests.sh
-mvn exec:java -Dexec.mainClass="BlockchainDemo"
+mvn exec:java -Dexec.mainClass="demo.BlockchainDemo"
 ```
 
 ### Quick Troubleshooting
@@ -742,4 +891,35 @@ mvn clean compile test-compile
 3. Explore the comprehensive test suite to understand all features
 4. Build your own blockchain application using the patterns provided!
 
-**💡 Remember**: This blockchain includes **more than 40 comprehensive tests** covering everything from basic operations to critical consistency scenarios, ensuring enterprise-grade reliability for your applications.
+## 🚀 Future Improvements
+
+### Planned Features
+
+1. **Enhanced Security**
+   - Support for hardware security modules (HSM)
+   - Multi-signature transactions
+   - Advanced key rotation policies
+
+2. **Performance Optimizations**
+   - Sharding support for large blockchains
+   - Parallel block validation
+   - Optimized storage for high-throughput scenarios
+
+3. **Extended Functionality**
+   - Smart contract support
+   - Cross-chain interoperability
+   - Privacy-preserving transactions
+
+### Known Issues
+
+- [ ] Performance degradation with very large blockchains (>1M blocks)
+- [ ] Limited support for concurrent modifications in high-load scenarios
+- [ ] Database size growth management for long-running nodes
+
+### Contribution Guidelines
+
+We welcome contributions! Please see our [Contribution Guidelines](CONTRIBUTING.md) for details on how to contribute to this project.
+
+---
+
+**💡 Remember**: This blockchain includes **more than 150 comprehensive tests** covering everything from basic operations to critical consistency scenarios, ensuring enterprise-grade reliability for your applications.

@@ -38,7 +38,7 @@ print_info "🎬 Running Simple Demo (basic migration showcase)..."
 print_step "====================================================="
 print_info ""
 clear_database_between_tests
-mvn compile exec:java -Dexec.mainClass="SimpleDemo" -q
+mvn compile exec:java -Dexec.mainClass="demo.SimpleDemo" -q
 SIMPLE_RESULT=$?
 print_info ""
 
@@ -46,7 +46,7 @@ print_info "🎬 Running Blockchain Demo (comprehensive showcase)..."
 print_step "======================================================"
 print_info ""
 clear_database_between_tests
-mvn compile exec:java -Dexec.mainClass="BlockchainDemo" -q
+mvn compile exec:java -Dexec.mainClass="demo.BlockchainDemo" -q
 BLOCKCHAIN_RESULT=$?
 print_info ""
 
@@ -54,7 +54,7 @@ print_info "🎬 Running Core Functions Demo (enhanced core features)..."
 print_step "==========================================================="
 print_info ""
 clear_database_between_tests
-mvn compile exec:java -Dexec.mainClass="CoreFunctionsDemo" -q
+mvn compile exec:java -Dexec.mainClass="demo.CoreFunctionsDemo" -q
 CORE_RESULT=$?
 print_info ""
 
@@ -62,7 +62,7 @@ print_info "🎬 Running Dangerous Delete Demo (granular impact analysis)..."
 print_step "=============================================================="
 print_info ""
 clear_database_between_tests
-mvn compile exec:java -Dexec.mainClass="DangerousDeleteDemo" -q
+mvn compile exec:java -Dexec.mainClass="demo.DangerousDeleteDemo" -q
 DANGEROUS_RESULT=$?
 print_info ""
 
@@ -70,7 +70,7 @@ print_info "🎬 Running Advanced Functions Demo (enhanced operations)..."
 print_step "==========================================================="
 print_info ""
 clear_database_between_tests
-mvn compile exec:java -Dexec.mainClass="AdditionalAdvancedFunctionsDemo" -q
+mvn compile exec:java -Dexec.mainClass="demo.AdditionalAdvancedFunctionsDemo" -q
 ADVANCED_RESULT=$?
 print_info ""
 
@@ -78,7 +78,7 @@ print_info "🎬 Running Recovery Demo (detailed recovery tracking)..."
 print_step "========================================================"
 print_info ""
 clear_database_between_tests
-mvn compile exec:java -Dexec.mainClass="ChainRecoveryDemo" -q
+mvn compile exec:java -Dexec.mainClass="demo.ChainRecoveryDemo" -q
 RECOVERY_RESULT=$?
 print_info ""
 
@@ -86,7 +86,7 @@ print_info "🎬 Running Enhanced Recovery Example (recovery patterns)..."
 print_step "==========================================================="
 print_info ""
 clear_database_between_tests
-mvn compile exec:java -Dexec.mainClass="EnhancedRecoveryExample" -q
+mvn compile exec:java -Dexec.mainClass="demo.EnhancedRecoveryExample" -q
 ENHANCED_RECOVERY_RESULT=$?
 print_info ""
 
@@ -94,7 +94,7 @@ print_info "🎬 Running Race Condition Test (concurrency validation)..."
 print_step "=========================================================="
 print_info ""
 clear_database_between_tests
-mvn compile exec:java -Dexec.mainClass="RaceConditionTest" -q
+mvn compile exec:java -Dexec.mainClass="demo.RaceConditionTest" -q
 RACE_RESULT=$?
 print_info ""
 
@@ -168,7 +168,7 @@ print_info ""
 
 print_info "📚 Reference Documentation:"
 print_info "  📄 Migration guide: # 🔄 Guia_ de_Migracio_API_Antiga_AP_Nova.md"
-print_info "  🎯 Enhanced demo: src/demo/EnhancedDangerousDeleteDemo.java"
+print_info "  🎯 Enhanced demo: src/main/java/demo/EnhancedDangerousDeleteDemo.java"
 print_info ""
 
 # Final cleanup

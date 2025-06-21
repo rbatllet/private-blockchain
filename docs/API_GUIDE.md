@@ -8,9 +8,89 @@ Comprehensive guide to the Private Blockchain API, core functions, and programmi
 
 - [Core Functions Usage](#-core-functions-usage)
 - [API Reference](#-api-reference)
+- [Chain Validation Result](#-chain-validation-result)
 - [Configuration](#-configuration)
 - [Configuration Parameters](#-configuration-parameters)
 - [Best Practices](#-best-practices)
+
+## 🔗 Chain Validation Result
+
+The `ChainValidationResult` class provides detailed information about the blockchain validation status. It's returned by the `validateChainDetailed()` method and contains information about the validation status, including any invalid or revoked blocks.
+
+### Key Methods
+
+```java
+// Check if the blockchain is structurally intact (all hashes and signatures are valid)
+boolean isStructurallyIntact()
+
+// Check if the blockchain is fully compliant (all blocks are authorized and not revoked)
+boolean isFullyCompliant()
+
+// Get the list of invalid blocks (empty if structurally intact)
+List<Block> getInvalidBlocks()
+
+// Get the list of revoked blocks (empty if fully compliant)
+List<Block> getRevokedBlocks()
+
+// Get a summary of the validation results
+String getValidationSummary()
+```
+
+### Example Usage
+
+```java
+ChainValidationResult result = blockchain.validateChainDetailed();
+
+if (!result.isStructurallyIntact()) {
+    System.err.println("❌ CRITICAL: Blockchain structure is compromised!");
+    System.err.println("Invalid blocks: " + result.getInvalidBlocks().size());
+    
+    // Optionally handle invalid blocks
+    for (Block invalidBlock : result.getInvalidBlocks()) {
+        System.err.println(" - Block " + invalidBlock.getBlockNumber() + " is invalid");
+    }
+} else if (!result.isFullyCompliant()) {
+    System.out.println("⚠️  WARNING: Some blocks have authorization issues");
+    System.out.println("Revoked blocks: " + result.getRevokedBlocks().size());
+    
+    // Optionally handle revoked blocks
+    for (Block revokedBlock : result.getRevokedBlocks()) {
+        System.out.println(" - Block " + revokedBlock.getBlockNumber() + " was signed by a revoked key");
+    }
+} else {
+    System.out.println("✅ Blockchain validation passed");
+}
+
+// Print a summary of the validation results
+System.out.println(result.getValidationSummary());
+```
+
+### Validation Scenarios
+
+1. **Valid Chain**
+   - `isStructurallyIntact()`: `true`
+   - `isFullyCompliant()`: `true`
+   - `getInvalidBlocks()`: Empty list
+   - `getRevokedBlocks()`: Empty list
+
+2. **Structurally Valid but with Revoked Keys**
+   - `isStructurallyIntact()`: `true`
+   - `isFullyCompliant()`: `false`
+   - `getInvalidBlocks()`: Empty list
+   - `getRevokedBlocks()`: List of blocks signed by revoked keys
+
+3. **Structurally Invalid**
+   - `isStructurallyIntact()`: `false`
+   - `isFullyCompliant()`: `false` (always false if not structurally intact)
+   - `getInvalidBlocks()`: List of blocks with invalid hashes or signatures
+   - `getRevokedBlocks()`: May include additional revoked blocks
+
+### Best Practices
+
+- Always check `isStructurallyIntact()` before `isFullyCompliant()`
+- Use `getValidationSummary()` for user-friendly status messages
+- Log detailed validation results for debugging
+- Consider automatic recovery procedures for common issues
 
 ## 🎯 Core Functions Usage
 
@@ -136,9 +216,22 @@ boolean success = blockchain.addBlock(
 
 #### Validate Chain
 ```java
-// Check if blockchain is valid
-boolean isValid = blockchain.validateChain();
-System.out.println("Blockchain is valid: " + isValid);
+// Check if blockchain is valid with detailed information
+ChainValidationResult result = blockchain.validateChainDetailed();
+System.out.println("Blockchain is structurally intact: " + result.isStructurallyIntact());
+System.out.println("Blockchain is fully compliant: " + result.isFullyCompliant());
+
+// Get detailed validation information
+if (!result.isFullyCompliant()) {
+    System.out.println("Revoked blocks: " + result.getRevokedBlocks());
+}
+if (!result.isStructurallyIntact()) {
+    System.out.println("Invalid blocks: " + result.getInvalidBlocks());
+}
+
+// Get complete validation report
+String report = result.getDetailedReport();
+System.out.println("Validation report: " + report);
 ```
 
 ### Advanced Operations
@@ -212,8 +305,9 @@ public class BlockchainExample {
             List<Block> payments = blockchain.searchBlocksByContent("payment");
             System.out.println("Payment blocks found: " + payments.size());
             
-            boolean isValid = blockchain.validateChain();
-            System.out.println("Blockchain is valid: " + isValid);
+            ChainValidationResult result = blockchain.validateChainDetailed();
+            System.out.println("Blockchain is structurally intact: " + result.isStructurallyIntact());
+            System.out.println("Blockchain is fully compliant: " + result.isFullyCompliant());
             
             // 5. Backup
             blockchain.exportChain("blockchain_backup.json");
@@ -412,8 +506,10 @@ List<AuthorizedKey> allKeys = blockchain.getAllAuthorizedKeys();
 // Add block
 boolean success = blockchain.addBlock(data, privateKey, publicKey);
 
-// Validate
-boolean isValid = blockchain.validateChain();
+// Validate with detailed results
+ChainValidationResult result = blockchain.validateChainDetailed();
+boolean isStructurallyIntact = result.isStructurallyIntact();
+boolean isFullyCompliant = result.isFullyCompliant();
 
 // Advanced operations
 boolean exported = blockchain.exportChain("backup.json");
@@ -465,10 +561,56 @@ public Block addBlockAndReturn(String data, PrivateKey privateKey, PublicKey pub
   - ✅ When you need to verify block creation success AND get block details
 
 ```java
-public boolean validateChain()
+public ChainValidationResult validateChainDetailed()
 ```
-- **Returns:** `true` if the entire blockchain is valid, `false` if any issues are found
-- **Description:** Validates all blocks, hashes, signatures, and chain integrity
+- **Returns:** A `ChainValidationResult` object containing detailed validation information
+- **Description:** Performs a comprehensive validation of the blockchain, including:
+  - Structural integrity (hashes, links between blocks)
+  - Cryptographic signatures
+  - Authorization compliance
+  - Key revocation status
+  - Temporal consistency
+- **Performance:** O(n) where n is the number of blocks in the chain
+- **Thread Safety:** Thread-safe, can be called concurrently
+- **Example:**
+  ```java
+  // Basic validation
+  ChainValidationResult result = blockchain.validateChainDetailed();
+  if (!result.isStructurallyIntact()) {
+      System.err.println("Blockchain is corrupted!");
+  } else if (!result.isFullyCompliant()) {
+      System.out.println("Warning: Some blocks have authorization issues");
+  } else {
+      System.out.println("Blockchain is valid and fully compliant");
+  }
+  
+  // Advanced validation with detailed reporting
+  result = blockchain.validateChainDetailed();
+  if (!result.getInvalidBlocks().isEmpty()) {
+      System.err.println("Invalid blocks found:");
+      for (Block block : result.getInvalidBlocks()) {
+          System.err.println(" - Block " + block.getBlockNumber() + " (" + block.getHash() + ")");
+      }
+  }
+  
+  // Get a summary of validation results
+  System.out.println("Validation summary: " + result.getValidationSummary());
+  ```
+  - Returns detailed information about any issues found, including lists of invalid and revoked blocks
+- **Example:**
+  ```java
+  ChainValidationResult result = blockchain.validateChainDetailed();
+  if (result.isStructurallyIntact()) {
+      System.out.println("Blockchain structure is valid");
+      if (result.isFullyCompliant()) {
+          System.out.println("All blocks are properly authorized");
+      } else {
+          System.out.println("Warning: " + result.getRevokedBlocks().size() + " blocks have authorization issues");
+      }
+  } else {
+      System.err.println("Error: " + result.getInvalidBlocks().size() + " blocks have structural issues");
+  }
+  ```
 
 ```java
 public long getBlockCount()
@@ -823,7 +965,8 @@ String signatureAlgorithm = "SHA3withECDSA";
 String curveName = "secp256r1";                
 
 // Validate blockchain integrity
-boolean securityValid = blockchain.validateChain();
+ChainValidationResult securityResult = blockchain.validateChainDetailed();
+boolean securityValid = securityResult.isFullyCompliant();
 ```
 
 ## 🔧 Configuration Parameters
@@ -966,7 +1109,7 @@ CompletableFuture<Block> future2 = CompletableFuture.supplyAsync(() ->
 // Multiple threads can read simultaneously (no blocking)
 CompletableFuture<Long> blockCount = CompletableFuture.supplyAsync(blockchain::getBlockCount);
 CompletableFuture<List<Block>> allBlocks = CompletableFuture.supplyAsync(blockchain::getAllBlocks);
-CompletableFuture<Boolean> isValid = CompletableFuture.supplyAsync(blockchain::validateChain);
+CompletableFuture<ChainValidationResult> validationResult = CompletableFuture.supplyAsync(blockchain::validateChainDetailed);
 
 // All these can execute in parallel
 CompletableFuture.allOf(blockCount, allBlocks, isValid)
@@ -1155,7 +1298,8 @@ public class BlockchainService {
             
             if (success) {
                 // Post-validation
-                if (!blockchain.validateChain()) {
+                ChainValidationResult validationResult = blockchain.validateChainDetailed();
+                if (!validationResult.isStructurallyIntact()) {
                     // Rollback if chain becomes invalid
                     blockchain.rollbackBlocks(1);
                     return BlockOperationResult.failure("Chain validation failed after block addition");
