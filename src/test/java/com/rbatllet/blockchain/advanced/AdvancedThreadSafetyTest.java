@@ -364,13 +364,13 @@ public class AdvancedThreadSafetyTest {
             System.err.println("Write operations: " + writeOperations.get());
         }
         
-        assertTrue(completed, "Validation flood test should complete within timeout. Duration: " + duration + "ms");
-        
         System.out.println("🌊 Validation Flood Results:");
         System.out.println("   - Validations performed: " + validationCount.get());
         System.out.println("   - Read operations: " + readOperations.get());
         System.out.println("   - Write operations: " + writeOperations.get());
         System.out.println("   - Final block count: " + blockchain.getBlockCount());
+        
+        assertTrue(completed, "Validation flood test should complete within timeout. Duration: " + duration + "ms");
         
         // Final validation should still pass
         ChainValidationResult floodResult = blockchain.validateChainDetailed();
