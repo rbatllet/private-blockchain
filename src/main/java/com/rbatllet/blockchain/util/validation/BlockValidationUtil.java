@@ -3,8 +3,6 @@ package com.rbatllet.blockchain.util.validation;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.core.Blockchain;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-
 /**
  * Utility class for blockchain validation operations
  * Migrated from CLI project to core for better reusability
