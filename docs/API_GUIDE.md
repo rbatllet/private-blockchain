@@ -15,7 +15,9 @@ Comprehensive guide to the Private Blockchain API, core functions, and programmi
 
 ## 🔗 Chain Validation Result
 
-The `ChainValidationResult` class provides detailed information about the blockchain validation status. It's returned by the `validateChainDetailed()` method and contains information about the validation status, including any invalid or revoked blocks.
+The `ChainValidationResult` class provides detailed information about the blockchain validation status. It's returned by the `validateChainDetailed()` method (which replaces the deprecated `validateChain()`) and contains comprehensive validation status, including any invalid or revoked blocks.
+
+> **DEPRECATION NOTICE**: The old `validateChain()` method is deprecated and will be removed in a future version. Always use `validateChainDetailed()` for complete validation information.
 
 ### Key Methods
 
@@ -39,30 +41,64 @@ String getValidationSummary()
 ### Example Usage
 
 ```java
+// Get detailed validation results
 ChainValidationResult result = blockchain.validateChainDetailed();
 
+// Check structural integrity first (hashes and signatures)
 if (!result.isStructurallyIntact()) {
     System.err.println("❌ CRITICAL: Blockchain structure is compromised!");
     System.err.println("Invalid blocks: " + result.getInvalidBlocks().size());
     
-    // Optionally handle invalid blocks
+    // Handle invalid blocks (corrupted or tampered)
     for (Block invalidBlock : result.getInvalidBlocks()) {
-        System.err.println(" - Block " + invalidBlock.getBlockNumber() + " is invalid");
+        System.err.println(String.format(
+            " - Block #%d (Hash: %s...) has invalid structure",
+            invalidBlock.getBlockNumber(),
+            invalidBlock.getHash().substring(0, 16)
+        ));
     }
+    
+    // In production, you might want to trigger an alert or recovery process here
+    triggerRecoveryProcess(result);
+    
 } else if (!result.isFullyCompliant()) {
+    // Chain is structurally sound but has authorization issues
     System.out.println("⚠️  WARNING: Some blocks have authorization issues");
     System.out.println("Revoked blocks: " + result.getRevokedBlocks().size());
     
-    // Optionally handle revoked blocks
+    // Handle revoked blocks (signed by revoked keys)
     for (Block revokedBlock : result.getRevokedBlocks()) {
-        System.out.println(" - Block " + revokedBlock.getBlockNumber() + " was signed by a revoked key");
+        String signer = revokedBlock.getSignerPublicKey() != null ? 
+            revokedBlock.getSignerPublicKey().substring(0, 16) + "..." : "unknown";
+            
+        System.out.println(String.format(
+            " - Block #%d (Signed by: %s) was signed by a revoked key",
+            revokedBlock.getBlockNumber(),
+            signer
+        ));
     }
+    
+    // You might want to re-sign these blocks or mark them for review
+    handleRevokedBlocks(result.getRevokedBlocks());
+    
 } else {
+    // Chain is fully valid
     System.out.println("✅ Blockchain validation passed");
+    System.out.println("Total blocks: " + blockchain.getBlockCount());
 }
 
-// Print a summary of the validation results
+// Print a detailed validation report
+System.out.println("\n=== VALIDATION REPORT ===");
 System.out.println(result.getValidationSummary());
+System.out.println("Validation timestamp: " + new Date());
+
+// For logging or monitoring systems
+metrics.recordValidationResult(
+    result.isStructurallyIntact(),
+    result.isFullyCompliant(),
+    result.getInvalidBlocks().size(),
+    result.getRevokedBlocks().size()
+);
 ```
 
 ### Validation Scenarios

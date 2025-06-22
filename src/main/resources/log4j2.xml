@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration status="WARN">
     <Properties>
-        <!-- Pattern per aplicació principal -->
+        <!-- Pattern for main application -->
         <Property name="PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n</Property>
     </Properties>
 
     <Appenders>
-        <!-- Console per desenvolupament -->
+        <!-- Console for development -->
         <Console name="Console" target="SYSTEM_OUT">
             <PatternLayout pattern="${PATTERN}"/>
         </Console>
         
-        <!-- File per logs aplicació -->
+        <!-- File for application logs -->
         <RollingFile name="AppLogFile" fileName="logs/blockchain.log" 
                      filePattern="logs/blockchain-%d{yyyy-MM-dd}-%i.log.gz">
             <PatternLayout pattern="${PATTERN}"/>
@@ -24,31 +24,38 @@
     </Appenders>
 
     <Loggers>
-        <!-- Els teus logs d'aplicació -->
+        <!-- Application logs -->
         <Logger name="com.rbatllet.blockchain" level="INFO" additivity="false">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="AppLogFile"/>
         </Logger>
 
-        <!-- HIBERNATE LOGGERS (menys verbosos per producció) -->
+        <!-- Hibernate loggers (reduced for production) -->
         <Logger name="org.hibernate" level="WARN" additivity="false">
-            <AppenderRef ref="Console"/>
             <AppenderRef ref="AppLogFile"/>
         </Logger>
         
-        <!-- SQL statements només a fitxer -->
-        <Logger name="org.hibernate.SQL" level="INFO" additivity="false">
+        <!-- SQL statements only when necessary -->
+        <Logger name="org.hibernate.SQL" level="WARN" additivity="false">
             <AppenderRef ref="AppLogFile"/>
         </Logger>
         
-        <!-- HikariCP -->
-        <Logger name="com.zaxxer.hikari" level="WARN" additivity="false">
-            <AppenderRef ref="Console"/>
+        <!-- HikariCP silenced -->
+        <Logger name="com.zaxxer.hikari" level="ERROR" additivity="false">
+            <AppenderRef ref="AppLogFile"/>
+        </Logger>
+        
+        <!-- Other frameworks silenced -->
+        <Logger name="org.jboss" level="ERROR" additivity="false">
+            <AppenderRef ref="AppLogFile"/>
+        </Logger>
+        
+        <Logger name="org.springframework" level="WARN" additivity="false">
             <AppenderRef ref="AppLogFile"/>
         </Logger>
 
-        <!-- Root logger -->
-        <Root level="INFO">
+        <!-- Root logger with less noise -->
+        <Root level="WARN">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="AppLogFile"/>
         </Root>

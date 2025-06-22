@@ -36,10 +36,10 @@ This is a **private blockchain** for controlled environments where only authoriz
 
 ### Core Blockchain Features
 - **Genesis Block**: Created automatically when blockchain starts
-- **Secure Blockchain**: SHA3-256 hashing with ECDSA digital signatures
-- **Access Control**: Authorized key management for secure operations
-- **Chain Validation**: Complete blockchain integrity checking
-- **Immutable Records**: Blocks cannot be changed once added
+- **Modern Cryptography**: SHA3-256 hashing with ECDSA digital signatures (secp256r1 curve)
+- **Access Control**: Hierarchical key management (Root/Intermediate/Operational)
+- **Chain Validation**: Detailed blockchain integrity checking with `validateChainDetailed()`
+- **Immutable Records**: Cryptographically secured blocks with digital signatures
 
 ### Advanced Functions
 - **Export/Import**: Backup and restore complete blockchain with temporal consistency
@@ -49,22 +49,26 @@ This is a **private blockchain** for controlled environments where only authoriz
 
 ### 🔐 Enhanced Security Features
 
-### ⚡ Thread-Safety (ENHANCED!)
-- **Complete Concurrency Support**: Safe for multi-threaded environments
-- **Global Synchronization**: Prevents race conditions across multiple instances
-- **Pessimistic Locking**: Database-level locks for critical operations
-- **Atomic Transactions**: All operations are ACID-compliant
-- **Deadlock Prevention**: Optimized lock hierarchy
-- **High Performance**: Read-write locks for optimal concurrent reads
-- **Concurrent API**: Both `addBlock()` and `addBlockAndReturn()` methods available
-- **Thread-Safe Examples**: All documentation examples updated for concurrent usage
-- **Safe Key Deletion**: Multi-layered protection against dangerous key removal
-- **Impact Analysis**: Pre-deletion analysis to assess blockchain integrity risks
-- **Emergency Key Deletion**: GDPR-compliant forced deletion with comprehensive audit trails
-- **Blockchain Integrity Protection**: Prevents accidental corruption of historical records
-- **Secure Key Storage**: AES encrypted private key storage
-- **Password Validation**: Strong password requirements and handling
-- **Key File Loading**: Secure loading of keys from files
+### ⚡ Modern Cryptography
+- **ECDSA Signatures**: Using secp256r1 (NIST P-256) curve
+- **SHA3-256 Hashing**: Modern cryptographic hash function
+- **Key Hierarchy**: Three-tier key management (Root/Intermediate/Operational)
+- **Automatic Key Rotation**: Built-in key rotation policies
+- **Key Revocation**: Secure key revocation with audit trails
+
+### 🛡️ Security Controls
+- **Thread-Safe Implementation**: Safe for concurrent access
+- **Database Encryption**: Sensitive data at rest encryption
+- **Secure Key Storage**: AES-256 encrypted key storage
+- **Audit Logging**: Comprehensive security event logging
+- **Input Validation**: Protection against injection attacks
+
+### 🔄 Key Management
+- **Root Keys**: 5-year validity, signs intermediate keys
+- **Intermediate Keys**: 1-year validity, signs operational keys
+- **Operational Keys**: 90-day validity, used for daily operations
+- **Automatic Expiration**: Keys automatically expire based on type
+- **Revocation Support**: Immediate key revocation capability
 
 ### 🧰️ Utility Classes
 - **ExitUtil**: Test-compatible system exit handling
@@ -84,8 +88,10 @@ This is a **private blockchain** for controlled environments where only authoriz
 - **Maven** - Build and dependency management
 - **SQLite** - Lightweight database for data storage
 - **JPA** - Java Persistence API with Hibernate as implementation provider
-- **SHA3-256** - Modern cryptographic hash function for integrity
-- **ECDSA** - Elliptic Curve Digital Signature Algorithm for authentication
+- **Cryptography**:
+  - **Hashing**: SHA3-256 (modern, secure hash function)
+  - **Digital Signatures**: ECDSA with secp256r1 (NIST P-256) curve
+  - **Key Management**: Hierarchical key structure with automatic rotation
 - **JUnit 5** - Testing framework for comprehensive validation
 
 ## 📦 Prerequisites
@@ -195,18 +201,31 @@ boolean success = blockchain.addBlock(
 ```
 
 ### Step 4: Validate Chain
+
 ```java
-// Get detailed validation information
+// Get detailed validation information (recommended)
 ChainValidationResult result = blockchain.validateChainDetailed();
 
-// Check structural integrity
-boolean isStructurallyIntact = result.isStructurallyIntact();
-
-// Check full compliance (includes authorization)
-boolean isFullyCompliant = result.isFullyCompliant();
+// Check chain status
+if (result.isStructurallyIntact()) {
+    if (result.isFullyCompliant()) {
+        System.out.println("✅ Chain is fully valid");
+    } else {
+        System.out.println("⚠️ Chain has authorization issues");
+        System.out.println("Revoked blocks: " + result.getRevokedBlocks());
+    }
+} else {
+    System.out.println("❌ Chain has structural problems");
+    System.out.println("Invalid blocks: " + result.getInvalidBlocks());
+}
 
 // Get detailed validation report
 String report = result.getDetailedReport();
+System.out.println(report);
+
+// Legacy validation (deprecated)
+// boolean isValid = blockchain.validateChain(); // Avoid using this - will be removed in future versions
+```
 ```
 
 ## 🧪 Basic Testing
@@ -923,3 +942,38 @@ We welcome contributions! Please see our [Contribution Guidelines](CONTRIBUTING.
 ---
 
 **💡 Remember**: This blockchain includes **more than 150 comprehensive tests** covering everything from basic operations to critical consistency scenarios, ensuring enterprise-grade reliability for your applications.
+
+### 🔄 Migration Guide
+
+### From RSA/SHA-2 to ECDSA/SHA-3
+
+#### Key Changes
+- **Digital Signatures**: Migrated from RSA to ECDSA (SHA3-256withECDSA)
+- **Hashing**: Upgraded from SHA-256 to SHA3-256
+- **Key Management**: New hierarchical key management system
+
+#### Required Code Changes
+
+1. **Key Generation**
+   ```java
+   // Old (RSA)
+   KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+   keyGen.initialize(2048);
+   
+   // New (ECDSA)
+   KeyPair keyPair = CryptoUtil.generateKeyPair();
+   ```
+
+2. **Signature Verification**
+   ```java
+   // Old (deprecated)
+   boolean isValid = blockchain.validateChain();
+   
+   // New (recommended)
+   ChainValidationResult result = blockchain.validateChainDetailed();
+   if (result.isStructurallyIntact() && result.isFullyCompliant()) {
+       // Chain is valid
+   }
+   ```
+
+For complete migration details, see the [Crypto Migration Guide](Crypto_Migration_Guide.md).

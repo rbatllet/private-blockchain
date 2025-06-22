@@ -1,6 +1,6 @@
 # 🔐 Security Classes Guide
 
-This guide provides detailed information about the security classes available in the main privateBlockchain project, which were migrated from the CLI project to improve reusability and maintain a clear separation of responsibilities.
+This guide provides detailed information about the security classes in the privateBlockchain project, which implement modern cryptographic standards including ECDSA with SHA3-256 and hierarchical key management.
 
 ## 📋 Table of Contents
 
@@ -51,15 +51,20 @@ All public methods are thread-safe with the following characteristics:
 ### Example Usage
 
 ```java
-// Generate a key pair
+// Generate a key pair using the hierarchical key system
 KeyPair keyPair = CryptoUtil.generateKeyPair();
 
 // Derive public key from private key
 ECKeyDerivation keyDerivation = new ECKeyDerivation();
 PublicKey derivedPublic = keyDerivation.derivePublicKey(keyPair.getPrivate());
 
-// Verify the key pair
+// Verify the key pair using modern ECDSA
 boolean isValid = keyDerivation.verifyKeyPair(keyPair.getPrivate(), derivedPublic);
+
+// Example of hierarchical key usage
+KeyInfo rootKey = CryptoUtil.createRootKey();
+KeyInfo intermediateKey = CryptoUtil.createIntermediateKey(rootKey.getKeyId());
+KeyInfo operationalKey = CryptoUtil.createOperationalKey(intermediateKey.getKeyId());
 ```
 
 ### Performance Considerations
@@ -77,14 +82,16 @@ boolean isValid = keyDerivation.verifyKeyPair(keyPair.getPrivate(), derivedPubli
 
 ## 🚀 Overview
 
-The security classes provide essential functionalities for:
+The security classes provide essential cryptographic functionalities:
 
-- Secure storage of private keys with AES encryption
-- Password validation with security requirements
-- Loading keys from files
-- Complete key lifecycle management
+- **Key Management**: Hierarchical key management (Root/Intermediate/Operational)
+- **Encryption**: AES-256 encryption for private key storage
+- **Hashing**: SHA3-256 for message digests
+- **Digital Signatures**: ECDSA with secp256r1 curve
+- **Key Derivation**: Secure key derivation with PBKDF2
+- **Password Validation**: Strong password policies and secure input handling
 
-These classes are now available in the `com.rbatllet.blockchain.security` package of the main project.
+These classes are available in the `com.rbatllet.blockchain.security` package.
 
 ## 🔒 SecureKeyStorage
 
@@ -163,13 +170,16 @@ public static boolean isValidPassword(String password)
 public static String getPasswordValidationError(String password)
 ```
 
-### Requisitos de Contraseña
+### Password Requirements
 
-- Minimum 8 characters
-- At least one letter
-- At least one number
-- Maximum 128 characters
-- No leading or trailing spaces
+- **Length**: 8-128 characters
+- **Complexity**: Must include at least:
+  - One uppercase letter
+  - One lowercase letter
+  - One digit
+  - One special character
+- **Formatting**: No leading or trailing spaces
+- **Security**: Uses PBKDF2 with HMAC-SHA256 for key derivation
 
 ### Usage Example
 
