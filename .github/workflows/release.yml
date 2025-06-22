@@ -58,6 +58,9 @@ jobs:
           - Refactor FormatUtil tests to use behavior verification instead of hardcoded expectations.
           - Update documentation to use zsh instead of bash and improve FormatUtil documentation.
           - Comprehensive Project Restructuring and Documentation Update: JPA Migration, Thread Safety Implementation and Demo Reorganization. 
+          - Complete migration from validateChain() to enhanced validation API.
+          - Migrate tests from validateChain() to validateChainDetailed() API.
+          - Implement thread-safe ECKeyDerivation with BouncyCastle integration.
 
           ## Download
           - **private-blockchain-${{ steps.get_version.outputs.VERSION }}.jar**: Standard JAR (requires dependencies)
