@@ -976,4 +976,4 @@ We welcome contributions! Please see our [Contribution Guidelines](CONTRIBUTING.
    }
    ```
 
-For complete migration details, see the [Crypto Migration Guide](Crypto_Migration_Guide.md).
+For complete migration details, see the [Crypto Migration Guide](docs/Crypto_Migration_Guide.md).
