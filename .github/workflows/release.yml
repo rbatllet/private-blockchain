@@ -48,6 +48,41 @@ jobs:
       run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
       shell: zsh {0}
     
+    - name: Get previous tag
+      id: previous_tag
+      run: |
+        PREVIOUS_TAG=$(git tag --sort=-version:refname | head -2 | tail -1)
+        if [ -z "$PREVIOUS_TAG" ]; then
+          # If no previous tag, use first commit
+          PREVIOUS_TAG=$(git rev-list --max-parents=0 HEAD)
+        fi
+        echo "PREVIOUS_TAG=$PREVIOUS_TAG" >> $GITHUB_OUTPUT
+      shell: zsh {0}
+    
+    - name: Generate changelog
+      id: changelog
+      run: |
+        CURRENT_TAG="${{ steps.get_version.outputs.VERSION }}"
+        PREVIOUS_TAG="${{ steps.previous_tag.outputs.PREVIOUS_TAG }}"
+        
+        echo "Generating changelog from $PREVIOUS_TAG to $CURRENT_TAG"
+        
+        # Generate changelog with proper formatting
+        CHANGELOG=$(git log --pretty=format:"- %s" $PREVIOUS_TAG..$CURRENT_TAG | head -20)
+        
+        # If no commits found, provide default message
+        if [ -z "$CHANGELOG" ]; then
+          CHANGELOG="- Initial release"
+        fi
+        
+        # Escape newlines for GitHub output
+        CHANGELOG="${CHANGELOG//'%'/'%25'}"
+        CHANGELOG="${CHANGELOG//$'\n'/'%0A'}"
+        CHANGELOG="${CHANGELOG//$'\r'/'%0D'}"
+        
+        echo "CHANGELOG=$CHANGELOG" >> $GITHUB_OUTPUT
+      shell: zsh {0}
+    
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
@@ -55,12 +90,8 @@ jobs:
         name: Release ${{ steps.get_version.outputs.VERSION }}
         body: |
           ## Changes in this Release
-          - Refactor FormatUtil tests to use behavior verification instead of hardcoded expectations.
-          - Update documentation to use zsh instead of bash and improve FormatUtil documentation.
-          - Comprehensive Project Restructuring and Documentation Update: JPA Migration, Thread Safety Implementation and Demo Reorganization. 
-          - Complete migration from validateChain() to enhanced validation API.
-          - Migrate tests from validateChain() to validateChainDetailed() API.
-          - Implement thread-safe ECKeyDerivation with BouncyCastle integration.
+          
+          ${{ steps.changelog.outputs.CHANGELOG }}
 
           ## Download
           - **private-blockchain-${{ steps.get_version.outputs.VERSION }}.jar**: Standard JAR (requires dependencies)
