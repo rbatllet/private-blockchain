@@ -552,6 +552,7 @@ mvn test -Dtest=DataIntegrityThreadSafetyTest
 - **`BlockchainTest.java`** - ✨ **ENHANCED**: Core blockchain functionality tests
 - **`OffChainStorageTest.java`** - ✨ **ENHANCED**: Off-chain storage comprehensive testing
 - **`DataConsistencyValidationTest.java`** - ✨ **ENHANCED**: Data consistency validation tests
+- **`BlockValidationUtilTest.java`** - ✨ **NEW**: Comprehensive BlockValidationUtil testing (26 tests)
 
 #### Advanced Thread Safety Tests
 - **`DataIntegrityThreadSafetyTest.java`** - ✨ **ENHANCED**: Data integrity under concurrent access
@@ -627,7 +628,7 @@ src/
 │   │   └── FormatUtil.java                      # Formatting utilities
 │   └── validation/
 │       ├── BlockValidationResult.java           # Block validation result model
-│       └── BlockValidationUtil.java             # Block validation utilities
+│       └── BlockValidationUtil.java             # Block validation utilities (with comprehensive tests)
 └── validation/
     ├── BlockStatus.java                        # Block status enumeration
     ├── BlockValidationResult.java               # Block validation results
@@ -640,9 +641,17 @@ src/test/java/com/rbatllet/blockchain/
 │   ├── BlockchainKeyAuthorizationTest.java             # Key authorization tests
 │   ├── CriticalConsistencyTest.java                    # Consistency validation tests
 │   ├── SimpleTemporalValidationTest.java               # Temporal validation tests
+│   ├── OffChainStorageTest.java                        # ✨ ENHANCED: Off-chain storage testing
+│   ├── DataConsistencyValidationTest.java              # ✨ ENHANCED: Data consistency tests
 │   └── TestEnvironmentValidator.java                   # Validates test environment
 ├── dao/
 │   └── AuthorizedKeyDAOTest.java                     # Tests for key management
+├── util/validation/
+│   └── BlockValidationUtilTest.java                   # ✨ NEW: Comprehensive validation utility tests (26 tests)
+├── validation/
+│   └── BlockValidationResultTest.java                 # Block validation result tests
+├── advanced/
+│   └── DataIntegrityThreadSafetyTest.java             # ✨ ENHANCED: Thread safety tests
 └── recovery/
     ├── ChainRecoveryManagerTest.java               # Tests for recovery scenarios
     ├── ImprovedRollbackStrategyTest.java              # Enhanced rollback strategy tests

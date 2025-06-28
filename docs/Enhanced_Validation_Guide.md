@@ -256,9 +256,33 @@ mvn test -Dtest=DataConsistencyValidationTest
 - Data consistency validation tests
 - Database-filesystem synchronization verification
 
+#### 4. BlockValidationUtilTest.java ✨ NEW
+**Test Command**:
+```bash
+mvn test -Dtest=BlockValidationUtilTest
+```
+
+**Comprehensive Features** (26 tests):
+- **Genesis Block Validation**: Tests correct validation, wrong block number, wrong previous hash, null block number
+- **Key Authorization Validation**: Tests authorized keys, unauthorized keys, exception handling
+- **Off-Chain Data Validation**: Tests blocks without off-chain data, valid files, missing files, incomplete metadata, file size mismatch, AES padding tolerance
+- **Detailed Off-Chain Validation**: Tests comprehensive validation results, error reporting, empty file detection
+- **Tampering Detection**: Tests tampering detection for missing files, recent files, blocks without off-chain data
+- **OffChainValidationResult**: Tests result creation, validation status, toString representation
+- **Utility Methods**: Tests hash truncation, null handling, edge cases
+
+**Test Categories**:
+- 4 Genesis block validation tests
+- 3 Key authorization tests  
+- 6 Off-chain data validation tests
+- 3 Detailed validation tests
+- 3 Tampering detection tests
+- 3 Result object tests
+- 4 Utility method tests
+
 ### Advanced Thread Safety Tests
 
-#### 4. DataIntegrityThreadSafetyTest.java ✨ ENHANCED
+#### 5. DataIntegrityThreadSafetyTest.java ✨ ENHANCED
 **Test Command**:
 ```bash
 mvn test -Dtest=DataIntegrityThreadSafetyTest
@@ -353,6 +377,9 @@ mvn test -Dtest=OffChainStorageTest
 
 # Data consistency tests
 mvn test -Dtest=DataConsistencyValidationTest
+
+# Validation utility tests (comprehensive)
+mvn test -Dtest=BlockValidationUtilTest
 
 # Thread safety tests
 mvn test -Dtest=DataIntegrityThreadSafetyTest
