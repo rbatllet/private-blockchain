@@ -5,6 +5,8 @@ import com.rbatllet.blockchain.dao.BlockDAO;
 import com.rbatllet.blockchain.dto.ChainExportData;
 import com.rbatllet.blockchain.entity.AuthorizedKey;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.entity.OffChainData;
+import com.rbatllet.blockchain.service.OffChainStorageService;
 import com.rbatllet.blockchain.recovery.ChainRecoveryManager;
 import com.rbatllet.blockchain.recovery.ChainRecoveryManager.ChainDiagnostic;
 import com.rbatllet.blockchain.recovery.ChainRecoveryManager.RecoveryResult;
@@ -20,16 +22,20 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.persistence.EntityManager;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.util.Base64;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
@@ -52,6 +58,15 @@ public class Blockchain {
     // NOTE: Character limit is separate from byte limit to handle both text and binary data efficiently
     // 10K UTF-8 characters typically use ~10-40KB, well within the 1MB byte limit
     
+    // Off-chain storage threshold - data larger than this will be stored off-chain
+    private static final int OFF_CHAIN_THRESHOLD_BYTES = 512 * 1024; // 512KB threshold
+    private final OffChainStorageService offChainStorageService = new OffChainStorageService();
+    
+    // Dynamic configuration for block size limits
+    private volatile int currentMaxBlockSizeBytes = MAX_BLOCK_SIZE_BYTES;
+    private volatile int currentMaxBlockDataLength = MAX_BLOCK_DATA_LENGTH;
+    private volatile int currentOffChainThresholdBytes = OFF_CHAIN_THRESHOLD_BYTES;
+    
     public Blockchain() {
         this.blockDAO = new BlockDAO();
         this.authorizedKeyDAO = new AuthorizedKeyDAO();
@@ -67,31 +82,39 @@ public class Blockchain {
         try {
             // Use global transaction for consistency
             JPAUtil.executeInTransaction(em -> {
-                if (blockDAO.getBlockCount() == 0) {
-                    LocalDateTime genesisTime = LocalDateTime.now();
-                    
-                    Block genesisBlock = new Block();
-                    genesisBlock.setBlockNumber(0L);
-                    genesisBlock.setPreviousHash(GENESIS_PREVIOUS_HASH);
-                    genesisBlock.setData("Genesis Block - Private Blockchain Initialized");
-                    genesisBlock.setTimestamp(genesisTime);
-                    
-                    String blockContent = buildBlockContent(genesisBlock);
-                    genesisBlock.setHash(CryptoUtil.calculateHash(blockContent));
-                    genesisBlock.setSignature("GENESIS");
-                    genesisBlock.setSignerPublicKey("GENESIS");
-                    
-                    blockDAO.saveBlock(genesisBlock);
-                    
-                    // CRITICAL: Synchronize the block sequence after creating genesis block
-                    blockDAO.synchronizeBlockSequence();
-                    
-                    System.out.println("Genesis block created successfully!");
-                }
+                initializeGenesisBlockInternal(em);
                 return null;
             });
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.writeLock().unlock();
+        }
+    }
+    
+    /**
+     * Internal method to create genesis block without transaction/lock management
+     * Used when already inside a transaction (e.g., during clearAndReinitialize)
+     */
+    private void initializeGenesisBlockInternal(EntityManager em) {
+        if (blockDAO.getBlockCount() == 0) {
+            LocalDateTime genesisTime = LocalDateTime.now();
+            
+            Block genesisBlock = new Block();
+            genesisBlock.setBlockNumber(0L);
+            genesisBlock.setPreviousHash(GENESIS_PREVIOUS_HASH);
+            genesisBlock.setData("Genesis Block - Private Blockchain Initialized");
+            genesisBlock.setTimestamp(genesisTime);
+            
+            String blockContent = buildBlockContent(genesisBlock);
+            genesisBlock.setHash(CryptoUtil.calculateHash(blockContent));
+            genesisBlock.setSignature("GENESIS");
+            genesisBlock.setSignerPublicKey("GENESIS");
+            
+            blockDAO.saveBlock(genesisBlock);
+            
+            // CRITICAL: Synchronize the block sequence after creating genesis block
+            blockDAO.synchronizeBlockSequence();
+            
+            System.out.println("Genesis block created successfully!");
         }
     }
     
@@ -114,9 +137,10 @@ public class Blockchain {
                         return null;
                     }
                     
-                    // 1. CORE: Validate block size (this method already handles null data correctly)
-                    if (!validateBlockSize(data)) {
-                        System.err.println("Block data exceeds maximum allowed size");
+                    // 1. CORE: Validate block size and determine storage strategy
+                    int storageDecision = validateAndDetermineStorage(data);
+                    if (storageDecision == 0) {
+                        System.err.println("Block data validation failed");
                         return null;
                     }
                     
@@ -138,35 +162,64 @@ public class Blockchain {
                         return null;
                     }
                     
-                    // 5. Create the new block with the atomically generated number
+                    // 5. Handle off-chain storage if needed
+                    OffChainData offChainData = null;
+                    String blockData = data;
+                    
+                    if (storageDecision == 2) { // Store off-chain
+                        try {
+                            // Generate a password for encryption (derived from block info)
+                            String encryptionPassword = generateOffChainPassword(nextBlockNumber, publicKeyString);
+                            
+                            // Store data off-chain with encryption and verification
+                            offChainData = offChainStorageService.storeData(
+                                data.getBytes(StandardCharsets.UTF_8),
+                                encryptionPassword,
+                                signerPrivateKey,
+                                publicKeyString,
+                                "text/plain"
+                            );
+                            
+                            // Replace block data with reference
+                            blockData = "OFF_CHAIN_REF:" + offChainData.getDataHash();
+                            System.out.println("Data stored off-chain. Block contains reference: " + blockData);
+                            
+                        } catch (Exception e) {
+                            System.err.println("Failed to store data off-chain: " + e.getMessage());
+                            return null;
+                        }
+                    }
+                    
+                    // 6. Create the new block with the atomically generated number
                     Block newBlock = new Block();
                     newBlock.setBlockNumber(nextBlockNumber);
                     newBlock.setPreviousHash(lastBlock != null ? lastBlock.getHash() : GENESIS_PREVIOUS_HASH);
-                    newBlock.setData(data);
+                    newBlock.setData(blockData);
                     newBlock.setTimestamp(blockTimestamp);
                     newBlock.setSignerPublicKey(publicKeyString);
+                    newBlock.setOffChainData(offChainData);
                     
-                    // 6. Calculate block hash
+                    // 7. Calculate block hash
                     String blockContent = buildBlockContent(newBlock);
                     newBlock.setHash(CryptoUtil.calculateHash(blockContent));
                     
-                    // 7. Sign the block
+                    // 8. Sign the block
                     String signature = CryptoUtil.signData(blockContent, signerPrivateKey);
                     newBlock.setSignature(signature);
                     
-                    // 8. Validate the block before saving
+                    // 9. Validate the block before saving
                     if (lastBlock != null && !validateBlock(newBlock, lastBlock)) {
                         System.err.println("Block validation failed");
                         return null;
                     }
                     
-                    // 9. Final check: verify this block number doesn't exist
+                    // 10. Final check: verify this block number doesn't exist
                     if (blockDAO.existsBlockWithNumber(nextBlockNumber)) {
                         System.err.println("🚨 CRITICAL: Race condition detected! Block number " + nextBlockNumber + " already exists");
                         return null;
                     }
                     
-                    // 10. Save the block
+                    // 11. Save the block
                     blockDAO.saveBlock(newBlock);
                     
                     // CRITICAL: Force flush to ensure immediate visibility
@@ -298,6 +351,7 @@ public class Blockchain {
             boolean structurallyValid = true;
             boolean cryptographicallyValid = true;
             boolean authorizationValid = true;
+            boolean offChainDataValid = true;
             String errorMessage = null;
             String warningMessage = null;
             
@@ -353,11 +407,64 @@ public class Blockchain {
                 }
             }
             
+            // 6. Verify off-chain data integrity if present
+            if (structurallyValid && cryptographicallyValid && block.hasOffChainData()) {
+                try {
+                    // Perform detailed off-chain validation
+                    var detailedResult = com.rbatllet.blockchain.util.validation.BlockValidationUtil.validateOffChainDataDetailed(block);
+                    boolean basicOffChainIntegrity = verifyOffChainIntegrity(block);
+                    
+                    if (!detailedResult.isValid() || !basicOffChainIntegrity) {
+                        offChainDataValid = false;
+                        String detailedMessage = detailedResult.getMessage();
+                        if (errorMessage == null) {
+                            errorMessage = "Off-chain data validation failed: " + detailedMessage;
+                        } else {
+                            errorMessage += "; Off-chain data validation failed: " + detailedMessage;
+                        }
+                        System.err.println("❌ [" + threadName + "] OFF-CHAIN VALIDATION FAILURE for block #" + block.getBlockNumber() + ":");
+                        System.err.println("   📋 Details: " + detailedMessage);
+                        if (!basicOffChainIntegrity) {
+                            System.err.println("   🔐 Cryptographic integrity check also failed");
+                        }
+                    } else {
+                        // Show detailed success information
+                        var offChainData = block.getOffChainData();
+                        System.out.println("✅ [" + threadName + "] Off-chain data fully validated for block #" + block.getBlockNumber());
+                        System.out.println("   📁 File: " + java.nio.file.Paths.get(offChainData.getFilePath()).getFileName());
+                        System.out.println("   📦 Size: " + (offChainData.getFileSize() != null ? 
+                            String.format("%.1f KB", offChainData.getFileSize() / 1024.0) : "unknown"));
+                        System.out.println("   🔐 Integrity: verified (hash + encryption + signature)");
+                        System.out.println("   ⏰ Created: " + (offChainData.getCreatedAt() != null ? 
+                            offChainData.getCreatedAt().toString() : "unknown"));
+                        
+                        // Additional validation details
+                        String hash = offChainData.getDataHash();
+                        if (hash != null && hash.length() > 16) {
+                            String truncatedHash = hash.substring(0, 8) + "..." + hash.substring(hash.length() - 8);
+                            System.out.println("   🔗 Hash: " + truncatedHash);
+                        }
+                    }
+                } catch (Exception e) {
+                    offChainDataValid = false;
+                    if (errorMessage == null) {
+                        errorMessage = "Off-chain data verification error: " + e.getMessage();
+                    } else {
+                        errorMessage += "; Off-chain data verification error: " + e.getMessage();
+                    }
+                    System.err.println("❌ [" + threadName + "] OFF-CHAIN VALIDATION ERROR for block #" + block.getBlockNumber() + ": " + e.getMessage());
+                }
+            } else if (block.hasOffChainData() && (!structurallyValid || !cryptographicallyValid)) {
+                // Block has off-chain data but failed basic validation
+                System.out.println("⚠️ [" + threadName + "] Block #" + block.getBlockNumber() + " has off-chain data but failed basic validation - skipping off-chain checks");
+            }
+            
             // Build result
             BlockValidationResult result = builder
                 .structurallyValid(structurallyValid)
                 .cryptographicallyValid(cryptographicallyValid)
                 .authorizationValid(authorizationValid)
+                .offChainDataValid(offChainDataValid)
                 .errorMessage(errorMessage)
                 .warningMessage(warningMessage)
                 .build();
@@ -475,7 +582,45 @@ public class Blockchain {
             }
             
             ChainValidationResult chainResult = new ChainValidationResult(blockResults);
+            
+            // Generate off-chain data summary
+            int totalBlocks = allBlocks.size();
+            int blocksWithOffChain = 0;
+            int validOffChainBlocks = 0;
+            long totalOffChainSize = 0;
+            
+            for (Block block : allBlocks) {
+                if (block.hasOffChainData()) {
+                    blocksWithOffChain++;
+                    if (block.getOffChainData().getFileSize() != null) {
+                        totalOffChainSize += block.getOffChainData().getFileSize();
+                    }
+                }
+            }
+            
+            for (BlockValidationResult result : blockResults) {
+                if (result.getBlock().hasOffChainData() && result.isOffChainDataValid()) {
+                    validOffChainBlocks++;
+                }
+            }
+            
             System.out.println("📊 Chain validation completed: " + chainResult.getSummary());
+            
+            if (blocksWithOffChain > 0) {
+                System.out.println("🗂️ Off-chain data summary:");
+                System.out.println("   📊 Blocks with off-chain data: " + blocksWithOffChain + "/" + totalBlocks + 
+                    " (" + String.format("%.1f%%", (blocksWithOffChain * 100.0 / totalBlocks)) + ")");
+                System.out.println("   ✅ Valid off-chain blocks: " + validOffChainBlocks + "/" + blocksWithOffChain + 
+                    " (" + String.format("%.1f%%", (validOffChainBlocks * 100.0 / blocksWithOffChain)) + ")");
+                System.out.println("   📦 Total off-chain storage: " + String.format("%.2f MB", totalOffChainSize / (1024.0 * 1024.0)));
+                
+                if (validOffChainBlocks < blocksWithOffChain) {
+                    int invalidOffChain = blocksWithOffChain - validOffChainBlocks;
+                    System.err.println("   ⚠️ Invalid off-chain blocks detected: " + invalidOffChain);
+                }
+            } else {
+                System.out.println("📋 No off-chain data found in blockchain");
+            }
             
             return chainResult;
             
@@ -693,8 +838,146 @@ public class Blockchain {
     }
     
     /**
+     * Enhanced block size validation that supports off-chain storage
+     * Returns: 0 = invalid, 1 = store on-chain, 2 = store off-chain
+     */
+    public int validateAndDetermineStorage(String data) {
+        if (data == null) {
+            System.err.println("Block data cannot be null. Use empty string \"\" for system blocks");
+            return 0; // Invalid
+        }
+        
+        // Allow empty strings for system/configuration blocks
+        if (data.isEmpty()) {
+            System.out.println("System block with empty data created");
+            return 1; // Store on-chain
+        }
+        
+        byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
+        
+        // If data is within current limits, store on-chain
+        if (data.length() <= currentMaxBlockDataLength && dataBytes.length <= currentMaxBlockSizeBytes) {
+            return 1; // Store on-chain
+        }
+        
+        // If data exceeds off-chain threshold but is reasonable size, store off-chain
+        if (dataBytes.length >= currentOffChainThresholdBytes && dataBytes.length <= 100 * 1024 * 1024) { // Max 100MB
+            System.out.println("Large data detected (" + dataBytes.length + " bytes). Will store off-chain.");
+            return 2; // Store off-chain
+        }
+        
+        // Data is too large even for off-chain storage
+        System.err.println("Data size (" + dataBytes.length + " bytes) exceeds maximum supported size (100MB)");
+        return 0; // Invalid
+    }
+    
+    /**
+     * Generate a deterministic password for off-chain data encryption
+     * Based on block number and signer public key for reproducibility
+     */
+    private String generateOffChainPassword(Long blockNumber, String signerPublicKey) throws Exception {
+        String input = "OFFCHAIN_" + blockNumber + "_" + signerPublicKey;
+        MessageDigest digest = MessageDigest.getInstance(CryptoUtil.HASH_ALGORITHM);
+        byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+        
+        // Convert to Base64 for password use
+        return Base64.getEncoder().encodeToString(hash).substring(0, 32); // Use first 32 chars
+    }
+    
+    /**
+     * Retrieve off-chain data for a block
+     */
+    public String getOffChainData(Block block) throws Exception {
+        if (!block.hasOffChainData()) {
+            return null;
+        }
+        
+        String encryptionPassword = generateOffChainPassword(
+            block.getBlockNumber(), 
+            block.getSignerPublicKey()
+        );
+        
+        byte[] decryptedData = offChainStorageService.retrieveData(
+            block.getOffChainData(), 
+            encryptionPassword
+        );
+        
+        return new String(decryptedData, StandardCharsets.UTF_8);
+    }
+    
+    /**
+     * Verify integrity of off-chain data for a block
+     */
+    public boolean verifyOffChainIntegrity(Block block) {
+        if (!block.hasOffChainData()) {
+            return true; // No off-chain data to verify
+        }
+        
+        try {
+            String encryptionPassword = generateOffChainPassword(
+                block.getBlockNumber(), 
+                block.getSignerPublicKey()
+            );
+            
+            return offChainStorageService.verifyIntegrity(
+                block.getOffChainData(), 
+                encryptionPassword
+            );
+        } catch (Exception e) {
+            System.err.println("Error verifying off-chain integrity for block " + 
+                             block.getBlockNumber() + ": " + e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Get complete block data (on-chain + off-chain if applicable)
+     */
+    public String getCompleteBlockData(Block block) throws Exception {
+        String blockData = block.getData();
+        
+        // Check if this is an off-chain reference
+        if (blockData != null && blockData.startsWith("OFF_CHAIN_REF:")) {
+            return getOffChainData(block);
+        }
+        
+        return blockData;
+    }
+    
+    /**
+     * Verify all off-chain data integrity in the blockchain
+     */
+    public boolean verifyAllOffChainIntegrity() {
+        GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
+        try {
+            List<Block> allBlocks = blockDAO.getAllBlocks();
+            int offChainBlocks = 0;
+            int integrityFailures = 0;
+            
+            for (Block block : allBlocks) {
+                if (block.hasOffChainData()) {
+                    offChainBlocks++;
+                    if (!verifyOffChainIntegrity(block)) {
+                        integrityFailures++;
+                        System.err.println("Integrity verification failed for block " + block.getBlockNumber());
+                    }
+                }
+            }
+            
+            System.out.println("Off-chain integrity check complete:");
+            System.out.println("- Blocks with off-chain data: " + offChainBlocks);
+            System.out.println("- Integrity failures: " + integrityFailures);
+            
+            return integrityFailures == 0;
+            
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
+        }
+    }
+    
+    /**
      * CORE FUNCTION 2: Chain Export - Backup blockchain to file
-     * FIXED: Added thread-safety with read lock
+     * FIXED: Added thread-safety with read lock and off-chain file handling
      */
     public boolean exportChain(String filePath) {
         GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
@@ -707,8 +990,51 @@ public class Blockchain {
             exportData.setBlocks(allBlocks);
             exportData.setAuthorizedKeys(allKeys);
             exportData.setExportTimestamp(LocalDateTime.now());
-            exportData.setVersion("1.0");
+            exportData.setVersion("1.1"); // Updated version for off-chain support
             exportData.setTotalBlocks(allBlocks.size());
+            
+            // CRITICAL: Handle off-chain files during export
+            int offChainFilesExported = 0;
+            File exportDir = new File(filePath).getParentFile();
+            File offChainBackupDir = new File(exportDir, "off-chain-backup");
+            
+            // Create backup directory for off-chain files if needed
+            boolean hasOffChainData = allBlocks.stream().anyMatch(Block::hasOffChainData);
+            if (hasOffChainData) {
+                if (!offChainBackupDir.exists() && !offChainBackupDir.mkdirs()) {
+                    System.err.println("Failed to create off-chain backup directory: " + offChainBackupDir.getAbsolutePath());
+                    return false;
+                }
+                
+                // Copy off-chain files to backup directory
+                for (Block block : allBlocks) {
+                    if (block.hasOffChainData()) {
+                        try {
+                            OffChainData offChainData = block.getOffChainData();
+                            File sourceFile = new File(offChainData.getFilePath());
+                            
+                            if (sourceFile.exists()) {
+                                String fileName = "block_" + block.getBlockNumber() + "_" + sourceFile.getName();
+                                File backupFile = new File(offChainBackupDir, fileName);
+                                
+                                // Copy file using Java NIO for better performance
+                                java.nio.file.Files.copy(sourceFile.toPath(), backupFile.toPath(), 
+                                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                                
+                                // Update the path in the export data to point to backup location
+                                offChainData.setFilePath("off-chain-backup/" + fileName);
+                                offChainFilesExported++;
+                                
+                                System.out.println("  ✓ Exported off-chain file for block #" + block.getBlockNumber());
+                            } else {
+                                System.err.println("  ⚠ Off-chain file missing for block #" + block.getBlockNumber() + ": " + sourceFile.getAbsolutePath());
+                            }
+                        } catch (Exception e) {
+                            System.err.println("  ❌ Error exporting off-chain file for block #" + block.getBlockNumber() + ": " + e.getMessage());
+                        }
+                    }
+                }
+            }
             
             // Convert to JSON
             ObjectMapper mapper = new ObjectMapper();
@@ -721,6 +1047,9 @@ public class Blockchain {
             
             System.out.println("Chain exported successfully to: " + filePath);
             System.out.println("Exported " + allBlocks.size() + " blocks and " + allKeys.size() + " authorized keys");
+            if (offChainFilesExported > 0) {
+                System.out.println("Exported " + offChainFilesExported + " off-chain files to: " + offChainBackupDir.getAbsolutePath());
+            }
             return true;
             
         } catch (Exception e) {
@@ -761,9 +1090,38 @@ public class Blockchain {
                     // Clear existing data (WARNING: This will delete current blockchain!)
                     System.out.println("WARNING: This will replace the current blockchain!");
                     
+                    // CRITICAL: Clean up existing off-chain files before clearing database
+                    System.out.println("Cleaning up existing off-chain data before import...");
+                    List<Block> existingBlocks = blockDAO.getAllBlocks();
+                    int existingOffChainFilesDeleted = 0;
+                    
+                    for (Block block : existingBlocks) {
+                        if (block.hasOffChainData()) {
+                            try {
+                                boolean fileDeleted = offChainStorageService.deleteData(block.getOffChainData());
+                                if (fileDeleted) {
+                                    existingOffChainFilesDeleted++;
+                                }
+                            } catch (Exception e) {
+                                System.err.println("Error deleting existing off-chain data for block " + block.getBlockNumber() + ": " + e.getMessage());
+                            }
+                        }
+                    }
+                    
+                    if (existingOffChainFilesDeleted > 0) {
+                        System.out.println("Cleaned up " + existingOffChainFilesDeleted + " existing off-chain files");
+                    }
+                    
                     // Clear existing blocks and keys
                     blockDAO.deleteAllBlocks();
                     authorizedKeyDAO.deleteAllAuthorizedKeys();
+                    
+                    // CRITICAL: Clear Hibernate session cache to avoid entity conflicts
+                    em.flush();
+                    em.clear();
+                    
+                    // Clean up any remaining orphaned files
+                    cleanupOrphanedOffChainFiles();
                     
                     // Import authorized keys first with corrected timestamps
                     if (importData.getAuthorizedKeys() != null) {
@@ -830,15 +1188,67 @@ public class Blockchain {
                         System.out.println("Imported " + importData.getAuthorizedKeys().size() + " authorized keys with adjusted timestamps");
                     }
                     
-                    // Import blocks
+                    // CRITICAL: Handle off-chain files during import
+                    File importDir = new File(filePath).getParentFile();
+                    File offChainBackupDir = new File(importDir, "off-chain-backup");
+                    int offChainFilesImported = 0;
+                    
+                    // Import blocks with off-chain data handling
                     for (Block block : importData.getBlocks()) {
                         // Reset ID for new insertion
                         block.setId(null);
+                        
+                        // Handle off-chain data restoration
+                        if (block.hasOffChainData()) {
+                            OffChainData offChainData = block.getOffChainData();
+                            
+                            // Reset off-chain data ID for new insertion
+                            offChainData.setId(null);
+                            
+                            try {
+                                // Check if backup file exists
+                                String backupPath = offChainData.getFilePath();
+                                File backupFile = new File(importDir, backupPath);
+                                
+                                if (backupFile.exists()) {
+                                    // Create new file path in standard off-chain directory
+                                    File offChainDir = new File("off-chain-data");
+                                    if (!offChainDir.exists()) {
+                                        offChainDir.mkdirs();
+                                    }
+                                    
+                                    String newFileName = "block_" + block.getBlockNumber() + "_" + System.currentTimeMillis() + ".enc";
+                                    File newFile = new File(offChainDir, newFileName);
+                                    
+                                    // Copy backup file to new location
+                                    java.nio.file.Files.copy(backupFile.toPath(), newFile.toPath(), 
+                                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                                    
+                                    // Update file path in off-chain data
+                                    offChainData.setFilePath(newFile.getAbsolutePath());
+                                    offChainFilesImported++;
+                                    
+                                    System.out.println("  ✓ Imported off-chain file for block #" + block.getBlockNumber());
+                                } else {
+                                    System.err.println("  ⚠ Off-chain backup file not found for block #" + block.getBlockNumber() + ": " + backupFile.getAbsolutePath());
+                                    // Remove off-chain reference if file is missing
+                                    block.setOffChainData(null);
+                                }
+                            } catch (Exception e) {
+                                System.err.println("  ❌ Error importing off-chain file for block #" + block.getBlockNumber() + ": " + e.getMessage());
+                                // Remove off-chain reference if import fails
+                                block.setOffChainData(null);
+                            }
+                        }
+                        
                         blockDAO.saveBlock(block);
                     }
                     
                     System.out.println("Chain imported successfully from: " + filePath);
                     System.out.println("Imported " + importData.getBlocks().size() + " blocks");
+                    if (offChainFilesImported > 0) {
+                        System.out.println("Imported " + offChainFilesImported + " off-chain files");
+                    }
                     
                     // Validate imported chain with detailed validation
                     var importValidation = validateChainDetailed();
@@ -902,13 +1312,36 @@ public class Blockchain {
                         return false;
                     }
                     
-                    // Actually remove blocks using DAO
+                    // Actually remove blocks and their off-chain data
                     System.out.println("Rolling back " + numberOfBlocks + " blocks:");
+                    int offChainFilesDeleted = 0;
+                    
                     for (Block block : blocksToRemove) {
                         String data = block.getData();
                         String displayData = data != null ? data.substring(0, Math.min(50, data.length())) : "null";
                         System.out.println("  - Removing Block #" + block.getBlockNumber() + ": " + displayData);
+                        
+                        // CRITICAL: Clean up off-chain data before deleting block
+                        if (block.hasOffChainData()) {
+                            try {
+                                boolean fileDeleted = offChainStorageService.deleteData(block.getOffChainData());
+                                if (fileDeleted) {
+                                    offChainFilesDeleted++;
+                                    System.out.println("    ✓ Deleted off-chain file: " + block.getOffChainData().getFilePath());
+                                } else {
+                                    System.err.println("    ⚠ Failed to delete off-chain file: " + block.getOffChainData().getFilePath());
+                                }
+                            } catch (Exception e) {
+                                System.err.println("    ❌ Error deleting off-chain data for block " + block.getBlockNumber() + ": " + e.getMessage());
+                            }
+                        }
+                        
+                        // Delete the block from database (cascade will delete OffChainData entity)
                         blockDAO.deleteBlockByNumber(block.getBlockNumber());
+                    }
+                    
+                    if (offChainFilesDeleted > 0) {
+                        System.out.println("Cleaned up " + offChainFilesDeleted + " off-chain files during rollback");
                     }
                     
                     // CRITICAL: Synchronize block sequence after rollback
@@ -956,7 +1389,28 @@ public class Blockchain {
                         return true;
                     }
                     
-                    // Use the deleteBlocksAfter method for better performance
+                    // CRITICAL: Clean up off-chain data before bulk deletion
+                    System.out.println("Cleaning up off-chain data for blocks after " + targetBlockNumber);
+                    List<Block> blocksToDelete = blockDAO.getBlocksAfter(targetBlockNumber);
+                    int offChainFilesDeleted = 0;
+                    
+                    for (Block block : blocksToDelete) {
+                        if (block.hasOffChainData()) {
+                            try {
+                                boolean fileDeleted = offChainStorageService.deleteData(block.getOffChainData());
+                                if (fileDeleted) {
+                                    offChainFilesDeleted++;
+                                    System.out.println("  ✓ Deleted off-chain file for block #" + block.getBlockNumber());
+                                } else {
+                                    System.err.println("  ⚠ Failed to delete off-chain file for block #" + block.getBlockNumber());
+                                }
+                            } catch (Exception e) {
+                                System.err.println("  ❌ Error deleting off-chain data for block " + block.getBlockNumber() + ": " + e.getMessage());
+                            }
+                        }
+                    }
+                    
+                    // Now use the deleteBlocksAfter method for database cleanup
                     int deletedCount = blockDAO.deleteBlocksAfter(targetBlockNumber);
                     
                     // CRITICAL: Synchronize block sequence after rollback
@@ -964,6 +1418,9 @@ public class Blockchain {
                     
                     System.out.println("Rollback to block " + targetBlockNumber + " completed successfully");
                     System.out.println("Removed " + deletedCount + " blocks");
+                    if (offChainFilesDeleted > 0) {
+                        System.out.println("Cleaned up " + offChainFilesDeleted + " off-chain files");
+                    }
                     System.out.println("Chain now has " + blockDAO.getBlockCount() + " blocks");
                     
                     return deletedCount > 0 || blocksToRemove == 0;
@@ -1211,12 +1668,41 @@ public class Blockchain {
         try {
             JPAUtil.executeInTransaction(em -> {
                 try {
-                    // Clear all blocks and keys
+                    // CRITICAL: Clean up all off-chain files before clearing database
+                    System.out.println("Cleaning up off-chain data during reinitialization...");
+                    List<Block> allBlocks = blockDAO.getAllBlocks();
+                    int offChainFilesDeleted = 0;
+                    
+                    for (Block block : allBlocks) {
+                        if (block.hasOffChainData()) {
+                            try {
+                                boolean fileDeleted = offChainStorageService.deleteData(block.getOffChainData());
+                                if (fileDeleted) {
+                                    offChainFilesDeleted++;
+                                }
+                            } catch (Exception e) {
+                                System.err.println("Error deleting off-chain data for block " + block.getBlockNumber() + ": " + e.getMessage());
+                            }
+                        }
+                    }
+                    
+                    if (offChainFilesDeleted > 0) {
+                        System.out.println("Cleaned up " + offChainFilesDeleted + " off-chain files");
+                    }
+                    
+                    // Clear all blocks and keys from database
                     blockDAO.deleteAllBlocks();
                     authorizedKeyDAO.deleteAllAuthorizedKeys();
                     
-                    // Reinitialize genesis block
-                    initializeGenesisBlock();
+                    // CRITICAL: Clear Hibernate session cache to avoid entity conflicts
+                    em.flush();
+                    em.clear();
+                    
+                    // Clean up any remaining orphaned files in off-chain directory
+                    cleanupOrphanedOffChainFiles();
+                    
+                    // Reinitialize genesis block (internal version without lock/transaction management)
+                    initializeGenesisBlockInternal(em);
                     
                     System.out.println("Database cleared and reinitialized for testing");
                     return null;
@@ -1569,6 +2055,179 @@ public class Blockchain {
         public String toString() {
             return String.format("KeyDeletionImpact{exists=%s, canSafelyDelete=%s, affectedBlocks=%d, message='%s'}", 
                                keyExists, canSafelyDelete(), affectedBlocks, message);
+        }
+    }
+    
+    /**
+     * Configuration methods for dynamic block size limits
+     */
+    public void setMaxBlockSizeBytes(int maxSizeBytes) {
+        if (maxSizeBytes > 0 && maxSizeBytes <= 10 * 1024 * 1024) { // Max 10MB for on-chain
+            this.currentMaxBlockSizeBytes = maxSizeBytes;
+            System.out.println("Max block size updated to: " + maxSizeBytes + " bytes");
+        } else {
+            throw new IllegalArgumentException("Invalid block size. Must be between 1 and 10MB");
+        }
+    }
+    
+    public void setMaxBlockDataLength(int maxDataLength) {
+        if (maxDataLength > 0 && maxDataLength <= 1000000) { // Max 1M characters
+            this.currentMaxBlockDataLength = maxDataLength;
+            System.out.println("Max block data length updated to: " + maxDataLength + " characters");
+        } else {
+            throw new IllegalArgumentException("Invalid data length. Must be between 1 and 1M characters");
+        }
+    }
+    
+    public void setOffChainThresholdBytes(int thresholdBytes) {
+        if (thresholdBytes > 0 && thresholdBytes <= currentMaxBlockSizeBytes) {
+            this.currentOffChainThresholdBytes = thresholdBytes;
+            System.out.println("Off-chain threshold updated to: " + thresholdBytes + " bytes");
+        } else {
+            throw new IllegalArgumentException("Invalid threshold. Must be between 1 and current max block size");
+        }
+    }
+    
+    // Getters for current configuration
+    public int getCurrentMaxBlockSizeBytes() { return currentMaxBlockSizeBytes; }
+    public int getCurrentMaxBlockDataLength() { return currentMaxBlockDataLength; }
+    public int getCurrentOffChainThresholdBytes() { return currentOffChainThresholdBytes; }
+    
+    /**
+     * Reset limits to default values
+     */
+    public void resetLimitsToDefault() {
+        this.currentMaxBlockSizeBytes = MAX_BLOCK_SIZE_BYTES;
+        this.currentMaxBlockDataLength = MAX_BLOCK_DATA_LENGTH;
+        this.currentOffChainThresholdBytes = OFF_CHAIN_THRESHOLD_BYTES;
+        System.out.println("Block size limits reset to default values");
+    }
+    
+    /**
+     * Get current configuration summary
+     */
+    public String getConfigurationSummary() {
+        return String.format(
+            "Block Size Configuration:%n" +
+            "- Max block size: %,d bytes (%.1f MB)%n" +
+            "- Max data length: %,d characters%n" +
+            "- Off-chain threshold: %,d bytes (%.1f KB)%n" +
+            "- Default values: %,d bytes / %,d chars / %,d bytes",
+            currentMaxBlockSizeBytes, currentMaxBlockSizeBytes / (1024.0 * 1024),
+            currentMaxBlockDataLength,
+            currentOffChainThresholdBytes, currentOffChainThresholdBytes / 1024.0,
+            MAX_BLOCK_SIZE_BYTES, MAX_BLOCK_DATA_LENGTH, OFF_CHAIN_THRESHOLD_BYTES
+        );
+    }
+    
+    /**
+     * Clean up orphaned off-chain files that have no corresponding database entries
+     */
+    private void cleanupOrphanedOffChainFiles() {
+        try {
+            File offChainDir = new File("off-chain-data");
+            if (!offChainDir.exists() || !offChainDir.isDirectory()) {
+                return; // Nothing to clean up
+            }
+            
+            // Delete all files in off-chain directory (used for complete cleanup during reinitialization)
+            File[] files = offChainDir.listFiles();
+            if (files == null || files.length == 0) {
+                return; // No off-chain files found
+            }
+            
+            int orphanedFilesDeleted = 0;
+            for (File file : files) {
+                if (file.isFile()) {
+                    try {
+                        boolean deleted = file.delete();
+                        if (deleted) {
+                            orphanedFilesDeleted++;
+                        }
+                    } catch (Exception e) {
+                        System.err.println("Failed to delete orphaned file: " + file.getName() + " - " + e.getMessage());
+                    }
+                }
+            }
+            
+            if (orphanedFilesDeleted > 0) {
+                System.out.println("Cleaned up " + orphanedFilesDeleted + " orphaned off-chain files");
+            }
+            
+        } catch (Exception e) {
+            System.err.println("Error during orphaned files cleanup: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Find and clean up orphaned off-chain files (utility method for maintenance)
+     */
+    public int cleanupOrphanedFiles() {
+        GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
+        try {
+            File offChainDir = new File("off-chain-data");
+            if (!offChainDir.exists() || !offChainDir.isDirectory()) {
+                return 0;
+            }
+            
+            // Get all current off-chain file paths from database
+            List<Block> allBlocks = blockDAO.getAllBlocks();
+            Set<String> validFilePaths = new HashSet<>();
+            
+            for (Block block : allBlocks) {
+                if (block.hasOffChainData()) {
+                    validFilePaths.add(block.getOffChainData().getFilePath());
+                }
+            }
+            
+            // Find orphaned files (check all files, not just specific patterns)
+            File[] files = offChainDir.listFiles(File::isFile);
+            if (files == null) {
+                return 0;
+            }
+            
+            int orphanedFilesDeleted = 0;
+            for (File file : files) {
+                String absoluteFilePath = file.getAbsolutePath();
+                boolean isOrphaned = true;
+                
+                // Check if this file path matches any valid off-chain data
+                for (String validPath : validFilePaths) {
+                    try {
+                        // Normalize both paths for comparison (handle relative vs absolute paths)
+                        String normalizedValidPath = new File(validPath).getCanonicalPath();
+                        String normalizedFilePath = file.getCanonicalPath();
+                        
+                        if (normalizedValidPath.equals(normalizedFilePath)) {
+                            isOrphaned = false;
+                            break;
+                        }
+                    } catch (Exception e) {
+                        // Fallback to simple path comparison if normalization fails
+                        if (validPath.equals(absoluteFilePath)) {
+                            isOrphaned = false;
+                            break;
+                        }
+                    }
+                }
+                
+                if (isOrphaned) {
+                    try {
+                        boolean deleted = file.delete();
+                        if (deleted) {
+                            orphanedFilesDeleted++;
+                            System.out.println("Deleted orphaned file: " + file.getName());
+                        }
+                    } catch (Exception e) {
+                        System.err.println("Failed to delete orphaned file: " + file.getName() + " - " + e.getMessage());
+                    }
+                }
+            }
+            
+            return orphanedFilesDeleted;
+            
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
         }
     }
 }

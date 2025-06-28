@@ -266,7 +266,7 @@ public class BlockDAO {
             EntityManager em = JPAUtil.getEntityManager();
             try {
                 TypedQuery<Block> query = em.createQuery(
-                    "SELECT b FROM Block b ORDER BY b.blockNumber ASC", Block.class);
+                    "SELECT b FROM Block b LEFT JOIN FETCH b.offChainData ORDER BY b.blockNumber ASC", Block.class);
                 return query.getResultList();
             } finally {
                 if (!JPAUtil.hasActiveTransaction()) {
@@ -444,6 +444,28 @@ public class BlockDAO {
                     Long.class);
                 query.setParameter("signerPublicKey", signerPublicKey);
                 return query.getSingleResult();
+            } finally {
+                if (!JPAUtil.hasActiveTransaction()) {
+                    em.close();
+                }
+            }
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Get all blocks after a specific block number (for off-chain cleanup before deletion)
+     */
+    public List<Block> getBlocksAfter(Long blockNumber) {
+        lock.readLock().lock();
+        try {
+            EntityManager em = JPAUtil.getEntityManager();
+            try {
+                List<Block> blocks = em.createQuery("SELECT b FROM Block b LEFT JOIN FETCH b.offChainData WHERE b.blockNumber > :blockNumber ORDER BY b.blockNumber ASC", Block.class)
+                        .setParameter("blockNumber", blockNumber)
+                        .getResultList();
+                return blocks;
             } finally {
                 if (!JPAUtil.hasActiveTransaction()) {
                     em.close();

@@ -154,11 +154,14 @@ public class CoreFunctionsDemo {
             System.out.println("   ✅ Total blocks: " + blockchain.getBlockCount());
             System.out.println("   ✅ Authorized keys: " + blockchain.getAuthorizedKeys().size());
             
-            // Enhanced final validation
+            // Enhanced final validation with detailed off-chain data analysis
+            System.out.println();
+            System.out.println("=== 📊 ENHANCED FINAL VALIDATION WITH OFF-CHAIN ANALYSIS ===");
             ChainValidationResult finalResult = blockchain.validateChainDetailed();
             System.out.println("   📊 Enhanced validation: " + finalResult.getSummary());
             System.out.println("   🏗️ Structural integrity: " + (finalResult.isStructurallyIntact() ? "✅ Intact" : "❌ Compromised"));
             System.out.println("   ✅ Full compliance: " + (finalResult.isFullyCompliant() ? "✅ Compliant" : "⚠️ Issues"));
+            System.out.println();
             
             System.out.println("\n💡 Core Functions Enhanced with New Validation API:");
             System.out.println("   • Detailed validation results instead of simple boolean");

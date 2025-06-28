@@ -52,7 +52,7 @@ public class BlockchainDemo {
             boolean isValid = blockchain.validateChain();
             System.out.println("   Result: " + (isValid ? "✅ Valid" : "❌ Invalid") + " (limited information)");
             
-            System.out.println("\n📈 New API (recommended):");
+            System.out.println("\n📈 New API (recommended) - Detailed validation with off-chain data analysis:");
             ChainValidationResult result = blockchain.validateChainDetailed();
             System.out.println("   🏗️ Structural integrity: " + (result.isStructurallyIntact() ? "✅ Intact" : "❌ Compromised"));
             System.out.println("   ✅ Full compliance: " + (result.isFullyCompliant() ? "✅ Compliant" : "⚠️ Non-compliant"));

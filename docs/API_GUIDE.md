@@ -1,14 +1,17 @@
 # API Guide & Core Functions
 
-Comprehensive guide to the Private Blockchain API, core functions, and programming interface.
+Comprehensive guide to the Private Blockchain API, core functions, off-chain storage, and programming interface.
 
-> **IMPORTANT NOTE**: This guide references the actual classes and methods implemented in the project. All mentioned classes (Blockchain, Block, AuthorizedKey, JPAUtil, CryptoUtil) exist in the source code. The code examples show the correct usage of the current API based on the JPA standard with Hibernate as the implementation provider.
+> **IMPORTANT NOTE**: This guide references the actual classes and methods implemented in the project. All mentioned classes (Blockchain, Block, AuthorizedKey, OffChainData, OffChainStorageService, JPAUtil, CryptoUtil) exist in the source code. The code examples show the correct usage of the current API based on the JPA standard with Hibernate as the implementation provider.
+
+> **NEW FEATURE**: This blockchain now includes automatic off-chain storage for large data (>512KB) with AES-128-CBC encryption, integrity verification, and configurable size thresholds. All off-chain operations are handled transparently by the API.
 
 ## 📋 Table of Contents
 
 - [Core Functions Usage](#-core-functions-usage)
 - [API Reference](#-api-reference)
 - [Chain Validation Result](#-chain-validation-result)
+- [Off-Chain Storage API](#-off-chain-storage-api)
 - [Configuration](#-configuration)
 - [Configuration Parameters](#-configuration-parameters)
 - [Best Practices](#-best-practices)
@@ -127,6 +130,192 @@ metrics.recordValidationResult(
 - Use `getValidationSummary()` for user-friendly status messages
 - Log detailed validation results for debugging
 - Consider automatic recovery procedures for common issues
+
+## 📁 Off-Chain Storage API
+
+The off-chain storage system automatically handles large data (>512KB by default) by storing it in encrypted files outside the blockchain while maintaining cryptographic integrity and security.
+
+### How It Works
+
+1. **Automatic Detection**: When adding a block, the system checks data size
+2. **Storage Decision**: Data >512KB (configurable) is automatically stored off-chain
+3. **Encryption**: Off-chain files are encrypted with AES-128-CBC using unique IV
+4. **Reference Storage**: Block contains `OFF_CHAIN_REF:hash` instead of actual data
+5. **Integrity Protection**: SHA3-256 hash and ECDSA signature verify data integrity
+
+### Key Classes and Methods
+
+#### Block Entity Extensions
+```java
+// Check if block uses off-chain storage
+public boolean hasOffChainData()
+
+// Get off-chain metadata (null if none)
+public OffChainData getOffChainData()
+
+// Set off-chain metadata (used internally)
+public void setOffChainData(OffChainData offChainData)
+```
+
+#### OffChainData Entity
+```java
+// Data integrity hash (SHA3-256)
+public String getDataHash()
+
+// Digital signature for authenticity
+public String getSignature()
+
+// Encrypted file path
+public String getFilePath()
+
+// Original file size in bytes
+public Long getFileSize()
+
+// AES encryption IV (Base64 encoded)
+public String getEncryptionIV()
+
+// Content type (e.g., "text/plain", "application/pdf")
+public String getContentType()
+
+// Signer's public key
+public String getSignerPublicKey()
+```
+
+### Usage Examples
+
+#### Basic Off-Chain Operations
+```java
+// Adding data (automatic off-chain handling)
+String largeDocument = loadLargeDocument(); // >512KB
+Block block = blockchain.addBlockAndReturn(largeDocument, privateKey, publicKey);
+
+// Check storage type
+if (block.hasOffChainData()) {
+    System.out.println("Data stored off-chain");
+    OffChainData metadata = block.getOffChainData();
+    System.out.println("File size: " + metadata.getFileSize() + " bytes");
+    System.out.println("Content type: " + metadata.getContentType());
+}
+
+// Retrieve complete data (transparent)
+String retrievedData = blockchain.getCompleteBlockData(block);
+assert largeDocument.equals(retrievedData); // Should be identical
+```
+
+#### Storage Configuration
+```java
+// Configure for different use cases
+public void setupForDocumentManagement() {
+    // Store documents >100KB off-chain
+    blockchain.setOffChainThresholdBytes(100 * 1024);
+    
+    // Allow larger on-chain blocks if needed
+    blockchain.setMaxBlockSizeBytes(5 * 1024 * 1024);
+    
+    // Display current settings
+    System.out.println(blockchain.getConfigurationSummary());
+}
+
+// Example output:
+// Block Size Configuration:
+// - Max block size: 5,242,880 bytes (5.0 MB)
+// - Max data length: 10,000 characters
+// - Off-chain threshold: 102,400 bytes (100.0 KB)
+// - Default values: 1,048,576 bytes / 10,000 chars / 524,288 bytes
+```
+
+#### Data Validation and Storage Decision
+```java
+// Check what will happen before adding block
+String testData = "Some data to test";
+int decision = blockchain.validateAndDetermineStorage(testData);
+
+switch (decision) {
+    case 0:
+        System.out.println("Data is invalid (too large or null)");
+        break;
+    case 1:
+        System.out.println("Data will be stored on-chain");
+        break;
+    case 2:
+        System.out.println("Data will be stored off-chain");
+        break;
+}
+```
+
+#### Integrity Verification
+```java
+// Verify individual block
+public boolean checkBlockIntegrity(Block block) {
+    if (block.hasOffChainData()) {
+        boolean isValid = blockchain.verifyOffChainIntegrity(block);
+        if (!isValid) {
+            System.err.println("Off-chain data corrupted for block " + block.getBlockNumber());
+            return false;
+        }
+    }
+    return true;
+}
+
+// Verify entire blockchain off-chain data
+public void performIntegrityAudit() {
+    System.out.println("Starting comprehensive off-chain integrity audit...");
+    
+    boolean allValid = blockchain.verifyAllOffChainIntegrity();
+    
+    if (allValid) {
+        System.out.println("✅ All off-chain data passed integrity checks");
+    } else {
+        System.err.println("❌ Some off-chain data failed integrity verification");
+        // Investigate and potentially recover corrupted data
+    }
+}
+```
+
+### Security Features
+
+#### Encryption Details
+- **Algorithm**: AES-128-CBC with PKCS5 padding
+- **Key Derivation**: SHA3-256 hash of deterministic password
+- **IV Generation**: Cryptographically secure random 16-byte IV per file
+- **Password Generation**: Based on block number + signer public key (reproducible)
+
+#### Integrity Protection
+- **Content Hash**: SHA3-256 of original (unencrypted) data
+- **Digital Signature**: ECDSA signature of the content hash
+- **Verification**: Automatic integrity check on retrieval
+- **Tamper Detection**: Any modification to off-chain files is detected
+
+### Storage Limits and Thresholds
+
+| Setting | Default | Range | Description |
+|---------|---------|--------|------------|
+| On-Chain Block Size | 1MB | 1B - 10MB | Maximum size for on-chain storage |
+| On-Chain Data Length | 10,000 chars | 1 - 1M chars | Maximum characters for on-chain text |
+| Off-Chain Threshold | 512KB | 1B - Block Size | Size threshold for off-chain storage |
+| Off-Chain Max Size | 100MB | - | Maximum size per off-chain file |
+
+### Error Handling
+
+```java
+// Proper error handling for off-chain operations
+public String safeRetrieveBlockData(Block block) {
+    try {
+        return blockchain.getCompleteBlockData(block);
+    } catch (FileNotFoundException e) {
+        System.err.println("Off-chain file missing for block " + block.getBlockNumber());
+        // Log incident, attempt recovery, or alert administrators
+        return null;
+    } catch (SecurityException e) {
+        System.err.println("Off-chain data integrity check failed: " + e.getMessage());
+        // Handle corrupted data - potential security incident
+        return null;
+    } catch (Exception e) {
+        System.err.println("Unexpected error retrieving off-chain data: " + e.getMessage());
+        return null;
+    }
+}
+```
 
 ## 🎯 Core Functions Usage
 
@@ -827,6 +1016,79 @@ public int getMaxBlockDataLength()
 ```
 - **Returns:** Maximum characters allowed in block data (default: 10,000)
 
+#### Off-Chain Storage Configuration Methods
+
+```java
+public void setMaxBlockSizeBytes(int maxSizeBytes)
+```
+- **Parameters:** `maxSizeBytes`: New maximum block size (1 to 10MB)
+- **Description:** Updates the on-chain block size limit at runtime
+
+```java
+public void setMaxBlockDataLength(int maxDataLength)
+```
+- **Parameters:** `maxDataLength`: New maximum data length (1 to 1M characters)
+- **Description:** Updates the on-chain data length limit at runtime
+
+```java
+public void setOffChainThresholdBytes(int thresholdBytes)
+```
+- **Parameters:** `thresholdBytes`: New off-chain storage threshold
+- **Description:** Sets the size threshold for automatic off-chain storage
+
+```java
+public int getCurrentMaxBlockSizeBytes()
+```
+- **Returns:** Current maximum block size in bytes
+
+```java
+public int getCurrentMaxBlockDataLength()
+```
+- **Returns:** Current maximum data length in characters
+
+```java
+public int getCurrentOffChainThresholdBytes()
+```
+- **Returns:** Current off-chain storage threshold in bytes
+
+```java
+public String getConfigurationSummary()
+```
+- **Returns:** Human-readable summary of current configuration settings
+
+```java
+public void resetLimitsToDefault()
+```
+- **Description:** Resets all size limits to their default values
+
+#### Off-Chain Data Management Methods
+
+```java
+public String getCompleteBlockData(Block block)
+```
+- **Parameters:** `block`: The block to retrieve complete data for
+- **Returns:** Complete block data (retrieves from off-chain storage if needed)
+- **Throws:** `Exception` if off-chain data cannot be retrieved
+
+```java
+public boolean verifyOffChainIntegrity(Block block)
+```
+- **Parameters:** `block`: The block to verify off-chain data integrity
+- **Returns:** `true` if off-chain data is valid or block has no off-chain data
+
+```java
+public boolean verifyAllOffChainIntegrity()
+```
+- **Returns:** `true` if all off-chain data in the blockchain passes integrity checks
+- **Description:** Verifies integrity of all off-chain data files
+
+```java
+public int validateAndDetermineStorage(String data)
+```
+- **Parameters:** `data`: The data to validate and classify
+- **Returns:** 0 = invalid, 1 = store on-chain, 2 = store off-chain
+- **Description:** Determines storage strategy based on data size and current configuration
+
 ### CryptoUtil Class API
 
 #### Key Generation
@@ -1009,10 +1271,16 @@ boolean securityValid = securityResult.isFullyCompliant();
 
 ### Size and Performance Limits
 ```properties
-# Block constraints
-blockchain.block.max_data_size=10000           # 10,000 characters
-blockchain.block.max_size_bytes=1048576        # 1MB (1,048,576 bytes)
-blockchain.block.max_hash_length=64            # SHA-256 hash length
+# On-Chain Block constraints (configurable at runtime)
+blockchain.block.max_data_size=10000           # 10,000 characters (default)
+blockchain.block.max_size_bytes=1048576        # 1MB (1,048,576 bytes) (default)
+blockchain.block.max_hash_length=64            # SHA3-256 hash length
+
+# Off-Chain Storage settings
+blockchain.offchain.threshold_bytes=524288     # 512KB threshold (default)
+blockchain.offchain.max_file_size=104857600    # 100MB maximum per file
+blockchain.offchain.storage_directory=off-chain-data  # Storage directory
+blockchain.offchain.encryption_algorithm=AES/CBC/PKCS5Padding  # Encryption method
 
 # Database settings
 blockchain.database.connection_timeout=30000   # 30 seconds
@@ -1208,6 +1476,144 @@ private String sanitizeData(String data) {
     // Remove or encrypt sensitive information
     return data.replaceAll("\\b\\d{4}\\s?\\d{4}\\s?\\d{4}\\s?\\d{4}\\b", "[CARD_REDACTED]")
                .replaceAll("\\b\\d{3}-\\d{2}-\\d{4}\\b", "[SSN_REDACTED]");
+}
+```
+
+### Off-Chain Storage Best Practices
+
+#### Automatic Data Handling
+```java
+// ✅ GOOD: Let the blockchain automatically handle storage decisions
+public void addDataBlock(String data, PrivateKey privateKey, PublicKey publicKey) {
+    // Blockchain automatically determines if data goes on-chain or off-chain
+    Block block = blockchain.addBlockAndReturn(data, privateKey, publicKey);
+    
+    if (block.hasOffChainData()) {
+        System.out.println("Large data stored off-chain securely");
+        // Optional: Verify integrity immediately
+        boolean isValid = blockchain.verifyOffChainIntegrity(block);
+        if (!isValid) {
+            throw new RuntimeException("Off-chain data integrity check failed");
+        }
+    }
+}
+
+// ❌ BAD: Trying to manually manage off-chain storage
+// Don't attempt to directly manage off-chain files - let the blockchain handle it
+```
+
+#### Configuration Management
+```java
+// ✅ GOOD: Configure thresholds based on your use case
+public void configureForDocumentStorage() {
+    // For document management system - store documents off-chain
+    blockchain.setOffChainThresholdBytes(100 * 1024); // 100KB threshold
+    blockchain.setMaxBlockSizeBytes(5 * 1024 * 1024); // 5MB on-chain limit
+    
+    System.out.println("Configuration updated:");
+    System.out.println(blockchain.getConfigurationSummary());
+}
+
+public void configureForTransactionLogs() {
+    // For transaction logging - keep more data on-chain
+    blockchain.setOffChainThresholdBytes(2 * 1024 * 1024); // 2MB threshold
+    blockchain.setMaxBlockSizeBytes(10 * 1024 * 1024); // 10MB on-chain limit
+}
+
+// ✅ GOOD: Reset to defaults when needed
+public void resetToDefaults() {
+    blockchain.resetLimitsToDefault();
+}
+```
+
+#### Data Retrieval Patterns
+```java
+// ✅ GOOD: Always use getCompleteBlockData() for full data access
+public String getBlockContent(Block block) {
+    try {
+        // This method handles both on-chain and off-chain data automatically
+        return blockchain.getCompleteBlockData(block);
+    } catch (Exception e) {
+        System.err.println("Failed to retrieve block data: " + e.getMessage());
+        return null;
+    }
+}
+
+// ❌ BAD: Directly accessing block.getData() for blocks that might have off-chain data
+public String getBadBlockContent(Block block) {
+    String data = block.getData();
+    // This might return "OFF_CHAIN_REF:hash..." instead of actual data!
+    return data;
+}
+
+// ✅ GOOD: Check for off-chain data before processing
+public void processBlock(Block block) {
+    if (block.hasOffChainData()) {
+        // Verify integrity before processing
+        if (!blockchain.verifyOffChainIntegrity(block)) {
+            throw new RuntimeException("Off-chain data corrupted for block " + block.getBlockNumber());
+        }
+        System.out.println("Processing block with off-chain data");
+    }
+    
+    String fullData = blockchain.getCompleteBlockData(block);
+    // Process the complete data...
+}
+```
+
+#### Integrity Verification
+```java
+// ✅ GOOD: Regular integrity checks
+public void performMaintenanceCheck() {
+    System.out.println("Starting off-chain integrity verification...");
+    
+    boolean allValid = blockchain.verifyAllOffChainIntegrity();
+    
+    if (!allValid) {
+        System.err.println("❌ Some off-chain data failed integrity checks!");
+        // Handle corrupted data - alert administrators, backup recovery, etc.
+        alertAdministrators("Off-chain data integrity issues detected");
+    } else {
+        System.out.println("✅ All off-chain data integrity checks passed");
+    }
+}
+
+// ✅ GOOD: Verify individual blocks when suspicious
+public boolean verifySpecificBlock(long blockNumber) {
+    Block block = blockchain.getBlock(blockNumber);
+    if (block != null && block.hasOffChainData()) {
+        return blockchain.verifyOffChainIntegrity(block);
+    }
+    return true; // No off-chain data to verify
+}
+```
+
+#### Production Considerations
+```java
+// ✅ GOOD: Monitor disk space for off-chain storage
+public void monitorStorage() {
+    File offChainDir = new File("off-chain-data");
+    if (offChainDir.exists()) {
+        long totalSize = calculateDirectorySize(offChainDir);
+        long availableSpace = offChainDir.getFreeSpace();
+        
+        if (availableSpace < totalSize * 0.1) { // Less than 10% free space
+            System.err.println("⚠️ Warning: Low disk space for off-chain storage");
+            // Trigger cleanup, archival, or expansion procedures
+        }
+    }
+}
+
+// ✅ GOOD: Backup strategy for off-chain data
+public void backupOffChainData() {
+    // Include off-chain directory in backup procedures
+    // Verify integrity before backup
+    if (blockchain.verifyAllOffChainIntegrity()) {
+        // Proceed with backup of off-chain-data/ directory
+        performDirectoryBackup("off-chain-data", "backup-location");
+    } else {
+        System.err.println("Cannot backup - integrity check failed");
+    }
 }
 ```
 
@@ -1440,6 +1846,177 @@ public List<Block> getBlocksBad() {
 }
 ```
 
+## 🔄 Data Consistency & Maintenance API
+
+### Off-Chain File Cleanup Methods
+
+```java
+// Clean up orphaned off-chain files (maintenance utility)
+public int cleanupOrphanedFiles() {
+    // Identifies and removes off-chain files that no longer have corresponding database entries
+    // Returns: number of orphaned files deleted
+    // ✅ Thread-safe operation with read lock
+    // ✅ Compares database file paths with actual files in off-chain directory
+}
+
+// Manual integrity verification for all off-chain data
+public boolean verifyAllOffChainIntegrity() {
+    // Verifies SHA3-256 hash and ECDSA signature for all off-chain data
+    // Returns: true if all off-chain data passes integrity checks
+    // ⚠️ Can be expensive for large numbers of off-chain files
+}
+
+// Verify integrity of specific block's off-chain data
+public boolean verifyOffChainIntegrity(Block block) {
+    // Verifies hash and signature for a single block's off-chain data
+    // Returns: true if off-chain data is valid, false if corrupted
+}
+```
+
+### Blockchain Operations with Data Consistency
+
+#### Rollback Operations (Enhanced)
+```java
+// Roll back N blocks with automatic off-chain cleanup
+public boolean rollbackBlocks(Long numberOfBlocks) {
+    // ✅ NEW: Automatically deletes off-chain files before removing blocks
+    // ✅ Thread-safe with global write lock and transaction management
+    // ✅ Comprehensive logging of cleanup operations
+    // ✅ Returns detailed success/failure status
+}
+
+// Roll back to specific block number with off-chain cleanup
+public boolean rollbackToBlock(Long targetBlockNumber) {
+    // ✅ NEW: Uses getBlocksAfter() to identify all affected off-chain files
+    // ✅ Deletes off-chain files before database operations
+    // ✅ Atomic operation - all blocks after target are removed
+}
+```
+
+#### Export/Import Operations (Enhanced)
+```java
+// Export blockchain with off-chain file backup
+public boolean exportChain(String filePath) {
+    // ✅ NEW: Creates "off-chain-backup" directory alongside export file
+    // ✅ Copies all off-chain files with proper naming (block_N_filename.ext)
+    // ✅ Updates file paths in export data to point to backup location
+    // ✅ Version 1.1 export format includes off-chain support
+}
+
+// Import blockchain with off-chain file restoration
+public boolean importChain(String filePath) {
+    // ✅ NEW: Cleans up existing off-chain files before import
+    // ✅ Restores off-chain files from backup directory to standard location
+    // ✅ Generates new file paths to prevent conflicts
+    // ✅ Handles missing backup files gracefully
+    // ✅ Validates imported off-chain data integrity
+}
+```
+
+#### Database Management (Enhanced)
+```java
+// Clear blockchain with complete off-chain cleanup
+public void clearAndReinitialize() {
+    // ✅ NEW: Deletes all off-chain files before clearing database
+    // ✅ Runs orphaned file cleanup after database operations
+    // ✅ Thread-safe with global write lock
+    // ⚠️ WARNING: Destroys all blockchain data - use only for testing
+}
+```
+
+### Data Consistency Best Practices
+
+#### Automatic Cleanup Operations
+```java
+// ✅ GOOD: Rollback operations automatically clean up off-chain files
+public void safeRollback() {
+    // The system automatically handles off-chain cleanup
+    boolean success = blockchain.rollbackBlocks(3L);
+    if (success) {
+        System.out.println("Rollback completed with automatic file cleanup");
+    }
+}
+
+// ✅ GOOD: Regular maintenance to clean orphaned files
+public void regularMaintenance() {
+    int cleanedFiles = blockchain.cleanupOrphanedFiles();
+    if (cleanedFiles > 0) {
+        System.out.println("Cleaned up " + cleanedFiles + " orphaned files");
+    }
+}
+
+// ✅ GOOD: Verify integrity before important operations
+public void verifyBeforeOperation() {
+    boolean allValid = blockchain.verifyAllOffChainIntegrity();
+    if (!allValid) {
+        throw new RuntimeException("Off-chain data integrity check failed");
+    }
+}
+```
+
+#### Export/Import with Data Consistency
+```java
+// ✅ GOOD: Complete backup including off-chain files
+public void createCompleteBackup(String backupPath) {
+    boolean exported = blockchain.exportChain(backupPath);
+    if (exported) {
+        // Verify backup includes off-chain files
+        File backupDir = new File(new File(backupPath).getParent(), "off-chain-backup");
+        if (backupDir.exists()) {
+            System.out.println("Complete backup created with off-chain files");
+        }
+    }
+}
+
+// ✅ GOOD: Safe import with validation
+public void safeImport(String importPath) {
+    // Import automatically handles off-chain file restoration
+    boolean imported = blockchain.importChain(importPath);
+    if (imported) {
+        // Verify all off-chain data after import
+        boolean valid = blockchain.verifyAllOffChainIntegrity();
+        if (valid) {
+            System.out.println("Import completed with data integrity verified");
+        }
+    }
+}
+```
+
+#### Error Recovery Patterns
+```java
+// ✅ GOOD: Handle partial failures gracefully
+public void handlePartialFailure() {
+    try {
+        blockchain.rollbackBlocks(5L);
+    } catch (Exception e) {
+        // Even if rollback has issues, run cleanup
+        int orphaned = blockchain.cleanupOrphanedFiles();
+        System.out.println("Emergency cleanup removed " + orphaned + " orphaned files");
+    }
+}
+
+// ❌ BAD: Manual file management alongside blockchain operations
+public void badFileManagement() {
+    // Don't manually delete off-chain files - the blockchain handles it automatically
+    File offChainDir = new File("off-chain-data");
+    // ❌ This could cause data inconsistency!
+    // deleteDirectory(offChainDir);
+}
+```
+
+### Data Consistency Guarantees
+
+The blockchain now provides the following consistency guarantees:
+
+1. **Atomic Operations**: File and database operations are coordinated within transaction scope
+2. **Pre-deletion Cleanup**: Off-chain files are deleted before corresponding database records
+3. **Cascade Safety**: JPA cascade operations automatically handle off-chain metadata deletion
+4. **Rollback Safety**: Database rollbacks work even if file cleanup encounters issues
+5. **Import/Export Integrity**: Complete backup and restoration of off-chain files
+6. **Maintenance Tools**: Utilities to detect and clean orphaned files
+7. **Verification Methods**: Cryptographic verification of off-chain data integrity
+
 For real-world usage examples, see [EXAMPLES.md](EXAMPLES.md).  
 For production deployment guidance, see [PRODUCTION_GUIDE.md](PRODUCTION_GUIDE.md).  
-For testing procedures, see [TESTING.md](TESTING.md).
+For testing procedures, see [TESTING.md](TESTING.md).  
+For technical implementation details, see [TECHNICAL_DETAILS.md](TECHNICAL_DETAILS.md).

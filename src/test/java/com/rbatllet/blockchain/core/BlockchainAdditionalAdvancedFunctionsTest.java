@@ -217,7 +217,7 @@ class BlockchainAdditionalAdvancedFunctionsTest {
         assertEquals(keysBefore.size(), exportData.getAuthorizedKeys().size(),
                 "Exported key count should match current key count");
         assertNotNull(exportData.getExportTimestamp(), "Export timestamp should be set");
-        assertEquals("1.0", exportData.getVersion(), "Export version should be 1.0");
+        assertEquals("1.1", exportData.getVersion(), "Export version should be 1.1");
     }
 
     // ===============================

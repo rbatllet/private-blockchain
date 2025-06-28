@@ -31,6 +31,10 @@ public class Block {
     
     @Column(name = "signer_public_key", columnDefinition = "TEXT")
     private String signerPublicKey;
+    
+    @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @JoinColumn(name = "off_chain_data_id")
+    private OffChainData offChainData;
 
     // Constructors
     public Block() {}
@@ -45,6 +49,13 @@ public class Block {
         this.hash = hash;
         this.signature = signature;
         this.signerPublicKey = signerPublicKey;
+    }
+    
+    public Block(Long blockNumber, String previousHash, String data, 
+                 LocalDateTime timestamp, String hash, String signature, 
+                 String signerPublicKey, OffChainData offChainData) {
+        this(blockNumber, previousHash, data, timestamp, hash, signature, signerPublicKey);
+        this.offChainData = offChainData;
     }
 
     // Getters and Setters
@@ -71,6 +82,11 @@ public class Block {
 
     public String getSignerPublicKey() { return signerPublicKey; }
     public void setSignerPublicKey(String signerPublicKey) { this.signerPublicKey = signerPublicKey; }
+    
+    public OffChainData getOffChainData() { return offChainData; }
+    public void setOffChainData(OffChainData offChainData) { this.offChainData = offChainData; }
+    
+    public boolean hasOffChainData() { return offChainData != null; }
 
     @Override
     public String toString() {
@@ -83,6 +99,7 @@ public class Block {
                 ", hash='" + hash + '\'' +
                 ", signature='" + (signature != null ? signature.substring(0, Math.min(20, signature.length())) + "..." : "null") + '\'' +
                 ", signerPublicKey='" + (signerPublicKey != null ? signerPublicKey.substring(0, Math.min(20, signerPublicKey.length())) + "..." : "null") + '\'' +
+                ", hasOffChainData=" + hasOffChainData() +
                 '}';
     }
 }

@@ -287,6 +287,10 @@ public class DataIntegrityThreadSafetyTest {
         boolean completed = endLatch.await(20, TimeUnit.SECONDS);
         assertTrue(completed, "Block sequence test should complete within timeout");
 
+        // Show detailed validation after concurrent operations
+        System.out.println("🔍 Detailed validation after concurrent block number sequence operations:");
+        blockchain.validateChainDetailed();
+        
         // Verify final sequence integrity
         List<Block> allBlocks = blockchain.getAllBlocks();
         int sequenceGaps = 0;

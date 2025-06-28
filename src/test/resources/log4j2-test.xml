@@ -1,42 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration status="WARN">
     <Properties>
-        <!-- Pattern personalitzat per tests -->
+        <!-- Custom pattern for tests -->
         <Property name="PATTERN">%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n</Property>
     </Properties>
 
     <Appenders>
-        <!-- Console per desenvolupament i tests -->
+        <!-- Console for development and tests -->
         <Console name="Console" target="SYSTEM_OUT">
             <PatternLayout pattern="${PATTERN}"/>
         </Console>
         
-        <!-- File per logs persistents (opcional per tests) -->
+        <!-- File for persistent logs (optional for tests) -->
         <File name="FileAppender" fileName="logs/test-app.log" append="true">
             <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
         </File>
     </Appenders>
 
     <Loggers>
-        <!-- Els teus logs d'aplicació -->
+        <!-- Application logs -->
         <Logger name="com.rbatllet.blockchain" level="INFO" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="FileAppender"/>
+        </Logger>
+        
+        <!-- Demo test logs - appear on screen and file -->
+        <Logger name="demo" level="INFO" additivity="false">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="FileAppender"/>
         </Logger>
 
         <!-- HIBERNATE LOGGERS -->
-        <!-- Logs generals de Hibernate -->
-        <Logger name="org.hibernate" level="INFO" additivity="false">
+        <!-- General Hibernate logs - only warnings to console -->
+        <Logger name="org.hibernate" level="WARN" additivity="false">
             <AppenderRef ref="Console"/>
+            <AppenderRef ref="FileAppender"/>
         </Logger>
         
-        <!-- SQL statements - molt útil per debugging -->
+        <!-- SQL statements - only to file to avoid console saturation -->
         <Logger name="org.hibernate.SQL" level="DEBUG" additivity="false">
-            <AppenderRef ref="Console"/>
+            <AppenderRef ref="FileAppender"/>
         </Logger>
         
-        <!-- JDBC bind parameters - ATENCIÓ: pot mostrar dades sensibles -->
-        <!-- Descomenta només si necessites debugar parameters -->
+        <!-- JDBC bind parameters - WARNING: may show sensitive data -->
+        <!-- Uncomment only if you need to debug parameters -->
         <!--
         <Logger name="org.hibernate.orm.jdbc.bind" level="TRACE" additivity="false">
             <AppenderRef ref="Console"/>
@@ -51,7 +58,7 @@
             <AppenderRef ref="Console"/>
         </Logger>
         
-        <!-- JBoss Logging (Hibernate intern) -->
+        <!-- JBoss Logging (Hibernate internal) -->
         <Logger name="org.jboss.logging" level="WARN" additivity="false">
             <AppenderRef ref="Console"/>
         </Logger>

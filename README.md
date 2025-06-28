@@ -45,7 +45,13 @@ This is a **private blockchain** for controlled environments where only authoriz
 - **Export/Import**: Backup and restore complete blockchain with temporal consistency
 - **Search Capabilities**: Find blocks by content, hash, or date range
 - **Rollback Operations**: Safe removal of recent blocks with genesis protection
-- **Block Size Validation**: Prevents oversized blocks
+- **Off-Chain Storage**: Automatic storage for large data (>512KB) with AES-CBC encryption
+- **Data Size Management**: Intelligent data placement based on configurable size thresholds
+- **Integrity Verification**: Cryptographic verification of off-chain data with hash and signature validation
+- **Detailed Validation**: Enhanced `validateChainDetailed()` with comprehensive off-chain data analysis
+- **Real-time Monitoring**: Live validation results with detailed file status, integrity checks, and storage metrics
+- **Data Consistency**: Complete synchronization between database and file system operations
+- **Automatic Cleanup**: Off-chain file cleanup during rollback, export/import, and maintenance operations
 
 ### 🔐 Enhanced Security Features
 
@@ -78,9 +84,11 @@ This is a **private blockchain** for controlled environments where only authoriz
 
 ### Technical Features
 - **Persistence**: SQLite database with JPA standard for ORM (using Hibernate as provider)
-- **Comprehensive Testing**: More than 40 JUnit 5 tests + integration demos
+- **Off-Chain Storage**: Encrypted file storage with automatic data tiering (AES-128-CBC)
+- **Comprehensive Testing**: More than 40 JUnit 5 tests + integration demos + off-chain storage tests
 - **Production Ready**: Complete documentation and deployment guides
 - **Clean Architecture**: Well-structured code with DAO pattern
+- **Scalable Storage**: Support for data up to 100MB per block through off-chain storage
 
 ## 🛠️ Technologies Used
 
@@ -92,13 +100,14 @@ This is a **private blockchain** for controlled environments where only authoriz
   - **Hashing**: SHA3-256 (modern, secure hash function)
   - **Digital Signatures**: ECDSA with secp256r1 (NIST P-256) curve
   - **Key Management**: Hierarchical key structure with automatic rotation
+  - **Encryption**: AES-128-CBC for off-chain data encryption with unique IV per file
 - **JUnit 5** - Testing framework for comprehensive validation
 
 ## 📦 Prerequisites
 
 - **Java 21** or higher installed
 - **Maven 3.6** or higher
-- At least **50MB** of free disk space
+- At least **500MB** of free disk space (additional space needed for off-chain storage)
 
 ### Checking Prerequisites
 ```zsh
@@ -146,7 +155,13 @@ Authorized keys: 2
 === DEMO COMPLETED ===
 ```
 
-### 3. Run Advanced Features Demo
+### 3. Run Off-Chain Storage Demo
+```zsh
+# Run demonstration of large data handling with off-chain storage
+mvn test -Dtest=OffChainStorageTest
+```
+
+### 4. Run Advanced Features Demo
 ```zsh
 # Run advanced features demonstration
 mvn exec:java -Dexec.mainClass="demo.AdditionalAdvancedFunctionsDemo"
@@ -193,8 +208,16 @@ blockchain.addAuthorizedKey(publicKey, "UserName");
 
 ### Step 3: Add Blocks
 ```java
+// Small data (stored on-chain)
 boolean success = blockchain.addBlock(
     "Your data here", 
+    userKeys.getPrivate(), 
+    userKeys.getPublic()
+);
+
+// Large data (automatically stored off-chain if >512KB)
+boolean success = blockchain.addBlock(
+    largeDocumentData, 
     userKeys.getPrivate(), 
     userKeys.getPublic()
 );
@@ -226,7 +249,63 @@ System.out.println(report);
 // Legacy validation (deprecated)
 // boolean isValid = blockchain.validateChain(); // Avoid using this - will be removed in future versions
 ```
+
+## 📁 Off-Chain Storage Feature
+
+### How Off-Chain Storage Works
+
+The blockchain automatically handles large data through a sophisticated off-chain storage system:
+
+#### Automatic Data Management
+```java
+// Small data (< 512KB) - stored directly in blockchain
+blockchain.addBlock("Small transaction data", privateKey, publicKey);
+// Block contains: "Small transaction data"
+
+// Large data (> 512KB) - automatically stored off-chain
+blockchain.addBlock(largeFileContent, privateKey, publicKey);
+// Block contains: "OFF_CHAIN_REF:a1b2c3d4..." (reference)
+// File stored: off-chain-data/offchain_123456789_1234.dat (encrypted)
 ```
+
+#### Data Retrieval
+```java
+// Get complete data (automatically handles on-chain/off-chain)
+String fullData = blockchain.getCompleteBlockData(block);
+
+// Check if block has off-chain data
+if (block.hasOffChainData()) {
+    System.out.println("Block uses off-chain storage");
+}
+
+// Verify off-chain data integrity
+boolean isValid = blockchain.verifyOffChainIntegrity(block);
+```
+
+#### Configuration Management
+```java
+// View current configuration
+System.out.println(blockchain.getConfigurationSummary());
+
+// Adjust thresholds
+blockchain.setOffChainThresholdBytes(1024 * 1024); // 1MB threshold
+blockchain.setMaxBlockSizeBytes(5 * 1024 * 1024);  // 5MB on-chain max
+
+// Reset to defaults
+blockchain.resetLimitsToDefault();
+```
+
+### Security Features
+- **AES-128-CBC Encryption**: All off-chain files are encrypted with unique IV
+- **SHA3-256 Integrity**: Each file has cryptographic hash verification
+- **ECDSA Signatures**: Digital signatures ensure authenticity
+- **Deterministic Keys**: Encryption passwords derived from block metadata
+
+### Storage Limits
+- **On-Chain**: Up to 1MB per block (configurable)
+- **Off-Chain**: Up to 100MB per file
+- **Threshold**: 512KB default (configurable)
+- **Total Capacity**: Limited only by available disk space
 
 ## 🧪 Basic Testing
 
@@ -344,23 +423,184 @@ mvn exec:java -Dexec.mainClass="demo.CoreFunctionsDemo"
 - ✅ **Advanced features**: Export/Import, Search, Rollback
 - ✅ **Error handling** and edge cases
 - ✅ **Performance** and size validation
+- ✅ **Off-chain data integrity** and validation
+- ✅ **Detailed validation output** with comprehensive analysis
+
+## 🚀 Running Enhanced Demo Applications
+
+### Core Functionality Demos
+
+#### Basic Blockchain Demo with Enhanced Validation
+```bash
+mvn exec:java -Dexec.mainClass="demo.BlockchainDemo"
+```
+
+#### Complete Off-Chain Validation Demo (NEW)
+```bash
+mvn exec:java -Dexec.mainClass="demo.TestDetailedValidation"
+```
+
+#### Core Functions with Enhanced Analysis
+```bash
+mvn exec:java -Dexec.mainClass="demo.CoreFunctionsDemo"
+```
+
+### Off-Chain Storage Demos
+
+#### Comprehensive Off-Chain Validation Tests
+```bash
+mvn exec:java -Dexec.mainClass="demo.TestOffChainValidation"
+```
+
+#### Data Consistency Validation
+```bash
+mvn exec:java -Dexec.mainClass="demo.TestDataConsistency"
+```
+
+#### Export/Import with Validation Analysis
+```bash
+mvn exec:java -Dexec.mainClass="demo.TestExportImport"
+```
+
+### Thread Safety Demos with Enhanced Validation
+
+#### Simple Thread Safety Test
+```bash
+mvn exec:java -Dexec.mainClass="demo.SimpleThreadSafetyTest"
+```
+
+#### Comprehensive Thread Safety Analysis
+```bash
+mvn exec:java -Dexec.mainClass="demo.ComprehensiveThreadSafetyTest"
+```
+
+### Recovery & Management Demos
+
+#### Chain Recovery with Validation
+```bash
+mvn exec:java -Dexec.mainClass="demo.ChainRecoveryDemo"
+```
+
+### Expected Enhanced Output
+
+All demos now show detailed validation information:
+
+```
+=== 📊 ENHANCED FINAL VALIDATION WITH OFF-CHAIN ANALYSIS ===
+🔍 [main] Detailed validation of block #1
+✅ [main] Block #1 is fully valid
+🔍 [main] Detailed validation of block #3
+✅ [main] Off-chain data fully validated for block #3
+   📁 File: offchain_1751131802520_69.dat
+   📦 Size: 2832.0 KB
+   🔐 Integrity: verified (hash + encryption + signature)
+   ⏰ Created: 2025-06-28T19:30:02.616
+   🔗 Hash: e1c03c4a...92a31581
+✅ [main] Block #3 is fully valid
+📊 Chain validation completed: ✅ Chain is fully valid (6 blocks: 6 valid)
+🗂️ Off-chain data summary:
+   📊 Blocks with off-chain data: 2/6 (33.3%)
+   ✅ Valid off-chain blocks: 2/2 (100.0%)
+   📦 Total off-chain storage: 6.08 MB
+```
+
+### Testing Enhanced Validation
+
+#### Run All Tests with Enhanced Output
+```bash
+mvn test
+```
+
+#### Run Specific Enhanced Test Categories
+```bash
+# Off-chain storage tests with detailed validation
+mvn test -Dtest=OffChainStorageTest
+
+# Data consistency tests with validation analysis  
+mvn test -Dtest=DataConsistencyValidationTest
+
+# Thread safety tests with enhanced output
+mvn test -Dtest=DataIntegrityThreadSafetyTest
+```
+
+## 🎯 Demo Classes & Tests with Enhanced Off-Chain Validation
+
+### 📺 Demo Applications (All Enhanced with Detailed Validation)
+
+#### Core Functionality Demos
+- **`BlockchainDemo.java`** - Basic blockchain operations with enhanced validation output
+- **`CoreFunctionsDemo.java`** - Comprehensive core functionality demonstration
+- **`TestDetailedValidation.java`** - ✨ **NEW**: Complete off-chain validation demonstration
+
+#### Off-Chain Storage Demos
+- **`TestOffChainValidation.java`** - ✨ **ENHANCED**: Comprehensive off-chain data validation tests
+- **`TestDataConsistency.java`** - ✨ **ENHANCED**: Data consistency validation with detailed output
+- **`TestExportImport.java`** - ✨ **ENHANCED**: Export/import operations with validation analysis
+
+#### Thread Safety Demos
+- **`SimpleThreadSafetyTest.java`** - ✨ **ENHANCED**: Basic thread safety with detailed validation
+- **`ComprehensiveThreadSafetyTest.java`** - ✨ **ENHANCED**: Advanced thread safety with off-chain analysis
+
+#### Recovery & Management Demos
+- **`ChainRecoveryDemo.java`** - Chain recovery operations with validation
+- **`DangerousDeleteDemo.java`** - Key deletion safety features
+- **`EnhancedRecoveryExample.java`** - Advanced recovery techniques
+
+### 🧪 Test Suites (All Enhanced with Detailed Validation)
+
+#### Core Tests
+- **`BlockchainTest.java`** - ✨ **ENHANCED**: Core blockchain functionality tests
+- **`OffChainStorageTest.java`** - ✨ **ENHANCED**: Off-chain storage comprehensive testing
+- **`DataConsistencyValidationTest.java`** - ✨ **ENHANCED**: Data consistency validation tests
+
+#### Advanced Thread Safety Tests
+- **`DataIntegrityThreadSafetyTest.java`** - ✨ **ENHANCED**: Data integrity under concurrent access
+- **`ComprehensiveThreadSafetyTest.java`** - ✨ **ENHANCED**: Comprehensive concurrent operations
+- **`ThreadSafetyTest.java`** - Basic thread safety validation
+- **`AdvancedThreadSafetyTest.java`** - Advanced thread safety scenarios
+- **`ExtremeThreadSafetyTest.java`** - Extreme load testing
+- **`EdgeCaseThreadSafetyTest.java`** - Edge case validation
+
+#### Validation & Recovery Tests
+- **`CriticalConsistencyTest.java`** - Critical consistency validation
+- **`ChainRecoveryManagerTest.java`** - Recovery manager testing
+- **`ImprovedRollbackStrategyTest.java`** - Rollback strategy validation
+
+### 🔍 Enhanced Validation Features
+
+All demo classes and tests now include **detailed validation output** showing:
+
+#### For Off-Chain Data Blocks:
+- **📁 File name** and location
+- **📦 File size** in KB/MB  
+- **🔐 Integrity status** (hash + encryption + signature verification)
+- **⏰ Creation timestamp** 
+- **🔗 Truncated hash** for identification
+- **⚠️ Specific error details** when validation fails
+
+#### Blockchain Summary:
+- **📊 Percentage of blocks** with off-chain data
+- **✅ Validation success rate** for off-chain blocks
+- **📦 Total storage size** of off-chain data
+- **🚨 Alert notifications** for integrity issues
 
 ## 📊 Project Structure
 
 ```
 src/
 ├── main/java/
-│   ├── demo/
-│   │   ├── BlockchainDemo.java                      # Basic demo application
-│   │   ├── AdditionalAdvancedFunctionsDemo.java     # Advanced features demo
-│   │   ├── ChainRecoveryDemo.java                   # Chain recovery demonstration
-│   │   ├── DangerousDeleteDemo.java                 # Key deletion safety features demo
-│   │   ├── EnhancedRecoveryExample.java             # Advanced recovery techniques example
-│   │   ├── CoreFunctionsDemo.java                   # Comprehensive core test
-│   │   ├── SimpleDemo.java                          # Basic functionality test
-│   │   ├── QuickDemo.java                           # Fast verification test
-│   │   ├── RaceConditionTest.java                   # Thread safety testing
-│   │   └── CryptoSecurityDemo.java                  # Cryptographic security demo
+│   ├── demo/                                     # ✨ ALL ENHANCED WITH DETAILED VALIDATION
+│   │   ├── BlockchainDemo.java                      # Basic demo with enhanced validation
+│   │   ├── CoreFunctionsDemo.java                   # Comprehensive core functionality
+│   │   ├── TestDetailedValidation.java              # NEW: Complete validation demo
+│   │   ├── TestOffChainValidation.java              # ENHANCED: Off-chain validation tests
+│   │   ├── TestDataConsistency.java                 # ENHANCED: Data consistency validation
+│   │   ├── TestExportImport.java                    # ENHANCED: Export/import validation
+│   │   ├── SimpleThreadSafetyTest.java              # ENHANCED: Thread safety with validation
+│   │   ├── ComprehensiveThreadSafetyTest.java       # ENHANCED: Advanced thread safety
+│   │   ├── ChainRecoveryDemo.java                   # Chain recovery with validation
+│   │   ├── DangerousDeleteDemo.java                 # Key deletion safety features
+│   │   └── EnhancedRecoveryExample.java             # Advanced recovery techniques
 │   └── com/rbatllet/blockchain/
 ├── core/
 │   └── Blockchain.java                           # Main blockchain logic
@@ -413,23 +653,141 @@ Configuration & Scripts:
 ├── src/main/resources/logging.properties      # Logging configuration
 ├── src/test/resources/test.properties         # Test configuration
 ├── clean-database.sh                            # Database cleanup utility
-├── run_all_tests.sh                             # Complete test runner
+├── run_all_tests.sh                             # ✨ Complete test runner with enhanced validation
 ├── run_advanced_tests.sh                        # Advanced tests only
 ├── run_advanced_thread_safety_tests.sh          # Advanced thread safety tests
 ├── run_basic_tests.sh                           # Basic tests only
+├── run_api_migration_demo.sh                    # ✨ ENHANCED: API migration demonstration
 ├── run_crypto_security_demo.sh                  # Cryptographic security demo
-├── run_thread_safety_test.sh                    # Thread-safety testing (NEW!)
+├── run_enhanced_dangerous_delete_demo.sh        # Enhanced key deletion demo
+├── run_thread_safety_test.sh                    # Thread-safety testing
 ├── run_recovery_tests.sh                        # Recovery tests runner
 ├── run_improved_rollback_test.sh                # Improved rollback tests
 ├── run_security_analysis.sh                     # Security analysis tests
 ├── run_security_tests.sh                        # Security tests runner
+├── run_eckeyderivation_tests.sh                 # Elliptic curve key derivation tests
 ├── test_race_condition_fix.sh                   # Race condition testing
+├── test_thread_safety.zsh                       # ✨ ENHANCED: Comprehensive thread safety
+├── test_thread_safety_with_logs.zsh             # Thread safety with detailed logging
+├── test_data_consistency.zsh                    # ✨ ENHANCED: Data consistency validation
+├── test_export_import.zsh                       # ✨ ENHANCED: Export/import functionality
+├── test_validation.zsh                          # ✨ ENHANCED: Comprehensive validation
 ├── scripts/                                     # Script utilities directory
-│   ├── shared-functions.sh                     # Common functions library
+│   ├── shared-functions.sh                     # ✨ CORE: Common functions library
 │   ├── run_template.sh                         # Template for new scripts
-│   └── check-db-cleanup.sh                     # Script compliance checker
+│   └── check-db-cleanup.sh                     # Database cleanup verification
 └── pom.xml                                      # Maven configuration
 ```
+
+## 🔧 Automation Scripts
+
+The project includes comprehensive automation scripts for testing, validation, and demonstration purposes.
+
+### 📜 Core Test Runners
+
+#### **run_all_tests.sh** ✨ COMPREHENSIVE
+Complete test suite execution with all categories
+```bash
+./run_all_tests.sh
+```
+**Features**:
+- Executes JUnit 5 tests (Additional Advanced Functions, Temporal Validation, Key Authorization, Critical Consistency)
+- Runs all demo applications with enhanced validation
+- Security tests for key deletion and cryptographic features
+- Comprehensive result tracking and reporting
+- Automatic database cleanup between test suites
+
+#### **run_api_migration_demo.sh** ✨ ENHANCED
+Complete API migration benefits demonstration
+```bash
+./run_api_migration_demo.sh
+```
+**Features**:
+- Demonstrates all 11 demos with enhanced validation API
+- Shows old vs new API comparison with detailed output
+- Complete migration status tracking
+- Enhanced debugging capabilities showcase
+
+### 📜 Specialized Testing Scripts
+
+#### Thread Safety Validation
+```bash
+./test_thread_safety.zsh          # ✨ Comprehensive thread safety with analysis
+./run_thread_safety_test.sh       # Basic thread safety validation
+./run_advanced_thread_safety_tests.sh  # Advanced concurrent operations
+```
+
+#### Data Consistency & Validation
+```bash
+./test_data_consistency.zsh       # ✨ Data consistency with off-chain analysis
+./test_export_import.zsh          # ✨ Export/import with validation
+./test_validation.zsh             # ✨ Comprehensive validation testing
+```
+
+#### Security & Recovery
+```bash
+./run_security_analysis.sh        # Complete security analysis
+./run_recovery_tests.sh           # Chain recovery and repair testing
+./run_crypto_security_demo.sh     # Cryptographic security features
+```
+
+### 📜 Core Utility Scripts
+
+#### **scripts/shared-functions.sh** ✨ CORE LIBRARY
+Common utility functions for all scripts
+```bash
+source ./scripts/shared-functions.sh
+```
+**Key Functions**:
+- `clean_database()` - Core database cleanup functionality
+- `print_header()`, `print_info()`, `print_success()`, `print_warning()`, `print_error()` - Colored output
+- `compile_project()` - Project compilation with error handling
+- `init_test_environment()` - Test environment initialization
+- `check_dependencies()` - Dependency validation
+
+#### Database Management
+```bash
+./clean-database.sh               # Database cleanup and maintenance
+./scripts/check-db-cleanup.sh     # Database cleanup verification
+```
+
+### 🚀 Quick Script Commands
+
+**Run complete test suite:**
+```bash
+./run_all_tests.sh
+```
+
+**Test thread safety comprehensively:**
+```bash
+./test_thread_safety.zsh
+```
+
+**Validate data consistency:**
+```bash
+./test_data_consistency.zsh
+```
+
+**Demonstrate API migration benefits:**
+```bash
+./run_api_migration_demo.sh
+```
+
+**Complete security analysis:**
+```bash
+./run_security_analysis.sh
+```
+
+### 🎯 Script Categories
+
+**Core Testing**: `run_all_tests.sh`, `run_basic_tests.sh`, `run_advanced_tests.sh`  
+**Thread Safety**: `test_thread_safety.zsh`, `run_thread_safety_test.sh`, `run_advanced_thread_safety_tests.sh`  
+**Data Consistency**: `test_data_consistency.zsh`, `test_export_import.zsh`, `test_validation.zsh`  
+**Security & Recovery**: `run_security_tests.sh`, `run_recovery_tests.sh`, `run_security_analysis.sh`  
+**Demonstrations**: `run_api_migration_demo.sh`, `run_crypto_security_demo.sh`, `run_enhanced_dangerous_delete_demo.sh`  
+**Utilities**: `clean-database.sh`, `scripts/shared-functions.sh`, `scripts/check-db-cleanup.sh`
+
+All scripts provide automatic database cleanup, environment management, and comprehensive result reporting. Enhanced scripts include detailed validation output with off-chain data analysis.
 
 ## 🔐 Security Module
 
@@ -785,13 +1143,25 @@ This project includes comprehensive documentation for different use cases:
 
 ## 🔧 Configuration
 
-### Size Limits
-- **Block Data**: 10,000 characters maximum
-- **Block Size**: 1MB (1,048,576 bytes) maximum
+### Storage Configuration
+- **On-Chain Block Data**: 10,000 characters maximum (configurable)
+- **On-Chain Block Size**: 1MB (1,048,576 bytes) maximum (configurable)
+- **Off-Chain Threshold**: 512KB default (configurable)
+- **Off-Chain Maximum**: 100MB per file
 - **Hash Length**: 64 characters (SHA3-256)
 
+### Dynamic Configuration Methods
+```java
+// Adjust storage limits at runtime
+blockchain.setMaxBlockSizeBytes(2 * 1024 * 1024);     // 2MB on-chain limit
+blockchain.setOffChainThresholdBytes(1024 * 1024);    // 1MB off-chain threshold
+blockchain.getConfigurationSummary();                 // Display current settings
+blockchain.resetLimitsToDefault();                    // Reset to defaults
+```
+
 ### Database
-- **Location**: `blockchain.db` in project root directory
+- **On-Chain Location**: `blockchain.db` in project root directory
+- **Off-Chain Location**: `off-chain-data/` directory for large files
 - **Type**: SQLite database with automatic table creation
 - **JPA Provider**: Hibernate as JPA implementation
 - **Configuration**: `persistence.xml` for JPA settings
@@ -800,25 +1170,33 @@ This project includes comprehensive documentation for different use cases:
 - **Hash Algorithm**: SHA3-256 for block integrity
 - **Signature Algorithm**: ECDSA with secp256r1 curve
 - **Access Control**: Authorized public key validation
+- **Off-Chain Encryption**: AES-128-CBC with unique IV per file
+- **Key Derivation**: SHA3-256 based deterministic encryption passwords
+- **Integrity Verification**: Dual verification with hash and digital signature for off-chain data
 
 ## 🚨 Important Notes
 
 ### Production Considerations
 - **Key Management**: Store private keys securely
 - **Database Security**: Consider encryption for sensitive data
-- **Backup Strategy**: Regular database backups recommended
+- **Backup Strategy**: Regular database backups recommended + off-chain file backups
 - **Access Control**: Implement proper user authentication
+- **Off-Chain Storage**: Ensure adequate disk space and backup off-chain files
+- **Data Recovery**: Plan for off-chain data recovery and integrity verification
 
 ### Current Limitations
-- **Single Database**: Uses one SQLite file
+- **Single Database**: Uses one SQLite file for on-chain data
+- **Local Storage**: Off-chain files stored locally (not distributed)
 - **No Network**: Designed for single-application use
 - **No Consensus**: No multi-node consensus mechanism
 - **Key Recovery**: No built-in key recovery system
 
 ### Performance Notes
-- **Block Size**: Large blocks may affect performance
+- **On-Chain Performance**: Small blocks ensure fast blockchain operations
+- **Off-Chain Performance**: Large files (up to 100MB) handled efficiently via streaming encryption
 - **Search Operations**: Content search may be slow with many blocks
-- **Database Size**: Consider regular maintenance for large blockchains
+- **Database Size**: On-chain database stays small due to off-chain storage for large data
+- **Disk Space**: Monitor off-chain directory growth for large data usage
 
 ## 🤝 Contributing
 

@@ -12,6 +12,7 @@ public class BlockValidationResult {
     private final boolean structurallyValid;
     private final boolean cryptographicallyValid;
     private final boolean authorizationValid;
+    private final boolean offChainDataValid;
     private final String errorMessage;
     private final String warningMessage;
     
@@ -21,6 +22,7 @@ public class BlockValidationResult {
         this.structurallyValid = builder.structurallyValid;
         this.cryptographicallyValid = builder.cryptographicallyValid;
         this.authorizationValid = builder.authorizationValid;
+        this.offChainDataValid = builder.offChainDataValid;
         this.errorMessage = builder.errorMessage;
         this.warningMessage = builder.warningMessage;
     }
@@ -31,6 +33,7 @@ public class BlockValidationResult {
     public boolean isStructurallyValid() { return structurallyValid; }
     public boolean isCryptographicallyValid() { return cryptographicallyValid; }
     public boolean isAuthorizationValid() { return authorizationValid; }
+    public boolean isOffChainDataValid() { return offChainDataValid; }
     public String getErrorMessage() { return errorMessage; }
     public String getWarningMessage() { return warningMessage; }
     
@@ -69,6 +72,7 @@ public class BlockValidationResult {
         private boolean structurallyValid = false;
         private boolean cryptographicallyValid = false;
         private boolean authorizationValid = false;
+        private boolean offChainDataValid = true; // Default to true for blocks without off-chain data
         private String errorMessage;
         private String warningMessage;
         
@@ -96,6 +100,11 @@ public class BlockValidationResult {
             return this;
         }
         
+        public Builder offChainDataValid(boolean valid) {
+            this.offChainDataValid = valid;
+            return this;
+        }
+        
         public Builder errorMessage(String message) {
             this.errorMessage = message;
             return this;
@@ -109,9 +118,9 @@ public class BlockValidationResult {
         public BlockValidationResult build() {
             // Auto-determine status if not explicitly set
             if (status == BlockStatus.INVALID) {
-                if (structurallyValid && cryptographicallyValid && authorizationValid) {
+                if (structurallyValid && cryptographicallyValid && authorizationValid && offChainDataValid) {
                     status = BlockStatus.VALID;
-                } else if (structurallyValid && cryptographicallyValid && !authorizationValid) {
+                } else if (structurallyValid && cryptographicallyValid && !authorizationValid && offChainDataValid) {
                     status = BlockStatus.REVOKED;
                 } else {
                     status = BlockStatus.INVALID;
