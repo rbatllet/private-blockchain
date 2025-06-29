@@ -35,6 +35,19 @@ public class Block {
     @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @JoinColumn(name = "off_chain_data_id")
     private OffChainData offChainData;
+    
+    // Search-related fields
+    @Column(name = "manual_keywords", length = 1024)
+    private String manualKeywords;      // Keywords specified by user
+    
+    @Column(name = "auto_keywords", length = 1024) 
+    private String autoKeywords;        // Automatically extracted (universal)
+    
+    @Column(name = "searchable_content", length = 2048)
+    private String searchableContent;   // Combination of manual + auto
+    
+    @Column(name = "content_category", length = 50)
+    private String contentCategory;     // "MEDICAL", "FINANCE", "LEGAL", etc.
 
     // Constructors
     public Block() {}
@@ -87,6 +100,33 @@ public class Block {
     public void setOffChainData(OffChainData offChainData) { this.offChainData = offChainData; }
     
     public boolean hasOffChainData() { return offChainData != null; }
+    
+    // Search-related getters and setters
+    public String getManualKeywords() { return manualKeywords; }
+    public void setManualKeywords(String manualKeywords) { this.manualKeywords = manualKeywords; }
+    
+    public String getAutoKeywords() { return autoKeywords; }
+    public void setAutoKeywords(String autoKeywords) { this.autoKeywords = autoKeywords; }
+    
+    public String getSearchableContent() { return searchableContent; }
+    public void setSearchableContent(String searchableContent) { this.searchableContent = searchableContent; }
+    
+    public String getContentCategory() { return contentCategory; }
+    public void setContentCategory(String contentCategory) { this.contentCategory = contentCategory; }
+    
+    /**
+     * Updates searchableContent by combining manual and auto keywords
+     */
+    public void updateSearchableContent() {
+        java.util.List<String> allKeywords = new java.util.ArrayList<>();
+        if (manualKeywords != null && !manualKeywords.trim().isEmpty()) {
+            allKeywords.add(manualKeywords.toLowerCase());
+        }
+        if (autoKeywords != null && !autoKeywords.trim().isEmpty()) {
+            allKeywords.add(autoKeywords.toLowerCase());
+        }
+        this.searchableContent = String.join(" ", allKeywords);
+    }
 
     @Override
     public String toString() {

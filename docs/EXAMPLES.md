@@ -6,6 +6,7 @@ Comprehensive real-world examples and practical use cases for the Private Blockc
 >
 > For real working examples, refer to the following classes in the source code:
 > - `/src/main/java/demo/BlockchainDemo.java` - Basic blockchain demonstration
+> - `/src/main/java/demo/SearchDemo.java` - **NEW**: Comprehensive search system demonstration
 > - `/src/main/java/demo/AdditionalAdvancedFunctionsDemo.java` - Advanced features demonstration
 > - `/src/main/java/demo/ChainRecoveryDemo.java` - Chain recovery demonstration
 > - `/src/main/java/demo/DangerousDeleteDemo.java` - Key deletion safety features demo

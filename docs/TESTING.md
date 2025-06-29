@@ -37,6 +37,7 @@ The project includes comprehensive test suites to verify all functionality and e
 - ✅ **Chain Export**: Complete blockchain backup to JSON
 - ✅ **Chain Import**: Blockchain restore from backup
 - ✅ **Block Rollback**: Safe removal of recent blocks
+- ✅ **Hybrid Search System**: Multi-level search with keyword extraction and validation
 - ✅ **Advanced Search**: Content, hash, and date range search
 - ✅ **Integration**: All functions working together
 - ✅ **Error Handling**: Graceful failure handling
@@ -49,6 +50,7 @@ The project includes comprehensive test suites to verify all functionality and e
 - **DAO Layer**: 5+ test classes
 - **Security Module**: 8+ test classes
 - **Recovery Module**: 4+ test classes
+- **Search Module**: 1+ test class (SearchFunctionalityTest with 12 comprehensive test methods)
 
 #### New ECKeyDerivation Tests
 - **Basic Key Derivation**: 5+ test cases
@@ -68,7 +70,7 @@ The project includes comprehensive test suites to verify all functionality and e
 #### Test Execution
 - **Total Test Files**: 35+ comprehensive test suites
 - **JUnit 5 Tests**: 150+ professional unit tests
-- **Demo Applications**: 8 interactive demonstrations
+- **Demo Applications**: 9 interactive demonstrations (including new SearchDemo)
 - **Verification Tests**: 5+ quick validation tests
 - **Script Test Runners**: 15+ specialized test scripts
 - **Total Coverage**: 95%+ code coverage (100% critical paths)
@@ -305,7 +307,35 @@ The project follows these testing best practices:
 **Tests**: Temporal validation tests  
 **Coverage**: Time-based operations and validations
 
-#### 1.6 DAO Delete Operations Test Suite
+#### 1.6 Search Functionality Test Suite ⭐ **NEW**
+**File**: `SearchFunctionalityTest.java`  
+**Tests**: 12 comprehensive search system tests  
+**Coverage**: Complete hybrid search functionality
+
+**Test Methods:**
+- `testFastOnlySearch()` - Keywords-only search performance and accuracy
+- `testIncludeDataSearch()` - Keywords + block data search functionality
+- `testExhaustiveOffchainSearch()` - Complete content search including off-chain data
+- `testSearchByCategory()` - Content category filtering and validation
+- `testSearchTermValidation()` - Search term validation with intelligent exceptions
+- `testSearchValidator()` - Direct SearchValidator class testing
+- `testUniversalKeywordExtractor()` - Automatic keyword extraction testing
+- `testSearchPerformance()` - Performance comparison across search levels
+- `testConcurrentSearchOperations()` - Thread-safety with concurrent searches
+- `testSearchDuringBlockCreation()` - Search consistency during block operations
+- `testSearchEdgeCases()` - Edge cases and special character handling
+- `testSearchResultConsistency()` - Result consistency and ordering validation
+
+**Key Features Tested:**
+- Multi-level search (FAST_ONLY, INCLUDE_DATA, EXHAUSTIVE_OFFCHAIN)
+- Automatic keyword extraction (dates, numbers, emails, codes, technical terms)
+- Content categorization (MEDICAL, FINANCE, TECHNICAL, LEGAL)
+- Search validation with 4+ character minimum and intelligent exceptions
+- Thread-safety with up to 20 concurrent search operations
+- Performance optimization and result consistency
+- Integration with off-chain storage system
+
+#### 1.7 DAO Delete Operations Test Suite
 **File**: `AuthorizedKeyDAODeleteTest.java`  
 **Tests**: DAO delete operations tests  
 **Coverage**: Key deletion and database operations
@@ -464,6 +494,14 @@ mvn test -Dtest=BlockchainAdditionalAdvancedFunctionsTest#test*Export*
 
 # Run all advanced tests with verbose output
 mvn test -Dtest=BlockchainAdditionalAdvancedFunctionsTest -X
+
+# Run NEW search functionality tests
+mvn test -Dtest=SearchFunctionalityTest
+
+# Run specific search test methods
+mvn test -Dtest=SearchFunctionalityTest#testFastOnlySearch
+mvn test -Dtest=SearchFunctionalityTest#testConcurrentSearchOperations
+mvn test -Dtest=SearchFunctionalityTest#testUniversalKeywordExtractor
 ```
 
 ### 2. Core Functions Test
@@ -510,7 +548,42 @@ mvn exec:java -Dexec.mainClass="demo.CoreFunctionsDemo"
 - Advanced search capabilities
 - Error handling scenarios
 
-### 5. Quick Validation Tests
+### 5. Search System Demo ⭐ **NEW**
+
+**File**: `SearchDemo.java`  
+**Type**: Comprehensive search system demonstration  
+**Coverage**: Complete hybrid search functionality
+
+**Demonstrates:**
+- Multi-level search (FAST_ONLY, INCLUDE_DATA, EXHAUSTIVE_OFFCHAIN)
+- Automatic keyword extraction from universal elements
+- Content categorization (MEDICAL, FINANCE, TECHNICAL, LEGAL)
+- Search validation with intelligent exceptions
+- Performance comparison across search levels
+
+**How to run:**
+```zsh
+# Run the search demo directly
+mvn exec:java -Dexec.mainClass="demo.SearchDemo"
+
+# Or use the provided script
+./run-search-demo.zsh
+```
+
+**Expected output:**
+```
+=== SEARCH SYSTEM DEMONSTRATION ===
+✅ Blockchain initialized
+✅ Created test blocks with different categories
+🔍 Demonstrating FAST_ONLY search...
+🔍 Demonstrating INCLUDE_DATA search...
+🔍 Demonstrating EXHAUSTIVE_OFFCHAIN search...
+🔍 Demonstrating category search...
+📊 Performance comparison completed
+🎉 SEARCH DEMO COMPLETED SUCCESSFULLY!
+```
+
+### 6. Quick Validation Tests
 
 **Files**: `SimpleDemo.java`, `QuickDemo.java`  
 **Type**: Fast verification tests  

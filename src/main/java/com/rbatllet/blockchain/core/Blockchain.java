@@ -37,6 +37,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import com.rbatllet.blockchain.search.SearchLevel;
+import com.rbatllet.blockchain.search.SearchValidator;
+import com.rbatllet.blockchain.search.UniversalKeywordExtractor;
 
 /**
  * Thread-safe Blockchain implementation
@@ -61,6 +64,9 @@ public class Blockchain {
     // Off-chain storage threshold - data larger than this will be stored off-chain
     private static final int OFF_CHAIN_THRESHOLD_BYTES = 512 * 1024; // 512KB threshold
     private final OffChainStorageService offChainStorageService = new OffChainStorageService();
+    
+    // Search functionality
+    private final UniversalKeywordExtractor keywordExtractor = new UniversalKeywordExtractor();
     
     // Dynamic configuration for block size limits
     private volatile int currentMaxBlockSizeBytes = MAX_BLOCK_SIZE_BYTES;
@@ -123,6 +129,15 @@ public class Blockchain {
      * THREAD-SAFE: Returns the actual block created to avoid race conditions in tests
      */
     public Block addBlockAndReturn(String data, PrivateKey signerPrivateKey, PublicKey signerPublicKey) {
+        return addBlockWithKeywords(data, null, null, signerPrivateKey, signerPublicKey);
+    }
+    
+    /**
+     * ENHANCED: Add a new block with keywords and category
+     * THREAD-SAFE: Enhanced version with search functionality
+     */
+    public Block addBlockWithKeywords(String data, String[] manualKeywords, String category,
+                                     PrivateKey signerPrivateKey, PublicKey signerPublicKey) {
         GLOBAL_BLOCKCHAIN_LOCK.writeLock().lock();
         try {
             return JPAUtil.executeInTransaction(em -> {
@@ -219,7 +234,10 @@ public class Blockchain {
                         return null;
                     }
                     
-                    // 11. Save the block
+                    // 11. ENHANCED: Process keywords for search functionality
+                    processBlockKeywords(newBlock, data, manualKeywords, category);
+                    
+                    // 12. Save the block
                     blockDAO.saveBlock(newBlock);
                     
                     // CRITICAL: Force flush to ensure immediate visibility
@@ -251,7 +269,43 @@ public class Blockchain {
         // Simplify by delegating to addBlockAndReturn for DRY principle
         Block addedBlock = addBlockAndReturn(data, signerPrivateKey, signerPublicKey);
         return addedBlock != null;
-    }    
+    }
+    
+    /**
+     * Process and assign keywords to a block for search functionality
+     */
+    private void processBlockKeywords(Block block, String originalData, 
+                                    String[] manualKeywords, String category) {
+        // 1. Keywords manuals
+        if (manualKeywords != null && manualKeywords.length > 0) {
+            block.setManualKeywords(String.join(" ", manualKeywords).toLowerCase());
+        }
+        
+        // 2. Categoria
+        if (category != null && !category.trim().isEmpty()) {
+            block.setContentCategory(category.toUpperCase());
+        }
+        
+        // 3. Keywords automàtics (del contingut original, no de la referència off-chain)
+        String contentForExtraction = originalData != null ? originalData : "";
+        if (block.hasOffChainData()) {
+            // Si va off-chain, usar el contingut original per extracció
+            contentForExtraction = originalData != null ? originalData : "";
+        }
+        
+        String autoKeywords = keywordExtractor.extractUniversalKeywords(contentForExtraction);
+        block.setAutoKeywords(autoKeywords);
+        
+        // 4. Combinar tot a searchableContent
+        block.updateSearchableContent();
+        
+        // 5. Log per debugging
+        if (block.getSearchableContent() != null && !block.getSearchableContent().trim().isEmpty()) {
+            System.out.println("📋 Keywords assigned to block #" + block.getBlockNumber() + ": " + 
+                             block.getSearchableContent().substring(0, Math.min(50, block.getSearchableContent().length())) + 
+                             (block.getSearchableContent().length() > 50 ? "..." : ""));
+        }
+    }
     /**
      * CORE FUNCTION: Validate an individual block
      */
@@ -1473,6 +1527,124 @@ public class Blockchain {
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
         }
+    }
+    
+    // =============== ENHANCED SEARCH FUNCTIONALITY ===============
+    
+    /**
+     * ENHANCED: Search blocks with different search levels and validation
+     */
+    public List<Block> searchBlocks(String searchTerm, SearchLevel level) {
+        // Validar terme de cerca
+        SearchValidator.SearchValidationResult validation = SearchValidator.validateSearchTerm(searchTerm);
+        
+        if (!validation.isValid()) {
+            System.out.println("❌ " + validation.getMessage());
+            if (validation.getSuggestions() != null) {
+                validation.getSuggestions().forEach(s -> System.out.println("💡 " + s));
+            }
+            return new ArrayList<>();
+        }
+        
+        GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
+        try {
+            String cleanTerm = searchTerm.trim();
+            
+            // Fase 1: Cerca ràpida amb keywords i data
+            List<Block> fastResults = blockDAO.searchBlocksByContentWithLevel(cleanTerm, level);
+            
+            if (level != SearchLevel.EXHAUSTIVE_OFFCHAIN) {
+                System.out.println("🔍 Fast search found " + fastResults.size() + " blocks for: '" + cleanTerm + "'");
+                return fastResults;
+            }
+            
+            // Fase 2: Cerca exhaustiva off-chain
+            List<Block> allBlocksWithOffChain = blockDAO.getAllBlocksWithOffChainData();
+            List<Block> offChainMatches = searchOffChainContent(cleanTerm, allBlocksWithOffChain);
+            
+            // Combinar resultats evitant duplicats
+            Set<Long> fastResultIds = fastResults.stream()
+                .map(Block::getBlockNumber)
+                .collect(java.util.stream.Collectors.toSet());
+                
+            List<Block> combinedResults = new ArrayList<>(fastResults);
+            for (Block offChainMatch : offChainMatches) {
+                if (!fastResultIds.contains(offChainMatch.getBlockNumber())) {
+                    combinedResults.add(offChainMatch);
+                }
+            }
+            
+            // Ordenar per block number
+            combinedResults.sort(java.util.Comparator.comparing(Block::getBlockNumber));
+            
+            System.out.println("🔍 Exhaustive search found " + combinedResults.size() + " blocks for: '" + cleanTerm + "'");
+            System.out.println("  - Fast results: " + fastResults.size());
+            System.out.println("  - Off-chain matches: " + offChainMatches.size());
+            
+            return combinedResults;
+            
+        } catch (Exception e) {
+            System.err.println("Error during search: " + e.getMessage());
+            return new ArrayList<>();
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
+        }
+    }
+    
+    /**
+     * ENHANCED: Search blocks by category
+     */
+    public List<Block> searchByCategory(String category) {
+        GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
+        try {
+            if (category == null || category.trim().isEmpty()) {
+                System.out.println("❌ Category cannot be empty");
+                return new ArrayList<>();
+            }
+            
+            List<Block> results = blockDAO.searchByCategory(category);
+            System.out.println("📂 Found " + results.size() + " blocks in category: " + category.toUpperCase());
+            return results;
+            
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
+        }
+    }
+    
+    /**
+     * ENHANCED: Convenience methods for different search levels
+     */
+    public List<Block> searchBlocksFast(String searchTerm) {
+        return searchBlocks(searchTerm, SearchLevel.FAST_ONLY);
+    }
+    
+    public List<Block> searchBlocksComplete(String searchTerm) {
+        return searchBlocks(searchTerm, SearchLevel.EXHAUSTIVE_OFFCHAIN);
+    }
+    
+    /**
+     * ENHANCED: Search off-chain content with caching
+     */
+    private List<Block> searchOffChainContent(String searchTerm, List<Block> candidates) {
+        List<Block> matches = new ArrayList<>();
+        String lowerSearchTerm = searchTerm.toLowerCase();
+        
+        for (Block block : candidates) {
+            if (block.hasOffChainData()) {
+                try {
+                    String content = getCompleteBlockData(block);
+                    if (content.toLowerCase().contains(lowerSearchTerm)) {
+                        matches.add(block);
+                        System.out.println("  ✓ Off-chain match in block #" + block.getBlockNumber());
+                    }
+                } catch (Exception e) {
+                    System.err.println("  ⚠ Error searching off-chain content for block " + 
+                                     block.getBlockNumber() + ": " + e.getMessage());
+                }
+            }
+        }
+        
+        return matches;
     }
 
     /**

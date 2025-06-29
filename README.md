@@ -43,7 +43,13 @@ This is a **private blockchain** for controlled environments where only authoriz
 
 ### Advanced Functions
 - **Export/Import**: Backup and restore complete blockchain with temporal consistency
-- **Search Capabilities**: Find blocks by content, hash, or date range
+- **Hybrid Search System**: Multi-level search with keyword extraction and category filtering
+  - **Fast Search**: Keywords-only search for optimal performance
+  - **Data Search**: Keywords + block content with balanced performance
+  - **Exhaustive Search**: Complete search including off-chain content
+  - **Category Search**: Filter blocks by content categories (MEDICAL, FINANCE, TECHNICAL, LEGAL)
+  - **Auto Keywords**: Automatic extraction of dates, numbers, emails, codes, and universal elements
+  - **Search Validation**: Intelligent minimum length requirements with exceptions for useful short terms
 - **Rollback Operations**: Safe removal of recent blocks with genesis protection
 - **Off-Chain Storage**: Automatic storage for large data (>512KB) with AES-CBC encryption
 - **Data Size Management**: Intelligent data placement based on configurable size thresholds
@@ -675,6 +681,7 @@ Configuration & Scripts:
 ├── run_security_analysis.sh                     # Security analysis tests
 ├── run_security_tests.sh                        # Security tests runner
 ├── run_eckeyderivation_tests.sh                 # Elliptic curve key derivation tests
+├── run-search-demo.zsh                          # ✨ NEW: Search system demonstration script
 ├── test_race_condition_fix.sh                   # Race condition testing
 ├── test_thread_safety_full.zsh                  # ✨ ENHANCED: Comprehensive thread safety (production)
 ├── test_thread_safety_simple.zsh               # ✨ NEW: Simple thread safety with detailed logging (debug)
@@ -794,7 +801,7 @@ source ./scripts/shared-functions.sh
 **Thread Safety**: `test_thread_safety_full.zsh`, `test_thread_safety_simple.zsh`, `run_thread_safety_test.sh`, `run_advanced_thread_safety_tests.sh`  
 **Data Consistency**: `test_data_consistency.zsh`, `test_export_import.zsh`, `test_validation.zsh`  
 **Security & Recovery**: `run_security_tests.sh`, `run_recovery_tests.sh`, `run_security_analysis.sh`  
-**Demonstrations**: `run_api_migration_demo.sh`, `run_crypto_security_demo.sh`, `run_enhanced_dangerous_delete_demo.sh`  
+**Demonstrations**: `run_api_migration_demo.sh`, `run_crypto_security_demo.sh`, `run_enhanced_dangerous_delete_demo.sh`, `run-search-demo.zsh`  
 **Utilities**: `clean-database.sh`, `scripts/shared-functions.sh`, `scripts/check-db-cleanup.sh`
 
 All scripts provide automatic database cleanup, environment management, and comprehensive result reporting. Enhanced scripts include detailed validation output with off-chain data analysis.
@@ -1132,6 +1139,7 @@ This project includes comprehensive documentation for different use cases:
 ### 📖 User Guides
 - **[EXAMPLES.md](docs/EXAMPLES.md)** - Real-world use cases and workflow patterns
 - **[API_GUIDE.md](docs/API_GUIDE.md)** - Complete API reference and core functions
+- **[SEARCH_GUIDE.md](docs/SEARCH_GUIDE.md)** - Comprehensive hybrid search system guide with practical examples
 - **[TESTING.md](docs/TESTING.md)** - Comprehensive testing guide and troubleshooting
 - **[SECURITY_CLASSES_GUIDE.md](docs/SECURITY_CLASSES_GUIDE.md)** - Guía de uso de las clases de seguridad (migradas desde CLI)
 - **[UTILITY_CLASSES_GUIDE.md](docs/UTILITY_CLASSES_GUIDE.md)** - Guía de uso de las clases de utilidad (migradas desde CLI)
@@ -1147,6 +1155,7 @@ This project includes comprehensive documentation for different use cases:
 |---------------------|-------|
 | See real-world examples and use cases | [EXAMPLES.md](docs/EXAMPLES.md) |
 | Learn the API and core functions | [API_GUIDE.md](docs/API_GUIDE.md) |
+| Implement search functionality | [SEARCH_GUIDE.md](docs/SEARCH_GUIDE.md) |
 | Run tests and troubleshoot issues | [TESTING.md](docs/TESTING.md) |
 | Understand technical implementation | [TECHNICAL_DETAILS.md](docs/TECHNICAL_DETAILS.md) |
 | Deploy to production | [PRODUCTION_GUIDE.md](docs/PRODUCTION_GUIDE.md) |

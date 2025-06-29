@@ -652,4 +652,116 @@ public class BlockDAO {
             lock.writeLock().unlock();
         }
     }
+    
+    // =============== SEARCH FUNCTIONALITY ===============
+    
+    /**
+     * Search blocks by content with different search levels
+     */
+    public List<Block> searchBlocksByContentWithLevel(String searchTerm, com.rbatllet.blockchain.search.SearchLevel level) {
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            return new java.util.ArrayList<>();
+        }
+        
+        lock.readLock().lock();
+        try {
+            String term = "%" + searchTerm.toLowerCase() + "%";
+            EntityManager em = JPAUtil.getEntityManager();
+            
+            try {
+                String queryString = buildSearchQuery(level);
+                TypedQuery<Block> query = em.createQuery(queryString, Block.class);
+                query.setParameter("term", term);
+                
+                List<Block> results = query.getResultList();
+                
+                // Sort by priority (manual keywords first)
+                return results.stream()
+                    .sorted(this::compareSearchPriority)
+                    .collect(java.util.stream.Collectors.toList());
+                    
+            } finally {
+                if (!JPAUtil.hasActiveTransaction()) {
+                    em.close();
+                }
+            }
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Search blocks by category
+     */
+    public List<Block> searchByCategory(String category) {
+        if (category == null || category.trim().isEmpty()) {
+            return new java.util.ArrayList<>();
+        }
+        
+        lock.readLock().lock();
+        try {
+            EntityManager em = JPAUtil.getEntityManager();
+            try {
+                TypedQuery<Block> query = em.createQuery(
+                    "SELECT b FROM Block b WHERE UPPER(b.contentCategory) = :category ORDER BY b.blockNumber ASC", 
+                    Block.class);
+                query.setParameter("category", category.toUpperCase());
+                return query.getResultList();
+            } finally {
+                if (!JPAUtil.hasActiveTransaction()) {
+                    em.close();
+                }
+            }
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Get all blocks that have off-chain data for exhaustive search
+     */
+    public List<Block> getAllBlocksWithOffChainData() {
+        lock.readLock().lock();
+        try {
+            EntityManager em = JPAUtil.getEntityManager();
+            try {
+                TypedQuery<Block> query = em.createQuery(
+                    "SELECT b FROM Block b WHERE b.offChainData IS NOT NULL ORDER BY b.blockNumber ASC", 
+                    Block.class);
+                return query.getResultList();
+            } finally {
+                if (!JPAUtil.hasActiveTransaction()) {
+                    em.close();
+                }
+            }
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+    
+    private String buildSearchQuery(com.rbatllet.blockchain.search.SearchLevel level) {
+        StringBuilder query = new StringBuilder("SELECT b FROM Block b WHERE ");
+        
+        switch (level) {
+            case FAST_ONLY:
+                // Keywords only
+                query.append("(LOWER(b.manualKeywords) LIKE :term OR LOWER(b.autoKeywords) LIKE :term OR LOWER(b.searchableContent) LIKE :term)");
+                break;
+                
+            case INCLUDE_DATA:
+            case EXHAUSTIVE_OFFCHAIN:
+                // Keywords + block data
+                query.append("(LOWER(b.manualKeywords) LIKE :term OR LOWER(b.autoKeywords) LIKE :term OR LOWER(b.searchableContent) LIKE :term OR LOWER(b.data) LIKE :term)");
+                break;
+        }
+        
+        query.append(" ORDER BY b.blockNumber ASC");
+        return query.toString();
+    }
+    
+    private int compareSearchPriority(Block a, Block b) {
+        // Priority: manual keywords > auto keywords > data
+        // For now, simply sort by block number
+        return Long.compare(a.getBlockNumber(), b.getBlockNumber());
+    }
 }

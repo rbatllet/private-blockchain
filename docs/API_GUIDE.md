@@ -490,8 +490,215 @@ boolean success = blockchain.rollbackToBlock(5);
 ```
 
 #### Advanced Search
+
+The blockchain now includes a comprehensive **hybrid search system** that allows searching both on-chain and off-chain content with multiple search levels and automatic keyword extraction.
+
+##### Search Levels
+
+The system supports three different search levels through the `SearchLevel` enum:
+
+1. **FAST_ONLY** - Searches only in keywords (fastest performance)
+2. **INCLUDE_DATA** - Searches in keywords + block data (balanced performance)  
+3. **EXHAUSTIVE_OFFCHAIN** - Searches everything including off-chain content (comprehensive but slower)
+
+##### Basic Search Methods
+
 ```java
-// Search blocks by content (case-insensitive)
+// Legacy search method (still supported)
+List<Block> paymentBlocks = blockchain.searchBlocksByContent("payment");
+
+// New hybrid search with different levels
+List<Block> fastResults = blockchain.searchBlocks("medical", SearchLevel.FAST_ONLY);
+List<Block> dataResults = blockchain.searchBlocks("patient", SearchLevel.INCLUDE_DATA);
+List<Block> exhaustiveResults = blockchain.searchBlocks("contract", SearchLevel.EXHAUSTIVE_OFFCHAIN);
+
+// Convenience methods for each search level
+List<Block> quickSearch = blockchain.searchBlocksFast("API");           // Keywords only
+List<Block> dataSearch = blockchain.searchBlocksComplete("John Doe");   // Keywords + data + off-chain
+
+// Search by content category
+List<Block> medicalBlocks = blockchain.searchByCategory("MEDICAL");
+List<Block> financeBlocks = blockchain.searchByCategory("FINANCE");
+```
+
+##### Adding Blocks with Keywords
+
+```java
+// Create blocks with manual keywords and automatic extraction
+String[] manualKeywords = {"PATIENT-001", "CARDIOLOGY", "ECG-2024"};
+blockchain.addBlockWithKeywords(
+    "Patient examination data with detailed cardiac analysis...",
+    manualKeywords,           // Manual keywords (optional)
+    "MEDICAL",               // Content category
+    privateKey,
+    publicKey
+);
+
+// Block with automatic keyword extraction only
+blockchain.addBlockWithKeywords(
+    "API integration completed on 2024-01-15. Contact: admin@company.com for details.",
+    null,                    // No manual keywords
+    "TECHNICAL",
+    privateKey,
+    publicKey
+);
+```
+
+##### Search Validation and Term Requirements
+
+```java
+// The system validates search terms automatically
+List<Block> results;
+
+// Valid searches (4+ characters or intelligent exceptions)
+results = blockchain.searchBlocksFast("medical");     // ✅ Valid - 7 characters
+results = blockchain.searchBlocksFast("2024");        // ✅ Valid - year exception
+results = blockchain.searchBlocksFast("API");         // ✅ Valid - acronym exception
+results = blockchain.searchBlocksFast("XML");         // ✅ Valid - technical term exception
+
+// Invalid searches (too short)
+results = blockchain.searchBlocksFast("hi");          // ❌ Returns empty list
+results = blockchain.searchBlocksFast("a");           // ❌ Returns empty list
+results = blockchain.searchBlocksFast("");            // ❌ Returns empty list
+
+// Check search term validity manually
+boolean valid = SearchValidator.isValidSearchTerm("medical"); // true
+boolean invalid = SearchValidator.isValidSearchTerm("hi");    // false
+```
+
+##### Automatic Keyword Extraction
+
+The system automatically extracts universal keywords that work across languages:
+
+```java
+// These elements are automatically extracted as keywords:
+String blockData = """
+    Patient: John Doe
+    Date: 2024-01-15  
+    Reference: MED-001
+    Email: doctor@hospital.com
+    Amount: 50000 EUR
+    """;
+
+// Automatically extracted keywords include:
+// - Numbers: "2024", "50000"
+// - Dates: "2024-01-15"
+// - Codes: "med-001" 
+// - Email: "doctor@hospital.com"
+// - Currency: "eur"
+```
+
+##### Search Performance Examples
+
+```java
+// Performance comparison example
+long startTime, endTime;
+
+// FAST_ONLY - Best performance (keywords only)
+startTime = System.nanoTime();
+List<Block> fastResults = blockchain.searchBlocks("2024", SearchLevel.FAST_ONLY);
+endTime = System.nanoTime();
+System.out.println("FAST_ONLY: " + (endTime - startTime) / 1_000_000 + "ms");
+
+// INCLUDE_DATA - Balanced performance (keywords + block data)
+startTime = System.nanoTime();
+List<Block> dataResults = blockchain.searchBlocks("2024", SearchLevel.INCLUDE_DATA);
+endTime = System.nanoTime();
+System.out.println("INCLUDE_DATA: " + (endTime - startTime) / 1_000_000 + "ms");
+
+// EXHAUSTIVE_OFFCHAIN - Comprehensive search (all content)
+startTime = System.nanoTime();
+List<Block> exhaustiveResults = blockchain.searchBlocks("2024", SearchLevel.EXHAUSTIVE_OFFCHAIN);
+endTime = System.nanoTime();
+System.out.println("EXHAUSTIVE_OFFCHAIN: " + (endTime - startTime) / 1_000_000 + "ms");
+```
+
+##### Complete Search Example
+
+```java
+public class SearchDemo {
+    public static void main(String[] args) throws Exception {
+        Blockchain blockchain = new Blockchain();
+        
+        // Generate keys
+        KeyPair keyPair = CryptoUtil.generateKeyPair();
+        PrivateKey privateKey = keyPair.getPrivate();
+        PublicKey publicKey = keyPair.getPublic();
+        blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(publicKey), "SearchUser");
+        
+        // Add blocks with different content types
+        String[] medicalKeywords = {"PATIENT-001", "CARDIOLOGY", "ECG-2024"};
+        blockchain.addBlockWithKeywords(
+            "Patient John Doe ECG examination on 2024-01-15. Normal cardiac rhythm detected.",
+            medicalKeywords,
+            "MEDICAL",
+            privateKey, publicKey
+        );
+        
+        String[] financeKeywords = {"PROJECT-ALPHA", "BUDGET-2024", "EUR"};
+        blockchain.addBlockWithKeywords(
+            "Project Alpha budget: 50000 EUR approved for Q1 2024 implementation.",
+            financeKeywords,
+            "FINANCE", 
+            privateKey, publicKey
+        );
+        
+        // Technical block with automatic keyword extraction only
+        blockchain.addBlockWithKeywords(
+            "API integration with database completed. JSON format used. Contact: admin@company.com",
+            null,  // No manual keywords
+            "TECHNICAL",
+            privateKey, publicKey
+        );
+        
+        // Demonstrate different search levels
+        System.out.println("=== SEARCH DEMONSTRATIONS ===");
+        
+        // Fast search - keywords only
+        System.out.println("\n1. FAST_ONLY Search for '2024':");
+        List<Block> fastResults = blockchain.searchBlocks("2024", SearchLevel.FAST_ONLY);
+        for (Block block : fastResults) {
+            System.out.println("  Block #" + block.getBlockNumber() + " - " + block.getContentCategory());
+        }
+        
+        // Include data search
+        System.out.println("\n2. INCLUDE_DATA Search for 'John':");
+        List<Block> dataResults = blockchain.searchBlocks("John", SearchLevel.INCLUDE_DATA);
+        for (Block block : dataResults) {
+            System.out.println("  Block #" + block.getBlockNumber() + " - " + 
+                             block.getData().substring(0, Math.min(50, block.getData().length())) + "...");
+        }
+        
+        // Category search
+        System.out.println("\n3. Category Search for 'MEDICAL':");
+        List<Block> medicalResults = blockchain.searchByCategory("MEDICAL");
+        for (Block block : medicalResults) {
+            System.out.println("  Block #" + block.getBlockNumber() + " - " + block.getContentCategory());
+        }
+        
+        // Email search (automatically extracted)
+        System.out.println("\n4. Email Search for 'admin@company.com':");
+        List<Block> emailResults = blockchain.searchBlocks("admin@company.com", SearchLevel.INCLUDE_DATA);
+        for (Block block : emailResults) {
+            System.out.println("  Block #" + block.getBlockNumber() + " contains email reference");
+        }
+        
+        // Technical term search (exception to length rule)
+        System.out.println("\n5. Technical Term Search for 'API':");
+        List<Block> apiResults = blockchain.searchBlocksFast("API");
+        for (Block block : apiResults) {
+            System.out.println("  Block #" + block.getBlockNumber() + " - " + block.getContentCategory());
+        }
+        
+        System.out.println("\n=== SEARCH COMPLETE ===");
+    }
+}
+```
+
+##### Legacy Search Methods (Still Supported)
+
+```java
+// Basic content search (case-insensitive) 
 List<Block> paymentBlocks = blockchain.searchBlocksByContent("payment");
 
 // Find block by hash
@@ -501,6 +708,28 @@ Block block = blockchain.getBlockByHash("a1b2c3d4...");
 LocalDate start = LocalDate.of(2024, 1, 1);
 LocalDate end = LocalDate.of(2024, 1, 31);
 List<Block> monthlyBlocks = blockchain.getBlocksByDateRange(start, end);
+```
+
+##### Search Thread Safety
+
+All search operations are fully thread-safe and can be performed concurrently:
+
+```java
+// Concurrent search operations
+ExecutorService executor = Executors.newFixedThreadPool(4);
+
+CompletableFuture<List<Block>> search1 = CompletableFuture.supplyAsync(() -> 
+    blockchain.searchBlocks("medical", SearchLevel.FAST_ONLY), executor);
+
+CompletableFuture<List<Block>> search2 = CompletableFuture.supplyAsync(() -> 
+    blockchain.searchByCategory("FINANCE"), executor);
+
+CompletableFuture<List<Block>> search3 = CompletableFuture.supplyAsync(() -> 
+    blockchain.searchBlocksComplete("2024"), executor);
+
+// Wait for all searches to complete
+CompletableFuture.allOf(search1, search2, search3)
+    .thenRun(() -> System.out.println("All concurrent searches completed"));
 ```
 
 ### Complete Example
@@ -744,10 +973,25 @@ boolean rolledBack = blockchain.rollbackBlocks(numberOfBlocks);
 
 #### Search Operations
 ```java
-// Search methods
+// New hybrid search methods with multiple levels
+List<Block> fastResults = blockchain.searchBlocks("searchTerm", SearchLevel.FAST_ONLY);
+List<Block> dataResults = blockchain.searchBlocks("searchTerm", SearchLevel.INCLUDE_DATA);
+List<Block> exhaustiveResults = blockchain.searchBlocks("searchTerm", SearchLevel.EXHAUSTIVE_OFFCHAIN);
+
+// Convenience methods for different search levels
+List<Block> quickSearch = blockchain.searchBlocksFast("keyword");        // Keywords only
+List<Block> completeSearch = blockchain.searchBlocksComplete("content"); // All content
+
+// Search by content category
+List<Block> categoryResults = blockchain.searchByCategory("MEDICAL");
+
+// Legacy search methods (still supported)
 List<Block> contentResults = blockchain.searchBlocksByContent("searchTerm");
 Block hashResult = blockchain.getBlockByHash("hashString");
 List<Block> dateResults = blockchain.getBlocksByDateRange(startDate, endDate);
+
+// Add blocks with keywords and categories
+boolean success = blockchain.addBlockWithKeywords(data, manualKeywords, category, privateKey, publicKey);
 ```
 
 ### Blockchain Class API
@@ -784,6 +1028,30 @@ public Block addBlockAndReturn(String data, PrivateKey privateKey, PublicKey pub
   - ✅ Concurrent testing scenarios where you need the exact block created
   - ✅ Applications that need immediate access to block metadata
   - ✅ When you need to verify block creation success AND get block details
+
+```java
+public Block addBlockWithKeywords(String data, String[] manualKeywords, String category, 
+                                PrivateKey privateKey, PublicKey publicKey)
+```
+- **Parameters:**
+  - `data`: The content to store in the block (max 10,000 characters)
+  - `manualKeywords`: Array of manual keywords for search indexing (optional, can be null)
+  - `category`: Content category (e.g., "MEDICAL", "FINANCE", "TECHNICAL", "LEGAL")
+  - `privateKey`: Private key for signing the block
+  - `publicKey`: Public key for verification (must be authorized)
+- **Returns:** The created `Block` object with search metadata populated
+- **Description:** Enhanced block creation with search functionality. Combines manual keywords with automatic keyword extraction to enable efficient hybrid search capabilities.
+- **Thread-Safety:** Fully thread-safe with global locking
+- **Search Features:**
+  - **Manual Keywords**: User-specified terms for targeted search results
+  - **Automatic Extraction**: System extracts universal keywords (dates, numbers, emails, codes)
+  - **Content Categories**: Enables category-based filtering and organization
+  - **Combined Indexing**: Creates searchable content from manual + automatic keywords
+- **Use Cases:**
+  - ✅ Medical records with patient IDs and diagnostic codes
+  - ✅ Financial transactions with project codes and amounts
+  - ✅ Legal documents with contract references and dates
+  - ✅ Technical documentation with API references and versions
 
 ```java
 public ChainValidationResult validateChainDetailed()
@@ -953,12 +1221,71 @@ public List<AuthorizedKey> getAllAuthorizedKeys()
 
 #### Search Methods
 
+##### Hybrid Search System
+
+The blockchain includes a comprehensive hybrid search system with multiple search levels and automatic keyword extraction.
+
+```java
+public List<Block> searchBlocks(String searchTerm, SearchLevel level)
+```
+- **Parameters:** 
+  - `searchTerm`: Text to search for (case-insensitive, minimum 4 characters with intelligent exceptions)
+  - `level`: Search level (`FAST_ONLY`, `INCLUDE_DATA`, or `EXHAUSTIVE_OFFCHAIN`)
+- **Returns:** List of blocks matching the search term at the specified level
+- **Description:** Primary search method with configurable search depth
+- **Search Levels:**
+  - `FAST_ONLY`: Searches only in keywords (fastest performance)
+  - `INCLUDE_DATA`: Searches in keywords + block data (balanced performance)  
+  - `EXHAUSTIVE_OFFCHAIN`: Searches everything including off-chain content (comprehensive)
+- **Thread-Safety:** Fully thread-safe with read locks
+
+```java
+public List<Block> searchBlocksFast(String searchTerm)
+```
+- **Parameters:** `searchTerm`: Text to search for (keywords only)
+- **Returns:** List of blocks with matching keywords
+- **Description:** Convenience method for `searchBlocks(searchTerm, SearchLevel.FAST_ONLY)`
+- **Performance:** Optimized for speed, searches only indexed keywords
+
+```java
+public List<Block> searchBlocksComplete(String searchTerm)
+```
+- **Parameters:** `searchTerm`: Text to search for (all content including off-chain)
+- **Returns:** List of blocks with matching content across all sources
+- **Description:** Convenience method for `searchBlocks(searchTerm, SearchLevel.EXHAUSTIVE_OFFCHAIN)`
+- **Performance:** Comprehensive but slower, includes off-chain data search
+
+```java
+public List<Block> searchByCategory(String category)
+```
+- **Parameters:** `category`: Content category to filter by (case-insensitive)
+- **Returns:** List of blocks in the specified category
+- **Description:** Filters blocks by their assigned content category
+- **Example Categories:** "MEDICAL", "FINANCE", "TECHNICAL", "LEGAL"
+
+##### Search Validation
+
+```java
+public static boolean SearchValidator.isValidSearchTerm(String searchTerm)
+```
+- **Parameters:** `searchTerm`: The term to validate
+- **Returns:** `true` if the term is valid for searching
+- **Description:** Validates search terms with intelligent exceptions for short terms
+- **Validation Rules:**
+  - Minimum 4 characters (general rule)
+  - **Exceptions:** Years (2024), acronyms (API, SQL), technical terms (XML, JSON), numbers, IDs
+- **Examples:**
+  - ✅ Valid: "medical", "2024", "API", "XML", "123", "ID-001"
+  - ❌ Invalid: "hi", "a", "", null, "   "
+
+##### Legacy Search Methods (Still Supported)
+
 ```java
 public List<Block> searchBlocksByContent(String searchTerm)
 ```
 - **Parameters:** `searchTerm`: Text to search for (case-insensitive)
 - **Returns:** List of blocks containing the search term
-- **Description:** Searches through all block data content
+- **Description:** Legacy method - searches through all block data content
 
 ```java
 public Block getBlockByHash(String hash)
@@ -2017,6 +2344,7 @@ The blockchain now provides the following consistency guarantees:
 7. **Verification Methods**: Cryptographic verification of off-chain data integrity
 
 For real-world usage examples, see [EXAMPLES.md](EXAMPLES.md).  
+For comprehensive search system guide, see [SEARCH_GUIDE.md](SEARCH_GUIDE.md).  
 For production deployment guidance, see [PRODUCTION_GUIDE.md](PRODUCTION_GUIDE.md).  
 For testing procedures, see [TESTING.md](TESTING.md).  
 For technical implementation details, see [TECHNICAL_DETAILS.md](TECHNICAL_DETAILS.md).
