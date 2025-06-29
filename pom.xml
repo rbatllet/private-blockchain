@@ -25,6 +25,10 @@
         <bouncycastle.version>1.81</bouncycastle.version>
         <hikaricp.version>6.3.0</hikaricp.version>
         <log4j.version>2.25.0</log4j.version>
+        <maven-compiler-plugin.version>3.14.0</maven-compiler-plugin.version>
+        <maven-assembly-plugin.version>3.7.1</maven-assembly-plugin.version>
+        <maven-surefire-plugin.version>3.5.3</maven-surefire-plugin.version>
+        <maven-jacoco-plugin.version>0.8.13</maven-jacoco-plugin.version>
     </properties>
 
     <dependencies>
@@ -143,7 +147,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.14.0</version>
+                <version>${maven-compiler-plugin.version}</version>
                 <configuration>
                     <release>21</release>
                 </configuration>
@@ -153,7 +157,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
-                <version>3.7.1</version>
+                <version>${maven-assembly-plugin.version}</version>
                 <configuration>
                     <descriptorRefs>
                         <descriptorRef>jar-with-dependencies</descriptorRef>
@@ -179,14 +183,14 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.2.5</version>
+                <version>${maven-surefire-plugin.version}</version>
             </plugin>
             
             <!-- JaCoCo Plugin for code coverage -->
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.13</version>
+                <version>${maven-jacoco-plugin.version}</version>
                 <configuration>
                     <!-- Configure exclusions for all executions -->
                     <excludes>
