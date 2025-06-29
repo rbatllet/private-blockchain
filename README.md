@@ -676,8 +676,8 @@ Configuration & Scripts:
 ├── run_security_tests.sh                        # Security tests runner
 ├── run_eckeyderivation_tests.sh                 # Elliptic curve key derivation tests
 ├── test_race_condition_fix.sh                   # Race condition testing
-├── test_thread_safety.zsh                       # ✨ ENHANCED: Comprehensive thread safety
-├── test_thread_safety_with_logs.zsh             # Thread safety with detailed logging
+├── test_thread_safety_full.zsh                  # ✨ ENHANCED: Comprehensive thread safety (production)
+├── test_thread_safety_simple.zsh               # ✨ NEW: Simple thread safety with detailed logging (debug)
 ├── test_data_consistency.zsh                    # ✨ ENHANCED: Data consistency validation
 ├── test_export_import.zsh                       # ✨ ENHANCED: Export/import functionality
 ├── test_validation.zsh                          # ✨ ENHANCED: Comprehensive validation
@@ -721,7 +721,8 @@ Complete API migration benefits demonstration
 
 #### Thread Safety Validation
 ```bash
-./test_thread_safety.zsh          # ✨ Comprehensive thread safety with analysis
+./test_thread_safety_full.zsh     # ✨ Comprehensive thread safety with analysis (production)
+./test_thread_safety_simple.zsh   # ✨ Simple thread safety with detailed logging (debug)
 ./run_thread_safety_test.sh       # Basic thread safety validation
 ./run_advanced_thread_safety_tests.sh  # Advanced concurrent operations
 ```
@@ -769,7 +770,7 @@ source ./scripts/shared-functions.sh
 
 **Test thread safety comprehensively:**
 ```bash
-./test_thread_safety.zsh
+./test_thread_safety_full.zsh
 ```
 
 **Validate data consistency:**
@@ -790,7 +791,7 @@ source ./scripts/shared-functions.sh
 ### 🎯 Script Categories
 
 **Core Testing**: `run_all_tests.sh`, `run_basic_tests.sh`, `run_advanced_tests.sh`  
-**Thread Safety**: `test_thread_safety.zsh`, `run_thread_safety_test.sh`, `run_advanced_thread_safety_tests.sh`  
+**Thread Safety**: `test_thread_safety_full.zsh`, `test_thread_safety_simple.zsh`, `run_thread_safety_test.sh`, `run_advanced_thread_safety_tests.sh`  
 **Data Consistency**: `test_data_consistency.zsh`, `test_export_import.zsh`, `test_validation.zsh`  
 **Security & Recovery**: `run_security_tests.sh`, `run_recovery_tests.sh`, `run_security_analysis.sh`  
 **Demonstrations**: `run_api_migration_demo.sh`, `run_crypto_security_demo.sh`, `run_enhanced_dangerous_delete_demo.sh`  

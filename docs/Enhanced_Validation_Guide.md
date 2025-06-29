@@ -529,10 +529,10 @@ source ./scripts/shared-functions.sh
 
 #### Enhanced Thread Safety Tests
 
-**test_thread_safety.zsh** ✨ COMPREHENSIVE
-**Purpose**: Comprehensive thread safety testing with analysis
+**test_thread_safety_full.zsh** ✨ COMPREHENSIVE (Production)
+**Purpose**: Complete thread safety validation with 20 threads, 10 operations, 7 test types
 ```bash
-./test_thread_safety.zsh
+./test_thread_safety_full.zsh
 ```
 **Features**:
 - Multiple concurrent operations testing
@@ -541,11 +541,17 @@ source ./scripts/shared-functions.sh
 - Comprehensive analysis and cleanup
 - Export/import operation safety validation
 
-**test_thread_safety_with_logs.zsh**
-**Purpose**: Thread safety testing with detailed logging
+**test_thread_safety_simple.zsh** ✨ SIMPLE (Debug)
+**Purpose**: Simplified thread safety testing with 10 threads, 5 operations, detailed logging
 ```bash
-./test_thread_safety_with_logs.zsh
+./test_thread_safety_simple.zsh
 ```
+**Features**:
+- Focused testing for debugging
+- Extensive DEBUG-level logging
+- Faster execution (~30-60s)
+- Log file preservation options
+- 3 core test scenarios
 
 #### Data Consistency Tests
 
@@ -591,7 +597,8 @@ source ./scripts/shared-functions.sh
 - `run_advanced_tests.sh` - Advanced features
 
 **Thread Safety**:
-- `test_thread_safety.zsh` - Comprehensive thread safety
+- `test_thread_safety_full.zsh` - Comprehensive thread safety (production)
+- `test_thread_safety_simple.zsh` - Simple thread safety with detailed logging (debug)
 - `run_thread_safety_test.sh` - Basic thread safety
 - `run_advanced_thread_safety_tests.sh` - Advanced concurrency
 
@@ -624,7 +631,7 @@ source ./scripts/shared-functions.sh
 
 ### Test Thread Safety
 ```bash
-./test_thread_safety.zsh
+./test_thread_safety_full.zsh
 ```
 
 ### Validate Data Consistency

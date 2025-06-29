@@ -56,6 +56,16 @@ public class TestDetailedValidation {
             Block offChainBlock1 = blockchain.addBlockAndReturn(largeData1.toString(), privateKey1, publicKey1);
             Block offChainBlock2 = blockchain.addBlockAndReturn(largeData2.toString(), privateKey2, publicKey2);
             
+            // Show created off-chain blocks information
+            if (offChainBlock1 != null && offChainBlock1.hasOffChainData()) {
+                System.out.println("✅ Off-chain Block 1 created: #" + offChainBlock1.getBlockNumber() + 
+                    " (Data size: " + String.format("%.1f KB", largeData1.length() / 1024.0) + ")");
+            }
+            if (offChainBlock2 != null && offChainBlock2.hasOffChainData()) {
+                System.out.println("✅ Off-chain Block 2 created: #" + offChainBlock2.getBlockNumber() + 
+                    " (Data size: " + String.format("%.1f KB", largeData2.length() / 1024.0) + ")");
+            }
+            
             // Add one more regular block
             blockchain.addBlockAndReturn("Small block 3", privateKey1, publicKey1);
             

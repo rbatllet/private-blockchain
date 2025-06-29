@@ -1001,38 +1001,51 @@ public class Blockchain {
             // Create backup directory for off-chain files if needed
             boolean hasOffChainData = allBlocks.stream().anyMatch(Block::hasOffChainData);
             if (hasOffChainData) {
-                if (!offChainBackupDir.exists() && !offChainBackupDir.mkdirs()) {
-                    System.err.println("Failed to create off-chain backup directory: " + offChainBackupDir.getAbsolutePath());
-                    return false;
+                if (!offChainBackupDir.exists()) {
+                    try {
+                        if (!offChainBackupDir.mkdirs()) {
+                            System.err.println("Failed to create off-chain backup directory: " + offChainBackupDir.getAbsolutePath());
+                            System.err.println("Export will continue without off-chain file backup");
+                            // Continue export without backup instead of failing completely
+                        }
+                    } catch (SecurityException e) {
+                        System.err.println("Security exception creating backup directory: " + e.getMessage());
+                        System.err.println("Export will continue without off-chain file backup");
+                        // Continue export without backup instead of failing completely
+                    }
                 }
                 
-                // Copy off-chain files to backup directory
-                for (Block block : allBlocks) {
-                    if (block.hasOffChainData()) {
-                        try {
-                            OffChainData offChainData = block.getOffChainData();
-                            File sourceFile = new File(offChainData.getFilePath());
-                            
-                            if (sourceFile.exists()) {
-                                String fileName = "block_" + block.getBlockNumber() + "_" + sourceFile.getName();
-                                File backupFile = new File(offChainBackupDir, fileName);
+                // Copy off-chain files to backup directory (only if backup directory exists)
+                if (offChainBackupDir.exists()) {
+                    for (Block block : allBlocks) {
+                        if (block.hasOffChainData()) {
+                            try {
+                                OffChainData offChainData = block.getOffChainData();
+                                File sourceFile = new File(offChainData.getFilePath());
                                 
-                                // Copy file using Java NIO for better performance
-                                java.nio.file.Files.copy(sourceFile.toPath(), backupFile.toPath(), 
-                                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                                
-                                // Update the path in the export data to point to backup location
-                                offChainData.setFilePath("off-chain-backup/" + fileName);
-                                offChainFilesExported++;
-                                
-                                System.out.println("  ✓ Exported off-chain file for block #" + block.getBlockNumber());
-                            } else {
-                                System.err.println("  ⚠ Off-chain file missing for block #" + block.getBlockNumber() + ": " + sourceFile.getAbsolutePath());
+                                if (sourceFile.exists()) {
+                                    String fileName = "block_" + block.getBlockNumber() + "_" + sourceFile.getName();
+                                    File backupFile = new File(offChainBackupDir, fileName);
+                                    
+                                    // Copy file using Java NIO for better performance
+                                    java.nio.file.Files.copy(sourceFile.toPath(), backupFile.toPath(), 
+                                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                                    
+                                    // Update the path in the export data to point to backup location
+                                    offChainData.setFilePath("off-chain-backup/" + fileName);
+                                    offChainFilesExported++;
+                                    
+                                    System.out.println("  ✓ Exported off-chain file for block #" + block.getBlockNumber());
+                                } else {
+                                    System.err.println("  ⚠ Off-chain file missing for block #" + block.getBlockNumber() + ": " + sourceFile.getAbsolutePath());
+                                }
+                            } catch (Exception e) {
+                                System.err.println("  ❌ Error exporting off-chain file for block #" + block.getBlockNumber() + ": " + e.getMessage());
                             }
-                        } catch (Exception e) {
-                            System.err.println("  ❌ Error exporting off-chain file for block #" + block.getBlockNumber() + ": " + e.getMessage());
                         }
                     }
+                } else {
+                    System.out.println("  ⚠ Skipping off-chain file backup (backup directory not available)");
                 }
             }
             
@@ -1206,9 +1219,10 @@ public class Blockchain {
                             offChainData.setId(null);
                             
                             try {
-                                // Check if backup file exists
+                                // Check if backup file exists in off-chain-backup directory
                                 String backupPath = offChainData.getFilePath();
-                                File backupFile = new File(importDir, backupPath);
+                                String fileName = new File(backupPath).getName();
+                                File backupFile = new File(offChainBackupDir, fileName);
                                 
                                 if (backupFile.exists()) {
                                     // Create new file path in standard off-chain directory

@@ -2,7 +2,6 @@ package com.rbatllet.blockchain.util.validation;
 
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.core.Blockchain;
-import com.rbatllet.blockchain.validation.BlockValidationResult;
 import java.time.LocalDateTime;
 import java.io.File;
 /**

@@ -9,6 +9,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.math.ec.ECCurve;
+import org.bouncycastle.math.ec.custom.sec.SecP256R1Curve;
 import com.rbatllet.blockchain.util.CryptoUtil;
 
 /**
@@ -163,12 +165,16 @@ public class ECKeyDerivation {
         BigInteger a = curve.getA();
         BigInteger b = curve.getB();
         
-        // Create BouncyCastle curve
-        org.bouncycastle.math.ec.ECCurve bcCurve = new org.bouncycastle.math.ec.ECCurve.Fp(p, a, b);
+        // Create BouncyCastle curve using modern API
+        ECCurve bcCurve = new SecP256R1Curve();
+        
+        // If we need a custom curve, use the direct constructor with all parameters
+        if (!isStandardCurve(params)) {
+            bcCurve = new ECCurve.Fp(p, a, b, params.getOrder(), BigInteger.valueOf(params.getCofactor()));
+        }
         
         // Convert generator point to BouncyCastle format
-        org.bouncycastle.math.ec.ECPoint bcGenerator = bcCurve.createPoint(
-            generator.getAffineX(), generator.getAffineY());
+        org.bouncycastle.math.ec.ECPoint bcGenerator = bcCurve.createPoint(generator.getAffineX(), generator.getAffineY());
         
         // Perform point multiplication: Q = d * G
         org.bouncycastle.math.ec.ECPoint bcPublicPoint = bcGenerator.multiply(privateValue);
@@ -179,7 +185,7 @@ public class ECKeyDerivation {
         // Convert back to Java format
         BigInteger publicX = bcPublicPoint.getAffineXCoord().toBigInteger();
         BigInteger publicY = bcPublicPoint.getAffineYCoord().toBigInteger();
-        ECPoint javaPublicPoint = new ECPoint(publicX, publicY);
+        java.security.spec.ECPoint javaPublicPoint = new java.security.spec.ECPoint(publicX, publicY);
         
         // Create the public key spec and generate the key
         ECPublicKeySpec publicKeySpec = new ECPublicKeySpec(javaPublicPoint, params);
@@ -351,5 +357,22 @@ public class ECKeyDerivation {
         public ECKeyDerivationException(String message, Throwable cause) {
             super(message, cause);
         }
+    }
+    
+    /**
+     * Check if the curve parameters match a standard curve (P-256)
+     * @param params The EC parameters to check
+     * @return true if it's a standard curve, false otherwise
+     */
+    private static boolean isStandardCurve(ECParameterSpec params) {
+        // Check if this is the P-256 curve by comparing the field size
+        EllipticCurve curve = params.getCurve();
+        ECFieldFp field = (ECFieldFp) curve.getField();
+        BigInteger p = field.getP();
+        
+        // P-256 prime: 2^256 - 2^224 + 2^192 + 2^96 - 1
+        BigInteger p256Prime = new BigInteger("115792089210356248762697446949407573530086143415290314195533631308867097853951");
+        
+        return p.equals(p256Prime);
     }
 }

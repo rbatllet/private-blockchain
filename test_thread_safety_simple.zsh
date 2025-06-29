@@ -1,6 +1,6 @@
 #!/usr/bin/env zsh
 
-echo "=== 🔒 THREAD SAFETY TEST WITH LOGGING ==="
+echo "=== 🔒 SIMPLE THREAD SAFETY TEST (with detailed logging) ==="
 echo
 
 # Clean up any existing files
@@ -15,9 +15,9 @@ find . -maxdepth 1 -name "*.log" -delete 2>/dev/null || true
 echo "1. ✅ Starting with clean state"
 echo
 
-echo "2. 📝 Running thread safety tests with detailed logging..."
-echo "   This will show both the test execution and the internal blockchain logs"
-echo "   to help trace what's happening during concurrent operations."
+echo "2. 📝 Running SIMPLE thread safety tests with detailed logging..."
+echo "   This runs a simplified test suite (10 threads, 5 operations) with extensive logging"
+echo "   to help trace what's happening during concurrent operations. Ideal for debugging."
 echo
 
 # Create logs directory if it doesn't exist
@@ -82,7 +82,7 @@ else
 fi
 
 echo
-echo "🎯 THREAD SAFETY TEST WITH LOGGING COMPLETE"
+echo "🎯 SIMPLE THREAD SAFETY TEST COMPLETE"
 
 # Optional: Clean up test files after completion
 if [[ "${KEEP_TEST_FILES:-false}" != "true" ]]; then
@@ -116,4 +116,4 @@ echo "💡 To see more detailed logs, set DEBUG logging:"
 echo "   MAVEN_OPTS=\"-Dlog4j2.configurationFile=src/test/resources/log4j2-test.xml\" mvn exec:java ..."
 echo
 echo "💡 To preserve logs for analysis:"
-echo "   KEEP_LOGS=true ./test_thread_safety_with_logs.zsh"
+echo "   KEEP_LOGS=true ./test_thread_safety_simple.zsh"

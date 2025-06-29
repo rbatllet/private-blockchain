@@ -107,8 +107,17 @@ public class TestDataConsistency {
             System.out.println();
             System.out.println("=== 📊 FINAL DETAILED VALIDATION WITH OFF-CHAIN ANALYSIS ===");
             var finalResult = blockchain.validateChainDetailed();
-            System.out.println("Data consistency validation completed successfully!");
             
+            System.out.println();
+            System.out.println("📊 Final Validation Summary:");
+            System.out.println("   🔍 Structurally Intact: " + finalResult.isStructurallyIntact());
+            System.out.println("   ✅ Fully Compliant: " + finalResult.isFullyCompliant());
+            System.out.println("   📋 Total Blocks: " + finalResult.getTotalBlocks());
+            System.out.println("   ✅ Valid Blocks: " + finalResult.getValidBlocks());
+            System.out.println("   ⚠️ Revoked Blocks: " + finalResult.getRevokedBlocks());
+            System.out.println("   ❌ Invalid Blocks: " + finalResult.getInvalidBlocks());
+            System.out.println();
+            System.out.println("Data consistency validation completed successfully!");
         } else {
             System.out.println("3. ❌ Failed to create block with off-chain data");
         }

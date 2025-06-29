@@ -1,7 +1,5 @@
 package com.rbatllet.blockchain.validation;
 
-import com.rbatllet.blockchain.validation.BlockValidationResult;
-import com.rbatllet.blockchain.validation.BlockStatus;
 import com.rbatllet.blockchain.entity.Block;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;

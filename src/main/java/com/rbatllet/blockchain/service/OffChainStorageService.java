@@ -108,12 +108,27 @@ public class OffChainStorageService {
     }
     
     /**
-     * Verify data integrity and signature without decrypting
+     * Verify data integrity and signature by attempting full decryption
      */
     public boolean verifyIntegrity(OffChainData offChainData, String password) {
         try {
             byte[] data = retrieveData(offChainData, password);
-            // If we get here without exception, integrity is verified
+            
+            // Additional validation: ensure data is not empty and has reasonable size
+            if (data == null || data.length == 0) {
+                System.err.println("Integrity verification failed: Retrieved data is empty");
+                return false;
+            }
+            
+            // Verify data size matches expected file size (accounting for potential padding)
+            long expectedSize = offChainData.getFileSize();
+            if (expectedSize > 0 && Math.abs(data.length - expectedSize) > 16) {
+                System.err.println("Integrity verification failed: Data size mismatch - expected: " + 
+                    expectedSize + ", actual: " + data.length);
+                return false;
+            }
+            
+            // If we get here without exception and pass validations, integrity is verified
             return true;
         } catch (Exception e) {
             System.err.println("Integrity verification failed: " + e.getMessage());

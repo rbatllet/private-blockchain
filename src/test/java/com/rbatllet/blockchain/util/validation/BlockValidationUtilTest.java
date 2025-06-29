@@ -44,6 +44,12 @@ public class BlockValidationUtilTest {
             setTimestamp(LocalDateTime.now());
             setData("Test data for block " + blockNumber);
         }
+        
+        public TestBlock(Long blockNumber, String previousHash, String publicKey) {
+            this(blockNumber, previousHash);
+            setSignerPublicKey(publicKey);
+            setSignature("test-signature-for-" + publicKey.substring(0, Math.min(8, publicKey.length())));
+        }
     }
     
     // Test implementation of Blockchain
@@ -110,37 +116,34 @@ public class BlockValidationUtilTest {
     
     @Test
     public void testWasKeyAuthorizedAt_Authorized() {
-        String publicKey = "test-public-key";
         LocalDateTime timestamp = LocalDateTime.now();
         
         // Set up the test blockchain to return true for key authorization
         testBlockchain.setKeyAuthorized(true);
         
-        assertTrue(BlockValidationUtil.wasKeyAuthorizedAt(testBlockchain, publicKey, timestamp),
+        assertTrue(BlockValidationUtil.wasKeyAuthorizedAt(testBlockchain, testPublicKey, timestamp),
                 "Should return true when key was authorized");
     }
     
     @Test
     public void testWasKeyAuthorizedAt_NotAuthorized() {
-        String publicKey = "test-public-key";
         LocalDateTime timestamp = LocalDateTime.now();
         
         // Set up the test blockchain to return false for key authorization
         testBlockchain.setKeyAuthorized(false);
         
-        assertFalse(BlockValidationUtil.wasKeyAuthorizedAt(testBlockchain, publicKey, timestamp),
+        assertFalse(BlockValidationUtil.wasKeyAuthorizedAt(testBlockchain, testPublicKey, timestamp),
                 "Should return false when key was not authorized");
     }
     
     @Test
     public void testWasKeyAuthorizedAt_Exception() {
-        String publicKey = "test-public-key";
         LocalDateTime timestamp = LocalDateTime.now();
         
         // Set up the test blockchain to throw an exception for key authorization
         testBlockchain.setKeyAuthorizedException(new RuntimeException("Test exception"));
         
-        assertFalse(BlockValidationUtil.wasKeyAuthorizedAt(testBlockchain, publicKey, timestamp),
+        assertFalse(BlockValidationUtil.wasKeyAuthorizedAt(testBlockchain, testPublicKey, timestamp),
                 "Should return false when an exception occurs");
     }
     
@@ -201,7 +204,7 @@ public class BlockValidationUtilTest {
             offChainData.setFileSize(tempFile.length());
             offChainData.setCreatedAt(LocalDateTime.now());
 
-            Block blockWithOffChain = new TestBlock(1L, "previousHash");
+            Block blockWithOffChain = new TestBlock(1L, "previousHash", testPublicKey);
             blockWithOffChain.setOffChainData(offChainData);
 
             assertTrue(BlockValidationUtil.offChainFileExists(blockWithOffChain),

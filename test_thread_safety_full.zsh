@@ -1,12 +1,12 @@
 #!/usr/bin/env zsh
 
-echo "=== 🔒 COMPREHENSIVE THREAD SAFETY TEST ==="
+echo "=== 🔒 FULL THREAD SAFETY TEST (comprehensive validation) ==="
 echo
 
 # Clean up any existing files
 echo "🧹 Cleaning up previous test files..."
 rm -f blockchain.db blockchain.db-shm blockchain.db-wal
-rm -f export_test_*.json
+rm -f export_test_*.json 2>/dev/null || true
 rm -rf off-chain-data off-chain-backup
 rm -f ComprehensiveThreadSafetyTest.class
 # Clean up any log files (if they exist)
@@ -15,9 +15,9 @@ find . -maxdepth 1 -name "*.log" -delete 2>/dev/null || true
 echo "1. ✅ Starting with clean state"
 echo
 
-echo "2. 📝 Running comprehensive thread safety tests..."
-echo "   This test will run multiple concurrent operations to detect race conditions"
-echo "   and verify thread safety of blockchain operations including off-chain storage."
+echo "2. 📝 Running FULL thread safety tests..."
+echo "   This runs a comprehensive test suite (20 threads, 10 operations, 7 test types) to detect"
+echo "   race conditions and verify thread safety of all blockchain operations. Production-ready validation."
 echo
 
 # Set JVM options for better concurrency testing
@@ -47,7 +47,7 @@ fi
 local export_files=$(find . -maxdepth 1 -name "export_test_*.json" | wc -l)
 if [[ $export_files -gt 0 ]]; then
     echo "📄 Export files remaining: $export_files"
-    ls -la export_test_*.json
+    ls -la export_test_*.json 2>/dev/null || echo "   No export files found"
 else
     echo "📄 No export files remaining"
 fi
@@ -61,14 +61,14 @@ else
 fi
 
 echo
-echo "🎯 THREAD SAFETY TEST COMPLETE"
+echo "🎯 FULL THREAD SAFETY TEST COMPLETE"
 
 # Optional: Clean up test files after completion
 if [[ "${KEEP_TEST_FILES:-false}" != "true" ]]; then
     echo
     echo "🧹 Cleaning up test files..."
     rm -f blockchain.db blockchain.db-shm blockchain.db-wal
-    rm -f export_test_*.json
+    rm -f export_test_*.json 2>/dev/null || true
     rm -rf off-chain-data off-chain-backup
     echo "✅ Test environment cleaned"
 else

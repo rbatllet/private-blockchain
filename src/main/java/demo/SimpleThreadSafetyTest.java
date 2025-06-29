@@ -200,9 +200,9 @@ public class SimpleThreadSafetyTest {
                 try {
                     startLatch.await();
                     
-                    // Generate large data to force off-chain storage
+                    // Generate large data to force off-chain storage (but within limits)
                     StringBuilder largeData = new StringBuilder();
-                    for (int k = 0; k < 15000; k++) {
+                    for (int k = 0; k < 1000; k++) {  // Reduced from 15000 to 1000 to stay within limits
                         largeData.append("Thread-").append(threadId).append("-LargeData-").append(k).append("-");
                     }
                     logger.debug("Thread {} generated large data ({} bytes) for off-chain storage", 
