@@ -17,7 +17,7 @@ import java.security.SecureRandom;
 import java.util.Base64;
 
 /**
- * Service for managing off-chain data storage with AES-CBC encryption
+ * Service for managing off-chain data storage with AES-256-CBC encryption
  * Uses same cryptographic standards as the blockchain (SHA-3-256, ECDSA)
  * Optimized for large files with streaming encryption/decryption
  */
@@ -26,7 +26,7 @@ public class OffChainStorageService {
     private static final String OFF_CHAIN_DIRECTORY = "off-chain-data";
     private static final String ALGORITHM = "AES";
     private static final String TRANSFORMATION = "AES/CBC/PKCS5Padding";
-    private static final int IV_LENGTH = 16; // 128 bits for AES
+    private static final int IV_LENGTH = 16; // 128 bits IV for AES (same for AES-256)
     private static final int BUFFER_SIZE = 8192; // 8KB buffer for streaming
     
     /**
@@ -195,14 +195,14 @@ public class OffChainStorageService {
     }
     
     /**
-     * Generate secret key from password using SHA-3-256 (same as SecureKeyStorage)
+     * Generate secret key from password using SHA-3-256 (upgraded to AES-256)
      */
     private SecretKeySpec generateSecretKey(String password) throws Exception {
         MessageDigest digest = MessageDigest.getInstance(CryptoUtil.HASH_ALGORITHM);
         byte[] hash = digest.digest(password.getBytes("UTF-8"));
-        // Use first 16 bytes for AES-128
-        byte[] keyBytes = new byte[16];
-        System.arraycopy(hash, 0, keyBytes, 0, 16);
+        // Use first 32 bytes for AES-256 (SHA-3-256 produces 32 bytes)
+        byte[] keyBytes = new byte[32];
+        System.arraycopy(hash, 0, keyBytes, 0, 32);
         return new SecretKeySpec(keyBytes, ALGORITHM);
     }
     

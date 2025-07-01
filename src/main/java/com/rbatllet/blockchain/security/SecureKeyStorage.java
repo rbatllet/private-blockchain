@@ -13,7 +13,7 @@ import java.security.KeyFactory;
 import java.util.Base64;
 
 /**
- * Secure storage for private keys using AES encryption
+ * Secure storage for private keys using AES-256 encryption
  */
 public class SecureKeyStorage {
     
@@ -128,14 +128,14 @@ public class SecureKeyStorage {
     }
     
     /**
-     * Generate secret key from password using SHA3-256
+     * Generate secret key from password using SHA3-256 (upgraded to AES-256)
      */
     private static SecretKeySpec generateSecretKey(String password) throws Exception {
         MessageDigest digest = MessageDigest.getInstance(CryptoUtil.HASH_ALGORITHM);
         byte[] hash = digest.digest(password.getBytes("UTF-8"));
-        // Use first 16 bytes for AES-128
-        byte[] keyBytes = new byte[16];
-        System.arraycopy(hash, 0, keyBytes, 0, 16);
+        // Use full 32 bytes for AES-256 (SHA-3-256 produces 32 bytes)
+        byte[] keyBytes = new byte[32];
+        System.arraycopy(hash, 0, keyBytes, 0, 32);
         return new SecretKeySpec(keyBytes, ALGORITHM);
     }
     

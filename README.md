@@ -90,7 +90,7 @@ This is a **private blockchain** for controlled environments where only authoriz
 
 ### Technical Features
 - **Persistence**: SQLite database with JPA standard for ORM (using Hibernate as provider)
-- **Off-Chain Storage**: Encrypted file storage with automatic data tiering (AES-128-CBC)
+- **Off-Chain Storage**: Encrypted file storage with automatic data tiering (AES-256-CBC)
 - **Comprehensive Testing**: More than 40 JUnit 5 tests + integration demos + off-chain storage tests
 - **Production Ready**: Complete documentation and deployment guides
 - **Clean Architecture**: Well-structured code with DAO pattern
@@ -106,7 +106,7 @@ This is a **private blockchain** for controlled environments where only authoriz
   - **Hashing**: SHA3-256 (modern, secure hash function)
   - **Digital Signatures**: ECDSA with secp256r1 (NIST P-256) curve
   - **Key Management**: Hierarchical key structure with automatic rotation
-  - **Encryption**: AES-128-CBC for off-chain data encryption with unique IV per file
+  - **Encryption**: AES-256-CBC for off-chain data encryption with unique IV per file
 - **JUnit 5** - Testing framework for comprehensive validation
 
 ## 📦 Prerequisites
@@ -302,7 +302,7 @@ blockchain.resetLimitsToDefault();
 ```
 
 ### Security Features
-- **AES-128-CBC Encryption**: All off-chain files are encrypted with unique IV
+- **AES-256-CBC Encryption**: All off-chain files are encrypted with unique IV
 - **SHA3-256 Integrity**: Each file has cryptographic hash verification
 - **ECDSA Signatures**: Digital signatures ensure authenticity
 - **Deterministic Keys**: Encryption passwords derived from block metadata
@@ -1189,7 +1189,7 @@ blockchain.resetLimitsToDefault();                    // Reset to defaults
 - **Hash Algorithm**: SHA3-256 for block integrity
 - **Signature Algorithm**: ECDSA with secp256r1 curve
 - **Access Control**: Authorized public key validation
-- **Off-Chain Encryption**: AES-128-CBC with unique IV per file
+- **Off-Chain Encryption**: AES-256-CBC with unique IV per file
 - **Key Derivation**: SHA3-256 based deterministic encryption passwords
 - **Integrity Verification**: Dual verification with hash and digital signature for off-chain data
 

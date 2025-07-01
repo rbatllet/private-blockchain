@@ -4,7 +4,7 @@ Comprehensive guide to the Private Blockchain API, core functions, off-chain sto
 
 > **IMPORTANT NOTE**: This guide references the actual classes and methods implemented in the project. All mentioned classes (Blockchain, Block, AuthorizedKey, OffChainData, OffChainStorageService, JPAUtil, CryptoUtil) exist in the source code. The code examples show the correct usage of the current API based on the JPA standard with Hibernate as the implementation provider.
 
-> **NEW FEATURE**: This blockchain now includes automatic off-chain storage for large data (>512KB) with AES-128-CBC encryption, integrity verification, and configurable size thresholds. All off-chain operations are handled transparently by the API.
+> **NEW FEATURE**: This blockchain now includes automatic off-chain storage for large data (>512KB) with AES-256-CBC encryption, integrity verification, and configurable size thresholds. All off-chain operations are handled transparently by the API.
 
 ## 📋 Table of Contents
 
@@ -139,7 +139,7 @@ The off-chain storage system automatically handles large data (>512KB by default
 
 1. **Automatic Detection**: When adding a block, the system checks data size
 2. **Storage Decision**: Data >512KB (configurable) is automatically stored off-chain
-3. **Encryption**: Off-chain files are encrypted with AES-128-CBC using unique IV
+3. **Encryption**: Off-chain files are encrypted with AES-256-CBC using unique IV
 4. **Reference Storage**: Block contains `OFF_CHAIN_REF:hash` instead of actual data
 5. **Integrity Protection**: SHA3-256 hash and ECDSA signature verify data integrity
 
@@ -275,8 +275,8 @@ public void performIntegrityAudit() {
 ### Security Features
 
 #### Encryption Details
-- **Algorithm**: AES-128-CBC with PKCS5 padding
-- **Key Derivation**: SHA3-256 hash of deterministic password
+- **Algorithm**: AES-256-CBC with PKCS5 padding
+- **Key Derivation**: SHA3-256 hash of deterministic password (32 bytes)
 - **IV Generation**: Cryptographically secure random 16-byte IV per file
 - **Password Generation**: Based on block number + signer public key (reproducible)
 

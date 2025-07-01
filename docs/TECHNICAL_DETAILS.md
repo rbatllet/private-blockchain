@@ -52,7 +52,7 @@ graph TD
     C --> D[SQLite Database]
     B --> K[Off-Chain Storage Service]
     K --> L[Encrypted File Storage]
-    K --> M[AES-128-CBC Encryption]
+    K --> M[AES-256-CBC Encryption]
     B --> E[Cryptographic Utils]
     E --> F[ECDSA Key Management]
     E --> G[SHA3-256 Hashing]
@@ -79,7 +79,7 @@ graph TD
 
 #### 3. Off-Chain Storage Service (`OffChainStorageService.java`)
 - **Automatic Storage Decision**: Size-based automatic storage routing
-- **AES-128-CBC Encryption**: Streaming encryption for large files with unique IV per file
+- **AES-256-CBC Encryption**: Streaming encryption for large files with unique IV per file
 - **Integrity Protection**: SHA3-256 hash verification and ECDSA digital signatures
 - **File Management**: Secure file creation, retrieval, and deletion
 - **Error Handling**: Comprehensive error handling for file operations
@@ -495,7 +495,7 @@ public int validateAndDetermineStorage(String data) {
 graph LR
     A[Original Data] --> B[Generate IV]
     B --> C[Derive AES Key]
-    C --> D[AES-128-CBC Encrypt]
+    C --> D[AES-256-CBC Encrypt]
     D --> E[Store Encrypted File]
     A --> F[Calculate SHA3-256 Hash]
     F --> G[Sign Hash with ECDSA]
@@ -513,7 +513,7 @@ off-chain-data/
 #### 4. Integrity Verification Process
 ```java
 public boolean verifyIntegrity(OffChainData metadata, String password) {
-    // 1. Decrypt file with AES-128-CBC
+    // 1. Decrypt file with AES-256-CBC
     byte[] decryptedData = decryptFile(metadata.getFilePath(), password, metadata.getIV());
     
     // 2. Calculate SHA3-256 hash of decrypted data
@@ -532,8 +532,8 @@ public boolean verifyIntegrity(OffChainData metadata, String password) {
 ### Security Implementation
 
 #### Encryption Specifications
-- **Algorithm**: AES-128-CBC with PKCS5 padding
-- **Key Derivation**: SHA3-256 hash of deterministic password
+- **Algorithm**: AES-256-CBC with PKCS5 padding
+- **Key Derivation**: SHA3-256 hash of deterministic password (32 bytes)
 - **IV Generation**: Cryptographically secure random 16 bytes per file
 - **Password Generation**: `"OFFCHAIN_" + blockNumber + "_" + signerPublicKey`
 
@@ -548,7 +548,7 @@ private String generateOffChainPassword(Long blockNumber, String signerPublicKey
 ```
 
 #### Security Properties
-- **Confidentiality**: AES-128-CBC encryption protects data at rest
+- **Confidentiality**: AES-256-CBC encryption protects data at rest
 - **Integrity**: SHA3-256 hash detects any data modification
 - **Authenticity**: ECDSA signature verifies data origin
 - **Non-repudiation**: Digital signatures provide proof of authorship
