@@ -18,7 +18,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <hibernate.version>6.6.18.Final</hibernate.version>
         <jakarta.persistence.version>3.2.0</jakarta.persistence.version>
-        <sqlite.version>3.50.1.0</sqlite.version>
+        <sqlite.version>3.50.2.0</sqlite.version>
         <jackson.version>2.19.1</jackson.version>
         <slf4j.version>2.0.17</slf4j.version>
         <junit-jupiter.version>5.13.2</junit-jupiter.version>
