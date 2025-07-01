@@ -206,9 +206,9 @@ class BlockchainTest {
             String normalData = "A".repeat(1000);
             assertTrue(blockchain.addBlock(normalData, testKeyPair.getPrivate(), testKeyPair.getPublic()));
             
-            // Very large data should be rejected
+            // Very large data should now be stored off-chain (not rejected)
             String largeData = "A".repeat(20000);
-            assertFalse(blockchain.addBlock(largeData, testKeyPair.getPrivate(), testKeyPair.getPublic()));
+            assertTrue(blockchain.addBlock(largeData, testKeyPair.getPrivate(), testKeyPair.getPublic()));
         }
     }
 

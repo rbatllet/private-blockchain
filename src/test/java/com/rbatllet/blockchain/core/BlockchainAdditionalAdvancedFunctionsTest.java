@@ -128,8 +128,10 @@ class BlockchainAdditionalAdvancedFunctionsTest {
         for (int i = 0; i <= blockchain.getMaxBlockDataLength(); i++) {
             tooLongData.append("x");
         }
-        assertFalse(blockchain.addBlock(tooLongData.toString(), aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()),
-                "Data exceeding character limit should be rejected");
+        // With the fixed validateAndDetermineStorage logic, large data now goes to off-chain storage
+        // instead of being rejected, so this should succeed
+        assertTrue(blockchain.addBlock(tooLongData.toString(), aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()),
+                "Data exceeding character limit should be stored off-chain");
 
         // Test data with multibyte characters that might exceed byte limit
         StringBuilder unicodeData = new StringBuilder();

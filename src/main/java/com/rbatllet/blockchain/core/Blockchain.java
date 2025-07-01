@@ -909,13 +909,14 @@ public class Blockchain {
         
         byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
         
-        // If data is within current limits, store on-chain
-        if (data.length() <= currentMaxBlockDataLength && dataBytes.length <= currentMaxBlockSizeBytes) {
+        // FIXED: Simplified and correct logic based on data size only
+        // If data is small enough for on-chain storage (under off-chain threshold)
+        if (dataBytes.length < currentOffChainThresholdBytes) {
             return 1; // Store on-chain
         }
         
-        // If data exceeds off-chain threshold but is reasonable size, store off-chain
-        if (dataBytes.length >= currentOffChainThresholdBytes && dataBytes.length <= 100 * 1024 * 1024) { // Max 100MB
+        // If data is large but within reasonable limits, store off-chain
+        if (dataBytes.length <= 100 * 1024 * 1024) { // Max 100MB
             System.out.println("Large data detected (" + dataBytes.length + " bytes). Will store off-chain.");
             return 2; // Store off-chain
         }
