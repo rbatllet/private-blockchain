@@ -572,21 +572,6 @@ public class Blockchain {
             GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
         }
     }
-
-    /**
-     * CORE FUNCTION: Validate the entire blockchain
-     * FIXED: Added thread-safety with read lock
-     * 
-     * @deprecated Use {@link #isStructurallyIntact()} or {@link #isFullyCompliant()} instead.
-     * This method provides limited information and is being phased out.
-     * For detailed validation information, use {@link #validateChainDetailed()}.
-     */
-    @Deprecated
-    public boolean validateChain() {
-        // DEPRECATED: Use the new detailed validation API for better insights
-        // This method now delegates to isStructurallyIntact() for compatibility
-        return isStructurallyIntact();
-    }
     
     /**
      * ENHANCED: Detailed validation of the entire blockchain
@@ -1744,18 +1729,6 @@ public class Blockchain {
         }
     }
 
-    /**
-     * Get the last block with read lock for scenarios where only reading consistency is needed
-     * This method is lighter weight but may not see the absolute latest writes
-     */
-    public Block getLastBlockReadOnly() {
-        GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
-        try {
-            return blockDAO.getLastBlock();
-        } finally {
-            GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
-        }
-    }
     
     /**
      * Get the total number of blocks

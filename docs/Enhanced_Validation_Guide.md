@@ -38,7 +38,7 @@ mvn exec:java -Dexec.mainClass="demo.BlockchainDemo"
 
 **Features Demonstrated**:
 - Basic blockchain operations
-- API migration from `validateChain()` to `validateChainDetailed()`
+- Modern `validateChainDetailed()` API usage
 - Enhanced validation results with off-chain analysis
 - Clear separation of structural vs compliance issues
 

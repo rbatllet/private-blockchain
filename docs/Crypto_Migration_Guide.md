@@ -110,12 +110,7 @@ boolean isValid = CryptoUtil.verifySignature(data, signature, publicKey);
 
 ### 5. Chain Validation
 
-Old (Deprecated):
-```java
-boolean isValid = blockchain.validateChain();
-```
-
-New:
+Modern approach:
 ```java
 import com.rbatllet.blockchain.model.ChainValidationResult;
 
@@ -171,7 +166,7 @@ if (result.isStructurallyIntact()) {
 
 ## 📝 Additional Notes
 
-- The `validateChain()` method is now deprecated. Use `validateChainDetailed()` instead.
+- Use `validateChainDetailed()` for comprehensive validation with detailed reporting.
 - Old RSA keys can be migrated to ECDSA by reissuing them using the new key generation methods.
 - The new implementation is thread-safe and includes proper synchronization.
 

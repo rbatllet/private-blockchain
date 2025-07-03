@@ -252,8 +252,6 @@ if (result.isStructurallyIntact()) {
 String report = result.getDetailedReport();
 System.out.println(report);
 
-// Legacy validation (deprecated)
-// boolean isValid = blockchain.validateChain(); // Avoid using this - will be removed in future versions
 ```
 
 ## 📁 Off-Chain Storage Feature
@@ -1363,10 +1361,7 @@ We welcome contributions! Please see our [Contribution Guidelines](CONTRIBUTING.
 
 2. **Signature Verification**
    ```java
-   // Old (deprecated)
-   boolean isValid = blockchain.validateChain();
-   
-   // New (recommended)
+   // Modern approach (recommended)
    ChainValidationResult result = blockchain.validateChainDetailed();
    if (result.isStructurallyIntact() && result.isFullyCompliant()) {
        // Chain is valid

@@ -58,7 +58,7 @@ public class ChainValidationResult {
     
     /**
      * Legacy compatibility: returns true if chain is structurally intact
-     * This maintains compatibility with existing validateChain() callers
+     * This provides structural integrity validation for compatibility
      */
     public boolean isValid() {
         return structuralIntegrity;

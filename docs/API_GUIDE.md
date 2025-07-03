@@ -18,9 +18,7 @@ Comprehensive guide to the Private Blockchain API, core functions, off-chain sto
 
 ## 🔗 Chain Validation Result
 
-The `ChainValidationResult` class provides detailed information about the blockchain validation status. It's returned by the `validateChainDetailed()` method (which replaces the deprecated `validateChain()`) and contains comprehensive validation status, including any invalid or revoked blocks.
-
-> **DEPRECATION NOTICE**: The old `validateChain()` method is deprecated and will be removed in a future version. Always use `validateChainDetailed()` for complete validation information.
+The `ChainValidationResult` class provides detailed information about the blockchain validation status. It's returned by the `validateChainDetailed()` method and contains comprehensive validation status, including any invalid or revoked blocks.
 
 ### Key Methods
 

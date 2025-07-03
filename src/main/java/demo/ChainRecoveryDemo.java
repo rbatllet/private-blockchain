@@ -479,7 +479,7 @@ public class ChainRecoveryDemo {
                 blockchain.getAuthorizedKeys().forEach(key -> {
                     System.err.println("      - " + key.getOwnerName() + ": " + getShortKey(key.getPublicKey()));
                 });
-                System.err.println("   🏥 Valid: " + blockchain.validateChain());
+                System.err.println("   🏥 Valid: " + blockchain.isStructurallyIntact());
             }
         } catch (Exception ex) {
             System.err.println("❌ Unable to retrieve blockchain state: " + ex.getMessage());

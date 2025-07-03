@@ -69,7 +69,7 @@ public class EnhancedDangerousDeleteDemo {
             boolean newStructuralValidation = blockchain.isStructurallyIntact();
             boolean newFullValidation = blockchain.isFullyCompliant();
             
-            System.out.println("   Old validateChain() equivalent: " + (oldValidation ? "✅ VALID" : "❌ INVALID"));
+            System.out.println("   Structural integrity: " + (oldValidation ? "✅ VALID" : "❌ INVALID"));
             System.out.println("   New isStructurallyIntact(): " + (newStructuralValidation ? "✅ INTACT" : "❌ COMPROMISED"));
             System.out.println("   New isFullyCompliant(): " + (newFullValidation ? "✅ COMPLIANT" : "⚠️ NON-COMPLIANT"));
             
@@ -129,11 +129,7 @@ public class EnhancedDangerousDeleteDemo {
             System.out.println("\n⚖️ SCENARIO 8: Method comparison summary");
             System.out.println("========================================");
             
-            System.out.println("   OLD METHOD:");
-            System.out.println("      validateChain() equivalent: " + (blockchain.isStructurallyIntact() ? "✅ VALID" : "❌ INVALID"));
-            System.out.println("      👎 Result: Limited information - structural check only");
-            
-            System.out.println("\n   NEW METHODS:");
+            System.out.println("   MODERN VALIDATION METHODS:");
             System.out.println("      isStructurallyIntact(): " + (blockchain.isStructurallyIntact() ? "✅ INTACT" : "❌ COMPROMISED"));
             System.out.println("      isFullyCompliant(): " + (blockchain.isFullyCompliant() ? "✅ COMPLIANT" : "⚠️ NON-COMPLIANT"));
             System.out.println("      👍 Result: Clear distinction between structural integrity and business rules");

@@ -47,12 +47,8 @@ public class BlockchainDemo {
             // 5. Enhanced validation with detailed information
             System.out.println("\n🔍 Enhanced blockchain validation...");
             
-            // Show the evolution from old to new API
-            System.out.println("📊 Old API (deprecated):");
-            boolean isValid = blockchain.validateChain();
-            System.out.println("   Result: " + (isValid ? "✅ Valid" : "❌ Invalid") + " (limited information)");
-            
-            System.out.println("\n📈 New API (recommended) - Detailed validation with off-chain data analysis:");
+            // Modern API with comprehensive validation results
+            System.out.println("📈 Comprehensive validation with detailed analysis:");
             ChainValidationResult result = blockchain.validateChainDetailed();
             System.out.println("   🏗️ Structural integrity: " + (result.isStructurallyIntact() ? "✅ Intact" : "❌ Compromised"));
             System.out.println("   ✅ Full compliance: " + (result.isFullyCompliant() ? "✅ Compliant" : "⚠️ Non-compliant"));
@@ -91,12 +87,12 @@ public class BlockchainDemo {
             System.out.println("   ✅ Valid chain: " + blockchain.getValidChain().size() + " blocks (operational use)");
             System.out.println("   ⚠️ Orphaned blocks: " + blockchain.getOrphanedBlocks().size() + " blocks");
             
-            System.out.println("\n💡 Migration Benefits Demonstrated:");
-            System.out.println("   ✅ More informative validation results");
+            System.out.println("\n💡 Modern API Benefits:");
+            System.out.println("   ✅ Comprehensive validation with detailed diagnostics");
             System.out.println("   ✅ Clear separation of structural vs compliance issues");
             System.out.println("   ✅ Automatic audit report generation");
             System.out.println("   ✅ Multiple chain perspectives for different use cases");
-            System.out.println("   ✅ Better debugging and monitoring capabilities");
+            System.out.println("   ✅ Enhanced debugging and monitoring capabilities");
             
         } catch (Exception e) {
             System.err.println("❌ Demo error: " + e.getMessage());

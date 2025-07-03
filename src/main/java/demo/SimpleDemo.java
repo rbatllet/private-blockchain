@@ -44,11 +44,12 @@ public class SimpleDemo {
             // 6. Enhanced chain validation
             System.out.println("\n=== 🔍 ENHANCED VALIDATION ===");
             
-            // Old way (still works but deprecated)
-            boolean isValid = blockchain.validateChain();
-            System.out.println("📊 Old API result: " + (isValid ? "✅ Valid" : "❌ Invalid"));
+            // Simple validation check
+            ChainValidationResult quickCheck = blockchain.validateChainDetailed();
+            boolean isValid = quickCheck.isStructurallyIntact();
+            System.out.println("📊 Quick validation: " + (isValid ? "✅ Valid" : "❌ Invalid"));
             
-            // New way (detailed information)
+            // Detailed validation information
             ChainValidationResult result = blockchain.validateChainDetailed();
             System.out.println("📈 New API results:");
             System.out.println("   🏗️ Structurally intact: " + (result.isStructurallyIntact() ? "✅ Yes" : "❌ No"));
@@ -58,7 +59,10 @@ public class SimpleDemo {
             System.out.println("   ✅ Valid blocks: " + result.getValidBlocks());
             System.out.println("   ⚠️ Revoked blocks: " + result.getRevokedBlocks());
             
-            System.out.println("\n💡 Benefits of new API:");
+            // Show detailed validation report for debugging
+            System.out.println("\n📋 Detailed Validation Report:");
+            System.out.println(result.getDetailedReport());
+            System.out.println("\n💡 Benefits of detailed validation API:");
             System.out.println("   • Clear distinction between structural and compliance issues");
             System.out.println("   • Detailed statistics for monitoring and debugging");
             System.out.println("   • Better decision-making for applications");

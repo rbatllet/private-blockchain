@@ -79,24 +79,20 @@ public class CoreFunctionsDemo {
             System.out.println("   SUCCESS: Blocks added\n");
             
             // ===============================
-            // 4. ENHANCED FUNCTION: Validate Chain
+            // 4. CORE FUNCTION: Chain Validation (Modern API)
             // ===============================
-            System.out.println("4. DEMONSTRATING: Enhanced Chain Validation");
+            System.out.println("4. DEMONSTRATING: Chain Validation with ChainValidationResult");
             
-            // Old method (deprecated but still works)
-            boolean isValid = blockchain.validateChain();
-            System.out.println("   📊 Old validation: " + (isValid ? "✅ Valid" : "❌ Invalid"));
-            
-            // New enhanced method
+            // Modern ChainValidationResult method
             ChainValidationResult result = blockchain.validateChainDetailed();
-            System.out.println("   📈 Enhanced validation:");
+            System.out.println("   📈 Validation results:");
             System.out.println("     🏗️ Structurally intact: " + (result.isStructurallyIntact() ? "✅ Yes" : "❌ No"));
             System.out.println("     ✅ Fully compliant: " + (result.isFullyCompliant() ? "✅ Yes" : "⚠️ No"));
             System.out.println("     📊 Summary: " + result.getSummary());
             System.out.println("     📋 Blocks: " + result.getValidBlocks() + "/" + result.getTotalBlocks() + " valid");
             
             assert result.isStructurallyIntact() : "Chain should be structurally intact";
-            System.out.println("   SUCCESS: Enhanced chain validation completed\n");
+            System.out.println("   SUCCESS: Chain validation completed\n");
             
             // ===============================
             // 5. CORE FUNCTION: Get Block by Number
@@ -163,8 +159,8 @@ public class CoreFunctionsDemo {
             System.out.println("   ✅ Full compliance: " + (finalResult.isFullyCompliant() ? "✅ Compliant" : "⚠️ Issues"));
             System.out.println();
             
-            System.out.println("\n💡 Core Functions Enhanced with New Validation API:");
-            System.out.println("   • Detailed validation results instead of simple boolean");
+            System.out.println("\n💡 Core Functions Using Modern ChainValidationResult API:");
+            System.out.println("   • Detailed validation results with comprehensive information");
             System.out.println("   • Clear structural vs compliance distinction");
             System.out.println("   • Rich information for debugging and monitoring");
             
