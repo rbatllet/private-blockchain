@@ -2,6 +2,7 @@ package com.rbatllet.blockchain.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 @Table(name = "blocks")
@@ -48,6 +49,13 @@ public class Block {
     
     @Column(name = "content_category", length = 50)
     private String contentCategory;     // "MEDICAL", "FINANCE", "LEGAL", etc.
+    
+    // Encryption-related fields
+    @Column(name = "is_encrypted", nullable = false)
+    private Boolean isEncrypted = false;  // Flag to indicate if data is encrypted
+    
+    @Column(name = "encryption_metadata", columnDefinition = "TEXT")
+    private String encryptionMetadata;    // Serialized EncryptedBlockData (when encrypted)
 
     // Constructors
     public Block() {}
@@ -62,6 +70,7 @@ public class Block {
         this.hash = hash;
         this.signature = signature;
         this.signerPublicKey = signerPublicKey;
+        this.isEncrypted = false; // Default to unencrypted for compatibility
     }
     
     public Block(Long blockNumber, String previousHash, String data, 
@@ -114,6 +123,21 @@ public class Block {
     public String getContentCategory() { return contentCategory; }
     public void setContentCategory(String contentCategory) { this.contentCategory = contentCategory; }
     
+    // Encryption-related getters and setters
+    public Boolean getIsEncrypted() { return isEncrypted; }
+    public void setIsEncrypted(Boolean isEncrypted) { this.isEncrypted = isEncrypted; }
+    
+    public String getEncryptionMetadata() { return encryptionMetadata; }
+    public void setEncryptionMetadata(String encryptionMetadata) { this.encryptionMetadata = encryptionMetadata; }
+    
+    /**
+     * Returns true if this block contains encrypted data
+     */
+    @JsonIgnore
+    public boolean isDataEncrypted() {
+        return isEncrypted != null && isEncrypted;
+    }
+    
     /**
      * Updates searchableContent by combining manual and auto keywords
      */
@@ -134,12 +158,13 @@ public class Block {
                 "id=" + id +
                 ", blockNumber=" + blockNumber +
                 ", previousHash='" + previousHash + '\'' +
-                ", data='" + data + '\'' +
+                ", data='" + (isDataEncrypted() ? "[ENCRYPTED]" : data) + '\'' +
                 ", timestamp=" + timestamp +
                 ", hash='" + hash + '\'' +
                 ", signature='" + (signature != null ? signature.substring(0, Math.min(20, signature.length())) + "..." : "null") + '\'' +
                 ", signerPublicKey='" + (signerPublicKey != null ? signerPublicKey.substring(0, Math.min(20, signerPublicKey.length())) + "..." : "null") + '\'' +
                 ", hasOffChainData=" + hasOffChainData() +
+                ", isEncrypted=" + isEncrypted +
                 '}';
     }
 }

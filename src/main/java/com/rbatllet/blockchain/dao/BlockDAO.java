@@ -3,18 +3,22 @@ package com.rbatllet.blockchain.dao;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.entity.BlockSequence;
 import com.rbatllet.blockchain.util.JPAUtil;
+import com.rbatllet.blockchain.service.SecureBlockEncryptionService;
+import com.rbatllet.blockchain.search.SearchLevel;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityTransaction;
 import jakarta.persistence.LockModeType;
 import jakarta.persistence.TypedQuery;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * Thread-safe DAO for Block operations
  * FIXED: Added thread-safety and support for global transactions
+ * ENHANCED: Added support for encrypted block data using AES-256-GCM
  */
 public class BlockDAO {
     
@@ -105,8 +109,8 @@ public class BlockDAO {
                         nextValue = maxBlockNumber + 1L;
                     }
                     
-                    System.out.println("🔍 [" + threadName + "] Creating new sequence with nextValue: " + nextValue);
-                    sequence = new BlockSequence("block_number", nextValue);
+                    System.out.println("🔍 [" + threadName + "] Creating new sequence with nextValue: " + (nextValue + 1));
+                    sequence = new BlockSequence("block_number", nextValue + 1); // Store next available number
                     em.persist(sequence);
                     em.flush(); // Force immediate persistence
                     
@@ -117,7 +121,7 @@ public class BlockDAO {
                     
                     long elapsed = (System.nanoTime() - startTime) / 1_000_000;
                     System.out.println("✅ [" + threadName + "] Generated block number: " + nextValue + " (took " + elapsed + "ms)");
-                    return nextValue;
+                    return nextValue; // Return the number we're using for current block
                 } else {
                     // FIXED: Correct atomic increment logic
                     Long blockNumberToUse = sequence.getNextValue(); // This is the number we'll use for the current block
@@ -552,7 +556,7 @@ public class BlockDAO {
      */
     public List<Block> searchBlocksByContent(String content) {
         if (content == null || content.trim().isEmpty()) {
-            return new java.util.ArrayList<>();
+            return new ArrayList<>();
         }
         
         lock.readLock().lock();
@@ -658,9 +662,9 @@ public class BlockDAO {
     /**
      * Search blocks by content with different search levels
      */
-    public List<Block> searchBlocksByContentWithLevel(String searchTerm, com.rbatllet.blockchain.search.SearchLevel level) {
+    public List<Block> searchBlocksByContentWithLevel(String searchTerm, SearchLevel level) {
         if (searchTerm == null || searchTerm.trim().isEmpty()) {
-            return new java.util.ArrayList<>();
+            return new ArrayList<>();
         }
         
         lock.readLock().lock();
@@ -671,7 +675,11 @@ public class BlockDAO {
             try {
                 String queryString = buildSearchQuery(level);
                 TypedQuery<Block> query = em.createQuery(queryString, Block.class);
-                query.setParameter("term", term);
+                
+                // Only set the term parameter if the query actually uses it
+                if (level != SearchLevel.INCLUDE_DATA) {
+                    query.setParameter("term", term);
+                }
                 
                 List<Block> results = query.getResultList();
                 
@@ -695,7 +703,7 @@ public class BlockDAO {
      */
     public List<Block> searchByCategory(String category) {
         if (category == null || category.trim().isEmpty()) {
-            return new java.util.ArrayList<>();
+            return new ArrayList<>();
         }
         
         lock.readLock().lock();
@@ -739,7 +747,7 @@ public class BlockDAO {
         }
     }
     
-    private String buildSearchQuery(com.rbatllet.blockchain.search.SearchLevel level) {
+    private String buildSearchQuery(SearchLevel level) {
         StringBuilder query = new StringBuilder("SELECT b FROM Block b WHERE ");
         
         switch (level) {
@@ -753,6 +761,8 @@ public class BlockDAO {
                 // Keywords + block data
                 query.append("(LOWER(b.manualKeywords) LIKE :term OR LOWER(b.autoKeywords) LIKE :term OR LOWER(b.searchableContent) LIKE :term OR LOWER(b.data) LIKE :term)");
                 break;
+                
+            // Switch handled by the three current search levels above
         }
         
         query.append(" ORDER BY b.blockNumber ASC");
@@ -760,8 +770,315 @@ public class BlockDAO {
     }
     
     private int compareSearchPriority(Block a, Block b) {
-        // Priority: manual keywords > auto keywords > data
-        // For now, simply sort by block number
-        return Long.compare(a.getBlockNumber(), b.getBlockNumber());
+        // Priority: manual keywords > auto keywords > data > recency
+        // Higher priority blocks appear first in search results
+        
+        // 1. Prioritize blocks with manual keywords
+        boolean aHasManual = a.getManualKeywords() != null && !a.getManualKeywords().trim().isEmpty();
+        boolean bHasManual = b.getManualKeywords() != null && !b.getManualKeywords().trim().isEmpty();
+        
+        if (aHasManual && !bHasManual) return -1;  // a comes first
+        if (!aHasManual && bHasManual) return 1;   // b comes first
+        
+        // 2. If both have manual keywords or both don't, prioritize auto keywords
+        boolean aHasAuto = a.getAutoKeywords() != null && !a.getAutoKeywords().trim().isEmpty();
+        boolean bHasAuto = b.getAutoKeywords() != null && !b.getAutoKeywords().trim().isEmpty();
+        
+        if (aHasAuto && !bHasAuto) return -1;
+        if (!aHasAuto && bHasAuto) return 1;
+        
+        // 3. Finally, sort by recency (higher block number = more recent)
+        return Long.compare(b.getBlockNumber(), a.getBlockNumber()); // Descending order
+    }
+    
+    /**
+     * Save a block with encrypted data using password-based encryption
+     * The data field will be encrypted and stored in encryptionMetadata
+     * 
+     * @param block The block to save
+     * @param password The password for encryption
+     */
+    public void saveBlockWithEncryption(Block block, String password) {
+        if (block == null) {
+            throw new IllegalArgumentException("Block cannot be null");
+        }
+        if (password == null || password.trim().isEmpty()) {
+            throw new IllegalArgumentException("Password cannot be null or empty");
+        }
+        
+        lock.writeLock().lock();
+        try {
+            // Encrypt the data if it's not already encrypted
+            if (!block.isDataEncrypted() && block.getData() != null && !block.getData().trim().isEmpty()) {
+                String originalData = block.getData();
+                
+                // Encrypt data using secure encryption service
+                String encryptedData = SecureBlockEncryptionService.encryptToString(originalData, password);
+                
+                // Store encrypted data in metadata and clear original data
+                block.setEncryptionMetadata(encryptedData);
+                block.setData("[ENCRYPTED]"); // Placeholder to indicate encryption
+                block.setIsEncrypted(true);
+            }
+            
+            // Save the block normally
+            saveBlock(block);
+            
+        } catch (Exception e) {
+            throw new RuntimeException("Error saving block with encryption: " + e.getMessage(), e);
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+    
+    /**
+     * Retrieve and decrypt block data using password
+     * 
+     * @param blockId The block ID to retrieve
+     * @param password The password for decryption
+     * @return The block with decrypted data in the data field
+     */
+    public Block getBlockWithDecryption(Long blockId, String password) {
+        if (blockId == null) {
+            throw new IllegalArgumentException("Block ID cannot be null");
+        }
+        if (password == null || password.trim().isEmpty()) {
+            throw new IllegalArgumentException("Password cannot be null or empty");
+        }
+        
+        lock.readLock().lock();
+        try {
+            EntityManager em = JPAUtil.getEntityManager();
+            Block block;
+            try {
+                block = em.find(Block.class, blockId);
+                if (block == null) {
+                    return null;
+                }
+            } finally {
+                if (!JPAUtil.hasActiveTransaction()) {
+                    em.close();
+                }
+            }
+            
+            // Decrypt data if the block is encrypted
+            if (block.isDataEncrypted() && block.getEncryptionMetadata() != null) {
+                try {
+                    String decryptedData = SecureBlockEncryptionService.decryptFromString(
+                        block.getEncryptionMetadata(), password);
+                    block.setData(decryptedData);
+                } catch (Exception e) {
+                    throw new RuntimeException("Failed to decrypt block data. Invalid password or corrupted data.", e);
+                }
+            }
+            
+            return block;
+            
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Get all encrypted blocks (returns with encrypted data intact)
+     * Use getBlockWithDecryption() to decrypt individual blocks
+     */
+    public List<Block> getAllEncryptedBlocks() {
+        lock.readLock().lock();
+        try {
+            EntityManager em = JPAUtil.getEntityManager();
+            try {
+                TypedQuery<Block> query = em.createQuery(
+                    "SELECT b FROM Block b WHERE b.isEncrypted = true ORDER BY b.blockNumber ASC", 
+                    Block.class);
+                return query.getResultList();
+            } finally {
+                if (!JPAUtil.hasActiveTransaction()) {
+                    em.close();
+                }
+            }
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Check if block data can be decrypted with given password
+     * 
+     * @param blockId The block ID to check
+     * @param password The password to test
+     * @return true if password can decrypt the block, false otherwise
+     */
+    public boolean verifyBlockPassword(Long blockId, String password) {
+        if (blockId == null || password == null || password.trim().isEmpty()) {
+            return false;
+        }
+        
+        lock.readLock().lock();
+        try {
+            EntityManager em = JPAUtil.getEntityManager();
+            Block block;
+            try {
+                block = em.find(Block.class, blockId);
+                if (block == null || !block.isDataEncrypted()) {
+                    return false;
+                }
+            } finally {
+                if (!JPAUtil.hasActiveTransaction()) {
+                    em.close();
+                }
+            }
+            
+            try {
+                SecureBlockEncryptionService.decryptFromString(block.getEncryptionMetadata(), password);
+                return true;
+            } catch (Exception e) {
+                return false;
+            }
+            
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Convert an existing unencrypted block to encrypted
+     * 
+     * @param blockId The block ID to encrypt
+     * @param password The password for encryption
+     * @return true if encryption was successful, false if block was already encrypted or not found
+     */
+    public boolean encryptExistingBlock(Long blockId, String password) {
+        if (blockId == null) {
+            throw new IllegalArgumentException("Block ID cannot be null");
+        }
+        if (password == null || password.trim().isEmpty()) {
+            throw new IllegalArgumentException("Password cannot be null or empty");
+        }
+        
+        lock.writeLock().lock();
+        try {
+            EntityManager em = JPAUtil.getEntityManager();
+            EntityTransaction transaction = null;
+            boolean shouldManageTransaction = !JPAUtil.hasActiveTransaction();
+            
+            try {
+                if (shouldManageTransaction) {
+                    transaction = em.getTransaction();
+                    transaction.begin();
+                }
+                
+                Block block = em.find(Block.class, blockId);
+                if (block == null || block.isDataEncrypted()) {
+                    return false; // Block not found or already encrypted
+                }
+                
+                if (block.getData() == null || block.getData().trim().isEmpty()) {
+                    return false; // No data to encrypt
+                }
+                
+                // Encrypt the data
+                String originalData = block.getData();
+                String encryptedData = SecureBlockEncryptionService.encryptToString(originalData, password);
+                
+                // Update block
+                block.setEncryptionMetadata(encryptedData);
+                block.setData("[ENCRYPTED]");
+                block.setIsEncrypted(true);
+                
+                em.merge(block);
+                
+                if (shouldManageTransaction) {
+                    transaction.commit();
+                }
+                
+                return true;
+                
+            } catch (Exception e) {
+                if (transaction != null && transaction.isActive()) {
+                    transaction.rollback();
+                }
+                throw new RuntimeException("Error encrypting existing block: " + e.getMessage(), e);
+            } finally {
+                if (shouldManageTransaction && !JPAUtil.hasActiveTransaction()) {
+                    em.close();
+                }
+            }
+            
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+    
+    /**
+     * Clean up test data - Delete all blocks except genesis block (block 0) and reset sequence
+     * Thread-safe method for test isolation
+     * WARNING: This method is intended for testing purposes only
+     */
+    public void cleanupTestData() {
+        lock.writeLock().lock();
+        try {
+            if (JPAUtil.hasActiveTransaction()) {
+                // Use existing global transaction
+                EntityManager em = JPAUtil.getEntityManager();
+                // Delete all blocks except genesis (block 0)
+                em.createQuery("DELETE FROM Block b WHERE b.blockNumber > 0").executeUpdate();
+                // Reset block sequence counter
+                em.createQuery("DELETE FROM BlockSequence").executeUpdate();
+                // Clear Hibernate session cache to avoid entity conflicts
+                em.flush();
+                em.clear();
+            } else {
+                // Create own transaction for cleanup
+                JPAUtil.executeInTransaction(em -> {
+                    // Delete all blocks except genesis (block 0)
+                    em.createQuery("DELETE FROM Block b WHERE b.blockNumber > 0").executeUpdate();
+                    // Reset block sequence counter
+                    em.createQuery("DELETE FROM BlockSequence").executeUpdate();
+                    // Clear Hibernate session cache to avoid entity conflicts
+                    em.flush();
+                    em.clear();
+                    return null;
+                });
+            }
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+    
+    /**
+     * Complete database cleanup - Delete ALL blocks including genesis and reset everything
+     * Thread-safe method for complete test isolation
+     * WARNING: This method is intended for testing purposes only - removes ALL data
+     */
+    public void completeCleanupTestData() {
+        lock.writeLock().lock();
+        try {
+            if (JPAUtil.hasActiveTransaction()) {
+                // Use existing global transaction
+                EntityManager em = JPAUtil.getEntityManager();
+                // Delete ALL blocks (including genesis)
+                em.createQuery("DELETE FROM Block").executeUpdate();
+                // Reset block sequence counter
+                em.createQuery("DELETE FROM BlockSequence").executeUpdate();
+                // Clear Hibernate session cache to avoid entity conflicts
+                em.flush();
+                em.clear();
+            } else {
+                // Create own transaction for cleanup
+                JPAUtil.executeInTransaction(em -> {
+                    // Delete ALL blocks (including genesis)
+                    em.createQuery("DELETE FROM Block").executeUpdate();
+                    // Reset block sequence counter
+                    em.createQuery("DELETE FROM BlockSequence").executeUpdate();
+                    // Clear Hibernate session cache to avoid entity conflicts
+                    em.flush();
+                    em.clear();
+                    return null;
+                });
+            }
+        } finally {
+            lock.writeLock().unlock();
+        }
     }
 }

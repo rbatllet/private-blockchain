@@ -363,4 +363,36 @@ public class AuthorizedKeyDAO {
             lock.readLock().unlock();
         }
     }
+    
+    /**
+     * Clean up test data - Delete all authorized keys and reset state
+     * Thread-safe method for test isolation
+     * WARNING: This method is intended for testing purposes only
+     */
+    public void cleanupTestData() {
+        lock.writeLock().lock();
+        try {
+            if (JPAUtil.hasActiveTransaction()) {
+                // Use existing global transaction
+                EntityManager em = JPAUtil.getEntityManager();
+                // Delete all authorized keys
+                em.createQuery("DELETE FROM AuthorizedKey").executeUpdate();
+                // Clear Hibernate session cache to avoid entity conflicts
+                em.flush();
+                em.clear();
+            } else {
+                // Create own transaction for cleanup
+                JPAUtil.executeInTransaction(em -> {
+                    // Delete all authorized keys
+                    em.createQuery("DELETE FROM AuthorizedKey").executeUpdate();
+                    // Clear Hibernate session cache to avoid entity conflicts
+                    em.flush();
+                    em.clear();
+                    return null;
+                });
+            }
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
 }

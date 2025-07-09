@@ -52,7 +52,7 @@ graph TD
     C --> D[SQLite Database]
     B --> K[Off-Chain Storage Service]
     K --> L[Encrypted File Storage]
-    K --> M[AES-256-CBC Encryption]
+    K --> M[AES-256-GCM Encryption]
     B --> E[Cryptographic Utils]
     E --> F[ECDSA Key Management]
     E --> G[SHA3-256 Hashing]
@@ -79,7 +79,7 @@ graph TD
 
 #### 3. Off-Chain Storage Service (`OffChainStorageService.java`)
 - **Automatic Storage Decision**: Size-based automatic storage routing
-- **AES-256-CBC Encryption**: Streaming encryption for large files with unique IV per file
+- **AES-256-GCM Encryption**: Streaming encryption for large files with authenticated encryption
 - **Integrity Protection**: SHA3-256 hash verification and ECDSA digital signatures
 - **File Management**: Secure file creation, retrieval, and deletion
 - **Error Handling**: Comprehensive error handling for file operations
@@ -154,7 +154,7 @@ CREATE TABLE off_chain_data (
     signature TEXT NOT NULL,           -- ECDSA signature of data hash for authenticity
     file_path TEXT NOT NULL,           -- Path to encrypted file in off-chain-data/ directory
     file_size INTEGER NOT NULL,        -- Original file size in bytes
-    encryption_iv TEXT NOT NULL,       -- Base64-encoded AES initialization vector (unique per file)
+    encryption_iv TEXT NOT NULL,       -- Base64-encoded AES-256-GCM nonce (unique per file)
     created_at TEXT NOT NULL,          -- Timestamp when off-chain data was created
     content_type TEXT NOT NULL,        -- MIME type of the data (e.g., "text/plain", "application/pdf")
     signer_public_key TEXT             -- Public key of the user who signed the data
@@ -493,9 +493,9 @@ public int validateAndDetermineStorage(String data) {
 #### 2. Encryption Pipeline
 ```mermaid
 graph LR
-    A[Original Data] --> B[Generate IV]
-    B --> C[Derive AES Key]
-    C --> D[AES-256-CBC Encrypt]
+    A[Original Data] --> B[Generate Nonce]
+    B --> C[Derive AES-256 Key]
+    C --> D[AES-256-GCM Encrypt]
     D --> E[Store Encrypted File]
     A --> F[Calculate SHA3-256 Hash]
     F --> G[Sign Hash with ECDSA]
@@ -513,8 +513,8 @@ off-chain-data/
 #### 4. Integrity Verification Process
 ```java
 public boolean verifyIntegrity(OffChainData metadata, String password) {
-    // 1. Decrypt file with AES-256-CBC
-    byte[] decryptedData = decryptFile(metadata.getFilePath(), password, metadata.getIV());
+    // 1. Decrypt file with AES-256-GCM
+    byte[] decryptedData = decryptFile(metadata.getFilePath(), password, metadata.getNonce());
     
     // 2. Calculate SHA3-256 hash of decrypted data
     String calculatedHash = SHA3_256.hash(decryptedData);
@@ -532,9 +532,9 @@ public boolean verifyIntegrity(OffChainData metadata, String password) {
 ### Security Implementation
 
 #### Encryption Specifications
-- **Algorithm**: AES-256-CBC with PKCS5 padding
+- **Algorithm**: AES-256-GCM with authenticated encryption
 - **Key Derivation**: SHA3-256 hash of deterministic password (32 bytes)
-- **IV Generation**: Cryptographically secure random 16 bytes per file
+- **Nonce Generation**: Cryptographically secure random 12 bytes per file
 - **Password Generation**: `"OFFCHAIN_" + blockNumber + "_" + signerPublicKey`
 
 #### Key Management
@@ -548,7 +548,7 @@ private String generateOffChainPassword(Long blockNumber, String signerPublicKey
 ```
 
 #### Security Properties
-- **Confidentiality**: AES-256-CBC encryption protects data at rest
+- **Confidentiality**: AES-256-GCM encryption protects data at rest
 - **Integrity**: SHA3-256 hash detects any data modification
 - **Authenticity**: ECDSA signature verifies data origin
 - **Non-repudiation**: Digital signatures provide proof of authorship
@@ -618,7 +618,7 @@ public enum OffChainError {
 blockchain.offchain.threshold_bytes=524288        # 512KB threshold
 blockchain.offchain.max_file_size=104857600      # 100MB maximum
 blockchain.offchain.storage_directory=off-chain-data
-blockchain.offchain.encryption_algorithm=AES/CBC/PKCS5Padding
+blockchain.offchain.encryption_algorithm=AES/GCM/NoPadding
 blockchain.offchain.buffer_size=8192             # 8KB streaming buffer
 blockchain.offchain.cleanup_enabled=true         # Enable automatic cleanup
 blockchain.offchain.backup_verification=true     # Verify integrity before backup
@@ -1201,12 +1201,12 @@ All shell scripts in the project use ZSH (Z Shell) with a standardized structure
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Source shared functions
-source "$SCRIPT_DIR/scripts/shared-functions.sh"
+source "$SCRIPT_DIR/scripts/shared-functions.zsh"
 ```
 
 ### Shared Functions Library
 
-The `scripts/shared-functions.sh` file provides centralized utilities for all scripts:
+The `scripts/shared-functions.zsh` file provides centralized utilities for all scripts:
 
 - Database cleanup and maintenance functions
 - Colored output formatting

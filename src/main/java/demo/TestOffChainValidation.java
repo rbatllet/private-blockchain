@@ -2,6 +2,7 @@ package demo;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.entity.OffChainData;
 import com.rbatllet.blockchain.util.validation.BlockValidationUtil;
 import com.rbatllet.blockchain.util.CryptoUtil;
 
@@ -172,7 +173,7 @@ public class TestOffChainValidation {
             corruptedBlock.setTimestamp(block.getTimestamp());
             
             // Create corrupted off-chain data
-            var corruptedOffChain = new com.rbatllet.blockchain.entity.OffChainData();
+            var corruptedOffChain = new OffChainData();
             corruptedOffChain.setFilePath(offChainData.getFilePath());
             corruptedOffChain.setDataHash(null); // Corrupted hash
             corruptedOffChain.setSignature(offChainData.getSignature());
@@ -321,7 +322,7 @@ public class TestOffChainValidation {
             testBlock.setData("Mock data");
             testBlock.setTimestamp(LocalDateTime.now().minusHours(1)); // 1 hour ago
             
-            var testOffChain = new com.rbatllet.blockchain.entity.OffChainData();
+            var testOffChain = new OffChainData();
             testOffChain.setFilePath(offChainData.getFilePath());
             testOffChain.setDataHash(offChainData.getDataHash());
             testOffChain.setSignature(offChainData.getSignature());

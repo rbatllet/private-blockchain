@@ -97,34 +97,48 @@ com.rbatllet.blockchain.util.validation.BlockValidationResult
 
 | Method | Description |
 |--------|-------------|
-| `isValid()` | Checks if the block is valid overall |
-| `setPreviousHashValid(boolean)` | Sets the validation result for the previous hash |
-| `setBlockNumberValid(boolean)` | Sets the validation result for the block number |
-| `setHashIntegrityValid(boolean)` | Sets the validation result for hash integrity |
-| `setTimestampValid(boolean)` | Sets the validation result for the timestamp |
-| `setSignatureValid(boolean)` | Sets the validation result for the signature |
-| `setDataValid(boolean)` | Sets the validation result for the data |
-| `setAuthorKeyValid(boolean)` | Sets the validation result for the author key |
-| `getValidationSummary()` | Gets a summary of all validation results |
+| `getBlock()` | Gets the block being validated |
+| `getStatus()` | Gets the validation status (VALID, INVALID, REVOKED) |
+| `isValid()` | Returns true if block is valid or revoked (structurally sound) |
+| `isFullyValid()` | Returns true only if block is completely valid |
+| `isStructurallyValid()` | Checks if block structure is valid |
+| `isCryptographicallyValid()` | Checks if cryptographic signatures are valid |
+| `isAuthorizationValid()` | Checks if the signing key was authorized |
+| `isOffChainDataValid()` | Checks if off-chain data is valid |
+| `getErrorMessage()` | Gets detailed error message if validation failed |
+| `getWarningMessage()` | Gets warning message if applicable |
+| `toString()` | Gets a formatted summary of validation results |
 
 #### Usage Example
 
 ```java
-BlockValidationResult result = new BlockValidationResult();
+// BlockValidationResult is created by the validation process using Builder pattern
+// You typically receive it from validation methods, not create it directly
 
-// Set individual results
-result.setPreviousHashValid(true);
-result.setBlockNumberValid(true);
-result.setHashIntegrityValid(false); // Hash doesn't match content
-result.setTimestampValid(true);
-result.setSignatureValid(true);
-result.setDataValid(true);
-result.setAuthorKeyValid(true);
+// Example of working with validation results
+BlockValidationResult result = blockchain.validateBlock(block);
 
-// Check overall validity
-if (!result.isValid()) {
-    System.out.println("Block is not valid: " + result.getValidationSummary());
+// Check different aspects of validation
+if (result.isFullyValid()) {
+    System.out.println("Block is completely valid");
+} else if (result.isValid()) {
+    System.out.println("Block is structurally valid but may have authorization issues");
+    if (!result.isAuthorizationValid()) {
+        System.out.println("Warning: " + result.getWarningMessage());
+    }
+} else {
+    System.out.println("Block validation failed: " + result.getErrorMessage());
 }
+
+// Get detailed information
+System.out.println("Status: " + result.getStatus());
+System.out.println("Structural: " + result.isStructurallyValid());
+System.out.println("Cryptographic: " + result.isCryptographicallyValid());
+System.out.println("Authorization: " + result.isAuthorizationValid());
+System.out.println("Off-chain data: " + result.isOffChainDataValid());
+
+// Get formatted summary
+System.out.println("Summary: " + result.toString());
 ```
 
 ## Format Utilities

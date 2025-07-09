@@ -39,9 +39,9 @@ Comprehensive production deployment guide for the Private Blockchain implementat
 │   ├── operational/            # Daily operation keys
 │   └── backup/                 # Key backups
 ├── scripts/                    # Script utilities directory
-│   ├── shared-functions.sh     # Common functions library
-│   ├── run_template.sh         # Template for new scripts
-│   └── check-db-cleanup.sh     # Script compliance checker
+│   ├── shared-functions.zsh     # Common functions library
+│   ├── run_template.zsh         # Template for new scripts
+│   └── check-db-cleanup.zsh     # Script compliance checker
 ├── logs/                      # Application logs
 │   ├── application.log        # Main application log
 │   ├── security.log           # Security events
@@ -56,7 +56,7 @@ Comprehensive production deployment guide for the Private Blockchain implementat
 ### Initial Setup Script
 ```bash
 #!/usr/bin/env zsh
-# production-setup.sh - Initial production environment setup
+# production-setup.zsh - Initial production environment setup
 
 set -e
 
@@ -112,7 +112,7 @@ echo "5. Set up backup schedule"
 #### Master Key Generation
 ```bash
 #!/usr/bin/env zsh
-# generate-master-keys.sh - Generate master cryptographic keys
+# generate-master-keys.zsh - Generate master cryptographic keys
 
 APP_HOME="/opt/blockchain"
 KEYS_DIR="$APP_HOME/keys/master"
@@ -145,7 +145,7 @@ echo "🚨 CRITICAL: Backup master keys to secure offline storage immediately!"
 chmod 700 /opt/blockchain/application
 chmod 600 /opt/blockchain/application/blockchain.db
 chmod 600 /opt/blockchain/config/*.properties
-chmod 755 /opt/blockchain/scripts/*.sh
+chmod 755 /opt/blockchain/scripts/*.zsh
 
 # Create dedicated blockchain user
 sudo useradd -r -s /bin/false blockchain
@@ -271,7 +271,7 @@ VACUUM;
 #### Database Maintenance Script
 ```bash
 #!/usr/bin/env zsh
-# database-maintenance.sh - Weekly database optimization
+# database-maintenance.zsh - Weekly database optimization
 
 APP_HOME="/opt/blockchain"
 DB_FILE="$APP_HOME/application/blockchain.db"
@@ -372,13 +372,13 @@ echo "✅ Database maintenance completed"
 ```bash
 # Add to crontab -e
 # Run comprehensive validation daily at 2 AM
-0 2 * * * /opt/blockchain/scripts/validate-chain.sh
+0 2 * * * /opt/blockchain/scripts/validate-chain.zsh
 
 # Run quick validation hourly
-0 * * * * /opt/blockchain/scripts/quick-validate.sh
+0 * * * * /opt/blockchain/scripts/quick-validate.zsh
 ```
 
-#### Detailed Validation Script (`validate-chain.sh`)
+#### Detailed Validation Script (`validate-chain.zsh`)
 ```zsh
 #!/usr/bin/env zsh
 # Full chain validation with detailed reporting
@@ -389,7 +389,7 @@ set -euo pipefail
 
 # Load environment
 SCRIPT_DIR=${0:a:h}
-source "$SCRIPT_DIR/shared-functions.sh"
+source "$SCRIPT_DIR/shared-functions.zsh"
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 LOG_FILE="/opt/blockchain/logs/validation_${TIMESTAMP}.log"
@@ -416,7 +416,7 @@ LOG_FILE="/opt/blockchain/logs/validation_${TIMESTAMP}.log"
 } >> "$LOG_FILE" 2>&1
 ```
 
-#### Quick Validation Script (`quick-validate.sh`)
+#### Quick Validation Script (`quick-validate.zsh`)
 ```zsh
 #!/usr/bin/env zsh
 # Fast validation for production monitoring
@@ -427,7 +427,7 @@ set -euo pipefail
 
 # Load environment
 SCRIPT_DIR=${0:a:h}
-source "$SCRIPT_DIR/shared-functions.sh"
+source "$SCRIPT_DIR/shared-functions.zsh"
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 LOG_FILE="/opt/blockchain/logs/quick_validate_${TIMESTAMP}.log"
@@ -445,7 +445,7 @@ LOG_FILE="/opt/blockchain/logs/quick_validate_${TIMESTAMP}.log"
     if [ $VALIDATION_EXIT_CODE -ne 0 ]; then
         echo "❌ Quick validation failed, triggering full validation"
         # Trigger full validation if quick check fails
-        /opt/blockchain/scripts/validate-chain.sh
+        /opt/blockchain/scripts/validate-chain.zsh
     fi
     
     echo "=== Quick validation completed at $(date) ==="
@@ -495,7 +495,7 @@ LOG_FILE="/opt/blockchain/logs/quick_validate_${TIMESTAMP}.log"
 #### Health Check Script
 ```bash
 #!/usr/bin/env zsh
-# health-check.sh - Application health monitoring
+# health-check.zsh - Application health monitoring
 
 APP_HOME="/opt/blockchain"
 DB_FILE="$APP_HOME/application/blockchain.db"
@@ -546,7 +546,7 @@ echo "📊 Process: $PID, Memory: ${MEMORY_USAGE}%, Disk: ${FREE_SPACE_MB}MB fre
 #### Metrics Collection
 ```bash
 #!/usr/bin/env zsh
-# collect-metrics.sh - System metrics collection
+# collect-metrics.zsh - System metrics collection
 
 APP_HOME="/opt/blockchain"
 METRICS_FILE="$APP_HOME/logs/metrics.log"
@@ -631,7 +631,7 @@ fi
 #### Daily Backup Script
 ```bash
 #!/usr/bin/env zsh
-# daily-backup.sh - Automated daily backups
+# daily-backup.zsh - Automated daily backups
 
 set -e
 
@@ -699,7 +699,7 @@ echo "🎉 Daily backup completed successfully"
 #### Disaster Recovery Script
 ```zsh
 #!/usr/bin/env zsh
-# disaster-recovery.sh - Complete system recovery from backup
+# disaster-recovery.zsh - Complete system recovery from backup
 
 # Enable strict error handling and better error messages
 emulate -L zsh
@@ -760,7 +760,7 @@ fi
 
 # Stop application
 log "INFO" "🛑 Stopping application..."
-if ! "$APP_HOME/scripts/stop.sh" >> "$LOG_FILE" 2>&1; then
+if ! "$APP_HOME/scripts/stop.zsh" >> "$LOG_FILE" 2>&1; then
     log "WARN" "Failed to stop application, attempting to continue..."
 fi
 
@@ -796,7 +796,7 @@ chown blockchain:blockchain "$CURRENT_DB"
 
 # Start application
 log "INFO" "🚀 Starting application..."
-if ! "$APP_HOME/scripts/start.sh" >> "$LOG_FILE" 2>&1; then
+if ! "$APP_HOME/scripts/start.zsh" >> "$LOG_FILE" 2>&1; then
     log "ERROR" "Failed to start application"
     exit 1
 fi
@@ -804,7 +804,7 @@ fi
 # Verify application startup
 log "INFO" "⏳ Verifying application health..."
 sleep 10
-if "$APP_HOME/scripts/health-check.sh" >> "$LOG_FILE" 2>&1; then
+if "$APP_HOME/scripts/health-check.zsh" >> "$LOG_FILE" 2>&1; then
     # Get recovery stats
     BLOCK_COUNT=$(sqlite3 "$CURRENT_DB" "SELECT COUNT(*) FROM blocks;" 2>> "$LOG_FILE" || echo "unknown")
     KEY_COUNT=$(sqlite3 "$CURRENT_DB" "SELECT COUNT(*) FROM authorized_keys;" 2>> "$LOG_FILE" || echo "unknown")
@@ -971,7 +971,7 @@ tail -f /opt/blockchain/logs/application.log | grep -i "slow query"
 **Recovery:**
 ```bash
 # Stop application
-/opt/blockchain/scripts/stop.sh
+/opt/blockchain/scripts/stop.zsh
 
 # Check database integrity
 sqlite3 /opt/blockchain/application/blockchain.db "PRAGMA integrity_check;"
@@ -983,7 +983,7 @@ sqlite3 /opt/blockchain/application/blockchain.db ".recover /tmp/recovered.db"
 mv /tmp/recovered.db /opt/blockchain/application/blockchain.db
 
 # If repair fails, restore from backup
-/opt/blockchain/scripts/disaster-recovery.sh /opt/blockchain/backups/daily/latest_backup.db.gz
+/opt/blockchain/scripts/disaster-recovery.zsh /opt/blockchain/backups/daily/latest_backup.db.gz
 ```
 
 #### Issue: Memory Leaks
@@ -995,7 +995,7 @@ mv /tmp/recovered.db /opt/blockchain/application/blockchain.db
 **Solutions:**
 ```bash
 # Increase heap size temporarily
-# Edit start.sh: -Xmx4g to -Xmx8g
+# Edit start.zsh: -Xmx4g to -Xmx8g
 
 # Enable heap dump on OOM
 JAVA_OPTS="$JAVA_OPTS -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/opt/blockchain/logs/"
@@ -1009,7 +1009,7 @@ watch -n 30 'ps -p $(cat /opt/blockchain/application/blockchain.pid) -o pid,vsz,
 #### Emergency Restart Protocol
 ```bash
 #!/usr/bin/env zsh
-# emergency-restart.sh - Emergency application restart
+# emergency-restart.zsh - Emergency application restart
 
 echo "🚨 EMERGENCY RESTART INITIATED"
 
@@ -1043,11 +1043,11 @@ if [ -f "$DB_FILE" ]; then
 fi
 
 # Restart application
-/opt/blockchain/scripts/start.sh
+/opt/blockchain/scripts/start.zsh
 
 # Verify startup
 sleep 15
-if /opt/blockchain/scripts/health-check.sh; then
+if /opt/blockchain/scripts/health-check.zsh; then
     echo "✅ Emergency restart completed successfully"
 else
     echo "❌ Emergency restart failed, manual intervention required"

@@ -16,7 +16,7 @@ This guide provides detailed information about the security classes in the priva
 
 The security classes provide essential functionalities for:
 
-- Secure storage of private keys with AES encryption
+- Secure storage of private keys with AES-256-GCM encryption
 - Password validation with security requirements
 - Loading keys from files
 - Elliptic curve key derivation and validation
@@ -85,7 +85,7 @@ KeyInfo operationalKey = CryptoUtil.createOperationalKey(intermediateKey.getKeyI
 The security classes provide essential cryptographic functionalities:
 
 - **Key Management**: Hierarchical key management (Root/Intermediate/Operational)
-- **Encryption**: AES-256 encryption for private key storage
+- **Encryption**: AES-256-GCM encryption for private key storage
 - **Hashing**: SHA3-256 for message digests
 - **Digital Signatures**: ECDSA with secp256r1 curve
 - **Key Derivation**: Secure key derivation with PBKDF2
@@ -96,7 +96,7 @@ These classes are available in the `com.rbatllet.blockchain.security` package.
 ## 🔒 SecureKeyStorage
 
 ### Description
-`SecureKeyStorage` provides methods to store, load, and manage private keys securely using AES encryption.
+`SecureKeyStorage` provides methods to store, load, and manage private keys securely using AES-256-GCM encryption.
 
 ### Main Methods
 

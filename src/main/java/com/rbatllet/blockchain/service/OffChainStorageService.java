@@ -3,9 +3,7 @@ package com.rbatllet.blockchain.service;
 import com.rbatllet.blockchain.entity.OffChainData;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import javax.crypto.Cipher;
-import javax.crypto.CipherInputStream;
-import javax.crypto.CipherOutputStream;
-import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.*;
 import java.nio.file.Files;
@@ -17,16 +15,19 @@ import java.security.SecureRandom;
 import java.util.Base64;
 
 /**
- * Service for managing off-chain data storage with AES-256-CBC encryption
+ * Service for managing off-chain data storage with AES-256-GCM encryption
  * Uses same cryptographic standards as the blockchain (SHA-3-256, ECDSA)
  * Optimized for large files with streaming encryption/decryption
+ * 
+ * UPGRADED: Now uses AES-256-GCM for authenticated encryption
  */
 public class OffChainStorageService {
     
     private static final String OFF_CHAIN_DIRECTORY = "off-chain-data";
     private static final String ALGORITHM = "AES";
-    private static final String TRANSFORMATION = "AES/CBC/PKCS5Padding";
-    private static final int IV_LENGTH = 16; // 128 bits IV for AES (same for AES-256)
+    private static final String TRANSFORMATION = "AES/GCM/NoPadding";
+    private static final int IV_LENGTH = 12; // 96-bit IV recommended for GCM
+    private static final int GCM_TAG_LENGTH = 16; // 128-bit authentication tag
     private static final int BUFFER_SIZE = 8192; // 8KB buffer for streaming
     
     /**
@@ -149,49 +150,51 @@ public class OffChainStorageService {
     }
     
     /**
-     * Encrypt data using AES-CBC and store to file using streaming
+     * Encrypt data using AES-GCM and store to file
+     * GCM provides authenticated encryption in a single operation
      */
     private void encryptAndStoreData(byte[] data, String filePath, String password, byte[] iv) throws Exception {
         SecretKeySpec secretKey = generateSecretKey(password);
-        IvParameterSpec ivSpec = new IvParameterSpec(iv);
+        GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv); // Tag length in bits
         
         Cipher cipher = Cipher.getInstance(TRANSFORMATION);
-        cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivSpec);
+        cipher.init(Cipher.ENCRYPT_MODE, secretKey, gcmSpec);
         
-        try (FileOutputStream fos = new FileOutputStream(filePath);
-             CipherOutputStream cos = new CipherOutputStream(fos, cipher);
-             ByteArrayInputStream bis = new ByteArrayInputStream(data)) {
-            
-            byte[] buffer = new byte[BUFFER_SIZE];
-            int bytesRead;
-            while ((bytesRead = bis.read(buffer)) != -1) {
-                cos.write(buffer, 0, bytesRead);
-            }
+        // GCM encrypts all data in one operation (no streaming needed for integrity)
+        byte[] encryptedData = cipher.doFinal(data);
+        
+        // Write encrypted data to file
+        try (FileOutputStream fos = new FileOutputStream(filePath)) {
+            fos.write(encryptedData);
         }
     }
     
     /**
-     * Decrypt data from file using streaming
+     * Decrypt data from file using AES-GCM
+     * GCM provides authenticated decryption with integrity verification
      */
     private byte[] decryptData(String filePath, String password, byte[] iv) throws Exception {
         SecretKeySpec secretKey = generateSecretKey(password);
-        IvParameterSpec ivSpec = new IvParameterSpec(iv);
+        GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv);
         
         Cipher cipher = Cipher.getInstance(TRANSFORMATION);
-        cipher.init(Cipher.DECRYPT_MODE, secretKey, ivSpec);
+        cipher.init(Cipher.DECRYPT_MODE, secretKey, gcmSpec);
         
+        // Read all encrypted data from file
+        byte[] encryptedData;
         try (FileInputStream fis = new FileInputStream(filePath);
-             CipherInputStream cis = new CipherInputStream(fis, cipher);
              ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             
             byte[] buffer = new byte[BUFFER_SIZE];
             int bytesRead;
-            while ((bytesRead = cis.read(buffer)) != -1) {
+            while ((bytesRead = fis.read(buffer)) != -1) {
                 baos.write(buffer, 0, bytesRead);
             }
-            
-            return baos.toByteArray();
+            encryptedData = baos.toByteArray();
         }
+        
+        // GCM decrypts and verifies in one operation
+        return cipher.doFinal(encryptedData);
     }
     
     /**
@@ -216,7 +219,8 @@ public class OffChainStorageService {
     }
     
     /**
-     * Generate cryptographically secure random IV
+     * Generate cryptographically secure random IV for GCM
+     * GCM uses 96-bit (12-byte) IV for optimal security
      */
     private byte[] generateIV() {
         byte[] iv = new byte[IV_LENGTH];

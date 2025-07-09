@@ -51,7 +51,7 @@ This is a **private blockchain** for controlled environments where only authoriz
   - **Auto Keywords**: Automatic extraction of dates, numbers, emails, codes, and universal elements
   - **Search Validation**: Intelligent minimum length requirements with exceptions for useful short terms
 - **Rollback Operations**: Safe removal of recent blocks with genesis protection
-- **Off-Chain Storage**: Automatic storage for large data (>512KB) with AES-CBC encryption
+- **Off-Chain Storage**: Automatic storage for large data (>512KB) with AES-GCM encryption
 - **Data Size Management**: Intelligent data placement based on configurable size thresholds
 - **Integrity Verification**: Cryptographic verification of off-chain data with hash and signature validation
 - **Detailed Validation**: Enhanced `validateChainDetailed()` with comprehensive off-chain data analysis
@@ -90,7 +90,7 @@ This is a **private blockchain** for controlled environments where only authoriz
 
 ### Technical Features
 - **Persistence**: SQLite database with JPA standard for ORM (using Hibernate as provider)
-- **Off-Chain Storage**: Encrypted file storage with automatic data tiering (AES-256-CBC)
+- **Off-Chain Storage**: Encrypted file storage with automatic data tiering (AES-256-GCM)
 - **Comprehensive Testing**: More than 40 JUnit 5 tests + integration demos + off-chain storage tests
 - **Production Ready**: Complete documentation and deployment guides
 - **Clean Architecture**: Well-structured code with DAO pattern
@@ -106,7 +106,7 @@ This is a **private blockchain** for controlled environments where only authoriz
   - **Hashing**: SHA3-256 (modern, secure hash function)
   - **Digital Signatures**: ECDSA with secp256r1 (NIST P-256) curve
   - **Key Management**: Hierarchical key structure with automatic rotation
-  - **Encryption**: AES-256-CBC for off-chain data encryption with unique IV per file
+  - **Encryption**: AES-256-GCM for off-chain data encryption with authenticated encryption
 - **JUnit 5** - Testing framework for comprehensive validation
 
 ## 📦 Prerequisites
@@ -140,8 +140,11 @@ mvn package
 
 ### 2. Run Basic Demo
 ```zsh
-# Run the basic blockchain demo
-mvn exec:java -Dexec.mainClass="demo.BlockchainDemo"
+# Run the basic blockchain demo (using provided script)
+scripts/run_simple_demo.zsh
+
+# Or run directly with Maven
+mvn exec:java -Dexec.mainClass="demo.SimpleDemo"
 ```
 
 **Expected Output:**
@@ -300,7 +303,7 @@ blockchain.resetLimitsToDefault();
 ```
 
 ### Security Features
-- **AES-256-CBC Encryption**: All off-chain files are encrypted with unique IV
+- **AES-256-GCM Encryption**: All off-chain files are encrypted with authenticated encryption
 - **SHA3-256 Integrity**: Each file has cryptographic hash verification
 - **ECDSA Signatures**: Digital signatures ensure authenticity
 - **Deterministic Keys**: Encryption passwords derived from block metadata
@@ -319,7 +322,7 @@ The project includes extensive testing with **more than 40 JUnit 5 tests** plus 
 
 #### Run All Tests (Recommended)
 ```zsh
-./run_all_tests.sh
+./run_all_tests.zsh
 ```
 
 **Expected Output:**
@@ -343,7 +346,7 @@ The blockchain now supports **complete thread-safety** for multi-threaded enviro
 
 #### Run Thread-Safety Test (ZSH/Bash Compatible)
 ```bash
-./run_thread_safety_test.sh
+./run_thread_safety_test.zsh
 ```
 
 **✨ Script Features:**
@@ -410,10 +413,10 @@ Threads: 10, Blocks per thread: 5
 #### Individual Test Categories
 ```zsh
 # Advanced functions only (JUnit 5 tests)
-./run_advanced_tests.sh
+./run_advanced_tests.zsh
 
 # Basic core functions only
-./run_basic_tests.sh
+./run_basic_tests.zsh
 
 # Core functions comprehensive test
 mvn exec:java -Dexec.mainClass="demo.CoreFunctionsDemo"
@@ -592,21 +595,29 @@ All demo classes and tests now include **detailed validation output** showing:
 ## 📊 Project Structure
 
 ```
-src/
-├── main/java/
-│   ├── demo/                                     # ✨ ALL ENHANCED WITH DETAILED VALIDATION
-│   │   ├── BlockchainDemo.java                      # Basic demo with enhanced validation
-│   │   ├── CoreFunctionsDemo.java                   # Comprehensive core functionality
-│   │   ├── TestDetailedValidation.java              # NEW: Complete validation demo
-│   │   ├── TestOffChainValidation.java              # ENHANCED: Off-chain validation tests
-│   │   ├── TestDataConsistency.java                 # ENHANCED: Data consistency validation
-│   │   ├── TestExportImport.java                    # ENHANCED: Export/import validation
-│   │   ├── SimpleThreadSafetyTest.java              # ENHANCED: Thread safety with validation
-│   │   ├── ComprehensiveThreadSafetyTest.java       # ENHANCED: Advanced thread safety
-│   │   ├── ChainRecoveryDemo.java                   # Chain recovery with validation
-│   │   ├── DangerousDeleteDemo.java                 # Key deletion safety features
-│   │   └── EnhancedRecoveryExample.java             # Advanced recovery techniques
-│   └── com/rbatllet/blockchain/
+privateBlockchain/
+├── src/
+│   ├── main/java/
+│   │   ├── demo/                                 # Demo applications
+│   │   └── com/rbatllet/blockchain/              # Core blockchain implementation
+│   └── test/java/                                # Test suites
+├── docs/                                         # Documentation
+├── scripts/                                      # All executable scripts
+│   ├── lib/                                      # Common ZSH functions library
+│   │   ├── common_functions.zsh                  # Shared functions for all scripts
+│   │   └── README.md                             # Library documentation
+│   ├── run_*.zsh                                 # Demo scripts
+│   ├── test_*.zsh                                # Test scripts
+│   └── clean_*.zsh                               # Utility scripts
+├── logs/                                         # Application logs (created at runtime)
+├── off-chain-data/                              # Off-chain storage (created at runtime)
+└── pom.xml                                      # Maven configuration
+```
+
+### Source Code Structure
+
+```
+src/main/java/com/rbatllet/blockchain/
 ├── core/
 │   └── Blockchain.java                           # Main blockchain logic
 ├── dao/
@@ -665,31 +676,31 @@ Configuration & Scripts:
 ├── src/main/resources/META-INF/persistence.xml  # JPA configuration
 ├── src/main/resources/logging.properties      # Logging configuration
 ├── src/test/resources/test.properties         # Test configuration
-├── clean-database.sh                            # Database cleanup utility
-├── run_all_tests.sh                             # ✨ Complete test runner with enhanced validation
-├── run_advanced_tests.sh                        # Advanced tests only
-├── run_advanced_thread_safety_tests.sh          # Advanced thread safety tests
-├── run_basic_tests.sh                           # Basic tests only
-├── run_api_migration_demo.sh                    # ✨ ENHANCED: API migration demonstration
-├── run_crypto_security_demo.sh                  # Cryptographic security demo
-├── run_enhanced_dangerous_delete_demo.sh        # Enhanced key deletion demo
-├── run_thread_safety_test.sh                    # Thread-safety testing
-├── run_recovery_tests.sh                        # Recovery tests runner
-├── run_improved_rollback_test.sh                # Improved rollback tests
-├── run_security_analysis.sh                     # Security analysis tests
-├── run_security_tests.sh                        # Security tests runner
-├── run_eckeyderivation_tests.sh                 # Elliptic curve key derivation tests
-├── run-search-demo.zsh                          # ✨ NEW: Search system demonstration script
-├── test_race_condition_fix.sh                   # Race condition testing
+├── clean-database.zsh                            # Database cleanup utility
+├── run_all_tests.zsh                             # ✨ Complete test runner with enhanced validation
+├── run_advanced_tests.zsh                        # Advanced tests only
+├── run_advanced_thread_safety_tests.zsh          # Advanced thread safety tests
+├── run_basic_tests.zsh                           # Basic tests only
+├── run_api_migration_demo.zsh                    # ✨ ENHANCED: API migration demonstration
+├── run_crypto_security_demo.zsh                  # Cryptographic security demo
+├── run_enhanced_dangerous_delete_demo.zsh        # Enhanced key deletion demo
+├── run_thread_safety_test.zsh                    # Thread-safety testing
+├── run_recovery_tests.zsh                        # Recovery tests runner
+├── run_improved_rollback_test.zsh                # Improved rollback tests
+├── run_security_analysis.zsh                     # Security analysis tests
+├── run_security_tests.zsh                        # Security tests runner
+├── run_eckeyderivation_tests.zsh                 # Elliptic curve key derivation tests
+├── run_revolutionary_search_demo.zsh            # ✨ NEW: Revolutionary search system demonstration script
+├── test_race_condition_fix.zsh                   # Race condition testing
 ├── test_thread_safety_full.zsh                  # ✨ ENHANCED: Comprehensive thread safety (production)
 ├── test_thread_safety_simple.zsh               # ✨ NEW: Simple thread safety with detailed logging (debug)
 ├── test_data_consistency.zsh                    # ✨ ENHANCED: Data consistency validation
 ├── test_export_import.zsh                       # ✨ ENHANCED: Export/import functionality
 ├── test_validation.zsh                          # ✨ ENHANCED: Comprehensive validation
 ├── scripts/                                     # Script utilities directory
-│   ├── shared-functions.sh                     # ✨ CORE: Common functions library
-│   ├── run_template.sh                         # Template for new scripts
-│   └── check-db-cleanup.sh                     # Database cleanup verification
+│   ├── shared-functions.zsh                     # ✨ CORE: Common functions library
+│   ├── run_template.zsh                         # Template for new scripts
+│   └── check-db-cleanup.zsh                     # Database cleanup verification
 └── pom.xml                                      # Maven configuration
 ```
 
@@ -699,10 +710,10 @@ The project includes comprehensive automation scripts for testing, validation, a
 
 ### 📜 Core Test Runners
 
-#### **run_all_tests.sh** ✨ COMPREHENSIVE
+#### **run_all_tests.zsh** ✨ COMPREHENSIVE
 Complete test suite execution with all categories
 ```bash
-./run_all_tests.sh
+./run_all_tests.zsh
 ```
 **Features**:
 - Executes JUnit 5 tests (Additional Advanced Functions, Temporal Validation, Key Authorization, Critical Consistency)
@@ -711,10 +722,10 @@ Complete test suite execution with all categories
 - Comprehensive result tracking and reporting
 - Automatic database cleanup between test suites
 
-#### **run_api_migration_demo.sh** ✨ ENHANCED
+#### **run_api_migration_demo.zsh** ✨ ENHANCED
 Complete API migration benefits demonstration
 ```bash
-./run_api_migration_demo.sh
+./run_api_migration_demo.zsh
 ```
 **Features**:
 - Demonstrates all 11 demos with enhanced validation API
@@ -728,8 +739,8 @@ Complete API migration benefits demonstration
 ```bash
 ./test_thread_safety_full.zsh     # ✨ Comprehensive thread safety with analysis (production)
 ./test_thread_safety_simple.zsh   # ✨ Simple thread safety with detailed logging (debug)
-./run_thread_safety_test.sh       # Basic thread safety validation
-./run_advanced_thread_safety_tests.sh  # Advanced concurrent operations
+./run_thread_safety_test.zsh       # Basic thread safety validation
+./run_advanced_thread_safety_tests.zsh  # Advanced concurrent operations
 ```
 
 #### Data Consistency & Validation
@@ -741,17 +752,17 @@ Complete API migration benefits demonstration
 
 #### Security & Recovery
 ```bash
-./run_security_analysis.sh        # Complete security analysis
-./run_recovery_tests.sh           # Chain recovery and repair testing
-./run_crypto_security_demo.sh     # Cryptographic security features
+./run_security_analysis.zsh        # Complete security analysis
+./run_recovery_tests.zsh           # Chain recovery and repair testing
+./run_crypto_security_demo.zsh     # Cryptographic security features
 ```
 
 ### 📜 Core Utility Scripts
 
-#### **scripts/shared-functions.sh** ✨ CORE LIBRARY
+#### **scripts/shared-functions.zsh** ✨ CORE LIBRARY
 Common utility functions for all scripts
 ```bash
-source ./scripts/shared-functions.sh
+source ./scripts/shared-functions.zsh
 ```
 **Key Functions**:
 - `clean_database()` - Core database cleanup functionality
@@ -762,15 +773,15 @@ source ./scripts/shared-functions.sh
 
 #### Database Management
 ```bash
-./clean-database.sh               # Database cleanup and maintenance
-./scripts/check-db-cleanup.sh     # Database cleanup verification
+./clean-database.zsh               # Database cleanup and maintenance
+./scripts/check-db-cleanup.zsh     # Database cleanup verification
 ```
 
 ### 🚀 Quick Script Commands
 
 **Run complete test suite:**
 ```bash
-./run_all_tests.sh
+./run_all_tests.zsh
 ```
 
 **Test thread safety comprehensively:**
@@ -785,22 +796,22 @@ source ./scripts/shared-functions.sh
 
 **Demonstrate API migration benefits:**
 ```bash
-./run_api_migration_demo.sh
+./run_api_migration_demo.zsh
 ```
 
 **Complete security analysis:**
 ```bash
-./run_security_analysis.sh
+./run_security_analysis.zsh
 ```
 
 ### 🎯 Script Categories
 
-**Core Testing**: `run_all_tests.sh`, `run_basic_tests.sh`, `run_advanced_tests.sh`  
-**Thread Safety**: `test_thread_safety_full.zsh`, `test_thread_safety_simple.zsh`, `run_thread_safety_test.sh`, `run_advanced_thread_safety_tests.sh`  
+**Core Testing**: `run_all_tests.zsh`, `run_basic_tests.zsh`, `run_advanced_tests.zsh`  
+**Thread Safety**: `test_thread_safety_full.zsh`, `test_thread_safety_simple.zsh`, `run_thread_safety_test.zsh`, `run_advanced_thread_safety_tests.zsh`  
 **Data Consistency**: `test_data_consistency.zsh`, `test_export_import.zsh`, `test_validation.zsh`  
-**Security & Recovery**: `run_security_tests.sh`, `run_recovery_tests.sh`, `run_security_analysis.sh`  
-**Demonstrations**: `run_api_migration_demo.sh`, `run_crypto_security_demo.sh`, `run_enhanced_dangerous_delete_demo.sh`, `run-search-demo.zsh`  
-**Utilities**: `clean-database.sh`, `scripts/shared-functions.sh`, `scripts/check-db-cleanup.sh`
+**Security & Recovery**: `run_security_tests.zsh`, `run_recovery_tests.zsh`, `run_security_analysis.zsh`  
+**Demonstrations**: `run_api_migration_demo.zsh`, `run_crypto_security_demo.zsh`, `run_enhanced_dangerous_delete_demo.zsh`, `run_revolutionary_search_demo.zsh`  
+**Utilities**: `clean-database.zsh`, `scripts/shared-functions.zsh`, `scripts/check-db-cleanup.zsh`
 
 All scripts provide automatic database cleanup, environment management, and comprehensive result reporting. Enhanced scripts include detailed validation output with off-chain data analysis.
 
@@ -923,9 +934,9 @@ All test scripts now include automatic database cleanup to prevent SQLite corrup
 
 ```zsh
 # All scripts automatically clean corrupted database files
-./run_all_tests.sh      # Includes automatic cleanup
-./run_advanced_tests.sh # Includes automatic cleanup  
-./run_basic_tests.sh    # Includes automatic cleanup
+./run_all_tests.zsh      # Includes automatic cleanup
+./run_advanced_tests.zsh # Includes automatic cleanup  
+./run_basic_tests.zsh    # Includes automatic cleanup
 ```
 
 ### ZSH Script Implementation
@@ -947,7 +958,6 @@ All scripts in this project use ZSH (Z Shell) instead of Bash for improved compa
 - All scripts use a consistent error handling approach
 - Centralized `error_exit()` function for fatal errors
 - Standardized output functions with visual indicators
-- See [ERROR_HANDLING_STANDARD.md](docs/ERROR_HANDLING_STANDARD.md) for details
 
 > **Note:** Make sure ZSH is installed on your system to run these scripts. Most macOS systems have ZSH installed by default.
 
@@ -956,10 +966,10 @@ If you encounter database corruption issues:
 
 ```zsh
 # Clean corrupted database files manually
-./clean-database.sh
+./clean-database.zsh
 
 # Skip automatic cleanup (for debugging)
-SKIP_DB_CLEANUP=true ./run_all_tests.sh
+SKIP_DB_CLEANUP=true ./run_all_tests.zsh
 ```
 
 ### Script Development
@@ -969,37 +979,35 @@ Use the provided template for consistent script structure:
 
 ```zsh
 # Copy template for new test script
-cp scripts/run_template.sh run_my_new_test.sh
+cp scripts/run_template.zsh run_my_new_test.zsh
 
 # Make executable and customize
-chmod +x run_my_new_test.sh
+chmod +x run_my_new_test.zsh
 # Edit the script to add your test logic
 ```
 
 #### Verify Script Compliance
-Check that all run_*.sh scripts include database cleanup:
+Check that all run_*.zsh scripts include database cleanup:
 
 ```zsh
 # Verify all scripts have proper database cleanup
-./scripts/check-db-cleanup.sh
+./scripts/check-db-cleanup.zsh
 ```
 
 **Expected Output:**
 ```
-✅ All run_*.sh scripts are up to date! ✨
+✅ All run_*.zsh scripts are up to date! ✨
   ✅ Up to date: 3 scripts  
   🔧 Need update: 0 scripts
 ```
 
 ### Shared Functions Library
-All scripts now use a centralized functions library at `scripts/shared-functions.sh` providing:
+All scripts now use a centralized functions library at `scripts/shared-functions.zsh` providing:
 
 - **Database cleanup functions**: Prevent corruption issues
 - **Colored output functions**: Consistent formatting
 - **Error handling utilities**: Robust script execution
 - **Test environment setup**: Standardized initialization
-
-> 📚 **For detailed implementation information**, see [SCRIPTS_DATABASE_FIX.md](docs/SCRIPTS_DATABASE_FIX.md)
 
 ## 🔐 Safe Key Management
 
@@ -1139,13 +1147,18 @@ This project includes comprehensive documentation for different use cases:
 - **[API_GUIDE.md](docs/API_GUIDE.md)** - Complete API reference and core functions
 - **[SEARCH_GUIDE.md](docs/SEARCH_GUIDE.md)** - Comprehensive hybrid search system guide with practical examples
 - **[TESTING.md](docs/TESTING.md)** - Comprehensive testing guide and troubleshooting
-- **[SECURITY_CLASSES_GUIDE.md](docs/SECURITY_CLASSES_GUIDE.md)** - Guía de uso de las clases de seguridad (migradas desde CLI)
-- **[UTILITY_CLASSES_GUIDE.md](docs/UTILITY_CLASSES_GUIDE.md)** - Guía de uso de las clases de utilidad (migradas desde CLI)
+- **[SECURITY_CLASSES_GUIDE.md](docs/SECURITY_CLASSES_GUIDE.md)** - Security classes usage guide (migrated from CLI)
+- **[UTILITY_CLASSES_GUIDE.md](docs/UTILITY_CLASSES_GUIDE.md)** - Utility classes usage guide (migrated from CLI)
+
+### 🔐 Security & Encryption
+- **[ENCRYPTION_GUIDE.md](docs/ENCRYPTION_GUIDE.md)** - Block encryption and metadata layer management
+- **[ENCRYPTED_EXPORT_IMPORT_GUIDE.md](docs/ENCRYPTED_EXPORT_IMPORT_GUIDE.md)** - Encrypted chain export/import procedures
+- **[ENHANCED_VALIDATION_GUIDE.md](docs/ENHANCED_VALIDATION_GUIDE.md)** - Advanced chain validation techniques
 
 ### 🏢 Technical & Production
 - **[TECHNICAL_DETAILS.md](docs/TECHNICAL_DETAILS.md)** - Database schema, security model, architecture
 - **[PRODUCTION_GUIDE.md](docs/PRODUCTION_GUIDE.md)** - Production deployment and operational guidelines
-- **[SCRIPTS_DATABASE_FIX.md](docs/SCRIPTS_DATABASE_FIX.md)** - Database cleanup utilities implementation guide
+- **[THREAD_SAFETY_TESTS.md](docs/THREAD_SAFETY_TESTS.md)** - Thread safety testing guide and validation
 
 ### 🚀 Quick Navigation
 
@@ -1157,6 +1170,7 @@ This project includes comprehensive documentation for different use cases:
 | Run tests and troubleshoot issues | [TESTING.md](docs/TESTING.md) |
 | Understand technical implementation | [TECHNICAL_DETAILS.md](docs/TECHNICAL_DETAILS.md) |
 | Deploy to production | [PRODUCTION_GUIDE.md](docs/PRODUCTION_GUIDE.md) |
+| Set up encryption and security | [ENCRYPTION_GUIDE.md](docs/ENCRYPTION_GUIDE.md) |
 
 ## 🔧 Configuration
 
@@ -1187,7 +1201,7 @@ blockchain.resetLimitsToDefault();                    // Reset to defaults
 - **Hash Algorithm**: SHA3-256 for block integrity
 - **Signature Algorithm**: ECDSA with secp256r1 curve
 - **Access Control**: Authorized public key validation
-- **Off-Chain Encryption**: AES-256-CBC with unique IV per file
+- **Off-Chain Encryption**: AES-256-GCM with authenticated encryption
 - **Key Derivation**: SHA3-256 based deterministic encryption passwords
 - **Integrity Verification**: Dual verification with hash and digital signature for off-chain data
 
@@ -1221,7 +1235,7 @@ blockchain.resetLimitsToDefault();                    // Reset to defaults
 1. **Environment**: Ensure Java 21+ and Maven 3.6+ are installed
 2. **Clone**: Clone the repository to your local development environment
 3. **Build**: Run `mvn clean compile` to build the project
-4. **Test**: Run `./run_all_tests.sh` to verify everything works (more than 40 tests)
+4. **Test**: Run `./run_all_tests.zsh` to verify everything works (more than 40 tests)
 5. **IDE**: Import as Maven project in your preferred IDE
 
 ### Testing New Features
@@ -1230,7 +1244,7 @@ blockchain.resetLimitsToDefault();                    // Reset to defaults
 3. **Integration Tests**: Ensure your feature works with existing functionality
 4. **Consistency Tests**: Add critical consistency tests for complex scenarios
 5. **Documentation**: Update README.md and add code comments
-6. **Full Test Suite**: Run `./run_all_tests.sh` to ensure nothing is broken
+6. **Full Test Suite**: Run `./run_all_tests.zsh` to ensure nothing is broken
 
 ### Code Quality Standards
 - **Clear Naming**: Use descriptive variable and method names
@@ -1263,7 +1277,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 For issues or questions:
 1. Check the [TESTING.md](docs/TESTING.md) troubleshooting section
 2. Verify your Java and Maven versions meet requirements
-3. Run `./run_all_tests.sh` to identify problems
+3. Run `./run_all_tests.zsh` to identify problems
 4. Check console output for specific error messages
 5. Review [TECHNICAL_DETAILS.md](docs/TECHNICAL_DETAILS.md) for implementation details
 
@@ -1279,7 +1293,7 @@ For issues or questions:
 # Complete verification steps
 cd /path/to/privateBlockchain
 mvn clean compile test-compile
-./run_all_tests.sh
+./run_all_tests.zsh
 mvn exec:java -Dexec.mainClass="demo.BlockchainDemo"
 ```
 
@@ -1287,7 +1301,7 @@ mvn exec:java -Dexec.mainClass="demo.BlockchainDemo"
 ```zsh
 # Reset environment if tests fail
 rm blockchain.db blockchain.db-*
-./run_all_tests.sh
+./run_all_tests.zsh
 
 # Check Java version (should be 21+)
 java -version
@@ -1300,7 +1314,7 @@ mvn clean compile test-compile
 
 **🚀 Ready to start?** 
 
-1. Run `./run_all_tests.sh` to verify everything works perfectly
+1. Run `./run_all_tests.zsh` to verify everything works perfectly
 2. Try the practical examples in [EXAMPLES.md](docs/EXAMPLES.md) for your use case
 3. Explore the comprehensive test suite to understand all features
 4. Build your own blockchain application using the patterns provided!
@@ -1368,4 +1382,4 @@ We welcome contributions! Please see our [Contribution Guidelines](CONTRIBUTING.
    }
    ```
 
-For complete migration details, see the [Crypto Migration Guide](docs/Crypto_Migration_Guide.md).
+The blockchain now uses modern ECDSA/SHA-3 cryptography for enhanced security and performance.

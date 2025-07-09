@@ -1,6 +1,14 @@
-# Enhanced Validation Guide
+# ENHANCED VALIDATION GUIDE
 
 ## 🎯 Overview
+
+> **Related Documentation:**
+> - [API_GUIDE.md](API_GUIDE.md) - Complete API reference
+> - [TESTING.md](TESTING.md) - Testing framework and guidelines
+> - [THREAD_SAFETY_TESTS.md](THREAD_SAFETY_TESTS.md) - Thread safety testing documentation
+> - [PRODUCTION_GUIDE.md](PRODUCTION_GUIDE.md) - Production deployment guidelines
+> - [SEARCH_GUIDE.md](SEARCH_GUIDE.md) - Revolutionary search system documentation
+> - [ENCRYPTION_GUIDE.md](ENCRYPTION_GUIDE.md) - Encryption and security features
 
 This guide covers the enhanced `validateChainDetailed()` functionality and comprehensive off-chain data validation features implemented in the Private Blockchain system.
 
@@ -156,6 +164,8 @@ mvn exec:java -Dexec.mainClass="demo.TestExportImport"
 
 ### Thread Safety Demos
 
+> **Note**: For detailed thread safety documentation, see [THREAD_SAFETY_TESTS.md](THREAD_SAFETY_TESTS.md)
+
 #### 7. SimpleThreadSafetyTest.java ✨ ENHANCED
 **Purpose**: Basic thread safety with detailed validation
 
@@ -197,6 +207,8 @@ mvn exec:java -Dexec.mainClass="demo.ComprehensiveThreadSafetyTest"
 
 ### Recovery & Management Demos
 
+> **Note**: For error handling standards, see [ERROR_HANDLING_STANDARD.md](ERROR_HANDLING_STANDARD.md)
+
 #### 9. ChainRecoveryDemo.java
 **Purpose**: Chain recovery operations with validation
 
@@ -212,6 +224,8 @@ mvn exec:java -Dexec.mainClass="demo.ChainRecoveryDemo"
 - Post-recovery validation analysis
 
 ## 🧪 Test Suites
+
+> **Note**: For complete testing documentation, see [TESTING.md](TESTING.md)
 
 ### Core Tests
 
@@ -265,7 +279,7 @@ mvn test -Dtest=BlockValidationUtilTest
 **Comprehensive Features** (26 tests):
 - **Genesis Block Validation**: Tests correct validation, wrong block number, wrong previous hash, null block number
 - **Key Authorization Validation**: Tests authorized keys, unauthorized keys, exception handling
-- **Off-Chain Data Validation**: Tests blocks without off-chain data, valid files, missing files, incomplete metadata, file size mismatch, AES padding tolerance
+- **Off-Chain Data Validation**: Tests blocks without off-chain data, valid files, missing files, incomplete metadata, file size mismatch, AES-256-GCM encryption validation
 - **Detailed Off-Chain Validation**: Tests comprehensive validation results, error reporting, empty file detection
 - **Tampering Detection**: Tests tampering detection for missing files, recent files, blocks without off-chain data
 - **OffChainValidationResult**: Tests result creation, validation status, toString representation
@@ -387,14 +401,14 @@ mvn test -Dtest=DataIntegrityThreadSafetyTest
 
 ## 🔧 Automation Scripts
 
-### 📜 Shell Scripts (.sh)
+### 📜 Shell Scripts (.zsh)
 
 #### Core Test Runners
 
-**run_all_tests.sh** ✨ COMPREHENSIVE
+**run_all_tests.zsh** ✨ COMPREHENSIVE
 **Purpose**: Complete test suite execution with all categories
 ```bash
-./run_all_tests.sh
+./run_all_tests.zsh
 ```
 **Features**:
 - Executes JUnit 5 tests (Additional Advanced Functions, Temporal Validation, Key Authorization, Critical Consistency)
@@ -403,56 +417,56 @@ mvn test -Dtest=DataIntegrityThreadSafetyTest
 - Comprehensive result tracking and reporting
 - Automatic database cleanup between test suites
 
-**run_basic_tests.sh**
+**run_basic_tests.zsh**
 **Purpose**: Basic core functionality tests
 ```bash
-./run_basic_tests.sh
+./run_basic_tests.zsh
 ```
 
-**run_advanced_tests.sh**
+**run_advanced_tests.zsh**
 **Purpose**: Advanced blockchain functionality tests
 ```bash
-./run_advanced_tests.sh
+./run_advanced_tests.zsh
 ```
 
-**run_security_tests.sh**
+**run_security_tests.zsh**
 **Purpose**: Security and cryptographic validation tests
 ```bash
-./run_security_tests.sh
+./run_security_tests.zsh
 ```
 
-**run_recovery_tests.sh**
+**run_recovery_tests.zsh**
 **Purpose**: Chain recovery and repair functionality tests
 ```bash
-./run_recovery_tests.sh
+./run_recovery_tests.zsh
 ```
 
 #### Thread Safety Scripts
 
-**run_thread_safety_test.sh**
+**run_thread_safety_test.zsh**
 **Purpose**: Basic thread safety validation
 ```bash
-./run_thread_safety_test.sh
+./run_thread_safety_test.zsh
 ```
 
-**run_advanced_thread_safety_tests.sh**
+**run_advanced_thread_safety_tests.zsh**
 **Purpose**: Comprehensive concurrent operations testing
 ```bash
-./run_advanced_thread_safety_tests.sh
+./run_advanced_thread_safety_tests.zsh
 ```
 
-**test_race_condition_fix.sh**
+**test_race_condition_fix.zsh**
 **Purpose**: Race condition detection and validation
 ```bash
-./test_race_condition_fix.sh
+./test_race_condition_fix.zsh
 ```
 
 #### Demo Scripts
 
-**run_api_migration_demo.sh** ✨ ENHANCED
+**run_api_migration_demo.zsh** ✨ ENHANCED
 **Purpose**: Complete API migration benefits demonstration
 ```bash
-./run_api_migration_demo.sh
+./run_api_migration_demo.zsh
 ```
 **Features**:
 - Demonstrates all 11 demos with enhanced validation
@@ -460,62 +474,63 @@ mvn test -Dtest=DataIntegrityThreadSafetyTest
 - Complete migration status tracking
 - Enhanced debugging capabilities showcase
 
-**run_crypto_security_demo.sh**
+**run_crypto_security_demo.zsh**
 **Purpose**: Cryptographic security features demonstration
 ```bash
-./run_crypto_security_demo.sh
+./run_crypto_security_demo.zsh
 ```
 
-**run_enhanced_dangerous_delete_demo.sh**
+**run_enhanced_dangerous_delete_demo.zsh**
 **Purpose**: Enhanced key deletion impact analysis
 ```bash
-./run_enhanced_dangerous_delete_demo.sh
+./run_enhanced_dangerous_delete_demo.zsh
 ```
 
 #### Specialized Test Scripts
 
-**run_improved_rollback_test.sh**
+**run_improved_rollback_test.zsh**
 **Purpose**: Enhanced rollback operation testing
 ```bash
-./run_improved_rollback_test.sh
+./run_improved_rollback_test.zsh
 ```
 
-**run_eckeyderivation_tests.sh**
+**run_eckeyderivation_tests.zsh**
 **Purpose**: Elliptic curve key derivation testing
 ```bash
-./run_eckeyderivation_tests.sh
+./run_eckeyderivation_tests.zsh
 ```
+> See [SECURITY_CLASSES_GUIDE.md](SECURITY_CLASSES_GUIDE.md) for EC key derivation details
 
-**run_security_analysis.sh**
+**run_security_analysis.zsh**
 **Purpose**: Complete security analysis and validation
 ```bash
-./run_security_analysis.sh
+./run_security_analysis.zsh
 ```
 
 #### Utility Scripts
 
-**clean-database.sh**
+**clean-database.zsh**
 **Purpose**: Database cleanup and maintenance
 ```bash
-./clean-database.sh
+./clean-database.zsh
 ```
 
-**scripts/check-db-cleanup.sh**
+**scripts/check-db-cleanup.zsh**
 **Purpose**: Database cleanup verification
 ```bash
-./scripts/check-db-cleanup.sh
+./scripts/check-db-cleanup.zsh
 ```
 
-**scripts/run_template.sh**
+**scripts/run_template.zsh**
 **Purpose**: Template for creating new test scripts
 ```bash
-./scripts/run_template.sh
+./scripts/run_template.zsh
 ```
 
-**scripts/shared-functions.sh** ✨ CORE LIBRARY
+**scripts/shared-functions.zsh** ✨ CORE LIBRARY
 **Purpose**: Common utility functions for all scripts
 ```bash
-source ./scripts/shared-functions.sh
+source ./scripts/shared-functions.zsh
 ```
 **Functions**:
 - `print_header()`, `print_info()`, `print_success()`, `print_warning()`, `print_error()`
@@ -526,6 +541,8 @@ source ./scripts/shared-functions.sh
 - `print_test_summary()` - Test result reporting
 
 ### 📜 ZSH Scripts (.zsh)
+
+> **Note**: For ZSH migration details, see [BASH_TO_ZSH_MIGRATION.md](BASH_TO_ZSH_MIGRATION.md)
 
 #### Enhanced Thread Safety Tests
 
@@ -592,15 +609,15 @@ source ./scripts/shared-functions.sh
 ### 🎯 By Purpose
 
 **Core Testing**:
-- `run_all_tests.sh` - Complete test suite
-- `run_basic_tests.sh` - Basic functionality
-- `run_advanced_tests.sh` - Advanced features
+- `run_all_tests.zsh` - Complete test suite
+- `run_basic_tests.zsh` - Basic functionality
+- `run_advanced_tests.zsh` - Advanced features
 
 **Thread Safety**:
 - `test_thread_safety_full.zsh` - Comprehensive thread safety (production)
 - `test_thread_safety_simple.zsh` - Simple thread safety with detailed logging (debug)
-- `run_thread_safety_test.sh` - Basic thread safety
-- `run_advanced_thread_safety_tests.sh` - Advanced concurrency
+- `run_thread_safety_test.zsh` - Basic thread safety
+- `run_advanced_thread_safety_tests.zsh` - Advanced concurrency
 
 **Data Consistency**:
 - `test_data_consistency.zsh` - Data consistency validation
@@ -608,25 +625,26 @@ source ./scripts/shared-functions.sh
 - `test_validation.zsh` - Validation testing
 
 **Security & Recovery**:
-- `run_security_tests.sh` - Security validation
-- `run_recovery_tests.sh` - Recovery testing
-- `run_security_analysis.sh` - Security analysis
+- `run_security_tests.zsh` - Security validation
+- `run_recovery_tests.zsh` - Recovery testing
+- `run_security_analysis.zsh` - Security analysis
+> See [SECURITY_CLASSES_GUIDE.md](SECURITY_CLASSES_GUIDE.md) for security implementation details
 
 **Demonstrations**:
-- `run_api_migration_demo.sh` - API migration showcase
-- `run_crypto_security_demo.sh` - Cryptographic features
-- `run_enhanced_dangerous_delete_demo.sh` - Key deletion analysis
+- `run_api_migration_demo.zsh` - API migration showcase
+- `run_crypto_security_demo.zsh` - Cryptographic features
+- `run_enhanced_dangerous_delete_demo.zsh` - Key deletion analysis
 
 ### 🔧 By Technology
 
-**Shell Scripts (.sh)**: Production-ready scripts with cross-platform compatibility
+**Shell Scripts (.zsh)**: Production-ready scripts with cross-platform compatibility
 **ZSH Scripts (.zsh)**: Enhanced scripts with advanced ZSH features and better output formatting
 
 ## 🚀 Quick Script Execution
 
 ### Run All Core Tests
 ```bash
-./run_all_tests.sh
+./run_all_tests.zsh
 ```
 
 ### Test Thread Safety
@@ -641,12 +659,12 @@ source ./scripts/shared-functions.sh
 
 ### Demonstrate API Migration
 ```bash
-./run_api_migration_demo.sh
+./run_api_migration_demo.zsh
 ```
 
 ### Security Analysis
 ```bash
-./run_security_analysis.sh
+./run_security_analysis.zsh
 ```
 
 ## 💡 Benefits of Enhanced Validation
@@ -659,6 +677,11 @@ source ./scripts/shared-functions.sh
 6. **Automated Verification**: Consistent validation across all operations
 
 ## 📋 Notes
+
+> **Additional Resources:**
+> - [UTILITY_CLASSES_GUIDE.md](UTILITY_CLASSES_GUIDE.md) - Utility classes documentation
+> - [EXAMPLES.md](EXAMPLES.md) - Code examples and usage patterns
+> - [TECHNICAL_DETAILS.md](TECHNICAL_DETAILS.md) - Technical implementation details
 
 - All demos and tests now include enhanced validation by default
 - Scripts provide automatic database cleanup and environment management

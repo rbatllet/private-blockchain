@@ -6,15 +6,18 @@ Comprehensive real-world examples and practical use cases for the Private Blockc
 >
 > For real working examples, refer to the following classes in the source code:
 > - `/src/main/java/demo/BlockchainDemo.java` - Basic blockchain demonstration
-> - `/src/main/java/demo/SearchDemo.java` - **NEW**: Comprehensive search system demonstration
+> - `/src/main/java/demo/RevolutionarySearchDemo.java` - Revolutionary search system demonstration
+> - `/src/main/java/demo/GranularTermVisibilityDemo.java` - **NEW**: Granular term visibility control demo
+> - `/src/main/java/demo/UserFriendlyEncryptionDemo.java` - User-friendly encryption API demo
+> - `/src/main/java/demo/EncryptionConfigDemo.java` - Encryption configuration examples
 > - `/src/main/java/demo/AdditionalAdvancedFunctionsDemo.java` - Advanced features demonstration
 > - `/src/main/java/demo/ChainRecoveryDemo.java` - Chain recovery demonstration
+> - `/src/main/java/demo/EncryptedChainExportImportDemo.java` - Chain export/import with encryption
 > - `/src/main/java/demo/DangerousDeleteDemo.java` - Key deletion safety features demo
 > - `/src/main/java/demo/EnhancedRecoveryExample.java` - Advanced recovery techniques example
 > - `/src/main/java/demo/CoreFunctionsDemo.java` - Comprehensive core test
 > - `/src/main/java/demo/SimpleDemo.java` - Basic functionality test
 > - `/src/main/java/demo/QuickDemo.java` - Fast verification test
-> - `/src/main/java/demo/RaceConditionTest.java` - Thread safety testing
 > - `/src/main/java/demo/CryptoSecurityDemo.java` - Cryptographic security demo
 
 ## 📋 Table of Contents
@@ -1715,8 +1718,8 @@ For more technical details about the thread-safety implementation, see [TECHNICA
 
 For detailed API information including the thread-safe `addBlockAndReturn()` method, see [API_GUIDE.md](API_GUIDE.md).
 
-For testing concurrent scenarios, see [TESTING.md](TESTING.md) and run `./run_thread_safety_test.sh` or `./run_advanced_thread_safety_tests.sh` for more complex concurrency tests. For race condition testing, use `./test_race_condition_fix.sh`.
+For testing concurrent scenarios, see [TESTING.md](TESTING.md) and run `./run_thread_safety_test.zsh` or `./run_advanced_thread_safety_tests.zsh` for more complex concurrency tests. For race condition testing, use `./test_race_condition_fix.zsh`.
 
-To explore cryptographic security features, run `./run_crypto_security_demo.sh` which demonstrates the security mechanisms in action.
+To explore cryptographic security features, run `./run_crypto_security_demo.zsh` which demonstrates the security mechanisms in action.
 
-For security analysis and testing, use `./run_security_analysis.sh` and `./run_security_tests.sh`.
+For security analysis and testing, use `./run_security_analysis.zsh` and `./run_security_tests.zsh`.

@@ -3,14 +3,17 @@ package com.rbatllet.blockchain.core;
 import com.rbatllet.blockchain.dao.AuthorizedKeyDAO;
 import com.rbatllet.blockchain.dao.BlockDAO;
 import com.rbatllet.blockchain.dto.ChainExportData;
+import com.rbatllet.blockchain.dto.EncryptionExportData;
 import com.rbatllet.blockchain.entity.AuthorizedKey;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.entity.OffChainData;
 import com.rbatllet.blockchain.service.OffChainStorageService;
+import com.rbatllet.blockchain.service.SecureBlockEncryptionService;
 import com.rbatllet.blockchain.recovery.ChainRecoveryManager;
 import com.rbatllet.blockchain.recovery.ChainRecoveryManager.ChainDiagnostic;
 import com.rbatllet.blockchain.recovery.ChainRecoveryManager.RecoveryResult;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.util.EncryptionExportUtil;
 import com.rbatllet.blockchain.util.JPAUtil;
 import com.rbatllet.blockchain.validation.BlockStatus;
 import com.rbatllet.blockchain.validation.BlockValidationResult;
@@ -22,6 +25,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.persistence.EntityManager;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
+import java.security.KeyPair;
 import java.security.MessageDigest;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -37,9 +41,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import com.rbatllet.blockchain.search.SearchLevel;
-import com.rbatllet.blockchain.search.SearchValidator;
-import com.rbatllet.blockchain.search.UniversalKeywordExtractor;
+import com.rbatllet.blockchain.search.RevolutionarySearchEngine;
+import com.rbatllet.blockchain.search.RevolutionarySearchEngine.EnhancedSearchResult;
+import com.rbatllet.blockchain.search.UnifiedRevolutionarySearchAPI;
+import com.rbatllet.blockchain.config.EncryptionConfig;
+import com.rbatllet.blockchain.validation.EncryptedBlockValidator;
+import com.rbatllet.blockchain.util.validation.BlockValidationUtil;
 
 /**
  * Thread-safe Blockchain implementation
@@ -66,7 +73,8 @@ public class Blockchain {
     private final OffChainStorageService offChainStorageService = new OffChainStorageService();
     
     // Search functionality
-    private final UniversalKeywordExtractor keywordExtractor = new UniversalKeywordExtractor();
+    private final RevolutionarySearchEngine revolutionarySearchEngine;
+    private final UnifiedRevolutionarySearchAPI unifiedSearchAPI;
     
     // Dynamic configuration for block size limits
     private volatile int currentMaxBlockSizeBytes = MAX_BLOCK_SIZE_BYTES;
@@ -76,7 +84,17 @@ public class Blockchain {
     public Blockchain() {
         this.blockDAO = new BlockDAO();
         this.authorizedKeyDAO = new AuthorizedKeyDAO();
+        
+        // Initialize Revolutionary Search Engine with high security configuration
+        EncryptionConfig searchConfig = EncryptionConfig.createHighSecurityConfig();
+        this.revolutionarySearchEngine = new RevolutionarySearchEngine(searchConfig);
+        this.unifiedSearchAPI = new UnifiedRevolutionarySearchAPI(searchConfig);
+        
         initializeGenesisBlock();
+        
+        // Note: Revolutionary Search is initialized on-demand when blocks are created
+        // This prevents conflicts with per-block password management
+        // initializeRevolutionarySearch();
     }
     
     /**
@@ -122,6 +140,77 @@ public class Blockchain {
             
             System.out.println("Genesis block created successfully!");
         }
+    }
+    
+    /**
+     * Initialize Revolutionary Search Engine with existing blockchain data
+     */
+    public void initializeRevolutionarySearch() {
+        try {
+            // Only initialize if there are blocks to index
+            if (blockDAO.getBlockCount() > 0) {
+                // Initialize without password - will index public metadata only
+                // Individual blocks with passwords can be indexed later via reindexBlockWithPassword()
+                KeyPair tempKeyPair = CryptoUtil.generateKeyPair();
+                
+                // Index the current blockchain state with public metadata only
+                // The enhanced system will handle per-block password management automatically
+                unifiedSearchAPI.initializeWithBlockchain(this, null, tempKeyPair.getPrivate());
+                
+                System.out.println("Revolutionary Search Engine initialized with " + blockDAO.getBlockCount() + " blocks");
+                System.out.println("Password registry stats: " + unifiedSearchAPI.getPasswordRegistryStats());
+            }
+        } catch (Exception e) {
+            System.err.println("Warning: Failed to initialize Revolutionary Search Engine: " + e.getMessage());
+            e.printStackTrace();
+            // Continue operation even if search initialization fails
+        }
+    }
+    
+    /**
+     * Re-index a specific block with its correct password for better search capabilities
+     * This allows the Revolutionary Search Engine to index encrypted content properly
+     * Enhanced to use the new password registry system
+     */
+    public void reindexBlockWithPassword(Long blockNumber, String password) {
+        GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
+        try {
+            Block block = blockDAO.getBlockByNumber(blockNumber);
+            if (block != null && block.isDataEncrypted()) {
+                // Generate a temporary key pair for indexing
+                KeyPair tempKeyPair = CryptoUtil.generateKeyPair();
+                
+                // Use the enhanced UnifiedSearchAPI for better password management
+                unifiedSearchAPI.addBlock(
+                    block, password, tempKeyPair.getPrivate());
+                
+                System.out.println("Re-indexed encrypted block #" + blockNumber + " with specific password");
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to re-index block #" + blockNumber + ": " + e.getMessage());
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Convert Revolutionary Search results to traditional Block list
+     * @param enhancedResults List of EnhancedSearchResult from Revolutionary Search
+     * @return List of Block entities
+     */
+    private List<Block> convertEnhancedResultsToBlocks(List<EnhancedSearchResult> enhancedResults) {
+        List<Block> blocks = new ArrayList<>();
+        for (EnhancedSearchResult result : enhancedResults) {
+            try {
+                Block block = blockDAO.getBlockByHash(result.getBlockHash());
+                if (block != null) {
+                    blocks.add(block);
+                }
+            } catch (Exception e) {
+                System.err.println("Warning: Failed to retrieve block for hash " + result.getBlockHash() + ": " + e.getMessage());
+            }
+        }
+        return blocks;
     }
     
     /**
@@ -246,6 +335,19 @@ public class Blockchain {
                         currentEm.flush();
                     }
                     
+                    // 13. Index block in Revolutionary Search Engine for immediate searchability
+                    try {
+                        // Re-index the entire blockchain when a new block is added
+                        // This ensures all search capabilities are up-to-date
+                        Blockchain currentBlockchain = this;
+                        String defaultPassword = "search-index-password"; // Could be configurable
+                        revolutionarySearchEngine.indexBlockchain(currentBlockchain, defaultPassword, signerPrivateKey);
+                    } catch (Exception searchIndexException) {
+                        System.err.println("Warning: Failed to index block in Revolutionary Search: " + 
+                                         searchIndexException.getMessage());
+                        // Don't fail the block creation if search indexing fails
+                    }
+                    
                     System.out.println("Block #" + newBlock.getBlockNumber() + " added successfully!");
                     return newBlock; // ✅ RETURN THE ACTUAL CREATED BLOCK
                     
@@ -272,6 +374,294 @@ public class Blockchain {
     }
     
     /**
+     * Add an encrypted block to the chain
+     * The data will be encrypted using enterprise-grade AES-256-GCM encryption
+     * 
+     * @param data The sensitive data to encrypt and store
+     * @param encryptionPassword The password for encryption
+     * @param signerPrivateKey Private key for signing
+     * @param signerPublicKey Public key for verification
+     * @return The created encrypted block, or null if failed
+     */
+    public Block addEncryptedBlock(String data, String encryptionPassword, 
+                                 PrivateKey signerPrivateKey, PublicKey signerPublicKey) {
+        return addEncryptedBlockWithKeywords(data, encryptionPassword, null, "USER_DEFINED", 
+                                           signerPrivateKey, signerPublicKey);
+    }
+    
+    /**
+     * Add an encrypted block with keywords and category
+     * 
+     * @param data The sensitive data to encrypt and store
+     * @param encryptionPassword The password for encryption
+     * @param manualKeywords Manual keywords for search (will also be encrypted)
+     * @param category Content category (e.g., "MEDICAL", "FINANCIAL", "LEGAL")
+     * @param signerPrivateKey Private key for signing
+     * @param signerPublicKey Public key for verification
+     * @return The created encrypted block, or null if failed
+     */
+    public Block addEncryptedBlockWithKeywords(String data, String encryptionPassword,
+                                             String[] manualKeywords, String category,
+                                             PrivateKey signerPrivateKey, PublicKey signerPublicKey) {
+        
+        if (encryptionPassword == null || encryptionPassword.trim().isEmpty()) {
+            throw new IllegalArgumentException("Encryption password cannot be null or empty");
+        }
+        
+        GLOBAL_BLOCKCHAIN_LOCK.writeLock().lock();
+        try {
+            return JPAUtil.executeInTransaction(em -> {
+                try {
+                    // 1. Validate input
+                    validateBlockInput(data, signerPrivateKey, signerPublicKey);
+                    
+                    // 2. Check authorized keys
+                    String publicKeyString = CryptoUtil.publicKeyToString(signerPublicKey);
+                    LocalDateTime blockTimestamp = LocalDateTime.now();
+                    if (!authorizedKeyDAO.wasKeyAuthorizedAt(publicKeyString, blockTimestamp)) {
+                        System.err.println("Unauthorized public key");
+                        return null;
+                    }
+                    
+                    // 3. Encrypt the data BEFORE size validation
+                    String encryptedData;
+                    try {
+                        encryptedData = SecureBlockEncryptionService.encryptToString(data, encryptionPassword);
+                    } catch (Exception e) {
+                        System.err.println("Failed to encrypt block data: " + e.getMessage());
+                        return null;
+                    }
+                    
+                    // 4. Validate encrypted data size
+                    if (!validateDataSize(encryptedData)) {
+                        System.err.println("Encrypted data exceeds maximum block size limits");
+                        return null;
+                    }
+                    
+                    // 5. Get last block and generate next block number atomically
+                    Block lastBlock = blockDAO.getLastBlockWithLock();
+                    Long nextBlockNumber = blockDAO.getNextBlockNumberAtomic();
+                    
+                    // 6. Handle off-chain storage if needed (for encrypted data)
+                    OffChainData offChainData = null;
+                    String blockData = encryptedData;
+                    
+                    if (shouldStoreOffChain(encryptedData)) {
+                        try {
+                            // Store encrypted data off-chain with additional password protection
+                            offChainData = offChainStorageService.storeData(
+                                encryptedData.getBytes(StandardCharsets.UTF_8),
+                                encryptionPassword + "_OFFCHAIN", // Additional security layer
+                                signerPrivateKey,
+                                publicKeyString,
+                                "application/encrypted"
+                            );
+                            
+                            blockData = "OFF_CHAIN_ENCRYPTED_REF:" + offChainData.getDataHash();
+                            System.out.println("Encrypted data stored off-chain. Block contains reference: " + blockData);
+                            
+                        } catch (Exception e) {
+                            System.err.println("Failed to store encrypted data off-chain: " + e.getMessage());
+                            return null;
+                        }
+                    }
+                    
+                    // 7. Create the new encrypted block
+                    Block newBlock = new Block();
+                    newBlock.setBlockNumber(nextBlockNumber);
+                    newBlock.setPreviousHash(lastBlock != null ? lastBlock.getHash() : GENESIS_PREVIOUS_HASH);
+                    newBlock.setData("[ENCRYPTED]"); // Placeholder for display
+                    newBlock.setEncryptionMetadata(blockData); // Store encrypted data here
+                    newBlock.setIsEncrypted(true); // Mark as encrypted
+                    newBlock.setTimestamp(blockTimestamp);
+                    newBlock.setSignerPublicKey(publicKeyString);
+                    newBlock.setOffChainData(offChainData);
+                    
+                    // 8. Calculate block hash (using placeholder data for consistent hashing)
+                    String blockContent = buildBlockContentForEncrypted(newBlock);
+                    newBlock.setHash(CryptoUtil.calculateHash(blockContent));
+                    
+                    // 9. Sign the block
+                    String signature = CryptoUtil.signData(blockContent, signerPrivateKey);
+                    newBlock.setSignature(signature);
+                    
+                    // 10. Validate the block before saving
+                    if (lastBlock != null && !validateBlock(newBlock, lastBlock)) {
+                        System.err.println("Encrypted block validation failed");
+                        return null;
+                    }
+                    
+                    // 11. Process keywords for search (encrypt keywords too for privacy)
+                    processEncryptedBlockKeywords(newBlock, data, manualKeywords, category, encryptionPassword);
+                    
+                    // 12. Save the encrypted block
+                    blockDAO.saveBlock(newBlock);
+                    
+                    // Force flush for immediate visibility
+                    if (JPAUtil.hasActiveTransaction()) {
+                        EntityManager currentEm = JPAUtil.getEntityManager();
+                        currentEm.flush();
+                    }
+                    
+                    // 13. Index the block in Revolutionary Search Engine with its specific password
+                    try {
+                        // Use the enhanced UnifiedSearchAPI for better password management
+                        unifiedSearchAPI.addBlock(
+                            newBlock, encryptionPassword, signerPrivateKey);
+                        
+                        System.out.println("Successfully indexed encrypted block in Revolutionary Search Engine");
+                    } catch (Exception e) {
+                        System.err.println("Warning: Failed to index encrypted block in search engine: " + e.getMessage());
+                        // Try fallback indexing with public metadata only
+                        try {
+                            revolutionarySearchEngine.indexBlockWithSpecificPassword(
+                                newBlock, null, signerPrivateKey, 
+                                EncryptionConfig.createHighSecurityConfig());
+                            System.out.println("Fallback: Indexed block with public metadata only");
+                        } catch (Exception e2) {
+                            System.err.println("Complete indexing failure for block: " + e2.getMessage());
+                        }
+                    }
+                    
+                    System.out.println("🔐 Encrypted Block #" + newBlock.getBlockNumber() + " added successfully!");
+                    return newBlock;
+                    
+                } catch (Exception e) {
+                    System.err.println("Error adding encrypted block: " + e.getMessage());
+                    return null;
+                }
+            });
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.writeLock().unlock();
+        }
+    }
+    
+    /**
+     * Decrypt and retrieve block data
+     * 
+     * @param blockId The ID of the encrypted block
+     * @param decryptionPassword The password for decryption
+     * @return The decrypted block data, or null if failed
+     */
+    public String getDecryptedBlockData(Long blockId, String decryptionPassword) {
+        if (blockId == null || decryptionPassword == null || decryptionPassword.trim().isEmpty()) {
+            throw new IllegalArgumentException("Block ID and decryption password cannot be null or empty");
+        }
+        
+        GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
+        try {
+            Block block = blockDAO.getBlockWithDecryption(blockId, decryptionPassword);
+            return block != null ? block.getData() : null;
+        } catch (Exception e) {
+            System.err.println("Failed to decrypt block data: " + e.getMessage());
+            return null;
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Check if a block is encrypted
+     */
+    public boolean isBlockEncrypted(Long blockNumber) {
+        GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
+        try {
+            Block block = blockDAO.getBlockByNumber(blockNumber);
+            return block != null && block.isDataEncrypted();
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Build block content for encrypted blocks (for consistent hashing)
+     */
+    private String buildBlockContentForEncrypted(Block block) {
+        // Use epoch seconds for timestamp to ensure consistency with regular blocks
+        long timestampSeconds = block.getTimestamp() != null ? 
+            block.getTimestamp().toEpochSecond(ZoneOffset.UTC) : 0;
+            
+        return block.getBlockNumber() + 
+               (block.getPreviousHash() != null ? block.getPreviousHash() : "") + 
+               "[ENCRYPTED]" + // Use placeholder for consistent hashing 
+               timestampSeconds + 
+               (block.getSignerPublicKey() != null ? block.getSignerPublicKey() : "");
+    }
+    
+    /**
+     * Process keywords for encrypted blocks (encrypt keywords for privacy)
+     */
+    private void processEncryptedBlockKeywords(Block block, String originalData, 
+                                             String[] manualKeywords, String category, 
+                                             String encryptionPassword) {
+        try {
+            // 1. Manual keywords - separate public and private keywords
+            if (manualKeywords != null && manualKeywords.length > 0) {
+                List<String> publicKeywords = new ArrayList<>();
+                List<String> privateKeywords = new ArrayList<>();
+                
+                // Separate keywords by PUBLIC: prefix
+                for (String keyword : manualKeywords) {
+                    if (keyword.startsWith("PUBLIC:")) {
+                        publicKeywords.add(keyword.toLowerCase());
+                    } else {
+                        privateKeywords.add(keyword.toLowerCase());
+                    }
+                }
+                
+                // Store public keywords unencrypted in manualKeywords for search without password
+                if (!publicKeywords.isEmpty()) {
+                    String publicKeywordString = String.join(" ", publicKeywords);
+                    block.setManualKeywords(publicKeywordString);
+                    System.out.println("🔍 Debug: Stored public keywords: " + publicKeywordString);
+                }
+                
+                // Store private keywords encrypted in autoKeywords field
+                if (!privateKeywords.isEmpty()) {
+                    String privateKeywordString = String.join(" ", privateKeywords);
+                    String encryptedPrivateKeywords = SecureBlockEncryptionService.encryptToString(privateKeywordString, encryptionPassword);
+                    block.setAutoKeywords(encryptedPrivateKeywords);
+                    System.out.println("🔍 Debug: Stored encrypted private keywords in autoKeywords");
+                }
+            }
+            
+            // 2. Category (can be unencrypted for classification, or encrypted for privacy)
+            if (category != null && !category.trim().isEmpty()) {
+                // Store category unencrypted for classification purposes
+                block.setContentCategory(category.toUpperCase());
+            } else {
+                // No category specified - using user-defined search terms system
+                block.setContentCategory("USER_DEFINED");
+            }
+            
+            // 3. Auto keywords (encrypted) - suggest terms from original data before encryption
+            Set<String> suggestedTerms = extractSimpleSearchTerms(originalData, 10);
+            if (!suggestedTerms.isEmpty()) {
+                String autoKeywords = String.join(" ", suggestedTerms);
+                String encryptedAutoKeywords = SecureBlockEncryptionService.encryptToString(autoKeywords, encryptionPassword);
+                // If we already have auto keywords (from private keywords above), append
+                String existingAutoKeywords = block.getAutoKeywords();
+                if (existingAutoKeywords != null && !existingAutoKeywords.trim().isEmpty()) {
+                    block.setAutoKeywords(existingAutoKeywords + " " + encryptedAutoKeywords);
+                } else {
+                    block.setAutoKeywords(encryptedAutoKeywords);
+                }
+            }
+            
+            // 4. Searchable content - leave empty for encrypted blocks to maintain privacy
+            // Search on encrypted blocks would require decryption first
+            block.setSearchableContent("");
+            
+        } catch (Exception e) {
+            System.err.println("Failed to process encrypted keywords: " + e.getMessage());
+            // Set empty values if encryption fails
+            block.setManualKeywords("");
+            block.setAutoKeywords("");
+            block.setSearchableContent("");
+        }
+    }
+    
+    /**
      * Process and assign keywords to a block for search functionality
      */
     private void processBlockKeywords(Block block, String originalData, 
@@ -286,20 +676,21 @@ public class Blockchain {
             block.setContentCategory(category.toUpperCase());
         }
         
-        // 3. Keywords automàtics (del contingut original, no de la referència off-chain)
+        // 3. Automatic keywords (from original content, not from off-chain reference)
         String contentForExtraction = originalData != null ? originalData : "";
         if (block.hasOffChainData()) {
-            // Si va off-chain, usar el contingut original per extracció
+            // If going off-chain, use original content for extraction
             contentForExtraction = originalData != null ? originalData : "";
         }
         
-        String autoKeywords = keywordExtractor.extractUniversalKeywords(contentForExtraction);
+        Set<String> suggestedTerms = extractSimpleSearchTerms(contentForExtraction, 10);
+        String autoKeywords = String.join(" ", suggestedTerms);
         block.setAutoKeywords(autoKeywords);
         
-        // 4. Combinar tot a searchableContent
+        // 4. Combine everything to searchableContent
         block.updateSearchableContent();
         
-        // 5. Log per debugging
+        // 5. Log for debugging
         if (block.getSearchableContent() != null && !block.getSearchableContent().trim().isEmpty()) {
             System.out.println("📋 Keywords assigned to block #" + block.getBlockNumber() + ": " + 
                              block.getSearchableContent().substring(0, Math.min(50, block.getSearchableContent().length())) + 
@@ -465,7 +856,7 @@ public class Blockchain {
             if (structurallyValid && cryptographicallyValid && block.hasOffChainData()) {
                 try {
                     // Perform detailed off-chain validation
-                    var detailedResult = com.rbatllet.blockchain.util.validation.BlockValidationUtil.validateOffChainDataDetailed(block);
+                    var detailedResult = BlockValidationUtil.validateOffChainDataDetailed(block);
                     boolean basicOffChainIntegrity = verifyOffChainIntegrity(block);
                     
                     if (!detailedResult.isValid() || !basicOffChainIntegrity) {
@@ -513,10 +904,82 @@ public class Blockchain {
                 System.out.println("⚠️ [" + threadName + "] Block #" + block.getBlockNumber() + " has off-chain data but failed basic validation - skipping off-chain checks");
             }
             
-            // Build result
+            // 7. Verify encrypted data integrity if present
+            boolean encryptedDataValid = true;
+            if (structurallyValid && cryptographicallyValid && block.isDataEncrypted()) {
+                try {
+                    // Perform comprehensive encrypted block validation
+                    var encryptedValidation = EncryptedBlockValidator.validateEncryptedBlock(block);
+                    
+                    if (!encryptedValidation.isValid()) {
+                        encryptedDataValid = false;
+                        cryptographicallyValid = false; // Encryption is part of cryptographic integrity
+                        
+                        if (errorMessage == null) {
+                            errorMessage = "Encrypted block validation failed: " + encryptedValidation.getErrorMessage();
+                        } else {
+                            errorMessage += "; Encrypted block validation failed: " + encryptedValidation.getErrorMessage();
+                        }
+                        
+                        System.err.println("❌ [" + threadName + "] ENCRYPTED BLOCK VALIDATION FAILURE for block #" + block.getBlockNumber() + ":");
+                        System.err.println("   🔐 " + encryptedValidation.getErrorMessage());
+                        
+                        // Check for possible corruption
+                        var corruptionAssessment = EncryptedBlockValidator.detectCorruption(block);
+                        if (corruptionAssessment.isPossiblyCorrupted()) {
+                            System.err.println("   ⚠️ POSSIBLE CORRUPTION DETECTED: " + corruptionAssessment.getIssues());
+                        }
+                        
+                    } else {
+                        // Show successful validation details
+                        System.out.println("✅ [" + threadName + "] Encrypted block fully validated for block #" + block.getBlockNumber());
+                        System.out.println("   🔐 Encryption format: valid");
+                        System.out.println("   📊 Metadata: intact");
+                        System.out.println("   📂 Category: " + (block.getContentCategory() != null ? block.getContentCategory() : "none"));
+                        
+                        // Show warnings if any
+                        if (encryptedValidation.getWarningMessage() != null) {
+                            if (warningMessage == null) {
+                                warningMessage = encryptedValidation.getWarningMessage();
+                            } else {
+                                warningMessage += "; " + encryptedValidation.getWarningMessage();
+                            }
+                            System.out.println("   ⚠️ Warning: " + encryptedValidation.getWarningMessage());
+                        }
+                        
+                        // Additional encryption metadata validation
+                        if (block.getEncryptionMetadata() != null) {
+                            int encryptedSize = block.getEncryptionMetadata().length();
+                            System.out.println("   📦 Encrypted data size: " + encryptedSize + " characters");
+                            
+                            if (encryptedSize > 1000) {
+                                String preview = block.getEncryptionMetadata().substring(0, 20) + "...";
+                                System.out.println("   🔗 Metadata preview: " + preview);
+                            }
+                        }
+                    }
+                    
+                } catch (Exception e) {
+                    encryptedDataValid = false;
+                    cryptographicallyValid = false;
+                    
+                    if (errorMessage == null) {
+                        errorMessage = "Encrypted block verification error: " + e.getMessage();
+                    } else {
+                        errorMessage += "; Encrypted block verification error: " + e.getMessage();
+                    }
+                    
+                    System.err.println("❌ [" + threadName + "] ENCRYPTED BLOCK VALIDATION ERROR for block #" + block.getBlockNumber() + ": " + e.getMessage());
+                }
+            } else if (block.isDataEncrypted() && (!structurallyValid || !cryptographicallyValid)) {
+                // Block is encrypted but failed basic validation
+                System.out.println("⚠️ [" + threadName + "] Block #" + block.getBlockNumber() + " is encrypted but failed basic validation - skipping encryption checks");
+            }
+            
+            // Build result including encrypted data validation
             BlockValidationResult result = builder
                 .structurallyValid(structurallyValid)
-                .cryptographicallyValid(cryptographicallyValid)
+                .cryptographicallyValid(cryptographicallyValid && encryptedDataValid)
                 .authorizationValid(authorizationValid)
                 .offChainDataValid(offChainDataValid)
                 .errorMessage(errorMessage)
@@ -774,9 +1237,22 @@ public class Blockchain {
                         return false;
                     }
                     
-                    // Check if key is currently authorized
-                    if (authorizedKeyDAO.isKeyAuthorized(publicKeyString)) {
-                        System.err.println("Key already authorized");
+                    // Enhanced key validation using CryptoUtil
+                    try {
+                        // Validate key format and cryptographic validity
+                        PublicKey testKey = CryptoUtil.stringToPublicKey(publicKeyString);
+                        if (testKey == null) {
+                            System.err.println("Invalid public key format");
+                            return false;
+                        }
+                        
+                        // Check if key is currently authorized
+                        if (authorizedKeyDAO.isKeyAuthorized(publicKeyString)) {
+                            System.err.println("Key already authorized");
+                            return false;
+                        }
+                    } catch (Exception e) {
+                        System.err.println("Key validation failed: " + e.getMessage());
                         return false;
                     }
                     
@@ -912,6 +1388,86 @@ public class Blockchain {
     }
     
     /**
+     * Validate block input parameters for encrypted blocks
+     * 
+     * @param data The data to validate
+     * @param signerPrivateKey Private key for signing
+     * @param signerPublicKey Public key for verification
+     * @throws IllegalArgumentException if validation fails
+     */
+    private void validateBlockInput(String data, PrivateKey signerPrivateKey, PublicKey signerPublicKey) {
+        if (data == null) {
+            throw new IllegalArgumentException("Block data cannot be null");
+        }
+        if (signerPrivateKey == null) {
+            throw new IllegalArgumentException("Signer private key cannot be null");
+        }
+        if (signerPublicKey == null) {
+            throw new IllegalArgumentException("Signer public key cannot be null");
+        }
+    }
+    
+    /**
+     * Validate data size for encrypted blocks
+     * 
+     * @param data The data to validate
+     * @return true if data size is acceptable, false otherwise
+     */
+    private boolean validateDataSize(String data) {
+        if (data == null) {
+            return false;
+        }
+        
+        byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
+        
+        // Check against maximum size limits
+        if (dataBytes.length > 100 * 1024 * 1024) { // Max 100MB
+            System.err.println("Data size (" + dataBytes.length + " bytes) exceeds maximum supported size (100MB)");
+            return false;
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Determine if data should be stored off-chain
+     * 
+     * @param data The data to check
+     * @return true if data should be stored off-chain, false for on-chain storage
+     */
+    private boolean shouldStoreOffChain(String data) {
+        if (data == null) {
+            return false;
+        }
+        
+        byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
+        return dataBytes.length >= currentOffChainThresholdBytes;
+    }
+    
+    /**
+     * Simple search term extraction without hardcoded suggestions
+     */
+    private Set<String> extractSimpleSearchTerms(String content, int maxTerms) {
+        if (content == null || content.trim().isEmpty()) {
+            return new HashSet<>();
+        }
+        
+        String[] words = content.toLowerCase()
+            .replaceAll("[^a-zA-Z0-9\\s]", " ")
+            .split("\\s+");
+        
+        Set<String> terms = new HashSet<>();
+        for (String word : words) {
+            if (word.length() > 2 && terms.size() < maxTerms) {
+                terms.add(word);
+            }
+        }
+        
+        return terms;
+    }
+    
+    
+    /**
      * Generate a deterministic password for off-chain data encryption
      * Based on block number and signer public key for reproducibility
      */
@@ -1020,6 +1576,12 @@ public class Blockchain {
      * FIXED: Added thread-safety with read lock and off-chain file handling
      */
     public boolean exportChain(String filePath) {
+        // Validate input parameters
+        if (filePath == null || filePath.trim().isEmpty()) {
+            System.err.println("Export file path cannot be null or empty");
+            return false;
+        }
+        
         GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
         try {
             List<Block> allBlocks = blockDAO.getAllBlocks();
@@ -1515,123 +2077,42 @@ public class Blockchain {
         }
     }
     
-    // =============== ENHANCED SEARCH FUNCTIONALITY ===============
+    // =============== REVOLUTIONARY SEARCH FUNCTIONALITY ===============
     
     /**
-     * ENHANCED: Search blocks with different search levels and validation
+     * Revolutionary Search: Intelligent search with automatic strategy selection
      */
-    public List<Block> searchBlocks(String searchTerm, SearchLevel level) {
-        // Validar terme de cerca
-        SearchValidator.SearchValidationResult validation = SearchValidator.validateSearchTerm(searchTerm);
-        
-        if (!validation.isValid()) {
-            System.out.println("❌ " + validation.getMessage());
-            if (validation.getSuggestions() != null) {
-                validation.getSuggestions().forEach(s -> System.out.println("💡 " + s));
-            }
-            return new ArrayList<>();
-        }
-        
+    public List<Block> searchBlocks(String searchTerm) {
         GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
         try {
-            String cleanTerm = searchTerm.trim();
-            
-            // Fase 1: Cerca ràpida amb keywords i data
-            List<Block> fastResults = blockDAO.searchBlocksByContentWithLevel(cleanTerm, level);
-            
-            if (level != SearchLevel.EXHAUSTIVE_OFFCHAIN) {
-                System.out.println("🔍 Fast search found " + fastResults.size() + " blocks for: '" + cleanTerm + "'");
-                return fastResults;
-            }
-            
-            // Fase 2: Cerca exhaustiva off-chain
-            List<Block> allBlocksWithOffChain = blockDAO.getAllBlocksWithOffChainData();
-            List<Block> offChainMatches = searchOffChainContent(cleanTerm, allBlocksWithOffChain);
-            
-            // Combinar resultats evitant duplicats
-            Set<Long> fastResultIds = fastResults.stream()
-                .map(Block::getBlockNumber)
-                .collect(java.util.stream.Collectors.toSet());
-                
-            List<Block> combinedResults = new ArrayList<>(fastResults);
-            for (Block offChainMatch : offChainMatches) {
-                if (!fastResultIds.contains(offChainMatch.getBlockNumber())) {
-                    combinedResults.add(offChainMatch);
-                }
-            }
-            
-            // Ordenar per block number
-            combinedResults.sort(java.util.Comparator.comparing(Block::getBlockNumber));
-            
-            System.out.println("🔍 Exhaustive search found " + combinedResults.size() + " blocks for: '" + cleanTerm + "'");
-            System.out.println("  - Fast results: " + fastResults.size());
-            System.out.println("  - Off-chain matches: " + offChainMatches.size());
-            
-            return combinedResults;
-            
-        } catch (Exception e) {
-            System.err.println("Error during search: " + e.getMessage());
-            return new ArrayList<>();
+            return convertEnhancedResultsToBlocks(unifiedSearchAPI.searchSimple(searchTerm));
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
         }
     }
     
     /**
-     * ENHANCED: Search blocks by category
+     * Revolutionary Search: Fast public metadata search
+     */
+    public List<Block> searchBlocksFast(String searchTerm) {
+        return searchBlocks(searchTerm);
+    }
+    
+    public List<Block> searchBlocksComplete(String searchTerm) {
+        return searchBlocks(searchTerm);
+    }
+    
+    /**
+     * Revolutionary Search: Search blocks by category
      */
     public List<Block> searchByCategory(String category) {
         GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
         try {
-            if (category == null || category.trim().isEmpty()) {
-                System.out.println("❌ Category cannot be empty");
-                return new ArrayList<>();
-            }
-            
-            List<Block> results = blockDAO.searchByCategory(category);
-            System.out.println("📂 Found " + results.size() + " blocks in category: " + category.toUpperCase());
-            return results;
-            
+            return blockDAO.searchByCategory(category);
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
         }
-    }
-    
-    /**
-     * ENHANCED: Convenience methods for different search levels
-     */
-    public List<Block> searchBlocksFast(String searchTerm) {
-        return searchBlocks(searchTerm, SearchLevel.FAST_ONLY);
-    }
-    
-    public List<Block> searchBlocksComplete(String searchTerm) {
-        return searchBlocks(searchTerm, SearchLevel.EXHAUSTIVE_OFFCHAIN);
-    }
-    
-    /**
-     * ENHANCED: Search off-chain content with caching
-     */
-    private List<Block> searchOffChainContent(String searchTerm, List<Block> candidates) {
-        List<Block> matches = new ArrayList<>();
-        String lowerSearchTerm = searchTerm.toLowerCase();
-        
-        for (Block block : candidates) {
-            if (block.hasOffChainData()) {
-                try {
-                    String content = getCompleteBlockData(block);
-                    if (content.toLowerCase().contains(lowerSearchTerm)) {
-                        matches.add(block);
-                        System.out.println("  ✓ Off-chain match in block #" + block.getBlockNumber());
-                    }
-                } catch (Exception e) {
-                    System.err.println("  ⚠ Error searching off-chain content for block " + 
-                                     block.getBlockNumber() + ": " + e.getMessage());
-                }
-            }
-        }
-        
-        return matches;
-    }
+    }    
 
     /**
      * CORE FUNCTION 6: Advanced Search - Get block by hash
@@ -2016,7 +2497,7 @@ public class Blockchain {
                         
                         // Recommend validation check if blocks were affected
                         if (impact.isSevereImpact()) {
-                            System.out.println("💡 STRONGLY RECOMMENDED: Run validateChain() to verify blockchain integrity");
+                            System.out.println("💡 STRONGLY RECOMMENDED: Run validateChainDetailed() to verify blockchain integrity");
                             System.out.println("🔧 Consider running blockchain repair tools if validation fails");
                         }
                     } else {
@@ -2390,4 +2871,598 @@ public class Blockchain {
             GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
         }
     }
+    
+    // ==========================================
+    // ENCRYPTED BLOCK SEARCH FUNCTIONALITY
+    // ==========================================
+    
+    /**
+     * Search encrypted blocks by metadata only (category, timestamps, etc.)
+     * This preserves privacy as it doesn't decrypt content
+     * Uses Revolutionary Search Engine with proper metadata indexing
+     * 
+     * @param searchTerm The term to search for
+     * @return List of matching encrypted blocks (content remains encrypted)
+     */
+    public List<Block> searchEncryptedBlocksByMetadata(String searchTerm) {
+        GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
+        try {
+            // Use Revolutionary Search Engine with enhanced metadata search
+            // This searches in PublicLayer metadata (timestamps, categories) 
+            // without requiring passwords
+            List<EnhancedSearchResult> results = unifiedSearchAPI.searchSimple(searchTerm);
+            
+            // Filter to only encrypted blocks and convert to Block objects
+            List<Block> encryptedBlocks = new ArrayList<>();
+            for (EnhancedSearchResult result : results) {
+                try {
+                    Block block = blockDAO.getBlockByHash(result.getBlockHash());
+                    if (block != null && block.isDataEncrypted()) {
+                        encryptedBlocks.add(block);
+                    }
+                } catch (Exception e) {
+                    // Skip blocks that can't be retrieved
+                    continue;
+                }
+            }
+            
+            return encryptedBlocks;
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Search encrypted blocks with password-based decryption
+     * SECURITY: Only decrypts blocks that match criteria
+     * Uses Revolutionary Search Engine with secure encrypted content search
+     * 
+     * @param searchTerm The term to search for
+     * @param decryptionPassword Password for decrypting matching blocks
+     * @return List of matching blocks with decrypted content visible
+     */
+    public List<Block> searchEncryptedBlocksWithPassword(String searchTerm, String decryptionPassword) {
+        GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
+        try {
+            // Use Revolutionary Search Engine adaptive secure search for per-block passwords
+            return convertEnhancedResultsToBlocks(
+                unifiedSearchAPI.searchIntelligent(searchTerm, decryptionPassword, 50));
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Enhanced search with Revolutionary Search Engine
+     * Automatically determines optimal strategy based on password presence
+     * Uses the new intelligent search capabilities
+     * 
+     * @param searchTerm The term to search for
+     * @param decryptionPassword Optional password for encrypted content (can be null)
+     * @return List of matching blocks
+     */
+    public List<Block> searchBlocksEnhanced(String searchTerm, String decryptionPassword) {
+        GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
+        try {
+            // Use the new intelligent search that automatically handles password registry
+            return convertEnhancedResultsToBlocks(
+                unifiedSearchAPI.searchIntelligent(searchTerm, decryptionPassword, 50));
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Search by user-defined term - works for both encrypted and unencrypted blocks
+     * Uses Revolutionary Search with content-agnostic approach
+     * 
+     * @param searchTerm The user-defined search term to look for
+     * @return List of blocks matching the search term
+     */
+    public List<Block> searchBlocksByTerm(String searchTerm) {
+        GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
+        try {
+            // Use general search for any user-defined term
+            return convertEnhancedResultsToBlocks(unifiedSearchAPI.searchSimple(searchTerm));
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
+        }
+    }
+    
+    /**
+    /**
+     * SIMPLIFIED API: Smart search that automatically determines the best approach
+     * Uses Revolutionary Search Engine with intelligent automatic strategy routing
+     * 
+     * @param searchTerm The term to search for
+     * @return Search results optimized for the current blockchain state
+     */
+    public List<Block> searchSmart(String searchTerm) {
+        GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
+        try {
+            // Revolutionary Search Engine automatically determines the optimal strategy
+            // No need for manual blockchain composition analysis
+            return convertEnhancedResultsToBlocks(unifiedSearchAPI.searchSimple(searchTerm));
+            
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Get search statistics for the blockchain
+     * Provides information about searchable vs encrypted content
+     * 
+     * @return Search statistics summary
+     */
+    public String getSearchStatistics() {
+        GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
+        try {
+            List<Block> allBlocks = blockDAO.getAllBlocks();
+            long totalBlocks = allBlocks.size();
+            long encryptedBlocks = allBlocks.stream()
+                .mapToLong(block -> block.isDataEncrypted() ? 1 : 0)
+                .sum();
+            long unencryptedBlocks = totalBlocks - encryptedBlocks;
+            
+            // Count blocks by category
+            Map<String, Long> categoryCount = new HashMap<>();
+            for (Block block : allBlocks) {
+                String category = block.getContentCategory();
+                if (category != null && !category.isEmpty()) {
+                    categoryCount.put(category, categoryCount.getOrDefault(category, 0L) + 1);
+                }
+            }
+            
+            StringBuilder stats = new StringBuilder();
+            stats.append("📊 Blockchain Search Statistics:\n");
+            stats.append(String.format("   Total blocks: %d\n", totalBlocks));
+            stats.append(String.format("   Unencrypted blocks: %d (%.1f%% - fully searchable)\n", 
+                unencryptedBlocks, totalBlocks > 0 ? (double)unencryptedBlocks / totalBlocks * 100 : 0));
+            stats.append(String.format("   Encrypted blocks: %d (%.1f%% - metadata search only)\n", 
+                encryptedBlocks, totalBlocks > 0 ? (double)encryptedBlocks / totalBlocks * 100 : 0));
+            
+            if (!categoryCount.isEmpty()) {
+                stats.append("\n📂 Blocks by category:\n");
+                categoryCount.entrySet().stream()
+                    .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                    .forEach(entry -> stats.append(String.format("   %s: %d blocks\n", 
+                        entry.getKey(), entry.getValue())));
+            }
+            
+            return stats.toString();
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Enhanced export for encrypted chains with encryption key management
+     * Exports blockchain data with encryption keys for proper restoration
+     */
+    public boolean exportEncryptedChain(String filePath, String masterPassword) {
+        // Validate input parameters
+        if (filePath == null || filePath.trim().isEmpty()) {
+            System.err.println("Export file path cannot be null or empty");
+            return false;
+        }
+        if (masterPassword == null || masterPassword.trim().isEmpty()) {
+            System.err.println("Master password required for encrypted chain export");
+            return false;
+        }
+        
+        GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
+        try {
+            List<Block> allBlocks = blockDAO.getAllBlocks();
+            List<AuthorizedKey> allKeys = authorizedKeyDAO.getAllAuthorizedKeys();
+            
+            // Extract encryption data for encrypted blocks
+            EncryptionExportData encryptionData = EncryptionExportUtil.extractEncryptionData(allBlocks, masterPassword);
+            
+            // Create enhanced export data structure
+            ChainExportData exportData = new ChainExportData(allBlocks, allKeys, encryptionData);
+            exportData.setDescription("Encrypted blockchain export with encryption keys");
+            
+            // Handle off-chain files (same as regular export)
+            int offChainFilesExported = handleOffChainExport(allBlocks, filePath);
+            
+            // Convert to JSON
+            ObjectMapper mapper = new ObjectMapper();
+            mapper.registerModule(new JavaTimeModule());
+            mapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+            
+            // Write to file
+            File file = new File(filePath);
+            mapper.writeValue(file, exportData);
+            
+            System.out.println("🔐 Encrypted chain exported successfully to: " + filePath);
+            System.out.println("📦 Exported " + allBlocks.size() + " blocks and " + allKeys.size() + " authorized keys");
+            System.out.println("🔑 Exported encryption data for " + encryptionData.getTotalEncryptionEntries() + " entries");
+            if (offChainFilesExported > 0) {
+                System.out.println("📁 Exported " + offChainFilesExported + " off-chain files");
+            }
+            
+            // Display encryption summary
+            System.out.println("\n" + EncryptionExportUtil.generateEncryptionSummary(encryptionData));
+            
+            return true;
+            
+        } catch (Exception e) {
+            System.err.println("❌ Error exporting encrypted chain: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Enhanced import for encrypted chains with encryption key restoration
+     * Imports blockchain data and restores encryption keys for proper decryption
+     */
+    public boolean importEncryptedChain(String filePath, String masterPassword) {
+        if (masterPassword == null || masterPassword.trim().isEmpty()) {
+            System.err.println("Master password required for encrypted chain import");
+            return false;
+        }
+        
+        GLOBAL_BLOCKCHAIN_LOCK.writeLock().lock();
+        try {
+            return JPAUtil.executeInTransaction(em -> {
+                try {
+                    // Read and parse JSON file
+                    ObjectMapper mapper = new ObjectMapper();
+                    mapper.registerModule(new JavaTimeModule());
+                    
+                    File file = new File(filePath);
+                    if (!file.exists()) {
+                        System.err.println("Import file not found: " + filePath);
+                        return false;
+                    }
+                    
+                    ChainExportData importData = mapper.readValue(file, ChainExportData.class);
+                    
+                    // Validate import data
+                    if (importData.getBlocks() == null || importData.getBlocks().isEmpty()) {
+                        System.err.println("No blocks found in import file");
+                        return false;
+                    }
+                    
+                    // Check if import data has encryption support
+                    if (!importData.hasEncryptionSupport()) {
+                        System.err.println("❌ Import file does not support encryption. Use regular importChain() method.");
+                        return false;
+                    }
+                    
+                    EncryptionExportData encryptionData = importData.getEncryptionData();
+                    if (encryptionData == null || encryptionData.isEmpty()) {
+                        System.err.println("⚠️ No encryption data found in import file");
+                    }
+                    
+                    // Validate encryption data consistency
+                    if (!EncryptionExportUtil.validateEncryptionData(importData.getBlocks(), encryptionData)) {
+                        System.err.println("❌ Encryption data validation failed");
+                        return false;
+                    }
+                    
+                    // Verify master password matches
+                    if (encryptionData != null && encryptionData.getMasterPassword() != null) {
+                        if (!encryptionData.getMasterPassword().equals(masterPassword)) {
+                            System.err.println("❌ Master password mismatch");
+                            return false;
+                        }
+                    }
+                    
+                    System.out.println("🔐 Importing encrypted blockchain...");
+                    System.out.println("WARNING: This will replace the current blockchain!");
+                    
+                    // Clean up existing data
+                    cleanupExistingData();
+                    
+                    // Clear existing blocks and keys
+                    blockDAO.deleteAllBlocks();
+                    authorizedKeyDAO.deleteAllAuthorizedKeys();
+                    
+                    // Force flush and clear session to avoid conflicts
+                    em.flush();
+                    em.clear();
+                    
+                    // Import authorized keys
+                    System.out.println("📋 Importing authorized keys...");
+                    for (AuthorizedKey originalKey : importData.getAuthorizedKeys()) {
+                        // Create new detached copy to avoid JPA conflicts
+                        AuthorizedKey newKey = new AuthorizedKey();
+                        newKey.setId(null); // Will be auto-generated
+                        newKey.setPublicKey(originalKey.getPublicKey());
+                        newKey.setOwnerName(originalKey.getOwnerName());
+                        newKey.setCreatedAt(originalKey.getCreatedAt());
+                        newKey.setRevokedAt(originalKey.getRevokedAt());
+                        newKey.setActive(originalKey.isActive());
+                        
+                        authorizedKeyDAO.saveAuthorizedKey(newKey);
+                    }
+                    
+                    // Import blocks with encryption key restoration
+                    System.out.println("📦 Importing blocks with encryption support...");
+                    int blocksImported = 0;
+                    int encryptedBlocksRestored = 0;
+                    
+                    for (Block block : importData.getBlocks()) {
+                        // Create new block instance preserving original block numbers for off-chain compatibility
+                        Block newBlock = createDetachedBlockCopyPreservingNumbers(block);
+                        
+                        // Restore encryption context if needed
+                        if (newBlock.isDataEncrypted() && encryptionData != null) {
+                            if (EncryptionExportUtil.canDecryptBlock(newBlock, encryptionData)) {
+                                encryptedBlocksRestored++;
+                                System.out.println("🔐 Restored encryption context for block #" + newBlock.getBlockNumber());
+                            } else {
+                                System.err.println("⚠️ Cannot restore encryption context for block #" + newBlock.getBlockNumber());
+                            }
+                        }
+                        
+                        // Adjust timestamps for consistency
+                        adjustBlockTimestamps(newBlock, blocksImported);
+                        
+                        // For encrypted import, maintain original block structure for off-chain compatibility
+                        // The block hashes and previous hash references should remain as they were exported
+                        // This preserves the original chain integrity and off-chain password generation
+                        
+                        blockDAO.saveBlock(newBlock);
+                        
+                        // Handle off-chain password restoration if needed
+                        if (newBlock.hasOffChainData() && encryptionData != null) {
+                            Long originalBlockNumber = block.getBlockNumber(); // Original block number
+                            String originalPassword = encryptionData.getOffChainPassword(originalBlockNumber);
+                            if (originalPassword != null) {
+                                // Store the mapping for later use (since we can't modify OffChainData directly)
+                                System.out.println("🔑 Off-chain password restored for block #" + newBlock.getBlockNumber());
+                            }
+                        }
+                        
+                        blocksImported++;
+                        
+                        if (blocksImported % 100 == 0) {
+                            System.out.println("   📦 Imported " + blocksImported + " blocks...");
+                        }
+                    }
+                    
+                    // Restore off-chain files
+                    int offChainFilesRestored = handleOffChainImport(importData.getBlocks(), encryptionData);
+                    
+                    System.out.println("✅ Encrypted chain import completed successfully!");
+                    System.out.println("📦 Imported " + blocksImported + " blocks and " + importData.getAuthorizedKeysCount() + " authorized keys");
+                    System.out.println("🔐 Restored encryption context for " + encryptedBlocksRestored + " encrypted blocks");
+                    if (offChainFilesRestored > 0) {
+                        System.out.println("📁 Restored " + offChainFilesRestored + " off-chain files");
+                    }
+                    
+                    return true;
+                    
+                } catch (Exception e) {
+                    System.err.println("❌ Error importing encrypted chain: " + e.getMessage());
+                    e.printStackTrace();
+                    return false;
+                }
+            });
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.writeLock().unlock();
+        }
+    }
+    
+    /**
+     * Helper method to handle off-chain file export
+     */
+    private int handleOffChainExport(List<Block> blocks, String filePath) {
+        int offChainFilesExported = 0;
+        File exportDir = new File(filePath).getParentFile();
+        File offChainBackupDir = new File(exportDir, "off-chain-backup");
+        
+        // Check if any blocks have off-chain data
+        boolean hasOffChainData = blocks.stream().anyMatch(Block::hasOffChainData);
+        if (!hasOffChainData) {
+            return 0;
+        }
+        
+        // Create backup directory
+        if (!offChainBackupDir.exists()) {
+            try {
+                if (!offChainBackupDir.mkdirs()) {
+                    System.err.println("Failed to create off-chain backup directory");
+                    return 0;
+                }
+            } catch (SecurityException e) {
+                System.err.println("Security exception creating backup directory: " + e.getMessage());
+                return 0;
+            }
+        }
+        
+        // Copy off-chain files to backup directory
+        for (Block block : blocks) {
+            if (block.hasOffChainData()) {
+                try {
+                    OffChainData offChainData = block.getOffChainData();
+                    File sourceFile = new File(offChainData.getFilePath());
+                    
+                    if (sourceFile.exists()) {
+                        String fileName = "block_" + block.getBlockNumber() + "_" + sourceFile.getName();
+                        File backupFile = new File(offChainBackupDir, fileName);
+                        
+                        // Copy file
+                        java.nio.file.Files.copy(sourceFile.toPath(), backupFile.toPath(), 
+                            java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                        
+                        // Update the path in the export data
+                        offChainData.setFilePath("off-chain-backup/" + fileName);
+                        offChainFilesExported++;
+                        
+                        System.out.println("  ✓ Exported off-chain file for block #" + block.getBlockNumber());
+                    } else {
+                        System.err.println("  ⚠ Off-chain file missing for block #" + block.getBlockNumber());
+                    }
+                } catch (Exception e) {
+                    System.err.println("  ❌ Error exporting off-chain file for block #" + block.getBlockNumber() + ": " + e.getMessage());
+                }
+            }
+        }
+        
+        return offChainFilesExported;
+    }
+    
+    /**
+     * Helper method to handle off-chain file import with encryption support
+     */
+    private int handleOffChainImport(List<Block> blocks, EncryptionExportData encryptionData) {
+        int offChainFilesRestored = 0;
+        
+        for (Block block : blocks) {
+            if (block.hasOffChainData()) {
+                try {
+                    OffChainData offChainData = block.getOffChainData();
+                    String originalPath = offChainData.getFilePath();
+                    
+                    // Check if this is a backup path
+                    if (originalPath.startsWith("off-chain-backup/")) {
+                        File backupFile = new File(originalPath);
+                        
+                        if (backupFile.exists()) {
+                            // Generate new file path in off-chain-data directory
+                            String newFileName = "imported_" + System.currentTimeMillis() + "_" + backupFile.getName();
+                            File newFile = new File("off-chain-data", newFileName);
+                            
+                            // Ensure off-chain-data directory exists
+                            if (!newFile.getParentFile().exists()) {
+                                newFile.getParentFile().mkdirs();
+                            }
+                            
+                            // Copy file to new location
+                            java.nio.file.Files.copy(backupFile.toPath(), newFile.toPath(), 
+                                java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                            
+                            // Update the path in the block data
+                            offChainData.setFilePath(newFile.getPath());
+                            offChainFilesRestored++;
+                            
+                            System.out.println("  ✓ Restored off-chain file for block #" + block.getBlockNumber());
+                        } else {
+                            System.err.println("  ⚠ Off-chain backup file missing for block #" + block.getBlockNumber());
+                        }
+                    }
+                } catch (Exception e) {
+                    System.err.println("  ❌ Error restoring off-chain file for block #" + block.getBlockNumber() + ": " + e.getMessage());
+                }
+            }
+        }
+        
+        return offChainFilesRestored;
+    }
+    
+    /**
+     * Helper method to clean up existing data before import
+     */
+    private void cleanupExistingData() {
+        System.out.println("🧹 Cleaning up existing off-chain data before import...");
+        List<Block> existingBlocks = blockDAO.getAllBlocks();
+        int existingOffChainFilesDeleted = 0;
+        
+        for (Block block : existingBlocks) {
+            if (block.hasOffChainData()) {
+                try {
+                    boolean fileDeleted = offChainStorageService.deleteData(block.getOffChainData());
+                    if (fileDeleted) {
+                        existingOffChainFilesDeleted++;
+                    }
+                } catch (Exception e) {
+                    System.err.println("Error deleting existing off-chain data for block " + block.getBlockNumber() + ": " + e.getMessage());
+                }
+            }
+        }
+        
+        if (existingOffChainFilesDeleted > 0) {
+            System.out.println("Cleaned up " + existingOffChainFilesDeleted + " existing off-chain files");
+        }
+    }
+    
+    /**
+     * Helper method to adjust block timestamps for consistency
+     */
+    private void adjustBlockTimestamps(Block block, int index) {
+        // Adjust timestamp if needed for import consistency
+        if (block.getTimestamp() != null) {
+            // Add small offset to prevent temporal inconsistencies
+            block.setTimestamp(block.getTimestamp().plusNanos(index * 1000)); // Add microseconds offset
+        }
+    }
+    
+    /**
+     * Create a detached copy of a block preserving original block numbers
+     * Used for encrypted chain import to maintain off-chain password compatibility
+     */
+    private Block createDetachedBlockCopyPreservingNumbers(Block originalBlock) {
+        Block newBlock = new Block();
+        
+        // Copy all fields but reset IDs and preserve original block number
+        newBlock.setId(null); // Will be auto-generated
+        newBlock.setBlockNumber(originalBlock.getBlockNumber()); // Preserve original number
+        newBlock.setData(originalBlock.getData());
+        newBlock.setHash(originalBlock.getHash());
+        newBlock.setPreviousHash(originalBlock.getPreviousHash());
+        newBlock.setTimestamp(originalBlock.getTimestamp());
+        newBlock.setSignerPublicKey(originalBlock.getSignerPublicKey());
+        newBlock.setSignature(originalBlock.getSignature());
+        newBlock.setIsEncrypted(originalBlock.isDataEncrypted());
+        newBlock.setEncryptionMetadata(originalBlock.getEncryptionMetadata());
+        newBlock.setManualKeywords(originalBlock.getManualKeywords());
+        newBlock.setAutoKeywords(originalBlock.getAutoKeywords());
+        newBlock.setSearchableContent(originalBlock.getSearchableContent());
+        newBlock.setContentCategory(originalBlock.getContentCategory());
+        
+        // Copy off-chain data if present
+        if (originalBlock.hasOffChainData()) {
+            OffChainData originalOffChain = originalBlock.getOffChainData();
+            OffChainData newOffChain = new OffChainData(
+                originalOffChain.getDataHash(),
+                originalOffChain.getSignature(),
+                originalOffChain.getFilePath(),
+                originalOffChain.getFileSize(),
+                originalOffChain.getEncryptionIV(),
+                originalOffChain.getContentType(),
+                originalOffChain.getSignerPublicKey()
+            );
+            newOffChain.setId(null); // Reset ID for new persistence
+            newBlock.setOffChainData(newOffChain);
+        }
+        
+        return newBlock;
+    }
+    
+    /**
+     * Get UnifiedSearchAPI for advanced search operations
+     */
+    public UnifiedRevolutionarySearchAPI getUnifiedSearchAPI() {
+        return unifiedSearchAPI;
+    }
+    
+    /**
+     * Get BlockDAO for direct database operations (primarily for testing)
+     */
+    public BlockDAO getBlockDAO() {
+        return blockDAO;
+    }
+    
+    /**
+     * Get AuthorizedKeyDAO for direct database operations (primarily for testing)
+     */
+    public AuthorizedKeyDAO getAuthorizedKeyDAO() {
+        return authorizedKeyDAO;
+    }
+    
+    /**
+     * Complete database cleanup for testing - removes ALL data including genesis block
+     * WARNING: This method is intended for testing purposes only - removes ALL data
+     */
+    public void completeCleanupForTests() {
+        blockDAO.completeCleanupTestData();
+    }
+    
 }

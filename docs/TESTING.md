@@ -25,7 +25,7 @@ The project includes comprehensive test suites to verify all functionality and e
 - ✅ Error handling and edge cases
 
 #### Security Functions (Migrated from CLI)
-- ✅ **Secure Key Storage**: AES encrypted private key storage
+- ✅ **Secure Key Storage**: AES-256-GCM encrypted private key storage
 - ✅ **Password Validation**: Strong password requirements and handling
 - ✅ **Key File Loading**: Secure loading of keys from files
 - ✅ **Concurrency Testing**: Thread-safe key operations
@@ -70,7 +70,7 @@ The project includes comprehensive test suites to verify all functionality and e
 #### Test Execution
 - **Total Test Files**: 35+ comprehensive test suites
 - **JUnit 5 Tests**: 150+ professional unit tests
-- **Demo Applications**: 9 interactive demonstrations (including new SearchDemo)
+- **Demo Applications**: 9 interactive demonstrations (including RevolutionarySearchDemo)
 - **Verification Tests**: 5+ quick validation tests
 - **Script Test Runners**: 15+ specialized test scripts
 - **Total Coverage**: 95%+ code coverage (100% critical paths)
@@ -88,7 +88,7 @@ The project includes comprehensive test suites to verify all functionality and e
 
 #### 1. Run All Tests (Complete Validation) ⭐ **RECOMMENDED**
 ```zsh
-./run_all_tests.sh
+./run_all_tests.zsh
 ```
 
 This runs everything: basic core tests + advanced function tests.
@@ -116,7 +116,7 @@ This runs everything: basic core tests + advanced function tests.
 
 #### 2. Advanced Functions Only (JUnit 5 Tests)
 ```zsh
-./run_advanced_tests.sh
+./run_advanced_tests.zsh
 ```
 
 Runs professional JUnit 5 tests for additional advanced functions only.
@@ -145,7 +145,7 @@ Test Results:
 
 #### 3. Recovery Tests (Chain Recovery & Rollback)
 ```zsh
-./run_recovery_tests.sh
+./run_recovery_tests.zsh
 ```
 
 Runs all recovery-related tests including chain recovery manager, recovery configuration, and improved rollback strategy.
@@ -170,7 +170,7 @@ Runs all recovery-related tests including chain recovery manager, recovery confi
 
 #### 4. Improved Rollback Strategy Test
 ```zsh
-./run_improved_rollback_test.sh
+./run_improved_rollback_test.zsh
 ```
 
 Runs only the improved rollback strategy tests that verify the intelligent rollback analysis.
@@ -193,7 +193,7 @@ Running ImprovedRollbackStrategyTest...
 
 #### 5. Basic Tests Only (Quick Verification)
 ```zsh
-./run_basic_tests.sh
+./run_basic_tests.zsh
 ```
 
 Runs the comprehensive basic core functions test that validates fundamental blockchain operations.
@@ -318,8 +318,8 @@ The project follows these testing best practices:
 - `testExhaustiveOffchainSearch()` - Complete content search including off-chain data
 - `testSearchByCategory()` - Content category filtering and validation
 - `testSearchTermValidation()` - Search term validation with intelligent exceptions
-- `testSearchValidator()` - Direct SearchValidator class testing
-- `testUniversalKeywordExtractor()` - Automatic keyword extraction testing
+- Search validation is now handled internally by the Revolutionary Search Engine
+- Automatic keyword extraction is now integrated into the search engine
 - `testSearchPerformance()` - Performance comparison across search levels
 - `testConcurrentSearchOperations()` - Thread-safety with concurrent searches
 - `testSearchDuringBlockCreation()` - Search consistency during block operations
@@ -495,13 +495,12 @@ mvn test -Dtest=BlockchainAdditionalAdvancedFunctionsTest#test*Export*
 # Run all advanced tests with verbose output
 mvn test -Dtest=BlockchainAdditionalAdvancedFunctionsTest -X
 
-# Run NEW search functionality tests
-mvn test -Dtest=SearchFunctionalityTest
+# Run NEW revolutionary search functionality tests
+mvn test -Dtest=com.rbatllet.blockchain.search.*Test
 
-# Run specific search test methods
-mvn test -Dtest=SearchFunctionalityTest#testFastOnlySearch
-mvn test -Dtest=SearchFunctionalityTest#testConcurrentSearchOperations
-mvn test -Dtest=SearchFunctionalityTest#testUniversalKeywordExtractor
+# Run specific search test suites
+mvn test -Dtest=RevolutionarySearchBasicTest
+mvn test -Dtest=RevolutionarySearchExhaustiveTest
 ```
 
 ### 2. Core Functions Test
@@ -550,7 +549,7 @@ mvn exec:java -Dexec.mainClass="demo.CoreFunctionsDemo"
 
 ### 5. Search System Demo ⭐ **NEW**
 
-**File**: `SearchDemo.java`  
+**File**: `RevolutionarySearchDemo.java`  
 **Type**: Comprehensive search system demonstration  
 **Coverage**: Complete hybrid search functionality
 
@@ -564,10 +563,10 @@ mvn exec:java -Dexec.mainClass="demo.CoreFunctionsDemo"
 **How to run:**
 ```zsh
 # Run the search demo directly
-mvn exec:java -Dexec.mainClass="demo.SearchDemo"
+mvn exec:java -Dexec.mainClass="demo.RevolutionarySearchDemo"
 
 # Or use the provided script
-./run-search-demo.zsh
+./run_revolutionary_search_demo.zsh
 ```
 
 **Expected output:**
@@ -600,15 +599,15 @@ All test scripts now include automatic database cleanup to prevent SQLite corrup
 
 ```zsh
 # All scripts include automatic cleanup
-./run_all_tests.sh                   # Auto-cleans before execution
-./run_advanced_tests.sh              # Auto-cleans before execution  
-./run_advanced_thread_safety_tests.sh # Advanced thread safety tests
-./run_basic_tests.sh                 # Auto-cleans before execution
-./run_crypto_security_demo.sh        # Cryptographic security demo
-./run_security_analysis.sh           # Security analysis tests
-./run_security_tests.sh              # Security tests runner
-./run_thread_safety_test.sh          # Thread-safety testing
-./test_race_condition_fix.sh         # Race condition testing
+./run_all_tests.zsh                   # Auto-cleans before execution
+./run_advanced_tests.zsh              # Auto-cleans before execution  
+./run_advanced_thread_safety_tests.zsh # Advanced thread safety tests
+./run_basic_tests.zsh                 # Auto-cleans before execution
+./run_crypto_security_demo.zsh        # Cryptographic security demo
+./run_security_analysis.zsh           # Security analysis tests
+./run_security_tests.zsh              # Security tests runner
+./run_thread_safety_test.zsh          # Thread-safety testing
+./test_race_condition_fix.zsh         # Race condition testing
 ```
 
 #### Manual Database Cleanup
@@ -616,10 +615,10 @@ For persistent database issues:
 
 ```zsh
 # Manual cleanup of corrupted database files
-./clean-database.sh
+./clean-database.zsh
 
 # Skip automatic cleanup for debugging
-SKIP_DB_CLEANUP=true ./run_all_tests.sh
+SKIP_DB_CLEANUP=true ./run_all_tests.zsh
 ```
 
 #### Database Cleanup Verification
@@ -627,12 +626,12 @@ Verify all scripts have proper database cleanup:
 
 ```zsh
 # Check script compliance
-./scripts/check-db-cleanup.sh
+./scripts/check-db-cleanup.zsh
 ```
 
 **Expected Output:**
 ```
-✅ All run_*.sh scripts are up to date! ✨
+✅ All run_*.zsh scripts are up to date! ✨
   ✅ Up to date: 3 scripts  
   🔧 Need update: 0 scripts
 ```
@@ -651,7 +650,7 @@ Caused by: java.sql.SQLException: [SQLITE_BUSY] The database file is locked
 ```zsh
 # Solution 1: Reset database
 rm blockchain.db*
-./run_all_tests.sh
+./run_all_tests.zsh
 
 # Solution 2: Check for hanging processes
 ps aux | grep java
@@ -659,7 +658,7 @@ kill -9 <java_process_id>
 
 # Solution 3: Restart and clean build
 mvn clean compile
-./run_all_tests.sh
+./run_all_tests.zsh
 ```
 
 #### Issue: JUnit Tests Show "Intentional" Error Messages
@@ -711,7 +710,7 @@ mvn dependency:tree
 ```zsh
 # Reset and retest
 rm blockchain.db*
-./run_all_tests.sh
+./run_all_tests.zsh
 
 # Check for data corruption
 mvn exec:java -Dexec.mainClass="demo.CoreFunctionsDemo"
@@ -732,7 +731,7 @@ rm -f *.json
 rm -f *.tmp
 
 # Restart tests
-./run_all_tests.sh
+./run_all_tests.zsh
 ```
 
 #### Check Database Permissions
@@ -909,7 +908,7 @@ df -h
 du -h blockchain.db*
 
 # Monitor test execution
-./run_all_tests.sh 2>&1 | tee test_output.log
+./run_all_tests.zsh 2>&1 | tee test_output.log
 ```
 
 **Solutions:**
@@ -917,7 +916,7 @@ du -h blockchain.db*
 # Clean and optimize
 rm blockchain.db*
 mvn clean compile
-./run_basic_tests.sh  # Test with smaller suite first
+./run_basic_tests.zsh  # Test with smaller suite first
 
 # Check for resource conflicts
 ps aux | grep java
@@ -956,14 +955,14 @@ mvn compile
 
 **Symptoms:**
 ```zsh
-Permission denied: ./run_all_tests.sh
+Permission denied: ./run_all_tests.zsh
 touch: cannot touch 'blockchain.db': Permission denied
 ```
 
 **Solutions:**
 ```zsh
 # Fix script permissions
-chmod +x *.sh
+chmod +x *.zsh
 
 # Fix directory permissions
 chmod 755 .
@@ -1047,7 +1046,7 @@ rm *.json  # Remove any export files
 rm -f *.tmp
 mvn clean
 mvn compile
-./run_all_tests.sh
+./run_all_tests.zsh
 
 # If problems persist, check for hidden files
 ls -la
@@ -1093,7 +1092,7 @@ file blockchain_export.json
 **Solutions:**
 ```cmd
 # Use Git Bash or WSL for shell scripts
-bash ./run_all_tests.sh
+zsh ./run_all_tests.zsh
 
 # Or run Maven commands directly
 mvn clean compile
@@ -1127,7 +1126,7 @@ brew install sqlite
 
 # Check if issue persists
 mvn clean compile
-./run_basic_tests.sh
+./run_basic_tests.zsh
 ```
 
 #### Linux-Specific Issues
@@ -1173,7 +1172,7 @@ mvn -Dmaven.surefire.debug test
 
 ```zsh
 # Capture complete test output
-./run_all_tests.sh > test_complete.log 2>&1
+./run_all_tests.zsh > test_complete.log 2>&1
 
 # Search for specific errors
 grep -i error test_complete.log
@@ -1188,7 +1187,7 @@ grep -i warn test_complete.log
 
 ```zsh
 #!/usr/bin/env zsh
-# health_check.sh - Comprehensive environment validation
+# health_check.zsh - Comprehensive environment validation
 
 echo "🔍 Blockchain Environment Health Check"
 echo "======================================"
@@ -1205,7 +1204,7 @@ echo
 
 # File permissions check
 echo "📁 File Permissions:"
-ls -la *.sh | head -3
+ls -la *.zsh | head -3
 echo
 
 # Disk space check
@@ -1228,13 +1227,13 @@ echo "🔨 Compilation Test:"
 mvn compile -q && echo "✅ Compilation successful" || echo "❌ Compilation failed"
 echo
 
-echo "🎯 Run './run_all_tests.sh' to execute full test suite"
+echo "🎯 Run './run_all_tests.zsh' to execute full test suite"
 ```
 
 Make the script executable and run:
 ```zsh
-chmod +x health_check.sh
-./health_check.sh
+chmod +x health_check.zsh
+./health_check.zsh
 ```
 
 For comprehensive API documentation, see [API_GUIDE.md](API_GUIDE.md).  
@@ -1248,15 +1247,15 @@ Use the provided template for consistent script structure:
 
 ```zsh
 # Copy template for new test script
-cp scripts/run_template.sh run_my_new_test.sh
+cp scripts/run_template.zsh run_my_new_test.zsh
 
 # Make executable and customize
-chmod +x run_my_new_test.sh
+chmod +x run_my_new_test.zsh
 # Edit the script to add your test logic
 ```
 
 ### Shared Functions Library
-All scripts now use a centralized functions library at `scripts/shared-functions.sh` providing:
+All scripts now use a centralized functions library at `scripts/shared-functions.zsh` providing:
 
 - **Database cleanup functions**: Prevent corruption issues
 - **Colored output functions**: Consistent formatting  
@@ -1268,18 +1267,18 @@ Control script behavior with environment variables:
 
 ```zsh
 # Skip database cleanup (for debugging)
-SKIP_DB_CLEANUP=true ./run_all_tests.sh
+SKIP_DB_CLEANUP=true ./run_all_tests.zsh
 
 # Skip Maven unit tests (if applicable)
-SKIP_UNIT_TESTS=true ./run_basic_tests.sh
+SKIP_UNIT_TESTS=true ./run_basic_tests.zsh
 ```
 
 ### Script Compliance
-Verify all run_*.sh scripts follow best practices:
+Verify all run_*.zsh scripts follow best practices:
 
 ```zsh
 # Check all scripts have proper database cleanup
-./scripts/check-db-cleanup.sh
+./scripts/check-db-cleanup.zsh
 ```
 
 **Documentation References:**

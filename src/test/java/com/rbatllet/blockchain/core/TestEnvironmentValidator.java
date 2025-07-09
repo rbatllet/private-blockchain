@@ -114,8 +114,8 @@ public class TestEnvironmentValidator {
             System.out.println("✅ You can run tests with confidence.");
             System.out.println("\nCommands to run tests:");
             System.out.println("  mvn test -Dtest=BlockchainAdditionalAdvancedFunctionsTest");
-            System.out.println("  ./run_advanced_tests.sh");
-            System.out.println("  ./run_all_tests.sh");
+            System.out.println("  scripts/run_advanced_tests.zsh");
+            System.out.println("  scripts/run_all_tests.zsh");
         } else {
             System.out.println("❌ PROBLEMS DETECTED IN TEST ENVIRONMENT");
             System.out.println("📝 Review the errors above before running tests.");

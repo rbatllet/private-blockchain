@@ -4,13 +4,14 @@ Comprehensive guide to the Private Blockchain API, core functions, off-chain sto
 
 > **IMPORTANT NOTE**: This guide references the actual classes and methods implemented in the project. All mentioned classes (Blockchain, Block, AuthorizedKey, OffChainData, OffChainStorageService, JPAUtil, CryptoUtil) exist in the source code. The code examples show the correct usage of the current API based on the JPA standard with Hibernate as the implementation provider.
 
-> **NEW FEATURE**: This blockchain now includes automatic off-chain storage for large data (>512KB) with AES-256-CBC encryption, integrity verification, and configurable size thresholds. All off-chain operations are handled transparently by the API.
+> **NEW FEATURE**: This blockchain now includes automatic off-chain storage for large data (>512KB) with AES-256-GCM encryption, integrity verification, and configurable size thresholds. All off-chain operations are handled transparently by the API.
 
 ## 📋 Table of Contents
 
 - [Core Functions Usage](#-core-functions-usage)
 - [API Reference](#-api-reference)
 - [Chain Validation Result](#-chain-validation-result)
+- [Granular Term Visibility API](#-granular-term-visibility-api)
 - [Off-Chain Storage API](#-off-chain-storage-api)
 - [Configuration](#-configuration)
 - [Configuration Parameters](#-configuration-parameters)
@@ -36,7 +37,7 @@ List<Block> getInvalidBlocks()
 List<Block> getRevokedBlocks()
 
 // Get a summary of the validation results
-String getValidationSummary()
+String toString()
 ```
 
 ### Example Usage
@@ -90,7 +91,7 @@ if (!result.isStructurallyIntact()) {
 
 // Print a detailed validation report
 System.out.println("\n=== VALIDATION REPORT ===");
-System.out.println(result.getValidationSummary());
+System.out.println(result.toString());
 System.out.println("Validation timestamp: " + new Date());
 
 // For logging or monitoring systems
@@ -125,9 +126,209 @@ metrics.recordValidationResult(
 ### Best Practices
 
 - Always check `isStructurallyIntact()` before `isFullyCompliant()`
-- Use `getValidationSummary()` for user-friendly status messages
+- Use `toString()` for user-friendly status messages
 - Log detailed validation results for debugging
 - Consider automatic recovery procedures for common issues
+
+## 🔐 Granular Term Visibility API
+
+The blockchain supports **granular term visibility control**, allowing you to specify exactly which search terms should be publicly searchable versus password-protected. This provides fine-grained privacy control for compliance and data protection.
+
+### TermVisibilityMap Class
+
+Core class for controlling individual search term visibility:
+
+```java
+import com.rbatllet.blockchain.search.metadata.TermVisibilityMap;
+import com.rbatllet.blockchain.search.metadata.TermVisibilityMap.VisibilityLevel;
+
+// Constructor with default visibility level
+TermVisibilityMap(VisibilityLevel defaultLevel)
+TermVisibilityMap()  // Default: PUBLIC
+
+// Configure term visibility
+TermVisibilityMap setPublic(String... terms)
+TermVisibilityMap setPrivate(String... terms)
+TermVisibilityMap setTerm(String term, VisibilityLevel level)
+
+// Query visibility
+VisibilityLevel getVisibility(String term)
+boolean isPublic(String term)
+boolean isPrivate(String term)
+
+// Get distributed terms
+Set<String> getPublicTerms(Collection<String> allTerms)
+Set<String> getPrivateTerms(Collection<String> allTerms)
+
+// Utility methods
+int size()
+boolean isEmpty()
+void clear()
+TermVisibilityMap copy()
+```
+
+### UserFriendlyEncryptionAPI Extensions
+
+New methods for granular term control:
+
+```java
+// Granular term visibility control
+Block storeDataWithGranularTermControl(String data, String password, 
+                                     Set<String> allSearchTerms, 
+                                     TermVisibilityMap termVisibility)
+
+// Convenience method for separated terms
+Block storeDataWithSeparatedTerms(String data, String password,
+                                String[] publicTerms, String[] privateTerms)
+```
+
+### MetadataLayerManager Extensions
+
+Low-level metadata generation with granular control:
+
+```java
+// Generate metadata with granular term distribution
+BlockMetadataLayers generateMetadataLayersWithGranularControl(
+    Block block, 
+    EncryptionConfig config, 
+    String password, 
+    PrivateKey privateKey,
+    Set<String> allSearchTerms,
+    TermVisibilityMap termVisibility)
+```
+
+### ⚙️ Internal Storage Logic
+
+The granular term visibility system uses a **clean separation approach** for storing search terms:
+
+#### Storage Fields
+
+- **`manualKeywords`**: Stores **PUBLIC terms only** (unencrypted, searchable without password)
+  - Contains terms with `PUBLIC:` prefix (e.g., `"public:patient public:treatment"`)
+  - Set to `null` when no public terms are specified
+  
+- **`autoKeywords`**: Stores **PRIVATE terms only** (AES-256-GCM encrypted, requires password)
+  - Contains encrypted private keywords and auto-extracted terms
+  - Always encrypted when present
+
+#### Term Processing Logic
+
+```java
+// Keywords without PUBLIC: prefix → Private (encrypted in autoKeywords)
+String[] keywords = {"patient", "diabetes", "insulin"};
+// Result: manualKeywords = null, autoKeywords = "[ENCRYPTED_DATA]"
+
+// Keywords with PUBLIC: prefix → Public (unencrypted in manualKeywords)  
+String[] keywords = {"PUBLIC:patient", "PUBLIC:treatment", "diabetes"};
+// Result: manualKeywords = "public:patient public:treatment", autoKeywords = "[ENCRYPTED_diabetes]"
+```
+
+#### Search Behavior
+
+- **Public search** (`searchByTerms(terms, null, limit)`):
+  - Only searches `manualKeywords` field
+  - Fast, no decryption required
+  - Returns blocks where terms are publicly accessible
+
+- **Private search** (`searchAndDecryptByTerms(terms, password, limit)`):
+  - Searches both `manualKeywords` (public) and `autoKeywords` (private)
+  - Decrypts private terms using provided password
+  - Returns blocks where terms are found in either layer
+
+### Practical Examples
+
+#### Medical Record Privacy
+
+```java
+// Medical record with mixed privacy requirements
+String medicalData = "Patient John Smith diagnosed with diabetes. Treatment with insulin therapy.";
+
+Set<String> allTerms = Set.of("patient", "john", "smith", "diagnosed", 
+                            "diabetes", "treatment", "insulin", "therapy");
+
+TermVisibilityMap visibility = new TermVisibilityMap()
+    .setPublic("patient", "diagnosed", "treatment", "therapy")    // Medical terms - public
+    .setPrivate("john", "smith", "diabetes", "insulin");          // Personal/specific - private
+
+// Store with granular control
+Block block = api.storeDataWithGranularTermControl(medicalData, password, allTerms, visibility);
+
+// Storage result:
+// manualKeywords = "public:patient public:diagnosed public:treatment public:therapy"
+// autoKeywords = "[ENCRYPTED: john smith diabetes insulin]"
+
+// Search behavior:
+// ✅ Public: searchByTerms(["patient"], null, 10) → finds results (from manualKeywords)
+// ❌ Private: searchByTerms(["diabetes"], null, 10) → no results (not in manualKeywords)
+// ✅ Private: searchAndDecryptByTerms(["diabetes"], password, 10) → finds results (decrypts autoKeywords)
+```
+
+#### Financial Data Protection
+
+```java
+// Financial transaction with default private, selective public
+String financialData = "SWIFT transfer $25000 from account 987-654-321 to Maria Garcia for property purchase.";
+
+Set<String> allTerms = Set.of("swift", "transfer", "25000", "account", "987-654-321", 
+                            "maria", "garcia", "property", "purchase");
+
+// Default PRIVATE with selective PUBLIC terms
+TermVisibilityMap visibility = new TermVisibilityMap(VisibilityLevel.PRIVATE)
+    .setPublic("swift", "transfer", "property", "purchase");  // Transaction type - public
+    // Amounts, account numbers, names remain private
+
+Block block = api.storeDataWithGranularTermControl(financialData, password, allTerms, visibility);
+
+// Storage result:
+// manualKeywords = "public:swift public:transfer public:property public:purchase"  
+// autoKeywords = "[ENCRYPTED: 25000 account 987-654-321 maria garcia]"
+
+// Search behavior:
+// ✅ Public: searchByTerms(["swift"], null, 10) → finds results (transaction type is public)
+// ❌ Private: searchByTerms(["25000"], null, 10) → no results (amount is private)
+// ✅ Private: searchAndDecryptByTerms(["maria"], password, 10) → finds results (decrypts names)
+```
+
+#### HR Data with Separated Terms
+
+```java
+// Employee data with clear public/private separation
+String employeeData = "Employee Alice Johnson salary $75000 department Engineering performance excellent.";
+
+String[] publicTerms = {"employee", "salary", "department", "engineering", "performance"};
+String[] privateTerms = {"alice", "johnson", "75000", "excellent"};
+
+// Use convenience method
+Block block = api.storeDataWithSeparatedTerms(employeeData, password, publicTerms, privateTerms);
+
+// Storage result:
+// manualKeywords = "public:employee public:salary public:department public:engineering public:performance"
+// autoKeywords = "[ENCRYPTED: alice johnson 75000 excellent]"
+
+// Search behavior:
+// ✅ Public: searchByTerms(["engineering"], null, 10) → finds results (department is public)
+// ❌ Private: searchByTerms(["alice"], null, 10) → no results (name is private)
+// ✅ Private: searchAndDecryptByTerms(["75000"], password, 10) → finds results (decrypts salary)
+```
+
+### Compliance and Security Benefits
+
+- **🏥 HIPAA Compliance**: Medical terms public, patient identifiers private
+- **💰 Financial Privacy**: Transaction types public, amounts/accounts private
+- **📊 Data Analytics**: Aggregate terms searchable, individual data protected
+- **🔍 Audit Trails**: Activity types visible, specific details encrypted
+- **⚡ Performance**: Public terms searchable without decryption overhead
+
+### Testing and Validation
+
+```bash
+# Run granular visibility tests
+mvn test -Dtest=TermVisibilityMapTest
+mvn test -Dtest=GranularTermVisibilityIntegrationTest
+
+# Interactive demo
+./run_granular_term_visibility_demo.zsh
+```
 
 ## 📁 Off-Chain Storage API
 
@@ -137,7 +338,7 @@ The off-chain storage system automatically handles large data (>512KB by default
 
 1. **Automatic Detection**: When adding a block, the system checks data size
 2. **Storage Decision**: Data >512KB (configurable) is automatically stored off-chain
-3. **Encryption**: Off-chain files are encrypted with AES-256-CBC using unique IV
+3. **Encryption**: Off-chain files are encrypted with AES-256-GCM using authenticated encryption
 4. **Reference Storage**: Block contains `OFF_CHAIN_REF:hash` instead of actual data
 5. **Integrity Protection**: SHA3-256 hash and ECDSA signature verify data integrity
 
@@ -169,7 +370,7 @@ public String getFilePath()
 // Original file size in bytes
 public Long getFileSize()
 
-// AES encryption IV (Base64 encoded)
+// AES-256-GCM encryption IV (Base64 encoded)
 public String getEncryptionIV()
 
 // Content type (e.g., "text/plain", "application/pdf")
@@ -273,9 +474,9 @@ public void performIntegrityAudit() {
 ### Security Features
 
 #### Encryption Details
-- **Algorithm**: AES-256-CBC with PKCS5 padding
+- **Algorithm**: AES-256-GCM with authenticated encryption
 - **Key Derivation**: SHA3-256 hash of deterministic password (32 bytes)
-- **IV Generation**: Cryptographically secure random 16-byte IV per file
+- **Nonce Generation**: Cryptographically secure random 12-byte nonce per file
 - **Password Generation**: Based on block number + signer public key (reproducible)
 
 #### Integrity Protection
@@ -560,8 +761,8 @@ results = blockchain.searchBlocksFast("a");           // ❌ Returns empty list
 results = blockchain.searchBlocksFast("");            // ❌ Returns empty list
 
 // Check search term validity manually
-boolean valid = SearchValidator.isValidSearchTerm("medical"); // true
-boolean invalid = SearchValidator.isValidSearchTerm("hi");    // false
+// Search term validation is now handled internally by the search engine
+// Minimum length requirements are enforced automatically
 ```
 
 ##### Automatic Keyword Extraction
@@ -614,7 +815,7 @@ System.out.println("EXHAUSTIVE_OFFCHAIN: " + (endTime - startTime) / 1_000_000 +
 ##### Complete Search Example
 
 ```java
-public class SearchDemo {
+public class RevolutionarySearchDemo {
     public static void main(String[] args) throws Exception {
         Blockchain blockchain = new Blockchain();
         
@@ -1085,7 +1286,7 @@ public ChainValidationResult validateChainDetailed()
   }
   
   // Get a summary of validation results
-  System.out.println("Validation summary: " + result.getValidationSummary());
+  System.out.println("Validation summary: " + result.toString());
   ```
   - Returns detailed information about any issues found, including lists of invalid and revoked blocks
 - **Example:**
@@ -1261,20 +1462,23 @@ public List<Block> searchByCategory(String category)
 - **Description:** Filters blocks by their assigned content category
 - **Example Categories:** "MEDICAL", "FINANCE", "TECHNICAL", "LEGAL"
 
-##### Search Validation
+##### Search Term Validation
 
+**Note:** Search term validation is now handled automatically by the Revolutionary Search Engine. The system applies intelligent validation rules internally.
+
+**Validation Rules (Applied Automatically):**
+- Minimum 4 characters (general rule)
+- **Automatic Exceptions:** Years (2024), acronyms (API, SQL), technical terms (XML, JSON), numbers, IDs
+- **Valid Examples:** "medical", "2024", "API", "XML", "123", "ID-001"
+- **Invalid Examples:** "hi", "a", "", null, whitespace-only strings
+
+**Usage:** Simply pass search terms to search methods - validation is handled internally:
 ```java
-public static boolean SearchValidator.isValidSearchTerm(String searchTerm)
+// The search engine validates terms automatically
+List<Block> results = blockchain.searchBlocksFast("medical");  // ✅ Valid
+List<Block> results = blockchain.searchBlocksFast("API");      // ✅ Valid (exception)
+List<Block> results = blockchain.searchBlocksFast("hi");       // Returns empty (too short)
 ```
-- **Parameters:** `searchTerm`: The term to validate
-- **Returns:** `true` if the term is valid for searching
-- **Description:** Validates search terms with intelligent exceptions for short terms
-- **Validation Rules:**
-  - Minimum 4 characters (general rule)
-  - **Exceptions:** Years (2024), acronyms (API, SQL), technical terms (XML, JSON), numbers, IDs
-- **Examples:**
-  - ✅ Valid: "medical", "2024", "API", "XML", "123", "ID-001"
-  - ❌ Invalid: "hi", "a", "", null, "   "
 
 ##### Legacy Search Methods (Still Supported)
 
@@ -1605,7 +1809,7 @@ blockchain.block.max_hash_length=64            # SHA3-256 hash length
 blockchain.offchain.threshold_bytes=524288     # 512KB threshold (default)
 blockchain.offchain.max_file_size=104857600    # 100MB maximum per file
 blockchain.offchain.storage_directory=off-chain-data  # Storage directory
-blockchain.offchain.encryption_algorithm=AES/CBC/PKCS5Padding  # Encryption method
+blockchain.offchain.encryption_algorithm=AES/GCM/NoPadding  # Encryption method
 
 # Database settings
 blockchain.database.connection_timeout=30000   # 30 seconds

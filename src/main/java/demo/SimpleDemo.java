@@ -62,6 +62,11 @@ public class SimpleDemo {
             // Show detailed validation report for debugging
             System.out.println("\n📋 Detailed Validation Report:");
             System.out.println(result.getDetailedReport());
+            
+            // Show search statistics for monitoring
+            System.out.println("\n📊 Search Statistics:");
+            System.out.println(blockchain.getSearchStatistics());
+            
             System.out.println("\n💡 Benefits of detailed validation API:");
             System.out.println("   • Clear distinction between structural and compliance issues");
             System.out.println("   • Detailed statistics for monitoring and debugging");

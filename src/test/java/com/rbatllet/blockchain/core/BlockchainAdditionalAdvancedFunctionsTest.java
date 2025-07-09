@@ -2,7 +2,10 @@ package com.rbatllet.blockchain.core;
 
 import com.rbatllet.blockchain.entity.AuthorizedKey;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.dto.ChainExportData;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -204,12 +207,10 @@ class BlockchainAdditionalAdvancedFunctionsTest {
         assertTrue(blockchain.exportChain(exportPath), "Chain export should succeed");
 
         // Read and verify export file content
-        com.fasterxml.jackson.databind.ObjectMapper mapper = 
-            new com.fasterxml.jackson.databind.ObjectMapper();
-        mapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
 
-        com.rbatllet.blockchain.dto.ChainExportData exportData = 
-            mapper.readValue(exportFile, com.rbatllet.blockchain.dto.ChainExportData.class);
+        ChainExportData exportData = mapper.readValue(exportFile, ChainExportData.class);
 
         assertNotNull(exportData, "Export data should not be null");
         assertNotNull(exportData.getBlocks(), "Exported blocks should not be null");

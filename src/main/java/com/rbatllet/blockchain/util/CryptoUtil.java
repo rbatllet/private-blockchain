@@ -11,6 +11,9 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
+import javax.crypto.Cipher;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 
 /**
  * Enhanced cryptographic utility class with modern algorithms and key management
@@ -33,6 +36,13 @@ public class CryptoUtil {
     
     // EC algorithm name
     public static final String EC_ALGORITHM = "EC";
+    
+    // AES-GCM constants for modern encryption
+    public static final String AES_ALGORITHM = "AES";
+    public static final String AES_GCM_TRANSFORMATION = "AES/GCM/NoPadding";
+    public static final int GCM_IV_LENGTH = 12; // 96-bit IV recommended for GCM
+    public static final int GCM_TAG_LENGTH = 16; // 128-bit authentication tag
+    public static final int AES_KEY_LENGTH = 32; // 256-bit key
     
     // FIXED: Global lock for thread safety on key store operations
     private static final ReentrantReadWriteLock KEY_STORE_LOCK = new ReentrantReadWriteLock();
@@ -629,6 +639,149 @@ public class CryptoUtil {
                    LocalDateTime.now().isBefore(keyInfo.getExpiresAt());
         } finally {
             KEY_STORE_LOCK.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Encrypt data using AES-256-GCM with password-based key derivation
+     * Thread-safe method for authenticated encryption
+     * 
+     * @param plaintext The data to encrypt
+     * @param password The password for key derivation
+     * @return Base64 encoded encrypted data (IV + ciphertext + auth tag)
+     */
+    public static String encryptWithGCM(String plaintext, String password) {
+        try {
+            if (plaintext == null || plaintext.isEmpty()) {
+                throw new IllegalArgumentException("Plaintext cannot be null or empty");
+            }
+            if (password == null || password.isEmpty()) {
+                throw new IllegalArgumentException("Password cannot be null or empty");
+            }
+            
+            // Derive key from password using SHA-3-256
+            MessageDigest digest = MessageDigest.getInstance(HASH_ALGORITHM);
+            byte[] key = digest.digest(password.getBytes(StandardCharsets.UTF_8));
+            
+            // Generate random IV
+            byte[] iv = new byte[GCM_IV_LENGTH];
+            new SecureRandom().nextBytes(iv);
+            
+            // Encrypt with AES-256-GCM
+            SecretKeySpec secretKey = new SecretKeySpec(key, AES_ALGORITHM);
+            GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv);
+            
+            Cipher cipher = Cipher.getInstance(AES_GCM_TRANSFORMATION);
+            cipher.init(Cipher.ENCRYPT_MODE, secretKey, gcmSpec);
+            
+            byte[] ciphertext = cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));
+            
+            // Combine IV + ciphertext (includes auth tag)
+            byte[] combined = new byte[iv.length + ciphertext.length];
+            System.arraycopy(iv, 0, combined, 0, iv.length);
+            System.arraycopy(ciphertext, 0, combined, iv.length, ciphertext.length);
+            
+            // Clear sensitive data
+            Arrays.fill(key, (byte) 0);
+            
+            return Base64.getEncoder().encodeToString(combined);
+            
+        } catch (Exception e) {
+            throw new RuntimeException("Error encrypting with GCM: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Decrypt data using AES-256-GCM with password-based key derivation
+     * Thread-safe method for authenticated decryption
+     * 
+     * @param encryptedData Base64 encoded encrypted data (IV + ciphertext + auth tag)
+     * @param password The password for key derivation
+     * @return The decrypted plaintext
+     */
+    public static String decryptWithGCM(String encryptedData, String password) {
+        try {
+            if (encryptedData == null || encryptedData.isEmpty()) {
+                throw new IllegalArgumentException("Encrypted data cannot be null or empty");
+            }
+            if (password == null || password.isEmpty()) {
+                throw new IllegalArgumentException("Password cannot be null or empty");
+            }
+            
+            // Derive key from password using SHA-3-256
+            MessageDigest digest = MessageDigest.getInstance(HASH_ALGORITHM);
+            byte[] key = digest.digest(password.getBytes(StandardCharsets.UTF_8));
+            
+            // Decode the combined data
+            byte[] combined = Base64.getDecoder().decode(encryptedData);
+            
+            if (combined.length < GCM_IV_LENGTH + GCM_TAG_LENGTH) {
+                throw new IllegalArgumentException("Invalid encrypted data length");
+            }
+            
+            // Extract IV and ciphertext
+            byte[] iv = new byte[GCM_IV_LENGTH];
+            byte[] ciphertext = new byte[combined.length - GCM_IV_LENGTH];
+            
+            System.arraycopy(combined, 0, iv, 0, GCM_IV_LENGTH);
+            System.arraycopy(combined, GCM_IV_LENGTH, ciphertext, 0, ciphertext.length);
+            
+            // Decrypt with AES-256-GCM
+            SecretKeySpec secretKey = new SecretKeySpec(key, AES_ALGORITHM);
+            GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv);
+            
+            Cipher cipher = Cipher.getInstance(AES_GCM_TRANSFORMATION);
+            cipher.init(Cipher.DECRYPT_MODE, secretKey, gcmSpec);
+            
+            byte[] plaintext = cipher.doFinal(ciphertext);
+            
+            // Clear sensitive data
+            Arrays.fill(key, (byte) 0);
+            
+            return new String(plaintext, StandardCharsets.UTF_8);
+            
+        } catch (Exception e) {
+            throw new RuntimeException("Error decrypting with GCM: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Generate a random AES-256 key
+     * Thread-safe method for key generation
+     * 
+     * @return Base64 encoded random key
+     */
+    public static String generateAESKey() {
+        byte[] key = new byte[AES_KEY_LENGTH];
+        new SecureRandom().nextBytes(key);
+        return Base64.getEncoder().encodeToString(key);
+    }
+    
+    /**
+     * Derive a key from password using SHA-3-256
+     * Thread-safe method for password-based key derivation
+     * 
+     * @param password The password to derive key from
+     * @param salt Optional salt (can be null)
+     * @return Base64 encoded derived key
+     */
+    public static String deriveKeyFromPassword(String password, String salt) {
+        try {
+            if (password == null || password.isEmpty()) {
+                throw new IllegalArgumentException("Password cannot be null or empty");
+            }
+            
+            MessageDigest digest = MessageDigest.getInstance(HASH_ALGORITHM);
+            
+            if (salt != null && !salt.isEmpty()) {
+                digest.update(salt.getBytes(StandardCharsets.UTF_8));
+            }
+            
+            byte[] key = digest.digest(password.getBytes(StandardCharsets.UTF_8));
+            return Base64.getEncoder().encodeToString(key);
+            
+        } catch (Exception e) {
+            throw new RuntimeException("Error deriving key from password: " + e.getMessage(), e);
         }
     }
 }
