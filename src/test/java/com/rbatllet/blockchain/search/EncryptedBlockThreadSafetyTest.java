@@ -1,6 +1,7 @@
 package com.rbatllet.blockchain.search;
 
 import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.search.RevolutionarySearchEngine.*;
 import com.rbatllet.blockchain.util.CryptoUtil;
@@ -9,6 +10,7 @@ import org.junit.jupiter.api.*;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -180,15 +182,15 @@ public class EncryptedBlockThreadSafetyTest {
                             String blockPassword = testPassword + "-CT" + threadId;
                             String[] keywords = {"concurrent", "creator" + threadId, "block" + j};
                             
-                            blockchain.addEncryptedBlockWithKeywords(
+                            // The block is automatically indexed in addEncryptedBlockWithKeywords
+                            Block newBlock = blockchain.addEncryptedBlockWithKeywords(
                                 data, blockPassword, keywords, "CONCURRENT", testPrivateKey, testPublicKey);
                             
-                            // Index the new block immediately
-                            searchEngine.indexBlockWithSpecificPassword(
-                                blockchain.getAllBlocks().get(blockchain.getAllBlocks().size() - 1),
-                                blockPassword, testPrivateKey, config);
-                            
-                            createCount.incrementAndGet();
+                            if (newBlock != null) {
+                                createCount.incrementAndGet();
+                            } else {
+                                throw new RuntimeException("Failed to create block");
+                            }
                             
                         } catch (Exception e) {
                             createErrors.incrementAndGet();
