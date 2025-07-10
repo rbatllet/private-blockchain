@@ -1,6 +1,8 @@
 package com.rbatllet.blockchain.service;
 
 import com.rbatllet.blockchain.util.CryptoUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
@@ -23,6 +25,8 @@ import java.util.Base64;
  * - Cryptographic integrity and authenticity
  */
 public class BlockDataEncryptionService {
+    
+    private static final Logger logger = LoggerFactory.getLogger(BlockDataEncryptionService.class);
     
     // AES-256-GCM constants
     private static final String AES_ALGORITHM = "AES";
@@ -222,7 +226,7 @@ public class BlockDataEncryptionService {
             return decryptedData != null && !decryptedData.trim().isEmpty();
             
         } catch (Exception e) {
-            System.err.println("Integrity verification failed: " + e.getMessage());
+            logger.error("❌ Integrity verification failed: {}", e.getMessage());
             return false;
         }
     }

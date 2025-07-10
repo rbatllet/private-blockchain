@@ -13,6 +13,8 @@ import com.rbatllet.blockchain.recovery.ChainRecoveryManager;
 import com.rbatllet.blockchain.recovery.ChainRecoveryManager.ChainDiagnostic;
 import com.rbatllet.blockchain.recovery.ChainRecoveryManager.RecoveryResult;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.rbatllet.blockchain.util.EncryptionExportUtil;
 import com.rbatllet.blockchain.util.JPAUtil;
 import com.rbatllet.blockchain.validation.BlockStatus;
@@ -53,6 +55,8 @@ import com.rbatllet.blockchain.util.validation.BlockValidationUtil;
  * FIXED: Complete thread-safety with global locks and transaction management
  */
 public class Blockchain {
+    
+    private static final Logger logger = LoggerFactory.getLogger(Blockchain.class);
     
     private final BlockDAO blockDAO;
     private final AuthorizedKeyDAO authorizedKeyDAO;
@@ -138,7 +142,7 @@ public class Blockchain {
             // CRITICAL: Synchronize the block sequence after creating genesis block
             blockDAO.synchronizeBlockSequence();
             
-            System.out.println("Genesis block created successfully!");
+            logger.info("✅ Genesis block created successfully!");
         }
     }
     
@@ -157,11 +161,11 @@ public class Blockchain {
                 // The enhanced system will handle per-block password management automatically
                 unifiedSearchAPI.initializeWithBlockchain(this, null, tempKeyPair.getPrivate());
                 
-                System.out.println("Revolutionary Search Engine initialized with " + blockDAO.getBlockCount() + " blocks");
-                System.out.println("Password registry stats: " + unifiedSearchAPI.getPasswordRegistryStats());
+                logger.info("📊 Revolutionary Search Engine initialized with {} blocks", blockDAO.getBlockCount());
+                logger.info("📊 Password registry stats: {}", unifiedSearchAPI.getPasswordRegistryStats());
             }
         } catch (Exception e) {
-            System.err.println("Warning: Failed to initialize Revolutionary Search Engine: " + e.getMessage());
+            logger.warn("⚠️ Failed to initialize Revolutionary Search Engine", e);
             e.printStackTrace();
             // Continue operation even if search initialization fails
         }
@@ -184,10 +188,10 @@ public class Blockchain {
                 unifiedSearchAPI.addBlock(
                     block, password, tempKeyPair.getPrivate());
                 
-                System.out.println("Re-indexed encrypted block #" + blockNumber + " with specific password");
+                logger.debug("Re-indexed encrypted block #{} with specific password", blockNumber);
             }
         } catch (Exception e) {
-            System.err.println("Failed to re-index block #" + blockNumber + ": " + e.getMessage());
+            logger.error("❌ Failed to re-index block #{}", blockNumber, e);
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
         }
@@ -207,7 +211,7 @@ public class Blockchain {
                     blocks.add(block);
                 }
             } catch (Exception e) {
-                System.err.println("Warning: Failed to retrieve block for hash " + result.getBlockHash() + ": " + e.getMessage());
+                logger.warn("⚠️ Failed to retrieve block for hash {}", result.getBlockHash(), e);
             }
         }
         return blocks;
@@ -233,18 +237,18 @@ public class Blockchain {
                 try {
                     // 0. Validate input parameters (but allow null data)
                     if (signerPrivateKey == null) {
-                        System.err.println("Signer private key cannot be null");
+                        logger.error("❌ Signer private key cannot be null");
                         return null;
                     }
                     if (signerPublicKey == null) {
-                        System.err.println("Signer public key cannot be null");
+                        logger.error("❌ Signer public key cannot be null");
                         return null;
                     }
                     
                     // 1. CORE: Validate block size and determine storage strategy
                     int storageDecision = validateAndDetermineStorage(data);
                     if (storageDecision == 0) {
-                        System.err.println("Block data validation failed");
+                        logger.error("❌ Block data validation failed");
                         return null;
                     }
                     
@@ -252,7 +256,7 @@ public class Blockchain {
                     String publicKeyString = CryptoUtil.publicKeyToString(signerPublicKey);
                     LocalDateTime blockTimestamp = LocalDateTime.now();
                     if (!authorizedKeyDAO.wasKeyAuthorizedAt(publicKeyString, blockTimestamp)) {
-                        System.err.println("Unauthorized key attempting to add block");
+                        logger.error("❌ Unauthorized key attempting to add block");
                         return null;
                     }
                     
@@ -262,7 +266,7 @@ public class Blockchain {
                     // 4. Get the last block for previous hash
                     Block lastBlock = blockDAO.getLastBlockWithLock();
                     if (lastBlock == null && nextBlockNumber != 0L) {
-                        System.err.println("Inconsistent state: no genesis block but number is " + nextBlockNumber);
+                        logger.error("❌ Inconsistent state: no genesis block but number is {}", nextBlockNumber);
                         return null;
                     }
                     
@@ -286,10 +290,10 @@ public class Blockchain {
                             
                             // Replace block data with reference
                             blockData = "OFF_CHAIN_REF:" + offChainData.getDataHash();
-                            System.out.println("Data stored off-chain. Block contains reference: " + blockData);
+                            logger.info("📝 Data stored off-chain. Block contains reference: {}", blockData);
                             
                         } catch (Exception e) {
-                            System.err.println("Failed to store data off-chain: " + e.getMessage());
+                            logger.error("❌ Failed to store data off-chain", e);
                             return null;
                         }
                     }
@@ -313,13 +317,13 @@ public class Blockchain {
                     
                     // 9. Validate the block before saving
                     if (lastBlock != null && !validateBlock(newBlock, lastBlock)) {
-                        System.err.println("Block validation failed");
+                        logger.error("❌ Block validation failed");
                         return null;
                     }
                     
                     // 10. Final check: verify this block number doesn't exist
                     if (blockDAO.existsBlockWithNumber(nextBlockNumber)) {
-                        System.err.println("🚨 CRITICAL: Race condition detected! Block number " + nextBlockNumber + " already exists");
+                        logger.error("🚨 CRITICAL: Race condition detected! Block number {} already exists", nextBlockNumber);
                         return null;
                     }
                     
@@ -343,16 +347,15 @@ public class Blockchain {
                         String defaultPassword = "search-index-password"; // Could be configurable
                         revolutionarySearchEngine.indexBlockchain(currentBlockchain, defaultPassword, signerPrivateKey);
                     } catch (Exception searchIndexException) {
-                        System.err.println("Warning: Failed to index block in Revolutionary Search: " + 
-                                         searchIndexException.getMessage());
+                        logger.warn("⚠️ Failed to index block in Revolutionary Search", searchIndexException);
                         // Don't fail the block creation if search indexing fails
                     }
                     
-                    System.out.println("Block #" + newBlock.getBlockNumber() + " added successfully!");
+                    logger.info("✅ Block #{} added successfully!", newBlock.getBlockNumber());
                     return newBlock; // ✅ RETURN THE ACTUAL CREATED BLOCK
                     
                 } catch (Exception e) {
-                    System.err.println("Error adding block: " + e.getMessage());
+                    logger.error("❌ Error adding block", e);
                     return null;
                 }
             });
@@ -419,7 +422,7 @@ public class Blockchain {
                     String publicKeyString = CryptoUtil.publicKeyToString(signerPublicKey);
                     LocalDateTime blockTimestamp = LocalDateTime.now();
                     if (!authorizedKeyDAO.wasKeyAuthorizedAt(publicKeyString, blockTimestamp)) {
-                        System.err.println("Unauthorized public key");
+                        logger.error("❌ Unauthorized public key");
                         return null;
                     }
                     
@@ -428,13 +431,13 @@ public class Blockchain {
                     try {
                         encryptedData = SecureBlockEncryptionService.encryptToString(data, encryptionPassword);
                     } catch (Exception e) {
-                        System.err.println("Failed to encrypt block data: " + e.getMessage());
+                        logger.error("❌ Failed to encrypt block data", e);
                         return null;
                     }
                     
                     // 4. Validate encrypted data size
                     if (!validateDataSize(encryptedData)) {
-                        System.err.println("Encrypted data exceeds maximum block size limits");
+                        logger.error("❌ Encrypted data exceeds maximum block size limits");
                         return null;
                     }
                     
@@ -458,10 +461,10 @@ public class Blockchain {
                             );
                             
                             blockData = "OFF_CHAIN_ENCRYPTED_REF:" + offChainData.getDataHash();
-                            System.out.println("Encrypted data stored off-chain. Block contains reference: " + blockData);
+                            logger.info("📦 Encrypted data stored off-chain. Block contains reference: {}", blockData);
                             
                         } catch (Exception e) {
-                            System.err.println("Failed to store encrypted data off-chain: " + e.getMessage());
+                            logger.error("❌ Failed to store encrypted data off-chain", e);
                             return null;
                         }
                     }
@@ -487,7 +490,7 @@ public class Blockchain {
                     
                     // 10. Validate the block before saving
                     if (lastBlock != null && !validateBlock(newBlock, lastBlock)) {
-                        System.err.println("Encrypted block validation failed");
+                        logger.error("❌ Encrypted block validation failed");
                         return null;
                     }
                     
@@ -509,25 +512,25 @@ public class Blockchain {
                         unifiedSearchAPI.addBlock(
                             newBlock, encryptionPassword, signerPrivateKey);
                         
-                        System.out.println("Successfully indexed encrypted block in Revolutionary Search Engine");
+                        logger.info("✅ Successfully indexed encrypted block in Revolutionary Search Engine");
                     } catch (Exception e) {
-                        System.err.println("Warning: Failed to index encrypted block in search engine: " + e.getMessage());
+                        logger.warn("⚠️ Failed to index encrypted block in search engine", e);
                         // Try fallback indexing with public metadata only
                         try {
                             revolutionarySearchEngine.indexBlockWithSpecificPassword(
                                 newBlock, null, signerPrivateKey, 
                                 EncryptionConfig.createHighSecurityConfig());
-                            System.out.println("Fallback: Indexed block with public metadata only");
+                            logger.info("🔄 Fallback: Indexed block with public metadata only");
                         } catch (Exception e2) {
-                            System.err.println("Complete indexing failure for block: " + e2.getMessage());
+                            logger.error("❌ Complete indexing failure for block", e2);
                         }
                     }
                     
-                    System.out.println("🔐 Encrypted Block #" + newBlock.getBlockNumber() + " added successfully!");
+                    logger.info("🔐 Encrypted Block #{} added successfully!", newBlock.getBlockNumber());
                     return newBlock;
                     
                 } catch (Exception e) {
-                    System.err.println("Error adding encrypted block: " + e.getMessage());
+                    logger.error("❌ Error adding encrypted block", e);
                     return null;
                 }
             });
@@ -553,7 +556,7 @@ public class Blockchain {
             Block block = blockDAO.getBlockWithDecryption(blockId, decryptionPassword);
             return block != null ? block.getData() : null;
         } catch (Exception e) {
-            System.err.println("Failed to decrypt block data: " + e.getMessage());
+            logger.error("❌ Failed to decrypt block data", e);
             return null;
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
@@ -613,7 +616,7 @@ public class Blockchain {
                 if (!publicKeywords.isEmpty()) {
                     String publicKeywordString = String.join(" ", publicKeywords);
                     block.setManualKeywords(publicKeywordString);
-                    System.out.println("🔍 Debug: Stored public keywords: " + publicKeywordString);
+                    logger.debug("🔍 Stored public keywords: {}", publicKeywordString);
                 }
                 
                 // Store private keywords encrypted in autoKeywords field
@@ -621,7 +624,7 @@ public class Blockchain {
                     String privateKeywordString = String.join(" ", privateKeywords);
                     String encryptedPrivateKeywords = SecureBlockEncryptionService.encryptToString(privateKeywordString, encryptionPassword);
                     block.setAutoKeywords(encryptedPrivateKeywords);
-                    System.out.println("🔍 Debug: Stored encrypted private keywords in autoKeywords");
+                    logger.debug("🔍 Stored encrypted private keywords in autoKeywords");
                 }
             }
             
@@ -653,7 +656,7 @@ public class Blockchain {
             block.setSearchableContent("");
             
         } catch (Exception e) {
-            System.err.println("Failed to process encrypted keywords: " + e.getMessage());
+            logger.error("❌ Failed to process encrypted keywords", e);
             // Set empty values if encryption fails
             block.setManualKeywords("");
             block.setAutoKeywords("");
@@ -692,9 +695,8 @@ public class Blockchain {
         
         // 5. Log for debugging
         if (block.getSearchableContent() != null && !block.getSearchableContent().trim().isEmpty()) {
-            System.out.println("📋 Keywords assigned to block #" + block.getBlockNumber() + ": " + 
-                             block.getSearchableContent().substring(0, Math.min(50, block.getSearchableContent().length())) + 
-                             (block.getSearchableContent().length() > 50 ? "..." : ""));
+            logger.debug("📋 Keywords assigned to block #{}: {}...", block.getBlockNumber(), 
+                        block.getSearchableContent().substring(0, Math.min(50, block.getSearchableContent().length())));
         }
     }
     /**
@@ -707,38 +709,38 @@ public class Blockchain {
     public boolean validateBlock(Block block, Block previousBlock) {
         String threadName = Thread.currentThread().getName();
         try {
-            System.out.println("🔍 [" + threadName + "] Validating block #" + block.getBlockNumber());
+            logger.debug("🔍 [{}] Validating block #{}", threadName, block.getBlockNumber());
             
             // Skip validation for genesis block
             if (block.getBlockNumber() != null && block.getBlockNumber().equals(0L)) {
-                System.out.println("✅ [" + threadName + "] Genesis block validation passed");
+                logger.info("✅ [{}] Genesis block validation passed", threadName);
                 return true;
             }
             
             // 1. Verify that the previous block hash matches
             if (!block.getPreviousHash().equals(previousBlock.getHash())) {
-                System.err.println("❌ [" + threadName + "] VALIDATION FAILURE: Previous hash mismatch");
-                System.err.println("🔍 Expected: " + previousBlock.getHash());
-                System.err.println("🔍 Got: " + block.getPreviousHash());
+                logger.error("❌ [{}] VALIDATION FAILURE: Previous hash mismatch", threadName);
+                logger.error("🔍 Expected: {}", previousBlock.getHash());
+                logger.error("🔍 Got: {}", block.getPreviousHash());
                 return false;
             }
             
             // 2. Verify that the block number is sequential
             if (!block.getBlockNumber().equals(previousBlock.getBlockNumber() + 1L)) {
-                System.err.println("❌ [" + threadName + "] VALIDATION FAILURE: Block number sequence error");
-                System.err.println("🔍 Previous block number: " + previousBlock.getBlockNumber());
-                System.err.println("🔍 Current block number: " + block.getBlockNumber());
-                System.err.println("🔍 Expected: " + (previousBlock.getBlockNumber() + 1L));
+                logger.error("❌ [{}] VALIDATION FAILURE: Block number sequence error", threadName);
+                logger.error("🔍 Previous block number: {}", previousBlock.getBlockNumber());
+                logger.error("🔍 Current block number: {}", block.getBlockNumber());
+                logger.error("🔍 Expected: {}", (previousBlock.getBlockNumber() + 1L));
                 return false;
             }
             
             // 3. Verify hash integrity
             String calculatedHash = CryptoUtil.calculateHash(buildBlockContent(block));
             if (!block.getHash().equals(calculatedHash)) {
-                System.err.println("❌ [" + threadName + "] VALIDATION FAILURE: Block hash integrity check failed for block #" + block.getBlockNumber());
-                System.err.println("🔍 Stored hash: " + block.getHash());
-                System.err.println("🔍 Calculated hash: " + calculatedHash);
-                System.err.println("🔍 Block content: " + buildBlockContent(block));
+                logger.error("❌ [{}] VALIDATION FAILURE: Block hash integrity check failed for block #{}", threadName, block.getBlockNumber());
+                logger.error("🔍 Stored hash: {}", block.getHash());
+                logger.error("🔍 Calculated hash: {}", calculatedHash);
+                logger.error("🔍 Block content: {}", buildBlockContent(block));
                 return false;
             }
             
@@ -746,27 +748,26 @@ public class Blockchain {
             PublicKey signerPublicKey = CryptoUtil.stringToPublicKey(block.getSignerPublicKey());
             String blockContent = buildBlockContent(block);
             if (!CryptoUtil.verifySignature(blockContent, block.getSignature(), signerPublicKey)) {
-                System.err.println("❌ [" + threadName + "] VALIDATION FAILURE: Block signature verification failed for block #" + block.getBlockNumber());
-                System.err.println("🔍 Block content: " + blockContent);
-                System.err.println("🔍 Signature: " + block.getSignature());
-                System.err.println("🔍 Signer public key: " + block.getSignerPublicKey());
+                logger.error("❌ [{}] VALIDATION FAILURE: Block signature verification failed for block #{}", threadName, block.getBlockNumber());
+                logger.error("🔍 Block content: {}", blockContent);
+                logger.error("🔍 Signature: {}", block.getSignature());
+                logger.error("🔍 Signer public key: {}", block.getSignerPublicKey());
                 return false;
             }
             
             // 5. Verify that the key was authorized at the time of block creation
             if (!authorizedKeyDAO.wasKeyAuthorizedAt(block.getSignerPublicKey(), block.getTimestamp())) {
-                System.err.println("❌ [" + threadName + "] VALIDATION FAILURE: Block signed by key that was not authorized at time of creation for block #" + block.getBlockNumber());
-                System.err.println("🔍 Signer: " + block.getSignerPublicKey());
-                System.err.println("🔍 Block timestamp: " + block.getTimestamp());
+                logger.error("❌ [{}] VALIDATION FAILURE: Block signed by key that was not authorized at time of creation for block #{}", threadName, block.getBlockNumber());
+                logger.error("🔍 Signer: {}", block.getSignerPublicKey());
+                logger.error("🔍 Block timestamp: {}", block.getTimestamp());
                 return false;
             }
             
-            System.out.println("✅ [" + threadName + "] Block #" + block.getBlockNumber() + " validation passed");
+            logger.info("✅ [{}] Block #{} validation passed", threadName, block.getBlockNumber());
             return true;
             
         } catch (Exception e) {
-            System.err.println("💥 [" + threadName + "] EXCEPTION during block validation: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("💥 [{}] EXCEPTION during block validation", threadName, e);
             return false;
         }
     }
@@ -780,11 +781,11 @@ public class Blockchain {
         BlockValidationResult.Builder builder = new BlockValidationResult.Builder(block);
         
         try {
-            System.out.println("🔍 [" + threadName + "] Detailed validation of block #" + block.getBlockNumber());
+            logger.debug("🔍 [{}] Detailed validation of block #{}", threadName, block.getBlockNumber());
             
             // Skip detailed validation for genesis block
             if (block.getBlockNumber() != null && block.getBlockNumber().equals(0L)) {
-                System.out.println("✅ [" + threadName + "] Genesis block validation passed");
+                logger.info("✅ [{}] Genesis block validation passed", threadName);
                 return builder
                     .structurallyValid(true)
                     .cryptographicallyValid(true)
@@ -804,14 +805,14 @@ public class Blockchain {
             if (!block.getPreviousHash().equals(previousBlock.getHash())) {
                 structurallyValid = false;
                 errorMessage = "Previous hash mismatch";
-                System.err.println("❌ [" + threadName + "] VALIDATION FAILURE: " + errorMessage);
+                logger.error("❌ [{}] VALIDATION FAILURE: {}", threadName, errorMessage);
             }
             
             // 2. Verify that the block number is sequential
             if (structurallyValid && !block.getBlockNumber().equals(previousBlock.getBlockNumber() + 1L)) {
                 structurallyValid = false;
                 errorMessage = "Block number sequence error";
-                System.err.println("❌ [" + threadName + "] VALIDATION FAILURE: " + errorMessage);
+                logger.error("❌ [{}] VALIDATION FAILURE: {}", threadName, errorMessage);
             }
             
             // 3. Verify hash integrity
@@ -820,7 +821,7 @@ public class Blockchain {
                 if (!block.getHash().equals(calculatedHash)) {
                     cryptographicallyValid = false;
                     errorMessage = "Block hash integrity check failed";
-                    System.err.println("❌ [" + threadName + "] VALIDATION FAILURE: " + errorMessage);
+                    logger.error("❌ [{}] VALIDATION FAILURE: {}", threadName, errorMessage);
                 }
             }
             
@@ -832,12 +833,12 @@ public class Blockchain {
                     if (!CryptoUtil.verifySignature(blockContent, block.getSignature(), signerPublicKey)) {
                         cryptographicallyValid = false;
                         errorMessage = "Block signature verification failed";
-                        System.err.println("❌ [" + threadName + "] VALIDATION FAILURE: " + errorMessage);
+                        logger.error("❌ [{}] VALIDATION FAILURE: {}", threadName, errorMessage);
                     }
                 } catch (Exception e) {
                     cryptographicallyValid = false;
                     errorMessage = "Signature verification error: " + e.getMessage();
-                    System.err.println("❌ [" + threadName + "] VALIDATION FAILURE: " + errorMessage);
+                    logger.error("❌ [{}] VALIDATION FAILURE: {}", threadName, errorMessage);
                 }
             }
             
@@ -846,9 +847,9 @@ public class Blockchain {
                 if (!authorizedKeyDAO.wasKeyAuthorizedAt(block.getSignerPublicKey(), block.getTimestamp())) {
                     authorizationValid = false;
                     warningMessage = "Block signed by key that was revoked after creation";
-                    System.err.println("⚠️ [" + threadName + "] AUTHORIZATION WARNING: " + warningMessage);
-                    System.err.println("🔍 Signer: " + block.getSignerPublicKey());
-                    System.err.println("🔍 Block timestamp: " + block.getTimestamp());
+                    logger.warn("⚠️ [{}] AUTHORIZATION WARNING: {}", threadName, warningMessage);
+                    logger.warn("🔍 Signer: {}", block.getSignerPublicKey());
+                    logger.warn("🔍 Block timestamp: {}", block.getTimestamp());
                 }
             }
             
@@ -867,27 +868,27 @@ public class Blockchain {
                         } else {
                             errorMessage += "; Off-chain data validation failed: " + detailedMessage;
                         }
-                        System.err.println("❌ [" + threadName + "] OFF-CHAIN VALIDATION FAILURE for block #" + block.getBlockNumber() + ":");
-                        System.err.println("   📋 Details: " + detailedMessage);
+                        logger.error("❌ [{}] OFF-CHAIN VALIDATION FAILURE for block #{}:", threadName, block.getBlockNumber());
+                        logger.error("   📋 Details: {}", detailedMessage);
                         if (!basicOffChainIntegrity) {
-                            System.err.println("   🔐 Cryptographic integrity check also failed");
+                            logger.error("   🔐 Cryptographic integrity check also failed");
                         }
                     } else {
                         // Show detailed success information
                         var offChainData = block.getOffChainData();
-                        System.out.println("✅ [" + threadName + "] Off-chain data fully validated for block #" + block.getBlockNumber());
-                        System.out.println("   📁 File: " + java.nio.file.Paths.get(offChainData.getFilePath()).getFileName());
-                        System.out.println("   📦 Size: " + (offChainData.getFileSize() != null ? 
+                        logger.info("✅ [{}] Off-chain data fully validated for block #{}", threadName, block.getBlockNumber());
+                        logger.info("   📁 File: {}", java.nio.file.Paths.get(offChainData.getFilePath()).getFileName());
+                        logger.info("   📦 Size: {}", (offChainData.getFileSize() != null ? 
                             String.format("%.1f KB", offChainData.getFileSize() / 1024.0) : "unknown"));
-                        System.out.println("   🔐 Integrity: verified (hash + encryption + signature)");
-                        System.out.println("   ⏰ Created: " + (offChainData.getCreatedAt() != null ? 
+                        logger.info("   🔐 Integrity: verified (hash + encryption + signature)");
+                        logger.info("   ⏰ Created: {}", (offChainData.getCreatedAt() != null ? 
                             offChainData.getCreatedAt().toString() : "unknown"));
                         
                         // Additional validation details
                         String hash = offChainData.getDataHash();
                         if (hash != null && hash.length() > 16) {
                             String truncatedHash = hash.substring(0, 8) + "..." + hash.substring(hash.length() - 8);
-                            System.out.println("   🔗 Hash: " + truncatedHash);
+                            logger.info("   🔗 Hash: {}", truncatedHash);
                         }
                     }
                 } catch (Exception e) {
@@ -897,11 +898,11 @@ public class Blockchain {
                     } else {
                         errorMessage += "; Off-chain data verification error: " + e.getMessage();
                     }
-                    System.err.println("❌ [" + threadName + "] OFF-CHAIN VALIDATION ERROR for block #" + block.getBlockNumber() + ": " + e.getMessage());
+                    logger.error("❌ [{}] OFF-CHAIN VALIDATION ERROR for block #{}", threadName, block.getBlockNumber(), e);
                 }
             } else if (block.hasOffChainData() && (!structurallyValid || !cryptographicallyValid)) {
                 // Block has off-chain data but failed basic validation
-                System.out.println("⚠️ [" + threadName + "] Block #" + block.getBlockNumber() + " has off-chain data but failed basic validation - skipping off-chain checks");
+                logger.warn("⚠️ [{}] Block #{} has off-chain data but failed basic validation - skipping off-chain checks", threadName, block.getBlockNumber());
             }
             
             // 7. Verify encrypted data integrity if present
@@ -921,21 +922,21 @@ public class Blockchain {
                             errorMessage += "; Encrypted block validation failed: " + encryptedValidation.getErrorMessage();
                         }
                         
-                        System.err.println("❌ [" + threadName + "] ENCRYPTED BLOCK VALIDATION FAILURE for block #" + block.getBlockNumber() + ":");
-                        System.err.println("   🔐 " + encryptedValidation.getErrorMessage());
+                        logger.error("❌ [{}] ENCRYPTED BLOCK VALIDATION FAILURE for block #{}:", threadName, block.getBlockNumber());
+                        logger.error("   🔐 {}", encryptedValidation.getErrorMessage());
                         
                         // Check for possible corruption
                         var corruptionAssessment = EncryptedBlockValidator.detectCorruption(block);
                         if (corruptionAssessment.isPossiblyCorrupted()) {
-                            System.err.println("   ⚠️ POSSIBLE CORRUPTION DETECTED: " + corruptionAssessment.getIssues());
+                            logger.error("   ⚠️ POSSIBLE CORRUPTION DETECTED: {}", corruptionAssessment.getIssues());
                         }
                         
                     } else {
                         // Show successful validation details
-                        System.out.println("✅ [" + threadName + "] Encrypted block fully validated for block #" + block.getBlockNumber());
-                        System.out.println("   🔐 Encryption format: valid");
-                        System.out.println("   📊 Metadata: intact");
-                        System.out.println("   📂 Category: " + (block.getContentCategory() != null ? block.getContentCategory() : "none"));
+                        logger.info("✅ [{}] Encrypted block fully validated for block #{}", threadName, block.getBlockNumber());
+                        logger.info("   🔐 Encryption format: valid");
+                        logger.info("   📊 Metadata: intact");
+                        logger.info("   📂 Category: {}", (block.getContentCategory() != null ? block.getContentCategory() : "none"));
                         
                         // Show warnings if any
                         if (encryptedValidation.getWarningMessage() != null) {
@@ -944,17 +945,17 @@ public class Blockchain {
                             } else {
                                 warningMessage += "; " + encryptedValidation.getWarningMessage();
                             }
-                            System.out.println("   ⚠️ Warning: " + encryptedValidation.getWarningMessage());
+                            logger.warn("   ⚠️ Warning: {}", encryptedValidation.getWarningMessage());
                         }
                         
                         // Additional encryption metadata validation
                         if (block.getEncryptionMetadata() != null) {
                             int encryptedSize = block.getEncryptionMetadata().length();
-                            System.out.println("   📦 Encrypted data size: " + encryptedSize + " characters");
+                            logger.info("   📦 Encrypted data size: {} characters", encryptedSize);
                             
                             if (encryptedSize > 1000) {
                                 String preview = block.getEncryptionMetadata().substring(0, 20) + "...";
-                                System.out.println("   🔗 Metadata preview: " + preview);
+                                logger.info("   🔗 Metadata preview: {}", preview);
                             }
                         }
                     }
@@ -969,11 +970,11 @@ public class Blockchain {
                         errorMessage += "; Encrypted block verification error: " + e.getMessage();
                     }
                     
-                    System.err.println("❌ [" + threadName + "] ENCRYPTED BLOCK VALIDATION ERROR for block #" + block.getBlockNumber() + ": " + e.getMessage());
+                    logger.error("❌ [{}] ENCRYPTED BLOCK VALIDATION ERROR for block #{}", threadName, block.getBlockNumber(), e);
                 }
             } else if (block.isDataEncrypted() && (!structurallyValid || !cryptographicallyValid)) {
                 // Block is encrypted but failed basic validation
-                System.out.println("⚠️ [" + threadName + "] Block #" + block.getBlockNumber() + " is encrypted but failed basic validation - skipping encryption checks");
+                logger.warn("⚠️ [{}] Block #{} is encrypted but failed basic validation - skipping encryption checks", threadName, block.getBlockNumber());
             }
             
             // Build result including encrypted data validation
@@ -987,18 +988,17 @@ public class Blockchain {
                 .build();
             
             if (result.isFullyValid()) {
-                System.out.println("✅ [" + threadName + "] Block #" + block.getBlockNumber() + " is fully valid");
+                logger.info("✅ [{}] Block #{} is fully valid", threadName, block.getBlockNumber());
             } else if (result.isValid()) {
-                System.out.println("⚠️ [" + threadName + "] Block #" + block.getBlockNumber() + " is structurally valid but has authorization issues");
+                logger.warn("⚠️ [{}] Block #{} is structurally valid but has authorization issues", threadName, block.getBlockNumber());
             } else {
-                System.out.println("❌ [" + threadName + "] Block #" + block.getBlockNumber() + " is invalid");
+                logger.error("❌ [{}] Block #{} is invalid", threadName, block.getBlockNumber());
             }
             
             return result;
             
         } catch (Exception e) {
-            System.err.println("💥 [" + threadName + "] EXCEPTION during detailed block validation: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("💥 [{}] EXCEPTION during detailed block validation", threadName, e);
             return builder
                 .structurallyValid(false)
                 .cryptographicallyValid(false)
@@ -1047,7 +1047,7 @@ public class Blockchain {
             List<BlockValidationResult> blockResults = new ArrayList<>();
             
             if (allBlocks.isEmpty()) {
-                System.err.println("No blocks found in chain");
+                logger.error("❌ No blocks found in chain");
                 return new ChainValidationResult(blockResults);
             }
             
@@ -1057,7 +1057,7 @@ public class Blockchain {
             
             if (!genesisBlock.getBlockNumber().equals(0L) || 
                 !genesisBlock.getPreviousHash().equals(GENESIS_PREVIOUS_HASH)) {
-                System.err.println("Invalid genesis block");
+                logger.error("❌ Invalid genesis block");
                 blockResults.add(genesisBuilder
                     .structurallyValid(false)
                     .cryptographicallyValid(false)
@@ -1106,29 +1106,28 @@ public class Blockchain {
                 }
             }
             
-            System.out.println("📊 Chain validation completed: " + chainResult.getSummary());
+            logger.info("📊 Chain validation completed: {}", chainResult.getSummary());
             
             if (blocksWithOffChain > 0) {
-                System.out.println("🗂️ Off-chain data summary:");
-                System.out.println("   📊 Blocks with off-chain data: " + blocksWithOffChain + "/" + totalBlocks + 
-                    " (" + String.format("%.1f%%", (blocksWithOffChain * 100.0 / totalBlocks)) + ")");
-                System.out.println("   ✅ Valid off-chain blocks: " + validOffChainBlocks + "/" + blocksWithOffChain + 
-                    " (" + String.format("%.1f%%", (validOffChainBlocks * 100.0 / blocksWithOffChain)) + ")");
-                System.out.println("   📦 Total off-chain storage: " + String.format("%.2f MB", totalOffChainSize / (1024.0 * 1024.0)));
+                logger.info("🗂️ Off-chain data summary:");
+                logger.info("   📊 Blocks with off-chain data: {}/{} ({}%)", blocksWithOffChain, totalBlocks, 
+                           String.format("%.1f", (blocksWithOffChain * 100.0 / totalBlocks)));
+                logger.info("   ✅ Valid off-chain blocks: {}/{} ({}%)", validOffChainBlocks, blocksWithOffChain, 
+                           String.format("%.1f", (validOffChainBlocks * 100.0 / blocksWithOffChain)));
+                logger.info("   📦 Total off-chain storage: {} MB", String.format("%.2f", totalOffChainSize / (1024.0 * 1024.0)));
                 
                 if (validOffChainBlocks < blocksWithOffChain) {
                     int invalidOffChain = blocksWithOffChain - validOffChainBlocks;
-                    System.err.println("   ⚠️ Invalid off-chain blocks detected: " + invalidOffChain);
+                    logger.warn("   ⚠️ Invalid off-chain blocks detected: {}", invalidOffChain);
                 }
             } else {
-                System.out.println("📋 No off-chain data found in blockchain");
+                logger.info("📋 No off-chain data found in blockchain");
             }
             
             return chainResult;
             
         } catch (Exception e) {
-            System.err.println("Error during detailed chain validation: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("❌ Error during detailed chain validation", e);
             return new ChainValidationResult(new ArrayList<>());
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
@@ -1229,11 +1228,11 @@ public class Blockchain {
                 try {
                     // Validate input parameters
                     if (publicKeyString == null || publicKeyString.trim().isEmpty()) {
-                        System.err.println("Public key cannot be null or empty");
+                        logger.error("❌ Public key cannot be null or empty");
                         return false;
                     }
                     if (ownerName == null || ownerName.trim().isEmpty()) {
-                        System.err.println("Owner name cannot be null or empty");
+                        logger.error("❌ Owner name cannot be null or empty");
                         return false;
                     }
                     
@@ -1242,17 +1241,17 @@ public class Blockchain {
                         // Validate key format and cryptographic validity
                         PublicKey testKey = CryptoUtil.stringToPublicKey(publicKeyString);
                         if (testKey == null) {
-                            System.err.println("Invalid public key format");
+                            logger.error("❌ Invalid public key format");
                             return false;
                         }
                         
                         // Check if key is currently authorized
                         if (authorizedKeyDAO.isKeyAuthorized(publicKeyString)) {
-                            System.err.println("Key already authorized");
+                            logger.error("❌ Key already authorized");
                             return false;
                         }
                     } catch (Exception e) {
-                        System.err.println("Key validation failed: " + e.getMessage());
+                        logger.error("❌ Key validation failed", e);
                         return false;
                     }
                     
@@ -1263,11 +1262,11 @@ public class Blockchain {
                     AuthorizedKey authorizedKey = new AuthorizedKey(publicKeyString, ownerName, timestamp);
                     
                     authorizedKeyDAO.saveAuthorizedKey(authorizedKey);
-                    System.out.println("Authorized key added for: " + ownerName);
+                    logger.info("🔑 Authorized key added for: {}", ownerName);
                     return true;
                     
                 } catch (Exception e) {
-                    System.err.println("Error adding authorized key: " + e.getMessage());
+                    logger.error("❌ Error adding authorized key", e);
                     return false;
                 }
             });
@@ -1287,21 +1286,21 @@ public class Blockchain {
                 try {
                     // Validate input parameter
                     if (publicKeyString == null || publicKeyString.trim().isEmpty()) {
-                        System.err.println("Public key cannot be null or empty");
+                        logger.error("❌ Public key cannot be null or empty");
                         return false;
                     }
                     
                     if (!authorizedKeyDAO.isKeyAuthorized(publicKeyString)) {
-                        System.err.println("Key not found or already inactive");
+                        logger.error("❌ Key not found or already inactive");
                         return false;
                     }
                     
                     authorizedKeyDAO.revokeAuthorizedKey(publicKeyString);
-                    System.out.println("Key revoked successfully");
+                    logger.info("✅ Key revoked successfully");
                     return true;
                     
                 } catch (Exception e) {
-                    System.err.println("Error revoking key: " + e.getMessage());
+                    logger.error("❌ Error revoking key", e);
                     return false;
                 }
             });
@@ -1324,28 +1323,28 @@ public class Blockchain {
      */
     public boolean validateBlockSize(String data) {
         if (data == null) {
-            System.err.println("Block data cannot be null. Use empty string \"\" for system blocks");
+            logger.error("❌ Block data cannot be null. Use empty string \"\" for system blocks");
             return false; // SECURITY: Reject null data but allow empty strings
         }
         
         // Allow empty strings for system/configuration blocks
         if (data.isEmpty()) {
-            System.out.println("System block with empty data created");
+            logger.debug("ℹ️ System block with empty data created");
             return true; // Allow system blocks with empty data
         }
         
         // Check character length for normal content
         if (data.length() > MAX_BLOCK_DATA_LENGTH) {
-            System.err.println("Block data length (" + data.length() + 
-                             ") exceeds maximum allowed (" + MAX_BLOCK_DATA_LENGTH + " characters)");
+            logger.error("❌ Block data length ({}) exceeds maximum allowed ({} characters)", 
+                         data.length(), MAX_BLOCK_DATA_LENGTH);
             return false;
         }
         
         // Check byte size (important for UTF-8 strings)
         byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
         if (dataBytes.length > MAX_BLOCK_SIZE_BYTES) {
-            System.err.println("Block data size (" + dataBytes.length + 
-                             " bytes) exceeds maximum allowed (" + MAX_BLOCK_SIZE_BYTES + " bytes)");
+            logger.error("❌ Block data size ({} bytes) exceeds maximum allowed ({} bytes)", 
+                         dataBytes.length, MAX_BLOCK_SIZE_BYTES);
             return false;
         }
         
@@ -1358,13 +1357,13 @@ public class Blockchain {
      */
     public int validateAndDetermineStorage(String data) {
         if (data == null) {
-            System.err.println("Block data cannot be null. Use empty string \"\" for system blocks");
+            logger.error("❌ Block data cannot be null. Use empty string \"\" for system blocks");
             return 0; // Invalid
         }
         
         // Allow empty strings for system/configuration blocks
         if (data.isEmpty()) {
-            System.out.println("System block with empty data created");
+            logger.debug("ℹ️ System block with empty data created");
             return 1; // Store on-chain
         }
         
@@ -1378,12 +1377,12 @@ public class Blockchain {
         
         // If data is large but within reasonable limits, store off-chain
         if (dataBytes.length <= 100 * 1024 * 1024) { // Max 100MB
-            System.out.println("Large data detected (" + dataBytes.length + " bytes). Will store off-chain.");
+            logger.info("📦 Large data detected ({} bytes). Will store off-chain.", dataBytes.length);
             return 2; // Store off-chain
         }
         
         // Data is too large even for off-chain storage
-        System.err.println("Data size (" + dataBytes.length + " bytes) exceeds maximum supported size (100MB)");
+        logger.error("❌ Data size ({} bytes) exceeds maximum supported size (100MB)", dataBytes.length);
         return 0; // Invalid
     }
     
@@ -1422,7 +1421,7 @@ public class Blockchain {
         
         // Check against maximum size limits
         if (dataBytes.length > 100 * 1024 * 1024) { // Max 100MB
-            System.err.println("Data size (" + dataBytes.length + " bytes) exceeds maximum supported size (100MB)");
+            logger.error("❌ Data size ({} bytes) exceeds maximum supported size (100MB)", dataBytes.length);
             return false;
         }
         
@@ -1520,8 +1519,8 @@ public class Blockchain {
                 encryptionPassword
             );
         } catch (Exception e) {
-            System.err.println("Error verifying off-chain integrity for block " + 
-                             block.getBlockNumber() + ": " + e.getMessage());
+            logger.error("❌ Error verifying off-chain integrity for block {}", 
+                        block.getBlockNumber(), e);
             return false;
         }
     }
@@ -1555,14 +1554,14 @@ public class Blockchain {
                     offChainBlocks++;
                     if (!verifyOffChainIntegrity(block)) {
                         integrityFailures++;
-                        System.err.println("Integrity verification failed for block " + block.getBlockNumber());
+                        logger.error("❌ Integrity verification failed for block {}", block.getBlockNumber());
                     }
                 }
             }
             
-            System.out.println("Off-chain integrity check complete:");
-            System.out.println("- Blocks with off-chain data: " + offChainBlocks);
-            System.out.println("- Integrity failures: " + integrityFailures);
+            logger.info("📋 Off-chain integrity check complete:");
+            logger.info("📊 - Blocks with off-chain data: {}", offChainBlocks);
+            logger.info("📊 - Integrity failures: {}", integrityFailures);
             
             return integrityFailures == 0;
             
@@ -1578,7 +1577,7 @@ public class Blockchain {
     public boolean exportChain(String filePath) {
         // Validate input parameters
         if (filePath == null || filePath.trim().isEmpty()) {
-            System.err.println("Export file path cannot be null or empty");
+            logger.error("❌ Export file path cannot be null or empty");
             return false;
         }
         
@@ -1606,13 +1605,13 @@ public class Blockchain {
                 if (!offChainBackupDir.exists()) {
                     try {
                         if (!offChainBackupDir.mkdirs()) {
-                            System.err.println("Failed to create off-chain backup directory: " + offChainBackupDir.getAbsolutePath());
-                            System.err.println("Export will continue without off-chain file backup");
+                            logger.error("❌ Failed to create off-chain backup directory: {}", offChainBackupDir.getAbsolutePath());
+                            logger.error("❌ Export will continue without off-chain file backup");
                             // Continue export without backup instead of failing completely
                         }
                     } catch (SecurityException e) {
-                        System.err.println("Security exception creating backup directory: " + e.getMessage());
-                        System.err.println("Export will continue without off-chain file backup");
+                        logger.error("❌ Security exception creating backup directory", e);
+                        logger.error("❌ Export will continue without off-chain file backup");
                         // Continue export without backup instead of failing completely
                     }
                 }
@@ -1637,17 +1636,17 @@ public class Blockchain {
                                     offChainData.setFilePath("off-chain-backup/" + fileName);
                                     offChainFilesExported++;
                                     
-                                    System.out.println("  ✓ Exported off-chain file for block #" + block.getBlockNumber());
+                                    logger.debug("  ✓ Exported off-chain file for block #{}", block.getBlockNumber());
                                 } else {
-                                    System.err.println("  ⚠ Off-chain file missing for block #" + block.getBlockNumber() + ": " + sourceFile.getAbsolutePath());
+                                    logger.warn("  ⚠ Off-chain file missing for block #{}: {}", block.getBlockNumber(), sourceFile.getAbsolutePath());
                                 }
                             } catch (Exception e) {
-                                System.err.println("  ❌ Error exporting off-chain file for block #" + block.getBlockNumber() + ": " + e.getMessage());
+                                logger.error("  ❌ Error exporting off-chain file for block #{}", block.getBlockNumber(), e);
                             }
                         }
                     }
                 } else {
-                    System.out.println("  ⚠ Skipping off-chain file backup (backup directory not available)");
+                    logger.warn("  ⚠ Skipping off-chain file backup (backup directory not available)");
                 }
             }
             
@@ -1660,15 +1659,15 @@ public class Blockchain {
             File file = new File(filePath);
             mapper.writeValue(file, exportData);
             
-            System.out.println("Chain exported successfully to: " + filePath);
-            System.out.println("Exported " + allBlocks.size() + " blocks and " + allKeys.size() + " authorized keys");
+            logger.info("✅ Chain exported successfully to: {}", filePath);
+            logger.info("✅ Exported {} blocks and {} authorized keys", allBlocks.size(), allKeys.size());
             if (offChainFilesExported > 0) {
-                System.out.println("Exported " + offChainFilesExported + " off-chain files to: " + offChainBackupDir.getAbsolutePath());
+                logger.info("📦 Exported {} off-chain files to: {}", offChainFilesExported, offChainBackupDir.getAbsolutePath());
             }
             return true;
             
         } catch (Exception e) {
-            System.err.println("Error exporting chain: " + e.getMessage());
+            logger.error("❌ Error exporting chain", e);
             return false;
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
@@ -1690,7 +1689,7 @@ public class Blockchain {
                     
                     File file = new File(filePath);
                     if (!file.exists()) {
-                        System.err.println("Import file not found: " + filePath);
+                        logger.error("❌ Import file not found: {}", filePath);
                         return false;
                     }
                     
@@ -1698,15 +1697,15 @@ public class Blockchain {
                     
                     // Validate import data
                     if (importData.getBlocks() == null || importData.getBlocks().isEmpty()) {
-                        System.err.println("No blocks found in import file");
+                        logger.error("❌ No blocks found in import file");
                         return false;
                     }
                     
                     // Clear existing data (WARNING: This will delete current blockchain!)
-                    System.out.println("WARNING: This will replace the current blockchain!");
+                    logger.warn("⚠️ WARNING: This will replace the current blockchain!");
                     
                     // CRITICAL: Clean up existing off-chain files before clearing database
-                    System.out.println("Cleaning up existing off-chain data before import...");
+                    logger.info("🧹 Cleaning up existing off-chain data before import...");
                     List<Block> existingBlocks = blockDAO.getAllBlocks();
                     int existingOffChainFilesDeleted = 0;
                     
@@ -1718,13 +1717,13 @@ public class Blockchain {
                                     existingOffChainFilesDeleted++;
                                 }
                             } catch (Exception e) {
-                                System.err.println("Error deleting existing off-chain data for block " + block.getBlockNumber() + ": " + e.getMessage());
+                                logger.error("❌ Error deleting existing off-chain data for block {}", block.getBlockNumber(), e);
                             }
                         }
                     }
                     
                     if (existingOffChainFilesDeleted > 0) {
-                        System.out.println("Cleaned up " + existingOffChainFilesDeleted + " existing off-chain files");
+                        logger.info("🧹 Cleaned up {} existing off-chain files", existingOffChainFilesDeleted);
                     }
                     
                     // Clear existing blocks and keys
@@ -1800,7 +1799,7 @@ public class Blockchain {
                             
                             authorizedKeyDAO.saveAuthorizedKey(key);
                         }
-                        System.out.println("Imported " + importData.getAuthorizedKeys().size() + " authorized keys with adjusted timestamps");
+                        logger.info("🔑 Imported {} authorized keys with adjusted timestamps", importData.getAuthorizedKeys().size());
                     }
                     
                     // CRITICAL: Handle off-chain files during import
@@ -1844,14 +1843,14 @@ public class Blockchain {
                                     offChainData.setFilePath(newFile.getAbsolutePath());
                                     offChainFilesImported++;
                                     
-                                    System.out.println("  ✓ Imported off-chain file for block #" + block.getBlockNumber());
+                                    logger.debug("  ✓ Imported off-chain file for block #{}", block.getBlockNumber());
                                 } else {
-                                    System.err.println("  ⚠ Off-chain backup file not found for block #" + block.getBlockNumber() + ": " + backupFile.getAbsolutePath());
+                                    logger.warn("  ⚠ Off-chain backup file not found for block #{}: {}", block.getBlockNumber(), backupFile.getAbsolutePath());
                                     // Remove off-chain reference if file is missing
                                     block.setOffChainData(null);
                                 }
                             } catch (Exception e) {
-                                System.err.println("  ❌ Error importing off-chain file for block #" + block.getBlockNumber() + ": " + e.getMessage());
+                                logger.error("  ❌ Error importing off-chain file for block #{}", block.getBlockNumber(), e);
                                 // Remove off-chain reference if import fails
                                 block.setOffChainData(null);
                             }
@@ -1860,31 +1859,31 @@ public class Blockchain {
                         blockDAO.saveBlock(block);
                     }
                     
-                    System.out.println("Chain imported successfully from: " + filePath);
-                    System.out.println("Imported " + importData.getBlocks().size() + " blocks");
+                    logger.info("✅ Chain imported successfully from: {}", filePath);
+                    logger.info("✅ Imported {} blocks", importData.getBlocks().size());
                     if (offChainFilesImported > 0) {
-                        System.out.println("Imported " + offChainFilesImported + " off-chain files");
+                        logger.info("📦 Imported {} off-chain files", offChainFilesImported);
                     }
                     
                     // Validate imported chain with detailed validation
                     var importValidation = validateChainDetailed();
                     boolean isValid = importValidation.isStructurallyIntact() && importValidation.isFullyCompliant();
                     if (isValid) {
-                        System.out.println("Imported chain validation: SUCCESS");
+                        logger.info("✅ Imported chain validation: SUCCESS");
                     } else {
-                        System.err.println("Imported chain validation: FAILED");
+                        logger.error("❌ Imported chain validation: FAILED");
                         if (!importValidation.isStructurallyIntact()) {
-                            System.err.println("  - Structural issues: " + importValidation.getInvalidBlocks() + " invalid blocks");
+                            logger.error("  - Structural issues: {} invalid blocks", importValidation.getInvalidBlocks());
                         }
                         if (!importValidation.isFullyCompliant()) {
-                            System.err.println("  - Compliance issues: " + importValidation.getRevokedBlocks() + " revoked blocks");
+                            logger.error("  - Compliance issues: {} revoked blocks", importValidation.getRevokedBlocks());
                         }
                     }
                     
                     return isValid;
                     
                 } catch (Exception e) {
-                    System.err.println("Error importing chain: " + e.getMessage());
+                    logger.error("❌ Error importing chain", e);
                     return false;
                 }
             });
@@ -1902,14 +1901,14 @@ public class Blockchain {
             return JPAUtil.executeInTransaction(em -> {
                 try {
                     if (numberOfBlocks <= 0) {
-                        System.err.println("Number of blocks to rollback must be positive");
+                        logger.error("❌ Number of blocks to rollback must be positive");
                         return false;
                     }
                     
                     long currentBlockCount = blockDAO.getBlockCount();
                     if (numberOfBlocks >= currentBlockCount) {
-                        System.err.println("Cannot rollback " + numberOfBlocks + 
-                                         " blocks. Only " + currentBlockCount + " blocks exist (including genesis)");
+                        logger.error("❌ Cannot rollback {} blocks. Only {} blocks exist (including genesis)", 
+                                    numberOfBlocks, currentBlockCount);
                         return false;
                     }
                     
@@ -1923,19 +1922,19 @@ public class Blockchain {
                     }
                     
                     if (blocksToRemove.size() != numberOfBlocks) {
-                        System.err.println("Could only find " + blocksToRemove.size() + 
-                                         " blocks to rollback (genesis block cannot be removed)");
+                        logger.error("❌ Could only find {} blocks to rollback (genesis block cannot be removed)", 
+                                    blocksToRemove.size());
                         return false;
                     }
                     
                     // Actually remove blocks and their off-chain data
-                    System.out.println("Rolling back " + numberOfBlocks + " blocks:");
+                    logger.info("🔄 Rolling back {} blocks:", numberOfBlocks);
                     int offChainFilesDeleted = 0;
                     
                     for (Block block : blocksToRemove) {
                         String data = block.getData();
                         String displayData = data != null ? data.substring(0, Math.min(50, data.length())) : "null";
-                        System.out.println("  - Removing Block #" + block.getBlockNumber() + ": " + displayData);
+                        logger.info("  - Removing Block #{}: {}", block.getBlockNumber(), displayData);
                         
                         // CRITICAL: Clean up off-chain data before deleting block
                         if (block.hasOffChainData()) {
@@ -1943,12 +1942,12 @@ public class Blockchain {
                                 boolean fileDeleted = offChainStorageService.deleteData(block.getOffChainData());
                                 if (fileDeleted) {
                                     offChainFilesDeleted++;
-                                    System.out.println("    ✓ Deleted off-chain file: " + block.getOffChainData().getFilePath());
+                                    logger.debug("    ✓ Deleted off-chain file: {}", block.getOffChainData().getFilePath());
                                 } else {
-                                    System.err.println("    ⚠ Failed to delete off-chain file: " + block.getOffChainData().getFilePath());
+                                    logger.warn("    ⚠ Failed to delete off-chain file: {}", block.getOffChainData().getFilePath());
                                 }
                             } catch (Exception e) {
-                                System.err.println("    ❌ Error deleting off-chain data for block " + block.getBlockNumber() + ": " + e.getMessage());
+                                logger.error("    ❌ Error deleting off-chain data for block {}", block.getBlockNumber(), e);
                             }
                         }
                         
@@ -1957,19 +1956,19 @@ public class Blockchain {
                     }
                     
                     if (offChainFilesDeleted > 0) {
-                        System.out.println("Cleaned up " + offChainFilesDeleted + " off-chain files during rollback");
+                        logger.info("🧹 Cleaned up {} off-chain files during rollback", offChainFilesDeleted);
                     }
                     
                     // CRITICAL: Synchronize block sequence after rollback
                     blockDAO.synchronizeBlockSequence();
                     
-                    System.out.println("Rollback completed successfully");
-                    System.out.println("Chain now has " + blockDAO.getBlockCount() + " blocks");
+                    logger.info("✅ Rollback completed successfully");
+                    logger.info("Chain now has {} blocks", blockDAO.getBlockCount());
                     
                     return true;
                     
                 } catch (Exception e) {
-                    System.err.println("Error during rollback: " + e.getMessage());
+                    logger.error("❌ Error during rollback", e);
                     return false;
                 }
             });
@@ -1988,25 +1987,25 @@ public class Blockchain {
             return JPAUtil.executeInTransaction(em -> {
                 try {
                     if (targetBlockNumber == null || targetBlockNumber < 0L) {
-                        System.err.println("Target block number cannot be negative");
+                        logger.error("❌ Target block number cannot be negative");
                         return false;
                     }
                     
                     long currentBlockCount = blockDAO.getBlockCount();
                     if (targetBlockNumber >= currentBlockCount) {
-                        System.err.println("Target block " + targetBlockNumber + 
-                                         " does not exist. Current max block: " + (currentBlockCount - 1));
+                        logger.error("❌ Target block {} does not exist. Current max block: {}", 
+                                    targetBlockNumber, (currentBlockCount - 1));
                         return false;
                     }
                     
                     int blocksToRemove = (int)(currentBlockCount - targetBlockNumber - 1L);
                     if (blocksToRemove <= 0) {
-                        System.out.println("Chain is already at or before block " + targetBlockNumber);
+                        logger.info("ℹ️ Chain is already at or before block {}", targetBlockNumber);
                         return true;
                     }
                     
                     // CRITICAL: Clean up off-chain data before bulk deletion
-                    System.out.println("Cleaning up off-chain data for blocks after " + targetBlockNumber);
+                    logger.info("🧹 Cleaning up off-chain data for blocks after {}", targetBlockNumber);
                     List<Block> blocksToDelete = blockDAO.getBlocksAfter(targetBlockNumber);
                     int offChainFilesDeleted = 0;
                     
@@ -2016,12 +2015,12 @@ public class Blockchain {
                                 boolean fileDeleted = offChainStorageService.deleteData(block.getOffChainData());
                                 if (fileDeleted) {
                                     offChainFilesDeleted++;
-                                    System.out.println("  ✓ Deleted off-chain file for block #" + block.getBlockNumber());
+                                    logger.debug("  ✓ Deleted off-chain file for block #{}", block.getBlockNumber());
                                 } else {
-                                    System.err.println("  ⚠ Failed to delete off-chain file for block #" + block.getBlockNumber());
+                                    logger.warn("  ⚠ Failed to delete off-chain file for block #{}", block.getBlockNumber());
                                 }
                             } catch (Exception e) {
-                                System.err.println("  ❌ Error deleting off-chain data for block " + block.getBlockNumber() + ": " + e.getMessage());
+                                logger.error("  ❌ Error deleting off-chain data for block {}", block.getBlockNumber(), e);
                             }
                         }
                     }
@@ -2032,17 +2031,17 @@ public class Blockchain {
                     // CRITICAL: Synchronize block sequence after rollback
                     blockDAO.synchronizeBlockSequence();
                     
-                    System.out.println("Rollback to block " + targetBlockNumber + " completed successfully");
-                    System.out.println("Removed " + deletedCount + " blocks");
+                    logger.info("✅ Rollback to block {} completed successfully", targetBlockNumber);
+                    logger.info("Removed {} blocks", deletedCount);
                     if (offChainFilesDeleted > 0) {
-                        System.out.println("Cleaned up " + offChainFilesDeleted + " off-chain files");
+                        logger.info("🧹 Cleaned up {} off-chain files", offChainFilesDeleted);
                     }
-                    System.out.println("Chain now has " + blockDAO.getBlockCount() + " blocks");
+                    logger.info("Chain now has {} blocks", blockDAO.getBlockCount());
                     
                     return deletedCount > 0 || blocksToRemove == 0;
                     
                 } catch (Exception e) {
-                    System.err.println("Error during rollback to block: " + e.getMessage());
+                    logger.error("Error during rollback to block", e);
                     return false;
                 }
             });
@@ -2065,12 +2064,11 @@ public class Blockchain {
             // Use the DAO method for better performance
             List<Block> matchingBlocks = blockDAO.searchBlocksByContent(searchTerm);
             
-            System.out.println("Found " + matchingBlocks.size() + 
-                             " blocks containing: '" + searchTerm + "'");
+            logger.info("🔍 Found {} blocks containing: '{}'", matchingBlocks.size(), searchTerm);
             return matchingBlocks;
             
         } catch (Exception e) {
-            System.err.println("Error searching blocks: " + e.getMessage());
+            logger.error("❌ Error searching blocks", e);
             return new ArrayList<>();
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
@@ -2129,13 +2127,13 @@ public class Blockchain {
             Block block = blockDAO.getBlockByHash(hash);
             
             if (block == null) {
-                System.out.println("No block found with hash: " + hash);
+                logger.debug("❌ No block found with hash: {}", hash);
             }
             
             return block;
             
         } catch (Exception e) {
-            System.err.println("Error searching block by hash: " + e.getMessage());
+            logger.error("❌ Error searching block by hash", e);
             return null;
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
@@ -2150,7 +2148,7 @@ public class Blockchain {
         GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
         try {
             if (startDate == null || endDate == null) {
-                System.err.println("Start date and end date cannot be null");
+                logger.error("❌ Start date and end date cannot be null");
                 return new ArrayList<>();
             }
             
@@ -2160,7 +2158,7 @@ public class Blockchain {
             return blockDAO.getBlocksByTimeRange(startDateTime, endDateTime);
             
         } catch (Exception e) {
-            System.err.println("Error searching blocks by date range: " + e.getMessage());
+            logger.error("❌ Error searching blocks by date range", e);
             return new ArrayList<>();
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
@@ -2310,7 +2308,7 @@ public class Blockchain {
             JPAUtil.executeInTransaction(em -> {
                 try {
                     // CRITICAL: Clean up all off-chain files before clearing database
-                    System.out.println("Cleaning up off-chain data during reinitialization...");
+                    logger.info("🧹 Cleaning up off-chain data during reinitialization...");
                     List<Block> allBlocks = blockDAO.getAllBlocks();
                     int offChainFilesDeleted = 0;
                     
@@ -2322,13 +2320,13 @@ public class Blockchain {
                                     offChainFilesDeleted++;
                                 }
                             } catch (Exception e) {
-                                System.err.println("Error deleting off-chain data for block " + block.getBlockNumber() + ": " + e.getMessage());
+                                logger.error("Error deleting off-chain data for block {}", block.getBlockNumber(), e);
                             }
                         }
                     }
                     
                     if (offChainFilesDeleted > 0) {
-                        System.out.println("Cleaned up " + offChainFilesDeleted + " off-chain files");
+                        logger.info("🧹 Cleaned up {} off-chain files", offChainFilesDeleted);
                     }
                     
                     // Clear all blocks and keys from database
@@ -2345,10 +2343,10 @@ public class Blockchain {
                     // Reinitialize genesis block (internal version without lock/transaction management)
                     initializeGenesisBlockInternal(em);
                     
-                    System.out.println("Database cleared and reinitialized for testing");
+                    logger.info("✅ Database cleared and reinitialized for testing");
                     return null;
                 } catch (Exception e) {
-                    System.err.println("Error clearing database: " + e.getMessage());
+                    logger.error("❌ Error clearing database", e);
                     throw e;
                 }
             });
@@ -2399,7 +2397,7 @@ public class Blockchain {
             return new KeyDeletionImpact(true, affectedBlocks, message);
             
         } catch (Exception e) {
-            System.err.println("Error checking deletion impact: " + e.getMessage());
+            logger.error("❌ Error checking deletion impact", e);
             return new KeyDeletionImpact(false, -1, "Error checking deletion impact: " + e.getMessage());
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
@@ -2421,34 +2419,34 @@ public class Blockchain {
         try {
             return JPAUtil.executeInTransaction(em -> {
                 try {
-                    System.out.println("🚨 CRITICAL OPERATION: Attempting to permanently delete authorized key");
-                    System.out.println("🔑 Key fingerprint: " + publicKey.substring(0, Math.min(32, publicKey.length())) + "...");
-                    System.out.println("📝 Reason: " + (reason != null ? reason : "No reason provided"));
-                    System.out.println("⚡ Force mode: " + force);
-                    System.out.println("⏰ Timestamp: " + LocalDateTime.now().format(
+                    logger.warn("🚨 CRITICAL OPERATION: Attempting to permanently delete authorized key");
+                    logger.warn("🔑 Key fingerprint: {}...", publicKey.substring(0, Math.min(32, publicKey.length())));
+                    logger.warn("📝 Reason: {}", (reason != null ? reason : "No reason provided"));
+                    logger.warn("⚡ Force mode: {}", force);
+                    logger.warn("⏰ Timestamp: {}", LocalDateTime.now().format(
                         DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
                     
                     // 1. Check deletion impact
                     KeyDeletionImpact impact = canDeleteAuthorizedKey(publicKey);
                     if (!impact.keyExists()) {
-                        System.err.println("❌ " + impact.getMessage());
+                        logger.error("❌ {}", impact.getMessage());
                         return false;
                     }
                     
                     // 2. Safety check for historical blocks
                     if (impact.isSevereImpact() && !force) {
-                        System.err.println("❌ SAFETY BLOCK: Cannot delete key that signed " + 
-                                         impact.getAffectedBlocks() + " historical blocks");
-                        System.err.println("💡 Use force=true to override this safety check");
-                        System.err.println("⚠️ WARNING: Forcing deletion will break blockchain validation for these blocks!");
-                        System.err.println("📊 Impact details: " + impact.getMessage());
+                        logger.error("❌ SAFETY BLOCK: Cannot delete key that signed {} historical blocks", 
+                                    impact.getAffectedBlocks());
+                        logger.error("💡 Use force=true to override this safety check");
+                        logger.error("⚠️ WARNING: Forcing deletion will break blockchain validation for these blocks!");
+                        logger.error("📊 Impact details: {}", impact.getMessage());
                         return false;
                     }
                     
                     // 3. Show impact warning for forced deletions
                     if (impact.isSevereImpact()) {
-                        System.out.println("⚠️ ⚠️ ⚠️ CRITICAL WARNING ⚠️ ⚠️ ⚠️");
-                        System.out.println("This deletion will affect " + impact.getAffectedBlocks() + " historical blocks:");
+                        logger.warn("⚠️ ⚠️ ⚠️ CRITICAL WARNING ⚠️ ⚠️ ⚠️");
+                        logger.warn("This deletion will affect {} historical blocks:", impact.getAffectedBlocks());
                         
                         // Show sample of affected blocks
                         List<Block> affectedBlocks = blockDAO.getBlocksBySignerPublicKey(publicKey);
@@ -2457,14 +2455,14 @@ public class Blockchain {
                             Block block = affectedBlocks.get(i);
                             String data = block.getData();
                             String preview = data != null ? data.substring(0, Math.min(50, data.length())) : "null";
-                            System.out.println("  - Block #" + block.getBlockNumber() + 
-                                             " (" + block.getTimestamp() + "): " + preview + "...");
+                            logger.warn("  - Block #{} ({}): {}...", block.getBlockNumber(), 
+                                       block.getTimestamp(), preview);
                         }
                         if (affectedBlocks.size() > sampleSize) {
-                            System.out.println("  ... and " + (affectedBlocks.size() - sampleSize) + " more blocks");
+                            logger.warn("  ... and {} more blocks", (affectedBlocks.size() - sampleSize));
                         }
-                        System.out.println("⚠️ These blocks will FAIL validation after key deletion!");
-                        System.out.println("🔥 Proceeding with IRREVERSIBLE deletion...");
+                        logger.warn("⚠️ These blocks will FAIL validation after key deletion!");
+                        logger.warn("🔥 Proceeding with IRREVERSIBLE deletion...");
                     }
                     
                     // 4. Get key info for logging before deletion
@@ -2477,38 +2475,37 @@ public class Blockchain {
                     
                     // 6. Comprehensive audit logging
                     if (deleted) {
-                        System.out.println("🗑️ ✅ Key permanently deleted from database");
-                        System.out.println("📊 Deletion summary:");
-                        System.out.println("   - Key records removed: " + keyRecords.size());
-                        System.out.println("   - Historical blocks affected: " + impact.getAffectedBlocks());
-                        System.out.println("   - Force mode used: " + force);
-                        System.out.println("   - Deletion reason: " + reason);
+                        logger.info("🗑️ ✅ Key permanently deleted from database");
+                        logger.info("📊 Deletion summary:");
+                        logger.info("   - Key records removed: {}", keyRecords.size());
+                        logger.info("   - Historical blocks affected: {}", impact.getAffectedBlocks());
+                        logger.info("   - Force mode used: {}", force);
+                        logger.info("   - Deletion reason: {}", reason);
                         
                         for (AuthorizedKey keyRecord : keyRecords) {
-                            System.out.println("   - Deleted record: " + keyRecord.getOwnerName() + 
-                                             " (created: " + keyRecord.getCreatedAt() + 
-                                             ", active: " + keyRecord.isActive() + ")");
+                            logger.info("   - Deleted record: {} (created: {}, active: {})", 
+                                       keyRecord.getOwnerName(), keyRecord.getCreatedAt(), keyRecord.isActive());
                         }
                         
-                        System.out.println("📝 Audit log: Key deletion completed at " + 
-                                         LocalDateTime.now().format(
-                                             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-                        System.out.println("⚠️ WARNING: This action was IRREVERSIBLE!");
+                        logger.info("📝 Audit log: Key deletion completed at {}", 
+                                   LocalDateTime.now().format(
+                                       DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                        logger.warn("⚠️ WARNING: This action was IRREVERSIBLE!");
                         
                         // Recommend validation check if blocks were affected
                         if (impact.isSevereImpact()) {
-                            System.out.println("💡 STRONGLY RECOMMENDED: Run validateChainDetailed() to verify blockchain integrity");
-                            System.out.println("🔧 Consider running blockchain repair tools if validation fails");
+                            logger.warn("💡 STRONGLY RECOMMENDED: Run validateChainDetailed() to verify blockchain integrity");
+                            logger.warn("🔧 Consider running blockchain repair tools if validation fails");
                         }
                     } else {
-                        System.err.println("❌ Failed to delete key from database");
-                        System.err.println("💡 This might indicate the key was already deleted or a database error occurred");
+                        logger.error("❌ Failed to delete key from database");
+                        logger.error("💡 This might indicate the key was already deleted or a database error occurred");
                     }
                     
                     return deleted;
                     
                 } catch (Exception e) {
-                    System.err.println("💥 Critical error during key deletion: " + e.getMessage());
+                    logger.error("💥 Critical error during key deletion", e);
                     e.printStackTrace();
                     return false;
                 }
@@ -2545,13 +2542,13 @@ public class Blockchain {
         }
         
         if (!impact.keyExists()) {
-            System.err.println("Cannot delete key: " + impact.getMessage());
+            logger.error("❌ Cannot delete key: {}", impact.getMessage());
             return false;
         }
         
         if (impact.isSevereImpact()) {
-            System.err.println("Cannot delete key: " + impact.getMessage());
-            System.err.println("Use dangerouslyDeleteAuthorizedKey() with force=true if deletion is absolutely necessary");
+            logger.error("❌ Cannot delete key: {}", impact.getMessage());
+            logger.error("Use dangerouslyDeleteAuthorizedKey() with force=true if deletion is absolutely necessary");
             return false;
         }
         
@@ -2559,7 +2556,7 @@ public class Blockchain {
         GLOBAL_BLOCKCHAIN_LOCK.writeLock().lock();
         try {
             return JPAUtil.executeInTransaction(em -> {
-                System.out.println("Safely deleting authorized key (no historical blocks affected)");
+                logger.info("✅ Safely deleting authorized key (no historical blocks affected)");
                 return authorizedKeyDAO.deleteAuthorizedKey(publicKey);
             });
         } finally {
@@ -2628,15 +2625,15 @@ public class Blockchain {
         GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
         ChainDiagnostic diagnostic;
         try {
-            System.out.println("🔧 Chain validation failed, attempting diagnostic...");
+            logger.warn("🔧 Chain validation failed, attempting diagnostic...");
             diagnostic = diagnoseCorruption();
-            System.out.println("📊 Diagnostic: " + diagnostic);
+            logger.info("📊 Diagnostic: {}", diagnostic);
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
         }
         
         if (!diagnostic.isHealthy()) {
-            System.out.println("💡 Use recoverCorruptedChain() for manual recovery");
+            logger.warn("💡 Use recoverCorruptedChain() for manual recovery");
         }
         
         return false;
@@ -2705,7 +2702,7 @@ public class Blockchain {
     public void setMaxBlockSizeBytes(int maxSizeBytes) {
         if (maxSizeBytes > 0 && maxSizeBytes <= 10 * 1024 * 1024) { // Max 10MB for on-chain
             this.currentMaxBlockSizeBytes = maxSizeBytes;
-            System.out.println("Max block size updated to: " + maxSizeBytes + " bytes");
+            logger.info("📊 Max block size updated to: {} bytes", maxSizeBytes);
         } else {
             throw new IllegalArgumentException("Invalid block size. Must be between 1 and 10MB");
         }
@@ -2714,7 +2711,7 @@ public class Blockchain {
     public void setMaxBlockDataLength(int maxDataLength) {
         if (maxDataLength > 0 && maxDataLength <= 1000000) { // Max 1M characters
             this.currentMaxBlockDataLength = maxDataLength;
-            System.out.println("Max block data length updated to: " + maxDataLength + " characters");
+            logger.info("📊 Max block data length updated to: {} characters", maxDataLength);
         } else {
             throw new IllegalArgumentException("Invalid data length. Must be between 1 and 1M characters");
         }
@@ -2723,7 +2720,7 @@ public class Blockchain {
     public void setOffChainThresholdBytes(int thresholdBytes) {
         if (thresholdBytes > 0 && thresholdBytes <= currentMaxBlockSizeBytes) {
             this.currentOffChainThresholdBytes = thresholdBytes;
-            System.out.println("Off-chain threshold updated to: " + thresholdBytes + " bytes");
+            logger.info("📊 Off-chain threshold updated to: {} bytes", thresholdBytes);
         } else {
             throw new IllegalArgumentException("Invalid threshold. Must be between 1 and current max block size");
         }
@@ -2741,7 +2738,7 @@ public class Blockchain {
         this.currentMaxBlockSizeBytes = MAX_BLOCK_SIZE_BYTES;
         this.currentMaxBlockDataLength = MAX_BLOCK_DATA_LENGTH;
         this.currentOffChainThresholdBytes = OFF_CHAIN_THRESHOLD_BYTES;
-        System.out.println("Block size limits reset to default values");
+        logger.info("🔄 Block size limits reset to default values");
     }
     
     /**
@@ -2786,17 +2783,17 @@ public class Blockchain {
                             orphanedFilesDeleted++;
                         }
                     } catch (Exception e) {
-                        System.err.println("Failed to delete orphaned file: " + file.getName() + " - " + e.getMessage());
+                        logger.error("Failed to delete orphaned file: {} - {}", file.getName(), e.getMessage());
                     }
                 }
             }
             
             if (orphanedFilesDeleted > 0) {
-                System.out.println("Cleaned up " + orphanedFilesDeleted + " orphaned off-chain files");
+                logger.info("🧹 Cleaned up {} orphaned off-chain files", orphanedFilesDeleted);
             }
             
         } catch (Exception e) {
-            System.err.println("Error during orphaned files cleanup: " + e.getMessage());
+            logger.error("❌ Error during orphaned files cleanup", e);
         }
     }
     
@@ -2857,10 +2854,10 @@ public class Blockchain {
                         boolean deleted = file.delete();
                         if (deleted) {
                             orphanedFilesDeleted++;
-                            System.out.println("Deleted orphaned file: " + file.getName());
+                            logger.debug("🗝️ Deleted orphaned file: {}", file.getName());
                         }
                     } catch (Exception e) {
-                        System.err.println("Failed to delete orphaned file: " + file.getName() + " - " + e.getMessage());
+                        logger.error("Failed to delete orphaned file: {} - {}", file.getName(), e.getMessage());
                     }
                 }
             }
@@ -3043,11 +3040,11 @@ public class Blockchain {
     public boolean exportEncryptedChain(String filePath, String masterPassword) {
         // Validate input parameters
         if (filePath == null || filePath.trim().isEmpty()) {
-            System.err.println("Export file path cannot be null or empty");
+            logger.error("❌ Export file path cannot be null or empty");
             return false;
         }
         if (masterPassword == null || masterPassword.trim().isEmpty()) {
-            System.err.println("Master password required for encrypted chain export");
+            logger.error("❌ Master password required for encrypted chain export");
             return false;
         }
         
@@ -3075,21 +3072,20 @@ public class Blockchain {
             File file = new File(filePath);
             mapper.writeValue(file, exportData);
             
-            System.out.println("🔐 Encrypted chain exported successfully to: " + filePath);
-            System.out.println("📦 Exported " + allBlocks.size() + " blocks and " + allKeys.size() + " authorized keys");
-            System.out.println("🔑 Exported encryption data for " + encryptionData.getTotalEncryptionEntries() + " entries");
+            logger.info("🔐 Encrypted chain exported successfully to: {}", filePath);
+            logger.info("📦 Exported {} blocks and {} authorized keys", allBlocks.size(), allKeys.size());
+            logger.info("🔑 Exported encryption data for {} entries", encryptionData.getTotalEncryptionEntries());
             if (offChainFilesExported > 0) {
-                System.out.println("📁 Exported " + offChainFilesExported + " off-chain files");
+                logger.info("📁 Exported {} off-chain files", offChainFilesExported);
             }
             
             // Display encryption summary
-            System.out.println("\n" + EncryptionExportUtil.generateEncryptionSummary(encryptionData));
+            logger.info("\n{}", EncryptionExportUtil.generateEncryptionSummary(encryptionData));
             
             return true;
             
         } catch (Exception e) {
-            System.err.println("❌ Error exporting encrypted chain: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("❌ Error exporting encrypted chain", e);
             return false;
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
@@ -3102,7 +3098,7 @@ public class Blockchain {
      */
     public boolean importEncryptedChain(String filePath, String masterPassword) {
         if (masterPassword == null || masterPassword.trim().isEmpty()) {
-            System.err.println("Master password required for encrypted chain import");
+            logger.error("❌ Master password required for encrypted chain import");
             return false;
         }
         
@@ -3116,7 +3112,7 @@ public class Blockchain {
                     
                     File file = new File(filePath);
                     if (!file.exists()) {
-                        System.err.println("Import file not found: " + filePath);
+                        logger.error("❌ Import file not found: {}", filePath);
                         return false;
                     }
                     
@@ -3124,37 +3120,37 @@ public class Blockchain {
                     
                     // Validate import data
                     if (importData.getBlocks() == null || importData.getBlocks().isEmpty()) {
-                        System.err.println("No blocks found in import file");
+                        logger.error("❌ No blocks found in import file");
                         return false;
                     }
                     
                     // Check if import data has encryption support
                     if (!importData.hasEncryptionSupport()) {
-                        System.err.println("❌ Import file does not support encryption. Use regular importChain() method.");
+                        logger.error("❌ Import file does not support encryption. Use regular importChain() method.");
                         return false;
                     }
                     
                     EncryptionExportData encryptionData = importData.getEncryptionData();
                     if (encryptionData == null || encryptionData.isEmpty()) {
-                        System.err.println("⚠️ No encryption data found in import file");
+                        logger.warn("⚠️ No encryption data found in import file");
                     }
                     
                     // Validate encryption data consistency
                     if (!EncryptionExportUtil.validateEncryptionData(importData.getBlocks(), encryptionData)) {
-                        System.err.println("❌ Encryption data validation failed");
+                        logger.error("❌ Encryption data validation failed");
                         return false;
                     }
                     
                     // Verify master password matches
                     if (encryptionData != null && encryptionData.getMasterPassword() != null) {
                         if (!encryptionData.getMasterPassword().equals(masterPassword)) {
-                            System.err.println("❌ Master password mismatch");
+                            logger.error("❌ Master password mismatch");
                             return false;
                         }
                     }
                     
-                    System.out.println("🔐 Importing encrypted blockchain...");
-                    System.out.println("WARNING: This will replace the current blockchain!");
+                    logger.info("🔐 Importing encrypted blockchain...");
+                    logger.warn("⚠️ WARNING: This will replace the current blockchain!");
                     
                     // Clean up existing data
                     cleanupExistingData();
@@ -3168,7 +3164,7 @@ public class Blockchain {
                     em.clear();
                     
                     // Import authorized keys
-                    System.out.println("📋 Importing authorized keys...");
+                    logger.info("📋 Importing authorized keys...");
                     for (AuthorizedKey originalKey : importData.getAuthorizedKeys()) {
                         // Create new detached copy to avoid JPA conflicts
                         AuthorizedKey newKey = new AuthorizedKey();
@@ -3183,7 +3179,7 @@ public class Blockchain {
                     }
                     
                     // Import blocks with encryption key restoration
-                    System.out.println("📦 Importing blocks with encryption support...");
+                    logger.info("📦 Importing blocks with encryption support...");
                     int blocksImported = 0;
                     int encryptedBlocksRestored = 0;
                     
@@ -3195,9 +3191,9 @@ public class Blockchain {
                         if (newBlock.isDataEncrypted() && encryptionData != null) {
                             if (EncryptionExportUtil.canDecryptBlock(newBlock, encryptionData)) {
                                 encryptedBlocksRestored++;
-                                System.out.println("🔐 Restored encryption context for block #" + newBlock.getBlockNumber());
+                                logger.info("🔐 Restored encryption context for block #{}", newBlock.getBlockNumber());
                             } else {
-                                System.err.println("⚠️ Cannot restore encryption context for block #" + newBlock.getBlockNumber());
+                                logger.warn("⚠️ Cannot restore encryption context for block #{}", newBlock.getBlockNumber());
                             }
                         }
                         
@@ -3216,32 +3212,31 @@ public class Blockchain {
                             String originalPassword = encryptionData.getOffChainPassword(originalBlockNumber);
                             if (originalPassword != null) {
                                 // Store the mapping for later use (since we can't modify OffChainData directly)
-                                System.out.println("🔑 Off-chain password restored for block #" + newBlock.getBlockNumber());
+                                logger.info("🔑 Off-chain password restored for block #{}", newBlock.getBlockNumber());
                             }
                         }
                         
                         blocksImported++;
                         
                         if (blocksImported % 100 == 0) {
-                            System.out.println("   📦 Imported " + blocksImported + " blocks...");
+                            logger.debug("   📦 Imported {} blocks...", blocksImported);
                         }
                     }
                     
                     // Restore off-chain files
                     int offChainFilesRestored = handleOffChainImport(importData.getBlocks(), encryptionData);
                     
-                    System.out.println("✅ Encrypted chain import completed successfully!");
-                    System.out.println("📦 Imported " + blocksImported + " blocks and " + importData.getAuthorizedKeysCount() + " authorized keys");
-                    System.out.println("🔐 Restored encryption context for " + encryptedBlocksRestored + " encrypted blocks");
+                    logger.info("✅ Encrypted chain import completed successfully!");
+                    logger.info("📦 Imported {} blocks and {} authorized keys", blocksImported, importData.getAuthorizedKeysCount());
+                    logger.info("🔐 Restored encryption context for {} encrypted blocks", encryptedBlocksRestored);
                     if (offChainFilesRestored > 0) {
-                        System.out.println("📁 Restored " + offChainFilesRestored + " off-chain files");
+                        logger.info("📁 Restored {} off-chain files", offChainFilesRestored);
                     }
                     
                     return true;
                     
                 } catch (Exception e) {
-                    System.err.println("❌ Error importing encrypted chain: " + e.getMessage());
-                    e.printStackTrace();
+                    logger.error("❌ Error importing encrypted chain", e);
                     return false;
                 }
             });
@@ -3268,11 +3263,11 @@ public class Blockchain {
         if (!offChainBackupDir.exists()) {
             try {
                 if (!offChainBackupDir.mkdirs()) {
-                    System.err.println("Failed to create off-chain backup directory");
+                    logger.error("❌ Failed to create off-chain backup directory");
                     return 0;
                 }
             } catch (SecurityException e) {
-                System.err.println("Security exception creating backup directory: " + e.getMessage());
+                logger.error("Security exception creating backup directory", e);
                 return 0;
             }
         }
@@ -3296,12 +3291,12 @@ public class Blockchain {
                         offChainData.setFilePath("off-chain-backup/" + fileName);
                         offChainFilesExported++;
                         
-                        System.out.println("  ✓ Exported off-chain file for block #" + block.getBlockNumber());
+                        logger.debug("  ✓ Exported off-chain file for block #{}", block.getBlockNumber());
                     } else {
-                        System.err.println("  ⚠ Off-chain file missing for block #" + block.getBlockNumber());
+                        logger.warn("  ⚠ Off-chain file missing for block #{}", block.getBlockNumber());
                     }
                 } catch (Exception e) {
-                    System.err.println("  ❌ Error exporting off-chain file for block #" + block.getBlockNumber() + ": " + e.getMessage());
+                    logger.error("  ❌ Error exporting off-chain file for block #{}", block.getBlockNumber(), e);
                 }
             }
         }
@@ -3343,13 +3338,13 @@ public class Blockchain {
                             offChainData.setFilePath(newFile.getPath());
                             offChainFilesRestored++;
                             
-                            System.out.println("  ✓ Restored off-chain file for block #" + block.getBlockNumber());
+                            logger.debug("  ✓ Restored off-chain file for block #{}", block.getBlockNumber());
                         } else {
-                            System.err.println("  ⚠ Off-chain backup file missing for block #" + block.getBlockNumber());
+                            logger.warn("  ⚠ Off-chain backup file missing for block #{}", block.getBlockNumber());
                         }
                     }
                 } catch (Exception e) {
-                    System.err.println("  ❌ Error restoring off-chain file for block #" + block.getBlockNumber() + ": " + e.getMessage());
+                    logger.error("  ❌ Error restoring off-chain file for block #{}", block.getBlockNumber(), e);
                 }
             }
         }
@@ -3361,7 +3356,7 @@ public class Blockchain {
      * Helper method to clean up existing data before import
      */
     private void cleanupExistingData() {
-        System.out.println("🧹 Cleaning up existing off-chain data before import...");
+        logger.info("🧹 Cleaning up existing off-chain data before import...");
         List<Block> existingBlocks = blockDAO.getAllBlocks();
         int existingOffChainFilesDeleted = 0;
         
@@ -3373,13 +3368,13 @@ public class Blockchain {
                         existingOffChainFilesDeleted++;
                     }
                 } catch (Exception e) {
-                    System.err.println("Error deleting existing off-chain data for block " + block.getBlockNumber() + ": " + e.getMessage());
+                    logger.error("Error deleting existing off-chain data for block {}", block.getBlockNumber(), e);
                 }
             }
         }
         
         if (existingOffChainFilesDeleted > 0) {
-            System.out.println("Cleaned up " + existingOffChainFilesDeleted + " existing off-chain files");
+            logger.info("🧹 Cleaned up {} existing off-chain files", existingOffChainFilesDeleted);
         }
     }
     

@@ -5,6 +5,8 @@ import com.rbatllet.blockchain.entity.BlockSequence;
 import com.rbatllet.blockchain.util.JPAUtil;
 import com.rbatllet.blockchain.service.SecureBlockEncryptionService;
 import com.rbatllet.blockchain.search.SearchLevel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityTransaction;
 import jakarta.persistence.LockModeType;
@@ -21,6 +23,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * ENHANCED: Added support for encrypted block data using AES-256-GCM
  */
 public class BlockDAO {
+    
+    private static final Logger logger = LoggerFactory.getLogger(BlockDAO.class);
     
     // Read-Write lock for thread safety on read operations
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
@@ -82,20 +86,20 @@ public class BlockDAO {
             boolean shouldManageTransaction = !JPAUtil.hasActiveTransaction();
             
             try {
-                System.out.println("🔍 [" + threadName + "] Starting getNextBlockNumberAtomic() - shouldManageTransaction: " + shouldManageTransaction);
+                logger.debug("🔍 [{}] Starting getNextBlockNumberAtomic() - shouldManageTransaction: {}", threadName, shouldManageTransaction);
                 
                 if (shouldManageTransaction) {
                     transaction = em.getTransaction();
                     transaction.begin();
-                    System.out.println("🔍 [" + threadName + "] Started new transaction");
+                    logger.debug("🔍 [{}] Started new transaction", threadName);
                 }
                 
                 // Use BlockSequence with pessimistic write lock for true atomicity
-                System.out.println("🔍 [" + threadName + "] Acquiring PESSIMISTIC_WRITE lock on BlockSequence");
+                logger.debug("🔍 [{}] Acquiring PESSIMISTIC_WRITE lock on BlockSequence", threadName);
                 BlockSequence sequence = em.find(BlockSequence.class, "block_number", LockModeType.PESSIMISTIC_WRITE);
                 
                 if (sequence == null) {
-                    System.out.println("🔍 [" + threadName + "] BlockSequence not found, initializing...");
+                    logger.debug("🔍 [{}] BlockSequence not found, initializing...", threadName);
                     // Initialize sequence correctly - should start at 1 for first non-genesis block
                     TypedQuery<Long> maxQuery = em.createQuery("SELECT MAX(b.blockNumber) FROM Block b", Long.class);
                     Long maxBlockNumber = maxQuery.getSingleResult();
@@ -109,43 +113,43 @@ public class BlockDAO {
                         nextValue = maxBlockNumber + 1L;
                     }
                     
-                    System.out.println("🔍 [" + threadName + "] Creating new sequence with nextValue: " + (nextValue + 1));
+                    logger.debug("🔍 [{}] Creating new sequence with nextValue: {}", threadName, (nextValue + 1));
                     sequence = new BlockSequence("block_number", nextValue + 1); // Store next available number
                     em.persist(sequence);
                     em.flush(); // Force immediate persistence
                     
                     if (shouldManageTransaction && transaction != null) {
                         transaction.commit();
-                        System.out.println("🔍 [" + threadName + "] Committed transaction for new sequence");
+                        logger.debug("🔍 [{}] Committed transaction for new sequence", threadName);
                     }
                     
                     long elapsed = (System.nanoTime() - startTime) / 1_000_000;
-                    System.out.println("✅ [" + threadName + "] Generated block number: " + nextValue + " (took " + elapsed + "ms)");
+                    logger.info("✅ [{}] Generated block number: {} (took {}ms)", threadName, nextValue, elapsed);
                     return nextValue; // Return the number we're using for current block
                 } else {
                     // FIXED: Correct atomic increment logic
                     Long blockNumberToUse = sequence.getNextValue(); // This is the number we'll use for the current block
-                    System.out.println("🔍 [" + threadName + "] Found existing sequence, using block number: " + blockNumberToUse);
+                    logger.debug("🔍 [{}] Found existing sequence, using block number: {}", threadName, blockNumberToUse);
                     
                     // Increment the sequence for the next block
                     sequence.setNextValue(blockNumberToUse + 1);
                     em.merge(sequence);
                     em.flush(); // Force immediate persistence
                     
-                    System.out.println("🔍 [" + threadName + "] Updated sequence to nextValue: " + (blockNumberToUse + 1));
+                    logger.debug("🔍 [{}] Updated sequence to nextValue: {}", threadName, (blockNumberToUse + 1));
                     
                     if (shouldManageTransaction && transaction != null) {
                         transaction.commit();
-                        System.out.println("🔍 [" + threadName + "] Committed transaction for existing sequence");
+                        logger.debug("🔍 [{}] Committed transaction for existing sequence", threadName);
                     }
                     
                     long elapsed = (System.nanoTime() - startTime) / 1_000_000;
-                    System.out.println("✅ [" + threadName + "] Generated block number: " + blockNumberToUse + " (took " + elapsed + "ms)");
+                    logger.info("✅ [{}] Generated block number: {} (took {}ms)", threadName, blockNumberToUse, elapsed);
                     return blockNumberToUse;
                 }
                 
             } catch (Exception e) {
-                System.err.println("❌ [" + threadName + "] ERROR in getNextBlockNumberAtomic: " + e.getMessage());
+                logger.error("❌ [{}] ERROR in getNextBlockNumberAtomic: {}", threadName, e.getMessage(), e);
                 if (shouldManageTransaction && transaction != null && transaction.isActive()) {
                     transaction.rollback();
                 }

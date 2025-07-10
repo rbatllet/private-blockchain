@@ -2,6 +2,8 @@ package com.rbatllet.blockchain.search;
 
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.service.SecureBlockEncryptionService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.security.PrivateKey;
 import java.util.*;
@@ -27,6 +29,8 @@ import java.util.regex.Matcher;
  */
 public class OnChainContentSearch {
     
+    private static final Logger logger = LoggerFactory.getLogger(OnChainContentSearch.class);
+    
     // Search configuration
     private static final int CONTEXT_LENGTH = 100; // Characters before/after match
     private static final int MAX_SNIPPETS_PER_BLOCK = 5;
@@ -49,7 +53,7 @@ public class OnChainContentSearch {
                                                    String password, PrivateKey privateKey,
                                                    int maxResults) {
         
-        System.out.println("🔍 Starting on-chain content search for: \"" + searchTerm + "\"");
+        logger.info("🔍 Starting on-chain content search for: \"{}\"", searchTerm);
         
         if (blocks == null || blocks.isEmpty() || searchTerm == null || searchTerm.trim().isEmpty()) {
             return new OnChainSearchResult(searchTerm, Collections.emptyList(), 0, 0);
@@ -94,9 +98,8 @@ public class OnChainContentSearch {
             }
         }
         
-        System.out.println("✅ On-chain search completed: " + matches.size() + 
-                         " matches found in " + blocksSearched + " blocks" +
-                         " (" + encryptedBlocksDecrypted + " encrypted blocks decrypted)");
+        logger.info("✅ On-chain search completed: {} matches found in {} blocks ({} encrypted blocks decrypted)", 
+                         matches.size(), blocksSearched, encryptedBlocksDecrypted);
         
         return new OnChainSearchResult(searchTerm, matches, blocksSearched, encryptedBlocksDecrypted);
     }
@@ -151,7 +154,7 @@ public class OnChainContentSearch {
             return null;
             
         } catch (Exception e) {
-            System.err.println("⚠️ Failed to extract content from block " + block.getHash() + ": " + e.getMessage());
+            logger.warn("⚠️ Failed to extract content from block {}: {}", block.getHash(), e.getMessage());
             return null;
         }
     }

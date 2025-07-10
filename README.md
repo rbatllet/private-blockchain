@@ -93,9 +93,10 @@ This is a **private blockchain** for controlled environments where only authoriz
 ### Technical Features
 - **Persistence**: SQLite database with JPA standard for ORM (using Hibernate as provider)
 - **Off-Chain Storage**: Encrypted file storage with automatic data tiering (AES-256-GCM)
-- **Comprehensive Testing**: More than 40 JUnit 5 tests + integration demos + off-chain storage tests
-- **Production Ready**: Complete documentation and deployment guides
-- **Clean Architecture**: Well-structured code with DAO pattern
+- **Professional Logging**: SLF4J with Logback - configurable performance modes (dev/production/test)
+- **Comprehensive Testing**: More than 470 JUnit 5 tests + integration demos + off-chain storage tests
+- **Production Ready**: Complete documentation and deployment guides with performance optimization
+- **Clean Architecture**: Well-structured code with DAO pattern and enterprise logging
 - **Scalable Storage**: Support for data up to 100MB per block through off-chain storage
 
 ## 🛠️ Technologies Used
@@ -1166,6 +1167,7 @@ This project includes comprehensive documentation for different use cases:
 - **[TESTING.md](docs/TESTING.md)** - Comprehensive testing guide and troubleshooting
 - **[SECURITY_CLASSES_GUIDE.md](docs/SECURITY_CLASSES_GUIDE.md)** - Security classes usage guide (migrated from CLI)
 - **[UTILITY_CLASSES_GUIDE.md](docs/UTILITY_CLASSES_GUIDE.md)** - Utility classes usage guide (migrated from CLI)
+- **[LOGGING.md](docs/LOGGING.md)** - 📊 **Professional logging system with SLF4J** - Configuration modes, performance optimization, and structured logging
 
 ### 🔐 Security & Encryption
 - **[ENCRYPTION_GUIDE.md](docs/ENCRYPTION_GUIDE.md)** - Block encryption and metadata layer management

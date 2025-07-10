@@ -1,6 +1,8 @@
 package com.rbatllet.blockchain.security;
 
 import com.rbatllet.blockchain.util.CryptoUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -18,6 +20,8 @@ import java.util.regex.Pattern;
  * Supports PEM, DER, and raw Base64 formats for private and public keys
  */
 public class KeyFileLoader {
+    
+    private static final Logger logger = LoggerFactory.getLogger(KeyFileLoader.class);
     
     // PEM format patterns
     private static final Pattern PRIVATE_KEY_PEM_PATTERN = Pattern.compile(
@@ -46,19 +50,19 @@ public class KeyFileLoader {
             
             // Check if file exists
             if (!Files.exists(path)) {
-                System.err.println("🔍 Key file not found: " + keyFilePath);
+                logger.error("🔍 Key file not found: {}", keyFilePath);
                 return null;
             }
             
             // Check if file is readable
             if (!Files.isReadable(path)) {
-                System.err.println("🔍 Key file is not readable: " + keyFilePath);
+                logger.error("🔍 Key file is not readable: {}", keyFilePath);
                 return null;
             }
             
             // Check if file is empty
             if (Files.size(path) == 0) {
-                System.err.println("🔍 Key file is empty: " + keyFilePath);
+                logger.error("🔍 Key file is empty: {}", keyFilePath);
                 return null;
             }
             
@@ -79,7 +83,7 @@ public class KeyFileLoader {
                 content = Files.readString(path).trim();
                 
                 if (content.isEmpty()) {
-                    System.err.println("Key file is empty: " + keyFilePath);
+                    logger.error("❌ Key file is empty: {}", keyFilePath);
                     return null;
                 }
                 
@@ -112,12 +116,12 @@ public class KeyFileLoader {
                 }
             }
             
-            System.err.println("🔍 Unable to parse private key from file: " + keyFilePath);
-            System.err.println("🔍 Supported formats: PEM, DER, Base64");
+            logger.error("🔍 Unable to parse private key from file: {}", keyFilePath);
+            logger.error("🔍 Supported formats: PEM, DER, Base64");
             return null;
             
         } catch (Exception e) {
-            System.err.println("🔍 Error loading private key from file: " + e.getMessage());
+            logger.error("🔍 Error loading private key from file: {}", e.getMessage());
             return null;
         }
     }
@@ -139,8 +143,8 @@ public class KeyFileLoader {
             if (ecMatcher.find()) {
                 // This would require BouncyCastle for specific EC format parsing
                 // For now, we'll assume PKCS#8 format
-                System.err.println("EC PRIVATE KEY format detected. Please convert to PKCS#8 format:");
-                System.err.println("openssl pkcs8 -topk8 -nocrypt -in ec_key.pem -out pkcs8_key.pem");
+                logger.warn("⚠️ EC PRIVATE KEY format detected. Please convert to PKCS#8 format:");
+                logger.warn("⚠️ openssl pkcs8 -topk8 -nocrypt -in ec_key.pem -out pkcs8_key.pem");
                 return null;
             }
             

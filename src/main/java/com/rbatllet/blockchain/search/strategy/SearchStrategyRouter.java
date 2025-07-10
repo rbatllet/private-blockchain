@@ -4,6 +4,8 @@ import com.rbatllet.blockchain.search.SearchLevel;
 import com.rbatllet.blockchain.search.metadata.BlockMetadataLayers;
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.config.EncryptionConfig.SecurityLevel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -25,6 +27,8 @@ import java.util.concurrent.Executors;
  * between speed, privacy, and completeness.
  */
 public class SearchStrategyRouter {
+    
+    private static final Logger logger = LoggerFactory.getLogger(SearchStrategyRouter.class);
     
     private final FastIndexSearch fastIndexSearch;
     private final EncryptedContentSearch encryptedContentSearch;
@@ -356,27 +360,27 @@ public class SearchStrategyRouter {
             return;
         }
         
-        System.out.println("🔍 Debug: SearchStrategyRouter.indexBlock called for " + blockHash.substring(0, 8) + "...");
-        System.out.println("🔍 Debug: hasPrivateLayer=" + metadata.hasPrivateLayer() + 
-                          ", hasPublicLayer=" + (metadata.getPublicLayer() != null));
+        logger.debug("🔍 SearchStrategyRouter.indexBlock called for {}...", blockHash.substring(0, 8));
+        logger.debug("🔍 hasPrivateLayer={}, hasPublicLayer={}", metadata.hasPrivateLayer(), 
+                    (metadata.getPublicLayer() != null));
         
         // Index in fast search if public metadata available
         if (metadata.getPublicLayer() != null && !metadata.getPublicLayer().isEmpty()) {
-            System.out.println("🔍 Debug: Indexing in fast search");
+            logger.debug("🔍 Indexing in fast search");
             fastIndexSearch.indexBlock(blockHash, metadata);
         }
         
         // Index in encrypted search if private layer available
         if (metadata.hasPrivateLayer()) {
             String encryptedPrivateLayer = metadata.getEncryptedPrivateLayer();
-            System.out.println("🔍 Debug: Indexing in encrypted search");
-            System.out.println("🔍 Debug: encryptedPrivateLayer value: " + (encryptedPrivateLayer != null ? "present (" + encryptedPrivateLayer.length() + " chars)" : "NULL"));
+            logger.debug("🔍 Indexing in encrypted search");
+            logger.debug("🔍 encryptedPrivateLayer value: {}", (encryptedPrivateLayer != null ? "present (" + encryptedPrivateLayer.length() + " chars)" : "NULL"));
             if (encryptedPrivateLayer != null && !encryptedPrivateLayer.trim().isEmpty()) {
-                System.out.println("🔍 Debug: encryptedPrivateLayer preview: " + encryptedPrivateLayer.substring(0, Math.min(50, encryptedPrivateLayer.length())) + "...");
+                logger.debug("🔍 encryptedPrivateLayer preview: {}...", encryptedPrivateLayer.substring(0, Math.min(50, encryptedPrivateLayer.length())));
             }
             encryptedContentSearch.indexEncryptedBlock(blockHash, encryptedPrivateLayer);
         } else {
-            System.out.println("🔍 Debug: ⚠️ NO private layer - skipping encrypted search indexing");
+            logger.debug("🔍 ⚠️ NO private layer - skipping encrypted search indexing");
         }
         
     }

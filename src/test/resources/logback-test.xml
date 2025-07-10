@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- TEST LOGGING CONFIGURATION -->
+    <!-- Minimal logging for fast test execution -->
+
+    <!-- Console appender - only for critical errors during tests -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss} %-5level %logger{20} - %msg%n</pattern>
+        </encoder>
+        <!-- Only show ERROR level in tests -->
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>ERROR</level>
+        </filter>
+    </appender>
+
+    <!-- File appender for test failures debugging -->
+    <appender name="TEST_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>target/test-logs/blockchain-tests.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
+            <fileNamePattern>target/test-logs/blockchain-tests.%i.log</fileNamePattern>
+            <minIndex>1</minIndex>
+            <maxIndex>3</maxIndex>
+        </rollingPolicy>
+        <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+            <maxFileSize>5MB</maxFileSize>
+        </triggeringPolicy>
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- MINIMAL LOGGING FOR FAST TESTS -->
+    
+    <!-- Blockchain core - only errors -->
+    <logger name="com.rbatllet.blockchain.core" level="ERROR" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="TEST_FILE"/>
+    </logger>
+
+    <!-- All other blockchain components - errors only -->
+    <logger name="com.rbatllet.blockchain" level="ERROR" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="TEST_FILE"/>
+    </logger>
+
+    <!-- External libraries - silent -->
+    <logger name="org.hibernate" level="ERROR"/>
+    <logger name="com.zaxxer.hikari" level="ERROR"/>
+    <logger name="org.sqlite" level="ERROR"/>
+    <logger name="org.junit" level="WARN"/>
+
+    <!-- Root logger - errors only for maximum test speed -->
+    <root level="ERROR">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="TEST_FILE"/>
+    </root>
+
+</configuration>

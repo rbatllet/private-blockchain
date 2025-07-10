@@ -1,6 +1,8 @@
 package com.rbatllet.blockchain.security;
 
 import com.rbatllet.blockchain.util.CryptoUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.File;
@@ -16,6 +18,8 @@ import java.util.Base64;
  * Secure storage for private keys using AES-256 encryption
  */
 public class SecureKeyStorage {
+    
+    private static final Logger logger = LoggerFactory.getLogger(SecureKeyStorage.class);
     
     private static final String KEYS_DIRECTORY = "private-keys";
     private static final String ALGORITHM = "AES";
@@ -56,7 +60,7 @@ public class SecureKeyStorage {
             return true;
             
         } catch (Exception e) {
-            System.err.println("Error saving private key: " + e.getMessage());
+            logger.error("❌ Error saving private key: {}", e.getMessage());
             return false;
         }
     }

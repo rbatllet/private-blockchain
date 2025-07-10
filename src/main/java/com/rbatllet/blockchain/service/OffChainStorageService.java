@@ -1,6 +1,8 @@
 package com.rbatllet.blockchain.service;
 
 import com.rbatllet.blockchain.entity.OffChainData;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
@@ -22,6 +24,8 @@ import java.util.Base64;
  * UPGRADED: Now uses AES-256-GCM for authenticated encryption
  */
 public class OffChainStorageService {
+    
+    private static final Logger logger = LoggerFactory.getLogger(OffChainStorageService.class);
     
     private static final String OFF_CHAIN_DIRECTORY = "off-chain-data";
     private static final String ALGORITHM = "AES";
@@ -117,22 +121,22 @@ public class OffChainStorageService {
             
             // Additional validation: ensure data is not empty and has reasonable size
             if (data == null || data.length == 0) {
-                System.err.println("Integrity verification failed: Retrieved data is empty");
+                logger.error("❌ Integrity verification failed: Retrieved data is empty");
                 return false;
             }
             
             // Verify data size matches expected file size (accounting for potential padding)
             long expectedSize = offChainData.getFileSize();
             if (expectedSize > 0 && Math.abs(data.length - expectedSize) > 16) {
-                System.err.println("Integrity verification failed: Data size mismatch - expected: " + 
-                    expectedSize + ", actual: " + data.length);
+                logger.error("❌ Integrity verification failed: Data size mismatch - expected: {}, actual: {}", 
+                    expectedSize, data.length);
                 return false;
             }
             
             // If we get here without exception and pass validations, integrity is verified
             return true;
         } catch (Exception e) {
-            System.err.println("Integrity verification failed: " + e.getMessage());
+            logger.error("❌ Integrity verification failed: {}", e.getMessage());
             return false;
         }
     }
@@ -144,7 +148,7 @@ public class OffChainStorageService {
         try {
             return Files.deleteIfExists(Paths.get(offChainData.getFilePath()));
         } catch (Exception e) {
-            System.err.println("Error deleting off-chain data: " + e.getMessage());
+            logger.error("❌ Error deleting off-chain data: {}", e.getMessage());
             return false;
         }
     }

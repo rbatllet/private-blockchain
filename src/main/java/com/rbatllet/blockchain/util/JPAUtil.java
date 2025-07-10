@@ -4,6 +4,8 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.EntityTransaction;
 import jakarta.persistence.Persistence;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -12,6 +14,8 @@ import java.util.concurrent.locks.ReentrantLock;
  * FIXED: Added thread-safety improvements and transaction management
  */
 public class JPAUtil {
+    
+    private static final Logger logger = LoggerFactory.getLogger(JPAUtil.class);
     
     private static EntityManagerFactory entityManagerFactory;
     private static final ReentrantLock initLock = new ReentrantLock();
@@ -25,7 +29,7 @@ public class JPAUtil {
             // Create the EntityManagerFactory from persistence.xml
             entityManagerFactory = Persistence.createEntityManagerFactory("blockchainPU");
         } catch (Throwable ex) {
-            System.err.println("Initial EntityManagerFactory creation failed: " + ex);
+            logger.error("Initial EntityManagerFactory creation failed", ex);
             throw new ExceptionInInitializerError(ex);
         }
     }

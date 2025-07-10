@@ -4,6 +4,8 @@ import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.entity.OffChainData;
 import com.rbatllet.blockchain.service.OffChainStorageService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.security.PrivateKey;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -30,6 +32,8 @@ import java.util.regex.Pattern;
  * - No external dependencies - uses synchronized methods for simplicity
  */
 public class OffChainFileSearch {
+    
+    private static final Logger logger = LoggerFactory.getLogger(OffChainFileSearch.class);
     
     private final OffChainStorageService offChainService;
     private final ObjectMapper objectMapper;
@@ -78,7 +82,7 @@ public class OffChainFileSearch {
         List<OffChainMatch> matches = new ArrayList<>();
         int totalFilesSearched = 0;
         
-        System.out.println("🔍 Starting exhaustive off-chain search for: \"" + searchTerm + "\"");
+        logger.info("🔍 Starting exhaustive off-chain search for: \"{}\"", searchTerm);
         
         for (Block block : blocks) {
             if (matches.size() >= maxResults) {
@@ -109,8 +113,7 @@ public class OffChainFileSearch {
         // Cache the result
         cacheResult(cacheKey, result);
         
-        System.out.println("✅ Off-chain search completed: " + matches.size() + 
-                          " matches found in " + totalFilesSearched + " files");
+        logger.info("✅ Off-chain search completed: {} matches found in {} files", matches.size(), totalFilesSearched);
         
         return result;
     }
@@ -136,8 +139,8 @@ public class OffChainFileSearch {
             }
             
         } catch (Exception e) {
-            System.err.println("⚠️ Error searching off-chain data for block " + 
-                              block.getBlockNumber() + ": " + e.getMessage());
+            logger.warn("⚠️ Error searching off-chain data for block {}: {}", 
+                              block.getBlockNumber(), e.getMessage());
         }
         
         return matches;
@@ -151,7 +154,7 @@ public class OffChainFileSearch {
         try {
             // Verify file exists
             if (!offChainService.fileExists(offChainData)) {
-                System.err.println("⚠️ Off-chain file not found: " + offChainData.getFilePath());
+                logger.warn("⚠️ Off-chain file not found: {}", offChainData.getFilePath());
                 return null;
             }
             
@@ -178,10 +181,10 @@ public class OffChainFileSearch {
             }
             
         } catch (SecurityException e) {
-            System.err.println("🔐 Security error accessing off-chain file: " + e.getMessage());
+            logger.error("🔐 Security error accessing off-chain file: {}", e.getMessage());
         } catch (Exception e) {
-            System.err.println("⚠️ Error searching off-chain file " + offChainData.getFilePath() + 
-                              ": " + e.getMessage());
+            logger.warn("⚠️ Error searching off-chain file {}: {}", offChainData.getFilePath(), 
+                              e.getMessage());
         }
         
         return null;
@@ -211,7 +214,7 @@ public class OffChainFileSearch {
             }
             
         } catch (Exception e) {
-            System.err.println("Error during content search: " + e.getMessage());
+            logger.error("❌ Error during content search: {}", e.getMessage());
         }
         
         return matches;
@@ -344,7 +347,7 @@ public class OffChainFileSearch {
             }
             
         } catch (Exception e) {
-            System.err.println("Error extracting off-chain references: " + e.getMessage());
+            logger.error("❌ Error extracting off-chain references: {}", e.getMessage());
         }
         
         return offChainDataList;

@@ -3,11 +3,15 @@ package com.rbatllet.blockchain.security;
 import java.io.Console;
 import java.io.InputStream;
 import java.util.Scanner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Utility class for secure password input
  */
 public class PasswordUtil {
+    
+    private static final Logger logger = LoggerFactory.getLogger(PasswordUtil.class);
     
     /**
      * Read password securely from console
@@ -36,6 +40,7 @@ public class PasswordUtil {
             return password;
         } else {
             // Fallback for environments without Console (IDEs, tests)
+            logger.warn("⚠️ Console not available, using fallback password input (password will be visible)");
             System.out.print(prompt + " (WARNING: Password will be visible): ");
             
             // Simple implementation for testing with ByteArrayInputStream
@@ -70,12 +75,14 @@ public class PasswordUtil {
             try {
                 java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(inputStream));
                 
+                logger.warn("⚠️ ByteArrayInputStream fallback mode - password will be visible");
                 System.out.print(prompt + " (WARNING: Password will be visible): ");
                 String password = reader.readLine();
                 if (password == null) {
                     return null;
                 }
                 
+                logger.warn("⚠️ Password confirmation in fallback mode - password will be visible");
                 System.out.print("Confirm password:  (WARNING: Password will be visible): ");
                 String confirmation = reader.readLine();
                 if (confirmation == null) {

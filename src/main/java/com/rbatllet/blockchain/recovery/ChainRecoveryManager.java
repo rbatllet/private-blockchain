@@ -2,6 +2,8 @@ package com.rbatllet.blockchain.recovery;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -18,6 +20,8 @@ import java.util.stream.Collectors;
  * FIXED: Thread-safe with proper synchronization
  */
 public class ChainRecoveryManager {
+    
+    private static final Logger logger = LoggerFactory.getLogger(ChainRecoveryManager.class);
     
     private final Blockchain blockchain;
     // FIXED: Thread-safe set for tracking corruption keys
@@ -102,15 +106,14 @@ public class ChainRecoveryManager {
                 "Recovery failed: key did not sign any corrupted blocks");
         }
         
-        System.out.println("🚨 CHAIN RECOVERY INITIATED");
-        System.out.println("🔑 Deleted key: " + deletedPublicKey.substring(0, Math.min(32, deletedPublicKey.length())) + "...");
-        System.out.println("👤 Owner: " + ownerName);
-        System.out.println();
+        logger.info("🚨 CHAIN RECOVERY INITIATED");
+        logger.info("🔑 Deleted key: {}...", deletedPublicKey.substring(0, Math.min(32, deletedPublicKey.length())));
+        logger.info("👤 Owner: {}", ownerName);
         
         // Special case: If chain is valid but key was involved in previous corruption,
         // attempt re-authorization only (for multi-user corruption scenarios)
         if (chainIsValid && keyWasInvolvedInCorruption) {
-            System.out.println("🔄 MULTI-USER RECOVERY: Chain is valid but key was involved in previous corruption");
+            logger.info("🔄 MULTI-USER RECOVERY: Chain is valid but key was involved in previous corruption");
             RecoveryResult reAuthResult = attemptReauthorization(deletedPublicKey, ownerName);
             if (reAuthResult.isSuccess()) {
                 // Remove from tracking since it's now recovered
@@ -123,35 +126,32 @@ public class ChainRecoveryManager {
         }
         
         // Strategy 1: Re-authorization (least disruptive)
-        System.out.println("🔄 STRATEGY 1: Re-authorization recovery");
+        logger.info("🔄 STRATEGY 1: Re-authorization recovery");
         RecoveryResult reAuthResult = attemptReauthorization(deletedPublicKey, ownerName);
         if (reAuthResult.isSuccess()) {
             // Remove from tracking since it's now recovered
             keysInvolvedInCorruption.remove(deletedPublicKey);
             return reAuthResult;
         }
-        System.out.println("❌ Re-authorization failed: " + reAuthResult.getMessage());
-        System.out.println();
+        logger.warn("❌ Re-authorization failed: {}", reAuthResult.getMessage());
         
         // Strategy 2: Rollback corrupted blocks
-        System.out.println("🔄 STRATEGY 2: Rollback recovery");
+        logger.info("🔄 STRATEGY 2: Rollback recovery");
         RecoveryResult rollbackResult = attemptRollbackRecovery(deletedPublicKey);
         if (rollbackResult.isSuccess()) {
             // Remove from tracking since it's now recovered
             keysInvolvedInCorruption.remove(deletedPublicKey);
             return rollbackResult;
         }
-        System.out.println("❌ Rollback failed: " + rollbackResult.getMessage());
-        System.out.println();
+        logger.warn("❌ Rollback failed: {}", rollbackResult.getMessage());
         
         // Strategy 3: Export valid portion
-        System.out.println("🔄 STRATEGY 3: Partial export recovery");
+        logger.info("🔄 STRATEGY 3: Partial export recovery");
         RecoveryResult exportResult = attemptPartialExport(deletedPublicKey);
         if (exportResult.isSuccess()) {
             return exportResult;
         }
-        System.out.println("❌ Partial export failed: " + exportResult.getMessage());
-        System.out.println();
+        logger.warn("❌ Partial export failed: {}", exportResult.getMessage());
         
         // All strategies failed
         return new RecoveryResult(false, "FAILED", 
@@ -166,7 +166,7 @@ public class ChainRecoveryManager {
      */
     private RecoveryResult attemptReauthorization(String deletedPublicKey, String ownerName) {
         try {
-            System.out.println("🔑 Attempting to re-authorize deleted key...");
+            logger.info("🔑 Attempting to re-authorize deleted key...");
             
             // Re-add the key with recovery marker
             String recoveryOwnerName = ownerName + " (RECOVERED-" + 
@@ -182,7 +182,7 @@ public class ChainRecoveryManager {
             // Verify chain is now valid
             var reauthorizationValidation = blockchain.validateChainDetailed();
             if (reauthorizationValidation.isStructurallyIntact() && reauthorizationValidation.isFullyCompliant()) {
-                System.out.println("✅ Chain recovered by re-authorization!");
+                logger.info("✅ Chain recovered by re-authorization!");
                 return new RecoveryResult(true, "RE_AUTHORIZATION", 
                     "Chain successfully recovered by re-authorizing key as: " + recoveryOwnerName);
             } else {
@@ -203,7 +203,7 @@ public class ChainRecoveryManager {
      */
     private RecoveryResult attemptRollbackRecovery(String deletedPublicKey) {
         try {
-            System.out.println("🔄 Identifying corrupted blocks...");
+            logger.info("🔄 Identifying corrupted blocks...");
             
             // Find all blocks signed by the deleted key
             List<Block> allBlocks = blockchain.getAllBlocks();
@@ -223,13 +223,13 @@ public class ChainRecoveryManager {
                     "No corrupted blocks found, issue might be elsewhere");
             }
             
-            System.out.println("📊 Found " + corruptedBlockNumbers.size() + " corrupted blocks");
+            logger.info("📊 Found {} corrupted blocks", corruptedBlockNumbers.size());
             
             // SECURITY: Intelligent rollback strategy
             // Try to find the latest valid block we can keep
             Long rollbackTarget = findSafeRollbackTarget(corruptedBlockNumbers, allBlocks);
             
-            System.out.println("🎯 Rolling back to block #" + rollbackTarget);
+            logger.info("🎯 Rolling back to block #{}", rollbackTarget);
             
             // Perform rollback
             boolean rollbackSuccess = blockchain.rollbackToBlock(rollbackTarget);
@@ -276,8 +276,7 @@ public class ChainRecoveryManager {
         }
         
         if (!keysInvolvedInCorruption.isEmpty()) {
-            System.out.println("🔍 SECURITY: Identified " + keysInvolvedInCorruption.size() + 
-                             " missing keys involved in corruption");
+            logger.warn("🔍 SECURITY: Identified {} missing keys involved in corruption", keysInvolvedInCorruption.size());
         }
     }
     
@@ -286,7 +285,7 @@ public class ChainRecoveryManager {
      * while maintaining blockchain integrity and cryptographic security
      */
     private Long findSafeRollbackTarget(List<Long> corruptedBlockNumbers, List<Block> allBlocks) {
-        System.out.println("🧠 ANALYZING OPTIMAL ROLLBACK STRATEGY...");
+        logger.info("🧠 ANALYZING OPTIMAL ROLLBACK STRATEGY...");
         
         // Sort corrupted blocks to analyze pattern
         corruptedBlockNumbers.sort(Long::compareTo);
@@ -309,19 +308,18 @@ public class ChainRecoveryManager {
         
         // Additional safety verification
         if (!isRollbackTargetSafe(optimalTarget, corruptedBlockNumbers, allBlocks)) {
-            System.out.println("⚠️ SECURITY WARNING: Optimal target failed safety check, using conservative approach");
+            logger.warn("⚠️ SECURITY WARNING: Optimal target failed safety check, using conservative approach");
             optimalTarget = conservativeTarget;
         }
         
-        System.out.println("📊 ROLLBACK ANALYSIS RESULTS:");
-        System.out.println("   - Conservative target (always safe): block #" + conservativeTarget);
-        System.out.println("   - Intelligent analysis target: block #" + intelligentTarget);
-        System.out.println("   - Hash integrity target: block #" + hashSafeTarget);
-        System.out.println("   - SELECTED OPTIMAL TARGET: block #" + optimalTarget);
-        System.out.println("   - Blocks to preserve: " + (optimalTarget + 1));
-        System.out.println("   - Blocks to remove: " + (allBlocks.size() - optimalTarget - 1));
-        System.out.println("   - Data preservation efficiency: " + 
-                         String.format("%.1f%%", (optimalTarget + 1.0) / allBlocks.size() * 100));
+        logger.info("📊 ROLLBACK ANALYSIS RESULTS:");
+        logger.info("   - Conservative target (always safe): block #{}", conservativeTarget);
+        logger.info("   - Intelligent analysis target: block #{}", intelligentTarget);
+        logger.info("   - Hash integrity target: block #{}", hashSafeTarget);
+        logger.info("   - SELECTED OPTIMAL TARGET: block #{}", optimalTarget);
+        logger.info("   - Blocks to preserve: {}", (optimalTarget + 1));
+        logger.info("   - Blocks to remove: {}", (allBlocks.size() - optimalTarget - 1));
+        logger.info("   - Data preservation efficiency: {}%", String.format("%.1f", (optimalTarget + 1.0) / allBlocks.size() * 100));
         
         return optimalTarget;
     }
@@ -332,7 +330,7 @@ public class ChainRecoveryManager {
      */
     private Long findIntelligentRollbackTarget(List<Long> corruptedBlockNumbers, List<Block> allBlocks) {
         try {
-            System.out.println("🔍 Performing intelligent block analysis...");
+            logger.debug("🔍 Performing intelligent block analysis...");
             
             // Build corruption map for O(1) lookup
             Set<Long> corruptedSet = new HashSet<>(corruptedBlockNumbers);
@@ -350,19 +348,19 @@ public class ChainRecoveryManager {
                 
                 // SECURITY CHECK 1: Block must be independently valid
                 if (!blockchain.validateSingleBlock(block)) {
-                    System.out.println("⚠️ Block #" + i + " failed independent validation");
+                    logger.warn("⚠️ Block #{} failed independent validation", i);
                     break;
                 }
                 
                 // SECURITY CHECK 2: Hash chain integrity up to this point
                 if (i > 0L && !verifyHashChainIntegrity(allBlocks, 0L, i)) {
-                    System.out.println("⚠️ Hash chain integrity broken at block #" + i);
+                    logger.warn("⚠️ Hash chain integrity broken at block #{}", i);
                     break;
                 }
                 
                 // SECURITY CHECK 3: Temporal consistency
                 if (i > 0L && allBlocks.get(i.intValue()).getTimestamp().isBefore(allBlocks.get(i.intValue()-1).getTimestamp())) {
-                    System.out.println("⚠️ Temporal inconsistency detected at block #" + i);
+                    logger.warn("⚠️ Temporal inconsistency detected at block #{}", i);
                     break;
                 }
                 
@@ -370,11 +368,11 @@ public class ChainRecoveryManager {
                 maxSafeTarget = i;
             }
             
-            System.out.println("🎯 Intelligent analysis found safe target: block #" + maxSafeTarget);
+            logger.info("🎯 Intelligent analysis found safe target: block #{}", maxSafeTarget);
             return Math.max(0L, maxSafeTarget);
             
         } catch (Exception e) {
-            System.out.println("⚠️ Intelligent analysis failed: " + e.getMessage() + ", using conservative approach");
+            logger.warn("⚠️ Intelligent analysis failed: {}, using conservative approach", e.getMessage());
             return Math.max(0L, corruptedBlockNumbers.get(0) - 1L);
         }
     }
@@ -390,14 +388,13 @@ public class ChainRecoveryManager {
                 
                 // Critical security check: hash chain must be intact
                 if (!currentBlock.getPreviousHash().equals(previousBlock.getHash())) {
-                    System.out.println("❌ Hash chain broken: block #" + i + 
-                                     " previousHash doesn't match block #" + (i-1) + " hash");
+                    logger.error("❌ Hash chain broken: block #{} previousHash doesn't match block #{} hash", i, (i-1));
                     return false;
                 }
             }
             return true;
         } catch (Exception e) {
-            System.out.println("❌ Hash chain verification failed: " + e.getMessage());
+            logger.error("❌ Hash chain verification failed", e);
             return false;
         }
     }
@@ -407,22 +404,22 @@ public class ChainRecoveryManager {
      */
     private Long findHashIntegrityTarget(List<Long> corruptedBlockNumbers, List<Block> allBlocks) {
         try {
-            System.out.println("🔗 Analyzing hash chain integrity...");
+            logger.debug("🔗 Analyzing hash chain integrity...");
             
             // Start from the end and work backwards to find the largest safe segment
             for (Long target = corruptedBlockNumbers.get(0) - 1L; target >= 0L; target--) {
                 if (verifyHashChainIntegrity(allBlocks, 0L, target)) {
-                    System.out.println("✅ Hash integrity verified up to block #" + target);
+                    logger.debug("✅ Hash integrity verified up to block #{}", target);
                     return target;
                 }
             }
             
             // If no segment maintains integrity, rollback to genesis
-            System.out.println("⚠️ No hash-safe segment found, rolling back to genesis");
+            logger.warn("⚠️ No hash-safe segment found, rolling back to genesis");
             return 0L;
             
         } catch (Exception e) {
-            System.out.println("⚠️ Hash integrity analysis failed: " + e.getMessage());
+            logger.warn("⚠️ Hash integrity analysis failed", e);
             return 0L; // Safe fallback
         }
     }
@@ -433,46 +430,46 @@ public class ChainRecoveryManager {
      */
     private boolean isRollbackTargetSafe(Long target, List<Long> corruptedBlockNumbers, List<Block> allBlocks) {
         try {
-            System.out.println("🛡️ Performing final safety verification for target #" + target + "...");
+            logger.debug("🛡️ Performing final safety verification for target #{}...", target);
             
             // SAFETY CHECK 1: Target must not be negative
             if (target < 0L) {
-                System.out.println("❌ Safety check failed: negative target");
+                logger.error("❌ Safety check failed: negative target");
                 return false;
             }
             
             // SAFETY CHECK 2: Target must not exceed available blocks
             if (target >= allBlocks.size()) {
-                System.out.println("❌ Safety check failed: target exceeds available blocks");
+                logger.error("❌ Safety check failed: target exceeds available blocks");
                 return false;
             }
             
             // SAFETY CHECK 3: Target must be before any corrupted block
             Long earliestCorrupted = corruptedBlockNumbers.get(0);
             if (target >= earliestCorrupted) {
-                System.out.println("❌ Safety check failed: target would preserve corrupted blocks");
+                logger.error("❌ Safety check failed: target would preserve corrupted blocks");
                 return false;
             }
             
             // SAFETY CHECK 4: Resulting chain segment must be valid
             if (!verifyHashChainIntegrity(allBlocks, 0L, target)) {
-                System.out.println("❌ Safety check failed: resulting chain would have broken hash integrity");
+                logger.error("❌ Safety check failed: resulting chain would have broken hash integrity");
                 return false;
             }
             
             // SAFETY CHECK 5: All blocks up to target must be independently valid
             for (Long i = 0L; i <= target; i++) {
                 if (!blockchain.validateSingleBlock(allBlocks.get(i.intValue()))) {
-                    System.out.println("❌ Safety check failed: block #" + i + " is not independently valid");
+                    logger.error("❌ Safety check failed: block #{} is not independently valid", i);
                     return false;
                 }
             }
             
-            System.out.println("✅ Safety verification passed for target #" + target);
+            logger.debug("✅ Safety verification passed for target #{}", target);
             return true;
             
         } catch (Exception e) {
-            System.out.println("❌ Safety verification failed with exception: " + e.getMessage());
+            logger.error("❌ Safety verification failed with exception", e);
             return false; // Fail safe
         }
     }
@@ -482,7 +479,7 @@ public class ChainRecoveryManager {
      */
     private RecoveryResult attemptPartialExport(String deletedPublicKey) {
         try {
-            System.out.println("📤 Exporting valid portion of chain...");
+            logger.info("📤 Exporting valid portion of chain...");
             
             List<Block> allBlocks = blockchain.getAllBlocks();
             List<Block> validBlocks = new ArrayList<>();
@@ -491,13 +488,13 @@ public class ChainRecoveryManager {
             // Find valid blocks (stop at first corruption)
             for (Block block : allBlocks) {
                 if (deletedPublicKey.equals(block.getSignerPublicKey())) {
-                    System.out.println("⚠️ Stopping at corrupted block #" + block.getBlockNumber());
+                    logger.warn("⚠️ Stopping at corrupted block #{}", block.getBlockNumber());
                     break;
                 } else if (blockchain.validateSingleBlock(block)) {
                     validBlocks.add(block);
                     lastValidBlockNumber = block.getBlockNumber();
                 } else {
-                    System.out.println("⚠️ Stopping at invalid block #" + block.getBlockNumber());
+                    logger.warn("⚠️ Stopping at invalid block #{}", block.getBlockNumber());
                     break;
                 }
             }

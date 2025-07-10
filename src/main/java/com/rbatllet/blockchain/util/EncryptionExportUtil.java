@@ -2,6 +2,8 @@ package com.rbatllet.blockchain.util;
 
 import com.rbatllet.blockchain.dto.EncryptionExportData;
 import com.rbatllet.blockchain.entity.Block;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -13,6 +15,8 @@ import java.util.List;
  * Enables secure backup and restoration of encrypted blockchain data
  */
 public class EncryptionExportUtil {
+    
+    private static final Logger logger = LoggerFactory.getLogger(EncryptionExportUtil.class);
     
     /**
      * Generate off-chain password using the same algorithm as Blockchain.generateOffChainPassword
@@ -76,8 +80,7 @@ public class EncryptionExportUtil {
                 }
                 
             } catch (Exception e) {
-                System.err.println("Warning: Failed to extract encryption data for block " + 
-                                 block.getBlockNumber() + ": " + e.getMessage());
+                logger.warn("Failed to extract encryption data for block {}", block.getBlockNumber(), e);
                 // Continue processing other blocks
             }
         }
@@ -110,13 +113,13 @@ public class EncryptionExportUtil {
             
             // Check off-chain data encryption
             if (block.hasOffChainData() && !encryptionData.getOffChainPasswords().containsKey(blockNumber)) {
-                System.err.println("Missing off-chain password for block " + blockNumber);
+                logger.warn("Missing off-chain password for block {}", blockNumber);
                 return false;
             }
             
             // Check block data encryption
             if (block.isDataEncrypted() && !encryptionData.hasEncryptionDataForBlock(blockNumber)) {
-                System.err.println("Missing block encryption data for block " + blockNumber);
+                logger.warn("Missing block encryption data for block {}", blockNumber);
                 return false;
             }
         }

@@ -4,6 +4,8 @@ import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.search.metadata.*;
 import com.rbatllet.blockchain.search.strategy.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.HashSet;
@@ -36,6 +38,8 @@ public class RevolutionarySearchEngine {
     
     // Reference to blockchain for block hash lookups (for EXHAUSTIVE_OFFCHAIN search)
     private com.rbatllet.blockchain.core.Blockchain blockchain;
+    
+    private static final Logger logger = LoggerFactory.getLogger(RevolutionarySearchEngine.class);
     
     public RevolutionarySearchEngine() {
         this(EncryptionConfig.createHighSecurityConfig());
@@ -232,7 +236,7 @@ public class RevolutionarySearchEngine {
         long startTime = System.nanoTime();
         
         try {
-            System.out.println("🔍 Starting TRUE EXHAUSTIVE search (on-chain + off-chain) for: \"" + query + "\"");
+            logger.debug("🔍 Starting TRUE EXHAUSTIVE search (on-chain + off-chain) for: \"{}\"", query);
             
             // Step 1: Perform regular encrypted search first
             RevolutionarySearchResult regularResults = searchEncryptedOnly(query, password, maxResults);
@@ -286,7 +290,7 @@ public class RevolutionarySearchEngine {
                 "TRUE EXHAUSTIVE search: %d total results (%d on-chain, %d off-chain) in %.2fms",
                 allResults.size(), onChainEnhancedResults.size(), offChainEnhancedResults.size(), totalTimeMs);
             
-            System.out.println("✅ " + summary);
+            logger.info("✅ {}", summary);
             
             return new RevolutionarySearchResult(
                 allResults,
@@ -301,7 +305,7 @@ public class RevolutionarySearchEngine {
             long endTime = System.nanoTime();
             double totalTimeMs = (endTime - startTime) / 1_000_000.0;
             
-            System.err.println("❌ EXHAUSTIVE_OFFCHAIN search failed: " + e.getMessage());
+            logger.error("❌ EXHAUSTIVE_OFFCHAIN search failed", e);
             
             return new RevolutionarySearchResult(
                 new ArrayList<>(),
@@ -423,7 +427,7 @@ public class RevolutionarySearchEngine {
         
         List<CompletableFuture<Void>> indexingTasks = new ArrayList<>();
         
-        System.out.println("Starting filtered blockchain indexing for " + blocks.size() + " blocks...");
+        logger.info("📊 Starting filtered blockchain indexing for {} blocks", blocks.size());
         
         for (Block block : blocks) {
             CompletableFuture<Void> task = CompletableFuture.runAsync(() -> {
@@ -466,7 +470,7 @@ public class RevolutionarySearchEngine {
                         }
                     }
                 } catch (Exception e) {
-                    System.err.println("Failed to index block " + block.getHash() + ": " + e.getMessage());
+                    logger.error("Failed to index block {}", block.getHash(), e);
                 }
             }, indexingExecutor);
             
@@ -480,8 +484,8 @@ public class RevolutionarySearchEngine {
         double indexingTimeMs = (endTime - startTime) / 1_000_000.0;
         
         int successfullyIndexed = blockMetadataIndex.size();
-        System.out.println("Filtered blockchain indexing completed: " + successfullyIndexed + "/" + blocks.size() + 
-                          " blocks indexed in " + String.format("%.2f", indexingTimeMs) + "ms");
+        logger.info("📊 Filtered blockchain indexing completed: {}/{} blocks indexed in {}ms", 
+                   successfullyIndexed, blocks.size(), String.format("%.2f", indexingTimeMs));
         
         return new IndexingResult(
             blocks.size(),
@@ -552,9 +556,9 @@ public class RevolutionarySearchEngine {
             // Index in search strategy router
             strategyRouter.indexBlock(block.getHash(), metadata);
             
-            System.out.println("🔍 Debug: Indexed block with user-defined terms - Public: " + 
-                (publicSearchTerms != null ? publicSearchTerms.size() : 0) + 
-                ", Private: " + (privateSearchTerms != null ? privateSearchTerms.size() : 0));
+            logger.debug("🔍 Indexed block with user-defined terms - Public: {}, Private: {}", 
+                        (publicSearchTerms != null ? publicSearchTerms.size() : 0),
+                        (privateSearchTerms != null ? privateSearchTerms.size() : 0));
             
         } catch (Exception e) {
             throw new RuntimeException("Failed to index block with user terms " + block.getHash(), e);
@@ -592,8 +596,7 @@ public class RevolutionarySearchEngine {
                             }
                         }
                     } catch (Exception e) {
-                        System.err.println("Warning: Could not decrypt manual keywords for block " + 
-                            block.getHash() + ": " + e.getMessage());
+                        logger.warn("Could not decrypt manual keywords for block {}", block.getHash(), e);
                     }
                 } else {
                     // Unencrypted keywords
@@ -615,8 +618,7 @@ public class RevolutionarySearchEngine {
             }
             
         } catch (Exception e) {
-            System.err.println("Warning: Error extracting search terms from block " + 
-                block.getHash() + ": " + e.getMessage());
+            logger.warn("Error extracting search terms from block {}", block.getHash(), e);
         }
         
         return terms;
@@ -630,7 +632,7 @@ public class RevolutionarySearchEngine {
      */
     public void indexBlockWithSpecificPassword(Block block, String blockSpecificPassword, PrivateKey privateKey, EncryptionConfig config) {
         if (block == null || block.getHash() == null) {
-            System.err.println("Cannot index block: block or hash is null");
+            logger.error("Cannot index block: block or hash is null");
             return;
         }
         
@@ -647,10 +649,10 @@ public class RevolutionarySearchEngine {
                 strategyRouter.indexBlock(blockHash, metadata);
                 
                 indexedSuccessfully = true;
-                System.out.println("Successfully indexed encrypted block " + blockHash.substring(0, 8) + "... with specific password");
+                logger.debug("Successfully indexed encrypted block {}... with specific password", blockHash.substring(0, 8));
                 
             } catch (Exception e) {
-                System.err.println("Failed to index block " + blockHash + " with specific password: " + e.getMessage());
+                logger.error("Failed to index block {} with specific password", blockHash, e);
                 // Continue to fallback strategy
             }
         }
@@ -665,10 +667,10 @@ public class RevolutionarySearchEngine {
                 strategyRouter.indexBlock(blockHash, publicMetadata);
                 
                 indexedSuccessfully = true;
-                System.out.println("Indexed block " + blockHash.substring(0, 8) + "... with public metadata only");
+                logger.debug("Indexed block {}... with public metadata only", blockHash.substring(0, 8));
                 
             } catch (Exception e2) {
-                System.err.println("Failed to index block " + blockHash + " even with public metadata: " + e2.getMessage());
+                logger.error("Failed to index block {} even with public metadata", blockHash, e2);
             }
         }
         
@@ -677,10 +679,10 @@ public class RevolutionarySearchEngine {
             try {
                 // Create minimal metadata for at least basic indexing
                 createMinimalBlockIndex(block, config);
-                System.out.println("Created minimal index for block " + blockHash.substring(0, 8) + "... as emergency fallback");
+                logger.debug("Created minimal index for block {}... as emergency fallback", blockHash.substring(0, 8));
                 
             } catch (Exception e3) {
-                System.err.println("Complete indexing failure for block " + blockHash + ": " + e3.getMessage());
+                logger.error("Complete indexing failure for block {}", blockHash, e3);
                 // This is a complete failure - block won't be searchable
             }
         }

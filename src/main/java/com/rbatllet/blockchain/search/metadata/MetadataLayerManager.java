@@ -4,6 +4,8 @@ import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.CompressionUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -26,6 +28,8 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
  * @version 1.0 - Revolutionary Architecture
  */
 public class MetadataLayerManager {
+    
+    private static final Logger logger = LoggerFactory.getLogger(MetadataLayerManager.class);
     
     private final ObjectMapper objectMapper;
     
@@ -77,9 +81,9 @@ public class MetadataLayerManager {
         Set<String> publicTerms = termVisibility.getPublicTerms(allSearchTerms);
         Set<String> privateTerms = termVisibility.getPrivateTerms(allSearchTerms);
         
-        System.out.println("🔍 Debug: Granular term distribution:");
-        System.out.println("🔍   Public terms: " + publicTerms);
-        System.out.println("🔍   Private terms: " + privateTerms);
+        logger.debug("🔍 Granular term distribution:");
+        logger.debug("🔍   Public terms: {}", publicTerms);
+        logger.debug("🔍   Private terms: {}", privateTerms);
         
         // Use existing method with distributed terms
         return generateMetadataLayers(block, config, password, privateKey, publicTerms, privateTerms, null);
@@ -110,15 +114,15 @@ public class MetadataLayerManager {
             if (block.isDataEncrypted() && password != null && !password.trim().isEmpty()) {
                 // For encrypted blocks, try to get real encrypted data from encryptionMetadata
                 String encryptedData = block.getEncryptionMetadata();
-                System.out.println("🔍 Debug: encryptionMetadata content: " + (encryptedData != null ? encryptedData.substring(0, Math.min(50, encryptedData.length())) + "..." : "null"));
+                logger.debug("🔍 encryptionMetadata content: {}...", (encryptedData != null ? encryptedData.substring(0, Math.min(50, encryptedData.length())) : "null"));
                 if (encryptedData != null && !encryptedData.trim().isEmpty()) {
                     // Check if it's an off-chain reference
                     if (encryptedData.startsWith("OFF_CHAIN_ENCRYPTED_REF:")) {
-                        System.out.println("🔍 Debug: detected off-chain reference, cannot decrypt without off-chain access");
+                        logger.debug("🔍 detected off-chain reference, cannot decrypt without off-chain access");
                         // For now, fall back to encrypted content
                     } else {
                         try {
-                            System.out.println("🔍 Debug: attempting to decrypt block content using encryptionMetadata...");
+                            logger.debug("🔍 attempting to decrypt block content using encryptionMetadata...");
                             
                             // Parse format: timestamp|salt|iv|encryptedData|dataHash (SecureBlockEncryptionService format)
                             String[] parts = encryptedData.split("\\|");
@@ -129,25 +133,25 @@ public class MetadataLayerManager {
                                 String encryptedContentBase64 = parts[3]; // Encrypted content + tag
                                 String dataHashStr = parts[4];  // Data hash
                                 
-                                System.out.println("🔍 Debug: timestamp: " + timestampStr);
-                                System.out.println("🔍 Debug: salt: " + saltBase64.substring(0, Math.min(20, saltBase64.length())) + "...");
-                                System.out.println("🔍 Debug: iv: " + ivBase64.substring(0, Math.min(20, ivBase64.length())) + "...");
-                                System.out.println("🔍 Debug: encrypted content: " + encryptedContentBase64.substring(0, Math.min(20, encryptedContentBase64.length())) + "...");
-                                System.out.println("🔍 Debug: dataHash: " + dataHashStr.substring(0, Math.min(20, dataHashStr.length())) + "...");
+                                logger.debug("🔍 Debug: timestamp: {}", timestampStr);
+                                logger.debug("🔍 Debug: salt: {}...", saltBase64.substring(0, Math.min(20, saltBase64.length())));
+                                logger.debug("🔍 Debug: iv: {}...", ivBase64.substring(0, Math.min(20, ivBase64.length())));
+                                logger.debug("🔍 Debug: encrypted content: {}...", encryptedContentBase64.substring(0, Math.min(20, encryptedContentBase64.length())));
+                                logger.debug("🔍 Debug: dataHash: {}...", dataHashStr.substring(0, Math.min(20, dataHashStr.length())));
                                 
                                 // Use SecureBlockEncryptionService to decrypt properly
                                 contentForKeywords = com.rbatllet.blockchain.service.SecureBlockEncryptionService.decryptFromString(encryptedData, password);
-                                System.out.println("🔍 Debug: decryption successful, content: " + contentForKeywords.substring(0, Math.min(50, contentForKeywords.length())) + "...");
+                                logger.debug("🔍 Debug: decryption successful, content: {}...", contentForKeywords.substring(0, Math.min(50, contentForKeywords.length())));
                             } else {
-                                System.out.println("🔍 Debug: invalid encryptionMetadata format, expected timestamp|salt|iv|encryptedData|dataHash (5 parts), got " + parts.length + " parts");
+                                logger.debug("🔍 Debug: invalid encryptionMetadata format, expected timestamp|salt|iv|encryptedData|dataHash (5 parts), got {} parts", parts.length);
                             }
                         } catch (Exception e) {
-                            System.out.println("🔍 Debug: decryption failed, using encrypted content: " + e.getMessage());
+                            logger.debug("🔍 Debug: decryption failed, using encrypted content: {}", e.getMessage());
                             // Fall back to encrypted content
                         }
                     }
                 } else {
-                    System.out.println("🔍 Debug: no encryptionMetadata available, using placeholder data");
+                    logger.debug("🔍 Debug: no encryptionMetadata available, using placeholder data");
                 }
             }
             
@@ -157,9 +161,9 @@ public class MetadataLayerManager {
             if (privateSearchTerms != null) keywordSet.addAll(privateSearchTerms);
             
             if (!keywordSet.isEmpty()) {
-                System.out.println("🔍 Debug: using user-provided search terms: " + keywordSet);
+                logger.debug("🔍 using user-provided search terms: {}", keywordSet);
             } else {
-                System.out.println("🔍 Debug: no user-provided search terms, using minimal metadata");
+                logger.debug("🔍 no user-provided search terms, using minimal metadata");
             }
             
             // Analyze content characteristics using decrypted content if available
@@ -171,18 +175,18 @@ public class MetadataLayerManager {
             // Only generate private layer if password is provided
             PrivateMetadata privateLayer = null;
             String encryptedPrivateLayer = null;
-            System.out.println("🔍 Debug: checking password condition: " + (password != null && !password.trim().isEmpty()));
+            logger.debug("🔍 checking password condition: {}", (password != null && !password.trim().isEmpty()));
             if (password != null && !password.trim().isEmpty()) {
-                System.out.println("🔍 Debug: generating private layer...");
+                logger.debug("🔍 Debug: generating private layer...");
                 privateLayer = generatePrivateLayer(block, analysis, keywordSet, config, contentForKeywords, privateSearchTerms);
-                System.out.println("🔍 Debug: privateLayer generated: " + (privateLayer != null ? "yes" : "null"));
+                logger.debug("🔍 Debug: privateLayer generated: {}", (privateLayer != null ? "yes" : "null"));
                 if (privateLayer != null) {
-                    System.out.println("🔍 Debug: privateLayer.isEmpty(): " + privateLayer.isEmpty());
+                    logger.debug("🔍 Debug: privateLayer.isEmpty(): {}", privateLayer.isEmpty());
                 }
                 if (privateLayer != null && !privateLayer.isEmpty()) {
-                    System.out.println("🔍 Debug: encrypting private metadata...");
+                    logger.debug("🔍 Debug: encrypting private metadata...");
                     encryptedPrivateLayer = encryptPrivateMetadata(privateLayer, password, privateKey);
-                    System.out.println("🔍 Debug: encrypted private layer: " + (encryptedPrivateLayer != null ? "success" : "failed"));
+                    logger.debug("🔍 Debug: encrypted private layer: {}", (encryptedPrivateLayer != null ? "success" : "failed"));
                 }
             }
             
@@ -246,12 +250,12 @@ public class MetadataLayerManager {
             combinedKeywords.addAll(allKeywords);
         }
         metadata.setSpecificKeywords(combinedKeywords);
-        System.out.println("🔍 Debug: set specificKeywords: " + combinedKeywords);
+        logger.debug("🔍 set specificKeywords: {}", combinedKeywords);
         
         // Additional sensitive keywords (personal names, amounts, IDs, etc.)
         Set<String> sensitiveTerms = extractSensitiveKeywords(allKeywords, analysis);
         metadata.setSensitiveTerms(sensitiveTerms);
-        System.out.println("🔍 Debug: set sensitiveTerms: " + sensitiveTerms);
+        logger.debug("🔍 Debug: set sensitiveTerms: {}", sensitiveTerms);
         
         // Detailed category with subcategories
         metadata.setDetailedCategory(determineDetailedCategory(analysis));
@@ -472,7 +476,7 @@ public class MetadataLayerManager {
         try {
             // Serialize metadata to JSON
             String jsonMetadata = serializePrivateMetadata(metadata);
-            System.out.println("🔍 Debug: encryptPrivateMetadata - serialized JSON: " + jsonMetadata.substring(0, Math.min(150, jsonMetadata.length())) + "...");
+            logger.debug("🔍 Debug: encryptPrivateMetadata - serialized JSON: {}...", jsonMetadata.substring(0, Math.min(150, jsonMetadata.length())));
             
             // Apply compression if enabled in configuration
             EncryptionConfig config = getCurrentEncryptionConfig();
@@ -482,7 +486,7 @@ public class MetadataLayerManager {
             // Log compression statistics for performance monitoring
             if (config.isEnableCompression()) {
                 CompressionUtil.CompressionStats stats = CompressionUtil.getCompressionStats(jsonMetadata);
-                System.out.println("📦 Metadata compression: " + stats.toString());
+                logger.info("📦 Metadata compression: {}", stats.toString());
             }
             
             // Encrypt using CryptoUtil (reuse existing encryption infrastructure)
@@ -828,7 +832,7 @@ public class MetadataLayerManager {
                         metadata.setExactTimestamp(LocalDateTime.parse(timestampStr));
                     }
                 } catch (Exception e) {
-                    System.err.println("Warning: Failed to parse timestamp: " + e.getMessage());
+                    logger.warn("⚠️ Failed to parse timestamp", e);
                 }
             }
             
@@ -965,7 +969,7 @@ public class MetadataLayerManager {
         try {
             return objectMapper.writeValueAsString(map);
         } catch (Exception e) {
-            System.err.println("Failed to serialize metadata to JSON: " + e.getMessage());
+            logger.error("❌ Failed to serialize metadata to JSON", e);
             return "{}";
         }
     }

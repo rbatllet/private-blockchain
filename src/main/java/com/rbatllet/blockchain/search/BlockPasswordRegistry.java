@@ -1,5 +1,7 @@
 package com.rbatllet.blockchain.search;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.security.SecureRandom;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -23,6 +25,8 @@ import java.util.HashSet;
  * - Secure cleanup and disposal methods
  */
 public class BlockPasswordRegistry {
+    
+    private static final Logger logger = LoggerFactory.getLogger(BlockPasswordRegistry.class);
     
     private final Map<String, EncryptedPasswordEntry> passwordRegistry;
     private final ReentrantReadWriteLock registryLock;
@@ -62,7 +66,7 @@ public class BlockPasswordRegistry {
             passwordRegistry.put(blockHash, entry);
             return true;
         } catch (Exception e) {
-            System.err.println("Failed to register password for block " + blockHash + ": " + e.getMessage());
+            logger.error("❌ Failed to register password for block {}: {}", blockHash, e.getMessage());
             return false;
         } finally {
             registryLock.writeLock().unlock();
@@ -87,7 +91,7 @@ public class BlockPasswordRegistry {
             }
             return decryptPassword(entry);
         } catch (Exception e) {
-            System.err.println("Failed to retrieve password for block " + blockHash + ": " + e.getMessage());
+            logger.error("❌ Failed to retrieve password for block {}: {}", blockHash, e.getMessage());
             return null;
         } finally {
             registryLock.readLock().unlock();

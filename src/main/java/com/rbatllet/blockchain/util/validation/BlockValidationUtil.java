@@ -2,6 +2,8 @@ package com.rbatllet.blockchain.util.validation;
 
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.core.Blockchain;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.time.LocalDateTime;
 import java.io.File;
 /**
@@ -10,6 +12,8 @@ import java.io.File;
  * Enhanced with off-chain data validation support
  */
 public class BlockValidationUtil {
+    
+    private static final Logger logger = LoggerFactory.getLogger(BlockValidationUtil.class);
     
     /**
      * Validate genesis block specifically
@@ -62,7 +66,7 @@ public class BlockValidationUtil {
             String filePath = block.getOffChainData().getFilePath();
             File offChainFile = new File(filePath);
             if (!offChainFile.exists()) {
-                System.err.println("❌ Off-chain file missing: " + filePath);
+                logger.error("❌ Off-chain file missing: {}", filePath);
                 return false;
             }
             
@@ -70,7 +74,7 @@ public class BlockValidationUtil {
             return blockchain.verifyOffChainIntegrity(block);
             
         } catch (Exception e) {
-            System.err.println("❌ Error validating off-chain data: " + e.getMessage());
+            logger.error("❌ Error validating off-chain data", e);
             return false;
         }
     }
@@ -110,22 +114,22 @@ public class BlockValidationUtil {
             
             // Check required fields
             if (offChainData.getDataHash() == null || offChainData.getDataHash().trim().isEmpty()) {
-                System.err.println("❌ Off-chain data hash is missing");
+                logger.error("❌ Off-chain data hash is missing");
                 return false;
             }
             
             if (offChainData.getSignature() == null || offChainData.getSignature().trim().isEmpty()) {
-                System.err.println("❌ Off-chain data signature is missing");
+                logger.error("❌ Off-chain data signature is missing");
                 return false;
             }
             
             if (offChainData.getFilePath() == null || offChainData.getFilePath().trim().isEmpty()) {
-                System.err.println("❌ Off-chain file path is missing");
+                logger.error("❌ Off-chain file path is missing");
                 return false;
             }
             
             if (offChainData.getEncryptionIV() == null || offChainData.getEncryptionIV().trim().isEmpty()) {
-                System.err.println("❌ Off-chain encryption IV is missing");
+                logger.error("❌ Off-chain encryption IV is missing");
                 return false;
             }
             
@@ -134,9 +138,8 @@ public class BlockValidationUtil {
             if (file.exists() && offChainData.getFileSize() != null) {
                 long sizeDifference = Math.abs(file.length() - offChainData.getFileSize());
                 if (sizeDifference > 16) { // Allow up to 16 bytes for AES padding
-                    System.err.println("❌ Off-chain file size mismatch: expected " + 
-                        offChainData.getFileSize() + ", actual " + file.length() + 
-                        " (difference: " + sizeDifference + ")");
+                    logger.error("❌ Off-chain file size mismatch: expected {}, actual {} (difference: {})", 
+                                offChainData.getFileSize(), file.length(), sizeDifference);
                     return false;
                 }
             }
@@ -144,7 +147,7 @@ public class BlockValidationUtil {
             return true;
             
         } catch (Exception e) {
-            System.err.println("❌ Error validating off-chain metadata: " + e.getMessage());
+            logger.error("❌ Error validating off-chain metadata", e);
             return false;
         }
     }
@@ -268,14 +271,14 @@ public class BlockValidationUtil {
             // If file was modified significantly after off-chain data creation, it might be tampered
             long timeDiffMs = Math.abs(fileModified - dataCreated);
             if (timeDiffMs > 60000) { // 1 minute tolerance
-                System.err.println("⚠️ Off-chain file modification time differs from creation time");
+                logger.warn("⚠️ Off-chain file modification time differs from creation time");
                 return false;
             }
             
             return true;
             
         } catch (Exception e) {
-            System.err.println("❌ Error detecting tampering: " + e.getMessage());
+            logger.error("❌ Error detecting tampering", e);
             return false;
         }
     }

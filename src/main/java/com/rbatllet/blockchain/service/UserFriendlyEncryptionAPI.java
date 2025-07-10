@@ -13,6 +13,8 @@ import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.security.ECKeyDerivation;
 import com.rbatllet.blockchain.recovery.ChainRecoveryManager;
 import com.rbatllet.blockchain.util.format.FormatUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.rbatllet.blockchain.util.validation.BlockValidationUtil;
 import com.rbatllet.blockchain.entity.OffChainData;
 import com.rbatllet.blockchain.search.RevolutionarySearchEngine.EnhancedSearchResult;
@@ -30,6 +32,8 @@ import java.util.HashSet;
  * Simplifies common tasks and provides intuitive method names
  */
 public class UserFriendlyEncryptionAPI {
+    
+    private static final Logger logger = LoggerFactory.getLogger(UserFriendlyEncryptionAPI.class);
     
     private final Blockchain blockchain;
     private final ECKeyDerivation keyDerivation;
@@ -142,7 +146,7 @@ public class UserFriendlyEncryptionAPI {
                     blocks.add(block);
                 }
             } catch (Exception e) {
-                System.err.println("Warning: Could not retrieve block " + enhancedResult.getBlockHash() + ": " + e.getMessage());
+                logger.warn("⚠️ Could not retrieve block {}", enhancedResult.getBlockHash(), e);
             }
         }
         return blocks;
@@ -155,7 +159,7 @@ public class UserFriendlyEncryptionAPI {
      * @return List of matching blocks with decrypted content
      */
     public List<Block> findAndDecryptData(String searchTerm, String password) {
-        System.out.println("🔍 Debug: findAndDecryptData called with searchTerm='" + searchTerm + "', password length=" + (password != null ? password.length() : "null"));
+        logger.debug("🔍 Debug: findAndDecryptData called with searchTerm='{}', password length={}", searchTerm, (password != null ? password.length() : "null"));
         // Use Revolutionary Search Engine for elegant, robust search
         return searchWithAdaptiveDecryption(searchTerm, password, 50);
     }
@@ -190,7 +194,7 @@ public class UserFriendlyEncryptionAPI {
                     blocks.add(block);
                 }
             } catch (Exception e) {
-                System.err.println("Warning: Could not retrieve block " + enhancedResult.getBlockHash() + ": " + e.getMessage());
+                logger.warn("⚠️ Could not retrieve block {}", enhancedResult.getBlockHash(), e);
             }
         }
         return blocks;
@@ -620,14 +624,14 @@ public class UserFriendlyEncryptionAPI {
         } while (!validatePassword(password));
         
         if (requireConfirmation) {
-            System.out.println("Generated secure password: " + password);
+            logger.info("🔑 Generated secure password: {}", password);
             String confirmation = readPasswordSecurely("Please re-enter the generated password to confirm: ");
             
             if (confirmation == null || !password.equals(confirmation)) {
-                System.err.println("❌ Password confirmation failed");
+                logger.error("❌ Password confirmation failed");
                 return null;
             }
-            System.out.println("✅ Password confirmed successfully");
+            logger.info("✅ Password confirmed successfully");
         }
         
         return password;
@@ -1910,9 +1914,9 @@ public class UserFriendlyEncryptionAPI {
      * @return Password registry statistics
      */
     public Object getPasswordRegistryStats() {
-        System.out.println("🔍 Debug: getPasswordRegistryStats called");
+        logger.debug("🔍 Debug: getPasswordRegistryStats called");
         Object stats = blockchain.getUnifiedSearchAPI().getPasswordRegistryStats();
-        System.out.println("🔍 Debug: UnifiedSearchAPI instance: " + blockchain.getUnifiedSearchAPI().getClass().getSimpleName() + "@" + Integer.toHexString(blockchain.getUnifiedSearchAPI().hashCode()));
+        logger.debug("🔍 Debug: UnifiedSearchAPI instance: {}@{}", blockchain.getUnifiedSearchAPI().getClass().getSimpleName(), Integer.toHexString(blockchain.getUnifiedSearchAPI().hashCode()));
         return stats;
     }
     
@@ -1936,13 +1940,13 @@ public class UserFriendlyEncryptionAPI {
                         blocks.add(block);
                     }
                 } catch (Exception e) {
-                    System.err.println("Warning: Could not retrieve block " + enhancedResult.getBlockHash() + ": " + e.getMessage());
+                    logger.warn("⚠️ Could not retrieve block {}", enhancedResult.getBlockHash(), e);
                 }
             }
             
             return blocks;
         } catch (Exception e) {
-            System.err.println("Search with adaptive decryption failed: " + e.getMessage());
+            logger.error("❌ Search with adaptive decryption failed", e);
             return new ArrayList<>();
         }
     }
@@ -1965,7 +1969,7 @@ public class UserFriendlyEncryptionAPI {
                     blocks.add(block);
                 }
             } catch (Exception e) {
-                System.err.println("Warning: Could not convert enhanced result to block: " + e.getMessage());
+                logger.warn("⚠️ Warning: Could not convert enhanced result to block: {}", e.getMessage());
             }
         }
         return blocks;
@@ -2006,9 +2010,9 @@ public class UserFriendlyEncryptionAPI {
         Set<String> privateTerms = privateSearchTerms != null ? 
             new HashSet<>(Arrays.asList(privateSearchTerms)) : new HashSet<>();
         
-        System.out.println("🔍 Debug: storeSearchableDataWithLayers:");
-        System.out.println("🔍   Public terms: " + publicTerms.size() + " -> " + publicTerms);
-        System.out.println("🔍   Private terms: " + privateTerms.size() + " -> " + privateTerms);
+        logger.debug("🔍 Debug: storeSearchableDataWithLayers:");
+        logger.debug("🔍   Public terms: {} -> {}", publicTerms.size(), publicTerms);
+        logger.debug("🔍   Private terms: {} -> {}", privateTerms.size(), privateTerms);
         
         // Use the blockchain method that actually handles metadata layers
         // For now, we'll use the basic encrypted storage and rely on the search engine
@@ -2028,7 +2032,7 @@ public class UserFriendlyEncryptionAPI {
         allKeywords.addAll(publicKeywords);  // Public terms with PREFIX
         allKeywords.addAll(privateTerms);    // Private terms without prefix
         
-        System.out.println("🔍 Debug: Final keywords for storage: " + allKeywords);
+        logger.debug("🔍 Debug: Final keywords for storage: {}", allKeywords);
         
         // Store the block with encryption
         Block block = blockchain.addEncryptedBlockWithKeywords(data, password, 
@@ -2054,12 +2058,12 @@ public class UserFriendlyEncryptionAPI {
         validateKeyPair();
         
         if (allSearchTerms == null || allSearchTerms.isEmpty()) {
-            System.out.println("⚠️ Warning: No search terms provided for granular control");
+            logger.warn("⚠️ Warning: No search terms provided for granular control");
             return storeSecret(data, password);
         }
         
         if (termVisibility == null) {
-            System.out.println("⚠️ Warning: No term visibility map provided, using default PUBLIC");
+            logger.warn("⚠️ Warning: No term visibility map provided, using default PUBLIC");
             termVisibility = new TermVisibilityMap(TermVisibilityMap.VisibilityLevel.PUBLIC);
         }
         
@@ -2067,10 +2071,10 @@ public class UserFriendlyEncryptionAPI {
         Set<String> publicTerms = termVisibility.getPublicTerms(allSearchTerms);
         Set<String> privateTerms = termVisibility.getPrivateTerms(allSearchTerms);
         
-        System.out.println("🔍 Debug: Granular term control:");
-        System.out.println("🔍   Total terms: " + allSearchTerms.size());
-        System.out.println("🔍   Public terms: " + publicTerms.size() + " -> " + publicTerms);
-        System.out.println("🔍   Private terms: " + privateTerms.size() + " -> " + privateTerms);
+        logger.debug("🔍 Debug: Granular term control:");
+        logger.debug("🔍   Total terms: {}", allSearchTerms.size());
+        logger.debug("🔍   Public terms: {} -> {}", publicTerms.size(), publicTerms);
+        logger.debug("🔍   Private terms: {} -> {}", privateTerms.size(), privateTerms);
         
         // Store using the existing method with distributed terms
         return storeSearchableDataWithLayers(data, password, 
@@ -2206,7 +2210,7 @@ public class UserFriendlyEncryptionAPI {
                     decryptedResults.add(decryptedBlock);
                 }
             } catch (Exception e) {
-                System.err.println("Warning: Could not decrypt block " + block.getId() + ": " + e.getMessage());
+                logger.warn("⚠️ Warning: Could not decrypt block {}: {}", block.getId(), e.getMessage());
                 // Include the encrypted block anyway
                 decryptedResults.add(block);
             }
@@ -2263,10 +2267,10 @@ public class UserFriendlyEncryptionAPI {
                 }
             }
             
-            System.out.println("🔍 Debug: findBlocksWithPublicTerm('" + searchTerm + "') found " + publicResults.size() + " public results");
+            logger.debug("🔍 Debug: findBlocksWithPublicTerm('{}') found {} public results", searchTerm, publicResults.size());
             
         } catch (Exception e) {
-            System.err.println("⚠️ Warning: Failed to search public terms: " + e.getMessage());
+            logger.warn("⚠️ Failed to search public terms", e);
         }
         
         return publicResults;
@@ -2292,10 +2296,10 @@ public class UserFriendlyEncryptionAPI {
                 }
             }
             
-            System.out.println("🔍 Debug: findBlocksWithPrivateTerm('" + searchTerm + "') found " + privateResults.size() + " private results");
+            logger.debug("🔍 Debug: findBlocksWithPrivateTerm('{}') found {} private results", searchTerm, privateResults.size());
             
         } catch (Exception e) {
-            System.err.println("⚠️ Warning: Failed to search private terms: " + e.getMessage());
+            logger.warn("⚠️ Failed to search private terms", e);
         }
         
         return privateResults;
@@ -2319,7 +2323,7 @@ public class UserFriendlyEncryptionAPI {
                 String[] keywords = manualKeywords.split("\\s+");
                 for (String keyword : keywords) {
                     if (keyword.trim().toLowerCase().equals(publicKeyword)) {
-                        System.out.println("🔍 Debug: Block #" + block.getBlockNumber() + " - term '" + searchTerm + "' is PUBLIC (found in manual keywords)");
+                        logger.debug("🔍 Debug: Block #{} - term '{}' is PUBLIC (found in manual keywords)", block.getBlockNumber(), searchTerm);
                         return true;
                     }
                 }
@@ -2331,19 +2335,19 @@ public class UserFriendlyEncryptionAPI {
                 String[] keywords = autoKeywords.split("\\s+");
                 for (String keyword : keywords) {
                     if (keyword.trim().toLowerCase().equals(publicKeyword)) {
-                        System.out.println("🔍 Debug: Block #" + block.getBlockNumber() + " - term '" + searchTerm + "' is PUBLIC (found in auto keywords)");
+                        logger.debug("🔍 Debug: Block #{} - term '{}' is PUBLIC (found in auto keywords)", block.getBlockNumber(), searchTerm);
                         return true;
                     }
                 }
             }
             
-            System.out.println("🔍 Debug: Block #" + block.getBlockNumber() + " - term '" + searchTerm + "' is NOT PUBLIC ('" + publicKeyword + "' not found)");
-            System.out.println("🔍 Debug: manualKeywords = '" + manualKeywords + "'");
-            System.out.println("🔍 Debug: autoKeywords = '" + autoKeywords + "'");
+            logger.debug("🔍 Debug: Block #{} - term '{}' is NOT PUBLIC ('{}' not found)", block.getBlockNumber(), searchTerm, publicKeyword);
+            logger.debug("🔍 Debug: manualKeywords = '{}'", manualKeywords);
+            logger.debug("🔍 Debug: autoKeywords = '{}'", autoKeywords);
             return false;
             
         } catch (Exception e) {
-            System.err.println("⚠️ Warning: Failed to check public term in block #" + block.getBlockNumber() + ": " + e.getMessage());
+            logger.warn("⚠️ Warning: Failed to check public term in block #{}: {}", block.getBlockNumber(), e.getMessage());
             return false;
         }
     }
@@ -2366,11 +2370,11 @@ public class UserFriendlyEncryptionAPI {
                 }
             }
             
-            System.out.println("🔍 Debug: Block #" + block.getBlockNumber() + " - term '" + searchTerm + "' is NOT in private keywords");
+            logger.debug("🔍 Debug: Block #{} - term '{}' is NOT in private keywords", block.getBlockNumber(), searchTerm);
             return false;
             
         } catch (Exception e) {
-            System.err.println("⚠️ Warning: Failed to check private term in block #" + block.getBlockNumber() + ": " + e.getMessage());
+            logger.warn("⚠️ Warning: Failed to check private term in block #{}: {}", block.getBlockNumber(), e.getMessage());
             return false;
         }
     }
@@ -2397,7 +2401,7 @@ public class UserFriendlyEncryptionAPI {
                     String[] keywords = decryptedKeywords.toLowerCase().split("\\s+");
                     for (String keyword : keywords) {
                         if (keyword.trim().equals(searchTerm.toLowerCase())) {
-                            System.out.println("🔍 Debug: Block #" + blockNumber + " - term '" + searchTerm + "' is PRIVATE (found in encrypted " + fieldName + ")");
+                            logger.debug("🔍 Debug: Block #{} - term '{}' is PRIVATE (found in encrypted {})", blockNumber, searchTerm, fieldName);
                             return true;
                         }
                     }

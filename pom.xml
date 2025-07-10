@@ -236,4 +236,57 @@
             </plugin>
         </plugins>
     </build>
+
+    <!-- LOGGING CONFIGURATION PROFILES -->
+    <profiles>
+        <!-- Development profile - detailed logging -->
+        <profile>
+            <id>development</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <build>
+                <resources>
+                    <resource>
+                        <directory>src/main/resources</directory>
+                        <excludes>
+                            <exclude>logback-production.xml</exclude>
+                        </excludes>
+                    </resource>
+                    <resource>
+                        <directory>src/main/resources</directory>
+                        <includes>
+                            <include>logback-development.xml</include>
+                        </includes>
+                        <filtering>false</filtering>
+                        <targetPath>${project.build.outputDirectory}</targetPath>
+                    </resource>
+                </resources>
+            </build>
+        </profile>
+
+        <!-- Production profile - optimized logging -->
+        <profile>
+            <id>production</id>
+            <build>
+                <resources>
+                    <resource>
+                        <directory>src/main/resources</directory>
+                        <excludes>
+                            <exclude>logback-development.xml</exclude>
+                        </excludes>
+                    </resource>
+                    <resource>
+                        <directory>src/main/resources</directory>
+                        <includes>
+                            <include>logback-production.xml</include>
+                        </includes>
+                        <filtering>false</filtering>
+                        <targetPath>${project.build.outputDirectory}</targetPath>
+                    </resource>
+                </resources>
+            </build>
+        </profile>
+    </profiles>
+
 </project>

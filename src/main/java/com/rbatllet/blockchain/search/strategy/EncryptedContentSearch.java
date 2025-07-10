@@ -3,6 +3,8 @@ package com.rbatllet.blockchain.search.strategy;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.CompressionUtil;
 import com.rbatllet.blockchain.search.metadata.PrivateMetadata;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -30,6 +32,8 @@ import java.util.stream.Collectors;
  */
 public class EncryptedContentSearch {
     
+    private static final Logger logger = LoggerFactory.getLogger(EncryptedContentSearch.class);
+    
     private final Map<String, String> encryptedMetadataCache;
     private final Map<String, Long> lastAccessTime;
     private final Map<String, PrivateMetadata> decryptedCache;
@@ -53,17 +57,18 @@ public class EncryptedContentSearch {
      * @param encryptedPrivateMetadata Encrypted private metadata JSON
      */
     public void indexEncryptedBlock(String blockHash, String encryptedPrivateMetadata) {
-        System.out.println("🔍 Debug: indexEncryptedBlock called with blockHash=" + (blockHash != null ? blockHash.substring(0, 8) + "..." : "null") + 
-                          ", encryptedPrivateMetadata=" + (encryptedPrivateMetadata != null ? "present (" + encryptedPrivateMetadata.length() + " chars)" : "null"));
+        logger.debug("🔍 indexEncryptedBlock called with blockHash={}, encryptedPrivateMetadata={}", 
+                    (blockHash != null ? blockHash.substring(0, 8) + "..." : "null"),
+                    (encryptedPrivateMetadata != null ? "present (" + encryptedPrivateMetadata.length() + " chars)" : "null"));
         
         if (blockHash == null || encryptedPrivateMetadata == null) {
-            System.out.println("🔍 Debug: ⚠️ Skipping indexEncryptedBlock - null parameter");
+            logger.debug("🔍 ⚠️ Skipping indexEncryptedBlock - null parameter");
             return;
         }
         
         encryptedMetadataCache.put(blockHash, encryptedPrivateMetadata);
         lastAccessTime.put(blockHash, System.currentTimeMillis());
-        System.out.println("🔍 Debug: ✅ Indexed encrypted block. Cache size now: " + encryptedMetadataCache.size());
+        logger.debug("🔍 ✅ Indexed encrypted block. Cache size now: {}", encryptedMetadataCache.size());
         
         // Clean up expired cache entries periodically
         cleanupExpiredCache();
@@ -82,61 +87,60 @@ public class EncryptedContentSearch {
         }
         
         long startTime = System.nanoTime();
-        System.out.println("🔍 Debug: EncryptedContentSearch.searchEncryptedContent() called with query='" + query + "'");
-        System.out.println("🔍 Debug: encryptedMetadataCache size: " + encryptedMetadataCache.size());
+        logger.debug("🔍 EncryptedContentSearch.searchEncryptedContent() called with query='{}'", query);
+        logger.debug("🔍 encryptedMetadataCache size: {}", encryptedMetadataCache.size());
         
         // Debug: Show all cached block hashes
         if (encryptedMetadataCache.size() > 0) {
-            System.out.println("🔍 Debug: Cached block hashes:");
+            logger.debug("🔍 Cached block hashes:");
             for (String blockHash : encryptedMetadataCache.keySet()) {
-                System.out.println("🔍 Debug:   - " + blockHash.substring(0, 8) + "...");
+                logger.debug("🔍   - {}...", blockHash.substring(0, 8));
             }
         } else {
-            System.out.println("🔍 Debug: ⚠️ encryptedMetadataCache is EMPTY! This explains why no results are found.");
+            logger.debug("🔍 ⚠️ encryptedMetadataCache is EMPTY! This explains why no results are found.");
         }
         
         // Parse and prepare query
         Set<String> queryKeywords = parseQuery(query);
-        System.out.println("🔍 Debug: parsed query keywords: " + queryKeywords);
+        logger.debug("🔍 parsed query keywords: {}", queryKeywords);
         List<EncryptedSearchResult> results = new ArrayList<>();
         
         // Search through all encrypted metadata
         for (Map.Entry<String, String> entry : encryptedMetadataCache.entrySet()) {
             String blockHash = entry.getKey();
             String encryptedMetadata = entry.getValue();
-            System.out.println("🔍 Debug: processing block " + blockHash.substring(0, 8) + "...");
+            logger.debug("🔍 processing block {}...", blockHash.substring(0, 8));
             
             try {
                 // Try to decrypt and search the private metadata
-                System.out.println("🔍 Debug: attempting to decrypt private metadata for block " + blockHash.substring(0, 8));
-                System.out.println("🔍 Debug: encryptedMetadata preview: " + encryptedMetadata.substring(0, Math.min(50, encryptedMetadata.length())) + "...");
+                logger.debug("🔍 attempting to decrypt private metadata for block {}", blockHash.substring(0, 8));
+                logger.debug("🔍 encryptedMetadata preview: {}...", encryptedMetadata.substring(0, Math.min(50, encryptedMetadata.length())));
                 PrivateMetadata privateMetadata = decryptPrivateMetadata(blockHash, encryptedMetadata, password);
-                System.out.println("🔍 Debug: privateMetadata decrypted: " + (privateMetadata != null ? "yes" : "null"));
+                logger.debug("🔍 privateMetadata decrypted: {}", (privateMetadata != null ? "yes" : "null"));
                 
                 if (privateMetadata != null) {
-                    System.out.println("🔍 Debug: privateMetadata content - detailedKeywords: " + privateMetadata.getDetailedKeywords());
-                    System.out.println("🔍 Debug: privateMetadata content - sensitiveTerms: " + privateMetadata.getSensitiveTerms());
-                    System.out.println("🔍 Debug: privateMetadata content - identifiers: " + privateMetadata.getIdentifiers());
+                    logger.debug("🔍 privateMetadata content - detailedKeywords: {}", privateMetadata.getDetailedKeywords());
+                    logger.debug("🔍 privateMetadata content - sensitiveTerms: {}", privateMetadata.getSensitiveTerms());
+                    logger.debug("🔍 privateMetadata content - identifiers: {}", privateMetadata.getIdentifiers());
                     
                     // Perform search on decrypted content
                     EncryptedSearchResult result = searchPrivateMetadata(blockHash, privateMetadata, 
                                                                         queryKeywords, query, startTime);
-                    System.out.println("🔍 Debug: search result: " + (result != null ? "score=" + result.getRelevanceScore() : "null"));
+                    logger.debug("🔍 search result: {}", (result != null ? "score=" + result.getRelevanceScore() : "null"));
                     if (result != null && result.getRelevanceScore() > 0.0) {
                         results.add(result);
-                        System.out.println("🔍 Debug: ✅ Added result to final list!");
+                        logger.debug("🔍 ✅ Added result to final list!");
                     } else {
-                        System.out.println("🔍 Debug: ❌ No match found in this block's metadata");
+                        logger.debug("🔍 ❌ No match found in this block's metadata");
                     }
                 } else {
-                    System.out.println("🔍 Debug: ⚠️ Could not decrypt private metadata - wrong password or format issue");
+                    logger.debug("🔍 ⚠️ Could not decrypt private metadata - wrong password or format issue");
                 }
                 
             } catch (Exception e) {
                 // Skip blocks that can't be decrypted (wrong password or corrupted data)
                 // This is expected behavior when password doesn't match
-                System.out.println("🔍 Debug: ❌ Failed to decrypt block " + blockHash.substring(0, 8) + ": " + e.getMessage());
-                e.printStackTrace();
+                logger.debug("🔍 ❌ Failed to decrypt block {}", blockHash.substring(0, 8), e);
                 continue;
             }
         }
@@ -169,9 +173,9 @@ public class EncryptedContentSearch {
             
             // Decompress if necessary
             if (CompressionUtil.isCompressed(decryptedJson)) {
-                System.out.println("🔍 Debug: Decompressing metadata JSON...");
+                logger.debug("🔍 Decompressing metadata JSON...");
                 decryptedJson = CompressionUtil.decompressString(decryptedJson);
-                System.out.println("🔍 Debug: Decompressed JSON: " + decryptedJson.substring(0, Math.min(100, decryptedJson.length())) + "...");
+                logger.debug("🔍 Decompressed JSON: {}...", decryptedJson.substring(0, Math.min(100, decryptedJson.length())));
             }
             
             // Parse JSON into PrivateMetadata object
@@ -196,11 +200,11 @@ public class EncryptedContentSearch {
         PrivateMetadata metadata = new PrivateMetadata();
         
         if (json == null || json.trim().isEmpty()) {
-            System.out.println("🔍 Debug: parsePrivateMetadataJson - JSON is null or empty");
+            logger.debug("🔍 parsePrivateMetadataJson - JSON is null or empty");
             return metadata;
         }
         
-        System.out.println("🔍 Debug: parsePrivateMetadataJson - JSON content: " + json.substring(0, Math.min(200, json.length())) + "...");
+        logger.debug("🔍 parsePrivateMetadataJson - JSON content: {}...", json.substring(0, Math.min(200, json.length())));
         
         try {
             JsonNode jsonNode = objectMapper.readTree(json);
@@ -219,9 +223,9 @@ public class EncryptedContentSearch {
                     }
                 }
                 metadata.setDetailedKeywords(keywords);
-                System.out.println("🔍 Debug: Extracted keywords: " + keywords);
+                logger.debug("🔍 Extracted keywords: {}", keywords);
             } else {
-                System.out.println("🔍 Debug: No keywords found in JSON");
+                logger.debug("🔍 No keywords found in JSON");
             }
             
             // Extract sensitive terms
@@ -234,7 +238,7 @@ public class EncryptedContentSearch {
                     }
                 }
                 metadata.setSensitiveTerms(sensitiveTerms);
-                System.out.println("🔍 Debug: Extracted sensitive terms: " + sensitiveTerms);
+                logger.debug("🔍 Extracted sensitive terms: {}", sensitiveTerms);
             }
             
             // Extract identifiers
@@ -247,7 +251,7 @@ public class EncryptedContentSearch {
                     }
                 }
                 metadata.setIdentifiers(identifiers);
-                System.out.println("🔍 Debug: Extracted identifiers: " + identifiers);
+                logger.debug("🔍 Extracted identifiers: {}", identifiers);
             }
             
             // Extract content summary
@@ -265,7 +269,7 @@ public class EncryptedContentSearch {
             return metadata;
             
         } catch (Exception e) {
-            System.out.println("🔍 Debug: Failed to parse JSON: " + e.getMessage());
+            logger.debug("🔍 Failed to parse JSON", e);
             throw new RuntimeException("Failed to parse private metadata JSON", e);
         }
     }
@@ -276,10 +280,10 @@ public class EncryptedContentSearch {
     private EncryptedSearchResult searchPrivateMetadata(String blockHash, PrivateMetadata metadata, 
                                                        Set<String> queryKeywords, String originalQuery, 
                                                        long startTime) {
-        System.out.println("🔍 Debug: searchPrivateMetadata called for block " + blockHash.substring(0, 8));
-        System.out.println("🔍 Debug: queryKeywords: " + queryKeywords);
-        System.out.println("🔍 Debug: metadata.getDetailedKeywords(): " + metadata.getDetailedKeywords());
-        System.out.println("🔍 Debug: metadata.getContentSummary(): " + metadata.getContentSummary());
+        logger.debug("🔍 searchPrivateMetadata called for block {}", blockHash.substring(0, 8));
+        logger.debug("🔍 queryKeywords: {}", queryKeywords);
+        logger.debug("🔍 metadata.getDetailedKeywords(): {}", metadata.getDetailedKeywords());
+        logger.debug("🔍 metadata.getContentSummary(): {}", metadata.getContentSummary());
         
         double relevanceScore = 0.0;
         List<String> matchingTerms = new ArrayList<>();
