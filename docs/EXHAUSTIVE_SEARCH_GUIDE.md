@@ -357,4 +357,27 @@ Enable debug logging to see detailed search operations:
 
 ---
 
+## 📚 Related Documents
+
+### 🔍 Search Guides
+- **[SEARCH_COMPARISON.md](SEARCH_COMPARISON.md)** - Complete comparison of all 5 available search types
+- **[SEARCH_GUIDE.md](SEARCH_GUIDE.md)** - Traditional hybrid search system guide
+
+### 📖 Main Documentation  
+- **[README.md](../README.md)** - Main documentation with quick start
+- **[API_GUIDE.md](API_GUIDE.md)** - Complete API reference
+- **[EXAMPLES.md](EXAMPLES.md)** - Real use cases and workflows
+
+### 🚀 Code and Demos
+- **[ExhaustiveSearchDemo.java](../src/main/java/demo/ExhaustiveSearchDemo.java)** - Complete demo with mixed scenarios
+- **[ExhaustiveSearchExamples.java](../src/main/java/demo/ExhaustiveSearchExamples.java)** - 6 detailed practical examples
+- **[Execution scripts](../scripts/)** - Zsh scripts to run demos and examples
+
+### 🔐 Security and Technical
+- **[ENCRYPTION_GUIDE.md](ENCRYPTION_GUIDE.md)** - Encryption and metadata management
+- **[TESTING.md](TESTING.md)** - Testing guide and troubleshooting
+- **[TECHNICAL_DETAILS.md](TECHNICAL_DETAILS.md)** - Architecture and database schema
+
+---
+
 *Generated with TRUE Exhaustive Search v2.0 - Revolutionary Blockchain Search Engine*

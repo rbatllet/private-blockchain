@@ -1162,6 +1162,7 @@ This project includes comprehensive documentation for different use cases:
 - **[API_GUIDE.md](docs/API_GUIDE.md)** - Complete API reference and core functions
 - **[SEARCH_GUIDE.md](docs/SEARCH_GUIDE.md)** - Comprehensive hybrid search system guide with practical examples
 - **[EXHAUSTIVE_SEARCH_GUIDE.md](docs/EXHAUSTIVE_SEARCH_GUIDE.md)** - TRUE exhaustive search across on-chain and off-chain content 🔍
+- **[SEARCH_COMPARISON.md](docs/SEARCH_COMPARISON.md)** - Complete comparison of all 5 search types with performance benchmarks 📊
 - **[TESTING.md](docs/TESTING.md)** - Comprehensive testing guide and troubleshooting
 - **[SECURITY_CLASSES_GUIDE.md](docs/SECURITY_CLASSES_GUIDE.md)** - Security classes usage guide (migrated from CLI)
 - **[UTILITY_CLASSES_GUIDE.md](docs/UTILITY_CLASSES_GUIDE.md)** - Utility classes usage guide (migrated from CLI)
