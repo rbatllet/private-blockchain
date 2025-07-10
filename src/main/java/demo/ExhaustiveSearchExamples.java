@@ -8,7 +8,6 @@ import com.rbatllet.blockchain.search.RevolutionarySearchEngine.RevolutionarySea
 import com.rbatllet.blockchain.search.RevolutionarySearchEngine.EnhancedSearchResult;
 import com.rbatllet.blockchain.search.OffChainMatch;
 import com.rbatllet.blockchain.service.OffChainStorageService;
-import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.util.CryptoUtil;
 
 import java.io.File;
