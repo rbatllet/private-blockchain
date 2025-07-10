@@ -4,7 +4,6 @@ import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.search.metadata.*;
 import com.rbatllet.blockchain.search.strategy.*;
-import com.rbatllet.blockchain.core.Blockchain;
 
 import java.util.*;
 import java.util.HashSet;
@@ -32,6 +31,11 @@ public class RevolutionarySearchEngine {
     private final EncryptionConfig defaultConfig;
     private final ExecutorService indexingExecutor;
     private final Map<String, BlockMetadataLayers> blockMetadataIndex;
+    private final OffChainFileSearch offChainFileSearch;
+    private final OnChainContentSearch onChainContentSearch;
+    
+    // Reference to blockchain for block hash lookups (for EXHAUSTIVE_OFFCHAIN search)
+    private com.rbatllet.blockchain.core.Blockchain blockchain;
     
     public RevolutionarySearchEngine() {
         this(EncryptionConfig.createHighSecurityConfig());
@@ -47,6 +51,9 @@ public class RevolutionarySearchEngine {
             return t;
         });
         this.blockMetadataIndex = new ConcurrentHashMap<>();
+        this.offChainFileSearch = new OffChainFileSearch();
+        this.onChainContentSearch = new OnChainContentSearch();
+        this.blockchain = null; // Will be set when blockchain indexing is performed
     }
     
     // ===== CORE SEARCH METHODS =====
@@ -214,8 +221,197 @@ public class RevolutionarySearchEngine {
     }
     
     /**
-     * Advanced privacy-preserving search
+     * EXHAUSTIVE OFF-CHAIN SEARCH - NEW IMPLEMENTATION
+     * 
+     * Performs comprehensive search including encrypted off-chain files.
+     * This is the most thorough search level that actually examines
+     * the content of encrypted off-chain files.
      */
+    public RevolutionarySearchResult searchExhaustiveOffChain(String query, String password, 
+                                                             PrivateKey privateKey, int maxResults) {
+        long startTime = System.nanoTime();
+        
+        try {
+            System.out.println("🔍 Starting TRUE EXHAUSTIVE search (on-chain + off-chain) for: \"" + query + "\"");
+            
+            // Step 1: Perform regular encrypted search first
+            RevolutionarySearchResult regularResults = searchEncryptedOnly(query, password, maxResults);
+            List<EnhancedSearchResult> allResults = new ArrayList<>(regularResults.getResults());
+            
+            // Step 2: Get ALL blocks for exhaustive search (not just matches)
+            List<Block> allBlocks = blockchain != null ? blockchain.getAllBlocks() : new ArrayList<>();
+            
+            // Step 3: Perform ON-CHAIN content search
+            OnChainContentSearch.OnChainSearchResult onChainResults = onChainContentSearch.searchOnChainContent(
+                allBlocks, query, password, privateKey, maxResults);
+            
+            // Step 4: Perform OFF-CHAIN file search (only for blocks with off-chain data)
+            List<Block> blocksWithOffChainData = allBlocks.stream()
+                .filter(b -> b.getOffChainData() != null)
+                .collect(java.util.stream.Collectors.toList());
+            
+            OffChainSearchResult offChainResults = offChainFileSearch.searchOffChainContent(
+                blocksWithOffChainData, query, password, privateKey, maxResults);
+            
+            // Step 5: Convert on-chain matches to enhanced search results
+            List<EnhancedSearchResult> onChainEnhancedResults = convertOnChainToEnhancedResults(
+                onChainResults, password);
+            
+            // Step 6: Convert off-chain matches to enhanced search results
+            List<EnhancedSearchResult> offChainEnhancedResults = convertOffChainToEnhancedResults(
+                offChainResults, password);
+            
+            // Step 7: Merge all results (regular + on-chain + off-chain)
+            allResults.addAll(onChainEnhancedResults);
+            allResults.addAll(offChainEnhancedResults);
+            
+            // Remove duplicates (same block might appear in multiple searches)
+            Set<String> seenHashes = new HashSet<>();
+            allResults = allResults.stream()
+                .filter(r -> seenHashes.add(r.getBlockHash()))
+                .collect(java.util.stream.Collectors.toList());
+            
+            // Sort by relevance (on-chain and off-chain matches get bonus scores)
+            allResults.sort((a, b) -> Double.compare(b.getRelevanceScore(), a.getRelevanceScore()));
+            
+            // Limit final results
+            if (allResults.size() > maxResults) {
+                allResults = allResults.subList(0, maxResults);
+            }
+            
+            long endTime = System.nanoTime();
+            double totalTimeMs = (endTime - startTime) / 1_000_000.0;
+            
+            String summary = String.format(
+                "TRUE EXHAUSTIVE search: %d total results (%d on-chain, %d off-chain) in %.2fms",
+                allResults.size(), onChainEnhancedResults.size(), offChainEnhancedResults.size(), totalTimeMs);
+            
+            System.out.println("✅ " + summary);
+            
+            return new RevolutionarySearchResult(
+                allResults,
+                SearchStrategyRouter.SearchStrategy.EXHAUSTIVE_COMBINED,
+                null, // QueryAnalysis not needed for this method
+                totalTimeMs,
+                SearchLevel.EXHAUSTIVE_OFFCHAIN,
+                null // Success - no error message
+            );
+            
+        } catch (Exception e) {
+            long endTime = System.nanoTime();
+            double totalTimeMs = (endTime - startTime) / 1_000_000.0;
+            
+            System.err.println("❌ EXHAUSTIVE_OFFCHAIN search failed: " + e.getMessage());
+            
+            return new RevolutionarySearchResult(
+                new ArrayList<>(),
+                SearchStrategyRouter.SearchStrategy.EXHAUSTIVE_COMBINED,
+                null, // QueryAnalysis not needed for error case
+                totalTimeMs,
+                SearchLevel.EXHAUSTIVE_OFFCHAIN,
+                "Off-chain search failed: " + e.getMessage()
+            );
+        }
+    }
+    
+    /**
+     * Convert on-chain matches to enhanced search results
+     */
+    private List<EnhancedSearchResult> convertOnChainToEnhancedResults(
+            OnChainContentSearch.OnChainSearchResult onChainResult, String password) {
+        
+        List<EnhancedSearchResult> enhancedResults = new ArrayList<>();
+        
+        for (OnChainContentSearch.OnChainMatch match : onChainResult.getMatches()) {
+            String blockHash = match.getBlockHash();
+            BlockMetadataLayers metadata = blockMetadataIndex.get(blockHash);
+            
+            // Build context summary from snippets
+            StringBuilder contextBuilder = new StringBuilder();
+            contextBuilder.append("On-chain content match (")
+                         .append(match.getContentType())
+                         .append("): ");
+            
+            if (!match.getMatchingSnippets().isEmpty()) {
+                contextBuilder.append(match.getMatchingSnippets().get(0));
+            }
+            
+            // Create enhanced result with on-chain source
+            EnhancedSearchResult enhancedResult = new EnhancedSearchResult(
+                blockHash,
+                match.getRelevanceScore() + 15.0, // On-chain content bonus
+                SearchStrategyRouter.SearchResultSource.ENCRYPTED_CONTENT, // Uses encrypted content source
+                contextBuilder.toString(),
+                0.0, // Search time already accounted for
+                metadata != null ? metadata.getPublicLayer() : null,
+                null, // Private layer would need decryption
+                metadata != null ? metadata.getSecurityLevel() : null
+            );
+            
+            enhancedResults.add(enhancedResult);
+        }
+        
+        return enhancedResults;
+    }
+    
+    
+    /**
+     * Convert off-chain search results to enhanced search results
+     */
+    private List<EnhancedSearchResult> convertOffChainToEnhancedResults(OffChainSearchResult offChainResults, 
+                                                                        String password) {
+        List<EnhancedSearchResult> enhancedResults = new ArrayList<>();
+        
+        for (OffChainMatch match : offChainResults.getMatches()) {
+            String blockHash = match.getBlockHash();
+            BlockMetadataLayers metadata = blockMetadataIndex.get(blockHash);
+            
+            // Create enhanced result with off-chain content info
+            StringBuilder contextBuilder = new StringBuilder();
+            contextBuilder.append("📄 Off-chain file: ").append(match.getFileName()).append("\\n");
+            contextBuilder.append("📋 Content type: ").append(match.getContentType()).append("\\n");
+            contextBuilder.append("🎯 Matches found: ").append(match.getMatchCount()).append("\\n");
+            
+            if (match.getPreviewSnippet() != null) {
+                contextBuilder.append("📖 Preview: ").append(match.getPreviewSnippet());
+            }
+            
+            // Boost relevance score for off-chain matches
+            double boostedRelevance = match.getRelevanceScore() + 20.0; // Off-chain bonus
+            
+            EnhancedSearchResult enhancedResult = new EnhancedSearchResult(
+                blockHash,
+                boostedRelevance,
+                SearchStrategyRouter.SearchResultSource.OFF_CHAIN_CONTENT,
+                contextBuilder.toString(),
+                0.0, // Search time already accounted for
+                metadata != null ? metadata.getPublicLayer() : null,
+                null, // Private layer access not implemented yet
+                metadata != null ? metadata.getSecurityLevel() : null,
+                match // Now we can include the actual OffChainMatch object!
+            );
+            
+            // ✅ Off-chain match information now properly stored in dedicated field
+            
+            enhancedResults.add(enhancedResult);
+        }
+        
+        return enhancedResults;
+    }
+    
+    /**
+     * Get off-chain search statistics
+     */
+    public Map<String, Object> getOffChainSearchStats() {
+        return offChainFileSearch.getCacheStats();
+    }
+    
+    /**
+     * Clear off-chain search cache
+     */
+    public void clearOffChainCache() {
+        offChainFileSearch.clearCache();
+    }
     
     // ===== BLOCKCHAIN INTEGRATION =====
     
@@ -299,7 +495,9 @@ public class RevolutionarySearchEngine {
      * Index entire blockchain for revolutionary search
      * Enhanced with better error handling and progress tracking
      */
-    public IndexingResult indexBlockchain(Blockchain blockchain, String password, PrivateKey privateKey) {
+    public IndexingResult indexBlockchain(com.rbatllet.blockchain.core.Blockchain blockchain, String password, PrivateKey privateKey) {
+        // Store blockchain reference for EXHAUSTIVE_OFFCHAIN searches
+        this.blockchain = blockchain;
         return indexFilteredBlocks(blockchain.getAllBlocks(), password, privateKey);
     }
     
@@ -637,6 +835,7 @@ public class RevolutionarySearchEngine {
         private final PublicMetadata publicMetadata;
         private final PrivateMetadata privateMetadata;
         private final EncryptionConfig.SecurityLevel securityLevel;
+        private final OffChainMatch offChainMatch; // Off-chain match information (if applicable)
         
         public EnhancedSearchResult(String blockHash, double relevanceScore,
                                   SearchStrategyRouter.SearchResultSource source, String summary,
@@ -651,6 +850,27 @@ public class RevolutionarySearchEngine {
             this.publicMetadata = publicMetadata;
             this.privateMetadata = privateMetadata;
             this.securityLevel = securityLevel;
+            this.offChainMatch = null; // No off-chain match for regular results
+        }
+        
+        /**
+         * Constructor with off-chain match information
+         */
+        public EnhancedSearchResult(String blockHash, double relevanceScore,
+                                  SearchStrategyRouter.SearchResultSource source, String summary,
+                                  double searchTimeMs, PublicMetadata publicMetadata,
+                                  PrivateMetadata privateMetadata,
+                                  EncryptionConfig.SecurityLevel securityLevel,
+                                  OffChainMatch offChainMatch) {
+            this.blockHash = blockHash;
+            this.relevanceScore = relevanceScore;
+            this.source = source;
+            this.summary = summary;
+            this.searchTimeMs = searchTimeMs;
+            this.publicMetadata = publicMetadata;
+            this.privateMetadata = privateMetadata;
+            this.securityLevel = securityLevel;
+            this.offChainMatch = offChainMatch;
         }
         
         // Getters
@@ -662,14 +882,18 @@ public class RevolutionarySearchEngine {
         public PublicMetadata getPublicMetadata() { return publicMetadata; }
         public PrivateMetadata getPrivateMetadata() { return privateMetadata; }
         public EncryptionConfig.SecurityLevel getSecurityLevel() { return securityLevel; }
+        public OffChainMatch getOffChainMatch() { return offChainMatch; }
         
         public boolean hasPrivateAccess() { return privateMetadata != null; }
+        public boolean hasOffChainMatch() { return offChainMatch != null; }
+        public boolean isOffChainResult() { return source == SearchStrategyRouter.SearchResultSource.OFF_CHAIN_CONTENT; }
         
         @Override
         public String toString() {
-            return String.format("Enhanced{hash=%s, score=%.2f, source=%s, security=%s}", 
+            String offChainInfo = hasOffChainMatch() ? ", offChain=" + offChainMatch.getFileName() : "";
+            return String.format("Enhanced{hash=%s, score=%.2f, source=%s, security=%s%s}", 
                                blockHash.substring(0, Math.min(8, blockHash.length())), 
-                               relevanceScore, source, securityLevel);
+                               relevanceScore, source, securityLevel, offChainInfo);
         }
     }
     

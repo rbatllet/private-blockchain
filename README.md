@@ -43,13 +43,15 @@ This is a **private blockchain** for controlled environments where only authoriz
 
 ### Advanced Functions
 - **Export/Import**: Backup and restore complete blockchain with temporal consistency
-- **Hybrid Search System**: Multi-level search with keyword extraction and category filtering
+- **Revolutionary Search System**: Multi-level search with TRUE exhaustive capabilities
   - **Fast Search**: Keywords-only search for optimal performance
   - **Data Search**: Keywords + block content with balanced performance
-  - **Exhaustive Search**: Complete search including off-chain content
+  - **TRUE Exhaustive Search**: Complete search across on-chain content AND off-chain files
+  - **Thread-Safe Search**: Concurrent search operations with intelligent caching
   - **Category Search**: Filter blocks by content categories (MEDICAL, FINANCE, TECHNICAL, LEGAL)
   - **Auto Keywords**: Automatic extraction of dates, numbers, emails, codes, and universal elements
   - **Search Validation**: Intelligent minimum length requirements with exceptions for useful short terms
+  - **Mixed Content Search**: Unified search across encrypted/plain text, on-chain/off-chain content
 - **Rollback Operations**: Safe removal of recent blocks with genesis protection
 - **Off-Chain Storage**: Automatic storage for large data (>512KB) with AES-GCM encryption
 - **Data Size Management**: Intelligent data placement based on configurable size thresholds
@@ -445,6 +447,19 @@ mvn exec:java -Dexec.mainClass="demo.BlockchainDemo"
 #### Complete Off-Chain Validation Demo (NEW)
 ```bash
 mvn exec:java -Dexec.mainClass="demo.TestDetailedValidation"
+```
+
+#### TRUE Exhaustive Search Demo (NEW) 🔍
+```bash
+# Interactive demo with comprehensive search examples
+./scripts/run_exhaustive_search_demo.zsh
+
+# Practical examples for developers with step-by-step tutorials
+./scripts/run_exhaustive_search_examples.zsh
+
+# Or run programmatically
+mvn exec:java -Dexec.mainClass="demo.ExhaustiveSearchDemo"
+mvn exec:java -Dexec.mainClass="demo.ExhaustiveSearchExamples"
 ```
 
 #### Core Functions with Enhanced Analysis
@@ -1146,6 +1161,7 @@ This project includes comprehensive documentation for different use cases:
 - **[EXAMPLES.md](docs/EXAMPLES.md)** - Real-world use cases and workflow patterns
 - **[API_GUIDE.md](docs/API_GUIDE.md)** - Complete API reference and core functions
 - **[SEARCH_GUIDE.md](docs/SEARCH_GUIDE.md)** - Comprehensive hybrid search system guide with practical examples
+- **[EXHAUSTIVE_SEARCH_GUIDE.md](docs/EXHAUSTIVE_SEARCH_GUIDE.md)** - TRUE exhaustive search across on-chain and off-chain content 🔍
 - **[TESTING.md](docs/TESTING.md)** - Comprehensive testing guide and troubleshooting
 - **[SECURITY_CLASSES_GUIDE.md](docs/SECURITY_CLASSES_GUIDE.md)** - Security classes usage guide (migrated from CLI)
 - **[UTILITY_CLASSES_GUIDE.md](docs/UTILITY_CLASSES_GUIDE.md)** - Utility classes usage guide (migrated from CLI)

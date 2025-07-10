@@ -429,7 +429,8 @@ public class SearchStrategyRouter {
         FAST_PUBLIC("Fast public metadata search"),
         ENCRYPTED_CONTENT("Encrypted content search"),
         HYBRID_CASCADE("Hybrid cascade (fast -> encrypted)"),
-        PARALLEL_MULTI("Parallel multi-strategy search");
+        PARALLEL_MULTI("Parallel multi-strategy search"),
+        EXHAUSTIVE_COMBINED("Exhaustive off-chain + metadata search");
         
         private final String description;
         
@@ -445,7 +446,7 @@ public class SearchStrategyRouter {
     }
     
     public enum SearchResultSource {
-        PUBLIC_METADATA, ENCRYPTED_CONTENT
+        PUBLIC_METADATA, ENCRYPTED_CONTENT, OFF_CHAIN_CONTENT
     }
     
     /**

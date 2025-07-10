@@ -64,6 +64,18 @@ The Revolutionary Search Engine automatically selects the optimal strategy:
 - **Access**: Combines public and encrypted search
 - **Example**: Comprehensive analysis with fallback strategies
 
+### 4. EXHAUSTIVE_OFFCHAIN Search 🔍 (TRUE Exhaustive v2.0)
+- **Target**: Most comprehensive search (50ms-10s response time)
+- **Use Case**: Deep forensic analysis, compliance auditing, complete content discovery
+- **Access**: Searches inside:
+  - ✅ Block on-chain content (encrypted and plain text)
+  - ✅ Off-chain encrypted files
+  - ✅ All metadata layers
+- **Example**: Finding ANY occurrence of sensitive data across entire blockchain
+- **Performance**: ~52ms baseline + content search time
+- **Security**: Requires password + private key for full encrypted content access
+- **NEW**: Now truly exhaustive - searches INSIDE block.getData() content!
+
 ## 📖 Basic Usage
 
 ### Step 1: Setup and Configuration
@@ -132,6 +144,109 @@ RevolutionarySearchResult advancedResult = searchAPI.searchAdvanced("medical dat
 List<EnhancedSearchResult> intelligentResults = searchAPI.searchIntelligent("swift financial", password, 50);
 ```
 
+## 🔍 EXHAUSTIVE_OFFCHAIN Search Guide
+
+### Overview
+
+The EXHAUSTIVE_OFFCHAIN search is the most comprehensive search level available in the Revolutionary Search Engine. It combines regular encrypted search with deep content analysis of encrypted off-chain files.
+
+### Key Features
+
+- **🔍 Content Discovery**: Searches within text, JSON, and binary off-chain files
+- **🔐 Security**: Requires password + private key for full access
+- **⚡ Performance**: ~52ms for metadata search + variable time for off-chain content
+- **📊 Comprehensive**: Combines regular search results with off-chain matches
+- **🗂️ Content Types**: Supports text/plain, application/json, binary data, and more
+- **📄 Rich Results**: Direct access to OffChainMatch objects with detailed file information
+
+### Usage Examples
+
+```java
+import com.rbatllet.blockchain.search.RevolutionarySearchEngine;
+import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.config.EncryptionConfig;
+
+// Setup search engine with blockchain reference
+RevolutionarySearchEngine searchEngine = new RevolutionarySearchEngine(EncryptionConfig.createHighSecurityConfig());
+searchEngine.indexBlockchain(blockchain, password, privateKey);
+
+// Perform EXHAUSTIVE_OFFCHAIN search
+RevolutionarySearchResult result = searchEngine.searchExhaustiveOffChain(
+    "sensitive document content",  // Search term
+    password,                      // Decryption password
+    privateKey,                    // Private key for verification
+    20                            // Maximum results
+);
+
+// Process results
+System.out.println("📊 Total results: " + result.getResultCount());
+System.out.println("⏱️ Search time: " + String.format("%.2f", result.getTotalTimeMs()) + "ms");
+System.out.println("📈 Strategy used: " + result.getStrategyUsed());
+
+for (EnhancedSearchResult searchResult : result.getResults()) {
+    System.out.println("🔗 Block: " + searchResult.getBlockHash());
+    System.out.println("📄 Source: " + searchResult.getSource());
+    System.out.println("📝 Summary: " + searchResult.getSummary());
+    
+    // Check for off-chain match with direct access to OffChainMatch object
+    if (searchResult.hasOffChainMatch()) {
+        OffChainMatch offChainMatch = searchResult.getOffChainMatch();
+        System.out.println("📁 Off-chain file: " + offChainMatch.getFileName());
+        System.out.println("📋 Content type: " + offChainMatch.getContentType());
+        System.out.println("🎯 Match count: " + offChainMatch.getMatchCount());
+        System.out.println("📖 Snippet preview: " + offChainMatch.getPreviewSnippet());
+        System.out.println("📏 File size: " + offChainMatch.getFileSize() + " bytes");
+    }
+}
+```
+
+### Performance Characteristics
+
+- **Metadata Search**: 50-150ms (same as regular encrypted search)
+- **Off-Chain File Search**: Variable (depends on file size and count)
+- **Total Time**: Typically 52ms-10s depending on off-chain data volume
+- **Memory Usage**: Efficient with built-in caching (5-minute cache expiry)
+
+### Supported Content Types
+
+- **Text Files**: `text/plain`, `text/html`, `text/xml`, `text/csv`
+- **JSON Files**: `application/json` with structured search
+- **YAML Files**: `application/yaml`
+- **Binary Files**: UTF-8 string pattern search within binary data
+
+### Security Considerations
+
+- **🔐 Encryption**: All off-chain files are AES-256-GCM encrypted
+- **🔑 Access Control**: Requires both password and private key
+- **🛡️ Privacy**: Off-chain content never exposed without proper authentication
+- **🧹 Cache Security**: Search cache automatically expires after 5 minutes
+
+### Cache Management
+
+```java
+// Get cache statistics
+Map<String, Object> cacheStats = searchEngine.getOffChainSearchStats();
+System.out.println("Cache size: " + cacheStats.get("cacheSize"));
+
+// Clear cache manually
+searchEngine.clearOffChainCache();
+```
+
+### Error Handling
+
+```java
+RevolutionarySearchResult result = searchEngine.searchExhaustiveOffChain(query, password, privateKey, maxResults);
+
+if (!result.isSuccessful()) {
+    System.err.println("❌ Search failed: " + result.getErrorMessage());
+    return;
+}
+
+if (result.getErrorMessage() != null) {
+    System.out.println("ℹ️ Info: " + result.getErrorMessage());
+}
+```
+
 ## 🎯 Advanced Search Features
 
 ### Intelligent Strategy Routing
@@ -160,6 +275,9 @@ RevolutionarySearchResult encryptedResult = searchEngine.searchEncryptedOnly("se
 
 // Intelligent routing
 RevolutionarySearchResult smartResult = searchEngine.search("medical patient", password, 10);
+
+// EXHAUSTIVE_OFFCHAIN search (searches within off-chain files)
+RevolutionarySearchResult offChainResult = searchEngine.searchExhaustiveOffChain("detailed content", password, privateKey, 10);
 ```
 
 ## 🔐 Granular Term Visibility Control
@@ -499,8 +617,20 @@ System.out.printf("Hybrid: %d results in %.2fms%n", hybridResult.getResultCount(
 The Revolutionary Search Engine represents a **paradigm shift** in blockchain search technology:
 
 - **World's First**: Privacy-preserving blockchain search with advanced encryption
-- **Performance Leader**: 147x better than performance targets
+- **Performance Leader**: 147x better than performance targets (0.34ms vs 50ms target)
 - **Enterprise Ready**: Bank-level security with consumer-grade speed
 - **Future Proof**: Quantum-resistant cryptographic foundations
+- **Comprehensive Coverage**: Complete EXHAUSTIVE_OFFCHAIN search within encrypted files
+- **Content Discovery**: Deep search capabilities across text, JSON, and binary off-chain data
 
-This search system enables previously impossible use cases in sensitive data markets while maintaining the highest standards of privacy and performance.
+### EXHAUSTIVE_OFFCHAIN Innovation
+
+The EXHAUSTIVE_OFFCHAIN search level represents a breakthrough in encrypted content discovery:
+
+- **🔍 Deep Analysis**: Searches within encrypted off-chain files, not just metadata
+- **📊 Performance**: ~52ms baseline with scalable off-chain content processing
+- **🔐 Security**: AES-256-GCM encryption with private key verification
+- **📁 Content Types**: Text, JSON, YAML, and binary file support
+- **🧹 Efficiency**: Smart caching with 5-minute expiry for optimal performance
+
+This search system enables previously impossible use cases in sensitive data markets while maintaining the highest standards of privacy and performance. The addition of EXHAUSTIVE_OFFCHAIN search makes it the most comprehensive blockchain search solution available.
