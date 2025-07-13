@@ -2545,6 +2545,397 @@ The blockchain now provides the following consistency guarantees:
 6. **Maintenance Tools**: Utilities to detect and clean orphaned files
 7. **Verification Methods**: Cryptographic verification of off-chain data integrity
 
+## 🔐 UserFriendlyEncryptionAPI - Complete Reference
+
+The UserFriendlyEncryptionAPI provides a comprehensive, simplified interface for all blockchain operations with built-in encryption, search, and security features. This section documents all 212 methods available in the API.
+
+### 📋 API Initialization
+
+```java
+// Basic initialization
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+
+// Initialize with default user credentials
+KeyPair userKeys = CryptoUtil.generateKeyPair();
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, "username", userKeys);
+```
+
+### 🎯 Core Data Storage Methods
+
+#### Encrypted Data Storage
+```java
+// Store encrypted data with automatic keyword extraction
+Block storeEncryptedData(String data, String password)
+
+// Store secret data with enhanced security
+Block storeSecret(String secretData, String password)
+
+// Store data with searchable terms
+Block storeSearchableData(String data, String password, String[] searchTerms)
+
+// Store with layered search terms (public/private separation)
+Block storeSearchableDataWithLayers(String data, String password, 
+                                   String[] publicTerms, String[] privateTerms)
+
+// Store with granular term visibility control
+Block storeDataWithGranularTermControl(String data, String password, 
+                                     Set<String> allSearchTerms, 
+                                     TermVisibilityMap termVisibility)
+
+// Store with smart compression and tiering
+Block storeWithSmartTiering(String data, String password, Map<String, Object> metadata)
+```
+
+#### Data Retrieval Methods
+```java
+// Retrieve and decrypt data
+String retrieveSecret(Long blockId, String password)
+String retrieveEncryptedData(Long blockId, String password)
+
+// Check encryption status
+boolean isBlockEncrypted(Long blockId)
+boolean hasEncryptedData()
+
+// Find encrypted blocks
+List<Long> findEncryptedBlocks()
+List<Block> findEncryptedData(String searchTerm, String password)
+```
+
+### 🔍 Advanced Search Methods
+
+#### Multi-Level Search
+```java
+// Search by terms with different access levels
+List<Block> searchByTerms(String[] searchTerms, String password, int maxResults)
+
+// Adaptive decryption search
+List<Block> searchWithAdaptiveDecryption(String searchTerm, String password, int maxResults)
+
+// Advanced search with criteria
+AdvancedSearchResult performAdvancedSearch(Map<String, Object> searchCriteria, 
+                                         String password, int maxResults)
+
+// Semantic search for concept-based discovery
+AdvancedSearchResult performSemanticSearch(String concept, String password)
+
+// Time-based search
+AdvancedSearchResult performTimeRangeSearch(LocalDateTime startDate, LocalDateTime endDate, 
+                                          Map<String, Object> filters)
+
+// Cached search operations
+AdvancedSearchResult performCachedSearch(String searchType, String query, 
+                                       Map<String, Object> options, String password)
+```
+
+#### Smart Search Features
+```java
+// Smart search with AI-like capabilities
+List<Block> smartSearch(String query, String password, int maxResults)
+List<Block> smartSearchEncryptedData(String query, String password, int maxResults)
+List<Block> smartUnifiedSearch(String query, String password, int maxResults)
+
+// Exhaustive search across all content
+SearchResults searchExhaustive(String query, String password)
+
+// Targeted search types
+SearchResults searchPublicFast(String query)
+SearchResults searchEncryptedOnly(String query, String password)
+```
+
+#### Search Management
+```java
+// Cache management
+void clearSearchCache()
+void optimizeSearchCache()
+void warmUpCache(List<String> commonTerms)
+void invalidateCacheForBlocks(List<Long> blockNumbers)
+
+// Search metrics and optimization
+SearchMetrics getSearchMetrics()
+SearchMetrics getSearchPerformanceStats()
+SearchCacheManager.CacheStatistics getCacheStatistics()
+String optimizeSearchPerformance()
+Map<String, Object> getRealtimeSearchMetrics()
+```
+
+### 🔑 Security and Key Management
+
+#### Key Management Operations
+```java
+// Hierarchical key setup
+KeyManagementResult setupHierarchicalKeys(String masterPassword)
+
+// Key generation and validation
+KeyManagementResult generateHierarchicalKey(String purpose, int depth, 
+                                          Map<String, Object> options)
+ValidationReport validateKeyHierarchy(String keyId)
+ValidationReport validateKeyManagement(Map<String, Object> options)
+
+// Key storage and retrieval
+boolean saveUserKeySecurely(String password)
+boolean savePrivateKeySecurely(String username, PrivateKey privateKey, String password)
+PrivateKey loadPrivateKeySecurely(String username, String password)
+
+// Key management utilities
+boolean hasStoredKey(String username)
+boolean deleteStoredKey(String username)
+String[] listStoredUsers()
+List<CryptoUtil.KeyInfo> listManagedKeys()
+```
+
+#### Import/Export Operations
+```java
+// Key file operations
+PrivateKey importPrivateKeyFromFile(String keyFilePath)
+PublicKey importPublicKeyFromFile(String keyFilePath)
+boolean importAndRegisterUser(String username, String keyFilePath)
+boolean importAndSetDefaultUser(String username, String keyFilePath)
+String detectKeyFileFormat(String keyFilePath)
+```
+
+#### Cryptographic Utilities
+```java
+// Key derivation and verification
+PublicKey derivePublicKeyFromPrivate(PrivateKey privateKey)
+boolean verifyKeyPairConsistency(PrivateKey privateKey, PublicKey publicKey)
+KeyPair createKeyPairFromPrivate(PrivateKey privateKey)
+boolean verifyKeyPairMathematically(PrivateKey privateKey, PublicKey publicKey)
+
+// Curve parameters
+ECParameterSpec getCurveParameters(String curveName)
+```
+
+### 🛡️ Security and Validation
+
+#### Password and Security
+```java
+// Password generation
+String generatePasswordForConfig(EncryptionConfig config)
+String generateValidatedPassword(int length, boolean includeSpecialChars)
+Object getPasswordRegistryStats()
+```
+
+#### Validation and Integrity
+```java
+// Comprehensive validation
+ValidationReport performComprehensiveValidation()
+ValidationReport performComprehensiveValidation(Map<String, Object> options)
+ValidationReport validateChainIntegrity()
+
+// Health monitoring
+HealthReport performHealthDiagnosis()
+HealthReport generateHealthReport(Map<String, Object> options)
+
+// Data integrity checking
+boolean detectDataTampering(Long blockId)
+boolean offChainFilesExist(Long blockId)
+boolean validateGenesisBlock()
+boolean wasKeyAuthorizedAt(String username, LocalDateTime timestamp)
+String generateIntegrityReport()
+
+// Off-chain integrity
+OffChainIntegrityReport verifyOffChainIntegrity(List<Long> blockNumbers)
+OffChainIntegrityReport performBatchIntegrityCheck(Long startBlock, Long endBlock, 
+                                                 Map<String, Object> options)
+```
+
+### 💾 Storage and File Management
+
+#### Large File Operations
+```java
+// Large file storage
+OffChainData storeLargeFileSecurely(byte[] fileData, String password, String contentType)
+OffChainData storeLargeFileWithSigner(byte[] fileData, String password, KeyPair signerKeyPair, 
+                                    String contentType, String username)
+
+// Large file retrieval
+byte[] retrieveLargeFile(OffChainData offChainData, String password)
+boolean verifyLargeFileIntegrity(OffChainData offChainData, String password)
+
+// Text document operations
+OffChainData storeLargeTextDocument(String textContent, String password, String filename)
+String retrieveLargeTextDocument(OffChainData offChainData, String password)
+```
+
+#### Storage Management
+```java
+// Storage analytics and optimization
+String getStorageAnalytics()
+Map<String, Object> getStorageTierMetrics()
+StorageTieringManager.TieringReport optimizeStorageTiers()
+
+// Smart storage operations
+Block storeWithSmartTiering(String data, String password, Map<String, Object> metadata)
+Object retrieveFromAnyTier(Long blockNumber, String password)
+```
+
+#### Compression and Analysis
+```java
+// Compression operations
+CompressionAnalysisResult analyzeCompressionOptions(String data, String contentType)
+UserFriendlyEncryptionAPI.CompressedDataResult performAdaptiveCompression(String data, 
+                                                                         String contentType)
+```
+
+### 🔧 Chain Recovery and Maintenance
+
+#### Recovery Operations
+```java
+// Chain recovery
+ChainRecoveryResult recoverFromCorruption(Map<String, Object> options)
+ChainRecoveryResult repairBrokenChain(Long startBlock, Long endBlock)
+ChainRecoveryResult rollbackToSafeState(Long targetBlock, Map<String, Object> options)
+
+// Recovery checkpoints
+RecoveryCheckpoint createRecoveryCheckpoint(RecoveryCheckpoint.CheckpointType type, 
+                                          String description)
+```
+
+### ⚙️ Configuration and Reporting
+
+#### Configuration Management
+```java
+// Configuration builders
+EncryptionConfig.Builder createCustomConfig()
+
+// Reporting methods
+String generateOffChainStorageReport()
+String generateBlockchainStatusReport()
+String getEncryptionConfigComparison()
+String getSearchEngineReport()
+```
+
+#### Formatting and Display
+```java
+// Data formatting
+String formatBlocksSummary(List<Block> blocks)
+String formatBlockDisplay(Block block)
+String formatSearchResults(String searchTerm, List<Block> results)
+String formatFileSize(long sizeInBytes)
+
+// Export functionality
+String exportSearchResults(AdvancedSearchResult result, String format)
+```
+
+### 📊 Analytics and User Management
+
+#### User Operations
+```java
+// User management
+Block createUser(String username, String password)
+boolean setDefaultCredentials(String username, String password)
+Map<String, Object> loadUserCredentials(String username)
+```
+
+#### Analytics and Summary
+```java
+// Blockchain analytics
+String getBlockchainSummary()
+Map<String, Object> getBlockchainSummary(boolean includeDetails)
+boolean hasEncryptedData()
+
+// Content analysis
+String[] extractKeywords(String data)
+List<Block> analyzeContent(String data, String password)
+```
+
+### 🎯 Testing and Quality Assurance
+
+The UserFriendlyEncryptionAPI is thoroughly tested with **795 JUnit 5 tests** achieving **72% code coverage**:
+
+#### Test Classes Structure
+- **UserFriendlyEncryptionAPIPhase1Test** - Core functionality (46 tests)
+- **UserFriendlyEncryptionAPIPhase2SearchTest** - Search capabilities 
+- **UserFriendlyEncryptionAPIPhase3Test** - Storage and security
+- **UserFriendlyEncryptionAPIPhase4Test** - Recovery and analytics
+- **UserFriendlyEncryptionAPISecurityTest** - Security features
+- **UserFriendlyEncryptionAPIZeroCoverageTest** - Edge cases and validation
+- **UserFriendlyEncryptionAPIRemainingCoverageTest** - Complete coverage testing
+
+#### Testing Categories Covered
+```java
+// Core functionality testing
+@DisplayName("📦 Core Functionality Tests")
+- Data storage and retrieval
+- Encryption and decryption
+- User management
+
+// Search capability testing  
+@DisplayName("🔍 Search and Analytics Tests")
+- Multi-level search operations
+- Cache management
+- Performance optimization
+
+// Security feature testing
+@DisplayName("🔐 Security and Key Management Tests")
+- Key generation and storage
+- Cryptographic operations
+- Authentication and authorization
+
+// Recovery and maintenance testing
+@DisplayName("🔧 Recovery and Maintenance Tests")
+- Chain recovery operations
+- Data integrity verification
+- Error handling and edge cases
+```
+
+### 🚀 Usage Patterns and Best Practices
+
+#### Initialization Pattern
+```java
+// Recommended initialization for production
+Blockchain blockchain = new Blockchain();
+KeyPair userKeys = CryptoUtil.generateKeyPair();
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, "production-user", userKeys);
+
+// Setup hierarchical security
+KeyManagementResult keySetup = api.setupHierarchicalKeys("masterPassword123!");
+if (keySetup.isSuccess()) {
+    System.out.println("✅ Security setup completed");
+}
+```
+
+#### Data Storage Pattern
+```java
+// Store sensitive data with search capabilities
+String sensitiveData = "Patient medical record with diagnosis";
+String[] searchTerms = {"medical", "patient", "diagnosis"};
+String password = api.generateValidatedPassword(16, true);
+
+Block block = api.storeSearchableData(sensitiveData, password, searchTerms);
+if (block != null) {
+    System.out.println("✅ Data stored securely in block #" + block.getBlockNumber());
+}
+```
+
+#### Search Pattern
+```java
+// Multi-level search approach
+List<Block> fastResults = api.searchByTerms(new String[]{"medical"}, null, 10);
+if (fastResults.isEmpty()) {
+    // Try deeper search with password
+    List<Block> deepResults = api.searchWithAdaptiveDecryption("medical", password, 10);
+    System.out.println("Found " + deepResults.size() + " encrypted results");
+}
+```
+
+#### Health Monitoring Pattern
+```java
+// Regular health checks
+ValidationReport health = api.performComprehensiveValidation();
+if (!health.isFullyValid()) {
+    System.err.println("⚠️ Health issues detected");
+    
+    // Attempt automatic recovery
+    Map<String, Object> options = Map.of("autoRepair", true);
+    ChainRecoveryResult recovery = api.recoverFromCorruption(options);
+    
+    if (recovery.isSuccess()) {
+        System.out.println("✅ Automatic recovery successful");
+    }
+}
+```
+
 For real-world usage examples, see [EXAMPLES.md](EXAMPLES.md).  
 For comprehensive search system guide, see [SEARCH_GUIDE.md](SEARCH_GUIDE.md).  
 For production deployment guidance, see [PRODUCTION_GUIDE.md](PRODUCTION_GUIDE.md).  

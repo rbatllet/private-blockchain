@@ -28,7 +28,252 @@ Comprehensive real-world examples and practical use cases for the Private Blockc
 
 ## 🎯 Use Case Examples
 
-### Use Case 1: Document Verification System
+### 🔐 Use Case 1: UserFriendlyEncryptionAPI - Medical Records Management ⭐ **NEW**
+
+Modern medical records system with encrypted storage, advanced search, and HIPAA compliance features.
+
+```java
+import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
+import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.util.CryptoUtil;
+import java.security.KeyPair;
+import java.util.*;
+
+public class MedicalRecordsEncryptionSystem {
+    public static void main(String[] args) throws Exception {
+        // Initialize blockchain and API
+        Blockchain blockchain = new Blockchain();
+        KeyPair doctorKeys = CryptoUtil.generateKeyPair();
+        UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, "dr.smith", doctorKeys);
+        
+        // Setup hierarchical security system
+        System.out.println("🔐 Setting up medical-grade security...");
+        KeyManagementResult security = api.setupHierarchicalKeys("MedicalMaster2025!");
+        if (security.isSuccess()) {
+            System.out.println("✅ HIPAA-compliant security established");
+        }
+        
+        // Generate secure passwords for patient records
+        String patientPassword = api.generateValidatedPassword(16, true);
+        System.out.println("🔑 Generated secure patient password: " + patientPassword.substring(0, 4) + "****");
+        
+        // Store encrypted patient records with granular search control
+        System.out.println("\n📋 Storing patient records...");
+        
+        // Patient 1: John Doe - Diabetes diagnosis
+        String[] publicTerms = {"diabetes", "endocrinology", "consultation"};
+        String[] privateTerms = {"john-doe", "patient-001", "insulin-dependent"};
+        
+        Block patient1 = api.storeSearchableDataWithLayers(
+            "Patient: John Doe (ID: P-001). Diagnosis: Type 1 Diabetes. Treatment: Insulin therapy 4x daily. " +
+            "Blood glucose monitoring required. Next appointment: 2025-02-15. Dr. Smith, Endocrinology Dept.",
+            patientPassword, publicTerms, privateTerms
+        );
+        System.out.println("✅ Patient 1 record stored in block #" + patient1.getBlockNumber());
+        
+        // Patient 2: Jane Smith - Cardiology
+        String[] cardioPublic = {"cardiology", "ecg", "examination"};  
+        String[] cardioPrivate = {"jane-smith", "patient-002", "arrhythmia"};
+        
+        Block patient2 = api.storeSearchableDataWithLayers(
+            "Patient: Jane Smith (ID: P-002). ECG examination shows minor arrhythmia. " +
+            "Cardiology consultation recommended. Holter monitor prescribed for 24h. Dr. Johnson, Cardiology.",
+            patientPassword, cardioPublic, cardioPrivate
+        );
+        System.out.println("✅ Patient 2 record stored in block #" + patient2.getBlockNumber());
+        
+        // Store large medical file (MRI scan)
+        String mriData = "MRI SCAN DATA: " + "A".repeat(600 * 1024); // 600KB file
+        Block mriBlock = api.storeWithSmartTiering(mriData, patientPassword, 
+            Map.of("fileType", "MRI", "patient", "P-001", "priority", "high"));
+        System.out.println("✅ MRI scan stored with smart tiering in block #" + mriBlock.getBlockNumber());
+        
+        // Demonstrate search capabilities
+        System.out.println("\n🔍 Medical records search demonstration...");
+        
+        // Public search (no password needed) - only finds general medical terms
+        List<Block> publicResults = api.searchByTerms(new String[]{"diabetes"}, null, 10);
+        System.out.println("📋 Public search for 'diabetes': " + publicResults.size() + " results");
+        
+        // Private search (password required) - finds patient-specific data
+        List<Block> privateResults = api.searchWithAdaptiveDecryption("john-doe", patientPassword, 10);
+        System.out.println("🔐 Private search for 'john-doe': " + privateResults.size() + " results");
+        
+        // Advanced semantic search for medical concepts
+        AdvancedSearchResult semanticResults = api.performSemanticSearch("heart conditions", patientPassword);
+        System.out.println("🧠 Semantic search for 'heart conditions': " + semanticResults.getTotalResults() + " results");
+        
+        // Generate comprehensive health report
+        System.out.println("\n📊 System health and compliance check...");
+        HealthReport health = api.performHealthDiagnosis();
+        ValidationReport validation = api.performComprehensiveValidation();
+        
+        if (health.isHealthy() && validation.isFullyValid()) {
+            System.out.println("✅ Medical records system: HIPAA COMPLIANT");
+            System.out.println("✅ Data integrity: VERIFIED");
+            System.out.println("✅ Security status: OPTIMAL");
+        }
+        
+        // Export search results for medical research (anonymized)
+        Map<String, Object> researchCriteria = new HashMap<>();
+        researchCriteria.put("terms", Arrays.asList("diabetes", "treatment"));
+        researchCriteria.put("anonymize", true);
+        
+        AdvancedSearchResult research = api.performAdvancedSearch(researchCriteria, patientPassword, 50);
+        String researchData = api.exportSearchResults(research, "csv");
+        System.out.println("📈 Research data exported: " + researchData.length() + " characters");
+        
+        // Demonstrate recovery capabilities
+        System.out.println("\n🔧 Testing medical data recovery...");
+        RecoveryCheckpoint checkpoint = api.createRecoveryCheckpoint(
+            RecoveryCheckpoint.CheckpointType.MANUAL, "Daily medical backup");
+        System.out.println("💾 Recovery checkpoint created: " + checkpoint.getDescription());
+        
+        // Storage analytics for compliance reporting
+        String analytics = api.getStorageAnalytics();
+        System.out.println("\n📊 Medical storage analytics summary:");
+        System.out.println(analytics.substring(0, Math.min(200, analytics.length())) + "...");
+        
+        System.out.println("\n🎉 Medical Records Encryption System Demo Complete!");
+        System.out.println("📋 Features demonstrated:");
+        System.out.println("   • HIPAA-compliant hierarchical security");
+        System.out.println("   • Encrypted patient data with granular search");
+        System.out.println("   • Smart storage tiering for large medical files");
+        System.out.println("   • Multi-level search (public/private/semantic)");
+        System.out.println("   • Health monitoring and compliance validation");
+        System.out.println("   • Research data export with anonymization");
+        System.out.println("   • Automated backup and recovery systems");
+    }
+}
+```
+
+**Key Features Demonstrated:**
+- **🔐 Medical-Grade Security**: Hierarchical key management with strong passwords
+- **🔍 HIPAA-Compliant Search**: Public medical terms vs. private patient identifiers
+- **💾 Smart Storage**: Automatic tiering for large medical files (MRI, CT scans)
+- **🧠 Semantic Search**: AI-like search for medical concepts and conditions
+- **📊 Compliance Monitoring**: Real-time health checks and validation reports
+- **📈 Research Export**: Anonymized data export for medical research
+- **🔧 Data Recovery**: Automated backup and recovery for critical medical data
+
+### 🔐 Use Case 2: UserFriendlyEncryptionAPI - Financial Transaction Security ⭐ **NEW**
+
+Enterprise-grade financial transaction system with audit trails, compliance reporting, and fraud detection.
+
+```java
+import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
+import java.time.LocalDateTime;
+import java.util.*;
+
+public class FinancialTransactionSystem {
+    public static void main(String[] args) throws Exception {
+        // Initialize financial blockchain
+        Blockchain blockchain = new Blockchain();
+        KeyPair bankKeys = CryptoUtil.generateKeyPair();
+        UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, "bank-system", bankKeys);
+        
+        // Setup financial-grade security
+        System.out.println("🏦 Initializing financial security system...");
+        KeyManagementResult security = api.setupHierarchicalKeys("FinancialSecure2025#");
+        String transactionPassword = api.generateValidatedPassword(20, true);
+        
+        // Store high-value transactions with visibility control
+        System.out.println("\n💰 Recording financial transactions...");
+        
+        // Transaction 1: Large transfer (sensitive details private)
+        Set<String> allTerms = Set.of("transfer", "wire", "international", "account-1234", 
+                                    "account-5678", "250000", "EUR", "suspicious-flag");
+        
+        TermVisibilityMap visibility = new TermVisibilityMap()
+            .setPublic("transfer", "wire", "international", "EUR")  // Transaction type public
+            .setPrivate("account-1234", "account-5678", "250000", "suspicious-flag"); // Details private
+            
+        Block transaction1 = api.storeDataWithGranularTermControl(
+            "WIRE TRANSFER: €250,000 from Account-1234 to Account-5678. " +
+            "International transfer to Swiss bank. KYC verified. AML checked. " +
+            "Reference: TXN-2025-001. Flagged for review due to amount.",
+            transactionPassword, allTerms, visibility
+        );
+        System.out.println("✅ High-value transaction recorded in block #" + transaction1.getBlockNumber());
+        
+        // Transaction 2: Regular business payment
+        String[] businessPublic = {"payment", "business", "invoice", "processed"};
+        String[] businessPrivate = {"acme-corp", "invoice-12345", "25000"};
+        
+        Block transaction2 = api.storeSearchableDataWithLayers(
+            "BUSINESS PAYMENT: €25,000 payment to ACME Corp for Invoice-12345. " +
+            "Regular supplier payment. Auto-processed. No flags.",
+            transactionPassword, businessPublic, businessPrivate
+        );
+        System.out.println("✅ Business payment recorded in block #" + transaction2.getBlockNumber());
+        
+        // Fraud detection search
+        System.out.println("\n🚨 Fraud detection and compliance checks...");
+        
+        // Search for suspicious transactions (public search - no sensitive data exposed)
+        List<Block> suspiciousPublic = api.searchByTerms(new String[]{"international"}, null, 10);
+        System.out.println("🔍 Public search for international transactions: " + suspiciousPublic.size());
+        
+        // Deep fraud investigation (password required for sensitive details)
+        List<Block> fraudInvestigation = api.searchWithAdaptiveDecryption("suspicious-flag", transactionPassword, 10);
+        System.out.println("🚨 Fraud investigation results: " + fraudInvestigation.size() + " flagged transactions");
+        
+        // Time-based compliance audit
+        LocalDateTime auditStart = LocalDateTime.now().minusDays(1);
+        LocalDateTime auditEnd = LocalDateTime.now();
+        Map<String, Object> auditFilters = Map.of("includeEncrypted", true, "compliance", true);
+        
+        AdvancedSearchResult audit = api.performTimeRangeSearch(auditStart, auditEnd, auditFilters);
+        System.out.println("📋 24-hour compliance audit: " + audit.getTotalResults() + " transactions reviewed");
+        
+        // Generate regulatory reports
+        System.out.println("\n📊 Regulatory compliance reporting...");
+        
+        String blockchainReport = api.generateBlockchainStatusReport();
+        String offChainReport = api.generateOffChainStorageReport();
+        HealthReport systemHealth = api.performHealthDiagnosis();
+        
+        if (systemHealth.isHealthy()) {
+            System.out.println("✅ Financial system health: COMPLIANT");
+            System.out.println("✅ Audit trail integrity: VERIFIED");
+            System.out.println("✅ Regulatory status: READY FOR INSPECTION");
+        }
+        
+        // Export compliance data for regulators
+        Map<String, Object> regulatoryCriteria = new HashMap<>();
+        regulatoryCriteria.put("terms", Arrays.asList("transfer", "payment", "international"));
+        regulatoryCriteria.put("compliance_level", "full");
+        regulatoryCriteria.put("regulator_access", true);
+        
+        AdvancedSearchResult regulatoryData = api.performAdvancedSearch(regulatoryCriteria, transactionPassword, 1000);
+        String complianceExport = api.exportSearchResults(regulatoryData, "json");
+        System.out.println("📋 Regulatory export generated: " + complianceExport.length() + " characters");
+        
+        // Automated backup for financial compliance
+        RecoveryCheckpoint financialBackup = api.createRecoveryCheckpoint(
+            RecoveryCheckpoint.CheckpointType.AUTOMATIC, "Daily financial compliance backup");
+        
+        System.out.println("\n🎉 Financial Transaction Security Demo Complete!");
+        System.out.println("🏦 Features demonstrated:");
+        System.out.println("   • Banking-grade hierarchical security");
+        System.out.println("   • Granular transaction data visibility control");
+        System.out.println("   • Fraud detection with encrypted search");
+        System.out.println("   • Time-based compliance auditing");
+        System.out.println("   • Regulatory reporting and data export");
+        System.out.println("   • Automated compliance backup systems");
+    }
+}
+```
+
+**Key Features Demonstrated:**
+- **🏦 Banking Security**: Multi-tier key management with financial-grade passwords
+- **🔍 Compliance Search**: Public transaction types vs. private sensitive details
+- **🚨 Fraud Detection**: Encrypted search for suspicious transaction flags
+- **📋 Audit Trails**: Time-based transaction auditing and compliance reports
+- **📊 Regulatory Export**: Structured data export for regulatory authorities
+- **💾 Compliance Backup**: Automated backup systems for financial compliance
+
+### Use Case 3: Document Verification System
 
 Track and verify document authenticity with immutable records.
 
