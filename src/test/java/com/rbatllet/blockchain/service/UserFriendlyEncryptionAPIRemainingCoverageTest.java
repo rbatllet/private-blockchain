@@ -717,7 +717,6 @@ class UserFriendlyEncryptionAPIRemainingCoverageTest {
             // Given
             java.time.LocalDateTime startDate = java.time.LocalDateTime.now().minusDays(1);
             java.time.LocalDateTime endDate = java.time.LocalDateTime.now();
-            String password = "timeTest123";
             
             // When & Then
             assertDoesNotThrow(() -> {
