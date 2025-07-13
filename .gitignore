@@ -81,3 +81,8 @@ replay_pid*
 *.p12
 *.jks
 *.keystore
+
+# Other files
+*.json
+off-chain-data/
+private-keys/
