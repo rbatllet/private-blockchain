@@ -43,9 +43,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import com.rbatllet.blockchain.search.RevolutionarySearchEngine;
-import com.rbatllet.blockchain.search.RevolutionarySearchEngine.EnhancedSearchResult;
-import com.rbatllet.blockchain.search.UnifiedRevolutionarySearchAPI;
+import com.rbatllet.blockchain.search.SearchFrameworkEngine;
+import com.rbatllet.blockchain.search.SearchFrameworkEngine.EnhancedSearchResult;
+import com.rbatllet.blockchain.search.SearchSpecialistAPI;
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.validation.EncryptedBlockValidator;
 import com.rbatllet.blockchain.util.validation.BlockValidationUtil;
@@ -77,8 +77,8 @@ public class Blockchain {
     private final OffChainStorageService offChainStorageService = new OffChainStorageService();
     
     // Search functionality
-    private final RevolutionarySearchEngine revolutionarySearchEngine;
-    private final UnifiedRevolutionarySearchAPI unifiedSearchAPI;
+    private final SearchFrameworkEngine searchFrameworkEngine;
+    private final SearchSpecialistAPI searchSpecialistAPI;
     
     // Dynamic configuration for block size limits
     private volatile int currentMaxBlockSizeBytes = MAX_BLOCK_SIZE_BYTES;
@@ -89,16 +89,16 @@ public class Blockchain {
         this.blockDAO = new BlockDAO();
         this.authorizedKeyDAO = new AuthorizedKeyDAO();
         
-        // Initialize Revolutionary Search Engine with high security configuration
+        // Initialize Search Framework Engine with high security configuration
         EncryptionConfig searchConfig = EncryptionConfig.createHighSecurityConfig();
-        this.revolutionarySearchEngine = new RevolutionarySearchEngine(searchConfig);
-        this.unifiedSearchAPI = new UnifiedRevolutionarySearchAPI(searchConfig);
+        this.searchFrameworkEngine = new SearchFrameworkEngine(searchConfig);
+        this.searchSpecialistAPI = new SearchSpecialistAPI(searchConfig);
         
         initializeGenesisBlock();
         
-        // Note: Revolutionary Search is initialized on-demand when blocks are created
+        // Note: Advanced Search is initialized on-demand when blocks are created
         // This prevents conflicts with per-block password management
-        // initializeRevolutionarySearch();
+        // initializeAdvancedSearch();
     }
     
     /**
@@ -147,9 +147,9 @@ public class Blockchain {
     }
     
     /**
-     * Initialize Revolutionary Search Engine with existing blockchain data
+     * Initialize Search Framework Engine with existing blockchain data
      */
-    public void initializeRevolutionarySearch() {
+    public void initializeAdvancedSearch() {
         try {
             // Only initialize if there are blocks to index
             if (blockDAO.getBlockCount() > 0) {
@@ -159,13 +159,13 @@ public class Blockchain {
                 
                 // Index the current blockchain state with public metadata only
                 // The enhanced system will handle per-block password management automatically
-                unifiedSearchAPI.initializeWithBlockchain(this, null, tempKeyPair.getPrivate());
+                searchSpecialistAPI.initializeWithBlockchain(this, null, tempKeyPair.getPrivate());
                 
-                logger.info("📊 Revolutionary Search Engine initialized with {} blocks", blockDAO.getBlockCount());
-                logger.info("📊 Password registry stats: {}", unifiedSearchAPI.getPasswordRegistryStats());
+                logger.info("📊 Search Framework Engine initialized with {} blocks", blockDAO.getBlockCount());
+                logger.info("📊 Password registry stats: {}", searchSpecialistAPI.getPasswordRegistryStats());
             }
         } catch (Exception e) {
-            logger.warn("⚠️ Failed to initialize Revolutionary Search Engine", e);
+            logger.warn("⚠️ Failed to initialize Search Framework Engine", e);
             e.printStackTrace();
             // Continue operation even if search initialization fails
         }
@@ -173,7 +173,7 @@ public class Blockchain {
     
     /**
      * Re-index a specific block with its correct password for better search capabilities
-     * This allows the Revolutionary Search Engine to index encrypted content properly
+     * This allows the Search Framework Engine to index encrypted content properly
      * Enhanced to use the new password registry system
      */
     public void reindexBlockWithPassword(Long blockNumber, String password) {
@@ -184,8 +184,8 @@ public class Blockchain {
                 // Generate a temporary key pair for indexing
                 KeyPair tempKeyPair = CryptoUtil.generateKeyPair();
                 
-                // Use the enhanced UnifiedSearchAPI for better password management
-                unifiedSearchAPI.addBlock(
+                // Use the enhanced SearchSpecialistAPI for better password management
+                searchSpecialistAPI.addBlock(
                     block, password, tempKeyPair.getPrivate());
                 
                 logger.debug("Re-indexed encrypted block #{} with specific password", blockNumber);
@@ -198,8 +198,8 @@ public class Blockchain {
     }
     
     /**
-     * Convert Revolutionary Search results to traditional Block list
-     * @param enhancedResults List of EnhancedSearchResult from Revolutionary Search
+     * Convert Advanced Search results to traditional Block list
+     * @param enhancedResults List of EnhancedSearchResult from Advanced Search
      * @return List of Block entities
      */
     private List<Block> convertEnhancedResultsToBlocks(List<EnhancedSearchResult> enhancedResults) {
@@ -339,15 +339,15 @@ public class Blockchain {
                         currentEm.flush();
                     }
                     
-                    // 13. Index block in Revolutionary Search Engine for immediate searchability
+                    // 13. Index block in Advanced Search Engine for immediate searchability
                     try {
                         // Re-index the entire blockchain when a new block is added
                         // This ensures all search capabilities are up-to-date
                         Blockchain currentBlockchain = this;
                         String defaultPassword = "search-index-password"; // Could be configurable
-                        revolutionarySearchEngine.indexBlockchain(currentBlockchain, defaultPassword, signerPrivateKey);
+                        searchFrameworkEngine.indexBlockchain(currentBlockchain, defaultPassword, signerPrivateKey);
                     } catch (Exception searchIndexException) {
-                        logger.warn("⚠️ Failed to index block in Revolutionary Search", searchIndexException);
+                        logger.warn("⚠️ Failed to index block in Advanced Search", searchIndexException);
                         // Don't fail the block creation if search indexing fails
                     }
                     
@@ -506,18 +506,18 @@ public class Blockchain {
                         currentEm.flush();
                     }
                     
-                    // 13. Index the block in Revolutionary Search Engine with its specific password
+                    // 13. Index the block in Advanced Search Engine with its specific password
                     try {
-                        // Use the enhanced UnifiedSearchAPI for better password management
-                        unifiedSearchAPI.addBlock(
+                        // Use the enhanced SearchSpecialistAPI for better password management
+                        searchSpecialistAPI.addBlock(
                             newBlock, encryptionPassword, signerPrivateKey);
                         
-                        logger.info("✅ Successfully indexed encrypted block in Revolutionary Search Engine");
+                        logger.info("✅ Successfully indexed encrypted block in Search Framework Engine");
                     } catch (Exception e) {
                         logger.warn("⚠️ Failed to index encrypted block in search engine", e);
                         // Try fallback indexing with public metadata only
                         try {
-                            revolutionarySearchEngine.indexBlockWithSpecificPassword(
+                            searchFrameworkEngine.indexBlockWithSpecificPassword(
                                 newBlock, null, signerPrivateKey, 
                                 EncryptionConfig.createHighSecurityConfig());
                             logger.info("🔄 Fallback: Indexed block with public metadata only");
@@ -2075,22 +2075,22 @@ public class Blockchain {
         }
     }
     
-    // =============== REVOLUTIONARY SEARCH FUNCTIONALITY ===============
+    // =============== ADVANCED SEARCH FUNCTIONALITY ===============
     
     /**
-     * Revolutionary Search: Intelligent search with automatic strategy selection
+     * Advanced Search: Intelligent search with automatic strategy selection
      */
     public List<Block> searchBlocks(String searchTerm) {
         GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
         try {
-            return convertEnhancedResultsToBlocks(unifiedSearchAPI.searchSimple(searchTerm));
+            return convertEnhancedResultsToBlocks(searchSpecialistAPI.searchSimple(searchTerm));
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
         }
     }
     
     /**
-     * Revolutionary Search: Fast public metadata search
+     * Advanced Search: Fast public metadata search
      */
     public List<Block> searchBlocksFast(String searchTerm) {
         return searchBlocks(searchTerm);
@@ -2101,7 +2101,7 @@ public class Blockchain {
     }
     
     /**
-     * Revolutionary Search: Search blocks by category
+     * Advanced Search: Search blocks by category
      */
     public List<Block> searchByCategory(String category) {
         GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
@@ -2876,7 +2876,7 @@ public class Blockchain {
     /**
      * Search encrypted blocks by metadata only (category, timestamps, etc.)
      * This preserves privacy as it doesn't decrypt content
-     * Uses Revolutionary Search Engine with proper metadata indexing
+     * Uses Advanced Search Engine with proper metadata indexing
      * 
      * @param searchTerm The term to search for
      * @return List of matching encrypted blocks (content remains encrypted)
@@ -2884,10 +2884,10 @@ public class Blockchain {
     public List<Block> searchEncryptedBlocksByMetadata(String searchTerm) {
         GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
         try {
-            // Use Revolutionary Search Engine with enhanced metadata search
+            // Use Advanced Search Engine with enhanced metadata search
             // This searches in PublicLayer metadata (timestamps, categories) 
             // without requiring passwords
-            List<EnhancedSearchResult> results = unifiedSearchAPI.searchSimple(searchTerm);
+            List<EnhancedSearchResult> results = searchSpecialistAPI.searchSimple(searchTerm);
             
             // Filter to only encrypted blocks and convert to Block objects
             List<Block> encryptedBlocks = new ArrayList<>();
@@ -2912,7 +2912,7 @@ public class Blockchain {
     /**
      * Search encrypted blocks with password-based decryption
      * SECURITY: Only decrypts blocks that match criteria
-     * Uses Revolutionary Search Engine with secure encrypted content search
+     * Uses Advanced Search Engine with secure encrypted content search
      * 
      * @param searchTerm The term to search for
      * @param decryptionPassword Password for decrypting matching blocks
@@ -2921,16 +2921,16 @@ public class Blockchain {
     public List<Block> searchEncryptedBlocksWithPassword(String searchTerm, String decryptionPassword) {
         GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
         try {
-            // Use Revolutionary Search Engine adaptive secure search for per-block passwords
+            // Use Advanced Search Engine adaptive secure search for per-block passwords
             return convertEnhancedResultsToBlocks(
-                unifiedSearchAPI.searchIntelligent(searchTerm, decryptionPassword, 50));
+                searchSpecialistAPI.searchIntelligent(searchTerm, decryptionPassword, 50));
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
         }
     }
     
     /**
-     * Enhanced search with Revolutionary Search Engine
+     * Enhanced search with Advanced Search Engine
      * Automatically determines optimal strategy based on password presence
      * Uses the new intelligent search capabilities
      * 
@@ -2943,7 +2943,7 @@ public class Blockchain {
         try {
             // Use the new intelligent search that automatically handles password registry
             return convertEnhancedResultsToBlocks(
-                unifiedSearchAPI.searchIntelligent(searchTerm, decryptionPassword, 50));
+                searchSpecialistAPI.searchIntelligent(searchTerm, decryptionPassword, 50));
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
         }
@@ -2951,7 +2951,7 @@ public class Blockchain {
     
     /**
      * Search by user-defined term - works for both encrypted and unencrypted blocks
-     * Uses Revolutionary Search with content-agnostic approach
+     * Uses Advanced Search with content-agnostic approach
      * 
      * @param searchTerm The user-defined search term to look for
      * @return List of blocks matching the search term
@@ -2960,7 +2960,7 @@ public class Blockchain {
         GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
         try {
             // Use general search for any user-defined term
-            return convertEnhancedResultsToBlocks(unifiedSearchAPI.searchSimple(searchTerm));
+            return convertEnhancedResultsToBlocks(searchSpecialistAPI.searchSimple(searchTerm));
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
         }
@@ -2969,7 +2969,7 @@ public class Blockchain {
     /**
     /**
      * SIMPLIFIED API: Smart search that automatically determines the best approach
-     * Uses Revolutionary Search Engine with intelligent automatic strategy routing
+     * Uses Advanced Search Engine with intelligent automatic strategy routing
      * 
      * @param searchTerm The term to search for
      * @return Search results optimized for the current blockchain state
@@ -2977,9 +2977,9 @@ public class Blockchain {
     public List<Block> searchSmart(String searchTerm) {
         GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
         try {
-            // Revolutionary Search Engine automatically determines the optimal strategy
+            // Advanced Search Engine automatically determines the optimal strategy
             // No need for manual blockchain composition analysis
-            return convertEnhancedResultsToBlocks(unifiedSearchAPI.searchSimple(searchTerm));
+            return convertEnhancedResultsToBlocks(searchSpecialistAPI.searchSimple(searchTerm));
             
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
@@ -3432,10 +3432,10 @@ public class Blockchain {
     }
     
     /**
-     * Get UnifiedSearchAPI for advanced search operations
+     * Get SearchSpecialistAPI for advanced search operations
      */
-    public UnifiedRevolutionarySearchAPI getUnifiedSearchAPI() {
-        return unifiedSearchAPI;
+    public SearchSpecialistAPI getSearchSpecialistAPI() {
+        return searchSpecialistAPI;
     }
     
     /**

@@ -89,8 +89,8 @@ print_separator
 
 # 3. SEARCH & METADATA TESTS
 print_header "3. SEARCH & METADATA TESTS"
-run_test_suite "Search Basic" "RevolutionarySearchBasicTest" "Basic search functionality"
-run_test_suite "Search Exhaustive" "RevolutionarySearchExhaustiveTest" "Exhaustive search testing"
+run_test_suite "Search Basic" "AdvancedSearchBasicTest" "Basic search functionality"
+run_test_suite "Search Exhaustive" "AdvancedSearchExhaustiveTest" "Exhaustive search testing"
 run_test_suite "Search Debug" "DebugEncryptionFormatTest" "Search debug utilities"
 run_test_suite "Metadata Compression" "MetadataCompressionTest" "Metadata compression"
 run_test_suite "Term Visibility" "TermVisibilityMapTest" "Term visibility mapping"

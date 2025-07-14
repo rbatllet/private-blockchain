@@ -6,7 +6,7 @@ Comprehensive real-world examples and practical use cases for the Private Blockc
 >
 > For real working examples, refer to the following classes in the source code:
 > - `/src/main/java/demo/BlockchainDemo.java` - Basic blockchain demonstration
-> - `/src/main/java/demo/RevolutionarySearchDemo.java` - Revolutionary search system demonstration
+> - `/src/main/java/demo/SearchFrameworkDemo.java` - Advanced search system demonstration
 > - `/src/main/java/demo/GranularTermVisibilityDemo.java` - **NEW**: Granular term visibility control demo
 > - `/src/main/java/demo/UserFriendlyEncryptionDemo.java` - User-friendly encryption API demo
 > - `/src/main/java/demo/EncryptionConfigDemo.java` - Encryption configuration examples
@@ -1968,3 +1968,26 @@ For testing concurrent scenarios, see [TESTING.md](TESTING.md) and run `./run_th
 To explore cryptographic security features, run `./run_crypto_security_demo.zsh` which demonstrates the security mechanisms in action.
 
 For security analysis and testing, use `./run_security_analysis.zsh` and `./run_security_tests.zsh`.
+
+## 📚 Additional Resources
+
+### 🚀 Getting Started & Fundamentals
+For getting started with the blockchain system, see [GETTING_STARTED.md](GETTING_STARTED.md).  
+For complete API reference and core functions, see [API_GUIDE.md](API_GUIDE.md).  
+For comprehensive testing procedures, see [TESTING.md](TESTING.md).
+
+### 🔐 Security & Key Management  
+For security best practices and production guidelines, see [SECURITY_GUIDE.md](SECURITY_GUIDE.md).  
+For hierarchical key management and rotation, see [KEY_MANAGEMENT_GUIDE.md](KEY_MANAGEMENT_GUIDE.md).  
+For encryption and metadata management, see [ENCRYPTION_GUIDE.md](ENCRYPTION_GUIDE.md).
+
+### 🔍 Search & Data Operations
+For UserFriendlyEncryptionAPI search functionality, see [USER_FRIENDLY_SEARCH_GUIDE.md](USER_FRIENDLY_SEARCH_GUIDE.md).  
+For Advanced Search Engine guide, see [SEARCH_FRAMEWORK_GUIDE.md](SEARCH_FRAMEWORK_GUIDE.md).  
+For complete search system comparison, see [EXHAUSTIVE_SEARCH_GUIDE.md](EXHAUSTIVE_SEARCH_GUIDE.md).  
+For search performance benchmarks, see [SEARCH_COMPARISON.md](SEARCH_COMPARISON.md).
+
+### 🛠️ Operations & Troubleshooting
+For troubleshooting common issues and diagnostics, see [TROUBLESHOOTING_GUIDE.md](TROUBLESHOOTING_GUIDE.md).  
+For production deployment guidance, see [PRODUCTION_GUIDE.md](PRODUCTION_GUIDE.md).  
+For technical implementation details, see [TECHNICAL_DETAILS.md](TECHNICAL_DETAILS.md).

@@ -17,7 +17,7 @@ import java.util.HashSet;
 /**
  * BLOCK PASSWORD REGISTRY
  * 
- * Secure registry for managing per-block passwords in Revolutionary Search Engine.
+ * Secure registry for managing per-block passwords in Advanced Search Engine.
  * Provides secure storage and retrieval of block-specific passwords with:
  * - AES-256-GCM encryption for password storage
  * - Thread-safe operations with read/write locks

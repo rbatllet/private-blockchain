@@ -1,8 +1,8 @@
-# Revolutionary Search Engine - Complete Search Types Comparison
+# Advanced Search Engine - Complete Search Types Comparison
 
 ## 📋 Executive Summary
 
-The Revolutionary Search Engine offers 5 main search types, each optimized for different use cases, performance requirements, and security needs. This comparison details what each type supports and its limitations.
+The Advanced Search Engine offers 5 main search types, each optimized for different use cases, performance requirements, and security needs. This comparison details what each type supports and its limitations.
 
 ## 🔍 Available Search Types
 
@@ -81,7 +81,7 @@ The Revolutionary Search Engine offers 5 main search types, each optimized for d
 **When to use:**
 ```java
 // General search when you don't know exactly what you need
-RevolutionarySearchResult result = searchEngine.search("medical", password, 10);
+SearchResult result = searchEngine.search("medical", password, 10);
 ```
 
 ---
@@ -103,7 +103,7 @@ RevolutionarySearchResult result = searchEngine.search("medical", password, 10);
 **When to use:**
 ```java
 // Fast search in public announcements, general information
-RevolutionarySearchResult result = searchEngine.searchPublicOnly("announcement", 10);
+SearchResult result = searchEngine.searchPublicOnly("announcement", 10);
 ```
 
 ---
@@ -125,7 +125,7 @@ RevolutionarySearchResult result = searchEngine.searchPublicOnly("announcement",
 **When to use:**
 ```java
 // Specific search in confidential data
-RevolutionarySearchResult result = searchEngine.searchEncryptedOnly("patient", password, 10);
+SearchResult result = searchEngine.searchEncryptedOnly("patient", password, 10);
 ```
 
 ---
@@ -149,7 +149,7 @@ RevolutionarySearchResult result = searchEngine.searchEncryptedOnly("patient", p
 **When to use:**
 ```java
 // Forensic investigation, exhaustive analysis, audits
-RevolutionarySearchResult result = searchEngine.searchExhaustiveOffChain(
+SearchResult result = searchEngine.searchExhaustiveOffChain(
     "confidential", password, privateKey, 20);
 
 // Process off-chain results
@@ -226,23 +226,23 @@ String query = "medical patient";
 String password = "MyPassword123!";
 
 // 1. Public only - FAST but limited
-RevolutionarySearchResult publicResult = searchEngine.searchPublicOnly(query, 10);
+SearchResult publicResult = searchEngine.searchPublicOnly(query, 10);
 // ✅ Finds: public announcements with "medical patient"
 // ❌ Doesn't find: confidential diagnoses, off-chain files
 
 // 2. Encrypted only - SECURE but incomplete  
-RevolutionarySearchResult encryptedResult = searchEngine.searchEncryptedOnly(query, password, 10);
+SearchResult encryptedResult = searchEngine.searchEncryptedOnly(query, password, 10);
 // ✅ Finds: encrypted diagnoses with "medical patient"
 // ❌ Doesn't find: public announcements, off-chain files
 
 // 3. TRUE Exhaustive - COMPLETE but slow
-RevolutionarySearchResult exhaustiveResult = searchEngine.searchExhaustiveOffChain(
+SearchResult exhaustiveResult = searchEngine.searchExhaustiveOffChain(
     query, password, privateKey, 10);
 // ✅ Finds: ALL previous results + PDF files, JSON, etc.
 // ⚠️ Takes more time but covers all content
 
 // 4. Automatic - BALANCED
-RevolutionarySearchResult autoResult = searchEngine.search(query, password, 10);
+SearchResult autoResult = searchEngine.search(query, password, 10);
 // ✅ Finds: combines public + encrypted
 // ❌ Doesn't find: off-chain files (only exhaustive does)
 ```
@@ -292,7 +292,7 @@ searchEngine.clearOffChainCache();
 ExecutorService executor = Executors.newFixedThreadPool(10);
 for (int i = 0; i < 100; i++) {
     executor.submit(() -> {
-        RevolutionarySearchResult result = searchEngine.searchExhaustiveOffChain(
+        SearchResult result = searchEngine.searchExhaustiveOffChain(
             "query", password, privateKey, 5);
         // Safe for concurrent use
     });
@@ -334,7 +334,7 @@ The `searchExhaustiveOffChain()` search is the **ONLY ONE** that offers:
 
 ### 📖 User Guides
 - **[EXHAUSTIVE_SEARCH_GUIDE.md](EXHAUSTIVE_SEARCH_GUIDE.md)** - Complete TRUE exhaustive search guide with practical examples
-- **[SEARCH_GUIDE.md](SEARCH_GUIDE.md)** - Hybrid search system guide and advanced strategies
+- **[USER_FRIENDLY_SEARCH_GUIDE.md](USER_FRIENDLY_SEARCH_GUIDE.md)** - Hybrid search system guide and advanced strategies
 - **[API_GUIDE.md](API_GUIDE.md)** - Complete API reference and core functions
 - **[EXAMPLES.md](EXAMPLES.md)** - Real use cases and workflow patterns
 
@@ -362,4 +362,4 @@ The `searchExhaustiveOffChain()` search is the **ONLY ONE** that offers:
 
 ---
 
-*Comparativa completa del Revolutionary Search Engine v2.0 - TRUE Exhaustive Search*
+*Comparativa completa del Advanced Search Engine v2.0 - TRUE Exhaustive Search*

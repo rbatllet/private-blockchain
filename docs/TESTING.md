@@ -79,7 +79,7 @@ The project includes comprehensive test suites to verify all functionality and e
 - **Total Test Files**: **45+ comprehensive test suites** (10+ new)
 - **JUnit 5 Tests**: **795 professional unit tests** (5x increase)
 - **Code Coverage**: **72% overall coverage** (target: 75%+)
-- **Demo Applications**: 9 interactive demonstrations (including RevolutionarySearchDemo)
+- **Demo Applications**: 9 interactive demonstrations (including SearchFrameworkDemo)
 - **Verification Tests**: 5+ quick validation tests
 - **Script Test Runners**: 15+ specialized test scripts
 - **Critical Path Coverage**: 100% security-critical operations
@@ -381,7 +381,7 @@ The project follows these testing best practices:
 - `testExhaustiveOffchainSearch()` - Complete content search including off-chain data
 - `testSearchByCategory()` - Content category filtering and validation
 - `testSearchTermValidation()` - Search term validation with intelligent exceptions
-- Search validation is now handled internally by the Revolutionary Search Engine
+- Search validation is now handled internally by the Search Framework Engine
 - Automatic keyword extraction is now integrated into the search engine
 - `testSearchPerformance()` - Performance comparison across search levels
 - `testConcurrentSearchOperations()` - Thread-safety with concurrent searches
@@ -558,12 +558,12 @@ mvn test -Dtest=BlockchainAdditionalAdvancedFunctionsTest#test*Export*
 # Run all advanced tests with verbose output
 mvn test -Dtest=BlockchainAdditionalAdvancedFunctionsTest -X
 
-# Run NEW revolutionary search functionality tests
+# Run NEW advanced search functionality tests
 mvn test -Dtest=com.rbatllet.blockchain.search.*Test
 
 # Run specific search test suites
-mvn test -Dtest=RevolutionarySearchBasicTest
-mvn test -Dtest=RevolutionarySearchExhaustiveTest
+mvn test -Dtest=SearchFrameworkBasicTest
+mvn test -Dtest=SearchFrameworkExhaustiveTest
 ```
 
 ### 2. Core Functions Test
@@ -612,7 +612,7 @@ mvn exec:java -Dexec.mainClass="demo.CoreFunctionsDemo"
 
 ### 5. Search System Demo ⭐ **NEW**
 
-**File**: `RevolutionarySearchDemo.java`  
+**File**: `SearchFrameworkDemo.java`  
 **Type**: Comprehensive search system demonstration  
 **Coverage**: Complete hybrid search functionality
 
@@ -626,10 +626,10 @@ mvn exec:java -Dexec.mainClass="demo.CoreFunctionsDemo"
 **How to run:**
 ```zsh
 # Run the search demo directly
-mvn exec:java -Dexec.mainClass="demo.RevolutionarySearchDemo"
+mvn exec:java -Dexec.mainClass="demo.SearchFrameworkDemo"
 
 # Or use the provided script
-./run_revolutionary_search_demo.zsh
+./run_advanced_search_demo.zsh
 ```
 
 **Expected output:**
@@ -654,6 +654,8 @@ mvn exec:java -Dexec.mainClass="demo.RevolutionarySearchDemo"
 **Purpose**: Quick validation that core functionality works without extensive testing.
 
 ## 🔧 Troubleshooting Tests
+
+ℹ️ **For comprehensive troubleshooting beyond test execution issues, see the [TROUBLESHOOTING_GUIDE.md](TROUBLESHOOTING_GUIDE.md) for detailed error resolution, performance optimization, and system diagnostics.**
 
 ### Database Utilities and Cleanup
 
@@ -1301,6 +1303,7 @@ chmod +x health_check.zsh
 
 For comprehensive API documentation, see [API_GUIDE.md](API_GUIDE.md).  
 For real-world usage examples, see [EXAMPLES.md](EXAMPLES.md).  
+For system troubleshooting and error resolution, see [TROUBLESHOOTING_GUIDE.md](TROUBLESHOOTING_GUIDE.md).  
 For production deployment, see [PRODUCTION_GUIDE.md](PRODUCTION_GUIDE.md).
 
 ## 🛠️ Script Development and Management

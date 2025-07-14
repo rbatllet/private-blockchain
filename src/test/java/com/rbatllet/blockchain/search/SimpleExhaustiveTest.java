@@ -1,7 +1,7 @@
 package com.rbatllet.blockchain.search;
 
 import com.rbatllet.blockchain.core.Blockchain;
-import com.rbatllet.blockchain.search.RevolutionarySearchEngine.RevolutionarySearchResult;
+import com.rbatllet.blockchain.search.SearchFrameworkEngine.SearchResult;
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.Test;
@@ -21,7 +21,7 @@ public class SimpleExhaustiveTest {
         
         // Setup
         Blockchain blockchain = new Blockchain();
-        RevolutionarySearchEngine searchEngine = new RevolutionarySearchEngine(
+        SearchFrameworkEngine searchEngine = new SearchFrameworkEngine(
             EncryptionConfig.createHighSecurityConfig());
         
         KeyPair keyPair = CryptoUtil.generateKeyPair();
@@ -47,7 +47,7 @@ public class SimpleExhaustiveTest {
         
         // Perform exhaustive search
         System.out.println("🔍 Performing exhaustive search for 'medical'");
-        RevolutionarySearchResult result = searchEngine.searchExhaustiveOffChain(
+        SearchResult result = searchEngine.searchExhaustiveOffChain(
             "medical", password, privateKey, 10);
         
         // Debug output

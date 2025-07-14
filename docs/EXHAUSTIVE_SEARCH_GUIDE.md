@@ -2,7 +2,7 @@
 
 ## 📋 Overview
 
-The Revolutionary Search Engine now supports **TRUE exhaustive search** that combines:
+The Advanced Search Engine now supports **TRUE exhaustive search** that combines:
 - **On-chain content search**: Searches inside block.getData() content (encrypted and plain text)
 - **Off-chain file search**: Searches external files referenced by blocks
 - **Metadata search**: Searches public and private metadata layers
@@ -13,7 +13,7 @@ The Revolutionary Search Engine now supports **TRUE exhaustive search** that com
 ### EXHAUSTIVE_OFFCHAIN (TRUE Exhaustive)
 Searches across ALL content types:
 ```java
-RevolutionarySearchResult result = searchEngine.searchExhaustiveOffChain(
+SearchResult result = searchEngine.searchExhaustiveOffChain(
     "medical", password, privateKey, maxResults);
 ```
 
@@ -36,7 +36,7 @@ RevolutionarySearchResult result = searchEngine.searchExhaustiveOffChain(
 ```java
 // Setup
 Blockchain blockchain = new Blockchain();
-RevolutionarySearchEngine searchEngine = new RevolutionarySearchEngine();
+SearchFrameworkEngine searchEngine = new SearchFrameworkEngine();
 KeyPair keyPair = CryptoUtil.generateKeyPair();
 String password = "MySecurePassword123!";
 
@@ -66,7 +66,7 @@ blockchain.addEncryptedBlockWithKeywords(
 searchEngine.indexBlockchain(blockchain, password, keyPair.getPrivate());
 
 // Search on-chain content
-RevolutionarySearchResult result = searchEngine.searchExhaustiveOffChain(
+SearchResult result = searchEngine.searchExhaustiveOffChain(
     "diabetes", password, keyPair.getPrivate(), 10);
 
 // Process results
@@ -119,7 +119,7 @@ block.setOffChainData(offChainData);
 searchEngine.indexBlockchain(blockchain, password, keyPair.getPrivate());
 
 // Search will now find content in off-chain file
-RevolutionarySearchResult result = searchEngine.searchExhaustiveOffChain(
+SearchResult result = searchEngine.searchExhaustiveOffChain(
     "hypertension", password, keyPair.getPrivate(), 10);
 
 // Check for off-chain matches
@@ -185,7 +185,7 @@ public void createMixedContentDemo() throws Exception {
     searchEngine.indexBlockchain(blockchain, password, privateKey);
     
     // Exhaustive search finds content across all types
-    RevolutionarySearchResult result = searchEngine.searchExhaustiveOffChain(
+    SearchResult result = searchEngine.searchExhaustiveOffChain(
         "financial", password, privateKey, 20);
     
     // Analyze search distribution
@@ -220,12 +220,12 @@ public void createMixedContentDemo() throws Exception {
 ### Example: Security Validation
 ```java
 // Test with wrong password
-RevolutionarySearchResult wrongPasswordResult = searchEngine.searchExhaustiveOffChain(
+SearchResult wrongPasswordResult = searchEngine.searchExhaustiveOffChain(
     "confidential", "wrong_password", privateKey, 10);
 // Returns limited results (public content only)
 
 // Test with correct password  
-RevolutionarySearchResult correctResult = searchEngine.searchExhaustiveOffChain(
+SearchResult correctResult = searchEngine.searchExhaustiveOffChain(
     "confidential", correctPassword, privateKey, 10);
 // Returns full results including encrypted content
 ```
@@ -253,7 +253,7 @@ searchEngine.clearOffChainCache();
 ```java
 // Performance benchmark
 long startTime = System.nanoTime();
-RevolutionarySearchResult result = searchEngine.searchExhaustiveOffChain(
+SearchResult result = searchEngine.searchExhaustiveOffChain(
     "medical", password, privateKey, 10);
 long endTime = System.nanoTime();
 double searchTimeMs = (endTime - startTime) / 1_000_000.0;
@@ -274,7 +274,7 @@ CountDownLatch latch = new CountDownLatch(10);
 for (int i = 0; i < 10; i++) {
     executor.submit(() -> {
         try {
-            RevolutionarySearchResult result = searchEngine.searchExhaustiveOffChain(
+            SearchResult result = searchEngine.searchExhaustiveOffChain(
                 "medical", password, privateKey, 5);
             System.out.println("Thread search: " + result.getResultCount() + " results");
         } finally {
@@ -361,7 +361,7 @@ Enable debug logging to see detailed search operations:
 
 ### 🔍 Search Guides
 - **[SEARCH_COMPARISON.md](SEARCH_COMPARISON.md)** - Complete comparison of all 5 available search types
-- **[SEARCH_GUIDE.md](SEARCH_GUIDE.md)** - Traditional hybrid search system guide
+- **[USER_FRIENDLY_SEARCH_GUIDE.md](USER_FRIENDLY_SEARCH_GUIDE.md)** - Traditional hybrid search system guide
 
 ### 📖 Main Documentation  
 - **[README.md](../README.md)** - Main documentation with quick start
@@ -380,4 +380,4 @@ Enable debug logging to see detailed search operations:
 
 ---
 
-*Generated with TRUE Exhaustive Search v2.0 - Revolutionary Blockchain Search Engine*
+*Generated with TRUE Exhaustive Search v2.0 - Advanced Blockchain Search Engine*

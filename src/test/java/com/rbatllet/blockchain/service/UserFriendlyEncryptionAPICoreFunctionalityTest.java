@@ -236,16 +236,16 @@ class UserFriendlyEncryptionAPICoreFunctionalityTest {
         }
 
         @Test
-        @DisplayName("Should perform smart unified search")
-        void shouldPerformSmartUnifiedSearch() {
+        @DisplayName("Should perform smart advanced search")
+        void shouldPerformSmartAdvancedSearch() {
             // Given
             String query = "document information";
             
             // When
-            List<Block> results = api.smartUnifiedSearch(query, testPassword);
+            List<Block> results = api.smartAdvancedSearch(query, testPassword);
             
             // Then
-            assertNotNull(results, "Should return unified search results");
+            assertNotNull(results, "Should return advanced search results");
             assertTrue(results.size() >= 0, "Should return non-negative matches");
         }
     }

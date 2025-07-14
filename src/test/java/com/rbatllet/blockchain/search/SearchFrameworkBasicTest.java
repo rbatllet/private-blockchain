@@ -2,7 +2,7 @@ package com.rbatllet.blockchain.search;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.config.EncryptionConfig;
-import com.rbatllet.blockchain.search.RevolutionarySearchEngine.*;
+import com.rbatllet.blockchain.search.SearchFrameworkEngine.*;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.*;
 
@@ -14,16 +14,16 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * BASIC REVOLUTIONARY SEARCH ENGINE TEST SUITE
+ * BASIC SEARCH FRAMEWORK ENGINE TEST SUITE
  * 
- * Simple test suite to validate core functionality of the Revolutionary Search Engine
+ * Simple test suite to validate core functionality of the Search Framework Engine
  * without complex dependencies or advanced features.
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class RevolutionarySearchBasicTest {
+public class SearchFrameworkBasicTest {
     
-    private RevolutionarySearchEngine searchEngine;
-    private UnifiedRevolutionarySearchAPI unifiedAPI;
+    private SearchFrameworkEngine searchEngine;
+    private SearchSpecialistAPI specialistAPI;
     private Blockchain testBlockchain;
     private String testPassword;
     private PrivateKey testPrivateKey;
@@ -33,8 +33,8 @@ public class RevolutionarySearchBasicTest {
     void setUp() throws Exception {
         // Initialize test environment with public enabled
         EncryptionConfig testConfig = EncryptionConfig.createHighSecurityConfig();
-        searchEngine = new RevolutionarySearchEngine(testConfig);
-        unifiedAPI = new UnifiedRevolutionarySearchAPI(testConfig);
+        searchEngine = new SearchFrameworkEngine(testConfig);
+        specialistAPI = new SearchSpecialistAPI(testConfig);
         testBlockchain = new Blockchain();
         testPassword = "TestPassword123!";
         
@@ -52,8 +52,8 @@ public class RevolutionarySearchBasicTest {
         if (searchEngine != null) {
             searchEngine.shutdown();
         }
-        if (unifiedAPI != null) {
-            unifiedAPI.shutdown();
+        if (specialistAPI != null) {
+            specialistAPI.shutdown();
         }
     }
     
@@ -61,18 +61,18 @@ public class RevolutionarySearchBasicTest {
     
     @Test
     @Order(1)
-    @DisplayName("Basic Revolutionary Search Engine Initialization")
+    @DisplayName("Basic Advanced Search Engine Initialization")
     void testBasicInitialization() {
         assertNotNull(searchEngine, "Search engine should be initialized");
-        assertNotNull(unifiedAPI, "Unified API should be initialized");
+        assertNotNull(specialistAPI, "Specialist API should be initialized");
         
         // Index the blockchain
         IndexingResult indexingResult = searchEngine.indexBlockchain(testBlockchain, testPassword, testPrivateKey);
         assertNotNull(indexingResult, "Indexing result should not be null");
-        System.out.println("✅ Revolutionary Search Engine indexed " + indexingResult.getBlocksIndexed() + " blocks successfully");
+        System.out.println("✅ Advanced Search Engine indexed " + indexingResult.getBlocksIndexed() + " blocks successfully");
         
         // Test statistics
-        RevolutionarySearchStats stats = searchEngine.getSearchStats();
+        SearchStats stats = searchEngine.getSearchStats();
         assertNotNull(stats, "Stats should not be null");
         assertTrue(stats.getTotalBlocksIndexed() > 0, "Should have indexed blocks");
     }
@@ -86,7 +86,7 @@ public class RevolutionarySearchBasicTest {
         assertTrue(indexingResult.getBlocksIndexed() > 0);
         
         // Perform fast public search
-        RevolutionarySearchResult result = searchEngine.searchPublicOnly("financial", 10);
+        SearchResult result = searchEngine.searchPublicOnly("financial", 10);
         
         assertNotNull(result, "Search result should not be null");
         assertTrue(result.isSuccessful(), "Search should be successful");
@@ -105,7 +105,7 @@ public class RevolutionarySearchBasicTest {
         searchEngine.indexBlockchain(testBlockchain, testPassword, testPrivateKey);
         
         // Perform encrypted content search
-        RevolutionarySearchResult result = searchEngine.searchEncryptedOnly("account", testPassword, 10);
+        SearchResult result = searchEngine.searchEncryptedOnly("account", testPassword, 10);
         
         assertNotNull(result, "Search result should not be null");
         assertTrue(result.isSuccessful(), "Encrypted search should be successful");
@@ -123,7 +123,7 @@ public class RevolutionarySearchBasicTest {
         searchEngine.indexBlockchain(testBlockchain, testPassword, testPrivateKey);
         
         // Perform public search
-        RevolutionarySearchResult result = searchEngine.searchPublicOnly("data", 10);
+        SearchResult result = searchEngine.searchPublicOnly("data", 10);
         
         assertNotNull(result, "Public search result should not be null");
         assertTrue(result.isSuccessful(), "Public search should be successful");
@@ -141,12 +141,12 @@ public class RevolutionarySearchBasicTest {
         searchEngine.indexBlockchain(testBlockchain, testPassword, testPrivateKey);
         
         // Test simple query without password (should route to fast search)
-        RevolutionarySearchResult simpleResult = searchEngine.search("medical", null, 10);
+        SearchResult simpleResult = searchEngine.search("medical", null, 10);
         assertNotNull(simpleResult);
         assertTrue(simpleResult.isSuccessful());
         
         // Test complex query with password (should route to encrypted search)
-        RevolutionarySearchResult complexResult = searchEngine.search("patient medical record", testPassword, 10);
+        SearchResult complexResult = searchEngine.search("patient medical record", testPassword, 10);
         assertNotNull(complexResult);
         assertTrue(complexResult.isSuccessful());
         
@@ -154,75 +154,75 @@ public class RevolutionarySearchBasicTest {
         System.out.printf("Complex query strategy: %s%n", complexResult.getStrategyUsed());
     }
     
-    // ===== UNIFIED API TESTS =====
+    // ===== SPECIALIST API TESTS =====
     
     @Test
     @Order(10)
-    @DisplayName("Unified API Basic Functionality")
-    void testUnifiedAPIBasicFunctionality() {
-        // Initialize unified API
-        IndexingResult indexingResult = unifiedAPI.initializeWithBlockchain(testBlockchain, testPassword, testPrivateKey);
+    @DisplayName("Specialist API Basic Functionality")
+    void testSpecialistAPIBasicFunctionality() {
+        // Initialize advanced API
+        IndexingResult indexingResult = specialistAPI.initializeWithBlockchain(testBlockchain, testPassword, testPrivateKey);
         assertTrue(indexingResult.getBlocksIndexed() > 0);
-        assertTrue(unifiedAPI.isReady());
+        assertTrue(specialistAPI.isReady());
         
         // Test simple search
-        List<EnhancedSearchResult> simpleResults = unifiedAPI.searchSimple("financial");
+        List<EnhancedSearchResult> simpleResults = specialistAPI.searchSimple("financial");
         assertNotNull(simpleResults);
         System.out.printf("Simple search found %d results%n", simpleResults.size());
         
         // Test secure search
-        List<EnhancedSearchResult> secureResults = unifiedAPI.searchSecure("account", testPassword);
+        List<EnhancedSearchResult> secureResults = specialistAPI.searchSecure("account", testPassword);
         assertNotNull(secureResults);
         System.out.printf("Secure search found %d results%n", secureResults.size());
         
         // Test private search
-        List<EnhancedSearchResult> privateResults = unifiedAPI.searchSimple("contains:data");
+        List<EnhancedSearchResult> privateResults = specialistAPI.searchSimple("contains:data");
         assertNotNull(privateResults);
         System.out.printf("Private search found %d results%n", privateResults.size());
     }
     
     @Test
     @Order(11)
-    @DisplayName("Unified API User-Defined Term Searches")
-    void testUnifiedAPISpecializedSearches() {
-        unifiedAPI.initializeWithBlockchain(testBlockchain, testPassword, testPrivateKey);
+    @DisplayName("Specialist API User-Defined Term Searches")
+    void testSpecialistAPISpecializedSearches() {
+        specialistAPI.initializeWithBlockchain(testBlockchain, testPassword, testPrivateKey);
         
         // Test search for transfer-related content
-        List<EnhancedSearchResult> transferResults = unifiedAPI.searchIntelligent("transfer", testPassword, 10);
+        List<EnhancedSearchResult> transferResults = specialistAPI.searchIntelligent("transfer", testPassword, 10);
         assertNotNull(transferResults);
         System.out.printf("Transfer search: %d results%n", transferResults.size());
         
         // Test search for patient-related content
-        List<EnhancedSearchResult> patientResults = unifiedAPI.searchIntelligent("patient", testPassword, 10);
+        List<EnhancedSearchResult> patientResults = specialistAPI.searchIntelligent("patient", testPassword, 10);
         assertNotNull(patientResults);
         System.out.printf("Patient search: %d results%n", patientResults.size());
         
         // Test search for contract-related content
-        List<EnhancedSearchResult> contractResults = unifiedAPI.searchIntelligent("contract", testPassword, 10);
+        List<EnhancedSearchResult> contractResults = specialistAPI.searchIntelligent("contract", testPassword, 10);
         assertNotNull(contractResults);
         System.out.printf("Contract search: %d results%n", contractResults.size());
     }
     
     @Test
     @Order(12)
-    @DisplayName("Unified API Statistics and Diagnostics")
-    void testUnifiedAPIStatisticsAndDiagnostics() {
-        unifiedAPI.initializeWithBlockchain(testBlockchain, testPassword, testPrivateKey);
+    @DisplayName("Specialist API Statistics and Diagnostics")
+    void testSpecialistAPIStatisticsAndDiagnostics() {
+        specialistAPI.initializeWithBlockchain(testBlockchain, testPassword, testPrivateKey);
         
         // Test statistics
-        RevolutionarySearchStats stats = unifiedAPI.getStatistics();
+        SearchStats stats = specialistAPI.getStatistics();
         assertNotNull(stats);
         assertTrue(stats.getTotalBlocksIndexed() > 0);
         
         // Test performance metrics
-        String metrics = unifiedAPI.getPerformanceMetrics();
+        String metrics = specialistAPI.getPerformanceMetrics();
         assertNotNull(metrics);
-        assertTrue(metrics.contains("Revolutionary Search Engine Metrics"));
+        assertTrue(metrics.contains("Search Framework Engine Metrics"));
         
         // Test diagnostics
-        String diagnostics = unifiedAPI.runDiagnostics();
+        String diagnostics = specialistAPI.runDiagnostics();
         assertNotNull(diagnostics);
-        assertTrue(diagnostics.contains("Revolutionary Search Engine Diagnostics"));
+        assertTrue(diagnostics.contains("Search Framework Engine Diagnostics"));
         
         System.out.println("=== PERFORMANCE METRICS ===");
         System.out.println(metrics);
@@ -239,18 +239,18 @@ public class RevolutionarySearchBasicTest {
         searchEngine.indexBlockchain(testBlockchain, testPassword, testPrivateKey);
         
         // Test null query
-        RevolutionarySearchResult nullResult = searchEngine.search(null, testPassword, 10);
+        SearchResult nullResult = searchEngine.search(null, testPassword, 10);
         assertNotNull(nullResult);
         assertFalse(nullResult.isSuccessful());
         assertNotNull(nullResult.getErrorMessage());
         
         // Test empty query
-        RevolutionarySearchResult emptyResult = searchEngine.search("", testPassword, 10);
+        SearchResult emptyResult = searchEngine.search("", testPassword, 10);
         assertNotNull(emptyResult);
         // Empty query might be handled as valid with 0 results, so just check it returns something
         
         // Test invalid max results
-        RevolutionarySearchResult invalidResult = searchEngine.search("test", testPassword, -1);
+        SearchResult invalidResult = searchEngine.search("test", testPassword, -1);
         assertNotNull(invalidResult);
         assertFalse(invalidResult.isSuccessful());
         
@@ -269,7 +269,7 @@ public class RevolutionarySearchBasicTest {
         
         for (int i = 0; i < numSearches; i++) {
             long startTime = System.nanoTime();
-            RevolutionarySearchResult result = searchEngine.searchPublicOnly("test" + (i % 5), 5);
+            SearchResult result = searchEngine.searchPublicOnly("test" + (i % 5), 5);
             long endTime = System.nanoTime();
             
             assertTrue(result.isSuccessful());

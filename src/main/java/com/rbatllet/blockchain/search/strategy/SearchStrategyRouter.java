@@ -50,7 +50,7 @@ public class SearchStrategyRouter {
      * @param password Optional password for encrypted content access
      * @param config Encryption configuration
      * @param maxResults Maximum number of results
-     * @return Unified search results from the optimal strategy
+     * @return Advanced search results from the optimal strategy
      */
     public SearchRoutingResult routeSearch(String query, String password, 
                                          EncryptionConfig config, int maxResults) {
@@ -67,7 +67,7 @@ public class SearchStrategyRouter {
                                                            QueryComplexity.SIMPLE, false, SecurityLevel.PERFORMANCE);
             
             // Create empty result with error
-            UnifiedSearchResult errorResult = new UnifiedSearchResult(
+            AdvancedSearchResult errorResult = new AdvancedSearchResult(
                 new ArrayList<>(), SearchLevel.FAST_ONLY, totalTimeMs);
             
             return new SearchRoutingResult(errorResult, SearchStrategy.FAST_PUBLIC, 
@@ -79,7 +79,7 @@ public class SearchStrategyRouter {
         SearchStrategy chosenStrategy = analysis.getRecommendedStrategy();
         
         try {
-            UnifiedSearchResult result;
+            AdvancedSearchResult result;
             
             switch (chosenStrategy) {
                 case FAST_PUBLIC:
@@ -113,7 +113,7 @@ public class SearchStrategyRouter {
         } catch (Exception e) {
             // If chosen strategy fails, try fast public search as fallback
             try {
-                UnifiedSearchResult fallbackResult = executePublicSearch(query, maxResults, analysis);
+                AdvancedSearchResult fallbackResult = executePublicSearch(query, maxResults, analysis);
                 long endTime = System.nanoTime();
                 double totalTimeMs = (endTime - startTime) / 1_000_000.0;
                 
@@ -221,7 +221,7 @@ public class SearchStrategyRouter {
     /**
      * Execute fast public metadata search
      */
-    private UnifiedSearchResult executePublicSearch(String query, int maxResults, QueryAnalysis analysis) {
+    private AdvancedSearchResult executePublicSearch(String query, int maxResults, QueryAnalysis analysis) {
         List<FastIndexSearch.FastSearchResult> fastResults = fastIndexSearch.searchFast(query, maxResults);
         
         List<SearchResultItem> items = fastResults.stream()
@@ -235,14 +235,14 @@ public class SearchStrategyRouter {
             ))
             .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
         
-        return new UnifiedSearchResult(items, SearchLevel.FAST_ONLY, 
+        return new AdvancedSearchResult(items, SearchLevel.FAST_ONLY, 
                                      fastResults.isEmpty() ? 0.0 : fastResults.get(0).getSearchTimeMs());
     }
     
     /**
      * Execute encrypted content search
      */
-    private UnifiedSearchResult executeEncryptedSearch(String query, String password, 
+    private AdvancedSearchResult executeEncryptedSearch(String query, String password, 
                                                      int maxResults, QueryAnalysis analysis) {
         List<EncryptedContentSearch.EncryptedSearchResult> encryptedResults = 
             encryptedContentSearch.searchEncryptedContent(query, password, maxResults);
@@ -257,7 +257,7 @@ public class SearchStrategyRouter {
             ))
             .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
         
-        return new UnifiedSearchResult(items, SearchLevel.INCLUDE_DATA,
+        return new AdvancedSearchResult(items, SearchLevel.INCLUDE_DATA,
                                      encryptedResults.isEmpty() ? 0.0 : encryptedResults.get(0).getSearchTimeMs());
     }
     
@@ -265,14 +265,14 @@ public class SearchStrategyRouter {
     /**
      * Execute hybrid cascade search (fast -> encrypted)
      */
-    private UnifiedSearchResult executeHybridCascadeSearch(String query, String password, 
+    private AdvancedSearchResult executeHybridCascadeSearch(String query, String password, 
                                                          int maxResults, QueryAnalysis analysis) {
         // Start with fast search
-        UnifiedSearchResult fastResults = executePublicSearch(query, maxResults, analysis);
+        AdvancedSearchResult fastResults = executePublicSearch(query, maxResults, analysis);
         
         // If fast search doesn't provide enough results, escalate to encrypted search
         if (fastResults.getResults().size() < maxResults / 2) {
-            UnifiedSearchResult encryptedResults = executeEncryptedSearch(query, password, maxResults, analysis);
+            AdvancedSearchResult encryptedResults = executeEncryptedSearch(query, password, maxResults, analysis);
             
             // Merge results and deduplicate
             Set<String> seenHashes = new HashSet<>();
@@ -296,7 +296,7 @@ public class SearchStrategyRouter {
             mergedResults.sort((a, b) -> Double.compare(b.getRelevanceScore(), a.getRelevanceScore()));
             
             double totalTime = fastResults.getSearchTimeMs() + encryptedResults.getSearchTimeMs();
-            return new UnifiedSearchResult(mergedResults, SearchLevel.INCLUDE_DATA, totalTime);
+            return new AdvancedSearchResult(mergedResults, SearchLevel.INCLUDE_DATA, totalTime);
         }
         
         return fastResults;
@@ -305,20 +305,20 @@ public class SearchStrategyRouter {
     /**
      * Execute parallel multi-strategy search
      */
-    private UnifiedSearchResult executeParallelMultiSearch(String query, String password, 
+    private AdvancedSearchResult executeParallelMultiSearch(String query, String password, 
                                                           int maxResults, QueryAnalysis analysis) {
         
         // Execute multiple search strategies in parallel
-        CompletableFuture<UnifiedSearchResult> fastFuture = CompletableFuture
+        CompletableFuture<AdvancedSearchResult> fastFuture = CompletableFuture
             .supplyAsync(() -> executePublicSearch(query, maxResults, analysis), executorService);
         
-        CompletableFuture<UnifiedSearchResult> encryptedFuture = CompletableFuture
+        CompletableFuture<AdvancedSearchResult> encryptedFuture = CompletableFuture
             .supplyAsync(() -> executeEncryptedSearch(query, password, maxResults, analysis), executorService);
         
         try {
             // Wait for both to complete
-            UnifiedSearchResult fastResults = fastFuture.get();
-            UnifiedSearchResult encryptedResults = encryptedFuture.get();
+            AdvancedSearchResult fastResults = fastFuture.get();
+            AdvancedSearchResult encryptedResults = encryptedFuture.get();
             
             // Merge and rank results
             Map<String, SearchResultItem> bestResults = new HashMap<>();
@@ -343,7 +343,7 @@ public class SearchStrategyRouter {
                 .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
             
             double totalTime = Math.max(fastResults.getSearchTimeMs(), encryptedResults.getSearchTimeMs());
-            return new UnifiedSearchResult(finalResults, SearchLevel.INCLUDE_DATA, totalTime);
+            return new AdvancedSearchResult(finalResults, SearchLevel.INCLUDE_DATA, totalTime);
             
         } catch (Exception e) {
             throw new RuntimeException("Parallel search execution failed", e);
@@ -503,14 +503,14 @@ public class SearchStrategyRouter {
     }
     
     /**
-     * Unified search result container
+     * Advanced search result container
      */
-    public static class UnifiedSearchResult {
+    public static class AdvancedSearchResult {
         private final List<SearchResultItem> results;
         private final SearchLevel searchLevel;
         private final double searchTimeMs;
         
-        public UnifiedSearchResult(List<SearchResultItem> results, SearchLevel searchLevel, double searchTimeMs) {
+        public AdvancedSearchResult(List<SearchResultItem> results, SearchLevel searchLevel, double searchTimeMs) {
             this.results = results != null ? results : new ArrayList<>();
             this.searchLevel = searchLevel;
             this.searchTimeMs = searchTimeMs;
@@ -525,18 +525,18 @@ public class SearchStrategyRouter {
      * Complete search routing result
      */
     public static class SearchRoutingResult {
-        private final UnifiedSearchResult result;
+        private final AdvancedSearchResult result;
         private final SearchStrategy strategyUsed;
         private final QueryAnalysis analysis;
         private final double totalTimeMs;
         private final String errorMessage;
         
-        public SearchRoutingResult(UnifiedSearchResult result, SearchStrategy strategyUsed,
+        public SearchRoutingResult(AdvancedSearchResult result, SearchStrategy strategyUsed,
                                  QueryAnalysis analysis, double totalTimeMs) {
             this(result, strategyUsed, analysis, totalTimeMs, null);
         }
         
-        public SearchRoutingResult(UnifiedSearchResult result, SearchStrategy strategyUsed,
+        public SearchRoutingResult(AdvancedSearchResult result, SearchStrategy strategyUsed,
                                  QueryAnalysis analysis, double totalTimeMs, String errorMessage) {
             this.result = result;
             this.strategyUsed = strategyUsed;
@@ -545,7 +545,7 @@ public class SearchStrategyRouter {
             this.errorMessage = errorMessage;
         }
         
-        public UnifiedSearchResult getResult() { return result; }
+        public AdvancedSearchResult getResult() { return result; }
         public SearchStrategy getStrategyUsed() { return strategyUsed; }
         public QueryAnalysis getAnalysis() { return analysis; }
         public double getTotalTimeMs() { return totalTimeMs; }

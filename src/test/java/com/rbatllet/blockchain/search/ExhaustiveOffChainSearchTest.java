@@ -5,7 +5,7 @@ import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.entity.OffChainData;
 import com.rbatllet.blockchain.service.OffChainStorageService;
 import com.rbatllet.blockchain.config.EncryptionConfig;
-import com.rbatllet.blockchain.search.RevolutionarySearchEngine.*;
+import com.rbatllet.blockchain.search.SearchFrameworkEngine.*;
 import com.rbatllet.blockchain.search.strategy.SearchStrategyRouter;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.*;
@@ -41,7 +41,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class ExhaustiveOffChainSearchTest {
     
-    private RevolutionarySearchEngine searchEngine;
+    private SearchFrameworkEngine searchEngine;
     private Blockchain blockchain;
     private OffChainStorageService offChainService;
     private String testPassword;
@@ -68,7 +68,7 @@ public class ExhaustiveOffChainSearchTest {
     void setUp() throws Exception {
         // Initialize test environment
         testConfig = EncryptionConfig.createHighSecurityConfig();
-        searchEngine = new RevolutionarySearchEngine(testConfig);
+        searchEngine = new SearchFrameworkEngine(testConfig);
         blockchain = new Blockchain();
         offChainService = new OffChainStorageService();
         
@@ -171,7 +171,7 @@ public class ExhaustiveOffChainSearchTest {
         
         // Perform EXHAUSTIVE_OFFCHAIN search
         long startTime = System.nanoTime();
-        RevolutionarySearchResult result = searchEngine.searchExhaustiveOffChain(
+        SearchResult result = searchEngine.searchExhaustiveOffChain(
             "medical", testPassword, testPrivateKey, 10);
         long endTime = System.nanoTime();
         double searchTimeMs = (endTime - startTime) / 1_000_000.0;
@@ -240,7 +240,7 @@ public class ExhaustiveOffChainSearchTest {
         searchEngine.indexBlockchain(blockchain, testPassword, testPrivateKey);
         
         // Search for content that should be in off-chain file
-        RevolutionarySearchResult result = searchEngine.searchExhaustiveOffChain(
+        SearchResult result = searchEngine.searchExhaustiveOffChain(
             "diagnosis", testPassword, testPrivateKey, 10);
         
         // Validate results
@@ -383,7 +383,7 @@ public class ExhaustiveOffChainSearchTest {
         
         for (int i = 0; i < searchIterations; i++) {
             long searchStartTime = System.nanoTime();
-            RevolutionarySearchResult result = searchEngine.searchExhaustiveOffChain(
+            SearchResult result = searchEngine.searchExhaustiveOffChain(
                 "performance", testPassword, testPrivateKey, 10);
             long searchEndTime = System.nanoTime();
             double searchTimeMs = (searchEndTime - searchStartTime) / 1_000_000.0;
@@ -429,7 +429,7 @@ public class ExhaustiveOffChainSearchTest {
         searchEngine.indexBlockchain(blockchain, testPassword, testPrivateKey);
         
         // Test with wrong password
-        RevolutionarySearchResult wrongPasswordResult = searchEngine.searchExhaustiveOffChain(
+        SearchResult wrongPasswordResult = searchEngine.searchExhaustiveOffChain(
             "secure", "wrong_password", testPrivateKey, 10);
         
         assertNotNull(wrongPasswordResult);
@@ -437,13 +437,13 @@ public class ExhaustiveOffChainSearchTest {
         assertTrue(wrongPasswordResult.getTotalTimeMs() > 0);
         
         // Test with null parameters - should handle gracefully instead of throwing
-        RevolutionarySearchResult nullSearchResult = searchEngine.searchExhaustiveOffChain(
+        SearchResult nullSearchResult = searchEngine.searchExhaustiveOffChain(
             null, testPassword, testPrivateKey, 10);
         assertNotNull(nullSearchResult);
         // Null search term should be handled gracefully
         
         // Test with empty search term
-        RevolutionarySearchResult emptySearchResult = searchEngine.searchExhaustiveOffChain(
+        SearchResult emptySearchResult = searchEngine.searchExhaustiveOffChain(
             "", testPassword, testPrivateKey, 10);
         assertNotNull(emptySearchResult);
         
@@ -519,7 +519,7 @@ public class ExhaustiveOffChainSearchTest {
             executor.submit(() -> {
                 try {
                     for (int s = 0; s < searchesPerThread; s++) {
-                        RevolutionarySearchResult result = searchEngine.searchExhaustiveOffChain(
+                        SearchResult result = searchEngine.searchExhaustiveOffChain(
                             "thread", testPassword, testPrivateKey, 5);
                         
                         if (result.isSuccessful()) {
@@ -598,14 +598,14 @@ public class ExhaustiveOffChainSearchTest {
         
         // First search (populate cache)
         long firstSearchStart = System.nanoTime();
-        RevolutionarySearchResult firstResult = searchEngine.searchExhaustiveOffChain(
+        SearchResult firstResult = searchEngine.searchExhaustiveOffChain(
             "cache", testPassword, testPrivateKey, 5);
         long firstSearchEnd = System.nanoTime();
         double firstSearchTime = (firstSearchEnd - firstSearchStart) / 1_000_000.0;
         
         // Second search (should use cache)
         long secondSearchStart = System.nanoTime();
-        RevolutionarySearchResult secondResult = searchEngine.searchExhaustiveOffChain(
+        SearchResult secondResult = searchEngine.searchExhaustiveOffChain(
             "cache", testPassword, testPrivateKey, 5);
         long secondSearchEnd = System.nanoTime();
         double secondSearchTime = (secondSearchEnd - secondSearchStart) / 1_000_000.0;
@@ -671,16 +671,16 @@ public class ExhaustiveOffChainSearchTest {
         // 3. Test different search strategies
         
         // Public search only
-        RevolutionarySearchResult publicResult = searchEngine.searchPublicOnly("medical", 10);
+        SearchResult publicResult = searchEngine.searchPublicOnly("medical", 10);
         assertTrue(publicResult.isSuccessful());
         assertTrue(publicResult.getResultCount() > 0);
         
         // Encrypted search
-        RevolutionarySearchResult encryptedResult = searchEngine.searchEncryptedOnly("patient", testPassword, 10);
+        SearchResult encryptedResult = searchEngine.searchEncryptedOnly("patient", testPassword, 10);
         assertTrue(encryptedResult.isSuccessful());
         
         // EXHAUSTIVE_OFFCHAIN search
-        RevolutionarySearchResult exhaustiveResult = searchEngine.searchExhaustiveOffChain(
+        SearchResult exhaustiveResult = searchEngine.searchExhaustiveOffChain(
             "medical", testPassword, testPrivateKey, 10);
         assertTrue(exhaustiveResult.isSuccessful());
         assertTrue(exhaustiveResult.getResultCount() >= publicResult.getResultCount());
