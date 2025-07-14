@@ -140,16 +140,8 @@ public class UserFriendlyEncryptionAPI {
      * @since 1.0
      */
     public Block storeSecret(String secretData, String password) {
-        if (secretData == null || secretData.trim().isEmpty()) {
-            throw new IllegalArgumentException("Secret data cannot be null or empty");
-        }
-        if (password == null || password.length() < 8) {
-            throw new IllegalArgumentException("Password must be at least 8 characters long");
-        }
-        if (secretData.length() > 50 * 1024 * 1024) { // 50MB limit
-            throw new IllegalArgumentException("Secret data size cannot exceed 50MB (DoS protection)");
-        }
-        
+        validateInputData(secretData, 50 * 1024 * 1024, "Secret data"); // 50MB limit
+        validatePasswordSecurity(password, "Password");
         validateKeyPair();
         return blockchain.addEncryptedBlock(secretData, password, defaultKeyPair.getPrivate(), defaultKeyPair.getPublic());
     }
@@ -205,6 +197,11 @@ public class UserFriendlyEncryptionAPI {
      * @since 1.0
      */
     public Block storeDataWithIdentifier(String data, String password, String identifier) {
+        validateInputData(data, 50 * 1024 * 1024, "Data"); // 50MB limit
+        validatePasswordSecurity(password, "Password");
+        if (identifier != null && identifier.length() > 1024) { // 1KB limit for identifiers
+            throw new IllegalArgumentException("Identifier size cannot exceed 1KB (DoS protection)");
+        }
         validateKeyPair();
         String[] keywords = identifier != null ? new String[]{identifier} : null;
         return blockchain.addEncryptedBlockWithKeywords(data, password, keywords, null, 
@@ -986,6 +983,8 @@ public class UserFriendlyEncryptionAPI {
      * @since 1.0
      */
     public KeyPair createUser(String username) {
+        validateInputData(username, 256, "Username"); // 256 char limit for usernames
+        
         try {
             KeyPair keyPair = CryptoUtil.generateKeyPair();
             String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
@@ -1054,6 +1053,11 @@ public class UserFriendlyEncryptionAPI {
      * @since 1.0
      */
     public void setDefaultCredentials(String username, KeyPair keyPair) {
+        validateInputData(username, 256, "Username"); // 256 char limit for usernames
+        if (keyPair == null) {
+            throw new IllegalArgumentException("KeyPair cannot be null");
+        }
+        
         this.defaultUsername = username;
         this.defaultKeyPair = keyPair;
         
@@ -1660,6 +1664,9 @@ public class UserFriendlyEncryptionAPI {
      * @return true if credentials were loaded and set successfully
      */
     public boolean loadUserCredentials(String username, String password) {
+        validateInputData(username, 256, "Username"); // 256 char limit for usernames
+        validatePasswordSecurity(password, "Password");
+        
         PrivateKey privateKey = SecureKeyStorage.loadPrivateKey(username, password);
         if (privateKey != null) {
             try {
