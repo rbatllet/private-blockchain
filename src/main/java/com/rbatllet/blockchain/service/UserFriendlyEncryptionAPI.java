@@ -92,8 +92,12 @@ public class UserFriendlyEncryptionAPI {
         try {
             String publicKeyString = CryptoUtil.publicKeyToString(defaultKeyPair.getPublic());
             blockchain.addAuthorizedKey(publicKeyString, defaultUsername);
+        } catch (IllegalArgumentException e) {
+            logger.debug("User key already registered: {}", defaultUsername);
+        } catch (SecurityException e) {
+            logger.warn("Failed to register user key due to security policy: {}", defaultUsername);
         } catch (Exception e) {
-            // Key might already exist, which is fine
+            logger.error("Unexpected error during user registration: {}", e.getClass().getSimpleName());
         }
     }
     
@@ -136,6 +140,16 @@ public class UserFriendlyEncryptionAPI {
      * @since 1.0
      */
     public Block storeSecret(String secretData, String password) {
+        if (secretData == null || secretData.trim().isEmpty()) {
+            throw new IllegalArgumentException("Secret data cannot be null or empty");
+        }
+        if (password == null || password.length() < 8) {
+            throw new IllegalArgumentException("Password must be at least 8 characters long");
+        }
+        if (secretData.length() > 50 * 1024 * 1024) { // 50MB limit
+            throw new IllegalArgumentException("Secret data size cannot exceed 50MB (DoS protection)");
+        }
+        
         validateKeyPair();
         return blockchain.addEncryptedBlock(secretData, password, defaultKeyPair.getPrivate(), defaultKeyPair.getPublic());
     }
@@ -977,8 +991,12 @@ public class UserFriendlyEncryptionAPI {
             String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
             blockchain.addAuthorizedKey(publicKeyString, username);
             return keyPair;
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid username or key format: " + username, e);
+        } catch (SecurityException e) {
+            throw new SecurityException("Key generation failed due to security policy", e);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to create user: " + e.getMessage(), e);
+            throw new RuntimeException("Failed to create user due to system error", e);
         }
     }
     
@@ -1043,8 +1061,12 @@ public class UserFriendlyEncryptionAPI {
         try {
             String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
             blockchain.addAuthorizedKey(publicKeyString, username);
+        } catch (IllegalArgumentException e) {
+            logger.debug("User key already registered during credential setup: {}", username);
+        } catch (SecurityException e) {
+            logger.warn("Failed to register user key during credential setup: {}", username);
         } catch (Exception e) {
-            // Key might already exist, which is fine
+            logger.error("Unexpected error during credential setup: {}", e.getClass().getSimpleName());
         }
     }
     
@@ -1057,9 +1079,12 @@ public class UserFriendlyEncryptionAPI {
         if (length < 12) {
             throw new IllegalArgumentException("Password must be at least 12 characters long");
         }
+        if (length > 256) {
+            throw new IllegalArgumentException("Password length cannot exceed 256 characters (DoS protection)");
+        }
         
         String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
-        StringBuilder password = new StringBuilder();
+        StringBuilder password = new StringBuilder(length);
         java.security.SecureRandom random = new java.security.SecureRandom();
         
         for (int i = 0; i < length; i++) {
@@ -1179,6 +1204,13 @@ public class UserFriendlyEncryptionAPI {
      * @since 1.0
      */
     public String generateValidatedPassword(int length, boolean requireConfirmation) {
+        if (length < 12) {
+            throw new IllegalArgumentException("Password length must be at least 12 characters");
+        }
+        if (length > 256) {
+            throw new IllegalArgumentException("Password length cannot exceed 256 characters (DoS protection)");
+        }
+        
         String password;
         int attempts = 0;
         int maxAttempts = 5;
@@ -1193,17 +1225,57 @@ public class UserFriendlyEncryptionAPI {
         } while (!validatePassword(password));
         
         if (requireConfirmation) {
-            logger.info("🔑 Generated secure password: {}", password);
+            logger.info("🔑 Generated secure password with length: {} characters", password.length());
             String confirmation = readPasswordSecurely("Please re-enter the generated password to confirm: ");
             
             if (confirmation == null || !password.equals(confirmation)) {
-                logger.error("❌ Password confirmation failed");
+                logger.warn("❌ Password confirmation failed - attempt rejected");
                 return null;
             }
             logger.info("✅ Password confirmed successfully");
         }
         
         return password;
+    }
+    
+    // ===== SECURITY VALIDATION HELPERS =====
+    
+    /**
+     * Validate input data to prevent security vulnerabilities and DoS attacks
+     * @param data The data to validate
+     * @param maxSize Maximum allowed size in bytes
+     * @param fieldName Name of the field for error messages
+     * @throws IllegalArgumentException if validation fails
+     */
+    private void validateInputData(String data, int maxSize, String fieldName) {
+        if (data == null) {
+            throw new IllegalArgumentException(fieldName + " cannot be null");
+        }
+        if (data.trim().isEmpty()) {
+            throw new IllegalArgumentException(fieldName + " cannot be empty");
+        }
+        if (data.length() > maxSize) {
+            throw new IllegalArgumentException(fieldName + " size cannot exceed " + 
+                                             (maxSize / 1024) + "KB (DoS protection)");
+        }
+    }
+    
+    /**
+     * Validate password meets security requirements
+     * @param password The password to validate
+     * @param fieldName Name of the field for error messages
+     * @throws IllegalArgumentException if validation fails
+     */
+    private void validatePasswordSecurity(String password, String fieldName) {
+        if (password == null) {
+            throw new IllegalArgumentException(fieldName + " cannot be null");
+        }
+        if (password.length() < 8) {
+            throw new IllegalArgumentException(fieldName + " must be at least 8 characters long");
+        }
+        if (password.length() > 256) {
+            throw new IllegalArgumentException(fieldName + " cannot exceed 256 characters (DoS protection)");
+        }
     }
     
     /**
