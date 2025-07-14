@@ -100,10 +100,40 @@ public class UserFriendlyEncryptionAPI {
     // ===== SIMPLE ENCRYPTED BLOCK OPERATIONS =====
     
     /**
-     * Store sensitive data securely in the blockchain
-     * @param secretData The sensitive data to encrypt and store
-     * @param password The password for encryption
-     * @return The created block, or null if failed
+     * Store sensitive data securely in the blockchain with AES-256-GCM encryption.
+     * 
+     * <p>This method encrypts the provided sensitive data using industry-standard AES-256-GCM
+     * encryption and stores it in a new blockchain block. The data is signed with the default
+     * key pair to ensure authenticity and integrity.</p>
+     * 
+     * <p><strong>Security Features:</strong></p>
+     * <ul>
+     *   <li>AES-256-GCM authenticated encryption</li>
+     *   <li>ECDSA digital signature for authenticity</li>
+     *   <li>SHA3-256 hash for integrity verification</li>
+     *   <li>Automatic off-chain storage for large data (&gt;512KB)</li>
+     * </ul>
+     * 
+     * <p><strong>Usage Example:</strong></p>
+     * <pre>{@code
+     * UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, "user", keyPair);
+     * Block block = api.storeSecret("Confidential medical record data", "mySecurePassword123");
+     * if (block != null) {
+     *     System.out.println("Secret stored in block #" + block.getBlockNumber());
+     * }
+     * }</pre>
+     * 
+     * @param secretData The sensitive data to encrypt and store. Must not be null or empty.
+     *                   Large data (&gt;512KB) is automatically stored off-chain with encryption.
+     * @param password The password for encryption. Must be at least 8 characters long.
+     *                 Use {@link #generateValidatedPassword(int, boolean)} for secure passwords.
+     * @return The created {@link Block} containing the encrypted data, or {@code null} if the operation failed
+     * @throws IllegalStateException if no default key pair is configured
+     * @throws IllegalArgumentException if secretData or password is null/empty
+     * @see #retrieveSecret(Long, String)
+     * @see #generateValidatedPassword(int, boolean)
+     * @see #storeEncryptedData(String, String)
+     * @since 1.0
      */
     public Block storeSecret(String secretData, String password) {
         validateKeyPair();
@@ -114,12 +144,51 @@ public class UserFriendlyEncryptionAPI {
     
     
     /**
-     * Store data with identifier-based search terms
-     * Generic method that replaces category-specific storage
-     * @param data The data to encrypt and store
-     * @param password The password for encryption
-     * @param identifier Optional identifier for searchability (e.g., "patient:123", "account:456", "case:789")
-     * @return The created block, or null if failed
+     * Store encrypted data with searchable identifier metadata for efficient retrieval.
+     * 
+     * <p>This method combines secure data encryption with metadata indexing, allowing the stored
+     * data to be found later using the provided identifier. The identifier is stored as searchable
+     * metadata while the actual data remains encrypted.</p>
+     * 
+     * <p><strong>Common Use Cases:</strong></p>
+     * <ul>
+     *   <li>Medical records: {@code "patient:P-001"}</li>
+     *   <li>Financial transactions: {@code "account:ACC-456"}</li>
+     *   <li>Legal documents: {@code "case:CASE-789"}</li>
+     *   <li>Project files: {@code "project:PROJ-2025"}</li>
+     * </ul>
+     * 
+     * <p><strong>Search Integration:</strong><br>
+     * Data stored with identifiers can be found using:
+     * {@link #findRecordsByIdentifier(String)}, {@link #searchByTerms(String[], String, int)},
+     * or any of the advanced search methods.</p>
+     * 
+     * <p><strong>Usage Example:</strong></p>
+     * <pre>{@code
+     * // Store patient medical record
+     * Block block = api.storeDataWithIdentifier(
+     *     "Patient: John Doe, Diagnosis: Diabetes Type 1",
+     *     "medicalPassword123",
+     *     "patient:P-001"
+     * );
+     * 
+     * // Later retrieve by identifier
+     * List<Block> results = api.findRecordsByIdentifier("patient:P-001");
+     * }</pre>
+     * 
+     * @param data The data content to encrypt and store. Must not be null or empty.
+     *             Supports both text and binary data through string encoding.
+     * @param password The password for AES-256-GCM encryption. Minimum 8 characters recommended.
+     * @param identifier Optional searchable identifier for metadata indexing. Can be null if no
+     *                  searchability is needed. Format: {@code "category:value"} is recommended
+     *                  for best organization (e.g., "patient:123", "invoice:INV-2025").
+     * @return The created {@link Block} with encrypted data and metadata, or {@code null} if failed
+     * @throws IllegalStateException if no default key pair is configured
+     * @throws IllegalArgumentException if data or password is null/empty
+     * @see #findRecordsByIdentifier(String)
+     * @see #storeSearchableData(String, String, String[])
+     * @see #storeDataWithGranularTermControl(String, String, Set, TermVisibilityMap)
+     * @since 1.0
      */
     public Block storeDataWithIdentifier(String data, String password, String identifier) {
         validateKeyPair();
@@ -131,19 +200,88 @@ public class UserFriendlyEncryptionAPI {
     // ===== SIMPLE RETRIEVAL OPERATIONS =====
     
     /**
-     * Retrieve and decrypt a secret by block ID
-     * @param blockId The ID of the encrypted block
-     * @param password The password for decryption
-     * @return The decrypted data, or null if failed
+     * Retrieve and decrypt sensitive data from a blockchain block by its ID.
+     * 
+     * <p>This method decrypts data that was previously stored using {@link #storeSecret(String, String)}
+     * or similar encryption methods. The decryption uses the same password that was used for encryption.</p>
+     * 
+     * <p><strong>Security Notes:</strong></p>
+     * <ul>
+     *   <li>Uses AES-256-GCM authenticated decryption</li>
+     *   <li>Verifies digital signature for authenticity</li>
+     *   <li>Automatically handles both on-chain and off-chain data</li>
+     *   <li>Returns null if password is incorrect or data is tampered</li>
+     * </ul>
+     * 
+     * <p><strong>Usage Example:</strong></p>
+     * <pre>{@code
+     * // First store the secret
+     * Block block = api.storeSecret("Top secret information", "myPassword123");
+     * 
+     * // Later retrieve it
+     * String decryptedData = api.retrieveSecret(block.getBlockNumber(), "myPassword123");
+     * if (decryptedData != null) {
+     *     System.out.println("Retrieved: " + decryptedData);
+     * } else {
+     *     System.out.println("Failed to decrypt - wrong password or corrupted data");
+     * }
+     * }</pre>
+     * 
+     * @param blockId The unique ID (block number) of the encrypted block to retrieve.
+     *                Must correspond to an existing block in the blockchain.
+     * @param password The password used for decryption. Must match the password used
+     *                 during encryption, including case sensitivity.
+     * @return The decrypted data as a String, or {@code null} if decryption failed due to:
+     *         <ul>
+     *           <li>Incorrect password</li>
+     *           <li>Block not found</li>
+     *           <li>Data corruption or tampering</li>
+     *           <li>Missing off-chain data files</li>
+     *         </ul>
+     * @throws IllegalArgumentException if blockId is null or password is null/empty
+     * @see #storeSecret(String, String)
+     * @see #isBlockEncrypted(Long)
+     * @see #findAndDecryptData(String, String)
+     * @since 1.0
      */
     public String retrieveSecret(Long blockId, String password) {
         return blockchain.getDecryptedBlockData(blockId, password);
     }
     
     /**
-     * Check if a block contains encrypted data
-     * @param blockId The ID of the block to check
-     * @return true if the block is encrypted, false otherwise
+     * Check if a specific blockchain block contains encrypted data.
+     * 
+     * <p>This utility method allows you to determine whether a block's data is encrypted
+     * before attempting decryption operations. This is useful for conditional processing
+     * and avoiding unnecessary decryption attempts on plain-text blocks.</p>
+     * 
+     * <p><strong>Detection Mechanism:</strong><br>
+     * The method checks for encryption markers and metadata that indicate whether the
+     * block's data was stored using any of the encryption methods in this API.</p>
+     * 
+     * <p><strong>Usage Example:</strong></p>
+     * <pre>{@code
+     * Long blockId = 5L;
+     * if (api.isBlockEncrypted(blockId)) {
+     *     // Block is encrypted - need password to read
+     *     String data = api.retrieveSecret(blockId, password);
+     * } else {
+     *     // Block is plain-text - can read directly
+     *     Block block = blockchain.getBlock(blockId);
+     *     String data = block.getData();
+     * }
+     * }</pre>
+     * 
+     * @param blockId The unique ID (block number) of the block to check.
+     *                Must correspond to an existing block in the blockchain.
+     * @return {@code true} if the block contains encrypted data that requires a password
+     *         to decrypt, {@code false} if the block contains plain-text data or if
+     *         the block doesn't exist
+     * @throws IllegalArgumentException if blockId is null
+     * @see #retrieveSecret(Long, String)
+     * @see #storeSecret(String, String)
+     * @see #findEncryptedData(String)
+     * @since 1.0
      */
     public boolean isBlockEncrypted(Long blockId) {
         return blockchain.isBlockEncrypted(blockId);
@@ -152,9 +290,49 @@ public class UserFriendlyEncryptionAPI {
     // ===== SIMPLE SEARCH OPERATIONS =====
     
     /**
-     * Search for encrypted data without revealing content using Revolutionary Search
-     * @param searchTerm The term to search for in metadata
-     * @return List of matching blocks (content remains encrypted)
+     * Search for encrypted blocks by metadata without requiring decryption passwords.
+     * 
+     * <p>This method searches through public metadata and identifiers to find blocks that
+     * contain encrypted data matching the search term. The actual encrypted content remains
+     * protected and is not revealed during the search process.</p>
+     * 
+     * <p><strong>Privacy Features:</strong></p>
+     * <ul>
+     *   <li>Searches only public metadata and identifiers</li>
+     *   <li>Encrypted content remains protected</li>
+     *   <li>Returns blocks without exposing sensitive data</li>
+     *   <li>Uses Revolutionary Search Engine for optimized performance</li>
+     * </ul>
+     * 
+     * <p><strong>Use Cases:</strong></p>
+     * <ul>
+     *   <li>Finding encrypted records by patient ID, account number, or case reference</li>
+     *   <li>Locating specific encrypted documents without decryption</li>
+     *   <li>Building search indexes for encrypted content</li>
+     *   <li>Compliance auditing of encrypted data presence</li>
+     * </ul>
+     * 
+     * <p><strong>Usage Example:</strong></p>
+     * <pre>{@code
+     * // Search for encrypted medical records by patient ID
+     * List<Block> encryptedRecords = api.findEncryptedData("patient:P-001");
+     * 
+     * for (Block block : encryptedRecords) {
+     *     System.out.println("Found encrypted record in block #" + block.getBlockNumber());
+     *     // Content remains encrypted - use retrieveSecret() with password to decrypt
+     * }
+     * }</pre>
+     * 
+     * @param searchTerm The term to search for in public metadata and identifiers.
+     *                   Supports identifiers like "patient:123", "account:456", or any
+     *                   metadata terms that were stored as public search terms.
+     * @return A {@link List} of {@link Block} objects that contain encrypted data matching
+     *         the search term. The blocks' content remains encrypted. Returns empty list
+     *         if no matches found or if searchTerm is null/empty.
+     * @see #findAndDecryptData(String, String)
+     * @see #findRecordsByIdentifier(String)
+     * @see #storeDataWithIdentifier(String, String, String)
+     * @since 1.0
      */
     public List<Block> findEncryptedData(String searchTerm) {
         // Use Revolutionary Search public metadata search (no password required)
@@ -174,10 +352,53 @@ public class UserFriendlyEncryptionAPI {
     }
     
     /**
-     * Search for and decrypt matching encrypted data using Revolutionary Search
-     * @param searchTerm The term to search for
-     * @param password The password for decryption
-     * @return List of matching blocks with decrypted content
+     * Search for encrypted data and automatically decrypt matching results.
+     * 
+     * <p>This powerful method combines search and decryption capabilities to find and decrypt
+     * encrypted blockchain data in a single operation. It uses adaptive decryption to handle
+     * both metadata searches and encrypted content searches efficiently.</p>
+     * 
+     * <p><strong>Revolutionary Search Features:</strong></p>
+     * <ul>
+     *   <li>Searches both public metadata and encrypted content</li>
+     *   <li>Adaptive decryption - tries multiple decryption strategies</li>
+     *   <li>Performance-optimized with intelligent caching</li>
+     *   <li>Handles both on-chain and off-chain encrypted data</li>
+     * </ul>
+     * 
+     * <p><strong>Search Strategy:</strong></p>
+     * <ol>
+     *   <li>First searches public metadata (fast, no decryption needed)</li>
+     *   <li>Then searches encrypted content using provided password</li>
+     *   <li>Returns unified results with decrypted content</li>
+     *   <li>Skips blocks that can't be decrypted with the given password</li>
+     * </ol>
+     * 
+     * <p><strong>Usage Example:</strong></p>
+     * <pre>{@code
+     * // Search for and decrypt patient medical records
+     * List<Block> results = api.findAndDecryptData("diabetes", "medicalPassword123");
+     * 
+     * for (Block block : results) {
+     *     // Block data is already decrypted and accessible
+     *     String decryptedData = block.getData();
+     *     System.out.println("Found medical record: " + decryptedData);
+     * }
+     * }</pre>
+     * 
+     * @param searchTerm The term to search for in both metadata and encrypted content.
+     *                   Supports medical terms, patient IDs, account numbers, or any
+     *                   content that might be encrypted within blocks.
+     * @param password The password for decrypting encrypted content. Must match the
+     *                password used when storing the encrypted data.
+     * @return A {@link List} of {@link Block} objects with decrypted content that matches
+     *         the search term. If decryption fails for a block, it's excluded from results.
+     *         Returns empty list if no matches found or if password is incorrect.
+     * @throws IllegalArgumentException if searchTerm or password is null/empty
+     * @see #findEncryptedData(String)
+     * @see #searchWithAdaptiveDecryption(String, String, int)
+     * @see #storeSecret(String, String)
+     * @since 1.0
      */
     public List<Block> findAndDecryptData(String searchTerm, String password) {
         logger.debug("🔍 Debug: findAndDecryptData called with searchTerm='{}', password length={}", searchTerm, (password != null ? password.length() : "null"));
@@ -186,9 +407,53 @@ public class UserFriendlyEncryptionAPI {
     }
     
     /**
-     * Search for records by specific identifier using Revolutionary Search
-     * @param identifier The identifier to search for
-     * @return List of matching blocks (content encrypted)
+     * Search for records by specific identifier using Revolutionary Search technology.
+     * 
+     * <p>This method provides fast, targeted search for records using unique identifiers
+     * such as patient IDs, transaction references, document numbers, or other business
+     * identifiers. It leverages the Revolutionary Search Engine for optimized performance
+     * and searches only public metadata to ensure privacy without requiring passwords.</p>
+     * 
+     * <p><strong>Search Features:</strong></p>
+     * <ul>
+     *   <li><strong>Privacy-Preserving:</strong> Searches only public metadata, no decryption needed</li>
+     *   <li><strong>Fast Lookup:</strong> Optimized for single identifier searches</li>
+     *   <li><strong>Revolutionary Search Integration:</strong> Uses advanced search algorithms</li>
+     *   <li><strong>Exact Matching:</strong> Finds records with precise identifier matches</li>
+     * </ul>
+     * 
+     * <p><strong>Usage Examples:</strong></p>
+     * <pre>{@code
+     * // Search for medical patient records
+     * List<Block> patientRecords = api.findRecordsByIdentifier("PATIENT-001234");
+     * 
+     * // Search for financial transaction
+     * List<Block> transactions = api.findRecordsByIdentifier("TXN-2024-789012");
+     * 
+     * // Search for legal document
+     * List<Block> documents = api.findRecordsByIdentifier("CONTRACT-ABC-2024");
+     * 
+     * // Process results
+     * for (Block block : patientRecords) {
+     *     System.out.println("Found record in block #" + block.getBlockNumber());
+     *     if (block.isDataEncrypted()) {
+     *         // Use retrieveSecret() or other decryption methods to access content
+     *         System.out.println("Record is encrypted - use password to decrypt");
+     *     }
+     * }
+     * }</pre>
+     * 
+     * @param identifier The unique identifier to search for. Must not be null or empty.
+     *                  Common formats include alphanumeric codes, UUID strings, or
+     *                  business-specific identifier patterns.
+     * @return A {@link List} of {@link Block} objects containing records with the specified
+     *         identifier. Returns empty list if no matches found. Content may be encrypted
+     *         and require separate decryption using password-based methods.
+     * @throws IllegalArgumentException if identifier is null or empty
+     * @see #searchByTerms(String[], String, int)
+     * @see #retrieveSecret(Long, String)
+     * @see #searchEverything(String)
+     * @since 1.0
      */
     public List<Block> findRecordsByIdentifier(String identifier) {
         if (identifier == null || identifier.trim().isEmpty()) {
@@ -200,9 +465,60 @@ public class UserFriendlyEncryptionAPI {
     // ===== UNIFIED SEARCH OPERATIONS =====
     
     /**
-     * Revolutionary Search: Search everything in the blockchain using proper architecture
-     * @param searchTerm The term to search for
-     * @return List of matching blocks
+     * Comprehensive blockchain search using Revolutionary Search Engine architecture.
+     * 
+     * <p>This method performs a comprehensive search across all blockchain data using
+     * the Revolutionary Search Engine. It searches public metadata, identifiers, and
+     * unencrypted content without requiring passwords, making it ideal for discovering
+     * publicly accessible information and getting an overview of blockchain contents.</p>
+     * 
+     * <p><strong>Search Coverage:</strong></p>
+     * <ul>
+     *   <li><strong>Public Metadata:</strong> Searchable identifiers and public keywords</li>
+     *   <li><strong>Block Headers:</strong> Block numbers, timestamps, and signatures</li>
+     *   <li><strong>Unencrypted Content:</strong> Public data stored without encryption</li>
+     *   <li><strong>Content Categories:</strong> Medical, financial, legal, general classifications</li>
+     *   <li><strong>Revolutionary Search Optimizations:</strong> Advanced indexing and relevance ranking</li>
+     * </ul>
+     * 
+     * <p><strong>Privacy Note:</strong> This search does NOT access encrypted content.
+     * For searching encrypted data, use {@link #searchEverythingWithPassword(String, String)}
+     * or other password-enabled search methods.</p>
+     * 
+     * <p><strong>Usage Examples:</strong></p>
+     * <pre>{@code
+     * // Find all blocks related to a general term
+     * List<Block> results = api.searchEverything("medical");
+     * 
+     * // Search for specific identifier patterns
+     * List<Block> patientBlocks = api.searchEverything("patient");
+     * 
+     * // Look for document types
+     * List<Block> contracts = api.searchEverything("contract");
+     * 
+     * // Process results
+     * for (Block block : results) {
+     *     System.out.println("Block #" + block.getBlockNumber() + " - " + 
+     *                       block.getContentCategory());
+     *     if (block.isDataEncrypted()) {
+     *         System.out.println("Contains encrypted data - password required for content");
+     *     } else {
+     *         System.out.println("Public data: " + block.getData());
+     *     }
+     * }
+     * }</pre>
+     * 
+     * @param searchTerm The search term to look for across all blockchain data.
+     *                  Must not be null or empty. Can be keywords, identifiers,
+     *                  or any text that might appear in public blockchain data.
+     * @return A {@link List} of {@link Block} objects matching the search term.
+     *         Results are ranked by relevance using Revolutionary Search algorithms.
+     *         Returns empty list if no matches found or if searchTerm is invalid.
+     * @throws IllegalArgumentException if searchTerm is null or empty
+     * @see #searchEverythingWithPassword(String, String)
+     * @see #findRecordsByIdentifier(String)
+     * @see #searchByTerms(String[], String, int)
+     * @since 1.0
      */
     public List<Block> searchEverything(String searchTerm) {
         // Use Revolutionary Search public search (no password, metadata only)
@@ -222,10 +538,64 @@ public class UserFriendlyEncryptionAPI {
     }
     
     /**
-     * Revolutionary Search: Search including encrypted content using proper architecture
-     * @param searchTerm The term to search for
-     * @param password The password for decrypting encrypted content
-     * @return List of matching blocks including decrypted content
+     * Comprehensive blockchain search including encrypted content using Revolutionary Search.
+     * 
+     * <p>This method extends the comprehensive search capabilities to include encrypted
+     * content by decrypting blocks with the provided password. It combines the power
+     * of the Revolutionary Search Engine with secure decryption to provide complete
+     * search coverage across both public and private blockchain data.</p>
+     * 
+     * <p><strong>Enhanced Search Coverage:</strong></p>
+     * <ul>
+     *   <li><strong>Public Data:</strong> All capabilities of {@link #searchEverything(String)}</li>
+     *   <li><strong>Encrypted Content:</strong> Decrypts and searches private data</li>
+     *   <li><strong>Private Keywords:</strong> Searches encrypted keyword metadata</li>
+     *   <li><strong>Off-Chain Data:</strong> Includes encrypted off-chain storage content</li>
+     *   <li><strong>Adaptive Decryption:</strong> Smart password management and retries</li>
+     * </ul>
+     * 
+     * <p><strong>Security Features:</strong></p>
+     * <ul>
+     *   <li>Password validation before decryption attempts</li>
+     *   <li>Safe fallback for blocks that cannot be decrypted</li>
+     *   <li>Comprehensive error handling and logging</li>
+     *   <li>Memory-safe decryption operations</li>
+     * </ul>
+     * 
+     * <p><strong>Usage Examples:</strong></p>
+     * <pre>{@code
+     * // Search across all data including encrypted content
+     * List<Block> allResults = api.searchEverythingWithPassword("diagnosis", "medicalPass");
+     * 
+     * // Find sensitive financial records
+     * List<Block> financialData = api.searchEverythingWithPassword("transaction", "financeKey");
+     * 
+     * // Search for confidential legal documents
+     * List<Block> legalDocs = api.searchEverythingWithPassword("confidential", "legalPass");
+     * 
+     * // Process comprehensive results
+     * for (Block block : allResults) {
+     *     System.out.println("Block #" + block.getBlockNumber());
+     *     if (block.isDataEncrypted()) {
+     *         // Data has been decrypted and is ready for use
+     *         System.out.println("Decrypted content: " + block.getData());
+     *     } else {
+     *         System.out.println("Public content: " + block.getData());
+     *     }
+     * }
+     * }</pre>
+     * 
+     * @param searchTerm The search term to look for across all blockchain data including
+     *                  encrypted content. Must not be null or empty.
+     * @param password The password for decrypting encrypted blocks and private keywords.
+     *                Must not be null for effective encrypted search.
+     * @return A {@link List} of {@link Block} objects matching the search term, with
+     *         encrypted content decrypted where possible. Uses adaptive decryption
+     *         strategies for optimal results.
+     * @throws IllegalArgumentException if searchTerm is null/empty or password is null
+     * @see #searchEverything(String)
+     * @see #searchWithAdaptiveDecryption(String, String, int)
+     * @since 1.0
      */
     public List<Block> searchEverythingWithPassword(String searchTerm, String password) {
         // Use Revolutionary Search adaptive secure search
@@ -512,8 +882,39 @@ public class UserFriendlyEncryptionAPI {
     }
     
     /**
-     * Get a detailed validation report for the blockchain
-     * @return Human-readable validation report
+     * Get a comprehensive validation report for the blockchain with human-readable analysis.
+     * 
+     * <p>This method provides a detailed, user-friendly validation report that analyzes
+     * the integrity, security, and health of the entire blockchain. The report is formatted
+     * for easy reading and includes actionable recommendations for any issues found.</p>
+     * 
+     * <p><strong>Validation Coverage:</strong></p>
+     * <ul>
+     *   <li><strong>Block Integrity:</strong> Hash validation, signature verification</li>
+     *   <li><strong>Chain Consistency:</strong> Sequential block validation, timestamp checks</li>
+     *   <li><strong>Security Analysis:</strong> Key validation, encryption status</li>
+     *   <li><strong>Data Integrity:</strong> Off-chain data verification, corruption detection</li>
+     *   <li><strong>Performance Metrics:</strong> Storage efficiency, search performance</li>
+     * </ul>
+     * 
+     * <p><strong>Usage Example:</strong></p>
+     * <pre>{@code
+     * UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+     * String report = api.getValidationReport();
+     * 
+     * // Display or log the validation report
+     * System.out.println(report);
+     * 
+     * // Save report to file for auditing
+     * Files.write(Paths.get("blockchain-validation-report.txt"), report.getBytes());
+     * }</pre>
+     * 
+     * @return A detailed, human-readable validation report as a {@link String}.
+     *         The report includes validation results, metrics, warnings, and
+     *         recommendations. Never returns null - returns "No data" if blockchain is empty.
+     * @see #performComprehensiveValidation()
+     * @see #validateChainIntegrity()
+     * @since 1.0
      */
     public String getValidationReport() {
         return blockchain.getValidationReport();
@@ -522,9 +923,53 @@ public class UserFriendlyEncryptionAPI {
     // ===== SETUP AND CONFIGURATION =====
     
     /**
-     * Create a new user with generated keys
-     * @param username The username for the new user
-     * @return The generated key pair for the user
+     * Create a new blockchain user with automatically generated cryptographic key pair.
+     * 
+     * <p>This method creates a complete user account for blockchain operations by generating
+     * a new ECDSA key pair and registering the user's public key with the blockchain.
+     * The generated keys use enterprise-grade cryptographic algorithms suitable for
+     * production blockchain applications.</p>
+     * 
+     * <p><strong>Key Generation Features:</strong></p>
+     * <ul>
+     *   <li><strong>ECDSA Algorithm:</strong> Industry-standard elliptic curve cryptography</li>
+     *   <li><strong>Secure Random Generation:</strong> Cryptographically secure key generation</li>
+     *   <li><strong>Blockchain Registration:</strong> Public key automatically registered</li>
+     *   <li><strong>User Authorization:</strong> User authorized for blockchain operations</li>
+     * </ul>
+     * 
+     * <p><strong>Security Note:</strong> The generated private key should be stored securely
+     * by the application. Consider using {@link SecureKeyStorage} for persistent storage
+     * or {@link #setDefaultCredentials(String, KeyPair)} to set as default credentials.</p>
+     * 
+     * <p><strong>Usage Examples:</strong></p>
+     * <pre>{@code
+     * // Create new user account
+     * UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+     * KeyPair userKeys = api.createUser("alice-medical");
+     * 
+     * // Store keys securely for future use
+     * SecureKeyStorage.savePrivateKey("alice-medical", userKeys.getPrivate(), "userPassword");
+     * 
+     * // Set as default credentials for this session
+     * api.setDefaultCredentials("alice-medical", userKeys);
+     * 
+     * // User can now perform blockchain operations
+     * Block block = api.storeSecret("Patient medical record", "encryptionPassword");
+     * System.out.println("✅ User created and data stored successfully");
+     * }</pre>
+     * 
+     * @param username The unique username for the new user. Must not be null or empty.
+     *                Should follow your organization's username conventions.
+     *                Usernames are case-sensitive and should be unique across the blockchain.
+     * @return A newly generated {@link KeyPair} containing the user's private and public keys.
+     *         The private key should be stored securely by the application.
+     *         Never returns null.
+     * @throws IllegalArgumentException if username is null or empty
+     * @throws RuntimeException if key generation fails or blockchain registration fails
+     * @see #setDefaultCredentials(String, KeyPair)
+     * @see SecureKeyStorage#savePrivateKey(String, PrivateKey, String)
+     * @since 1.0
      */
     public KeyPair createUser(String username) {
         try {
@@ -538,9 +983,57 @@ public class UserFriendlyEncryptionAPI {
     }
     
     /**
-     * Set default credentials for future operations
-     * @param username The default username
-     * @param keyPair The default key pair
+     * Set default user credentials for simplified blockchain operations.
+     * 
+     * <p>This method configures default user credentials that will be used automatically
+     * for blockchain operations when explicit credentials are not provided. This simplifies
+     * the API usage by eliminating the need to pass credentials for every operation,
+     * while maintaining security through proper key management.</p>
+     * 
+     * <p><strong>Credential Management Features:</strong></p>
+     * <ul>
+     *   <li><strong>Automatic Registration:</strong> User's public key registered with blockchain</li>
+     *   <li><strong>Session Persistence:</strong> Credentials persist for the API instance lifetime</li>
+     *   <li><strong>Operation Simplification:</strong> Many methods work without explicit credentials</li>
+     *   <li><strong>Security Validation:</strong> Keys validated before setting as defaults</li>
+     * </ul>
+     * 
+     * <p><strong>Simplified Operations After Setting Credentials:</strong></p>
+     * <ul>
+     *   <li>{@link #storeSecret(String, String)} - No need to specify keys</li>
+     *   <li>{@link #retrieveSecret(Long, String)} - Uses default credentials automatically</li>
+     *   <li>{@link #storeEncryptedData(String, String)} - Automatic signing</li>
+     *   <li>All other operations use these credentials by default</li>
+     * </ul>
+     * 
+     * <p><strong>Usage Examples:</strong></p>
+     * <pre>{@code
+     * // Load existing user credentials
+     * KeyPair userKeys = SecureKeyStorage.loadPrivateKey("alice-medical", "userPassword");
+     * UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+     * 
+     * // Set as default credentials
+     * api.setDefaultCredentials("alice-medical", userKeys);
+     * 
+     * // Now operations are simplified - no need to pass keys
+     * Block block = api.storeSecret("Confidential patient data", "encryptPassword");
+     * String retrieved = api.retrieveSecret(block.getId(), "encryptPassword");
+     * 
+     * // Check if credentials are set
+     * if (api.hasDefaultCredentials()) {
+     *     System.out.println("✅ Ready for operations as: " + api.getDefaultUsername());
+     * }
+     * }</pre>
+     * 
+     * @param username The default username for blockchain operations. Must not be null or empty.
+     *                This username will be used for operation logging and identification.
+     * @param keyPair The default {@link KeyPair} for signing blockchain operations.
+     *               Must not be null. The private key is used for signing, public key for verification.
+     * @throws IllegalArgumentException if username is null/empty or keyPair is null
+     * @see #hasDefaultCredentials()
+     * @see #getDefaultUsername()
+     * @see #createUser(String)
+     * @since 1.0
      */
     public void setDefaultCredentials(String username, KeyPair keyPair) {
         this.defaultUsername = username;
@@ -624,11 +1117,66 @@ public class UserFriendlyEncryptionAPI {
     }
     
     /**
-     * Generate a validated secure password and optionally confirm it interactively
-     * Combines generation, validation, and confirmation in one convenient method
-     * @param length Desired password length (minimum 12 characters)
-     * @param requireConfirmation If true, asks user to confirm the generated password
-     * @return A secure, validated password
+     * Generate a cryptographically secure password with validation and optional confirmation.
+     * 
+     * <p>This method creates enterprise-grade passwords suitable for protecting sensitive
+     * blockchain data. It combines secure random generation, strength validation, and
+     * optional interactive confirmation for maximum security and usability.</p>
+     * 
+     * <p><strong>Security Features:</strong></p>
+     * <ul>
+     *   <li>Cryptographically secure random generation using SecureRandom</li>
+     *   <li>Automatic validation against security best practices</li>
+     *   <li>Configurable length with minimum security requirements</li>
+     *   <li>Character set includes uppercase, lowercase, digits, and symbols</li>
+     *   <li>Multiple generation attempts to ensure quality</li>
+     * </ul>
+     * 
+     * <p><strong>Password Strength Requirements:</strong></p>
+     * <ul>
+     *   <li>Minimum 12 characters (recommended: 16+ for high security)</li>
+     *   <li>Mix of uppercase and lowercase letters</li>
+     *   <li>Numbers and special characters included</li>
+     *   <li>No common patterns or dictionary words</li>
+     *   <li>Suitable for AES-256-GCM encryption protection</li>
+     * </ul>
+     * 
+     * <p><strong>Interactive Confirmation:</strong><br>
+     * When {@code requireConfirmation} is true, the method logs the generated password
+     * and prompts for re-entry to ensure accuracy. This is recommended for critical
+     * operations where password mistakes could result in data loss.</p>
+     * 
+     * <p><strong>Usage Examples:</strong></p>
+     * <pre>{@code
+     * // Generate password for medical records (high security)
+     * String medicalPassword = api.generateValidatedPassword(20, true);
+     * Block patient = api.storeSecret("Patient medical history", medicalPassword);
+     * 
+     * // Generate password for automated systems (no confirmation needed)
+     * String systemPassword = api.generateValidatedPassword(16, false);
+     * 
+     * // Generate maximum security password for financial data
+     * String financePassword = api.generateValidatedPassword(32, true);
+     * }</pre>
+     * 
+     * @param length The desired password length in characters. Must be at least 12 characters.
+     *              Recommended lengths:
+     *              <ul>
+     *                <li>12-15: Standard security for general use</li>
+     *                <li>16-20: High security for medical/financial data</li>
+     *                <li>24-32: Maximum security for critical systems</li>
+     *              </ul>
+     * @param requireConfirmation If {@code true}, displays the generated password and prompts
+     *                           for confirmation by re-entry. Use {@code true} for interactive
+     *                           sessions, {@code false} for automated systems.
+     * @return A cryptographically secure password meeting all validation requirements,
+     *         or {@code null} if confirmation failed when {@code requireConfirmation} is true
+     * @throws IllegalArgumentException if length is less than 12 characters
+     * @throws RuntimeException if secure password generation fails after multiple attempts
+     * @see #storeSecret(String, String)
+     * @see #storeEncryptedData(String, String)
+     * @see PasswordUtil#generateSecurePassword(int)
+     * @since 1.0
      */
     public String generateValidatedPassword(int length, boolean requireConfirmation) {
         String password;
@@ -756,18 +1304,84 @@ public class UserFriendlyEncryptionAPI {
     // ===== FORMATTING AND DISPLAY UTILITIES =====
     
     /**
-     * Format block information for user-friendly display
-     * @param block The block to format
-     * @return Formatted block information with truncated hashes and readable timestamps
+     * Format block information for user-friendly display with enhanced readability.
+     * 
+     * <p>This utility method transforms raw block data into a human-readable format suitable
+     * for console output, user interfaces, or reports. It applies intelligent formatting
+     * including hash truncation, timestamp conversion, and structured layout for optimal
+     * readability while preserving essential technical information.</p>
+     * 
+     * <p><strong>Formatting Features:</strong></p>
+     * <ul>
+     *   <li><strong>Hash Truncation:</strong> Long hashes shortened with ellipsis for readability</li>
+     *   <li><strong>Readable Timestamps:</strong> ISO format dates with timezone information</li>
+     *   <li><strong>Status Indicators:</strong> Visual icons for encryption, validation status</li>
+     *   <li><strong>Size Information:</strong> Data size in human-readable units (KB, MB)</li>
+     *   <li><strong>Security Metadata:</strong> Encryption algorithm, signature status</li>
+     * </ul>
+     * 
+     * <p><strong>Usage Example:</strong></p>
+     * <pre>{@code
+     * Block block = api.storeSecret("Medical data", "password");
+     * String formatted = api.formatBlockDisplay(block);
+     * System.out.println(formatted);
+     * 
+     * // Output example:
+     * // 📚 Block #1234 [✓ Valid] 🔒 Encrypted
+     * // Hash: a1b2c3d4...789xyz (truncated)
+     * // Time: 2024-07-14 10:30:45 UTC
+     * // Size: 2.5 KB (encrypted)
+     * // Signature: Valid (alice-medical)
+     * }</pre>
+     * 
+     * @param block The {@link Block} to format for display. Must not be null.
+     * @return A formatted {@link String} containing user-friendly block information
+     *         with visual indicators, truncated hashes, and readable timestamps.
+     *         Returns "Invalid block" if block is null.
+     * @see #formatBlocksSummary(List)
+     * @see FormatUtil#formatBlockInfo(Block)
+     * @since 1.0
      */
     public String formatBlockDisplay(Block block) {
         return FormatUtil.formatBlockInfo(block);
     }
     
     /**
-     * Format a list of blocks as a summary table
-     * @param blocks List of blocks to format
-     * @return Formatted table with block information
+     * Format a list of blocks as a comprehensive summary table with statistics.
+     * 
+     * <p>This method creates a well-formatted table view of multiple blocks with summary
+     * statistics, making it ideal for displaying search results, validation reports, or
+     * blockchain overviews. The table includes essential information for each block plus
+     * aggregate statistics for the entire set.</p>
+     * 
+     * <p><strong>Table Features:</strong></p>
+     * <ul>
+     *   <li><strong>Tabular Layout:</strong> Aligned columns with headers and borders</li>
+     *   <li><strong>Key Information:</strong> Block number, hash, timestamp, size, status</li>
+     *   <li><strong>Visual Indicators:</strong> Icons for encryption, validation, categories</li>
+     *   <li><strong>Summary Statistics:</strong> Total blocks, encrypted count, size totals</li>
+     *   <li><strong>Sorting:</strong> Blocks ordered by number for logical presentation</li>
+     * </ul>
+     * 
+     * <p><strong>Usage Examples:</strong></p>
+     * <pre>{@code
+     * // Format search results
+     * List<Block> searchResults = api.searchByTerms(new String[]{"medical"}, null, 10);
+     * String table = api.formatBlocksSummary(searchResults);
+     * System.out.println(table);
+     * 
+     * // Format all blocks for overview
+     * List<Block> allBlocks = blockchain.getAllBlocks();
+     * String overview = api.formatBlocksSummary(allBlocks);
+     * Files.write(Paths.get("blockchain-overview.txt"), overview.getBytes());
+     * }</pre>
+     * 
+     * @param blocks A {@link List} of {@link Block} objects to format into a summary table.
+     *              Can be null or empty - will return appropriate message.
+     * @return A formatted {@link String} containing a table with block information and
+     *         summary statistics. Returns "No blocks to display" if list is empty/null.
+     * @see #formatBlockDisplay(Block)
+     * @since 1.0
      */
     public String formatBlocksSummary(List<Block> blocks) {
         if (blocks == null || blocks.isEmpty()) {
@@ -2150,12 +2764,68 @@ public class UserFriendlyEncryptionAPI {
     }
     
     /**
-     * Search by explicit search terms
-     * Replaces category-specific search with term-based search
-     * @param searchTerms Array of terms to search for
-     * @param password Password for decrypting search results
-     * @param maxResults Maximum number of results to return
-     * @return List of matching blocks
+     * Search blockchain data using multiple search terms with granular privacy control.
+     * 
+     * <p>This method provides flexible multi-term search with support for both public metadata
+     * and encrypted content. It implements a two-tier search strategy that respects privacy
+     * settings while providing comprehensive search capabilities.</p>
+     * 
+     * <p><strong>Two-Tier Search Strategy:</strong></p>
+     * <ol>
+     *   <li><strong>Public Search:</strong> Searches public metadata and identifiers (no password needed)</li>
+     *   <li><strong>Private Search:</strong> Searches encrypted keywords and content (password required)</li>
+     * </ol>
+     * 
+     * <p><strong>Privacy Features:</strong></p>
+     * <ul>
+     *   <li>Respects granular term visibility settings</li>
+     *   <li>Public terms searchable without password</li>
+     *   <li>Private terms require password for decryption</li>
+     *   <li>Combines results from both tiers intelligently</li>
+     * </ul>
+     * 
+     * <p><strong>Performance Optimizations:</strong></p>
+     * <ul>
+     *   <li>Public search executes first (faster, no decryption)</li>
+     *   <li>Private search only if password provided</li>
+     *   <li>Results limited to maxResults for efficiency</li>
+     *   <li>Duplicate elimination across search tiers</li>
+     * </ul>
+     * 
+     * <p><strong>Usage Examples:</strong></p>
+     * <pre>{@code
+     * // Public search (no sensitive data exposed)
+     * String[] publicTerms = {"medical", "cardiology", "consultation"};
+     * List<Block> publicResults = api.searchByTerms(publicTerms, null, 20);
+     * 
+     * // Private search (with password for sensitive data)
+     * String[] privateTerms = {"patient-001", "john-doe", "diagnosis"};
+     * List<Block> privateResults = api.searchByTerms(privateTerms, "medicalPassword", 20);
+     * 
+     * // Mixed search (finds both public and private matches)
+     * String[] mixedTerms = {"diabetes", "patient-001", "insulin"};
+     * List<Block> mixedResults = api.searchByTerms(mixedTerms, "medicalPassword", 50);
+     * }</pre>
+     * 
+     * @param searchTerms Array of search terms to look for. Each term is searched independently
+     *                   and results are combined. Terms can be:
+     *                   <ul>
+     *                     <li>Public identifiers (searchable without password)</li>
+     *                     <li>Private keywords (require password for decryption)</li>
+     *                     <li>Medical/financial/legal terms stored as metadata</li>
+     *                   </ul>
+     * @param password Optional password for searching encrypted content. If null, only public
+     *                metadata is searched. If provided, both public and private terms are searched.
+     * @param maxResults Maximum number of results to return. Used to limit result set size
+     *                  for performance. Must be positive integer.
+     * @return A {@link List} of {@link Block} objects matching any of the search terms.
+     *         Results are ordered by relevance and limited to maxResults. Returns empty
+     *         list if no matches found or if searchTerms is null/empty.
+     * @throws IllegalArgumentException if maxResults is negative or searchTerms contains invalid data
+     * @see #storeSearchableDataWithLayers(String, String, String[], String[])
+     * @see #storeDataWithGranularTermControl(String, String, Set, TermVisibilityMap)
+     * @see #findRecordsByIdentifier(String)
+     * @since 1.0
      */
     public List<Block> searchByTerms(String[] searchTerms, String password, int maxResults) {
         if (searchTerms == null || searchTerms.length == 0) {
@@ -2197,11 +2867,47 @@ public class UserFriendlyEncryptionAPI {
     }
     
     /**
-     * Search by terms with automatic decryption
-     * @param searchTerms Array of terms to search for
-     * @param password Password for decryption
-     * @param maxResults Maximum number of results to return
-     * @return List of matching decrypted blocks
+     * Search by terms with automatic decryption and result post-processing.
+     * 
+     * <p>This convenience method combines search and decryption operations in a single call.
+     * It first searches for blocks matching the specified terms, then automatically decrypts
+     * each found block for immediate use in applications requiring decrypted content.</p>
+     * 
+     * <p><strong>Security Features:</strong></p>
+     * <ul>
+     *   <li>Safe fallback: encrypted blocks included if decryption fails</li>
+     *   <li>Password validation before attempting decryption</li>
+     *   <li>Comprehensive error logging for debugging</li>
+     *   <li>Result sanitization to prevent data leakage</li>
+     * </ul>
+     * 
+     * <p><strong>Usage Example:</strong></p>
+     * <pre>{@code
+     * UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, "user", keyPair);
+     * String[] terms = {"medical", "patient-001", "diagnosis"};
+     * List<Block> decryptedResults = api.searchAndDecryptByTerms(terms, "password123", 10);
+     * 
+     * for (Block block : decryptedResults) {
+     *     if (block.isDataEncrypted()) {
+     *         // Block data now contains decrypted content for immediate use
+     *         System.out.println("Decrypted data: " + block.getData());
+     *     }
+     * }
+     * }</pre>
+     * 
+     * @param searchTerms Array of search terms to look for. Must not be null or empty.
+     *                   Each term is processed through the two-tier search strategy.
+     * @param password Password for decrypting found blocks. If null, blocks are returned
+     *                in their original encrypted state.
+     * @param maxResults Maximum number of results to return. Must be positive integer
+     *                  to prevent performance issues with large result sets.
+     * @return A {@link List} of {@link Block} objects with decrypted data where possible.
+     *         If decryption fails for a block, the original encrypted block is included.
+     *         Returns empty list if no matches found.
+     * @throws IllegalArgumentException if searchTerms is null/empty or maxResults is negative
+     * @see #searchByTerms(String[], String, int)
+     * @see #retrieveSecret(Long, String)
+     * @since 1.0
      */
     public List<Block> searchAndDecryptByTerms(String[] searchTerms, String password, int maxResults) {
         List<Block> encryptedResults = searchByTerms(searchTerms, password, maxResults);
@@ -2423,10 +3129,61 @@ public class UserFriendlyEncryptionAPI {
     // ===== PHASE 1: ADVANCED KEY MANAGEMENT =====
     
     /**
-     * Setup hierarchical key management system with root, intermediate, and operational keys
-     * Creates a complete three-tier key hierarchy for enterprise security
-     * @param masterPassword Master password for securing the key hierarchy
-     * @return KeyManagementResult with detailed information about created keys
+     * Setup enterprise-grade hierarchical key management system with three-tier architecture.
+     * 
+     * <p>This method establishes a complete hierarchical key infrastructure following
+     * industry best practices for enterprise security. The three-tier architecture provides
+     * different security levels and key rotation policies to balance security with operational
+     * efficiency in enterprise blockchain deployments.</p>
+     * 
+     * <p><strong>Three-Tier Key Hierarchy:</strong></p>
+     * <ul>
+     *   <li><strong>Root Key (Tier 1):</strong> Master signing authority, 5-year validity, highest security</li>
+     *   <li><strong>Intermediate Key (Tier 2):</strong> Operational signing, 1-year validity, signed by root</li>
+     *   <li><strong>Operational Key (Tier 3):</strong> Daily operations, 90-day validity, signed by intermediate</li>
+     * </ul>
+     * 
+     * <p><strong>Security Features:</strong></p>
+     * <ul>
+     *   <li><strong>Hierarchical Trust Chain:</strong> Each tier signs the next level</li>
+     *   <li><strong>Automatic Key Rotation:</strong> Different validity periods for each tier</li>
+     *   <li><strong>Secure Storage:</strong> All keys encrypted with master password</li>
+     *   <li><strong>Cryptographic Validation:</strong> ECDSA signatures for authenticity</li>
+     *   <li><strong>Enterprise Compliance:</strong> Follows PKI best practices</li>
+     * </ul>
+     * 
+     * <p><strong>Usage Examples:</strong></p>
+     * <pre>{@code
+     * // Setup hierarchical keys for enterprise deployment
+     * UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+     * String masterPassword = api.generateValidatedPassword(16, true);
+     * KeyManagementResult result = api.setupHierarchicalKeys(masterPassword);
+     * 
+     * // Process key management results
+     * System.out.println("Root Key ID: " + result.getRootKeyId());
+     * System.out.println("Intermediate Key ID: " + result.getIntermediateKeyId());
+     * System.out.println("Operational Key ID: " + result.getOperationalKeyId());
+     * System.out.println("Setup completed in: " + result.getSetupDuration());
+     * 
+     * // Verify key hierarchy
+     * if (result.isHierarchyValid()) {
+     *     System.out.println("✅ Key hierarchy established successfully");
+     *     System.out.println("Key rotation schedule: " + result.getRotationSchedule());
+     * }
+     * }</pre>
+     * 
+     * @param masterPassword The master password for encrypting and securing the entire key hierarchy.
+     *                      Must be at least 8 characters long. Use {@link #generateValidatedPassword(int, boolean)}
+     *                      for cryptographically secure master passwords.
+     * @return A {@link KeyManagementResult} containing detailed information about the created
+     *         key hierarchy including key IDs, validity periods, setup duration, and hierarchy
+     *         verification status. Never returns null.
+     * @throws IllegalArgumentException if masterPassword is null, empty, or less than 8 characters
+     * @throws SecurityException if key generation or storage fails due to cryptographic errors
+     * @see #generateValidatedPassword(int, boolean)
+     * @see #loadHierarchicalKeys(String)
+     * @see KeyManagementResult
+     * @since 1.0
      */
     public KeyManagementResult setupHierarchicalKeys(String masterPassword) {
         logger.info("🔑 Setting up hierarchical key management system");
@@ -2546,8 +3303,42 @@ public class UserFriendlyEncryptionAPI {
     }
     
     /**
-     * Perform comprehensive blockchain validation including signatures, hashes, and off-chain data
-     * @return ValidationReport with detailed analysis
+     * Perform comprehensive blockchain validation with detailed analysis and reporting.
+     * 
+     * <p>This method conducts an exhaustive validation of the entire blockchain including
+     * cryptographic verification, data integrity checks, and structural analysis. It provides
+     * enterprise-grade validation suitable for compliance audits and security assessments.</p>
+     * 
+     * <p><strong>Comprehensive Validation Features:</strong></p>
+     * <ul>
+     *   <li><strong>Cryptographic Verification:</strong> Digital signatures, hash integrity</li>
+     *   <li><strong>Data Integrity:</strong> Block content validation, off-chain data verification</li>
+     *   <li><strong>Structural Analysis:</strong> Chain consistency, timestamp validation</li>
+     *   <li><strong>Security Assessment:</strong> Encryption status, key validity</li>
+     *   <li><strong>Performance Analysis:</strong> Storage efficiency, corruption detection</li>
+     * </ul>
+     * 
+     * <p><strong>Usage Example:</strong></p>
+     * <pre>{@code
+     * UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+     * ValidationReport report = api.performComprehensiveValidation();
+     * 
+     * if (report.isValid()) {
+     *     System.out.println("✅ Blockchain validation passed");
+     *     System.out.println("Blocks validated: " + report.getTotalBlocks());
+     *     System.out.println("Off-chain files: " + report.getOffChainFiles());
+     * } else {
+     *     System.out.println("❌ Blockchain validation failed");
+     *     System.out.println("Issues found: " + report.getIssues());
+     * }
+     * }</pre>
+     * 
+     * @return A {@link ValidationReport} containing detailed validation results including
+     *         pass/fail status, block counts, issue descriptions, performance metrics,
+     *         and actionable recommendations. Never returns null.
+     * @see #performComprehensiveValidation(Map)
+     * @see #validateChainIntegrity()
+     * @since 1.0
      */
     public ValidationReport performComprehensiveValidation() {
         logger.info("🔍 Starting comprehensive blockchain validation");
@@ -2839,10 +3630,48 @@ public class UserFriendlyEncryptionAPI {
     }
     
     /**
-     * Validate key hierarchy structure and integrity
-     * Performs comprehensive validation of hierarchical key relationships
-     * @param keyId Key ID to validate
-     * @return ValidationReport with hierarchy validation results
+     * Validate hierarchical key structure and cryptographic integrity.
+     * 
+     * <p>This method performs comprehensive validation of the hierarchical key management
+     * system, verifying trust chains, key relationships, expiration dates, and cryptographic
+     * integrity. It ensures that the key hierarchy maintains proper security levels and
+     * operational validity according to enterprise PKI standards.</p>
+     * 
+     * <p><strong>Key Hierarchy Validation:</strong></p>
+     * <ul>
+     *   <li><strong>Trust Chain Verification:</strong> Root → Intermediate → Operational key signatures</li>
+     *   <li><strong>Expiration Checking:</strong> Validates key validity periods and rotation schedules</li>
+     *   <li><strong>Cryptographic Integrity:</strong> ECDSA signature verification for each tier</li>
+     *   <li><strong>Authority Validation:</strong> Ensures proper signing authorities in hierarchy</li>
+     *   <li><strong>Security Compliance:</strong> Verifies adherence to enterprise security policies</li>
+     * </ul>
+     * 
+     * <p><strong>Usage Examples:</strong></p>
+     * <pre>{@code
+     * // Validate a specific key in the hierarchy
+     * ValidationReport report = api.validateKeyHierarchy("operational_key_123");
+     * 
+     * if (report.isValid()) {
+     *     System.out.println("✅ Key hierarchy is valid");
+     *     System.out.println("Key level: " + report.getKeyLevel());
+     *     System.out.println("Trust chain: " + report.getTrustChain());
+     * } else {
+     *     System.out.println("❌ Key hierarchy validation failed");
+     *     for (String issue : report.getIssues()) {
+     *         System.out.println("- " + issue);
+     *     }
+     * }
+     * }</pre>
+     * 
+     * @param keyId The unique identifier of the key to validate within the hierarchy.
+     *             Must not be null or empty. Can be root, intermediate, or operational key ID.
+     * @return A {@link ValidationReport} containing hierarchy validation results including
+     *         trust chain status, expiration information, security compliance, and any
+     *         issues found in the key relationships. Never returns null.
+     * @throws IllegalArgumentException if keyId is null or empty
+     * @see #setupHierarchicalKeys(String)
+     * @see #validateKeyManagement(Map)
+     * @since 1.0
      */
     public ValidationReport validateKeyHierarchy(String keyId) {
         logger.info("🔍 Validating key hierarchy for key: {}", keyId);
@@ -4056,12 +4885,73 @@ public class UserFriendlyEncryptionAPI {
     // ===== PHASE 2: ADVANCED EXHAUSTIVE SEARCH METHODS =====
     
     /**
-     * Perform advanced multi-criteria search with relevance scoring
-     * Combines keyword, regex, and semantic matching with intelligent ranking
-     * @param searchCriteria Map of search criteria (keywords, regex, timeRange, categories)
-     * @param password Optional password for encrypted content
-     * @param maxResults Maximum number of results to return
-     * @return AdvancedSearchResult with rich metadata and analytics
+     * Perform advanced multi-criteria search with relevance scoring and comprehensive analytics.
+     * 
+     * <p>This enterprise-grade search method combines multiple search strategies including
+     * keyword matching, regular expressions, semantic analysis, time-range filtering, and
+     * category-based searches. Results are ranked by relevance and include detailed metadata
+     * for each match to facilitate advanced search applications.</p>
+     * 
+     * <p><strong>Search Capabilities:</strong></p>
+     * <ul>
+     *   <li><strong>Multi-Strategy Search:</strong> Keywords, regex patterns, semantic matching</li>
+     *   <li><strong>Time-Range Filtering:</strong> Search within specific date/time periods</li>
+     *   <li><strong>Category-Based Search:</strong> Filter by content categories (medical, financial, etc.)</li>
+     *   <li><strong>Encrypted Content Support:</strong> Decrypt and search private data with password</li>
+     *   <li><strong>Off-Chain Data Integration:</strong> Search across blockchain and off-chain storage</li>
+     *   <li><strong>Relevance Scoring:</strong> Intelligent ranking based on match quality and frequency</li>
+     * </ul>
+     * 
+     * <p><strong>Search Criteria Map Keys:</strong></p>
+     * <ul>
+     *   <li><code>"keywords"</code> (String): Space-separated search terms</li>
+     *   <li><code>"regex"</code> (String): Regular expression pattern for advanced matching</li>
+     *   <li><code>"startDate"</code> (LocalDateTime): Search from this date/time</li>
+     *   <li><code>"endDate"</code> (LocalDateTime): Search until this date/time</li>
+     *   <li><code>"categories"</code> (Set&lt;String&gt;): Content categories to include</li>
+     *   <li><code>"includeEncrypted"</code> (Boolean): Whether to search encrypted content</li>
+     * </ul>
+     * 
+     * <p><strong>Usage Examples:</strong></p>
+     * <pre>{@code
+     * // Basic keyword search with time range
+     * Map<String, Object> criteria = new HashMap<>();
+     * criteria.put("keywords", "medical diagnosis patient");
+     * criteria.put("startDate", LocalDateTime.of(2024, 1, 1, 0, 0));
+     * criteria.put("endDate", LocalDateTime.of(2024, 12, 31, 23, 59));
+     * AdvancedSearchResult result = api.performAdvancedSearch(criteria, "password", 50);
+     * 
+     * // Regex search for specific patterns
+     * Map<String, Object> regexCriteria = new HashMap<>();
+     * regexCriteria.put("regex", "patient-\\d{3,6}");  // Find patient IDs
+     * regexCriteria.put("categories", Set.of("medical", "healthcare"));
+     * regexCriteria.put("includeEncrypted", true);
+     * AdvancedSearchResult regexResult = api.performAdvancedSearch(regexCriteria, "medPass", 25);
+     * 
+     * // Process results with analytics
+     * for (AdvancedSearchResult.SearchMatch match : result.getMatches()) {
+     *     System.out.println("Block #" + match.getBlock().getBlockNumber() + 
+     *                       " - Relevance: " + match.getRelevanceScore());
+     *     System.out.println("Matched terms: " + match.getMatchedTerms());
+     *     System.out.println("Context: " + match.getSnippets());
+     * }
+     * }</pre>
+     * 
+     * @param searchCriteria A {@link Map} containing search parameters. Supported keys include:
+     *                      "keywords", "regex", "startDate", "endDate", "categories", "includeEncrypted".
+     *                      Must not be null. Empty map performs unrestricted search.
+     * @param password Optional password for decrypting and searching encrypted content.
+     *                If null, only public metadata and unencrypted content is searched.
+     * @param maxResults Maximum number of results to return. Must be positive to prevent
+     *                  performance issues. Results are ranked by relevance.
+     * @return An {@link AdvancedSearchResult} containing matched blocks with relevance scores,
+     *         search analytics, performance metrics, and detailed match information.
+     *         Never returns null - empty results are indicated by empty matches list.
+     * @throws IllegalArgumentException if searchCriteria is null or maxResults is negative
+     * @see #searchByTerms(String[], String, int)
+     * @see #findEncryptedData(String, String)
+     * @see AdvancedSearchResult
+     * @since 1.0
      */
     public AdvancedSearchResult performAdvancedSearch(Map<String, Object> searchCriteria, 
                                                      String password, int maxResults) {
@@ -5709,11 +6599,59 @@ public class UserFriendlyEncryptionAPI {
     }
     
     /**
-     * Create recovery checkpoint for quick rollback
-     * Saves current blockchain state for future recovery operations
-     * @param type Type of checkpoint to create
-     * @param description Description of the checkpoint
-     * @return Created checkpoint
+     * Create a recovery checkpoint for blockchain state preservation and rollback capabilities.
+     * 
+     * <p>This method creates a comprehensive snapshot of the current blockchain state that can
+     * be used for disaster recovery, rollback operations, or state verification. The checkpoint
+     * captures critical blockchain metadata, hash chains, and integrity information needed
+     * for reliable recovery operations in enterprise environments.</p>
+     * 
+     * <p><strong>Checkpoint Features:</strong></p>
+     * <ul>
+     *   <li><strong>State Preservation:</strong> Complete blockchain state snapshot</li>
+     *   <li><strong>Integrity Verification:</strong> Hash chains and critical block hashes</li>
+     *   <li><strong>Metadata Capture:</strong> Block counts, validation status, timestamps</li>
+     *   <li><strong>Quick Recovery:</strong> Optimized for fast rollback operations</li>
+     *   <li><strong>Multiple Types:</strong> Manual, automatic, scheduled, emergency checkpoints</li>
+     * </ul>
+     * 
+     * <p><strong>Checkpoint Types:</strong></p>
+     * <ul>
+     *   <li><strong>MANUAL:</strong> User-initiated checkpoint for specific operations</li>
+     *   <li><strong>AUTOMATIC:</strong> System-generated periodic checkpoints</li>
+     *   <li><strong>SCHEDULED:</strong> Time-based scheduled preservation points</li>
+     *   <li><strong>EMERGENCY:</strong> Critical state preservation before risky operations</li>
+     * </ul>
+     * 
+     * <p><strong>Usage Examples:</strong></p>
+     * <pre>{@code
+     * // Create manual checkpoint before major operation
+     * RecoveryCheckpoint checkpoint = api.createRecoveryCheckpoint(
+     *     RecoveryCheckpoint.CheckpointType.MANUAL, 
+     *     "Before data migration - 1000 medical records");
+     * 
+     * // Create emergency checkpoint before risky operation
+     * RecoveryCheckpoint emergency = api.createRecoveryCheckpoint(
+     *     RecoveryCheckpoint.CheckpointType.EMERGENCY, 
+     *     "Before experimental encryption algorithm testing");
+     * 
+     * // Verify checkpoint creation
+     * System.out.println("Checkpoint ID: " + checkpoint.getCheckpointId());
+     * System.out.println("Blocks captured: " + checkpoint.getTotalBlocks());
+     * System.out.println("Last block: #" + checkpoint.getLastBlockNumber());
+     * }</pre>
+     * 
+     * @param type The {@link RecoveryCheckpoint.CheckpointType} indicating the purpose and
+     *            scheduling of this checkpoint. Determines retention policies and priority.
+     * @param description A human-readable description of the checkpoint purpose. Should include
+     *                   context about why the checkpoint was created and what operation it precedes.
+     * @return A {@link RecoveryCheckpoint} object containing the complete state snapshot with
+     *         checkpoint ID, creation timestamp, integrity hashes, and recovery metadata.
+     *         Never returns null.
+     * @throws RuntimeException if checkpoint creation fails due to blockchain access issues
+     * @see RecoveryCheckpoint.CheckpointType
+     * @see #recoverFromCheckpoint(String)
+     * @since 1.0
      */
     public RecoveryCheckpoint createRecoveryCheckpoint(RecoveryCheckpoint.CheckpointType type, String description) {
         logger.info("📍 Creating {} recovery checkpoint: {}", type.getDisplayName(), description);
