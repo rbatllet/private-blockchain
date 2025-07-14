@@ -43,7 +43,7 @@ This is a **private blockchain** for controlled environments where only authoriz
 
 ### Advanced Functions
 - **Export/Import**: Backup and restore complete blockchain with temporal consistency
-- **Revolutionary Search System**: Multi-level search with TRUE exhaustive capabilities
+- **Advanced Search System**: Multi-level search with TRUE exhaustive capabilities
   - **Fast Search**: Keywords-only search for optimal performance
   - **Data Search**: Keywords + block content with balanced performance
   - **TRUE Exhaustive Search**: Complete search across on-chain content AND off-chain files
@@ -51,7 +51,7 @@ This is a **private blockchain** for controlled environments where only authoriz
   - **Category Search**: Filter blocks by content categories (MEDICAL, FINANCE, TECHNICAL, LEGAL)
   - **Auto Keywords**: Automatic extraction of dates, numbers, emails, codes, and universal elements
   - **Search Validation**: Intelligent minimum length requirements with exceptions for useful short terms
-  - **Mixed Content Search**: Unified search across encrypted/plain text, on-chain/off-chain content
+  - **Mixed Content Search**: Advanced search across encrypted/plain text, on-chain/off-chain content
 - **Rollback Operations**: Safe removal of recent blocks with genesis protection
 - **Off-Chain Storage**: Automatic storage for large data (>512KB) with AES-GCM encryption
 - **Data Size Management**: Intelligent data placement based on configurable size thresholds
@@ -94,7 +94,7 @@ This is a **private blockchain** for controlled environments where only authoriz
 
 **NEW**: Comprehensive encryption and blockchain management API that simplifies complex operations:
 
-- **🎯 Unified Interface**: Single API for all encryption, search, storage, and recovery operations
+- **🎯 Complete Interface**: Single API for all encryption, search, storage, and recovery operations
 - **🔍 Advanced Search**: Multi-level search (fast/balanced/exhaustive) with encrypted content support
 - **🔑 Smart Key Management**: Hierarchical key system with automatic rotation and secure storage
 - **📊 Health Monitoring**: Real-time validation, integrity checks, and performance diagnostics
@@ -895,7 +895,7 @@ Configuration & Scripts:
 ├── run_security_analysis.zsh                     # Security analysis tests
 ├── run_security_tests.zsh                        # Security tests runner
 ├── run_eckeyderivation_tests.zsh                 # Elliptic curve key derivation tests
-├── run_revolutionary_search_demo.zsh            # ✨ NEW: Revolutionary search system demonstration script
+├── run_search_framework_demo.zsh               # ✨ NEW: Search framework system demonstration script
 ├── test_race_condition_fix.zsh                   # Race condition testing
 ├── test_thread_safety_full.zsh                  # ✨ ENHANCED: Comprehensive thread safety (production)
 ├── test_thread_safety_simple.zsh               # ✨ NEW: Simple thread safety with detailed logging (debug)
@@ -1015,7 +1015,7 @@ source ./scripts/shared-functions.zsh
 **Thread Safety**: `test_thread_safety_full.zsh`, `test_thread_safety_simple.zsh`, `run_thread_safety_test.zsh`, `run_advanced_thread_safety_tests.zsh`  
 **Data Consistency**: `test_data_consistency.zsh`, `test_export_import.zsh`, `test_validation.zsh`  
 **Security & Recovery**: `run_security_tests.zsh`, `run_recovery_tests.zsh`, `run_security_analysis.zsh`  
-**Demonstrations**: `run_api_migration_demo.zsh`, `run_crypto_security_demo.zsh`, `run_enhanced_dangerous_delete_demo.zsh`, `run_revolutionary_search_demo.zsh`  
+**Demonstrations**: `run_api_migration_demo.zsh`, `run_crypto_security_demo.zsh`, `run_enhanced_dangerous_delete_demo.zsh`, `run_advanced_search_demo.zsh`  
 **Utilities**: `clean-database.zsh`, `scripts/shared-functions.zsh`, `scripts/check-db-cleanup.zsh`
 
 All scripts provide automatic database cleanup, environment management, and comprehensive result reporting. Enhanced scripts include detailed validation output with off-chain data analysis.
@@ -1348,9 +1348,12 @@ public class BlockchainExample {
 This project includes comprehensive documentation for different use cases:
 
 ### 📖 User Guides
+- **[GETTING_STARTED.md](docs/GETTING_STARTED.md)** - Quick start guide with essential examples and security practices
 - **[EXAMPLES.md](docs/EXAMPLES.md)** - Real-world use cases and workflow patterns
 - **[API_GUIDE.md](docs/API_GUIDE.md)** - Complete API reference and core functions + **UserFriendlyEncryptionAPI** comprehensive guide
-- **[SEARCH_GUIDE.md](docs/SEARCH_GUIDE.md)** - Comprehensive hybrid search system guide with practical examples
+- **[SEARCH_APIS_COMPARISON.md](docs/SEARCH_APIS_COMPARISON.md)** - 🎯 **Which search API to use? Complete comparison and recommendations**
+- **[USER_FRIENDLY_SEARCH_GUIDE.md](docs/USER_FRIENDLY_SEARCH_GUIDE.md)** - UserFriendlyEncryptionAPI search functionality guide
+- **[SEARCH_FRAMEWORK_GUIDE.md](docs/SEARCH_FRAMEWORK_GUIDE.md)** - Search Framework Engine comprehensive guide
 - **[EXHAUSTIVE_SEARCH_GUIDE.md](docs/EXHAUSTIVE_SEARCH_GUIDE.md)** - TRUE exhaustive search across on-chain and off-chain content 🔍
 - **[SEARCH_COMPARISON.md](docs/SEARCH_COMPARISON.md)** - Complete comparison of all 5 search types with performance benchmarks 📊
 - **[TESTING.md](docs/TESTING.md)** - Comprehensive testing guide and troubleshooting
@@ -1359,11 +1362,14 @@ This project includes comprehensive documentation for different use cases:
 - **[LOGGING.md](docs/LOGGING.md)** - 📊 **Professional logging system with SLF4J** - Configuration modes, performance optimization, and structured logging
 
 ### 🔐 Security & Encryption
+- **[SECURITY_GUIDE.md](docs/SECURITY_GUIDE.md)** - Security best practices and guidelines for production environments
+- **[KEY_MANAGEMENT_GUIDE.md](docs/KEY_MANAGEMENT_GUIDE.md)** - Hierarchical key management with rotation and recovery
 - **[ENCRYPTION_GUIDE.md](docs/ENCRYPTION_GUIDE.md)** - Block encryption and metadata layer management
 - **[ENCRYPTED_EXPORT_IMPORT_GUIDE.md](docs/ENCRYPTED_EXPORT_IMPORT_GUIDE.md)** - Encrypted chain export/import procedures
 - **[ENHANCED_VALIDATION_GUIDE.md](docs/ENHANCED_VALIDATION_GUIDE.md)** - Advanced chain validation techniques
 
 ### 🏢 Technical & Production
+- **[TROUBLESHOOTING_GUIDE.md](docs/TROUBLESHOOTING_GUIDE.md)** - Common issues and solutions with diagnostic tools
 - **[TECHNICAL_DETAILS.md](docs/TECHNICAL_DETAILS.md)** - Database schema, security model, architecture
 - **[PRODUCTION_GUIDE.md](docs/PRODUCTION_GUIDE.md)** - Production deployment and operational guidelines
 - **[THREAD_SAFETY_TESTS.md](docs/THREAD_SAFETY_TESTS.md)** - Thread safety testing guide and validation
@@ -1372,10 +1378,16 @@ This project includes comprehensive documentation for different use cases:
 
 | What you want to do | Go to |
 |---------------------|-------|
+| **Get started quickly with examples** | [GETTING_STARTED.md](docs/GETTING_STARTED.md) |
+| **Choose the right search API** | [SEARCH_APIS_COMPARISON.md](docs/SEARCH_APIS_COMPARISON.md) |
 | **Use the simplified encryption API** | **README.md - User-Friendly Encryption API section** |
 | See real-world examples and use cases | [EXAMPLES.md](docs/EXAMPLES.md) |
 | Learn the complete API and core functions | [API_GUIDE.md](docs/API_GUIDE.md) |
-| Implement advanced search functionality | [SEARCH_GUIDE.md](docs/SEARCH_GUIDE.md) |
+| Implement UserFriendlyAPI search functionality | [USER_FRIENDLY_SEARCH_GUIDE.md](docs/USER_FRIENDLY_SEARCH_GUIDE.md) |
+| Use Search Framework Engine | [SEARCH_FRAMEWORK_GUIDE.md](docs/SEARCH_FRAMEWORK_GUIDE.md) |
+| Manage keys and security | [KEY_MANAGEMENT_GUIDE.md](docs/KEY_MANAGEMENT_GUIDE.md) |
+| Follow security best practices | [SECURITY_GUIDE.md](docs/SECURITY_GUIDE.md) |
+| Troubleshoot common issues | [TROUBLESHOOTING_GUIDE.md](docs/TROUBLESHOOTING_GUIDE.md) |
 | Run comprehensive tests (795 tests, 72% coverage) | **README.md - Testing section** |
 | Run tests and troubleshoot issues | [TESTING.md](docs/TESTING.md) |
 | Understand technical implementation | [TECHNICAL_DETAILS.md](docs/TECHNICAL_DETAILS.md) |

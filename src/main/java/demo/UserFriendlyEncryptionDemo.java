@@ -115,21 +115,21 @@ public class UserFriendlyEncryptionDemo {
             System.out.println("🔍 Found " + decryptedFinancial.size() + " financial record(s) containing 'Mortgage'");
             System.out.println();
             
-            // 7. Unified search demonstrations
-            System.out.println("7️⃣ Unified search (all blockchain data)...");
+            // 7. Advanced search demonstrations
+            System.out.println("7️⃣ Advanced search (all blockchain data)...");
             
             // Add some public data for comparison
             blockchain.addBlock("Public announcement: New blockchain features available", userKeys.getPrivate(), userKeys.getPublic());
             blockchain.addBlock("System maintenance completed successfully", userKeys.getPrivate(), userKeys.getPublic());
             
-            // Revolutionary Search: Search everything
+            // Advanced Search: Search everything
             List<Block> publicSearch = api.searchEverything("blockchain");
-            System.out.println("🔍 Revolutionary search for 'blockchain':");
+            System.out.println("🔍 Advanced search for 'blockchain':");
             System.out.println("Found " + publicSearch.size() + " blocks");
             
-            // Revolutionary Search: Search with password
+            // Advanced Search: Search with password
             List<Block> passwordSearch = api.searchEverythingWithPassword("API", secretPassword);
-            System.out.println("🔍 Revolutionary search for 'API' with password:");
+            System.out.println("🔍 Advanced search for 'API' with password:");
             System.out.println("Found " + passwordSearch.size() + " blocks with full access");
             System.out.println();
             
@@ -151,7 +151,7 @@ public class UserFriendlyEncryptionDemo {
             System.out.println("   • Privacy-preserving metadata search");
             System.out.println("   • Secure retrieval with password protection");
             System.out.println("   • Advanced search with decryption capabilities");
-            System.out.println("   • Unified search across encrypted and public data");
+            System.out.println("   • Advanced search across encrypted and public data");
             System.out.println("   • Blockchain validation and integrity checking");
             System.out.println();
             System.out.println("🎉 User-Friendly Encryption API Demo completed successfully!");

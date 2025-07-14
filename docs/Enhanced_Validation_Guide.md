@@ -7,7 +7,7 @@
 > - [TESTING.md](TESTING.md) - Testing framework and guidelines
 > - [THREAD_SAFETY_TESTS.md](THREAD_SAFETY_TESTS.md) - Thread safety testing documentation
 > - [PRODUCTION_GUIDE.md](PRODUCTION_GUIDE.md) - Production deployment guidelines
-> - [SEARCH_GUIDE.md](SEARCH_GUIDE.md) - Revolutionary search system documentation
+> - [USER_FRIENDLY_SEARCH_GUIDE.md](USER_FRIENDLY_SEARCH_GUIDE.md) - Advanced search system documentation
 > - [ENCRYPTION_GUIDE.md](ENCRYPTION_GUIDE.md) - Encryption and security features
 
 This guide covers the enhanced `validateChainDetailed()` functionality and comprehensive off-chain data validation features implemented in the Private Blockchain system.

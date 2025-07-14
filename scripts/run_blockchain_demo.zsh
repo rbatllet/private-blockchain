@@ -100,7 +100,7 @@ print_separator
 # Display next steps
 print_info "Next steps:"
 echo "  1. Run 'scripts/run_crypto_security_demo.zsh' for encryption demonstrations"
-echo "  2. Run 'scripts/run_revolutionary_search_demo.zsh' for search capabilities"
+echo "  2. Run 'scripts/run_advanced_search_demo.zsh' for search capabilities"
 echo "  3. Run 'scripts/run_core_functions_demo.zsh' for comprehensive testing"
 echo ""
 print_success "Thank you for exploring Private Blockchain!"

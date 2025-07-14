@@ -3,9 +3,9 @@ package demo;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.entity.OffChainData;
-import com.rbatllet.blockchain.search.RevolutionarySearchEngine;
-import com.rbatllet.blockchain.search.RevolutionarySearchEngine.RevolutionarySearchResult;
-import com.rbatllet.blockchain.search.RevolutionarySearchEngine.EnhancedSearchResult;
+import com.rbatllet.blockchain.search.SearchFrameworkEngine;
+import com.rbatllet.blockchain.search.SearchFrameworkEngine.SearchResult;
+import com.rbatllet.blockchain.search.SearchFrameworkEngine.EnhancedSearchResult;
 import com.rbatllet.blockchain.search.OffChainMatch;
 import com.rbatllet.blockchain.service.OffChainStorageService;
 import com.rbatllet.blockchain.config.EncryptionConfig;
@@ -51,7 +51,7 @@ public class ExhaustiveSearchDemo {
             PublicKey publicKey = keyPair.getPublic();
             
             Blockchain blockchain = new Blockchain();
-            RevolutionarySearchEngine searchEngine = new RevolutionarySearchEngine(
+            SearchFrameworkEngine searchEngine = new SearchFrameworkEngine(
                 EncryptionConfig.createHighSecurityConfig());
             OffChainStorageService offChainService = new OffChainStorageService();
             
@@ -271,7 +271,7 @@ public class ExhaustiveSearchDemo {
         System.out.println("   📁 With off-chain files: 3 blocks");
     }
     
-    private static void performSearchDemo(RevolutionarySearchEngine searchEngine,
+    private static void performSearchDemo(SearchFrameworkEngine searchEngine,
                                         String searchTerm,
                                         String demoTitle,
                                         String password,
@@ -280,7 +280,7 @@ public class ExhaustiveSearchDemo {
         System.out.println("   " + "-".repeat(demoTitle.length() + 20));
         
         long startTime = System.nanoTime();
-        RevolutionarySearchResult result = searchEngine.searchExhaustiveOffChain(
+        SearchResult result = searchEngine.searchExhaustiveOffChain(
             searchTerm, password, privateKey, 20);
         long endTime = System.nanoTime();
         double searchTimeMs = (endTime - startTime) / 1_000_000.0;
@@ -331,7 +331,7 @@ public class ExhaustiveSearchDemo {
         }
     }
     
-    private static void performanceAnalysis(RevolutionarySearchEngine searchEngine,
+    private static void performanceAnalysis(SearchFrameworkEngine searchEngine,
                                           String password,
                                           PrivateKey privateKey) {
         System.out.println("🔍 Running performance analysis...");
@@ -342,7 +342,7 @@ public class ExhaustiveSearchDemo {
         
         for (String term : testTerms) {
             long startTime = System.nanoTime();
-            RevolutionarySearchResult result = searchEngine.searchExhaustiveOffChain(
+            SearchResult result = searchEngine.searchExhaustiveOffChain(
                 term, password, privateKey, 10);
             long endTime = System.nanoTime();
             
@@ -387,13 +387,13 @@ public class ExhaustiveSearchDemo {
         System.out.printf("   📈 Cache speedup: %.1fx faster\n", speedup);
     }
     
-    private static void securityValidation(RevolutionarySearchEngine searchEngine,
+    private static void securityValidation(SearchFrameworkEngine searchEngine,
                                          PrivateKey privateKey) {
         System.out.println("🔐 Testing security measures...");
         
         // Test with wrong password
         System.out.println("   🧪 Testing wrong password protection...");
-        RevolutionarySearchResult wrongPasswordResult = searchEngine.searchExhaustiveOffChain(
+        SearchResult wrongPasswordResult = searchEngine.searchExhaustiveOffChain(
             "confidential", "WrongPassword123!", privateKey, 10);
         
         if (wrongPasswordResult.isSuccessful()) {
@@ -405,7 +405,7 @@ public class ExhaustiveSearchDemo {
         
         // Test public-only search
         System.out.println("   🧪 Testing public-only search...");
-        RevolutionarySearchResult publicResult = searchEngine.searchPublicOnly("medical", 10);
+        SearchResult publicResult = searchEngine.searchPublicOnly("medical", 10);
         
         if (publicResult.isSuccessful()) {
             int publicCount = publicResult.getResultCount();
@@ -414,7 +414,7 @@ public class ExhaustiveSearchDemo {
         
         // Test encrypted-only search
         System.out.println("   🧪 Testing encrypted-only search...");
-        RevolutionarySearchResult encryptedResult = searchEngine.searchEncryptedOnly(
+        SearchResult encryptedResult = searchEngine.searchEncryptedOnly(
             "confidential", DEMO_PASSWORD, 10);
         
         if (encryptedResult.isSuccessful()) {

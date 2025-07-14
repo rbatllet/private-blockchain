@@ -3,7 +3,7 @@ package com.rbatllet.blockchain.search;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.config.EncryptionConfig;
-import com.rbatllet.blockchain.search.RevolutionarySearchEngine.*;
+import com.rbatllet.blockchain.search.SearchFrameworkEngine.*;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.*;
 
@@ -25,8 +25,8 @@ import static org.junit.jupiter.api.Assertions.*;
 public class EncryptedBlockThreadSafetyTest {
     
     private Blockchain blockchain;
-    private RevolutionarySearchEngine searchEngine;
-    private UnifiedRevolutionarySearchAPI unifiedAPI;
+    private SearchFrameworkEngine searchEngine;
+    private SearchSpecialistAPI specialistAPI;
     private PrivateKey testPrivateKey;
     private PublicKey testPublicKey;
     private String testPassword;
@@ -36,8 +36,8 @@ public class EncryptedBlockThreadSafetyTest {
     void setUp() throws Exception {
         blockchain = new Blockchain();
         config = EncryptionConfig.createBalancedConfig();
-        searchEngine = new RevolutionarySearchEngine(config);
-        unifiedAPI = new UnifiedRevolutionarySearchAPI(config);
+        searchEngine = new SearchFrameworkEngine(config);
+        specialistAPI = new SearchSpecialistAPI(config);
         testPassword = "ThreadSafetyTest2024!";
         
         KeyPair keyPair = CryptoUtil.generateKeyPair();
@@ -54,8 +54,8 @@ public class EncryptedBlockThreadSafetyTest {
         if (searchEngine != null) {
             searchEngine.shutdown();
         }
-        if (unifiedAPI != null) {
-            unifiedAPI.shutdown();
+        if (specialistAPI != null) {
+            specialistAPI.shutdown();
         }
     }
     
@@ -97,7 +97,7 @@ public class EncryptedBlockThreadSafetyTest {
                                 }
                             } else {
                                 // Search operation
-                                RevolutionarySearchResult result = searchEngine.searchPublicOnly("test", 5);
+                                SearchResult result = searchEngine.searchPublicOnly("test", 5);
                                 if (result != null && result.isSuccessful()) {
                                     searchOperations.incrementAndGet();
                                 }
@@ -219,10 +219,10 @@ public class EncryptedBlockThreadSafetyTest {
                             
                             // Mix of public and encrypted searches
                             if (j % 2 == 0) {
-                                RevolutionarySearchResult result = searchEngine.searchPublicOnly(query, 10);
+                                SearchResult result = searchEngine.searchPublicOnly(query, 10);
                                 assertNotNull(result);
                             } else {
-                                RevolutionarySearchResult result = searchEngine.searchEncryptedOnly(query, testPassword, 10);
+                                SearchResult result = searchEngine.searchEncryptedOnly(query, testPassword, 10);
                                 assertNotNull(result);
                             }
                             
@@ -301,7 +301,7 @@ public class EncryptedBlockThreadSafetyTest {
                             totalSearches.incrementAndGet();
                             
                             // Perform different types of searches
-                            RevolutionarySearchResult result;
+                            SearchResult result;
                             if (j % 3 == 0) {
                                 result = searchEngine.searchPublicOnly("test", 5);
                             } else if (j % 3 == 1) {
@@ -333,7 +333,7 @@ public class EncryptedBlockThreadSafetyTest {
         executor.shutdown();
         
         // Verify final state
-        RevolutionarySearchStats finalStats = searchEngine.getSearchStats();
+        SearchStats finalStats = searchEngine.getSearchStats();
         
         System.out.printf("📊 Search Integrity Results:%n");
         System.out.printf("  Total searches attempted: %d%n", totalSearches.get());

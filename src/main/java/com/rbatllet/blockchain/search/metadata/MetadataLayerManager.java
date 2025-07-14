@@ -16,7 +16,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 /**
- * Revolutionary Metadata Layer Manager for Encryption-First Search Architecture
+ * Advanced Metadata Layer Manager for Encryption-First Search Architecture
  * 
  * Manages three-layer metadata system:
  * - PublicLayer: Always searchable, no password required
@@ -25,7 +25,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
  * This component enables search without compromising privacy, providing
  * granular control over what information is exposed at each layer.
  * 
- * @version 1.0 - Revolutionary Architecture
+ * @version 1.0 - Advanced Architecture
  */
 public class MetadataLayerManager {
     

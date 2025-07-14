@@ -14,7 +14,7 @@ import java.util.Set;
 
 /**
  * Test class for metadata compression and encryption integration
- * Validates that metadata compression works with the Revolutionary Search architecture
+ * Validates that metadata compression works with the Advanced Search architecture
  */
 public class MetadataCompressionTest {
     

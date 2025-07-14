@@ -253,6 +253,6 @@ private void processEncryptedBlockKeywords(Block block, String[] manualKeywords,
 
 ## 🔗 Related Documentation
 
-- [Search Guide](SEARCH_GUIDE.md) - Comprehensive search functionality
+- [Search Guide](USER_FRIENDLY_SEARCH_GUIDE.md) - Comprehensive search functionality
 - [API Guide](API_GUIDE.md) - Complete API reference
 - [Security Classes Guide](SECURITY_CLASSES_GUIDE.md) - Security architecture details

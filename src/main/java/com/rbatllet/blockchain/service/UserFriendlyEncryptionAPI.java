@@ -17,7 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.rbatllet.blockchain.util.validation.BlockValidationUtil;
 import com.rbatllet.blockchain.entity.OffChainData;
-import com.rbatllet.blockchain.search.RevolutionarySearchEngine.EnhancedSearchResult;
+import com.rbatllet.blockchain.search.SearchFrameworkEngine.EnhancedSearchResult;
 import com.rbatllet.blockchain.search.metadata.TermVisibilityMap;
 import java.security.KeyPair;
 import java.security.PrivateKey;
@@ -33,7 +33,7 @@ import java.util.regex.Matcher;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import com.rbatllet.blockchain.search.RevolutionarySearchEngine;
+import com.rbatllet.blockchain.search.SearchFrameworkEngine;
 
 /**
  * User-friendly API for encrypted blockchain operations
@@ -312,7 +312,7 @@ public class UserFriendlyEncryptionAPI {
      *   <li>Searches only public metadata and identifiers</li>
      *   <li>Encrypted content remains protected</li>
      *   <li>Returns blocks without exposing sensitive data</li>
-     *   <li>Uses Revolutionary Search Engine for optimized performance</li>
+     *   <li>Uses Search Framework Engine for optimized performance</li>
      * </ul>
      * 
      * <p><strong>Use Cases:</strong></p>
@@ -346,8 +346,8 @@ public class UserFriendlyEncryptionAPI {
      * @since 1.0
      */
     public List<Block> findEncryptedData(String searchTerm) {
-        // Use Revolutionary Search public metadata search (no password required)
-        var enhancedResults = blockchain.getUnifiedSearchAPI().searchSimple(searchTerm, 50);
+        // Use Advanced Search public metadata search (no password required)
+        var enhancedResults = blockchain.getSearchSpecialistAPI().searchSimple(searchTerm, 50);
         List<Block> blocks = new ArrayList<>();
         for (var enhancedResult : enhancedResults) {
             try {
@@ -369,7 +369,7 @@ public class UserFriendlyEncryptionAPI {
      * encrypted blockchain data in a single operation. It uses adaptive decryption to handle
      * both metadata searches and encrypted content searches efficiently.</p>
      * 
-     * <p><strong>Revolutionary Search Features:</strong></p>
+     * <p><strong>Advanced Search Features:</strong></p>
      * <ul>
      *   <li>Searches both public metadata and encrypted content</li>
      *   <li>Adaptive decryption - tries multiple decryption strategies</li>
@@ -381,7 +381,7 @@ public class UserFriendlyEncryptionAPI {
      * <ol>
      *   <li>First searches public metadata (fast, no decryption needed)</li>
      *   <li>Then searches encrypted content using provided password</li>
-     *   <li>Returns unified results with decrypted content</li>
+     *   <li>Returns advanced results with decrypted content</li>
      *   <li>Skips blocks that can't be decrypted with the given password</li>
      * </ol>
      * 
@@ -413,23 +413,23 @@ public class UserFriendlyEncryptionAPI {
      */
     public List<Block> findAndDecryptData(String searchTerm, String password) {
         logger.debug("🔍 Debug: findAndDecryptData called with searchTerm='{}', password length={}", searchTerm, (password != null ? password.length() : "null"));
-        // Use Revolutionary Search Engine for elegant, robust search
+        // Use Search Framework Engine for elegant, robust search
         return searchWithAdaptiveDecryption(searchTerm, password, 50);
     }
     
     /**
-     * Search for records by specific identifier using Revolutionary Search technology.
+     * Search for records by specific identifier using Advanced Search technology.
      * 
      * <p>This method provides fast, targeted search for records using unique identifiers
      * such as patient IDs, transaction references, document numbers, or other business
-     * identifiers. It leverages the Revolutionary Search Engine for optimized performance
+     * identifiers. It leverages the Search Framework Engine for optimized performance
      * and searches only public metadata to ensure privacy without requiring passwords.</p>
      * 
      * <p><strong>Search Features:</strong></p>
      * <ul>
      *   <li><strong>Privacy-Preserving:</strong> Searches only public metadata, no decryption needed</li>
      *   <li><strong>Fast Lookup:</strong> Optimized for single identifier searches</li>
-     *   <li><strong>Revolutionary Search Integration:</strong> Uses advanced search algorithms</li>
+     *   <li><strong>Advanced Search Integration:</strong> Uses advanced search algorithms</li>
      *   <li><strong>Exact Matching:</strong> Finds records with precise identifier matches</li>
      * </ul>
      * 
@@ -473,13 +473,13 @@ public class UserFriendlyEncryptionAPI {
         return searchByTerms(new String[]{identifier}, null, 50);
     }
     
-    // ===== UNIFIED SEARCH OPERATIONS =====
+    // ===== ADVANCED SEARCH OPERATIONS =====
     
     /**
-     * Comprehensive blockchain search using Revolutionary Search Engine architecture.
+     * Comprehensive blockchain search using Search Framework Engine architecture.
      * 
      * <p>This method performs a comprehensive search across all blockchain data using
-     * the Revolutionary Search Engine. It searches public metadata, identifiers, and
+     * the Search Framework Engine. It searches public metadata, identifiers, and
      * unencrypted content without requiring passwords, making it ideal for discovering
      * publicly accessible information and getting an overview of blockchain contents.</p>
      * 
@@ -489,7 +489,7 @@ public class UserFriendlyEncryptionAPI {
      *   <li><strong>Block Headers:</strong> Block numbers, timestamps, and signatures</li>
      *   <li><strong>Unencrypted Content:</strong> Public data stored without encryption</li>
      *   <li><strong>Content Categories:</strong> Medical, financial, legal, general classifications</li>
-     *   <li><strong>Revolutionary Search Optimizations:</strong> Advanced indexing and relevance ranking</li>
+     *   <li><strong>Advanced Search Optimizations:</strong> Advanced indexing and relevance ranking</li>
      * </ul>
      * 
      * <p><strong>Privacy Note:</strong> This search does NOT access encrypted content.
@@ -523,7 +523,7 @@ public class UserFriendlyEncryptionAPI {
      *                  Must not be null or empty. Can be keywords, identifiers,
      *                  or any text that might appear in public blockchain data.
      * @return A {@link List} of {@link Block} objects matching the search term.
-     *         Results are ranked by relevance using Revolutionary Search algorithms.
+     *         Results are ranked by relevance using Advanced Search algorithms.
      *         Returns empty list if no matches found or if searchTerm is invalid.
      * @throws IllegalArgumentException if searchTerm is null or empty
      * @see #searchEverythingWithPassword(String, String)
@@ -532,8 +532,8 @@ public class UserFriendlyEncryptionAPI {
      * @since 1.0
      */
     public List<Block> searchEverything(String searchTerm) {
-        // Use Revolutionary Search public search (no password, metadata only)
-        var enhancedResults = blockchain.getUnifiedSearchAPI().searchSimple(searchTerm, 50);
+        // Use Advanced Search public search (no password, metadata only)
+        var enhancedResults = blockchain.getSearchSpecialistAPI().searchSimple(searchTerm, 50);
         List<Block> blocks = new ArrayList<>();
         for (var enhancedResult : enhancedResults) {
             try {
@@ -549,11 +549,11 @@ public class UserFriendlyEncryptionAPI {
     }
     
     /**
-     * Comprehensive blockchain search including encrypted content using Revolutionary Search.
+     * Comprehensive blockchain search including encrypted content using Advanced Search.
      * 
      * <p>This method extends the comprehensive search capabilities to include encrypted
      * content by decrypting blocks with the provided password. It combines the power
-     * of the Revolutionary Search Engine with secure decryption to provide complete
+     * of the Search Framework Engine with secure decryption to provide complete
      * search coverage across both public and private blockchain data.</p>
      * 
      * <p><strong>Enhanced Search Coverage:</strong></p>
@@ -609,7 +609,7 @@ public class UserFriendlyEncryptionAPI {
      * @since 1.0
      */
     public List<Block> searchEverythingWithPassword(String searchTerm, String password) {
-        // Use Revolutionary Search adaptive secure search
+        // Use Advanced Search adaptive secure search
         return searchWithAdaptiveDecryption(searchTerm, password, 50);
     }
     
@@ -669,7 +669,7 @@ public class UserFriendlyEncryptionAPI {
     }
     
     /**
-     * Smart search using keyword extraction and Revolutionary Search
+     * Smart search using keyword extraction and Advanced Search
      * Automatically extracts keywords from search query and searches for related terms
      * @param query Natural language search query
      * @return List of matching blocks found using intelligent keyword matching
@@ -681,13 +681,13 @@ public class UserFriendlyEncryptionAPI {
         // If no keywords extracted, fall back to original query
         String searchTerms = extractedKeywords.isEmpty() ? query : extractedKeywords;
         
-        // Search using Revolutionary Search with extracted keywords
-        var enhancedResults = blockchain.getUnifiedSearchAPI().searchSimple(searchTerms, 50);
+        // Search using Advanced Search with extracted keywords
+        var enhancedResults = blockchain.getSearchSpecialistAPI().searchSimple(searchTerms, 50);
         return convertEnhancedResultsToBlocks(enhancedResults);
     }
     
     /**
-     * Smart search with password using Revolutionary Search architecture
+     * Smart search with password using Advanced Search architecture
      * Uses keyword extraction for intelligent matching across encrypted and unencrypted data
      * @param query Natural language search query
      * @param password Password for decrypting encrypted content
@@ -700,28 +700,28 @@ public class UserFriendlyEncryptionAPI {
         // If no keywords extracted, fall back to original query
         String searchTerms = extractedKeywords.isEmpty() ? query : extractedKeywords;
         
-        // Search using Revolutionary Search with password and extracted keywords
+        // Search using Advanced Search with password and extracted keywords
         return searchWithAdaptiveDecryption(searchTerms, password, 50);
     }
     
     /**
-     * Revolutionary Search: Advanced search with keyword extraction using proper architecture
+     * Advanced Search: Advanced search with keyword extraction using proper architecture
      * @param query Natural language search query
      * @param password Optional password for decrypting encrypted content (can be null)
      * @return Comprehensive search results with keyword-enhanced matching
      */
-    public List<Block> smartUnifiedSearch(String query, String password) {
+    public List<Block> smartAdvancedSearch(String query, String password) {
         // Extract keywords from the query
         String extractedKeywords = extractSimpleKeywords(query);
         
         // If no keywords extracted, fall back to original query
         String searchTerms = extractedKeywords.isEmpty() ? query : extractedKeywords;
         
-        // Perform Revolutionary Search with extracted keywords using proper architecture
+        // Perform Advanced Search with extracted keywords using proper architecture
         if (password != null && !password.trim().isEmpty()) {
             return searchWithAdaptiveDecryption(searchTerms, password, 50);
         } else {
-            var enhancedResults = blockchain.getUnifiedSearchAPI().searchSimple(searchTerms, 50);
+            var enhancedResults = blockchain.getSearchSpecialistAPI().searchSimple(searchTerms, 50);
             return convertEnhancedResultsToBlocks(enhancedResults);
         }
     }
@@ -782,6 +782,99 @@ public class UserFriendlyEncryptionAPI {
         }
         
         return similarBlocks;
+    }
+    
+    /**
+     * Performs a secure search that can access encrypted content using the provided password.
+     * 
+     * <p>This method provides advanced search capabilities that combine the simplicity of 
+     * UserFriendlyEncryptionAPI with the power of SearchSpecialistAPI for secure encrypted searches.</p>
+     * 
+     * <p><strong>Features:</strong></p>
+     * <ul>
+     *   <li>Searches both public metadata and encrypted content</li>
+     *   <li>Uses advanced SearchSpecialistAPI functionality</li>
+     *   <li>Maintains UserFriendlyEncryptionAPI result format</li>
+     *   <li>Automatic password validation and error handling</li>
+     * </ul>
+     * 
+     * @param query the search terms to look for. Must not be null or empty.
+     * @param password the password for decrypting encrypted content. Must not be null.
+     * @return a list of blocks containing matching content from both public and encrypted sources
+     * @throws IllegalArgumentException if query or password is null, or query is empty
+     * @see SearchSpecialistAPI#searchSecure(String, String, int)
+     * @since 1.1
+     */
+    public List<Block> searchSecure(String query, String password) {
+        if (query == null || query.trim().isEmpty()) {
+            throw new IllegalArgumentException("Query cannot be null or empty");
+        }
+        if (password == null) {
+            throw new IllegalArgumentException("Password cannot be null for secure search");
+        }
+        
+        // Use SearchSpecialistAPI for advanced secure search
+        var enhancedResults = blockchain.getSearchSpecialistAPI().searchSecure(query, password, 50);
+        List<Block> blocks = new ArrayList<>();
+        
+        for (var enhancedResult : enhancedResults) {
+            try {
+                Block block = blockchain.getBlockByHash(enhancedResult.getBlockHash());
+                if (block != null) {
+                    blocks.add(block);
+                }
+            } catch (Exception e) {
+                logger.warn("Could not retrieve block with hash: {}", enhancedResult.getBlockHash(), e);
+            }
+        }
+        
+        return blocks;
+    }
+    
+    /**
+     * Retrieves comprehensive search analytics and performance metrics.
+     * 
+     * <p>This method exposes the advanced analytics capabilities of the underlying 
+     * SearchSpecialistAPI, providing detailed insights into search performance and usage patterns.</p>
+     * 
+     * <p><strong>Analytics Include:</strong></p>
+     * <ul>
+     *   <li>Search performance metrics and timing data</li>
+     *   <li>Index statistics and memory usage</li>
+     *   <li>Password registry status and coverage</li>
+     *   <li>Search strategy usage patterns</li>
+     * </ul>
+     * 
+     * @return a formatted string containing comprehensive search analytics
+     * @see SearchSpecialistAPI#getPerformanceMetrics()
+     * @since 1.1
+     */
+    public String getSearchAnalytics() {
+        try {
+            return blockchain.getSearchSpecialistAPI().getPerformanceMetrics();
+        } catch (Exception e) {
+            logger.warn("Could not retrieve search analytics", e);
+            return "Search analytics temporarily unavailable";
+        }
+    }
+    
+    /**
+     * Runs comprehensive search engine diagnostics and health checks.
+     * 
+     * <p>This method provides detailed diagnostic information about the search system,
+     * including recommendations for optimization and troubleshooting guidance.</p>
+     * 
+     * @return a detailed diagnostic report with system status and recommendations
+     * @see SearchSpecialistAPI#runDiagnostics()
+     * @since 1.1
+     */
+    public String runSearchDiagnostics() {
+        try {
+            return blockchain.getSearchSpecialistAPI().runDiagnostics();
+        } catch (Exception e) {
+            logger.warn("Could not run search diagnostics", e);
+            return "Search diagnostics temporarily unavailable";
+        }
     }
     
     /**
@@ -1607,7 +1700,7 @@ public class UserFriendlyEncryptionAPI {
         sb.append("   • Multiple encryption configurations\n");
         sb.append("   • Content similarity analysis\n");
         sb.append("   • Advanced password utilities\n");
-        sb.append("   • Unified search across encrypted/unencrypted data\n");
+        sb.append("   • Advanced search across encrypted/unencrypted data\n");
         sb.append("   • Enterprise-grade security validation\n");
         
         return sb.toString();
@@ -2611,18 +2704,18 @@ public class UserFriendlyEncryptionAPI {
     }
     
     /**
-     * Get Password Registry statistics from Revolutionary Search Engine
+     * Get Password Registry statistics from Search Framework Engine
      * @return Password registry statistics
      */
     public Object getPasswordRegistryStats() {
         logger.debug("🔍 Debug: getPasswordRegistryStats called");
-        Object stats = blockchain.getUnifiedSearchAPI().getPasswordRegistryStats();
-        logger.debug("🔍 Debug: UnifiedSearchAPI instance: {}@{}", blockchain.getUnifiedSearchAPI().getClass().getSimpleName(), Integer.toHexString(blockchain.getUnifiedSearchAPI().hashCode()));
+        Object stats = blockchain.getSearchSpecialistAPI().getPasswordRegistryStats();
+        logger.debug("🔍 Debug: SearchSpecialistAPI instance: {}@{}", blockchain.getSearchSpecialistAPI().getClass().getSimpleName(), Integer.toHexString(blockchain.getSearchSpecialistAPI().hashCode()));
         return stats;
     }
     
     /**
-     * Search with adaptive decryption using Revolutionary Search Engine
+     * Search with adaptive decryption using Search Framework Engine
      * Converts Enhanced Search Results to Block list for API compatibility
      * @param searchTerm The term to search for
      * @param password The password for decryption
@@ -2631,7 +2724,7 @@ public class UserFriendlyEncryptionAPI {
      */
     public List<Block> searchWithAdaptiveDecryption(String searchTerm, String password, int maxResults) {
         try {
-            List<EnhancedSearchResult> enhancedResults = blockchain.getUnifiedSearchAPI().searchIntelligent(searchTerm, password, maxResults);
+            List<EnhancedSearchResult> enhancedResults = blockchain.getSearchSpecialistAPI().searchIntelligent(searchTerm, password, maxResults);
             
             List<Block> blocks = new ArrayList<>();
             for (EnhancedSearchResult enhancedResult : enhancedResults) {
@@ -4691,18 +4784,18 @@ public class UserFriendlyEncryptionAPI {
         try {
             validateKeyPair();
             
-            // Use RevolutionarySearchEngine for exhaustive off-chain search
+            // Use SearchFrameworkEngine for exhaustive off-chain search
             EncryptionConfig config = EncryptionConfig.createBalancedConfig();
-            RevolutionarySearchEngine searchEngine = new RevolutionarySearchEngine(config);
+            SearchFrameworkEngine searchEngine = new SearchFrameworkEngine(config);
             
             // Perform exhaustive search with off-chain content
-            RevolutionarySearchEngine.RevolutionarySearchResult revolutionaryResult = 
+            SearchFrameworkEngine.SearchResult searchResult = 
                 searchEngine.searchExhaustiveOffChain(query, password, defaultKeyPair.getPrivate(), 100);
             
             // Convert EnhancedSearchResult to Block objects
             List<Block> resultBlocks = new ArrayList<>();
-            if (revolutionaryResult != null && revolutionaryResult.getResults() != null) {
-                for (RevolutionarySearchEngine.EnhancedSearchResult enhancedResult : revolutionaryResult.getResults()) {
+            if (searchResult != null && searchResult.getResults() != null) {
+                for (SearchFrameworkEngine.EnhancedSearchResult enhancedResult : searchResult.getResults()) {
                     // Find block by hash from enhanced result
                     String blockHash = enhancedResult.getBlockHash();
                     Block block = findBlockByHash(blockHash);
@@ -4736,7 +4829,7 @@ public class UserFriendlyEncryptionAPI {
                 .addDetail("Password Protected", password != null ? "Yes" : "No")
                 .addDetail("Total Files Searched", "All blockchain content + off-chain files");
             
-            if (revolutionaryResult != null && revolutionaryResult.getResults().isEmpty()) {
+            if (searchResult != null && searchResult.getResults().isEmpty()) {
                 results.addWarning("No results found - some content may not be accessible");
             }
             
@@ -4774,7 +4867,7 @@ public class UserFriendlyEncryptionAPI {
         try {
             // Clear off-chain search cache
             EncryptionConfig config = EncryptionConfig.createBalancedConfig();
-            RevolutionarySearchEngine searchEngine = new RevolutionarySearchEngine(config);
+            SearchFrameworkEngine searchEngine = new SearchFrameworkEngine(config);
             
             // Use reflection or direct method call if available
             try {
@@ -4811,16 +4904,16 @@ public class UserFriendlyEncryptionAPI {
         
         try {
             EncryptionConfig config = EncryptionConfig.createBalancedConfig();
-            RevolutionarySearchEngine searchEngine = new RevolutionarySearchEngine(config);
+            SearchFrameworkEngine searchEngine = new SearchFrameworkEngine(config);
             
             // Perform public-only search
-            RevolutionarySearchEngine.RevolutionarySearchResult revolutionaryResult = 
+            SearchFrameworkEngine.SearchResult searchResult = 
                 searchEngine.searchPublicOnly(query, 50);
             
             // Convert EnhancedSearchResult to Block objects
             List<Block> resultBlocks = new ArrayList<>();
-            if (revolutionaryResult != null && revolutionaryResult.getResults() != null) {
-                for (RevolutionarySearchEngine.EnhancedSearchResult enhancedResult : revolutionaryResult.getResults()) {
+            if (searchResult != null && searchResult.getResults() != null) {
+                for (SearchFrameworkEngine.EnhancedSearchResult enhancedResult : searchResult.getResults()) {
                     String blockHash = enhancedResult.getBlockHash();
                     Block block = findBlockByHash(blockHash);
                     if (block != null) {
@@ -4874,16 +4967,16 @@ public class UserFriendlyEncryptionAPI {
             }
             
             EncryptionConfig config = EncryptionConfig.createBalancedConfig();
-            RevolutionarySearchEngine searchEngine = new RevolutionarySearchEngine(config);
+            SearchFrameworkEngine searchEngine = new SearchFrameworkEngine(config);
             
             // Perform encrypted-only search
-            RevolutionarySearchEngine.RevolutionarySearchResult revolutionaryResult = 
+            SearchFrameworkEngine.SearchResult searchResult = 
                 searchEngine.searchEncryptedOnly(query, password, 50);
             
             // Convert EnhancedSearchResult to Block objects
             List<Block> resultBlocks = new ArrayList<>();
-            if (revolutionaryResult != null && revolutionaryResult.getResults() != null) {
-                for (RevolutionarySearchEngine.EnhancedSearchResult enhancedResult : revolutionaryResult.getResults()) {
+            if (searchResult != null && searchResult.getResults() != null) {
+                for (SearchFrameworkEngine.EnhancedSearchResult enhancedResult : searchResult.getResults()) {
                     String blockHash = enhancedResult.getBlockHash();
                     Block block = findBlockByHash(blockHash);
                     if (block != null) {
@@ -4927,7 +5020,7 @@ public class UserFriendlyEncryptionAPI {
         logger.debug("🔍 Generating search engine performance report");
         
         StringBuilder report = new StringBuilder();
-        report.append("🔍 Revolutionary Search Engine Report\n");
+        report.append("🔍 Search Framework Engine Report\n");
         report.append("=====================================\n\n");
         
         // Global metrics

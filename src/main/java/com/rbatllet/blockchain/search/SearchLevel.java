@@ -1,7 +1,7 @@
 package com.rbatllet.blockchain.search;
 
 /**
- * Revolutionary Search Level (Internal Use Only)
+ * Advanced Search Level (Internal Use Only)
  */
 public enum SearchLevel {
     FAST_ONLY,

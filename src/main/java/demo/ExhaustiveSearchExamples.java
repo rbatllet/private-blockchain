@@ -3,9 +3,9 @@ package demo;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.entity.OffChainData;
-import com.rbatllet.blockchain.search.RevolutionarySearchEngine;
-import com.rbatllet.blockchain.search.RevolutionarySearchEngine.RevolutionarySearchResult;
-import com.rbatllet.blockchain.search.RevolutionarySearchEngine.EnhancedSearchResult;
+import com.rbatllet.blockchain.search.SearchFrameworkEngine;
+import com.rbatllet.blockchain.search.SearchFrameworkEngine.SearchResult;
+import com.rbatllet.blockchain.search.SearchFrameworkEngine.EnhancedSearchResult;
 import com.rbatllet.blockchain.search.OffChainMatch;
 import com.rbatllet.blockchain.service.OffChainStorageService;
 import com.rbatllet.blockchain.util.CryptoUtil;
@@ -24,7 +24,7 @@ import java.util.concurrent.Executors;
 /**
  * Practical Examples for TRUE Exhaustive Search
  * 
- * This class demonstrates real-world usage scenarios for the Revolutionary Search Engine
+ * This class demonstrates real-world usage scenarios for the Search Framework Engine
  * with TRUE exhaustive search capabilities across on-chain and off-chain content.
  * 
  * @version 1.0.0
@@ -97,7 +97,7 @@ public class ExhaustiveSearchExamples {
         
         // Setup
         Blockchain blockchain = new Blockchain();
-        RevolutionarySearchEngine searchEngine = new RevolutionarySearchEngine();
+        SearchFrameworkEngine searchEngine = new SearchFrameworkEngine();
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         PrivateKey privateKey = keyPair.getPrivate();
         PublicKey publicKey = keyPair.getPublic();
@@ -127,7 +127,7 @@ public class ExhaustiveSearchExamples {
         
         // Search on-chain content
         System.out.println("Searching for 'diabetes' in on-chain content...");
-        RevolutionarySearchResult result = searchEngine.searchExhaustiveOffChain(
+        SearchResult result = searchEngine.searchExhaustiveOffChain(
             "diabetes", DEMO_PASSWORD, privateKey, 10);
         
         // Display results
@@ -159,7 +159,7 @@ public class ExhaustiveSearchExamples {
         
         // Setup
         Blockchain blockchain = new Blockchain();
-        RevolutionarySearchEngine searchEngine = new RevolutionarySearchEngine();
+        SearchFrameworkEngine searchEngine = new SearchFrameworkEngine();
         OffChainStorageService offChainService = new OffChainStorageService();
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         PrivateKey privateKey = keyPair.getPrivate();
@@ -207,7 +207,7 @@ public class ExhaustiveSearchExamples {
         
         // Search for content in off-chain file
         System.out.println("Searching for 'hypertension' in off-chain files...");
-        RevolutionarySearchResult result = searchEngine.searchExhaustiveOffChain(
+        SearchResult result = searchEngine.searchExhaustiveOffChain(
             "hypertension", DEMO_PASSWORD, privateKey, 10);
         
         // Display results
@@ -245,7 +245,7 @@ public class ExhaustiveSearchExamples {
         
         // Setup
         Blockchain blockchain = new Blockchain();
-        RevolutionarySearchEngine searchEngine = new RevolutionarySearchEngine();
+        SearchFrameworkEngine searchEngine = new SearchFrameworkEngine();
         OffChainStorageService offChainService = new OffChainStorageService();
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         PrivateKey privateKey = keyPair.getPrivate();
@@ -311,7 +311,7 @@ public class ExhaustiveSearchExamples {
         
         // Exhaustive search across all content types
         System.out.println("Searching for 'financial' across all content types...");
-        RevolutionarySearchResult result = searchEngine.searchExhaustiveOffChain(
+        SearchResult result = searchEngine.searchExhaustiveOffChain(
             "financial", DEMO_PASSWORD, privateKey, 20);
         
         // Analyze search distribution
@@ -364,7 +364,7 @@ public class ExhaustiveSearchExamples {
         
         // Setup
         Blockchain blockchain = new Blockchain();
-        RevolutionarySearchEngine searchEngine = new RevolutionarySearchEngine();
+        SearchFrameworkEngine searchEngine = new SearchFrameworkEngine();
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         PrivateKey privateKey = keyPair.getPrivate();
         PublicKey publicKey = keyPair.getPublic();
@@ -394,7 +394,7 @@ public class ExhaustiveSearchExamples {
         
         // Test 1: Search with correct password
         System.out.println("🔑 Test 1: Search with CORRECT password");
-        RevolutionarySearchResult correctResult = searchEngine.searchExhaustiveOffChain(
+        SearchResult correctResult = searchEngine.searchExhaustiveOffChain(
             "confidential", DEMO_PASSWORD, privateKey, 10);
         
         if (correctResult.isSuccessful()) {
@@ -407,7 +407,7 @@ public class ExhaustiveSearchExamples {
         
         // Test 2: Search with wrong password
         System.out.println("🚫 Test 2: Search with WRONG password");
-        RevolutionarySearchResult wrongResult = searchEngine.searchExhaustiveOffChain(
+        SearchResult wrongResult = searchEngine.searchExhaustiveOffChain(
             "confidential", "wrong_password", privateKey, 10);
         
         if (wrongResult.isSuccessful()) {
@@ -422,7 +422,7 @@ public class ExhaustiveSearchExamples {
         
         // Test 3: Public-only search
         System.out.println("🌐 Test 3: Public-only search");
-        RevolutionarySearchResult publicResult = searchEngine.searchPublicOnly("product", 10);
+        SearchResult publicResult = searchEngine.searchPublicOnly("product", 10);
         
         if (publicResult.isSuccessful()) {
             System.out.println("✅ Public access - Found " + publicResult.getResultCount() + " results");
@@ -443,7 +443,7 @@ public class ExhaustiveSearchExamples {
         
         // Setup with multiple blocks
         Blockchain blockchain = new Blockchain();
-        RevolutionarySearchEngine searchEngine = new RevolutionarySearchEngine();
+        SearchFrameworkEngine searchEngine = new SearchFrameworkEngine();
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         PrivateKey privateKey = keyPair.getPrivate();
         PublicKey publicKey = keyPair.getPublic();
@@ -473,7 +473,7 @@ public class ExhaustiveSearchExamples {
         // First search (populate cache)
         System.out.println("🔄 First search (populating cache)...");
         long firstStart = System.nanoTime();
-        RevolutionarySearchResult firstResult = searchEngine.searchExhaustiveOffChain(
+        SearchResult firstResult = searchEngine.searchExhaustiveOffChain(
             "medical", DEMO_PASSWORD, privateKey, 10);
         long firstEnd = System.nanoTime();
         double firstTime = (firstEnd - firstStart) / 1_000_000.0;
@@ -483,7 +483,7 @@ public class ExhaustiveSearchExamples {
         // Second search (use cache)
         System.out.println("⚡ Second search (using cache)...");
         long secondStart = System.nanoTime();
-        RevolutionarySearchResult secondResult = searchEngine.searchExhaustiveOffChain(
+        SearchResult secondResult = searchEngine.searchExhaustiveOffChain(
             "medical", DEMO_PASSWORD, privateKey, 10);
         long secondEnd = System.nanoTime();
         double secondTime = (secondEnd - secondStart) / 1_000_000.0;
@@ -518,7 +518,7 @@ public class ExhaustiveSearchExamples {
         
         // Setup
         Blockchain blockchain = new Blockchain();
-        RevolutionarySearchEngine searchEngine = new RevolutionarySearchEngine();
+        SearchFrameworkEngine searchEngine = new SearchFrameworkEngine();
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         PrivateKey privateKey = keyPair.getPrivate();
         PublicKey publicKey = keyPair.getPublic();
@@ -556,7 +556,7 @@ public class ExhaustiveSearchExamples {
             executor.submit(() -> {
                 try {
                     for (int s = 0; s < searchesPerThread; s++) {
-                        RevolutionarySearchResult result = searchEngine.searchExhaustiveOffChain(
+                        SearchResult result = searchEngine.searchExhaustiveOffChain(
                             "thread", DEMO_PASSWORD, privateKey, 5);
                         
                         System.out.println("   Thread " + threadId + "-" + s + ": " + 

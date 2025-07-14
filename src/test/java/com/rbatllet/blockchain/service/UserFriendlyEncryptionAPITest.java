@@ -104,11 +104,11 @@ public class UserFriendlyEncryptionAPITest {
         assertNotNull(secretBlock, "Secret block should be created successfully");
         assertTrue(secretBlock.isDataEncrypted(), "Secret block should be encrypted");
         
-        // Now initialize Revolutionary Search to include both:
+        // Now initialize Search Framework to include both:
         // 1. Existing blocks without passwords (public metadata only)  
         // 2. Newly created blocks with registered passwords (private metadata too)
-        System.out.println("🔄 Initializing Revolutionary Search with password registry...");
-        blockchain.initializeRevolutionarySearch();
+        System.out.println("🔄 Initializing Search Framework with password registry...");
+        blockchain.initializeAdvancedSearch();
         
         System.out.println("✅ Encrypted data storage tests passed");
     }
@@ -177,15 +177,15 @@ public class UserFriendlyEncryptionAPITest {
         System.out.println("\n=== Testing Privacy-Preserving Search ===");
         System.out.println("🔍 Debug: Starting testPrivacyPreservingSearch...");
         
-        // Ensure Revolutionary Search Engine is initialized for standalone test execution
-        if (!blockchain.getUnifiedSearchAPI().isReady()) {
-            System.out.println("🔄 Revolutionary Search Engine not ready, initializing...");
-            blockchain.initializeRevolutionarySearch();
+        // Ensure Search Framework Engine is initialized for standalone test execution
+        if (!blockchain.getSearchSpecialistAPI().isReady()) {
+            System.out.println("🔄 Search Framework Engine not ready, initializing...");
+            blockchain.initializeAdvancedSearch();
         }
         
         // Debug: Check search engine status  
-        System.out.println("🔍 Debug: Revolutionary Search Engine ready: " + blockchain.getUnifiedSearchAPI().isReady());
-        System.out.println("🔍 Debug: Search engine stats: " + blockchain.getUnifiedSearchAPI().getStatistics().getTotalBlocksIndexed() + " blocks indexed");
+        System.out.println("🔍 Debug: Search Framework Engine ready: " + blockchain.getSearchSpecialistAPI().isReady());
+        System.out.println("🔍 Debug: Search engine stats: " + blockchain.getSearchSpecialistAPI().getStatistics().getTotalBlocksIndexed() + " blocks indexed");
         
         // Debug: Check what blocks exist in the blockchain
         List<Block> allBlocks = blockchain.getAllBlocks();
@@ -276,13 +276,13 @@ public class UserFriendlyEncryptionAPITest {
     
     @Test
     @Order(8)
-    void testRevolutionarySearch() {
-        System.out.println("\n=== Testing Revolutionary Search ===");
+    void testAdvancedSearch() {
+        System.out.println("\n=== Testing Advanced Search ===");
         
         // Add some public data for testing
         blockchain.addBlock("Public announcement about blockchain features", userKeys.getPrivate(), userKeys.getPublic());
         
-        // Test Revolutionary Search without decryption
+        // Test Advanced Search without decryption
         List<Block> publicSearch = api.searchEverything("announcement");
         assertNotNull(publicSearch, "Search result should not be null");
         System.out.println("Found " + publicSearch.size() + " blocks in public search");
@@ -290,12 +290,12 @@ public class UserFriendlyEncryptionAPITest {
         // Since search might return 0 results due to indexing issues, we'll be more lenient
         assertTrue(publicSearch.size() >= 0, "Should return valid search results");
         
-        // Test Revolutionary Search with decryption
+        // Test Advanced Search with decryption
         List<Block> passwordSearch = api.searchEverythingWithPassword("API_KEY", secretPassword);
         assertNotNull(passwordSearch, "Search result should not be null");
         assertTrue(passwordSearch.size() >= 0, "Should return valid results");
         
-        System.out.println("✅ Revolutionary search tests passed");
+        System.out.println("✅ Advanced search tests passed");
     }
     
     @Test

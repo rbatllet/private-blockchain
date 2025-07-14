@@ -2,8 +2,8 @@ package demo;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.config.EncryptionConfig;
-import com.rbatllet.blockchain.search.*;
-import com.rbatllet.blockchain.search.RevolutionarySearchEngine.*;
+import com.rbatllet.blockchain.search.SearchSpecialistAPI;
+import com.rbatllet.blockchain.search.SearchFrameworkEngine.*;
 import com.rbatllet.blockchain.util.CryptoUtil;
 
 import java.security.KeyPair;
@@ -12,9 +12,9 @@ import java.security.PublicKey;
 import java.util.List;
 
 /**
- * REVOLUTIONARY SEARCH DEMONSTRATION
+ * SEARCH FRAMEWORK DEMONSTRATION
  * 
- * Showcases the complete capabilities of our revolutionary search engine:
+ * Showcases the complete capabilities of our search framework engine:
  * - Lightning-fast public metadata search
  * - Encrypted content deep search
  * - Advanced privacy-preserving search
@@ -24,10 +24,10 @@ import java.util.List;
  * This demo proves that we've achieved a breakthrough in blockchain search
  * technology combining performance, privacy, and intelligence.
  */
-public class RevolutionarySearchDemo {
+public class SearchFrameworkDemo {
     
     public static void main(String[] args) {
-        System.out.println("🚀 REVOLUTIONARY BLOCKCHAIN SEARCH ENGINE DEMO");
+        System.out.println("🚀 ADVANCED BLOCKCHAIN SEARCH ENGINE DEMO");
         System.out.println("================================================");
         System.out.println();
         
@@ -36,9 +36,9 @@ public class RevolutionarySearchDemo {
             System.out.println("📊 Setting up demo blockchain with encrypted content...");
             Blockchain blockchain = createDemoBlockchain();
             
-            // Initialize revolutionary search engine
-            System.out.println("⚡ Initializing Revolutionary Search Engine...");
-            UnifiedRevolutionarySearchAPI searchAPI = new UnifiedRevolutionarySearchAPI(
+            // Initialize advanced search engine
+            System.out.println("⚡ Initializing Search Framework Search Engine...");
+            SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(
                 EncryptionConfig.createHighSecurityConfig());
             
             // Demo password and crypto setup
@@ -47,7 +47,7 @@ public class RevolutionarySearchDemo {
             PrivateKey privateKey = keyPair.getPrivate();
             
             // Index the blockchain
-            System.out.println("🔍 Indexing blockchain for revolutionary search...");
+            System.out.println("🔍 Indexing blockchain for advanced search...");
             IndexingResult indexingResult = searchAPI.initializeWithBlockchain(blockchain, demoPassword, privateKey);
             System.out.println("   " + indexingResult);
             System.out.println();
@@ -83,7 +83,7 @@ public class RevolutionarySearchDemo {
             // Cleanup
             searchAPI.shutdown();
             
-            System.out.println("✅ Revolutionary Search Demo completed successfully!");
+            System.out.println("✅ Search Framework Search Demo completed successfully!");
             System.out.println("🎯 The future of blockchain search is here!");
             
         } catch (Exception e) {
@@ -155,7 +155,7 @@ public class RevolutionarySearchDemo {
         return blockchain;
     }
     
-    private static void demonstrateFastPublicSearch(UnifiedRevolutionarySearchAPI searchAPI) {
+    private static void demonstrateFastPublicSearch(SearchSpecialistAPI searchAPI) {
         System.out.println("⚡ DEMO 1: LIGHTNING-FAST PUBLIC SEARCH");
         System.out.println("======================================");
         
@@ -188,7 +188,7 @@ public class RevolutionarySearchDemo {
         System.out.println();
     }
     
-    private static void demonstrateEncryptedSearch(UnifiedRevolutionarySearchAPI searchAPI, String password) {
+    private static void demonstrateEncryptedSearch(SearchSpecialistAPI searchAPI, String password) {
         System.out.println("🔐 DEMO 2: ENCRYPTED CONTENT DEEP SEARCH");
         System.out.println("=======================================");
         
@@ -228,12 +228,12 @@ public class RevolutionarySearchDemo {
     }
     
     
-    private static void demonstrateIntelligentRouting(UnifiedRevolutionarySearchAPI searchAPI, String password) {
+    private static void demonstrateIntelligentRouting(SearchSpecialistAPI searchAPI, String password) {
         System.out.println("🧠 DEMO 4: INTELLIGENT STRATEGY ROUTING");
         System.out.println("======================================");
         
         // Simple query -> Fast public search
-        RevolutionarySearchResult result = searchAPI.searchAdvanced("medical", null, EncryptionConfig.createBalancedConfig(), 10);
+        SearchResult result = searchAPI.searchAdvanced("medical", null, EncryptionConfig.createBalancedConfig(), 10);
         System.out.printf("🔍 Simple Query 'medical' -> Strategy: %s | Time: %.2f ms%n", 
                         result.getStrategyUsed(), result.getTotalTimeMs());
         
@@ -256,7 +256,7 @@ public class RevolutionarySearchDemo {
         System.out.println();
     }
     
-    private static void demonstrateSpecializedSearches(UnifiedRevolutionarySearchAPI searchAPI, String password) {
+    private static void demonstrateSpecializedSearches(SearchSpecialistAPI searchAPI, String password) {
         System.out.println("🎯 DEMO 5: USER-DEFINED TERM SEARCHES");
         System.out.println("======================================");
         
@@ -277,7 +277,7 @@ public class RevolutionarySearchDemo {
         System.out.printf("💎 High-Value Search (user-defined terms): %d results%n", results.size());
         
         // Comprehensive multi-strategy search
-        RevolutionarySearchResult comprehensive = searchAPI.searchAdvanced("data information", password, EncryptionConfig.createBalancedConfig(), 50);
+        SearchResult comprehensive = searchAPI.searchAdvanced("data information", password, EncryptionConfig.createBalancedConfig(), 50);
         System.out.printf("🔄 Comprehensive Search: %d results | Strategy: %s | Time: %.2f ms%n", 
                         comprehensive.getResultCount(), 
                         comprehensive.getStrategyUsed(),

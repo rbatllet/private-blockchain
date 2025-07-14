@@ -194,16 +194,16 @@ public class PasswordUtil {
      * @return true if the code point represents a CJK character
      */
     private static boolean isCJKCharacter(int codePoint) {
-        // Check if the code point is in the CJK Unified Ideographs range (0x4E00-0x9FFF)
+        // Check if the code point is in the CJK Advanced Ideographs range (0x4E00-0x9FFF)
         if (codePoint >= 0x4E00 && codePoint <= 0x9FFF) {
             return true;
         }
         
         // Check if the code point is in other CJK ranges
-        if ((codePoint >= 0x3400 && codePoint <= 0x4DBF) ||   // CJK Unified Ideographs Extension A
-            (codePoint >= 0x20000 && codePoint <= 0x2A6DF) || // CJK Unified Ideographs Extension B
-            (codePoint >= 0x2A700 && codePoint <= 0x2B73F) || // CJK Unified Ideographs Extension C
-            (codePoint >= 0x2B740 && codePoint <= 0x2B81F) || // CJK Unified Ideographs Extension D
+        if ((codePoint >= 0x3400 && codePoint <= 0x4DBF) ||   // CJK Advanced Ideographs Extension A
+            (codePoint >= 0x20000 && codePoint <= 0x2A6DF) || // CJK Advanced Ideographs Extension B
+            (codePoint >= 0x2A700 && codePoint <= 0x2B73F) || // CJK Advanced Ideographs Extension C
+            (codePoint >= 0x2B740 && codePoint <= 0x2B81F) || // CJK Advanced Ideographs Extension D
             (codePoint >= 0xF900 && codePoint <= 0xFAFF) ||   // CJK Compatibility Ideographs
             (codePoint >= 0x2F800 && codePoint <= 0x2FA1F) || // CJK Compatibility Ideographs Supplement
             (codePoint >= 0x3000 && codePoint <= 0x303F) ||   // CJK Symbols and Punctuation

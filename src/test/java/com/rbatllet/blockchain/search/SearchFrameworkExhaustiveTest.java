@@ -2,7 +2,7 @@ package com.rbatllet.blockchain.search;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.config.EncryptionConfig;
-import com.rbatllet.blockchain.search.RevolutionarySearchEngine.*;
+import com.rbatllet.blockchain.search.SearchFrameworkEngine.*;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.*;
 
@@ -18,9 +18,9 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * EXHAUSTIVE REVOLUTIONARY SEARCH ENGINE TEST SUITE
+ * EXHAUSTIVE ADVANCED SEARCH ENGINE TEST SUITE
  * 
- * Comprehensive validation of all Revolutionary Search Engine capabilities:
+ * Comprehensive validation of all Advanced Search Engine capabilities:
  * - All search strategies (Fast, Encrypted, Hybrid)
  * - Intelligent strategy routing and query analysis
  * - Three-layer metadata architecture validation
@@ -32,10 +32,10 @@ import static org.junit.jupiter.api.Assertions.*;
  * - Real-world usage scenarios
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class RevolutionarySearchExhaustiveTest {
+public class SearchFrameworkExhaustiveTest {
     
-    private RevolutionarySearchEngine searchEngine;
-    private UnifiedRevolutionarySearchAPI unifiedAPI;
+    private SearchFrameworkEngine searchEngine;
+    private SearchSpecialistAPI specialistAPI;
     private Blockchain testBlockchain;
     private String testPassword;
     private PrivateKey testPrivateKey;
@@ -46,8 +46,8 @@ public class RevolutionarySearchExhaustiveTest {
     void setUp() throws Exception {
         // Use high security configuration for exhaustive testing
         highSecurityConfig = EncryptionConfig.createHighSecurityConfig();
-        searchEngine = new RevolutionarySearchEngine(highSecurityConfig);
-        unifiedAPI = new UnifiedRevolutionarySearchAPI(highSecurityConfig);
+        searchEngine = new SearchFrameworkEngine(highSecurityConfig);
+        specialistAPI = new SearchSpecialistAPI(highSecurityConfig);
         testBlockchain = new Blockchain();
         testPassword = "ExhaustiveTestPassword2024!SecureDemo";
         
@@ -72,8 +72,8 @@ public class RevolutionarySearchExhaustiveTest {
         if (searchEngine != null) {
             searchEngine.shutdown();
         }
-        if (unifiedAPI != null) {
-            unifiedAPI.shutdown();
+        if (specialistAPI != null) {
+            specialistAPI.shutdown();
         }
     }
     
@@ -99,7 +99,7 @@ public class RevolutionarySearchExhaustiveTest {
         
         for (String query : searchQueries) {
             long startTime = System.nanoTime();
-            RevolutionarySearchResult result = searchEngine.searchPublicOnly(query, 10);
+            SearchResult result = searchEngine.searchPublicOnly(query, 10);
             long endTime = System.nanoTime();
             double timeMs = (endTime - startTime) / 1_000_000.0;
             
@@ -139,7 +139,7 @@ public class RevolutionarySearchExhaustiveTest {
         };
         
         for (String query : complexQueries) {
-            RevolutionarySearchResult result = searchEngine.searchPublicOnly(query, 20);
+            SearchResult result = searchEngine.searchPublicOnly(query, 20);
             
             assertTrue(result.isSuccessful(), "Complex query should succeed: " + query);
             assertTrue(result.getStrategyUsed().toString().contains("FAST_PUBLIC"), "Should use fast public strategy");
@@ -174,7 +174,7 @@ public class RevolutionarySearchExhaustiveTest {
         
         for (String query : encryptedQueries) {
             long startTime = System.nanoTime();
-            RevolutionarySearchResult result = searchEngine.searchEncryptedOnly(query, testPassword, 15);
+            SearchResult result = searchEngine.searchEncryptedOnly(query, testPassword, 15);
             long endTime = System.nanoTime();
             double timeMs = (endTime - startTime) / 1_000_000.0;
             
@@ -203,11 +203,11 @@ public class RevolutionarySearchExhaustiveTest {
         String query = "sensitive confidential information";
         
         // Test with correct password
-        RevolutionarySearchResult correctResult = searchEngine.searchEncryptedOnly(query, testPassword, 10);
+        SearchResult correctResult = searchEngine.searchEncryptedOnly(query, testPassword, 10);
         assertTrue(correctResult.isSuccessful());
         
         // Test with wrong password
-        RevolutionarySearchResult wrongResult = searchEngine.searchEncryptedOnly(query, "WrongPassword123!", 10);
+        SearchResult wrongResult = searchEngine.searchEncryptedOnly(query, "WrongPassword123!", 10);
         assertTrue(wrongResult.isSuccessful(), "Should handle wrong password gracefully");
         
         // Verify privacy protection - wrong password should not provide private access
@@ -243,7 +243,7 @@ public class RevolutionarySearchExhaustiveTest {
         
         for (String query : queries) {
             long startTime = System.nanoTime();
-            RevolutionarySearchResult result = searchEngine.searchPublicOnly(query, 10);
+            SearchResult result = searchEngine.searchPublicOnly(query, 10);
             long endTime = System.nanoTime();
             double timeMs = (endTime - startTime) / 1_000_000.0;
             
@@ -269,7 +269,7 @@ public class RevolutionarySearchExhaustiveTest {
         System.out.println("==========================================");
         
         // Test that public search doesn't leak sensitive information
-        RevolutionarySearchResult result = searchEngine.searchPublicOnly("personal", 20);
+        SearchResult result = searchEngine.searchPublicOnly("personal", 20);
         assertTrue(result.isSuccessful());
         
         System.out.printf("  🔍 Search found %d blocks with personal info%n", result.getResultCount());
@@ -293,23 +293,23 @@ public class RevolutionarySearchExhaustiveTest {
         System.out.println("======================================");
         
         // Test simple queries (should route to FAST)
-        RevolutionarySearchResult simpleResult = searchEngine.search("medical", null, 10);
+        SearchResult simpleResult = searchEngine.search("medical", null, 10);
         assertTrue(simpleResult.isSuccessful());
         System.out.printf("  🔍 Simple query 'medical' → %s%n", simpleResult.getStrategyUsed());
         
         // Test complex queries with password (should route to ENCRYPTED or HYBRID)
-        RevolutionarySearchResult complexWithPassword = searchEngine.search(
+        SearchResult complexWithPassword = searchEngine.search(
             "patient medical record diagnosis treatment confidential", testPassword, 10);
         assertTrue(complexWithPassword.isSuccessful());
         System.out.printf("  🔐 Complex + password → %s%n", complexWithPassword.getStrategyUsed());
         
         // Test pattern queries (should route to FAST_PUBLIC)
-        RevolutionarySearchResult patternResult = searchEngine.search("financial data", null, 10);
+        SearchResult patternResult = searchEngine.search("financial data", null, 10);
         assertTrue(patternResult.isSuccessful());
         System.out.printf("  📊 Pattern query → %s%n", patternResult.getStrategyUsed());
         
         // Test very complex queries (should route to HYBRID)
-        RevolutionarySearchResult hybridResult = searchEngine.search(
+        SearchResult hybridResult = searchEngine.search(
             "financial SWIFT transaction AND medical patient AND legal contract", testPassword, 15);
         assertTrue(hybridResult.isSuccessful());
         System.out.printf("  🔄 Hybrid query → %s%n", hybridResult.getStrategyUsed());
@@ -321,59 +321,59 @@ public class RevolutionarySearchExhaustiveTest {
         System.out.printf("  🧠 Intelligent routing: ✅ Verified%n");
     }
     
-    // ===== UNIFIED API EXHAUSTIVE TESTS =====
+    // ===== SPECIALIST API EXHAUSTIVE TESTS =====
     
     @Test
     @Order(40)
-    @DisplayName("Exhaustive Unified API - All Methods")
-    void testExhaustiveUnifiedAPI() {
-        System.out.println("\n🎯 TESTING UNIFIED REVOLUTIONARY SEARCH API");
+    @DisplayName("Exhaustive Specialist API - All Methods")
+    void testExhaustiveSpecialistAPI() {
+        System.out.println("\n🎯 TESTING SPECIALIST ADVANCED SEARCH API");
         System.out.println("==========================================");
         
-        // Initialize unified API
-        IndexingResult initResult = unifiedAPI.initializeWithBlockchain(testBlockchain, testPassword, testPrivateKey);
+        // Initialize advanced API
+        IndexingResult initResult = specialistAPI.initializeWithBlockchain(testBlockchain, testPassword, testPrivateKey);
         assertTrue(initResult.getBlocksIndexed() > 0);
-        assertTrue(unifiedAPI.isReady());
-        System.out.printf("  📊 Unified API initialized with %d blocks%n", initResult.getBlocksIndexed());
+        assertTrue(specialistAPI.isReady());
+        System.out.printf("  📊 Specialist API initialized with %d blocks%n", initResult.getBlocksIndexed());
         
         // Test all simple search methods
-        List<EnhancedSearchResult> simpleResults = unifiedAPI.searchSimple("financial");
+        List<EnhancedSearchResult> simpleResults = specialistAPI.searchSimple("financial");
         assertNotNull(simpleResults);
         System.out.printf("  ⚡ Simple search: %d results%n", simpleResults.size());
         
-        List<EnhancedSearchResult> secureResults = unifiedAPI.searchSecure("confidential", testPassword);
+        List<EnhancedSearchResult> secureResults = specialistAPI.searchSecure("confidential", testPassword);
         assertNotNull(secureResults);
         System.out.printf("  🔐 Secure search: %d results%n", secureResults.size());
         
-        List<EnhancedSearchResult> privateResults = unifiedAPI.searchSimple("contains:data");
+        List<EnhancedSearchResult> privateResults = specialistAPI.searchSimple("contains:data");
         assertNotNull(privateResults);
         System.out.printf("  🎭 Private search: %d results%n", privateResults.size());
         
         // Test user-defined term searches
-        List<EnhancedSearchResult> transactionResults = unifiedAPI.searchIntelligent("transaction", testPassword, 10);
+        List<EnhancedSearchResult> transactionResults = specialistAPI.searchIntelligent("transaction", testPassword, 10);
         assertNotNull(transactionResults);
         System.out.printf("  💰 Transaction search: %d results%n", transactionResults.size());
         
-        List<EnhancedSearchResult> patientResults = unifiedAPI.searchIntelligent("patient", testPassword, 10);
+        List<EnhancedSearchResult> patientResults = specialistAPI.searchIntelligent("patient", testPassword, 10);
         assertNotNull(patientResults);
         System.out.printf("  🏥 Patient search: %d results%n", patientResults.size());
         
-        List<EnhancedSearchResult> contractResults = unifiedAPI.searchIntelligent("contract", testPassword, 10);
+        List<EnhancedSearchResult> contractResults = specialistAPI.searchIntelligent("contract", testPassword, 10);
         assertNotNull(contractResults);
         System.out.printf("  ⚖️ Contract search: %d results%n", contractResults.size());
         
         // Test advanced searches
-        RevolutionarySearchResult comprehensiveResult = unifiedAPI.searchAdvanced("data analysis", testPassword, EncryptionConfig.createBalancedConfig(), 50);
+        SearchResult comprehensiveResult = specialistAPI.searchAdvanced("data analysis", testPassword, EncryptionConfig.createBalancedConfig(), 50);
         assertTrue(comprehensiveResult.isSuccessful());
         System.out.printf("  🔄 Comprehensive search: %d results%n", comprehensiveResult.getResultCount());
         
         // Test statistics and diagnostics
-        RevolutionarySearchStats stats = unifiedAPI.getStatistics();
+        SearchStats stats = specialistAPI.getStatistics();
         assertNotNull(stats);
         assertTrue(stats.getTotalBlocksIndexed() > 0);
         System.out.printf("  📊 Statistics: %d blocks indexed%n", stats.getTotalBlocksIndexed());
         
-        String diagnostics = unifiedAPI.runDiagnostics();
+        String diagnostics = specialistAPI.runDiagnostics();
         assertNotNull(diagnostics);
         assertTrue(diagnostics.contains("Ready"));
         System.out.printf("  🔧 Diagnostics: ✅ System ready%n");
@@ -409,7 +409,7 @@ public class RevolutionarySearchExhaustiveTest {
                     try {
                         String query = queries[(threadId + j) % queries.length];
                         long start = System.nanoTime();
-                        RevolutionarySearchResult result = searchEngine.searchPublicOnly(query, 5);
+                        SearchResult result = searchEngine.searchPublicOnly(query, 5);
                         long end = System.nanoTime();
                         
                         assertTrue(result.isSuccessful(), "Concurrent search should succeed");
@@ -478,7 +478,7 @@ public class RevolutionarySearchExhaustiveTest {
         long memoryIncrease = finalMemory - initialMemory;
         
         // Get search engine statistics
-        RevolutionarySearchStats stats = searchEngine.getSearchStats();
+        SearchStats stats = searchEngine.getSearchStats();
         long estimatedMemory = stats.getEstimatedMemoryBytes();
         
         System.out.printf("  📊 Memory analysis:%n");
@@ -504,9 +504,9 @@ public class RevolutionarySearchExhaustiveTest {
         System.out.println("======================================");
         
         // Test that different search strategies maintain proper data isolation
-        RevolutionarySearchResult publicResult = searchEngine.searchPublicOnly("sensitive", 10);
-        RevolutionarySearchResult encryptedResult = searchEngine.searchEncryptedOnly("sensitive", testPassword, 10);
-        RevolutionarySearchResult result = searchEngine.searchPublicOnly("data", 10);
+        SearchResult publicResult = searchEngine.searchPublicOnly("sensitive", 10);
+        SearchResult encryptedResult = searchEngine.searchEncryptedOnly("sensitive", testPassword, 10);
+        SearchResult result = searchEngine.searchPublicOnly("data", 10);
         
         assertTrue(publicResult.isSuccessful());
         assertTrue(encryptedResult.isSuccessful());
@@ -532,7 +532,7 @@ public class RevolutionarySearchExhaustiveTest {
         System.out.printf("  🔒 Privacy protection: ✅ Protected%n");
         
         // Test password protection
-        RevolutionarySearchResult wrongPasswordResult = searchEngine.searchEncryptedOnly("sensitive", "wrong", 10);
+        SearchResult wrongPasswordResult = searchEngine.searchEncryptedOnly("sensitive", "wrong", 10);
         assertTrue(wrongPasswordResult.isSuccessful());
         
         boolean wrongHasPrivate = wrongPasswordResult.getResults().stream()
@@ -554,31 +554,31 @@ public class RevolutionarySearchExhaustiveTest {
         
         // Scenario 1: Financial Compliance Search
         System.out.printf("  💰 Financial Compliance Scenario:%n");
-        List<EnhancedSearchResult> financialCompliance = unifiedAPI.searchIntelligent("SWIFT transfer large amount", testPassword, 50);
+        List<EnhancedSearchResult> financialCompliance = specialistAPI.searchIntelligent("SWIFT transfer large amount", testPassword, 50);
         assertNotNull(financialCompliance);
         System.out.printf("    Found %d potentially reportable transactions%n", financialCompliance.size());
         
         // Scenario 2: Medical Records Privacy Search
         System.out.printf("  🏥 Medical Privacy Scenario:%n");
-        List<EnhancedSearchResult> medicalPrivacy = unifiedAPI.searchIntelligent("patient confidential diagnosis", testPassword, 50);
+        List<EnhancedSearchResult> medicalPrivacy = specialistAPI.searchIntelligent("patient confidential diagnosis", testPassword, 50);
         assertNotNull(medicalPrivacy);
         System.out.printf("    Found %d protected medical records%n", medicalPrivacy.size());
         
         // Scenario 3: Legal Discovery Search
         System.out.printf("  ⚖️ Legal Discovery Scenario:%n");
-        List<EnhancedSearchResult> legalDiscovery = unifiedAPI.searchIntelligent("contract agreement liability", testPassword, 50);
+        List<EnhancedSearchResult> legalDiscovery = specialistAPI.searchIntelligent("contract agreement liability", testPassword, 50);
         assertNotNull(legalDiscovery);
         System.out.printf("    Found %d relevant legal documents%n", legalDiscovery.size());
         
         // Scenario 4: Audit and Compliance
         System.out.printf("  📋 Audit and Compliance Scenario:%n");
-        RevolutionarySearchResult auditResult = unifiedAPI.searchAdvanced("audit trail sensitive data access", testPassword, EncryptionConfig.createBalancedConfig(), 50);
+        SearchResult auditResult = specialistAPI.searchAdvanced("audit trail sensitive data access", testPassword, EncryptionConfig.createBalancedConfig(), 50);
         assertTrue(auditResult.isSuccessful());
         System.out.printf("    Found %d audit-relevant entries%n", auditResult.getResultCount());
         
         // Scenario 5: Privacy Impact Assessment
         System.out.printf("  🔒 Privacy Impact Assessment:%n");
-        List<EnhancedSearchResult> privacyAssessment = unifiedAPI.searchSimple("contains:personal_info");
+        List<EnhancedSearchResult> privacyAssessment = specialistAPI.searchSimple("contains:personal_info");
         assertNotNull(privacyAssessment);
         System.out.printf("    Identified %d blocks with personal information%n", privacyAssessment.size());
         

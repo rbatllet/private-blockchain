@@ -815,7 +815,7 @@ System.out.println("EXHAUSTIVE_OFFCHAIN: " + (endTime - startTime) / 1_000_000 +
 ##### Complete Search Example
 
 ```java
-public class RevolutionarySearchDemo {
+public class SearchFrameworkDemo {
     public static void main(String[] args) throws Exception {
         Blockchain blockchain = new Blockchain();
         
@@ -1464,7 +1464,7 @@ public List<Block> searchByCategory(String category)
 
 ##### Search Term Validation
 
-**Note:** Search term validation is now handled automatically by the Revolutionary Search Engine. The system applies intelligent validation rules internally.
+**Note:** Search term validation is now handled automatically by the Advanced Search Engine. The system applies intelligent validation rules internally.
 
 **Validation Rules (Applied Automatically):**
 - Minimum 4 characters (general rule)
@@ -2632,7 +2632,7 @@ AdvancedSearchResult performCachedSearch(String searchType, String query,
 // Smart search with AI-like capabilities
 List<Block> smartSearch(String query, String password, int maxResults)
 List<Block> smartSearchEncryptedData(String query, String password, int maxResults)
-List<Block> smartUnifiedSearch(String query, String password, int maxResults)
+List<Block> smartAdvancedSearch(String query, String password, int maxResults)
 
 // Exhaustive search across all content
 SearchResults searchExhaustive(String query, String password)
@@ -2936,8 +2936,36 @@ if (!health.isFullyValid()) {
 }
 ```
 
-For real-world usage examples, see [EXAMPLES.md](EXAMPLES.md).  
-For comprehensive search system guide, see [SEARCH_GUIDE.md](SEARCH_GUIDE.md).  
-For production deployment guidance, see [PRODUCTION_GUIDE.md](PRODUCTION_GUIDE.md).  
-For testing procedures, see [TESTING.md](TESTING.md).  
-For technical implementation details, see [TECHNICAL_DETAILS.md](TECHNICAL_DETAILS.md).
+## 📚 Additional Resources
+
+### 🚀 Getting Started
+- **[GETTING_STARTED.md](GETTING_STARTED.md)** - Quick start guide with essential examples
+- **[EXAMPLES.md](EXAMPLES.md)** - Real-world usage examples and patterns
+
+### 🔍 Search & Data Management  
+- **[SEARCH_APIS_COMPARISON.md](SEARCH_APIS_COMPARISON.md)** - 🎯 **Which search API to use? Complete comparison and recommendations**
+- **[USER_FRIENDLY_SEARCH_GUIDE.md](USER_FRIENDLY_SEARCH_GUIDE.md)** - UserFriendlyEncryptionAPI search functionality guide
+- **[SEARCH_FRAMEWORK_GUIDE.md](SEARCH_FRAMEWORK_GUIDE.md)** - Advanced Search Engine comprehensive guide
+- **[EXHAUSTIVE_SEARCH_GUIDE.md](EXHAUSTIVE_SEARCH_GUIDE.md)** - Complete search across on-chain and off-chain content
+- **[SEARCH_COMPARISON.md](SEARCH_COMPARISON.md)** - Comparison of all search types with benchmarks
+
+### 🔐 Security & Key Management
+- **[SECURITY_GUIDE.md](SECURITY_GUIDE.md)** - Security best practices for production
+- **[KEY_MANAGEMENT_GUIDE.md](KEY_MANAGEMENT_GUIDE.md)** - Hierarchical key management and rotation
+- **[ENCRYPTION_GUIDE.md](ENCRYPTION_GUIDE.md)** - Block encryption and metadata management
+- **[ENCRYPTED_EXPORT_IMPORT_GUIDE.md](ENCRYPTED_EXPORT_IMPORT_GUIDE.md)** - Encrypted backup procedures
+
+### 🛠️ Operations & Troubleshooting
+- **[TROUBLESHOOTING_GUIDE.md](TROUBLESHOOTING_GUIDE.md)** - Common issues and diagnostic tools
+- **[TESTING.md](TESTING.md)** - Comprehensive testing procedures
+- **[LOGGING.md](LOGGING.md)** - Professional logging system configuration
+
+### 🏢 Technical & Production
+- **[TECHNICAL_DETAILS.md](TECHNICAL_DETAILS.md)** - Architecture and implementation details
+- **[PRODUCTION_GUIDE.md](PRODUCTION_GUIDE.md)** - Production deployment guidance
+- **[ENHANCED_VALIDATION_GUIDE.md](ENHANCED_VALIDATION_GUIDE.md)** - Advanced validation techniques
+
+### 📖 Reference Guides
+- **[SECURITY_CLASSES_GUIDE.md](SECURITY_CLASSES_GUIDE.md)** - Security classes usage guide
+- **[UTILITY_CLASSES_GUIDE.md](UTILITY_CLASSES_GUIDE.md)** - Utility classes reference
+- **[THREAD_SAFETY_TESTS.md](THREAD_SAFETY_TESTS.md)** - Thread safety testing guide
