@@ -3,11 +3,14 @@
 # 🎯 Three-Tier API Demo - Showcase all three blockchain search APIs
 # Demonstrates UserFriendlyEncryptionAPI, SearchSpecialistAPI, and SearchFrameworkEngine
 
+# Set script directory and navigate to project root
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR/.."
+
 # Load common functions
-source "$(dirname "$0")/lib/common_functions.zsh"
+source "${SCRIPT_DIR}/lib/common_functions.zsh"
 
 DEMO_TITLE="🚀 Three-Tier Blockchain API Demo"
-JAR_PATH="target/privateBlockchain-1.0-SNAPSHOT.jar"
 
 print_header() {
     echo ""
@@ -16,8 +19,8 @@ print_header() {
     echo "║                                                                                      ║"
     echo "║  This demo showcases all three blockchain APIs:                                     ║"
     echo "║  📊 UserFriendlyEncryptionAPI    - For 90% of developers (complete operations)     ║"
-    echo "║  ⚡ SearchSpecialistAPI - For search specialists (advanced search)        ║"
-    echo "║  🔧 SearchFrameworkEngine    - For framework builders (maximum control)        ║"
+    echo "║  ⚡ SearchSpecialistAPI           - For search specialists (advanced search)        ║"
+    echo "║  🔧 SearchFrameworkEngine         - For framework builders (maximum control)        ║"
     echo "║                                                                                      ║"
     echo "╚══════════════════════════════════════════════════════════════════════════════════════╝"
     echo ""
@@ -45,15 +48,15 @@ run_tier1_demo() {
     echo "ℹ️  Running UserFriendlyEncryptionAPI Demo..."
     echo ""
     
-    java -cp "$JAR_PATH" demo.UserFriendlyEncryptionDemo 2>&1 | while IFS= read -r line; do
+    mvn exec:java -Dexec.mainClass="demo.UserFriendlyEncryptionDemo" -q 2>&1 | while IFS= read -r line; do
         if [[ "$line" =~ "SUCCESS:|✅" ]]; then
             echo "✅ $line"
         elif [[ "$line" =~ "ERROR:|❌" ]]; then
             echo "❌ $line"
-        elif [[ "$line" =~ "INFO:|ℹ️" ]]; then
-            echo "ℹ️  $line"
-        elif [[ "$line" =~ "DEMO:|🎯" ]]; then
-            echo "🎯 $line"
+        elif [[ "$line" =~ "Patient|Medical|Account|Financial" ]]; then
+            echo "🏥 $line"
+        elif [[ "$line" =~ "🔒|🔐|🔑" ]]; then
+            echo "$line"
         else
             echo "$line"
         fi
@@ -61,9 +64,10 @@ run_tier1_demo() {
     
     echo ""
     echo "📋 Tier 1 Summary:"
-    echo "   ✅ Complete blockchain operations in simple API"
-    echo "   ✅ Automatic encryption and key management"
-    echo "   ✅ Built-in search with intelligent optimization"
+    echo "   ✅ Complete blockchain solution out of the box"
+    echo "   ✅ Automatic key management and user creation"
+    echo "   ✅ Built-in encryption for all sensitive data"
+    echo "   ✅ Simple, intuitive API for common operations"
     echo "   ✅ Enterprise-ready security and validation"
     echo ""
 }
@@ -73,45 +77,80 @@ run_tier2_demo() {
                      "Specialized search operations with advanced features and analytics" \
                      "Search specialists - analytics, discovery tools, search optimization"
     
-    echo "ℹ️  Running SearchSpecialistAPI Demo..."
+    echo "ℹ️  Running SearchSpecialistAPI Demo (via SearchFrameworkDemo)..."
     echo ""
     
-    java -cp "$JAR_PATH" demo.SearchFrameworkDemo 2>&1 | while IFS= read -r line; do
-        if [[ "$line" =~ "Fast search|Simple search|Secure search|Intelligent search" ]]; then
+    echo "📊 SearchSpecialistAPI provides:"
+    echo "   ⚡ Multiple search strategies (fast, secure, intelligent)"
+    echo "   📈 Real-time performance metrics and analytics"
+    echo "   🔍 Advanced search modes (public, encrypted, hybrid)"
+    echo "   🎯 Automatic strategy selection based on query complexity"
+    echo "   📊 Comprehensive diagnostics and capability reporting"
+    echo ""
+    
+    echo "🎬 Running actual SearchFrameworkEngine demonstration:"
+    echo "═══════════════════════════════════════════════════════════════════════════════════════"
+    
+    mvn exec:java -Dexec.mainClass="demo.SearchFrameworkDemo" -q 2>&1 | while IFS= read -r line; do
+        if [[ "$line" =~ "SEARCH ENGINE|ENGINE DEMO" ]]; then
+            echo "🔧 $line"
+        elif [[ "$line" =~ "Fast search|Simple search|Secure search|Intelligent search" ]]; then
             echo "⚡ $line"
-        elif [[ "$line" =~ "Performance|Statistics|Metrics" ]]; then
+        elif [[ "$line" =~ "Performance|Statistics|Metrics|diagnostics" ]]; then
             echo "📊 $line"
         elif [[ "$line" =~ "SUCCESS:|✅" ]]; then
             echo "✅ $line"
         elif [[ "$line" =~ "ERROR:|❌" ]]; then
             echo "❌ $line"
+        elif [[ "$line" =~ "Setting up|Initializing" ]]; then
+            echo "🔧 $line"
         else
             echo "$line"
         fi
     done
     
+    echo "═══════════════════════════════════════════════════════════════════════════════════════"
     echo ""
     echo "📋 Tier 2 Summary:"
     echo "   ⚡ Sub-50ms public searches for maximum performance"
     echo "   🔐 Advanced encrypted content search with analytics"
-    echo "   🧠 Intelligent search with automatic strategy selection"
-    echo "   📊 Comprehensive search metrics and diagnostics"
+    echo "   🎯 Intelligent routing for optimal search strategy"
+    echo "   📊 Comprehensive performance metrics and diagnostics"
+    echo "   🔄 Multiple search capabilities in a single API"
     echo ""
 }
 
 run_tier3_demo() {
     print_tier_intro "🔧 TIER 3: SearchFrameworkEngine" \
-                     "Low-level search engine with direct strategy control and custom configuration" \
-                     "Framework builders - custom search algorithms, specialized implementations"
+                     "Low-level engine for building custom blockchain search solutions" \
+                     "Framework developers - custom search engines, specialized applications"
     
     echo "ℹ️  Running SearchFrameworkEngine Demo..."
     echo ""
     
-    java -cp "$JAR_PATH" demo.ExhaustiveSearchDemo 2>&1 | while IFS= read -r line; do
-        if [[ "$line" =~ "Strategy|Engine|Low-level|Direct" ]]; then
+    echo "🔧 SearchFrameworkEngine provides:"
+    echo "   🏗️ Direct control over indexing strategies"
+    echo "   🎛️ Custom metadata layer management"
+    echo "   🔀 Flexible search strategy routing"
+    echo "   🚀 Raw performance optimization"
+    echo "   🔌 Custom integration points"
+    echo "   ⚙️ Full access to engine internals"
+    echo ""
+    
+    echo "🎬 Running actual SearchFrameworkEngine demonstration:"
+    echo "═══════════════════════════════════════════════════════════════════════════════════════"
+    
+    mvn exec:java -Dexec.mainClass="demo.SearchFrameworkDemo" -q 2>&1 | while IFS= read -r line; do
+        if [[ "$line" =~ "SEARCH ENGINE|ENGINE DEMO" ]]; then
             echo "🔧 $line"
-        elif [[ "$line" =~ "Exhaustive|TRUE|Off-chain" ]]; then
-            echo "🔍 $line"
+        elif [[ "$line" =~ "indexing|Indexing" ]]; then
+            echo "📦 $line"
+        elif [[ "$line" =~ "Strategy|strategy" ]]; then
+            echo "🎯 $line"
+        elif [[ "$line" =~ "Performance|Statistics|Metrics" ]]; then
+            echo "📊 $line"
+        elif [[ "$line" =~ "Engine|engine" ]]; then
+            echo "🔧 $line"
         elif [[ "$line" =~ "SUCCESS:|✅" ]]; then
             echo "✅ $line"
         elif [[ "$line" =~ "ERROR:|❌" ]]; then
@@ -121,51 +160,54 @@ run_tier3_demo() {
         fi
     done
     
+    echo "═══════════════════════════════════════════════════════════════════════════════════════"
     echo ""
     echo "📋 Tier 3 Summary:"
-    echo "   🔧 Direct access to search strategies and engine configuration"
-    echo "   🔍 TRUE exhaustive search across on-chain and off-chain data"
-    echo "   ⚙️  Custom encryption configuration and security policies"
-    echo "   🎛️  Maximum control for specialized search implementations"
+    echo "   🔧 Maximum control and flexibility"
+    echo "   🏗️ Build custom search solutions"
+    echo "   ⚙️ Direct access to all engine components"
+    echo "   🚀 Optimal performance through fine-tuning"
+    echo "   🔌 Extensible architecture for integrations"
+    echo "   🎛️ Full customization of search behavior"
     echo ""
 }
 
 show_comparison_matrix() {
     echo ""
     echo "┌─────────────────────────────────────────────────────────────────────────────────────┐"
-    echo "│                               📊 API COMPARISON MATRIX                              │"
-    echo "├─────────────────────────────────┬─────────────────┬─────────────────┬─────────────────┤"
-    echo "│ Feature                         │ UserFriendly    │ Search Specialist│ Search Engine   │"
-    echo "├─────────────────────────────────┼─────────────────┼─────────────────┼─────────────────┤"
-    echo "│ Target Audience                 │ 90% developers  │ Search experts  │ Framework devs  │"
-    echo "│ Complexity Level                │ ✅ Low          │ ⚡ Medium        │ 🔧 High         │"
-    echo "│ Data Storage                    │ ✅ Complete     │ ❌ No           │ ❌ No           │"
-    echo "│ Encryption Management          │ ✅ Automatic    │ ❌ Manual       │ ❌ Manual       │"
-    echo "│ Key Management                  │ ✅ Built-in     │ ❌ External     │ ❌ External     │"
-    echo "│ Basic Search                    │ ✅ Simple       │ ✅ Advanced     │ 🔧 Expert       │"
-    echo "│ Performance Tuning              │ ⚡ Good         │ ⚡ Excellent    │ 🔧 Manual       │"
-    echo "│ Custom Strategies               │ ❌ No           │ ⚡ Limited      │ ✅ Full         │"
-    echo "│ Learning Curve                  │ 📚 Easy         │ 📚 Medium       │ 📚 Steep        │"
-    echo "└─────────────────────────────────┴─────────────────┴─────────────────┴─────────────────┘"
+    echo "│                              📊 API COMPARISON MATRIX                               │"
+    echo "├─────────────────────────┬─────────────────────┬─────────────────────┬──────────────┤"
+    echo "│ Feature                 │ UserFriendlyAPI     │ SearchSpecialistAPI │ Framework     │"
+    echo "├─────────────────────────┼─────────────────────┼─────────────────────┼──────────────┤"
+    echo "│ Target Audience         │ 90% of developers   │ Search specialists  │ Framework devs│"
+    echo "│ Learning Curve          │ Easy (1-2 hours)    │ Moderate (1-2 days) │ Steep (1 week)│"
+    echo "│ Key Management          │ ✅ Automatic        │ ❌ Manual           │ ❌ Manual     │"
+    echo "│ Encryption              │ ✅ Built-in         │ ⚠️  Optional        │ ⚠️  Optional  │"
+    echo "│ Search Strategies       │ ✅ Auto-selected    │ ✅ Manual choice    │ ✅ Full control│"
+    echo "│ Performance             │ Good                │ Better              │ Best          │"
+    echo "│ Customization           │ Limited             │ Moderate            │ Full          │"
+    echo "│ Use Cases              │ Apps, Services      │ Analytics, Tools    │ Frameworks    │"
+    echo "└─────────────────────────┴─────────────────────┴─────────────────────┴──────────────┘"
     echo ""
 }
 
 show_decision_tree() {
     echo ""
     echo "┌─────────────────────────────────────────────────────────────────────────────────────┐"
-    echo "│                              🎯 WHICH API TO CHOOSE?                                │"
+    echo "│                              🎯 WHICH API SHOULD I USE?                             │"
+    echo "├─────────────────────────────────────────────────────────────────────────────────────┤"
     echo "│                                                                                     │"
-    echo "│  Building a complete blockchain application?                                        │"
-    echo "│  ├─ YES → Use UserFriendlyEncryptionAPI ✅                                          │"
-    echo "│  └─ NO                                                                              │"
-    echo "│      └─ Need only search functionality?                                             │"
-    echo "│          ├─ YES → Use SearchSpecialistAPI ⚡                              │"
-    echo "│          └─ NO → Building framework/custom engine?                                  │"
-    echo "│              ├─ YES → Use SearchFrameworkEngine 🔧                             │"
-    echo "│              └─ NO → Use UserFriendlyEncryptionAPI ✅ (safest choice)              │"
+    echo "│  Are you building a medical, financial, or business application?                   │"
+    echo "│  └─ YES → Use UserFriendlyEncryptionAPI ✅                                        │"
     echo "│                                                                                     │"
-    echo "│  💡 TIP: You can combine APIs! Use UserFriendlyEncryptionAPI for storage           │"
-    echo "│          and SearchSpecialistAPI for specialized search operations.      │"
+    echo "│  Do you need advanced search features with performance analytics?                   │"
+    echo "│  └─ YES → Use SearchSpecialistAPI ⚡                                               │"
+    echo "│                                                                                     │"
+    echo "│  Are you building a custom search framework or engine?                             │"
+    echo "│  └─ YES → Use SearchFrameworkEngine 🔧                                             │"
+    echo "│                                                                                     │"
+    echo "│  Not sure? → Start with UserFriendlyEncryptionAPI! 📊                             │"
+    echo "│                                                                                     │"
     echo "└─────────────────────────────────────────────────────────────────────────────────────┘"
     echo ""
 }
@@ -173,10 +215,10 @@ show_decision_tree() {
 show_getting_started_links() {
     echo ""
     echo "┌─────────────────────────────────────────────────────────────────────────────────────┐"
-    echo "│                              📚 GETTING STARTED LINKS                              │"
+    echo "│                              📚 GETTING STARTED GUIDES                              │"
+    echo "├─────────────────────────────────────────────────────────────────────────────────────┤"
     echo "│                                                                                     │"
-    echo "│  🚀 Start Here (90% of developers):                                                │"
-    echo "│     • docs/USER_FRIENDLY_SEARCH_GUIDE.md                                           │"
+    echo "│  📊 General Developers:                                                             │"
     echo "│     • docs/GETTING_STARTED.md                                                      │"
     echo "│     • docs/EXAMPLES.md                                                             │"
     echo "│                                                                                     │"
@@ -197,10 +239,15 @@ show_getting_started_links() {
 main() {
     print_header
     
-    # Check if JAR exists
-    if [[ ! -f "$JAR_PATH" ]]; then
-        echo "❌ JAR file not found: $JAR_PATH"
-        echo "ℹ️  Please run 'mvn clean package -DskipTests' first"
+    # Check prerequisites
+    if ! check_java || ! check_maven; then
+        exit 1
+    fi
+    
+    # Clean and compile
+    cleanup_database
+    
+    if ! compile_project; then
         exit 1
     fi
     
@@ -218,8 +265,42 @@ main() {
     show_decision_tree
     show_getting_started_links
     
+    # Show practical next steps
+    show_next_steps
+    
     echo "🎉 Three-Tier API Demo completed!"
     echo "ℹ️  Choose the API that best fits your needs and expertise level"
+    echo ""
+}
+
+show_next_steps() {
+    echo ""
+    echo "┌───────────────────────────────────────────────────────────────────────────────────────┐"
+    echo "│                              🚀 NEXT STEPS TO GET STARTED                              │"
+    echo "├───────────────────────────────────────────────────────────────────────────────────────┤"
+    echo "│                                                                                     │"
+    echo "│  📊 If you chose UserFriendlyEncryptionAPI:                                          │"
+    echo "│     1. ./scripts/run_user_friendly_encryption_demo.zsh                            │"
+    echo "│     2. Read docs/GETTING_STARTED.md                                               │"
+    echo "│     3. Try the examples in docs/EXAMPLES.md                                       │"
+    echo "│                                                                                     │"
+    echo "│  ⚡ If you chose SearchSpecialistAPI:                                                │"
+    echo "│     1. ./scripts/run_search_framework_demo.zsh                                    │"
+    echo "│     2. Read docs/SEARCH_FRAMEWORK_GUIDE.md                                        │"
+    echo "│     3. Review docs/SEARCH_COMPARISON.md                                           │"
+    echo "│                                                                                     │"
+    echo "│  🔧 If you chose SearchFrameworkEngine:                                             │"
+    echo "│     1. ./scripts/run_search_framework_demo.zsh                                    │"
+    echo "│     2. Read docs/TECHNICAL_DETAILS.md                                             │"
+    echo "│     3. Study docs/API_GUIDE.md                                                    │"
+    echo "│                                                                                     │"
+    echo "│  📋 Other useful demos:                                                           │"
+    echo "│     • ./scripts/run_exhaustive_search_demo.zsh                                    │"
+    echo "│     • ./scripts/run_blockchain_demo.zsh                                           │"
+    echo "│     • ./scripts/run_simple_demo.zsh                                               │"
+    echo "│                                                                                     │"
+    echo "│  📝 Run all tests: ./scripts/run_all_tests.zsh                                    │"
+    echo "└───────────────────────────────────────────────────────────────────────────────────────┘"
     echo ""
 }
 

@@ -78,6 +78,7 @@ public class SearchSpecialistAPI {
     private final SearchFrameworkEngine searchEngine;
     private final BlockPasswordRegistry passwordRegistry;
     private boolean isInitialized = false;
+    private String defaultPassword = null;
     
     /**
      * Creates a new SearchSpecialistAPI instance with default high-security configuration.
@@ -191,7 +192,19 @@ public class SearchSpecialistAPI {
      * @see #searchSecure(String, String, int) for encrypted content search with limits
      */
     public List<SearchFrameworkEngine.EnhancedSearchResult> searchSimple(String query, int maxResults) {
-        SearchFrameworkEngine.SearchResult result = searchEngine.searchPublicOnly(query, maxResults);
+        if (query == null) {
+            throw new IllegalArgumentException("Query cannot be null");
+        }
+        if (query.trim().isEmpty()) {
+            throw new IllegalArgumentException("Query cannot be empty");
+        }
+        if (maxResults <= 0) {
+            throw new IllegalArgumentException("Maximum results must be positive");
+        }
+        
+        // IMPROVED: searchSimple now searches ALL available content (public + encrypted)
+        // Use the generic search method with defaultPassword to access encrypted content
+        SearchFrameworkEngine.SearchResult result = searchEngine.search(query, defaultPassword, maxResults);
         return result.getResults();
     }
     
@@ -478,6 +491,7 @@ public class SearchSpecialistAPI {
      */
     public SearchFrameworkEngine.IndexingResult initializeWithBlockchain(Blockchain blockchain, String password, PrivateKey privateKey) {
         SearchFrameworkEngine.IndexingResult result = searchEngine.indexBlockchain(blockchain, password, privateKey);
+        this.defaultPassword = password;
         isInitialized = true;
         return result;
     }
@@ -540,6 +554,7 @@ public class SearchSpecialistAPI {
             Blockchain blockchain, String password, PrivateKey privateKey) {
         return CompletableFuture.supplyAsync(() -> {
             SearchFrameworkEngine.IndexingResult result = searchEngine.indexBlockchain(blockchain, password, privateKey);
+            this.defaultPassword = password;
             isInitialized = true;
             return result;
         });

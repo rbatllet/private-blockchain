@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.security.PrivateKey;
+import com.rbatllet.blockchain.service.SecureBlockEncryptionService;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -140,7 +141,7 @@ public class MetadataLayerManager {
                                 logger.debug("🔍 Debug: dataHash: {}...", dataHashStr.substring(0, Math.min(20, dataHashStr.length())));
                                 
                                 // Use SecureBlockEncryptionService to decrypt properly
-                                contentForKeywords = com.rbatllet.blockchain.service.SecureBlockEncryptionService.decryptFromString(encryptedData, password);
+                                contentForKeywords = SecureBlockEncryptionService.decryptFromString(encryptedData, password);
                                 logger.debug("🔍 Debug: decryption successful, content: {}...", contentForKeywords.substring(0, Math.min(50, contentForKeywords.length())));
                             } else {
                                 logger.debug("🔍 Debug: invalid encryptionMetadata format, expected timestamp|salt|iv|encryptedData|dataHash (5 parts), got {} parts", parts.length);
@@ -155,15 +156,73 @@ public class MetadataLayerManager {
                 }
             }
             
-            // Use user-provided search terms (no automatic fallback for clean architecture)
+            // Use user-provided search terms or extract from block if none provided
             Set<String> keywordSet = new HashSet<>();
             if (publicSearchTerms != null) keywordSet.addAll(publicSearchTerms);
             if (privateSearchTerms != null) keywordSet.addAll(privateSearchTerms);
             
+            // CRITICAL FIX: If no external keywords provided, extract from block's stored keywords
+            if (keywordSet.isEmpty()) {
+                // Try to extract keywords from autoKeywords (encrypted) and manualKeywords (public)
+                logger.debug("🔍 no external keywords provided, extracting from block...");
+                
+                // Extract manual keywords (public)
+                if (block.getManualKeywords() != null && !block.getManualKeywords().trim().isEmpty()) {
+                    String[] manualKeywords = block.getManualKeywords().split("\\s+");
+                    for (String keyword : manualKeywords) {
+                        if (!keyword.trim().isEmpty()) {
+                            keywordSet.add(keyword.trim());
+                        }
+                    }
+                    logger.debug("🔍 extracted manual keywords: {}", keywordSet);
+                }
+                
+                // Extract auto keywords (encrypted) if password available
+                if (block.getAutoKeywords() != null && !block.getAutoKeywords().trim().isEmpty() && 
+                    password != null && !password.trim().isEmpty()) {
+                    try {
+                        logger.debug("🔍 attempting to decrypt autoKeywords...");
+                        
+                        // autoKeywords contains multiple encrypted strings separated by spaces
+                        // Each encrypted string has format: timestamp|salt|iv|encryptedData|dataHash
+                        // We need to split by spaces and decrypt each part separately
+                        String[] encryptedEntries = block.getAutoKeywords().split("\\s+");
+                        logger.debug("🔍 found {} encrypted entries in autoKeywords", encryptedEntries.length);
+                        
+                        for (String encryptedEntry : encryptedEntries) {
+                            if (encryptedEntry.trim().isEmpty()) continue;
+                            
+                            try {
+                                String decryptedKeywords = SecureBlockEncryptionService.decryptFromString(
+                                    encryptedEntry.trim(), password);
+                                logger.debug("🔍 decrypted entry: {}", decryptedKeywords);
+                                
+                                if (decryptedKeywords != null && !decryptedKeywords.trim().isEmpty()) {
+                                    String[] keywordArray = decryptedKeywords.split("\\s+");
+                                    for (String keyword : keywordArray) {
+                                        if (!keyword.trim().isEmpty()) {
+                                            keywordSet.add(keyword.trim());
+                                        }
+                                    }
+                                }
+                            } catch (Exception entryException) {
+                                logger.debug("🔍 failed to decrypt entry '{}': {}", 
+                                           encryptedEntry.substring(0, Math.min(20, encryptedEntry.length())), 
+                                           entryException.getMessage());
+                            }
+                        }
+                        
+                        logger.debug("🔍 extracted encrypted keywords: {}", keywordSet);
+                    } catch (Exception e) {
+                        logger.debug("🔍 failed to process autoKeywords: {}", e.getMessage());
+                    }
+                }
+            }
+            
             if (!keywordSet.isEmpty()) {
-                logger.debug("🔍 using user-provided search terms: {}", keywordSet);
+                logger.debug("🔍 using keywords: {}", keywordSet);
             } else {
-                logger.debug("🔍 no user-provided search terms, using minimal metadata");
+                logger.debug("🔍 no keywords available, using minimal metadata");
             }
             
             // Analyze content characteristics using decrypted content if available
