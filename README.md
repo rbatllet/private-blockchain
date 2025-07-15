@@ -44,6 +44,10 @@ This is a **private blockchain** for controlled environments where only authoriz
 ### Advanced Functions
 - **Export/Import**: Backup and restore complete blockchain with temporal consistency
 - **Advanced Search System**: Multi-level search with TRUE exhaustive capabilities
+  - **SearchSpecialistAPI**: Professional search API with password-based initialization
+  - **Generic Search**: searchSimple() function searches both encrypted and non-encrypted content
+  - **Enhanced Password Management**: Secure password registry for encrypted content access
+  - **Multi-format Keywords**: autoKeywords field supports multiple encrypted strings
   - **Fast Search**: Keywords-only search for optimal performance
   - **Data Search**: Keywords + block content with balanced performance
   - **TRUE Exhaustive Search**: Complete search across on-chain content AND off-chain files
@@ -52,8 +56,13 @@ This is a **private blockchain** for controlled environments where only authoriz
   - **Auto Keywords**: Automatic extraction of dates, numbers, emails, codes, and universal elements
   - **Search Validation**: Intelligent minimum length requirements with exceptions for useful short terms
   - **Mixed Content Search**: Advanced search across encrypted/plain text, on-chain/off-chain content
+  - **API Compatibility**: Compatible search results between searchAndDecryptByTerms and SearchSpecialistAPI
 - **Rollback Operations**: Safe removal of recent blocks with genesis protection
 - **Off-Chain Storage**: Automatic storage for large data (>512KB) with AES-GCM encryption
+  - **Block Linking**: New methods for creating blocks linked to off-chain data
+  - **File Storage**: storeDataWithOffChainFile() for file-based off-chain storage
+  - **Text Storage**: storeDataWithOffChainText() for text-based off-chain content
+  - **Searchable Off-Chain**: storeSearchableDataWithOffChainFile() with keyword indexing
 - **Data Size Management**: Intelligent data placement based on configurable size thresholds
 - **Integrity Verification**: Cryptographic verification of off-chain data with hash and signature validation
 - **Detailed Validation**: Enhanced `validateChainDetailed()` with comprehensive off-chain data analysis

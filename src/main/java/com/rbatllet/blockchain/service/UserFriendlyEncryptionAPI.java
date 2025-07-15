@@ -346,6 +346,11 @@ public class UserFriendlyEncryptionAPI {
      * @since 1.0
      */
     public List<Block> findEncryptedData(String searchTerm) {
+        // Handle null search term gracefully
+        if (searchTerm == null) {
+            return new ArrayList<>();
+        }
+        
         // Use Advanced Search public metadata search (no password required)
         var enhancedResults = blockchain.getSearchSpecialistAPI().searchSimple(searchTerm, 50);
         List<Block> blocks = new ArrayList<>();
@@ -532,6 +537,11 @@ public class UserFriendlyEncryptionAPI {
      * @since 1.0
      */
     public List<Block> searchEverything(String searchTerm) {
+        // Handle null or empty search term gracefully
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
+        
         // Use Advanced Search public search (no password, metadata only)
         var enhancedResults = blockchain.getSearchSpecialistAPI().searchSimple(searchTerm, 50);
         List<Block> blocks = new ArrayList<>();
@@ -7130,6 +7140,140 @@ public class UserFriendlyEncryptionAPI {
         } catch (Exception e) {
             logger.error("Error repairing block link", e);
             return false;
+        }
+    }
+    
+    // ===== OFF-CHAIN DATA WITH BLOCKCHAIN INTEGRATION =====
+    
+    /**
+     * Store data with attached off-chain file, creating a block linked to the off-chain data
+     * @param blockData The main data to store in the block
+     * @param fileData The file data to store off-chain
+     * @param password Password for encryption
+     * @param contentType MIME type of the file
+     * @param keywords Search keywords for the block
+     * @return Block containing the data and linked to the off-chain file
+     */
+    public Block storeDataWithOffChainFile(String blockData, byte[] fileData, String password, 
+                                          String contentType, String[] keywords) {
+        validateKeyPair();
+        validateInputData(blockData, 50 * 1024 * 1024, "Block data");
+        validatePasswordSecurity(password, "Password");
+        
+        if (fileData == null || fileData.length == 0) {
+            throw new IllegalArgumentException("File data cannot be null or empty");
+        }
+        
+        try {
+            // First store the file off-chain
+            OffChainData offChainData = storeLargeFileSecurely(fileData, password, contentType);
+            
+            // Then create a block linked to this off-chain data
+            return blockchain.addBlockWithOffChainData(
+                blockData, 
+                offChainData, 
+                keywords, 
+                password, 
+                defaultKeyPair.getPrivate(), 
+                defaultKeyPair.getPublic()
+            );
+            
+        } catch (Exception e) {
+            logger.error("Failed to store data with off-chain file", e);
+            throw new RuntimeException("Failed to store data with off-chain file: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Store text document with attached off-chain file
+     * @param blockData The main data to store in the block
+     * @param textContent The text content to store off-chain
+     * @param password Password for encryption
+     * @param filename Name of the text file
+     * @param keywords Search keywords for the block
+     * @return Block containing the data and linked to the off-chain text file
+     */
+    public Block storeDataWithOffChainText(String blockData, String textContent, String password, 
+                                          String filename, String[] keywords) {
+        validateKeyPair();
+        validateInputData(blockData, 50 * 1024 * 1024, "Block data");
+        validatePasswordSecurity(password, "Password");
+        
+        if (textContent == null || textContent.trim().isEmpty()) {
+            throw new IllegalArgumentException("Text content cannot be null or empty");
+        }
+        
+        try {
+            // First store the text file off-chain
+            OffChainData offChainData = storeLargeTextDocument(textContent, password, filename);
+            
+            // Then create a block linked to this off-chain data
+            return blockchain.addBlockWithOffChainData(
+                blockData, 
+                offChainData, 
+                keywords, 
+                password, 
+                defaultKeyPair.getPrivate(), 
+                defaultKeyPair.getPublic()
+            );
+            
+        } catch (Exception e) {
+            logger.error("Failed to store data with off-chain text", e);
+            throw new RuntimeException("Failed to store data with off-chain text: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Store searchable data with attached off-chain file
+     * @param blockData The main searchable data to store in the block
+     * @param fileData The file data to store off-chain
+     * @param password Password for encryption
+     * @param contentType MIME type of the file
+     * @param publicKeywords Keywords that will be searchable without password
+     * @param privateKeywords Keywords that require password for search
+     * @return Block containing the searchable data and linked to the off-chain file
+     */
+    public Block storeSearchableDataWithOffChainFile(String blockData, byte[] fileData, String password, 
+                                                    String contentType, String[] publicKeywords, 
+                                                    String[] privateKeywords) {
+        validateKeyPair();
+        validateInputData(blockData, 50 * 1024 * 1024, "Block data");
+        validatePasswordSecurity(password, "Password");
+        
+        if (fileData == null || fileData.length == 0) {
+            throw new IllegalArgumentException("File data cannot be null or empty");
+        }
+        
+        try {
+            // First store the file off-chain
+            OffChainData offChainData = storeLargeFileSecurely(fileData, password, contentType);
+            
+            // Combine all keywords
+            String[] allKeywords = null;
+            if (publicKeywords != null || privateKeywords != null) {
+                List<String> combined = new ArrayList<>();
+                if (publicKeywords != null) {
+                    combined.addAll(Arrays.asList(publicKeywords));
+                }
+                if (privateKeywords != null) {
+                    combined.addAll(Arrays.asList(privateKeywords));
+                }
+                allKeywords = combined.toArray(new String[0]);
+            }
+            
+            // Create searchable block linked to off-chain data
+            return blockchain.addBlockWithOffChainData(
+                blockData, 
+                offChainData, 
+                allKeywords, 
+                password, 
+                defaultKeyPair.getPrivate(), 
+                defaultKeyPair.getPublic()
+            );
+            
+        } catch (Exception e) {
+            logger.error("Failed to store searchable data with off-chain file", e);
+            throw new RuntimeException("Failed to store searchable data with off-chain file: " + e.getMessage(), e);
         }
     }
 }

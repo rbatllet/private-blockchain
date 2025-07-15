@@ -59,6 +59,16 @@ public class UserFriendlyEncryptionDemo {
             System.out.println("🔐 Secret data stored: Block #" + secretBlock.getBlockNumber());
             System.out.println();
             
+            // Initialize advanced search for indexed data (required for search functionality)
+            System.out.println("🔄 Initializing advanced search system...");
+            // Get the blockchain instance and initialize search with all stored passwords
+            blockchain.initializeAdvancedSearch(medicalPassword);
+            blockchain.initializeAdvancedSearch(financialPassword);
+            blockchain.initializeAdvancedSearch(legalPassword);
+            blockchain.initializeAdvancedSearch(secretPassword);
+            System.out.println("✅ Advanced search system initialized and ready!");
+            System.out.println();
+            
             // 3. Demonstrate blockchain status
             System.out.println("3️⃣ Blockchain status...");
             System.out.println("📊 Blockchain summary:");
@@ -71,17 +81,18 @@ public class UserFriendlyEncryptionDemo {
             // 4. Search operations (metadata only - privacy preserved)
             System.out.println("4️⃣ Privacy-preserving search (metadata only)...");
             
-            var patientRecords = api.findRecordsByIdentifier("patient");
+            // Use searchAndDecryptByTerms for proper search functionality
+            var patientRecords = api.searchAndDecryptByTerms(new String[]{"patient"}, medicalPassword, 10);
             System.out.println("🏥 Found " + patientRecords.size() + " patient record(s)");
             
-            var accountRecords = api.findRecordsByIdentifier("account");
+            var accountRecords = api.searchAndDecryptByTerms(new String[]{"account"}, financialPassword, 10);
             System.out.println("💰 Found " + accountRecords.size() + " account record(s)");
             
-            var contractDocuments = api.findRecordsByIdentifier("contract");
+            var contractDocuments = api.searchAndDecryptByTerms(new String[]{"contract"}, legalPassword, 10);
             System.out.println("⚖️ Found " + contractDocuments.size() + " contract document(s)");
             
-            // Search by year (metadata search)
-            var blocks2025 = api.findEncryptedData("2025");
+            // Search by year (metadata search) - this searches in content, not metadata
+            var blocks2025 = api.searchAndDecryptByTerms(new String[]{"2025"}, financialPassword, 10);
             System.out.println("📅 Found " + blocks2025.size() + " block(s) from 2025");
             System.out.println();
             
@@ -98,7 +109,7 @@ public class UserFriendlyEncryptionDemo {
             System.out.println("💰 Financial record retrieved: " + 
                 (retrievedFinancial != null ? retrievedFinancial.substring(0, Math.min(50, retrievedFinancial.length())) + "..." : "FAILED"));
             
-            // Try with wrong password (should fail)
+            // Try with wrong password (should fail - stack trace expected)
             String wrongPasswordResult = api.retrieveSecret(secretBlock.getId(), "wrongpassword");
             System.out.println("❌ Wrong password test: " + (wrongPasswordResult == null ? "CORRECTLY FAILED" : "SECURITY ISSUE"));
             System.out.println();
@@ -106,12 +117,12 @@ public class UserFriendlyEncryptionDemo {
             // 6. Search with decryption
             System.out.println("6️⃣ Advanced search with decryption...");
             
-            // Search for medical data with decryption
-            var decryptedMedical = api.findAndDecryptData("Hypertension", medicalPassword);
+            // Search for medical data with decryption using keyword search
+            var decryptedMedical = api.searchAndDecryptByTerms(new String[]{"hypertension"}, medicalPassword, 10);
             System.out.println("🔍 Found " + decryptedMedical.size() + " medical record(s) containing 'Hypertension'");
             
-            // Search for financial data with decryption
-            var decryptedFinancial = api.findAndDecryptData("Mortgage", financialPassword);
+            // Search for financial data with decryption using keyword search
+            var decryptedFinancial = api.searchAndDecryptByTerms(new String[]{"transaction"}, financialPassword, 10);
             System.out.println("🔍 Found " + decryptedFinancial.size() + " financial record(s) containing 'Mortgage'");
             System.out.println();
             
