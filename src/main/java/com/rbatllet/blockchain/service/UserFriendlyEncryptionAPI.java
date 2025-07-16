@@ -761,32 +761,37 @@ public class UserFriendlyEncryptionAPI {
             return List.of(); // No keywords to match against
         }
         
-        // Search for blocks and filter by similarity
-        List<Block> allBlocks = blockchain.getAllBlocks();
+        // OPTIMIZED: Process blocks in batches to avoid loading all blocks at once
         List<Block> similarBlocks = new java.util.ArrayList<>();
+        final int BATCH_SIZE = 100;
+        long totalBlocks = blockchain.getBlockCount();
         
-        for (Block block : allBlocks) {
-            String blockContent = block.getData();
-            if (blockContent != null && !blockContent.trim().isEmpty()) {
-                String blockKeywords = extractSimpleKeywords(blockContent);
-                Set<String> blockKeywordSet = new HashSet<>();
-                for (String keyword : blockKeywords.split("\\s+")) {
-                    if (!keyword.trim().isEmpty()) {
-                        blockKeywordSet.add(keyword.trim().toLowerCase());
+        for (int offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
+            List<Block> batchBlocks = blockchain.getBlocksPaginated(offset, BATCH_SIZE);
+            
+            for (Block block : batchBlocks) {
+                String blockContent = block.getData();
+                if (blockContent != null && !blockContent.trim().isEmpty()) {
+                    String blockKeywords = extractSimpleKeywords(blockContent);
+                    Set<String> blockKeywordSet = new HashSet<>();
+                    for (String keyword : blockKeywords.split("\\s+")) {
+                        if (!keyword.trim().isEmpty()) {
+                            blockKeywordSet.add(keyword.trim().toLowerCase());
+                        }
                     }
-                }
-                
-                // Calculate similarity (Jaccard index)
-                Set<String> intersection = new HashSet<>(referenceKeywordSet);
-                intersection.retainAll(blockKeywordSet);
-                
-                Set<String> union = new HashSet<>(referenceKeywordSet);
-                union.addAll(blockKeywordSet);
-                
-                double similarity = union.isEmpty() ? 0.0 : (double) intersection.size() / union.size();
-                
-                if (similarity >= minimumSimilarity) {
-                    similarBlocks.add(block);
+                    
+                    // Calculate similarity (Jaccard index)
+                    Set<String> intersection = new HashSet<>(referenceKeywordSet);
+                    intersection.retainAll(blockKeywordSet);
+                    
+                    Set<String> union = new HashSet<>(referenceKeywordSet);
+                    union.addAll(blockKeywordSet);
+                    
+                    double similarity = union.isEmpty() ? 0.0 : (double) intersection.size() / union.size();
+                    
+                    if (similarity >= minimumSimilarity) {
+                        similarBlocks.add(block);
+                    }
                 }
             }
         }

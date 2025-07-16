@@ -287,6 +287,83 @@ public class BlockDAO {
     }
     
     /**
+     * Get blocks paginated for better performance
+     * @param offset starting position
+     * @param limit maximum number of blocks to return
+     * @return list of blocks within the specified range
+     */
+    public List<Block> getBlocksPaginated(int offset, int limit) {
+        if (offset < 0) {
+            throw new IllegalArgumentException("Offset cannot be negative");
+        }
+        if (limit <= 0) {
+            throw new IllegalArgumentException("Limit must be positive");
+        }
+        
+        lock.readLock().lock();
+        try {
+            EntityManager em = JPAUtil.getEntityManager();
+            try {
+                TypedQuery<Block> query = em.createQuery(
+                    "SELECT b FROM Block b LEFT JOIN FETCH b.offChainData ORDER BY b.blockNumber ASC", Block.class);
+                query.setFirstResult(offset);
+                query.setMaxResults(limit);
+                return query.getResultList();
+            } finally {
+                if (!JPAUtil.hasActiveTransaction()) {
+                    em.close();
+                }
+            }
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Get blocks without off-chain data for lightweight operations
+     * @return list of blocks without eager loading off-chain data
+     */
+    public List<Block> getAllBlocksLightweight() {
+        lock.readLock().lock();
+        try {
+            EntityManager em = JPAUtil.getEntityManager();
+            try {
+                TypedQuery<Block> query = em.createQuery(
+                    "SELECT b FROM Block b ORDER BY b.blockNumber ASC", Block.class);
+                return query.getResultList();
+            } finally {
+                if (!JPAUtil.hasActiveTransaction()) {
+                    em.close();
+                }
+            }
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Get total number of blocks in the blockchain
+     * @return total block count
+     */
+    public long getBlockCount() {
+        lock.readLock().lock();
+        try {
+            EntityManager em = JPAUtil.getEntityManager();
+            try {
+                TypedQuery<Long> query = em.createQuery(
+                    "SELECT COUNT(b) FROM Block b", Long.class);
+                return query.getSingleResult();
+            } finally {
+                if (!JPAUtil.hasActiveTransaction()) {
+                    em.close();
+                }
+            }
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+    
+    /**
      * Get blocks within a time range
      */
     public List<Block> getBlocksByTimeRange(LocalDateTime startTime, LocalDateTime endTime) {
@@ -300,26 +377,6 @@ public class BlockDAO {
                 query.setParameter("startTime", startTime);
                 query.setParameter("endTime", endTime);
                 return query.getResultList();
-            } finally {
-                if (!JPAUtil.hasActiveTransaction()) {
-                    em.close();
-                }
-            }
-        } finally {
-            lock.readLock().unlock();
-        }
-    }
-    
-    /**
-     * Get the total number of blocks
-     */
-    public long getBlockCount() {
-        lock.readLock().lock();
-        try {
-            EntityManager em = JPAUtil.getEntityManager();
-            try {
-                TypedQuery<Long> query = em.createQuery("SELECT COUNT(b) FROM Block b", Long.class);
-                return query.getSingleResult();
             } finally {
                 if (!JPAUtil.hasActiveTransaction()) {
                     em.close();

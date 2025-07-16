@@ -28,6 +28,12 @@ public class JPAUtil {
         try {
             // Create the EntityManagerFactory from persistence.xml
             entityManagerFactory = Persistence.createEntityManagerFactory("blockchainPU");
+            
+            // Add shutdown hook to clean up ThreadLocal variables
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                cleanupThreadLocals();
+                shutdown();
+            }));
         } catch (Throwable ex) {
             logger.error("Initial EntityManagerFactory creation failed", ex);
             throw new ExceptionInInitializerError(ex);
@@ -149,6 +155,45 @@ public class JPAUtil {
     /**
      * Thread-safe shutdown method
      */
+    /**
+     * Clean up ThreadLocal variables to prevent memory leaks
+     * This method should be called when threads are done with database operations
+     */
+    public static void cleanupThreadLocals() {
+        try {
+            EntityManager em = threadLocalEntityManager.get();
+            if (em != null && em.isOpen()) {
+                try {
+                    EntityTransaction tx = threadLocalTransaction.get();
+                    if (tx != null && tx.isActive()) {
+                        tx.rollback(); // Rollback any active transaction
+                    }
+                } catch (Exception e) {
+                    logger.debug("Exception during transaction cleanup", e);
+                }
+                try {
+                    em.close();
+                } catch (Exception e) {
+                    logger.debug("Exception during EntityManager cleanup", e);
+                }
+            }
+        } catch (Exception e) {
+            logger.debug("Exception during ThreadLocal cleanup", e);
+        } finally {
+            // Always remove ThreadLocal variables to prevent memory leaks
+            threadLocalEntityManager.remove();
+            threadLocalTransaction.remove();
+        }
+    }
+    
+    /**
+     * Force cleanup of all thread-local variables (for testing)
+     */
+    public static void forceCleanupAllThreadLocals() {
+        cleanupThreadLocals();
+        logger.info("🧹 Forced cleanup of all ThreadLocal variables completed");
+    }
+    
     public static void shutdown() {
         initLock.lock();
         try {
