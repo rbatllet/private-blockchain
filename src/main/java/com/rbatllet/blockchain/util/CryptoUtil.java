@@ -65,6 +65,11 @@ public class CryptoUtil {
     // In-memory key store (in production, this should be persisted securely)
     private static final Map<String, KeyInfo> keyStore = new ConcurrentHashMap<>();
     
+    // Memory management for keyStore
+    private static final int MAX_KEY_STORE_SIZE = 10000;
+    private static final long KEY_CLEANUP_INTERVAL_MS = 3600000; // 1 hour
+    private static volatile long lastCleanupTime = System.currentTimeMillis();
+    
     // Default key validity periods (in days)
     private static final int ROOT_KEY_VALIDITY_DAYS = 1825; // 5 years
     private static final int INTERMEDIATE_KEY_VALIDITY_DAYS = 365; // 1 year
@@ -162,6 +167,98 @@ public class CryptoUtil {
             return keyGen.generateKeyPair();
         } catch (Exception e) {
             throw new RuntimeException("Error generating EC key pair", e);
+        }
+    }
+    
+    /**
+     * Clean up expired keys from the key store to prevent memory leaks
+     * This method removes expired, revoked keys and enforces size limits
+     */
+    public static void cleanupExpiredKeys() {
+        long currentTime = System.currentTimeMillis();
+        
+        // Only cleanup if enough time has passed
+        if (currentTime - lastCleanupTime < KEY_CLEANUP_INTERVAL_MS) {
+            return;
+        }
+        
+        KEY_STORE_LOCK.writeLock().lock();
+        try {
+            LocalDateTime now = LocalDateTime.now();
+            int initialSize = keyStore.size();
+            
+            // Remove expired and revoked keys
+            keyStore.entrySet().removeIf(entry -> {
+                KeyInfo keyInfo = entry.getValue();
+                return keyInfo.getStatus() == KeyStatus.EXPIRED ||
+                       keyInfo.getStatus() == KeyStatus.REVOKED ||
+                       (keyInfo.getExpiresAt() != null && now.isAfter(keyInfo.getExpiresAt()));
+            });
+            
+            // If still too large, remove oldest keys
+            if (keyStore.size() > MAX_KEY_STORE_SIZE) {
+                List<Map.Entry<String, KeyInfo>> entries = new ArrayList<>(keyStore.entrySet());
+                entries.sort((a, b) -> a.getValue().getCreatedAt().compareTo(b.getValue().getCreatedAt()));
+                
+                int toRemove = keyStore.size() - MAX_KEY_STORE_SIZE;
+                for (int i = 0; i < toRemove; i++) {
+                    keyStore.remove(entries.get(i).getKey());
+                }
+            }
+            
+            lastCleanupTime = currentTime;
+            int finalSize = keyStore.size();
+            
+            if (initialSize != finalSize) {
+                System.out.println("🧹 Key store cleanup: removed " + (initialSize - finalSize) + 
+                                 " keys, size: " + finalSize);
+            }
+        } finally {
+            KEY_STORE_LOCK.writeLock().unlock();
+        }
+    }
+    
+    /**
+     * Force cleanup of the key store (for testing and shutdown)
+     */
+    public static void forceCleanupKeyStore() {
+        KEY_STORE_LOCK.writeLock().lock();
+        try {
+            keyStore.clear();
+            System.out.println("🧹 Key store force cleanup completed");
+        } finally {
+            KEY_STORE_LOCK.writeLock().unlock();
+        }
+    }
+    
+    /**
+     * Get key store statistics for monitoring
+     */
+    public static Map<String, Object> getKeyStoreStats() {
+        KEY_STORE_LOCK.readLock().lock();
+        try {
+            Map<String, Object> stats = new HashMap<>();
+            stats.put("totalKeys", keyStore.size());
+            stats.put("maxSize", MAX_KEY_STORE_SIZE);
+            stats.put("lastCleanup", new Date(lastCleanupTime));
+            
+            // Count by status
+            Map<KeyStatus, Long> statusCounts = keyStore.values().stream()
+                .collect(Collectors.groupingBy(KeyInfo::getStatus, Collectors.counting()));
+            stats.put("statusCounts", statusCounts);
+            
+            return stats;
+        } finally {
+            KEY_STORE_LOCK.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Check if automatic cleanup is needed and perform it
+     */
+    private static void checkAndPerformCleanup() {
+        if (keyStore.size() > MAX_KEY_STORE_SIZE * 0.9) { // 90% threshold
+            cleanupExpiredKeys();
         }
     }
     
@@ -306,6 +403,10 @@ public class CryptoUtil {
                 null // Root key has no issuer
             );
             
+            // Check if cleanup is needed before adding new key
+            checkAndPerformCleanup();
+            // Check if cleanup is needed before adding new key
+            checkAndPerformCleanup();
             keyStore.put(keyId, keyInfo);
             return keyInfo;
         } finally {
@@ -359,6 +460,8 @@ public class CryptoUtil {
             // Update parent's issued keys list (thread-safe)
             parentKey.addIssuedKeyId(keyId);
             
+            // Check if cleanup is needed before adding new key
+            checkAndPerformCleanup();
             keyStore.put(keyId, keyInfo);
             return keyInfo;
         } finally {
@@ -412,6 +515,8 @@ public class CryptoUtil {
             // Update parent's issued keys list (thread-safe)
             parentKey.addIssuedKeyId(keyId);
             
+            // Check if cleanup is needed before adding new key
+            checkAndPerformCleanup();
             keyStore.put(keyId, keyInfo);
             return keyInfo;
         } finally {

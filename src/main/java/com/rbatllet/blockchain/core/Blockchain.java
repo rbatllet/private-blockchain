@@ -2380,6 +2380,34 @@ public class Blockchain {
     }
     
     /**
+     * Get blocks paginated for better performance with large blockchains
+     * @param offset starting position
+     * @param limit maximum number of blocks to return
+     * @return list of blocks within the specified range
+     */
+    public List<Block> getBlocksPaginated(int offset, int limit) {
+        GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
+        try {
+            return blockDAO.getBlocksPaginated(offset, limit);
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Get blocks without off-chain data for lightweight operations
+     * @return list of blocks without eager loading off-chain data
+     */
+    public List<Block> getAllBlocksLightweight() {
+        GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
+        try {
+            return blockDAO.getAllBlocksLightweight();
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
+        }
+    }
+    
+    /**
      * Get the last block
      * FIXED: Now uses global write lock to ensure complete serialization with addBlock()
      * This method is now completely thread-safe for post-write operations

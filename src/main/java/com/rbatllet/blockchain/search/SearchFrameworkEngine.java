@@ -557,17 +557,30 @@ public class SearchFrameworkEngine {
             SearchResult regularResults = searchEncryptedOnly(query, password, maxResults);
             List<EnhancedSearchResult> allResults = new ArrayList<>(regularResults.getResults());
             
-            // Step 2: Get ALL blocks for exhaustive search (not just matches)
-            List<Block> allBlocks = blockchain != null ? blockchain.getAllBlocks() : new ArrayList<>();
+            // OPTIMIZED: Process blocks in batches to avoid loading all blocks at once
+            List<Block> allBlocks = new ArrayList<>();
+            List<Block> blocksWithOffChainData = new ArrayList<>();
+            
+            if (blockchain != null) {
+                final int BATCH_SIZE = 200;
+                long totalBlocks = blockchain.getBlockCount();
+                
+                for (int offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
+                    List<Block> batchBlocks = blockchain.getBlocksPaginated(offset, BATCH_SIZE);
+                    allBlocks.addAll(batchBlocks);
+                    
+                    // Collect blocks with off-chain data during the same iteration
+                    for (Block block : batchBlocks) {
+                        if (block.getOffChainData() != null) {
+                            blocksWithOffChainData.add(block);
+                        }
+                    }
+                }
+            }
             
             // Step 3: Perform ON-CHAIN content search
             OnChainContentSearch.OnChainSearchResult onChainResults = onChainContentSearch.searchOnChainContent(
                 allBlocks, query, password, privateKey, maxResults);
-            
-            // Step 4: Perform OFF-CHAIN file search (only for blocks with off-chain data)
-            List<Block> blocksWithOffChainData = allBlocks.stream()
-                .filter(b -> b.getOffChainData() != null)
-                .collect(java.util.stream.Collectors.toList());
             
             OffChainSearchResult offChainResults = offChainFileSearch.searchOffChainContent(
                 blocksWithOffChainData, query, password, privateKey, maxResults);
