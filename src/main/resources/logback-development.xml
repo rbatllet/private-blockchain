@@ -25,6 +25,48 @@
         </encoder>
     </appender>
 
+    <!-- Advanced logging file appender -->
+    <appender name="ADVANCED_LOGGING" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/advanced-logging-development.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/advanced-logging-development.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>25MB</maxFileSize>
+            <maxHistory>14</maxHistory>
+            <totalSizeCap>500MB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{operationId}] [%X{operationType}] - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Performance metrics file appender -->
+    <appender name="PERFORMANCE_METRICS" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/performance-metrics-development.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/performance-metrics-development.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>20MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Security events file appender -->
+    <appender name="SECURITY_EVENTS" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/security-events-development.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/security-events-development.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>15MB</maxFileSize>
+            <maxHistory>60</maxHistory>
+            <totalSizeCap>2GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%X{severity}] [%X{userId}] [%X{eventType}] - %msg%n</pattern>
+        </encoder>
+    </appender>
+
     <!-- DEVELOPMENT LEVEL CONFIGURATION -->
     <!-- More verbose for debugging -->
 
@@ -68,6 +110,34 @@
     <logger name="com.rbatllet.blockchain.validation" level="INFO" additivity="false">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="FILE"/>
+    </logger>
+
+    <!-- Advanced logging system - comprehensive tracking -->
+    <logger name="com.rbatllet.blockchain.logging.AdvancedLoggingService" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="ADVANCED_LOGGING"/>
+    </logger>
+
+    <!-- Logging manager - central coordination -->
+    <logger name="com.rbatllet.blockchain.logging.LoggingManager" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="ADVANCED_LOGGING"/>
+    </logger>
+
+    <!-- Operation logging interceptor -->
+    <logger name="com.rbatllet.blockchain.logging.OperationLoggingInterceptor" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="ADVANCED_LOGGING"/>
+    </logger>
+
+    <!-- Performance metrics logger -->
+    <logger name="performance.metrics" level="INFO" additivity="false">
+        <appender-ref ref="PERFORMANCE_METRICS"/>
+    </logger>
+
+    <!-- Security events logger -->
+    <logger name="security.events" level="INFO" additivity="false">
+        <appender-ref ref="SECURITY_EVENTS"/>
     </logger>
 
     <!-- External libraries - controlled verbosity -->
