@@ -13,6 +13,7 @@
         <class>com.rbatllet.blockchain.entity.Block</class>
         <class>com.rbatllet.blockchain.entity.AuthorizedKey</class>
         <class>com.rbatllet.blockchain.entity.BlockSequence</class>
+        <class>com.rbatllet.blockchain.entity.OffChainData</class>
         
         <properties>
             <!-- Database connection settings - FIXED: Enhanced for thread-safety -->

@@ -36,7 +36,7 @@ public class GranularTermVisibilityDemo {
             demonstrateBasicGranularControl(api, password);
             demonstrateMedicalRecordExample(api, password);
             demonstrateFinancialDataExample(api, password);
-            demonstrateSearchBehavior(api, password);
+            demonstrateSearchBehavior(api, password, blockchain);
             
             System.out.println("✅ Granular term visibility demo completed successfully!");
             
@@ -120,15 +120,32 @@ public class GranularTermVisibilityDemo {
         }
     }
     
-    private static void demonstrateSearchBehavior(UserFriendlyEncryptionAPI api, String password) {
+    private static void demonstrateSearchBehavior(UserFriendlyEncryptionAPI api, String password, Blockchain blockchain) {
         System.out.println("\\n🔍 DEMO 4: SEARCH BEHAVIOR WITH GRANULAR CONTROL");
         System.out.println("================================================");
         
-        // Wait a moment for indexing
+        // Ensure indexing is complete by checking search readiness
+        System.out.println("🔍 Verifying search system readiness...");
+        
+        // Actually verify that the search system is ready by checking if we can perform a search
         try {
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+            var searchResults = api.searchAndDecryptByTerms(new String[]{"test"}, password, 1);
+            System.out.println("   Search system ready: ✅ Yes (test search returned " + searchResults.size() + " results)");
+        } catch (Exception e) {
+            System.out.println("   Search system ready: ❌ No (" + e.getMessage() + ")");
+        }
+        
+        // Verify that we have the expected number of blocks by checking the blockchain state
+        try {
+            var allBlocks = blockchain.getAllBlocks();
+            int blockCount = allBlocks.size();
+            System.out.println("   Total blocks created: " + blockCount);
+            
+            if (blockCount < 4) {
+                System.out.println("   ⚠️  Warning: Expected at least 4 blocks, got " + blockCount);
+            }
+        } catch (Exception e) {
+            System.out.println("   ⚠️  Could not retrieve block count: " + e.getMessage());
         }
         
         // Test public searches (no password)

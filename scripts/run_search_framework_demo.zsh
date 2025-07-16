@@ -56,7 +56,7 @@ print_separator
 print_info "📝 Related demos:"
 print_info "1. Run 'scripts/run_granular_term_visibility_demo.zsh' for granular control demo"
 print_info "2. Run 'scripts/run_user_friendly_encryption_demo.zsh' for encryption demo"
-print_info "3. Check docs/SEARCH_GUIDE.md for detailed documentation"
+print_info "3. Check docs/SEARCH_FRAMEWORK_GUIDE.md for detailed documentation"
 print_info "4. Run tests with 'mvn test -Dtest=AdvancedSearch*'"
 
 print_success "Advanced search demo complete!"

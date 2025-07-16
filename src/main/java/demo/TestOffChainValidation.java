@@ -2,7 +2,6 @@ package demo;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
-import com.rbatllet.blockchain.entity.OffChainData;
 import com.rbatllet.blockchain.util.validation.BlockValidationUtil;
 import com.rbatllet.blockchain.util.CryptoUtil;
 
@@ -126,11 +125,13 @@ public class TestOffChainValidation {
         
         Block block = blockchain.addBlockAndReturn(largeData.toString(), privateKey, publicKey);
         
-        // Delete the off-chain file to simulate missing file
+        // Actually delete the off-chain file to test missing file scenario
         if (block.hasOffChainData()) {
             File offChainFile = new File(block.getOffChainData().getFilePath());
             if (offChainFile.exists()) {
-                offChainFile.delete();
+                if (!offChainFile.delete()) {
+                    throw new RuntimeException("Failed to delete off-chain file for testing: " + offChainFile.getPath());
+                }
             }
         }
         
@@ -161,30 +162,21 @@ public class TestOffChainValidation {
         
         Block block = blockchain.addBlockAndReturn(largeData.toString(), privateKey, publicKey);
         
-        // Corrupt the metadata by setting hash to null (simulate database corruption)
+        // Actually corrupt the metadata by setting hash to null (real corruption)
         if (block.hasOffChainData()) {
-            // This simulates what would happen if metadata got corrupted
             var offChainData = block.getOffChainData();
             
-            // Create a mock block with corrupted data for testing
-            Block corruptedBlock = new Block();
-            corruptedBlock.setBlockNumber(block.getBlockNumber());
-            corruptedBlock.setData("Mock data");
-            corruptedBlock.setTimestamp(block.getTimestamp());
+            // Save original hash for logging
+            String originalHash = offChainData.getDataHash();
             
-            // Create corrupted off-chain data
-            var corruptedOffChain = new OffChainData();
-            corruptedOffChain.setFilePath(offChainData.getFilePath());
-            corruptedOffChain.setDataHash(null); // Corrupted hash
-            corruptedOffChain.setSignature(offChainData.getSignature());
-            corruptedOffChain.setEncryptionIV(offChainData.getEncryptionIV());
-            corruptedOffChain.setFileSize(offChainData.getFileSize());
-            corruptedOffChain.setCreatedAt(offChainData.getCreatedAt());
+            // Actually corrupt the hash - this is real corruption, not simulation
+            offChainData.setDataHash(null);
             
-            corruptedBlock.setOffChainData(corruptedOffChain);
+            logger.info("Corrupted metadata hash from '{}' to null", 
+                       originalHash != null ? originalHash.substring(0, 10) + "..." : "null");
             
             // Validate - should fail
-            var result = BlockValidationUtil.validateOffChainDataDetailed(corruptedBlock);
+            var result = BlockValidationUtil.validateOffChainDataDetailed(block);
             assert !result.isValid() : "Corrupted metadata should fail validation";
             assert result.getMessage().contains("Missing data hash") : "Should report missing hash";
             
@@ -243,14 +235,15 @@ public class TestOffChainValidation {
         
         Block block = blockchain.addBlockAndReturn(largeData.toString(), privateKey, publicKey);
         
-        // Wait a moment and then modify the file to simulate tampering
+        // Actually modify the file content to create real tampering
         if (block.hasOffChainData()) {
-            Thread.sleep(2000); // Wait 2 seconds
-            
             File offChainFile = new File(block.getOffChainData().getFilePath());
             if (offChainFile.exists()) {
-                // Touch the file to change its modification time
-                offChainFile.setLastModified(System.currentTimeMillis());
+                // Actually modify the file content to create real tampering
+                try (FileWriter writer = new FileWriter(offChainFile, true)) {
+                    writer.write("\n*** TAMPERED DATA ***\n");
+                    writer.flush();
+                }
                 
                 // Test tampering detection
                 boolean noTampering = BlockValidationUtil.detectOffChainTampering(block);
@@ -312,28 +305,23 @@ public class TestOffChainValidation {
         
         Block block = blockchain.addBlockAndReturn(largeData.toString(), privateKey, publicKey);
         
-        // Modify off-chain data timestamp to simulate inconsistency
+        // Actually modify off-chain data timestamp to create real inconsistency
         if (block.hasOffChainData()) {
             var offChainData = block.getOffChainData();
             
-            // Create a block with timestamp inconsistency for testing
-            Block testBlock = new Block();
-            testBlock.setBlockNumber(block.getBlockNumber());
-            testBlock.setData("Mock data");
-            testBlock.setTimestamp(LocalDateTime.now().minusHours(1)); // 1 hour ago
+            // Actually modify the timestamps to create real inconsistency
+            LocalDateTime originalBlockTime = block.getTimestamp();
+            LocalDateTime originalOffChainTime = offChainData.getCreatedAt();
             
-            var testOffChain = new OffChainData();
-            testOffChain.setFilePath(offChainData.getFilePath());
-            testOffChain.setDataHash(offChainData.getDataHash());
-            testOffChain.setSignature(offChainData.getSignature());
-            testOffChain.setEncryptionIV(offChainData.getEncryptionIV());
-            testOffChain.setFileSize(offChainData.getFileSize());
-            testOffChain.setCreatedAt(LocalDateTime.now()); // Current time (inconsistent)
+            // Create real timestamp inconsistency by modifying the block timestamp
+            block.setTimestamp(LocalDateTime.now().minusHours(1)); // 1 hour ago
+            offChainData.setCreatedAt(LocalDateTime.now()); // Current time (inconsistent)
             
-            testBlock.setOffChainData(testOffChain);
+            logger.info("Created timestamp inconsistency: Original Block={}, Original OffChain={}, New Block={}, New OffChain={}", 
+                       originalBlockTime, originalOffChainTime, block.getTimestamp(), offChainData.getCreatedAt());
             
             // Validate - should show timestamp warning
-            var result = BlockValidationUtil.validateOffChainDataDetailed(testBlock);
+            var result = BlockValidationUtil.validateOffChainDataDetailed(block);
             
             System.out.println("   ✅ Timestamp validation completed");
             System.out.println("   📄 Validation result: " + result.getMessage());

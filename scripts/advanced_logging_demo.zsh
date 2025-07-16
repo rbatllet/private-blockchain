@@ -6,9 +6,9 @@
 set -e
 
 # Script configuration
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-DEMO_CLASS="com.rbatllet.blockchain.demos.AdvancedLoggingDemo"
+DEMO_CLASS="demo.AdvancedLoggingDemo"
 
 # Color codes for output
 RED='\033[0;31m'
@@ -88,7 +88,7 @@ run_demo() {
     echo ""
     
     # Run the demo
-    if ! mvn exec:java -Dexec.mainClass="$DEMO_CLASS" -q; then
+    if ! mvn exec:java -Dexec.mainClass="$DEMO_CLASS" -Dexec.args="" -q; then
         print_colored $RED "❌ Demo execution failed"
         exit 1
     fi
