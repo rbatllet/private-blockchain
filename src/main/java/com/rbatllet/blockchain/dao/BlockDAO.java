@@ -5,6 +5,8 @@ import com.rbatllet.blockchain.entity.BlockSequence;
 import com.rbatllet.blockchain.util.JPAUtil;
 import com.rbatllet.blockchain.service.SecureBlockEncryptionService;
 import com.rbatllet.blockchain.search.SearchLevel;
+import com.rbatllet.blockchain.logging.LoggingManager;
+import com.rbatllet.blockchain.logging.OperationLoggingInterceptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import jakarta.persistence.EntityManager;
@@ -37,38 +39,47 @@ public class BlockDAO {
      * Uses global transaction if available, otherwise creates its own
      */
     public void saveBlock(Block block) {
-        lock.writeLock().lock();
-        try {
-            if (JPAUtil.hasActiveTransaction()) {
-                // Use existing global transaction
-                EntityManager em = JPAUtil.getEntityManager();
-                em.persist(block);
-            } else {
-                // Create own transaction
-                EntityManager em = JPAUtil.getEntityManager();
-                EntityTransaction transaction = null;
-                
+        LoggingManager.logBlockchainOperation(
+            "BLOCK_SAVE",
+            "save_block",
+            block.getBlockNumber(),
+            block.getData() != null ? block.getData().length() : 0,
+            () -> {
+                lock.writeLock().lock();
                 try {
-                    transaction = em.getTransaction();
-                    transaction.begin();
-                    
-                    em.persist(block);
-                    
-                    transaction.commit();
-                } catch (Exception e) {
-                    if (transaction != null && transaction.isActive()) {
-                        transaction.rollback();
+                    if (JPAUtil.hasActiveTransaction()) {
+                        // Use existing global transaction
+                        EntityManager em = JPAUtil.getEntityManager();
+                        em.persist(block);
+                    } else {
+                        // Create own transaction
+                        EntityManager em = JPAUtil.getEntityManager();
+                        EntityTransaction transaction = null;
+                        
+                        try {
+                            transaction = em.getTransaction();
+                            transaction.begin();
+                            
+                            em.persist(block);
+                            
+                            transaction.commit();
+                        } catch (Exception e) {
+                            if (transaction != null && transaction.isActive()) {
+                                transaction.rollback();
+                            }
+                            throw new RuntimeException("Error saving block", e);
+                        } finally {
+                            if (!JPAUtil.hasActiveTransaction()) {
+                                em.close();
+                            }
+                        }
                     }
-                    throw new RuntimeException("Error saving block", e);
                 } finally {
-                    if (!JPAUtil.hasActiveTransaction()) {
-                        em.close();
-                    }
+                    lock.writeLock().unlock();
                 }
+                return "Block saved successfully";
             }
-        } finally {
-            lock.writeLock().unlock();
-        }
+        );
     }
     
     /**
@@ -300,23 +311,25 @@ public class BlockDAO {
             throw new IllegalArgumentException("Limit must be positive");
         }
         
-        lock.readLock().lock();
-        try {
-            EntityManager em = JPAUtil.getEntityManager();
+        return OperationLoggingInterceptor.logDatabaseOperation("SELECT", "blocks_paginated", () -> {
+            lock.readLock().lock();
             try {
-                TypedQuery<Block> query = em.createQuery(
-                    "SELECT b FROM Block b LEFT JOIN FETCH b.offChainData ORDER BY b.blockNumber ASC", Block.class);
-                query.setFirstResult(offset);
-                query.setMaxResults(limit);
-                return query.getResultList();
-            } finally {
-                if (!JPAUtil.hasActiveTransaction()) {
-                    em.close();
+                EntityManager em = JPAUtil.getEntityManager();
+                try {
+                    TypedQuery<Block> query = em.createQuery(
+                        "SELECT b FROM Block b LEFT JOIN FETCH b.offChainData ORDER BY b.blockNumber ASC", Block.class);
+                    query.setFirstResult(offset);
+                    query.setMaxResults(limit);
+                    return query.getResultList();
+                } finally {
+                    if (!JPAUtil.hasActiveTransaction()) {
+                        em.close();
+                    }
                 }
+            } finally {
+                lock.readLock().unlock();
             }
-        } finally {
-            lock.readLock().unlock();
-        }
+        });
     }
     
     /**
