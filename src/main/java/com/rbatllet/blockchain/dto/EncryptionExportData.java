@@ -2,7 +2,7 @@ package com.rbatllet.blockchain.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.time.LocalDateTime;
-import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
 
 /**
@@ -11,18 +11,18 @@ import java.util.Map;
  */
 public class EncryptionExportData {
     
-    private Map<Long, String> offChainPasswords;
-    private Map<Long, String> blockEncryptionKeys;
-    private Map<String, String> userEncryptionKeys;
+    private final Map<Long, String> offChainPasswords;
+    private final Map<Long, String> blockEncryptionKeys;
+    private final Map<String, String> userEncryptionKeys;
     private String masterPassword;
     private LocalDateTime timestamp;
     private String version;
     private boolean isEncrypted;
     
     public EncryptionExportData() {
-        this.offChainPasswords = new HashMap<>();
-        this.blockEncryptionKeys = new HashMap<>();
-        this.userEncryptionKeys = new HashMap<>();
+        this.offChainPasswords = new ConcurrentHashMap<>();
+        this.blockEncryptionKeys = new ConcurrentHashMap<>();
+        this.userEncryptionKeys = new ConcurrentHashMap<>();
         this.timestamp = LocalDateTime.now();
         this.version = "1.0";
         this.isEncrypted = false;
@@ -115,7 +115,10 @@ public class EncryptionExportData {
     }
     
     public void setOffChainPasswords(Map<Long, String> offChainPasswords) {
-        this.offChainPasswords = offChainPasswords != null ? offChainPasswords : new HashMap<>();
+        this.offChainPasswords.clear();
+        if (offChainPasswords != null) {
+            this.offChainPasswords.putAll(offChainPasswords);
+        }
     }
     
     public Map<Long, String> getBlockEncryptionKeys() {
@@ -123,7 +126,10 @@ public class EncryptionExportData {
     }
     
     public void setBlockEncryptionKeys(Map<Long, String> blockEncryptionKeys) {
-        this.blockEncryptionKeys = blockEncryptionKeys != null ? blockEncryptionKeys : new HashMap<>();
+        this.blockEncryptionKeys.clear();
+        if (blockEncryptionKeys != null) {
+            this.blockEncryptionKeys.putAll(blockEncryptionKeys);
+        }
     }
     
     public Map<String, String> getUserEncryptionKeys() {
@@ -131,7 +137,10 @@ public class EncryptionExportData {
     }
     
     public void setUserEncryptionKeys(Map<String, String> userEncryptionKeys) {
-        this.userEncryptionKeys = userEncryptionKeys != null ? userEncryptionKeys : new HashMap<>();
+        this.userEncryptionKeys.clear();
+        if (userEncryptionKeys != null) {
+            this.userEncryptionKeys.putAll(userEncryptionKeys);
+        }
     }
     
     public String getMasterPassword() {

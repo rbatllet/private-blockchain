@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -274,9 +275,9 @@ public class SearchStrategyRouter {
         if (fastResults.getResults().size() < maxResults / 2) {
             AdvancedSearchResult encryptedResults = executeEncryptedSearch(query, password, maxResults, analysis);
             
-            // Merge results and deduplicate
-            Set<String> seenHashes = new HashSet<>();
-            List<SearchResultItem> mergedResults = new ArrayList<>();
+            // Merge results and deduplicate - use thread-safe collections
+            Set<String> seenHashes = ConcurrentHashMap.newKeySet();
+            List<SearchResultItem> mergedResults = Collections.synchronizedList(new ArrayList<>());
             
             // Add fast results first (higher priority)
             for (SearchResultItem item : fastResults.getResults()) {
@@ -320,8 +321,8 @@ public class SearchStrategyRouter {
             AdvancedSearchResult fastResults = fastFuture.get();
             AdvancedSearchResult encryptedResults = encryptedFuture.get();
             
-            // Merge and rank results
-            Map<String, SearchResultItem> bestResults = new HashMap<>();
+            // Merge and rank results - use thread-safe map for concurrent access
+            Map<String, SearchResultItem> bestResults = new ConcurrentHashMap<>();
             
             // Process fast results
             for (SearchResultItem item : fastResults.getResults()) {

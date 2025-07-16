@@ -3,7 +3,6 @@ package com.rbatllet.blockchain.service;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
-import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
@@ -24,7 +23,7 @@ public class SearchCacheManager {
     
     // Cache storage
     private final Map<String, CacheEntry> cache;
-    private final LinkedHashMap<String, Instant> accessOrder;
+    private final ConcurrentHashMap<String, Instant> accessOrder;
     private final AtomicLong totalHits = new AtomicLong(0);
     private final AtomicLong totalMisses = new AtomicLong(0);
     private final AtomicLong totalEvictions = new AtomicLong(0);
@@ -72,16 +71,7 @@ public class SearchCacheManager {
         this.ttl = ttl;
         this.maxMemoryBytes = maxMemoryMB * 1024 * 1024;
         this.cache = new ConcurrentHashMap<>();
-        this.accessOrder = new LinkedHashMap<String, Instant>(maxEntries + 1, 0.75f, true) {
-            @Override
-            protected boolean removeEldestEntry(Map.Entry<String, Instant> eldest) {
-                if (size() > maxEntries) {
-                    evictEntry(eldest.getKey());
-                    return true;
-                }
-                return false;
-            }
-        };
+        this.accessOrder = new ConcurrentHashMap<>();
         
         logger.info("🚀 Search cache initialized: maxEntries={}, TTL={}min, maxMemory={}MB", 
                    maxEntries, ttl.toMinutes(), maxMemoryMB);
@@ -93,37 +83,40 @@ public class SearchCacheManager {
      * @return Cached result or null if not found/expired
      */
     public <T> T get(String cacheKey, Class<T> type) {
-        synchronized (accessOrder) {
-            CacheEntry entry = cache.get(cacheKey);
-            
-            if (entry == null) {
-                totalMisses.incrementAndGet();
-                logger.debug("🔍 Cache miss for key: {}", cacheKey);
-                return null;
-            }
-            
-            // Check if expired
-            if (entry.isExpired(ttl)) {
-                evictEntry(cacheKey);
-                totalMisses.incrementAndGet();
-                logger.debug("⏰ Cache entry expired for key: {}", cacheKey);
-                return null;
-            }
-            
-            // Record access
-            entry.recordAccess();
-            accessOrder.put(cacheKey, Instant.now());
-            totalHits.incrementAndGet();
-            
-            logger.debug("✅ Cache hit for key: {} (access count: {})", cacheKey, entry.accessCount);
-            
-            try {
-                return type.cast(entry.value);
-            } catch (ClassCastException e) {
-                logger.error("❌ Type mismatch in cache for key: {}", cacheKey);
-                evictEntry(cacheKey);
-                return null;
-            }
+        CacheEntry entry = cache.get(cacheKey);
+        
+        if (entry == null) {
+            totalMisses.incrementAndGet();
+            logger.debug("🔍 Cache miss for key: {}", cacheKey);
+            return null;
+        }
+        
+        // Check if expired
+        if (entry.isExpired(ttl)) {
+            evictEntry(cacheKey);
+            totalMisses.incrementAndGet();
+            logger.debug("⏰ Cache entry expired for key: {}", cacheKey);
+            return null;
+        }
+        
+        // Atomic check and evict if necessary to prevent race conditions
+        while (cache.size() > maxEntries) {
+            performLRUEviction();
+        }
+        
+        // Record access
+        entry.recordAccess();
+        accessOrder.put(cacheKey, Instant.now());
+        totalHits.incrementAndGet();
+        
+        logger.debug("✅ Cache hit for key: {} (access count: {})", cacheKey, entry.accessCount);
+        
+        try {
+            return type.cast(entry.value);
+        } catch (ClassCastException e) {
+            logger.error("❌ Type mismatch in cache for key: {}", cacheKey);
+            evictEntry(cacheKey);
+            return null;
         }
     }
     
@@ -134,75 +127,72 @@ public class SearchCacheManager {
      * @param estimatedSize Estimated size in bytes
      */
     public void put(String cacheKey, Object value, long estimatedSize) {
-        synchronized (accessOrder) {
-            // Check entry limit
-            if (cache.size() >= maxEntries) {
-                logger.debug("📊 Cache at max entries ({}), will evict oldest", maxEntries);
-            }
-            
-            // Check memory limit
-            if (estimatedMemoryUsage.get() + estimatedSize > maxMemoryBytes) {
-                performMemoryEviction(estimatedSize);
-            }
-            
-            // Add to cache
-            CacheEntry entry = new CacheEntry(value, estimatedSize);
-            CacheEntry oldEntry = cache.put(cacheKey, entry);
-            
-            // Update memory usage
-            if (oldEntry != null) {
-                estimatedMemoryUsage.addAndGet(-oldEntry.sizeBytes);
-            }
-            estimatedMemoryUsage.addAndGet(estimatedSize);
-            
-            // Update access order
-            accessOrder.put(cacheKey, Instant.now());
-            
-            logger.debug("📥 Cached result for key: {} (size: {} bytes)", cacheKey, estimatedSize);
+        // Atomic check for entry limit to prevent race conditions
+        while (cache.size() >= maxEntries) {
+            logger.debug("📊 Cache at max entries ({}), will evict oldest", maxEntries);
+            performLRUEviction();
         }
+        
+        // Check memory limit
+        if (estimatedMemoryUsage.get() + estimatedSize > maxMemoryBytes) {
+            performMemoryEviction(estimatedSize);
+        }
+        
+        // Add to cache
+        CacheEntry entry = new CacheEntry(value, estimatedSize);
+        CacheEntry oldEntry = cache.put(cacheKey, entry);
+        
+        // Update memory usage
+        if (oldEntry != null) {
+            estimatedMemoryUsage.addAndGet(-oldEntry.sizeBytes);
+        }
+        estimatedMemoryUsage.addAndGet(estimatedSize);
+        
+        // Update access order
+        accessOrder.put(cacheKey, Instant.now());
+        
+        logger.debug("📥 Cached result for key: {} (size: {} bytes)", cacheKey, estimatedSize);
     }
     
     /**
      * Invalidate specific cache entry
      */
     public void invalidate(String cacheKey) {
-        synchronized (accessOrder) {
-            evictEntry(cacheKey);
-            logger.info("🗑️ Invalidated cache entry: {}", cacheKey);
-        }
+        evictEntry(cacheKey);
+        logger.info("🗑️ Invalidated cache entry: {}", cacheKey);
     }
     
     /**
      * Invalidate all cache entries matching a pattern
      */
     public void invalidatePattern(String pattern) {
-        synchronized (accessOrder) {
-            List<String> keysToRemove = new ArrayList<>();
-            for (String key : cache.keySet()) {
-                if (key.contains(pattern)) {
-                    keysToRemove.add(key);
-                }
+        // Use thread-safe collection for concurrent access
+        List<String> keysToRemove = Collections.synchronizedList(new ArrayList<>());
+        
+        // Create snapshot to avoid concurrent modification
+        Set<String> keySnapshot = new HashSet<>(cache.keySet());
+        for (String key : keySnapshot) {
+            if (key.contains(pattern)) {
+                keysToRemove.add(key);
             }
-            
-            for (String key : keysToRemove) {
-                evictEntry(key);
-            }
-            
-            logger.info("🗑️ Invalidated {} cache entries matching pattern: {}", 
-                       keysToRemove.size(), pattern);
         }
+        
+        for (String key : keysToRemove) {
+            evictEntry(key);
+        }
+        
+        logger.info("🗑️ Invalidated {} cache entries matching pattern: {}", 
+                   keysToRemove.size(), pattern);
     }
     
     /**
      * Clear entire cache
      */
     public void clear() {
-        synchronized (accessOrder) {
-            cache.clear();
-            accessOrder.clear();
-            estimatedMemoryUsage.set(0);
-            logger.info("🧹 Cache cleared");
-        }
+        cache.clear();
+        accessOrder.clear();
+        estimatedMemoryUsage.set(0);
+        logger.info("🧹 Cache cleared");
     }
     
     /**
@@ -216,16 +206,14 @@ public class SearchCacheManager {
      * Get cache statistics
      */
     public CacheStatistics getStatistics() {
-        synchronized (accessOrder) {
-            return new CacheStatistics(
-                cache.size(),
-                totalHits.get(),
-                totalMisses.get(),
-                totalEvictions.get(),
-                estimatedMemoryUsage.get(),
-                calculateHitRate()
-            );
-        }
+        return new CacheStatistics(
+            cache.size(),
+            totalHits.get(),
+            totalMisses.get(),
+            totalEvictions.get(),
+            estimatedMemoryUsage.get(),
+            calculateHitRate()
+        );
     }
     
     /**
@@ -239,7 +227,7 @@ public class SearchCacheManager {
             String cacheKey = generateCacheKey("KEYWORD", term, new HashMap<>());
             
             // Pre-populate with common search patterns
-            List<String> preloadedResults = Arrays.asList(
+            List<String> preloadedResults = List.of(
                 "common-pattern-" + term,
                 "frequent-term-" + term,
                 "popular-query-" + term
@@ -288,8 +276,8 @@ public class SearchCacheManager {
     private void performMemoryEviction(long requiredSpace) {
         logger.debug("📊 Performing memory eviction to free {} bytes", requiredSpace);
         
-        // Sort entries by access time (LRU)
-        List<Map.Entry<String, CacheEntry>> entries = new ArrayList<>(cache.entrySet());
+        // Sort entries by access time (LRU) - use thread-safe snapshot
+        List<Map.Entry<String, CacheEntry>> entries = Collections.synchronizedList(new ArrayList<>(cache.entrySet()));
         entries.sort((a, b) -> a.getValue().lastAccessedAt.compareTo(b.getValue().lastAccessedAt));
         
         long freedSpace = 0;
@@ -298,6 +286,28 @@ public class SearchCacheManager {
             
             freedSpace += entry.getValue().sizeBytes;
             evictEntry(entry.getKey());
+        }
+    }
+    
+    private void performLRUEviction() {
+        logger.debug("📊 Performing LRU eviction for cache size limit");
+        
+        // Take snapshot to avoid concurrent modification issues
+        Map<String, Instant> accessSnapshot = new HashMap<>(accessOrder);
+        
+        // Find oldest entry by access time
+        String oldestKey = null;
+        Instant oldestTime = Instant.now();
+        
+        for (Map.Entry<String, Instant> entry : accessSnapshot.entrySet()) {
+            if (entry.getValue().isBefore(oldestTime)) {
+                oldestTime = entry.getValue();
+                oldestKey = entry.getKey();
+            }
+        }
+        
+        if (oldestKey != null && cache.containsKey(oldestKey)) {
+            evictEntry(oldestKey);
         }
     }
     

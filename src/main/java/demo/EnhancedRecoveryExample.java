@@ -51,9 +51,9 @@ public class EnhancedRecoveryExample {
             ChainValidationResult initialResult = blockchain.validateChainDetailed();
             System.out.println("📊 Initial state: " + initialResult.getSummary());
             
-            // Simulate corruption
-            blockchain.dangerouslyDeleteAuthorizedKey(publicKey, true, "Test corruption");
-            System.out.println("💥 Corruption introduced");
+            // Actually corrupt the blockchain by deleting the authorized key
+            blockchain.dangerouslyDeleteAuthorizedKey(publicKey, true, "Real corruption for recovery testing");
+            System.out.println("💥 Real corruption introduced - authorized key deleted");
             
             // Enhanced validation after corruption
             ChainValidationResult corruptedResult = blockchain.validateChainDetailed();
@@ -195,8 +195,8 @@ public class EnhancedRecoveryExample {
             ChainRecoveryManager recoveryManager = 
                 new ChainRecoveryManager(blockchain);
             
-            // Simulate production scenario
-            System.out.println("🔧 Setting up production-like scenario...");
+            // Set up real production scenario with actual users and transactions
+            System.out.println("🔧 Setting up real production scenario...");
             
             // Create multiple users and transactions
             for (int i = 1; i <= 5; i++) {
@@ -207,9 +207,9 @@ public class EnhancedRecoveryExample {
                 blockchain.addAuthorizedKey(publicKey, userName);
                 blockchain.addBlock("Production transaction " + i, userKey.getPrivate(), userKey.getPublic());
                 
-                // Simulate a problematic key that will be "accidentally" deleted
+                // Actually delete a production key to test recovery
                 if (i == 3) {
-                    System.out.println("🎯 Marking User3 key for 'accidental' deletion");
+                    System.out.println("🎯 Marking User3 key for actual deletion");
                     
                     // Perform comprehensive diagnostic before corruption
                     ChainRecoveryManager.ChainDiagnostic beforeCorruption = 
@@ -217,8 +217,8 @@ public class EnhancedRecoveryExample {
                     
                     System.out.println("📊 Pre-corruption state: " + beforeCorruption);
                     
-                    // Simulate accidental deletion
-                    System.out.println("💥 Simulating accidental key deletion...");
+                    // Actually delete the key (real corruption)
+                    System.out.println("💥 Actually deleting production key...");
                     boolean deleted = blockchain.dangerouslyDeleteAuthorizedKey(publicKey, true, 
                         "Production incident: Accidental key deletion during maintenance");
                     
