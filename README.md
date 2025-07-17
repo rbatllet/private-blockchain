@@ -912,7 +912,7 @@ Configuration & Scripts:
 ├── test_export_import.zsh                       # ✨ ENHANCED: Export/import functionality
 ├── test_validation.zsh                          # ✨ ENHANCED: Comprehensive validation
 ├── scripts/                                     # Script utilities directory
-│   ├── shared-functions.zsh                     # ✨ CORE: Common functions library
+│   ├── lib/common_functions.zsh                 # ✨ CORE: Common functions library
 │   ├── run_template.zsh                         # Template for new scripts
 │   └── check-db-cleanup.zsh                     # Database cleanup verification
 └── pom.xml                                      # Maven configuration
@@ -973,17 +973,17 @@ Complete API migration benefits demonstration
 
 ### 📜 Core Utility Scripts
 
-#### **scripts/shared-functions.zsh** ✨ CORE LIBRARY
+#### **scripts/lib/common_functions.zsh** ✨ CORE LIBRARY
 Common utility functions for all scripts
 ```bash
-source ./scripts/shared-functions.zsh
+source ./scripts/lib/common_functions.zsh
 ```
 **Key Functions**:
-- `clean_database()` - Core database cleanup functionality
+- `cleanup_database()` - Core database cleanup functionality
 - `print_header()`, `print_info()`, `print_success()`, `print_warning()`, `print_error()` - Colored output
 - `compile_project()` - Project compilation with error handling
-- `init_test_environment()` - Test environment initialization
-- `check_dependencies()` - Dependency validation
+- `check_java()` - Java availability and version validation
+- `check_maven()` - Maven availability validation
 
 #### Database Management
 ```bash
@@ -1025,7 +1025,7 @@ source ./scripts/shared-functions.zsh
 **Data Consistency**: `test_data_consistency.zsh`, `test_export_import.zsh`, `test_validation.zsh`  
 **Security & Recovery**: `run_security_tests.zsh`, `run_recovery_tests.zsh`, `run_security_analysis.zsh`  
 **Demonstrations**: `run_api_migration_demo.zsh`, `run_crypto_security_demo.zsh`, `run_enhanced_dangerous_delete_demo.zsh`, `run_advanced_search_demo.zsh`  
-**Utilities**: `clean-database.zsh`, `scripts/shared-functions.zsh`, `scripts/check-db-cleanup.zsh`
+**Utilities**: `clean-database.zsh`, `scripts/lib/common_functions.zsh`, `scripts/check-db-cleanup.zsh`
 
 All scripts provide automatic database cleanup, environment management, and comprehensive result reporting. Enhanced scripts include detailed validation output with off-chain data analysis.
 
@@ -1216,7 +1216,7 @@ Check that all run_*.zsh scripts include database cleanup:
 ```
 
 ### Shared Functions Library
-All scripts now use a centralized functions library at `scripts/shared-functions.zsh` providing:
+All scripts now use a centralized functions library at `scripts/lib/common_functions.zsh` providing:
 
 - **Database cleanup functions**: Prevent corruption issues
 - **Colored output functions**: Consistent formatting

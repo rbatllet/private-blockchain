@@ -39,7 +39,7 @@ Comprehensive production deployment guide for the Private Blockchain implementat
 │   ├── operational/            # Daily operation keys
 │   └── backup/                 # Key backups
 ├── scripts/                    # Script utilities directory
-│   ├── shared-functions.zsh     # Common functions library
+│   ├── lib/common_functions.zsh     # Common functions library
 │   ├── run_template.zsh         # Template for new scripts
 │   └── check-db-cleanup.zsh     # Script compliance checker
 ├── logs/                      # Application logs
@@ -389,7 +389,7 @@ set -euo pipefail
 
 # Load environment
 SCRIPT_DIR=${0:a:h}
-source "$SCRIPT_DIR/shared-functions.zsh"
+source "$SCRIPT_DIR/lib/common_functions.zsh"
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 LOG_FILE="/opt/blockchain/logs/validation_${TIMESTAMP}.log"
@@ -427,7 +427,7 @@ set -euo pipefail
 
 # Load environment
 SCRIPT_DIR=${0:a:h}
-source "$SCRIPT_DIR/shared-functions.zsh"
+source "$SCRIPT_DIR/lib/common_functions.zsh"
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 LOG_FILE="/opt/blockchain/logs/quick_validate_${TIMESTAMP}.log"

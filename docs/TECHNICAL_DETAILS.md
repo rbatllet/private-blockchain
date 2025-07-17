@@ -1201,12 +1201,12 @@ All shell scripts in the project use ZSH (Z Shell) with a standardized structure
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Source shared functions
-source "$SCRIPT_DIR/scripts/shared-functions.zsh"
+source "$SCRIPT_DIR/scripts/lib/common_functions.zsh"
 ```
 
 ### Shared Functions Library
 
-The `scripts/shared-functions.zsh` file provides centralized utilities for all scripts:
+The `scripts/lib/common_functions.zsh` file provides centralized utilities for all scripts:
 
 - Database cleanup and maintenance functions
 - Colored output formatting
