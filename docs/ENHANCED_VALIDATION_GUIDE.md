@@ -527,17 +527,17 @@ mvn test -Dtest=DataIntegrityThreadSafetyTest
 ./scripts/run_template.zsh
 ```
 
-**scripts/shared-functions.zsh** ✨ CORE LIBRARY
+**scripts/lib/common_functions.zsh** ✨ CORE LIBRARY
 **Purpose**: Common utility functions for all scripts
 ```bash
-source ./scripts/shared-functions.zsh
+source ./scripts/lib/common_functions.zsh
 ```
 **Functions**:
 - `print_header()`, `print_info()`, `print_success()`, `print_warning()`, `print_error()`
-- `clean_database()` - Core database cleanup functionality
+- `cleanup_database()` - Core database cleanup functionality
 - `compile_project()` - Project compilation
-- `init_test_environment()` - Test environment initialization
-- `check_dependencies()` - Dependency validation
+- `check_java()` - Java availability and version validation
+- `check_maven()` - Maven availability validation
 - `print_test_summary()` - Test result reporting
 
 ### 📜 ZSH Scripts (.zsh)

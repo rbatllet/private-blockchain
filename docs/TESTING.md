@@ -1321,7 +1321,7 @@ chmod +x run_my_new_test.zsh
 ```
 
 ### Shared Functions Library
-All scripts now use a centralized functions library at `scripts/shared-functions.zsh` providing:
+All scripts now use a centralized functions library at `scripts/lib/common_functions.zsh` providing:
 
 - **Database cleanup functions**: Prevent corruption issues
 - **Colored output functions**: Consistent formatting  
