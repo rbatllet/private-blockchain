@@ -1,6 +1,7 @@
 package com.rbatllet.blockchain.logging;
 
 import com.rbatllet.blockchain.service.SearchMetrics;
+import com.rbatllet.blockchain.service.PerformanceMetricsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,6 +29,7 @@ public class LoggingManager {
     
     // Metrics integration
     private static volatile SearchMetrics searchMetrics;
+    private static volatile PerformanceMetricsService performanceMetrics;
     
     // Configuration
     private static final long METRICS_REPORT_INTERVAL_MINUTES = 30;
@@ -46,6 +48,14 @@ public class LoggingManager {
                 logger.info("✅ Search metrics integration enabled");
             } catch (Exception e) {
                 logger.warn("⚠️ Search metrics integration failed: {}", e.getMessage());
+            }
+            
+            // Initialize performance metrics service
+            try {
+                performanceMetrics = PerformanceMetricsService.getInstance();
+                logger.info("✅ Performance metrics service initialized");
+            } catch (Exception e) {
+                logger.warn("⚠️ Performance metrics service initialization failed: {}", e.getMessage());
             }
             
             // Add shutdown hook
@@ -135,16 +145,41 @@ public class LoggingManager {
         context.put("dataSize", String.valueOf(dataSize));
         
         String operationId = AdvancedLoggingService.startOperation(operationType, operationName, context);
+        long startTime = System.currentTimeMillis();
         
         try {
             T result = methodCall.call();
             
+            // Calculate metrics
+            long duration = System.currentTimeMillis() - startTime;
             int resultCount = getResultCount(result);
+            
+            // Record performance metrics
+            if (performanceMetrics != null) {
+                performanceMetrics.recordResponseTime(operationType, duration);
+                performanceMetrics.recordOperation(operationType, true);
+                performanceMetrics.recordThroughput(operationType, resultCount);
+                
+                // Estimate memory usage based on data size
+                long estimatedMemoryMB = dataSize / 1024 / 1024;
+                if (estimatedMemoryMB > 0) {
+                    performanceMetrics.recordMemoryUsage(operationType, estimatedMemoryMB);
+                }
+            }
+            
             AdvancedLoggingService.endOperation(operationId, true, resultCount, null);
             
             return result;
             
         } catch (Exception e) {
+            long duration = System.currentTimeMillis() - startTime;
+            
+            // Record failed operation metrics
+            if (performanceMetrics != null) {
+                performanceMetrics.recordResponseTime(operationType, duration);
+                performanceMetrics.recordOperation(operationType, false);
+            }
+            
             AdvancedLoggingService.endOperation(operationId, false, 0, "Error: " + e.getMessage());
             throw new RuntimeException("Blockchain operation failed: " + operationName, e);
         }
@@ -206,6 +241,13 @@ public class LoggingManager {
                 searchMetrics.recordSearch(searchType, duration, resultCount, false);
             }
             
+            // Record performance metrics
+            if (performanceMetrics != null) {
+                performanceMetrics.recordResponseTime("SEARCH_" + searchType, duration);
+                performanceMetrics.recordOperation("SEARCH_" + searchType, true);
+                performanceMetrics.recordThroughput("SEARCH_" + searchType, resultCount);
+            }
+            
             AdvancedLoggingService.endOperation(operationId, true, resultCount, null);
             
             return result;
@@ -216,6 +258,12 @@ public class LoggingManager {
             // Record failed search
             if (searchMetrics != null) {
                 searchMetrics.recordSearch(searchType, duration, 0, false);
+            }
+            
+            // Record failed operation metrics
+            if (performanceMetrics != null) {
+                performanceMetrics.recordResponseTime("SEARCH_" + searchType, duration);
+                performanceMetrics.recordOperation("SEARCH_" + searchType, false);
             }
             
             AdvancedLoggingService.endOperation(operationId, false, 0, "Error: " + e.getMessage());
@@ -283,6 +331,12 @@ public class LoggingManager {
         // Advanced logging metrics
         sb.append(AdvancedLoggingService.getPerformanceReport()).append("\n");
         
+        // Performance metrics if available
+        if (performanceMetrics != null) {
+            sb.append("🚀 PERFORMANCE METRICS:\n");
+            sb.append(performanceMetrics.getPerformanceReport()).append("\n");
+        }
+        
         // Search metrics if available
         if (searchMetrics != null) {
             sb.append("🔍 SEARCH METRICS:\n");
@@ -296,6 +350,21 @@ public class LoggingManager {
         sb.append("  Scheduler Status: ").append(scheduler != null && !scheduler.isShutdown() ? "ACTIVE" : "INACTIVE").append("\n");
         
         return sb.toString();
+    }
+    
+    /**
+     * Get system health summary
+     * @return Health summary string
+     */
+    public static String getSystemHealthSummary() {
+        if (performanceMetrics != null) {
+            return performanceMetrics.getSystemHealthSummary();
+        } else {
+            return "🏥 SYSTEM HEALTH SUMMARY\n" +
+                   "─".repeat(30) + "\n" +
+                   "Performance Metrics: DISABLED\n" +
+                   "Status: BASIC MONITORING\n";
+        }
     }
     
     // Private helper methods
