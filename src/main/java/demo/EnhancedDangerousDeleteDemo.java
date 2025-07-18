@@ -153,5 +153,8 @@ public class EnhancedDangerousDeleteDemo {
             System.err.println("❌ Demo error: " + e.getMessage());
             e.printStackTrace();
         }
+        
+        // Force exit to stop background threads
+        System.exit(0);
     }
 }

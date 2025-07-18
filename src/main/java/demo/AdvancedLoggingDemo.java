@@ -502,9 +502,14 @@ public class AdvancedLoggingDemo {
             
             System.out.println("✅ Cleanup completed successfully");
             
+            // Force exit to stop background threads
+            System.exit(0);
+            
         } catch (Exception e) {
             logger.error("❌ Cleanup failed", e);
             System.err.println("❌ Cleanup failed: " + e.getMessage());
+            // Force exit even on error
+            System.exit(1);
         }
     }
 }

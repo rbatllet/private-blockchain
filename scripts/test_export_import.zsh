@@ -3,12 +3,14 @@
 # Export/Import Data Consistency Test
 # Version: 1.0.0
 
-# Set script directory and navigate to project root
+# Set script directory before changing directories
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR/.."
 
 # Load common functions library
 source "${SCRIPT_DIR}/lib/common_functions.zsh"
+
+# Change to project root directory
+cd "$SCRIPT_DIR/.."
 
 print_header "EXPORT/IMPORT DATA CONSISTENCY TEST"
 

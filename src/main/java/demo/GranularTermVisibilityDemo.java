@@ -44,6 +44,9 @@ public class GranularTermVisibilityDemo {
             System.err.println("❌ Demo failed: " + e.getMessage());
             e.printStackTrace();
         }
+        
+        // Force exit to stop background threads
+        System.exit(0);
     }
     
     private static void demonstrateBasicGranularControl(UserFriendlyEncryptionAPI api, String password) {

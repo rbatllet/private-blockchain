@@ -4,40 +4,48 @@
 # Usage: ./run_crypto_security_demo.zsh
 # Version: 1.0.0
 
-# Load shared functions for database cleanup
-
-# Set script directory and navigate to project root
+# Set script directory before changing directories
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR/.."
 
 # Load common functions library
 source "${SCRIPT_DIR}/lib/common_functions.zsh"
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-if [ -f "$SCRIPT_DIR/scripts/lib/common_functions.zsh" ]; then
-    source "$SCRIPT_DIR/scripts/lib/common_functions.zsh"
-    # Clean database at start to prevent corruption
-    clean_database > /dev/null 2>&1
-fi
+# Change to project root directory
+cd "$SCRIPT_DIR/.."
 
-print_step "=== 🔐 BLOCKCHAIN CRYPTOGRAPHIC SECURITY DEMO RUNNER ==="
-print_info "Project directory: $(pwd)"
-print_info ""
+echo "🔐 BLOCKCHAIN CRYPTOGRAPHIC SECURITY DEMO"
+echo "=========================================="
+echo ""
 
 # Check if we're in the correct directory
 if [ ! -f "pom.xml" ]; then
-    error_exit "pom.xml not found. Make sure to run this script from the project root directory."
+    print_error "pom.xml not found. Make sure to run this script from the project root directory."
+    exit 1
 fi
 
-# Clean and compile
-print_step "Compiling project..."
-mvn clean compile -q > /dev/null 2>&1
-if [ $? -ne 0 ]; then
-    mvn clean compile
-    error_exit "Compilation failed!"
+print_info "🏠 Project directory: $(pwd)"
+
+# Check prerequisites
+print_info "🔍 Checking prerequisites..."
+
+if ! check_java; then
+    exit 1
 fi
-print_success "Compilation successful"
-print_info ""
+
+if ! check_maven; then
+    exit 1
+fi
+
+print_success "All prerequisites satisfied"
+
+# Clean and compile
+cleanup_database
+
+if ! compile_project; then
+    exit 1
+fi
+
+print_separator
 
 # Run the Cryptographic Security Tests
 print_info "🔐 Running Cryptographic Security Tests..."
@@ -51,7 +59,9 @@ print_info ""
 print_info "🎬 Running Cryptographic Security Demo..."
 print_step "========================================="
 print_info ""
-mvn compile exec:java -Dexec.mainClass="demo.CryptoSecurityDemo" -q
+print_info "🚀 Launching CryptoSecurityDemo..."
+java -cp "target/classes:$(mvn -q dependency:build-classpath -Dmdep.outputFile=/dev/stdout)" \
+    demo.CryptoSecurityDemo
 DEMO_RESULT=$?
 print_info ""
 
@@ -79,15 +89,23 @@ print_info "  • 🔄 Key rotation capabilities"
 print_info "  • ❌ Key revocation with cascade option"
 print_info ""
 
+print_separator
+
+# Display next steps
+print_info "Next steps:"
+echo "  1. Run 'scripts/run_advanced_thread_safety_tests.zsh' for thread safety testing"
+echo "  2. Run 'scripts/run_blockchain_demo.zsh' for basic blockchain operations"
+echo "  3. Check the 'logs/' directory for detailed execution logs"
+echo ""
+
 # Final cleanup
-if command -v clean_database &> /dev/null; then
-    clean_database > /dev/null 2>&1
-fi
+cleanup_database > /dev/null 2>&1
 
 # Exit with appropriate code
 if [ $SECURITY_TEST_RESULT -eq 0 ] && [ $DEMO_RESULT -eq 0 ]; then
     print_success "All cryptographic security tests and demos completed successfully!"
     exit 0
 else
-    error_exit "Some cryptographic security tests or demos failed. Check the output above."
+    print_error "Some cryptographic security tests or demos failed. Check the output above."
+    exit 1
 fi

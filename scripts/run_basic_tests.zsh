@@ -4,21 +4,17 @@
 # Usage: ./run_basic_tests.zsh
 # Version: 1.0.1
 
-# Load shared functions for database cleanup (but preserve original structure)
-
-# Set script directory and navigate to project root
+# Set script directory
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR/.."
 
 # Load common functions library
 source "${SCRIPT_DIR}/lib/common_functions.zsh"
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-if [ -f "$SCRIPT_DIR/scripts/lib/common_functions.zsh" ]; then
-    source "$SCRIPT_DIR/scripts/lib/common_functions.zsh"
-    # Clean database at start to prevent corruption
-    clean_database > /dev/null 2>&1
-fi
+# Change to project root directory
+cd "$SCRIPT_DIR/.."
+
+# Clean database at start to prevent corruption
+cleanup_database > /dev/null 2>&1
 
 print_step "=== 🧪 BLOCKCHAIN BASIC CORE FUNCTIONS TEST RUNNER ==="
 print_info "Project directory: $(pwd)"
@@ -42,12 +38,12 @@ print_info ""
 print_info "🧪 Running Basic Core Functions demo..."
 print_info ""
 
-# Run basic core functions test (suppress most logs)
-mvn exec:java -Dexec.mainClass="demo.CoreFunctionsDemo" \
+# Run basic core functions test using direct Java execution
+java -cp "target/classes:$(mvn -q dependency:build-classpath -Dmdep.outputFile=/dev/stdout)" \
   -Djava.util.logging.config.file=src/main/resources/logging.properties \
   -Djakarta.persistence.show_sql=false \
   -Dorg.slf4j.simpleLogger.defaultLogLevel=warn \
-  -q 2>/dev/null || mvn exec:java -Dexec.mainClass="demo.CoreFunctionsDemo" -q
+  demo.CoreFunctionsDemo 2>/dev/null
 
 TEST_RESULT=$?
 

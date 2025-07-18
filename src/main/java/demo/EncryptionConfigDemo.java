@@ -76,5 +76,8 @@ public class EncryptionConfigDemo {
             System.err.println("❌ Test failed: " + e.getMessage());
             e.printStackTrace();
         }
+        
+        // Force exit to stop background threads
+        System.exit(0);
     }
 }

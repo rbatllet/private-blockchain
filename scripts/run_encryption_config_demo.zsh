@@ -4,24 +4,39 @@
 # Usage: ./run_encryption_config_demo.zsh
 # Version: 1.0.0
 
-# Set script directory and navigate to project root
+# Set script directory before changing directories
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR/.."
 
 # Load common functions library
 source "${SCRIPT_DIR}/lib/common_functions.zsh"
 
-print_header "🔐 ENCRYPTION CONFIGURATION DEMO RUNNER"
-print_info "Project directory: $(pwd)"
-print_info ""
+# Change to project root directory
+cd "$SCRIPT_DIR/.."
+
+echo "🔐 ENCRYPTION CONFIGURATION DEMO"
+echo "================================="
+echo ""
 
 # Check if we're in the correct directory
-check_project_directory
-
-# Check prerequisites
-if ! check_java || ! check_maven; then
+if [[ ! -f "pom.xml" ]]; then
+    print_error "pom.xml not found. Make sure to run this script from the project root directory."
     exit 1
 fi
+
+print_info "🏠 Project directory: $(pwd)"
+
+# Check prerequisites
+print_info "🔍 Checking prerequisites..."
+
+if ! check_java; then
+    exit 1
+fi
+
+if ! check_maven; then
+    exit 1
+fi
+
+print_success "All prerequisites satisfied"
 
 # Clean and compile
 cleanup_database
@@ -29,6 +44,8 @@ cleanup_database
 if ! compile_project; then
     exit 1
 fi
+
+print_separator
 
 # Demo execution
 print_step "Running Encryption Configuration Demo..."
@@ -45,7 +62,8 @@ print_info "• Test configuration (fast processing for development)"
 print_info "• Custom configuration (builder pattern)"
 print_info ""
 
-mvn exec:java -Dexec.mainClass="demo.EncryptionConfigDemo" -q
+java -cp "target/classes:$(mvn -q dependency:build-classpath -Dmdep.outputFile=/dev/stdout)" \
+    demo.EncryptionConfigDemo
 DEMO_RESULT=$?
 print_info ""
 
@@ -89,7 +107,8 @@ if [ $DEMO_RESULT -eq 0 ] && [ $TEST_RESULT -eq 0 ]; then
     print_info "   • Check encryption tests with 'mvn test -Dtest=*Encryption*'"
     print_info "   • Explore advanced features in BlockDataEncryptionService"
 else
-    error_exit "Some tests or demos failed. Check the output above for details."
+    print_error "Some tests or demos failed. Check the output above for details."
+    exit 1
 fi
 
 print_info ""
@@ -104,10 +123,17 @@ print_info "  • 🔑 Smart Passwords: generatePasswordForConfig()"
 print_info "  • 🏪 Configured Storage: storeSecretWithHighSecurity/Performance/CustomConfig()"
 print_info ""
 
+print_separator
+
+# Display next steps
+print_info "Next steps:"
+echo "  1. Run 'scripts/run_user_friendly_encryption_demo.zsh' for practical usage"
+echo "  2. Run 'scripts/run_crypto_security_demo.zsh' for security testing"
+echo "  3. Check the 'docs/ENCRYPTION_GUIDE.md' for detailed documentation"
+echo ""
+
 # Final cleanup
-if command -v clean_database &> /dev/null; then
-    clean_database > /dev/null 2>&1
-fi
+cleanup_database > /dev/null 2>&1
 
 print_success "🎉 Encryption Configuration Demo completed successfully!"
 exit 0

@@ -121,5 +121,8 @@ public class TestDataConsistency {
         } else {
             System.out.println("3. ❌ Failed to create block with off-chain data");
         }
+        
+        // Force exit to stop background threads
+        System.exit(0);
     }
 }

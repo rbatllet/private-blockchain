@@ -29,6 +29,10 @@ This is the **main entry point** for blockchain applications. It provides:
 // RECOMMENDED APPROACH - Complete blockchain solution
 UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, username, keys);
 
+// Optional: Use custom EncryptionConfig for specific security requirements
+EncryptionConfig config = EncryptionConfig.createHighSecurityConfig();
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, config);
+
 // Store data with automatic encryption
 Block block = api.storeSecret("Medical record data", password);
 
@@ -51,9 +55,12 @@ List<Block> results = api.searchByTerms(new String[]{"medical"}, password, 20);
 Use this when you need specialized search capabilities but already have data storage handled elsewhere.
 
 ```java
-// SEARCH-SPECIALIZED APPROACH
-SearchSpecialistAPI searchAPI = new SearchSpecialistAPI();
-searchAPI.initializeWithBlockchain(blockchain, password, privateKey);
+// SEARCH-SPECIALIZED APPROACH - NEW IMPROVED CONSTRUCTOR
+SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(blockchain, password, privateKey);
+
+// Optional: Use custom EncryptionConfig for specific security requirements
+EncryptionConfig config = EncryptionConfig.createPerformanceConfig();
+SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(blockchain, password, privateKey, config);
 
 // Specialized search operations
 List<EnhancedSearchResult> fast = searchAPI.searchSimple("medical");
@@ -67,6 +74,7 @@ List<EnhancedSearchResult> smart = searchAPI.searchIntelligent("diagnosis", pass
 - ⚡ Already have storage/encryption handled separately
 - ⚡ Building search analytics or discovery tools
 - ⚡ Need fine-grained control over search strategies
+- ⚡ Need custom EncryptionConfig for specific security requirements
 
 ## 🔧 Expert Level: SearchFrameworkEngine
 
@@ -123,9 +131,8 @@ List<Block> patientRecords = api.searchByTerms(new String[]{"diabetes"}, medical
 ### 🔍 Search Analytics Dashboard
 **Recommendation: SearchSpecialistAPI**
 ```java
-// Specialized search analytics
-SearchSpecialistAPI searchAPI = new SearchSpecialistAPI();
-searchAPI.initializeWithBlockchain(blockchain, adminPassword, adminKey);
+// Specialized search analytics - NEW IMPROVED CONSTRUCTOR
+SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(blockchain, adminPassword, adminKey);
 
 // Fast public search for dashboard metrics
 List<EnhancedSearchResult> publicMetrics = searchAPI.searchSimple("transactions");
@@ -224,9 +231,8 @@ Are you building a complete blockchain application?
 // Phase 1: Start with UserFriendlyEncryptionAPI
 UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, user, keys);
 
-// Phase 2: Add specialized search if needed
-SearchSpecialistAPI searchAPI = new SearchSpecialistAPI();
-searchAPI.initializeWithBlockchain(blockchain, password, privateKey);
+// Phase 2: Add specialized search if needed - NEW IMPROVED CONSTRUCTOR
+SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(blockchain, password, privateKey);
 
 // Phase 3: Custom engines for special requirements (rarely needed)
 SearchFrameworkEngine customEngine = new SearchFrameworkEngine(customConfig);

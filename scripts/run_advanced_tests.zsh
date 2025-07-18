@@ -4,21 +4,14 @@
 # Usage: ./run_advanced_tests.zsh
 # Version: 1.0.1
 
-# Load shared functions for database cleanup (but preserve original structure)
-
-# Set script directory and navigate to project root
+# Set script directory
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR/.."
 
 # Load common functions library
 source "${SCRIPT_DIR}/lib/common_functions.zsh"
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-if [ -f "$SCRIPT_DIR/scripts/lib/common_functions.zsh" ]; then
-    source "$SCRIPT_DIR/scripts/lib/common_functions.zsh"
-    # Clean database at start to prevent corruption
-    clean_database > /dev/null 2>&1
-fi
+# Change to project root directory
+cd "$SCRIPT_DIR/.."
 
 print_step "=== 🔍 BLOCKCHAIN ADDITIONAL ADVANCED FUNCTIONS TEST RUNNER ==="
 print_info "Project directory: $(pwd)"

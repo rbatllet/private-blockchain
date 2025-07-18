@@ -8,6 +8,8 @@ import java.security.PrivateKey;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Search Specialist API - Advanced Search Operations for Blockchain Data
@@ -75,32 +77,132 @@ import java.util.concurrent.CompletableFuture;
  */
 public class SearchSpecialistAPI {
     
+    private static final Logger logger = LoggerFactory.getLogger(SearchSpecialistAPI.class);
+    
     private final SearchFrameworkEngine searchEngine;
     private final BlockPasswordRegistry passwordRegistry;
     private boolean isInitialized = false;
+    private boolean isDirectlyInstantiated = false;
     private String defaultPassword = null;
     
     /**
      * Creates a new SearchSpecialistAPI instance with default high-security configuration.
      * 
-     * <p>This constructor initializes the search engine with:
-     * <ul>
-     *   <li>AES-256-GCM encryption</li>
-     *   <li>High-security metadata handling</li>
-     *   <li>Optimized indexing strategy</li>
-     *   <li>Empty password registry</li>
-     * </ul>
+     * <p>⚠️ <strong>WARNING:</strong> Direct instantiation is NOT recommended for most use cases.
+     * This approach bypasses the blockchain's initialization process and may result in
+     * empty search results or initialization failures.</p>
+     * 
+     * <p>🔧 <strong>PREFERRED APPROACH:</strong>
+     * <pre>{@code
+     * // Step 1: Initialize blockchain's advanced search
+     * blockchain.initializeAdvancedSearch(password);
+     * 
+     * // Step 2: Get the properly initialized instance
+     * SearchSpecialistAPI searchAPI = blockchain.getSearchSpecialistAPI();
+     * 
+     * // Step 3: Verify ready state
+     * if (!searchAPI.isReady()) {
+     *     searchAPI.initializeWithBlockchain(blockchain, password, privateKey);
+     * }
+     * }</pre>
      * 
      * <p><strong>Note:</strong> You must call {@link #initializeWithBlockchain(Blockchain, String, PrivateKey)}
      * before performing any search operations.</p>
      * 
-     * @see #SearchSpecialistAPI(EncryptionConfig) for custom security configuration
      */
     public SearchSpecialistAPI() {
+        // Log warning for direct instantiation
+        logger.warn("⚠️ SearchSpecialistAPI created directly. " +
+                   "This is NOT recommended. Consider using blockchain.getSearchSpecialistAPI() instead. " +
+                   "Direct instantiation may result in empty search results. " +
+                   "See docs/SEARCHSPECIALISTAPI_INITIALIZATION_GUIDE.md for proper usage.");
+        
         this.searchEngine = new SearchFrameworkEngine();
         this.passwordRegistry = new BlockPasswordRegistry();
+        this.isDirectlyInstantiated = true; // Flag to track direct instantiation
     }
     
+    /**
+     * Creates a new SearchSpecialistAPI instance with required blockchain, password, and private key.
+     * 
+     * <p>This constructor enforces proper initialization by requiring all necessary parameters,
+     * preventing the common mistake of direct instantiation without proper setup.</p>
+     * 
+     * <p><strong>Automatic Initialization:</strong> This constructor automatically
+     * initializes the search engine with the provided blockchain, password, and private key,
+     * eliminating the need for separate initialization calls.</p>
+     * 
+     * @param blockchain the blockchain instance to use for search operations. Must not be null.
+     * @param password the password for accessing encrypted content. Must not be null.
+     * @param privateKey the private key for secure operations. Must not be null.
+     * @throws IllegalArgumentException if any parameter is null
+     * @throws RuntimeException if initialization fails
+     */
+    public SearchSpecialistAPI(Blockchain blockchain, String password, PrivateKey privateKey) {
+        this(blockchain, password, privateKey, EncryptionConfig.createHighSecurityConfig());
+    }
+    
+    /**
+     * Creates a new SearchSpecialistAPI instance with custom encryption configuration.
+     * 
+     * <p>This constructor allows you to specify custom security settings while ensuring
+     * proper initialization with the blockchain. This is the most flexible and powerful
+     * constructor for advanced users who need specific encryption configurations.</p>
+     * 
+     * <p><strong>Custom Configuration Benefits:</strong></p>
+     * <ul>
+     *   <li>Custom encryption algorithms and key sizes</li>
+     *   <li>Performance vs security trade-offs</li>
+     *   <li>Specialized validation policies</li>
+     *   <li>Environment-specific security requirements</li>
+     * </ul>
+     * 
+     * @param blockchain the blockchain instance to use for search operations. Must not be null.
+     * @param password the password for accessing encrypted content. Must not be null.
+     * @param privateKey the private key for secure operations. Must not be null.
+     * @param config the encryption configuration to use. Must not be null.
+     *               Use {@link EncryptionConfig#createHighSecurityConfig()} for maximum security,
+     *               {@link EncryptionConfig#createBalancedConfig()} for balanced performance,
+     *               or {@link EncryptionConfig#createPerformanceConfig()} for speed priority.
+     * @throws IllegalArgumentException if any parameter is null
+     * @throws RuntimeException if initialization fails
+     * @see EncryptionConfig for available configuration options
+     */
+    public SearchSpecialistAPI(Blockchain blockchain, String password, PrivateKey privateKey, EncryptionConfig config) {
+        if (blockchain == null) {
+            throw new IllegalArgumentException("Blockchain cannot be null");
+        }
+        if (password == null) {
+            throw new IllegalArgumentException("Password cannot be null");
+        }
+        if (privateKey == null) {
+            throw new IllegalArgumentException("Private key cannot be null");
+        }
+        if (config == null) {
+            throw new IllegalArgumentException("EncryptionConfig cannot be null");
+        }
+        
+        this.searchEngine = new SearchFrameworkEngine(config);
+        this.passwordRegistry = new BlockPasswordRegistry();
+        this.isDirectlyInstantiated = false; // Created with proper parameters
+        
+        // Initialize immediately with blockchain
+        try {
+            blockchain.initializeAdvancedSearch(password);
+            
+            // Initialize with blockchain using the provided private key and config
+            IndexingResult result = this.searchEngine.indexBlockchain(blockchain, password, privateKey);
+            this.defaultPassword = password;
+            this.isInitialized = true;
+            
+            logger.info("✅ SearchSpecialistAPI created and initialized with blockchain - {} blocks indexed, config: {}", 
+                       result.getBlocksIndexed(), config.getSecurityLevel());
+        } catch (Exception e) {
+            logger.error("❌ Failed to initialize SearchSpecialistAPI with blockchain: " + e.getMessage());
+            throw new RuntimeException("Failed to initialize SearchSpecialistAPI", e);
+        }
+    }
+
     /**
      * Creates a new SearchSpecialistAPI instance with custom encryption configuration.
      * 
@@ -112,6 +214,9 @@ public class SearchSpecialistAPI {
      *   <li>Custom validation policies</li>
      * </ul>
      * 
+     * <p><strong>Note:</strong> You must call {@link #initializeWithBlockchain(Blockchain, String, PrivateKey)}
+     * before performing any search operations.</p>
+     * 
      * @param config the encryption configuration to use for all search operations.
      *               Must not be null. Use {@link EncryptionConfig#createHighSecurityConfig()}
      *               for maximum security or {@link EncryptionConfig#createBalancedConfig()}
@@ -120,9 +225,36 @@ public class SearchSpecialistAPI {
      * @see EncryptionConfig for available configuration options
      */
     public SearchSpecialistAPI(EncryptionConfig config) {
+        if (config == null) {
+            throw new IllegalArgumentException("EncryptionConfig cannot be null");
+        }
+        
+        // Log warning for advanced constructor usage
+        logger.warn("⚠️ SearchSpecialistAPI created with custom EncryptionConfig. " +
+                   "Remember to call initializeWithBlockchain() before searching. " +
+                   "Consider using SearchSpecialistAPI(blockchain, password, privateKey) for simpler usage.");
+        
         this.searchEngine = new SearchFrameworkEngine(config);
         this.passwordRegistry = new BlockPasswordRegistry();
+        this.isDirectlyInstantiated = true; // Created with advanced configuration
     }
+
+    /**
+     * Package-private constructor for internal use by blockchain.
+     * This constructor should ONLY be used by the blockchain implementation.
+     * 
+     * @param internal marker to indicate internal construction
+     */
+    public SearchSpecialistAPI(boolean internal) {
+        this.searchEngine = new SearchFrameworkEngine();
+        this.passwordRegistry = new BlockPasswordRegistry();
+        this.isDirectlyInstantiated = false; // Created internally by blockchain
+        
+        if (internal) {
+            logger.debug("✅ SearchSpecialistAPI created internally by blockchain");
+        }
+    }
+    
     
     // ===== SIMPLE SEARCH METHODS =====
     
@@ -194,6 +326,16 @@ public class SearchSpecialistAPI {
     public List<SearchFrameworkEngine.EnhancedSearchResult> searchSimple(String query, int maxResults) {
         if (query == null) {
             throw new IllegalArgumentException("Query cannot be null");
+        }
+        
+        // Check for direct instantiation and warn
+        if (isDirectlyInstantiated && !isInitialized) {
+            logger.error("❌ SearchSpecialistAPI was created directly and is not initialized. " +
+                        "This will likely return empty results. " +
+                        "Use blockchain.getSearchSpecialistAPI() instead. " +
+                        "See docs/SEARCHSPECIALISTAPI_INITIALIZATION_GUIDE.md");
+            System.err.println("⚠️ WARNING: SearchSpecialistAPI created directly without proper initialization. " +
+                              "Expected results: 0. Use blockchain.getSearchSpecialistAPI() instead.");
         }
         if (query.trim().isEmpty()) {
             throw new IllegalArgumentException("Query cannot be empty");
@@ -493,6 +635,12 @@ public class SearchSpecialistAPI {
         SearchFrameworkEngine.IndexingResult result = searchEngine.indexBlockchain(blockchain, password, privateKey);
         this.defaultPassword = password;
         isInitialized = true;
+        
+        // Clear the direct instantiation flag since it's now properly initialized
+        if (isDirectlyInstantiated) {
+            logger.info("✅ SearchSpecialistAPI directly instantiated but now properly initialized with blockchain");
+        }
+        
         return result;
     }
     

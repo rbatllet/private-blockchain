@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="ERROR">
+    <Properties>
+        <!-- Compact pattern for production -->
+        <Property name="PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %logger{36} - %msg%n</Property>
+    </Properties>
+
+    <Appenders>
+        <!-- Console for critical errors only -->
+        <Console name="Console" target="SYSTEM_ERR">
+            <PatternLayout pattern="${PATTERN}"/>
+            <ThresholdFilter level="ERROR" onMatch="ACCEPT" onMismatch="DENY"/>
+        </Console>
+        
+        <!-- File for application logs -->
+        <RollingFile name="AppLogFile" fileName="logs/blockchain.log" 
+                     filePattern="logs/blockchain-%d{yyyy-MM-dd}-%i.log.gz">
+            <PatternLayout pattern="${PATTERN}"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy />
+                <SizeBasedTriggeringPolicy size="50MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="30"/>
+        </RollingFile>
+
+        <!-- Structured alerts file -->
+        <RollingFile name="StructuredAlertsFile" fileName="logs/structured-alerts.log" 
+                     filePattern="logs/structured-alerts-%d{yyyy-MM-dd}-%i.log.gz">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} - %msg%n"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy />
+                <SizeBasedTriggeringPolicy size="100MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="90"/>
+        </RollingFile>
+
+        <!-- Performance metrics file -->
+        <RollingFile name="PerformanceMetricsFile" fileName="logs/performance-metrics.log" 
+                     filePattern="logs/performance-metrics-%d{yyyy-MM-dd}-%i.log.gz">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} - %msg%n"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy />
+                <SizeBasedTriggeringPolicy size="100MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="90"/>
+        </RollingFile>
+
+        <!-- Security events file -->
+        <RollingFile name="SecurityEventsFile" fileName="logs/security-events.log" 
+                     filePattern="logs/security-events-%d{yyyy-MM-dd}-%i.log.gz">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} - %msg%n"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy />
+                <SizeBasedTriggeringPolicy size="50MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="180"/>
+        </RollingFile>
+    </Appenders>
+
+    <Loggers>
+        <!-- Application logs - WARN level for production -->
+        <Logger name="com.rbatllet.blockchain" level="WARN" additivity="false">
+            <AppenderRef ref="AppLogFile"/>
+        </Logger>
+
+        <!-- Structured alerts logger -->
+        <Logger name="alerts.structured" level="INFO" additivity="false">
+            <AppenderRef ref="StructuredAlertsFile"/>
+        </Logger>
+
+        <!-- Performance metrics logger -->
+        <Logger name="performance.metrics" level="INFO" additivity="false">
+            <AppenderRef ref="PerformanceMetricsFile"/>
+        </Logger>
+
+        <!-- Security events logger -->
+        <Logger name="security.events" level="INFO" additivity="false">
+            <AppenderRef ref="SecurityEventsFile"/>
+        </Logger>
+
+        <!-- Hibernate loggers - minimal logging in production -->
+        <Logger name="org.hibernate" level="ERROR" additivity="false">
+            <AppenderRef ref="AppLogFile"/>
+        </Logger>
+        
+        <!-- SQL statements disabled in production -->
+        <Logger name="org.hibernate.SQL" level="OFF" additivity="false">
+            <AppenderRef ref="AppLogFile"/>
+        </Logger>
+        
+        <!-- HikariCP - errors only -->
+        <Logger name="com.zaxxer.hikari" level="ERROR" additivity="false">
+            <AppenderRef ref="AppLogFile"/>
+        </Logger>
+        
+        <!-- Other frameworks silenced -->
+        <Logger name="org.jboss" level="ERROR" additivity="false">
+            <AppenderRef ref="AppLogFile"/>
+        </Logger>
+        
+        <Logger name="org.springframework" level="ERROR" additivity="false">
+            <AppenderRef ref="AppLogFile"/>
+        </Logger>
+
+        <!-- Root logger with ERROR level -->
+        <Root level="ERROR">
+            <AppenderRef ref="AppLogFile"/>
+        </Root>
+    </Loggers>
+</Configuration>

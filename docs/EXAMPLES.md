@@ -1963,11 +1963,11 @@ For more technical details about the thread-safety implementation, see [TECHNICA
 
 For detailed API information including the thread-safe `addBlockAndReturn()` method, see [API_GUIDE.md](API_GUIDE.md).
 
-For testing concurrent scenarios, see [TESTING.md](TESTING.md) and run `./run_thread_safety_test.zsh` or `./run_advanced_thread_safety_tests.zsh` for more complex concurrency tests. For race condition testing, use `./test_race_condition_fix.zsh`.
+For testing concurrent scenarios, see [TESTING.md](TESTING.md) and run `./scripts/run_thread_safety_test.zsh` or `./scripts/run_advanced_thread_safety_tests.zsh` for more complex concurrency tests. For race condition testing, use `./scripts/test_race_condition_fix.zsh`.
 
-To explore cryptographic security features, run `./run_crypto_security_demo.zsh` which demonstrates the security mechanisms in action.
+To explore cryptographic security features, run `./scripts/run_crypto_security_demo.zsh` which demonstrates the security mechanisms in action.
 
-For security analysis and testing, use `./run_security_analysis.zsh` and `./run_security_tests.zsh`.
+For security analysis and testing, use `./scripts/run_security_analysis.zsh` and `./scripts/run_security_tests.zsh`.
 
 ## 📚 Additional Resources
 

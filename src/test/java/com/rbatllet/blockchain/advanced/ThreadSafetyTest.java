@@ -239,5 +239,8 @@ public class ThreadSafetyTest {
     public static void main(String[] args) {
         ThreadSafetyTest test = new ThreadSafetyTest();
         test.testBlockchainThreadSafety();
+        
+        // Force exit to stop background threads
+        System.exit(0);
     }
 }

@@ -4,60 +4,69 @@
 # Usage: ./run_security_tests.zsh
 # Version: 1.0.1
 
-# Load shared functions for database cleanup
-
-# Set script directory and navigate to project root
+# Set script directory before changing directories
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR/.."
 
 # Load common functions library
 source "${SCRIPT_DIR}/lib/common_functions.zsh"
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-if [ -f "$SCRIPT_DIR/scripts/lib/common_functions.zsh" ]; then
-    source "$SCRIPT_DIR/scripts/lib/common_functions.zsh"
-    # Clean database at start to prevent corruption
-    clean_database > /dev/null 2>&1
-fi
+# Change to project root directory
+cd "$SCRIPT_DIR/.."
 
-print_step "=== 🔐 BLOCKCHAIN KEY DELETION SECURITY TEST RUNNER ==="
-print_info "Project directory: $(pwd)"
-print_info ""
+echo "🔐 BLOCKCHAIN KEY DELETION SECURITY TEST RUNNER"
+echo "================================================"
+echo ""
 
 # Check if we're in the correct directory
-if [ ! -f "pom.xml" ]; then
-    error_exit "pom.xml not found. Make sure to run this script from the project root directory."
+if [[ ! -f "pom.xml" ]]; then
+    print_error "pom.xml not found. Make sure to run this script from the project root directory."
+    exit 1
 fi
 
-# Clean and compile
-print_step "Compiling project..."
-mvn clean compile -q > /dev/null 2>&1
-if [ $? -ne 0 ]; then
-    mvn clean compile
-    error_exit "Compilation failed!"
+print_info "🏠 Project directory: $(pwd)"
+
+# Check prerequisites
+print_info "🔍 Checking prerequisites..."
+
+if ! check_java; then
+    exit 1
 fi
-print_success "Compilation successful"
-print_info ""
+
+if ! check_maven; then
+    exit 1
+fi
+
+print_success "All prerequisites satisfied"
+
+# Clean and compile
+cleanup_database
+
+if ! compile_project; then
+    exit 1
+fi
+
+print_separator
 
 # Run Key Deletion Security Tests
 print_info "🔐 Running Key Deletion Security Tests..."
-print_step "================================================="
-print_info ""
+echo "================================================="
+echo ""
 mvn test -Dtest=DangerousDeleteAuthorizedKeyTest
 SECURITY_TEST_RESULT=$?
-print_info ""
+echo ""
 
 # Run the interactive demo
 print_info "🎬 Running Key Deletion Security Demo..."
-print_step "========================================="
-print_info ""
-mvn compile exec:java -Dexec.mainClass="demo.DangerousDeleteDemo" -q
+echo "========================================="
+echo ""
+java -cp "target/classes:$(mvn -q dependency:build-classpath -Dmdep.outputFile=/dev/stdout)" \
+    demo.DangerousDeleteDemo
 DEMO_RESULT=$?
-print_info ""
+echo ""
 
 # Summary
-print_step "📊 SECURITY TEST SUMMARY"
-print_step "========================="
+print_info "📊 SECURITY TEST SUMMARY"
+echo "========================="
 if [ $SECURITY_TEST_RESULT -eq 0 ]; then
     print_success "✅ Key Deletion Security Tests: PASSED"
 else
@@ -81,8 +90,8 @@ print_info "  • Comprehensive audit logging"
 print_info ""
 
 # Final cleanup
-if command -v clean_database &> /dev/null; then
-    clean_database > /dev/null 2>&1
+if command -v cleanup_database &> /dev/null; then
+    cleanup_database > /dev/null 2>&1
 fi
 
 # Exit with appropriate code
@@ -90,5 +99,6 @@ if [ $SECURITY_TEST_RESULT -eq 0 ] && [ $DEMO_RESULT -eq 0 ]; then
     print_success "All security tests completed successfully!"
     exit 0
 else
-    error_exit "Some security tests failed. Check the output above."
+    print_error "Some security tests failed. Check the output above."
+    exit 1
 fi

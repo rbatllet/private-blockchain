@@ -13,6 +13,7 @@ Comprehensive guide to the Private Blockchain API, core functions, off-chain sto
 - [Chain Validation Result](#-chain-validation-result)
 - [Granular Term Visibility API](#-granular-term-visibility-api)
 - [Off-Chain Storage API](#-off-chain-storage-api)
+- [EncryptionConfig Integration](#-encryptionconfig-integration)
 - [Configuration](#-configuration)
 - [Configuration Parameters](#-configuration-parameters)
 - [Best Practices](#-best-practices)
@@ -327,7 +328,7 @@ mvn test -Dtest=TermVisibilityMapTest
 mvn test -Dtest=GranularTermVisibilityIntegrationTest
 
 # Interactive demo
-./run_granular_term_visibility_demo.zsh
+./scripts/run_granular_term_visibility_demo.zsh
 ```
 
 ## 📁 Off-Chain Storage API
@@ -1795,6 +1796,110 @@ String curveName = "secp256r1";
 ChainValidationResult securityResult = blockchain.validateChainDetailed();
 boolean securityValid = securityResult.isFullyCompliant();
 ```
+
+## 🔐 EncryptionConfig Integration
+
+The blockchain system now supports unified encryption configuration across all APIs through the `EncryptionConfig` class. This provides consistent security policies and flexible performance tuning.
+
+### UserFriendlyEncryptionAPI Configuration
+
+```java
+// Default configuration (Balanced)
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+
+// Custom configuration
+EncryptionConfig config = EncryptionConfig.createHighSecurityConfig();
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, config);
+```
+
+### SearchSpecialistAPI Configuration
+
+```java
+// Default configuration (High Security)
+SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(blockchain, password, privateKey);
+
+// Custom configuration
+EncryptionConfig config = EncryptionConfig.createPerformanceConfig();
+SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(blockchain, password, privateKey, config);
+```
+
+### Available Configuration Types
+
+#### Predefined Configurations
+```java
+// High Security: Maximum protection, slower performance
+EncryptionConfig highSec = EncryptionConfig.createHighSecurityConfig();
+
+// Performance: Optimized speed, reduced security
+EncryptionConfig performance = EncryptionConfig.createPerformanceConfig();
+
+// Balanced: Good compromise between security and performance
+EncryptionConfig balanced = EncryptionConfig.createBalancedConfig();
+```
+
+#### Custom Configuration
+```java
+EncryptionConfig custom = EncryptionConfig.builder()
+    .keyLength(256)                          // AES key length in bits
+    .pbkdf2Iterations(120000)               // PBKDF2 iteration count
+    .enableCompression(false)               // Enable/disable compression
+    .corruptionDetectionEnabled(true)       // Enable corruption detection
+    .metadataEncryptionEnabled(true)        // Encrypt metadata
+    .validateEncryptionFormat(true)         // Validate encryption format
+    .build();
+```
+
+### Configuration Properties
+
+| Property | High Security | Performance | Balanced | Description |
+|----------|---------------|-------------|----------|-------------|
+| Key Length | 256 bits | 128 bits | 256 bits | AES encryption key length |
+| PBKDF2 Iterations | 150,000 | 50,000 | 100,000 | Key derivation iterations |
+| Compression | Disabled | Enabled | Disabled | Data compression |
+| Corruption Detection | Enabled | Disabled | Enabled | Data integrity checking |
+| Metadata Encryption | Enabled | Disabled | Enabled | Encrypt metadata |
+| Format Validation | Enabled | Disabled | Enabled | Validate encryption format |
+
+### Unified Configuration Example
+
+```java
+// Create organization-wide security policy
+EncryptionConfig orgPolicy = EncryptionConfig.builder()
+    .keyLength(256)
+    .pbkdf2Iterations(120000)
+    .enableCompression(false)
+    .corruptionDetectionEnabled(true)
+    .metadataEncryptionEnabled(true)
+    .validateEncryptionFormat(true)
+    .build();
+
+// Apply to all APIs
+UserFriendlyEncryptionAPI dataAPI = new UserFriendlyEncryptionAPI(blockchain, orgPolicy);
+SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(blockchain, password, privateKey, orgPolicy);
+
+// All APIs now use consistent security settings
+System.out.println("Configuration: " + orgPolicy.getSummary());
+System.out.println("Security Level: " + orgPolicy.getSecurityLevel());
+```
+
+### Configuration Validation
+
+```java
+// Check current configuration
+EncryptionConfig config = api.getEncryptionConfig();
+System.out.println("Current Security Level: " + config.getSecurityLevel());
+
+// Validate security requirements
+if (config.getKeyLength() < 256) {
+    System.out.println("⚠️ Warning: Key length below recommended 256 bits");
+}
+
+if (config.getPbkdf2Iterations() < 100000) {
+    System.out.println("⚠️ Warning: PBKDF2 iterations below recommended 100,000");
+}
+```
+
+For complete details on EncryptionConfig usage, see the [EncryptionConfig Integration Guide](ENCRYPTION_CONFIG_INTEGRATION_GUIDE.md).
 
 ## 🔧 Configuration Parameters
 

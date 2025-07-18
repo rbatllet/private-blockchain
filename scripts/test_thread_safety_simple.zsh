@@ -3,12 +3,14 @@
 # Simple Thread Safety Test (with detailed logging)
 # Version: 1.0.0
 
-# Set script directory and navigate to project root
+# Set script directory before changing directories
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR/.."
 
 # Load common functions library
 source "${SCRIPT_DIR}/lib/common_functions.zsh"
+
+# Change to project root directory
+cd "$SCRIPT_DIR/.."
 
 print_header "SIMPLE THREAD SAFETY TEST (with detailed logging)"
 
@@ -43,14 +45,14 @@ mkdir -p logs
 
 # Run the actual test with proper classpath
 print_step "SIMPLIFIED THREAD SAFETY TEST"
-mvn exec:java -Dexec.mainClass="demo.SimpleThreadSafetyTest" \
+java -cp "target/classes:target/test-classes:$(mvn -q dependency:build-classpath -Dmdep.outputFile=/dev/stdout)" \
     -Dlog4j.configurationFile=log4j2.xml \
     -Dlog.level=DEBUG \
     -Dthread.safety.debug=true \
     -Dfile.encoding=UTF-8 \
     -Djava.util.logging.config.file=logging.properties \
     -Dlog4j2.debug=false \
-    -q 2>&1 | tee logs/simple-thread-safety-test.log
+    demo.SimpleThreadSafetyTest 2>&1 | tee logs/simple-thread-safety-test.log
 
 # Check test result
 TEST_RESULT=$?

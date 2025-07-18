@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- Default configuration (Development) - for production use log4j2-production.xml -->
 <Configuration status="WARN">
     <Properties>
-        <!-- Pattern for main application -->
+        <!-- Pattern for development - includes thread name for debugging -->
         <Property name="PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n</Property>
     </Properties>
 
@@ -21,41 +22,95 @@
             </Policies>
             <DefaultRolloverStrategy max="10"/>
         </RollingFile>
+
+        <!-- Structured alerts file -->
+        <RollingFile name="StructuredAlertsFile" fileName="logs/structured-alerts.log" 
+                     filePattern="logs/structured-alerts-%d{yyyy-MM-dd}-%i.log.gz">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} - %msg%n"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy />
+                <SizeBasedTriggeringPolicy size="25MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="30"/>
+        </RollingFile>
+
+        <!-- Performance metrics file -->
+        <RollingFile name="PerformanceMetricsFile" fileName="logs/performance-metrics.log" 
+                     filePattern="logs/performance-metrics-%d{yyyy-MM-dd}-%i.log.gz">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} - %msg%n"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy />
+                <SizeBasedTriggeringPolicy size="20MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="30"/>
+        </RollingFile>
+
+        <!-- Security events file -->
+        <RollingFile name="SecurityEventsFile" fileName="logs/security-events.log" 
+                     filePattern="logs/security-events-%d{yyyy-MM-dd}-%i.log.gz">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} - %msg%n"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy />
+                <SizeBasedTriggeringPolicy size="15MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="60"/>
+        </RollingFile>
     </Appenders>
 
     <Loggers>
-        <!-- Application logs -->
-        <Logger name="com.rbatllet.blockchain" level="INFO" additivity="false">
+        <!-- Application logs - DEBUG level for development -->
+        <Logger name="com.rbatllet.blockchain" level="DEBUG" additivity="false">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="AppLogFile"/>
         </Logger>
 
-        <!-- Hibernate loggers (reduced for production) -->
-        <Logger name="org.hibernate" level="WARN" additivity="false">
+        <!-- Structured alerts logger -->
+        <Logger name="alerts.structured" level="INFO" additivity="false">
+            <AppenderRef ref="StructuredAlertsFile"/>
+            <AppenderRef ref="Console"/>
+        </Logger>
+
+        <!-- Performance metrics logger -->
+        <Logger name="performance.metrics" level="INFO" additivity="false">
+            <AppenderRef ref="PerformanceMetricsFile"/>
+            <AppenderRef ref="Console"/>
+        </Logger>
+
+        <!-- Security events logger -->
+        <Logger name="security.events" level="INFO" additivity="false">
+            <AppenderRef ref="SecurityEventsFile"/>
+            <AppenderRef ref="Console"/>
+        </Logger>
+
+        <!-- Hibernate loggers - more verbose for development -->
+        <Logger name="org.hibernate" level="INFO" additivity="false">
+            <AppenderRef ref="Console"/>
             <AppenderRef ref="AppLogFile"/>
         </Logger>
         
-        <!-- SQL statements only when necessary -->
-        <Logger name="org.hibernate.SQL" level="WARN" additivity="false">
+        <!-- SQL statements visible in development -->
+        <Logger name="org.hibernate.SQL" level="DEBUG" additivity="false">
+            <AppenderRef ref="Console"/>
             <AppenderRef ref="AppLogFile"/>
         </Logger>
         
-        <!-- HikariCP silenced -->
-        <Logger name="com.zaxxer.hikari" level="ERROR" additivity="false">
+        <!-- HikariCP - info level for development -->
+        <Logger name="com.zaxxer.hikari" level="INFO" additivity="false">
+            <AppenderRef ref="Console"/>
             <AppenderRef ref="AppLogFile"/>
         </Logger>
         
-        <!-- Other frameworks silenced -->
-        <Logger name="org.jboss" level="ERROR" additivity="false">
+        <!-- Other frameworks -->
+        <Logger name="org.jboss" level="WARN" additivity="false">
             <AppenderRef ref="AppLogFile"/>
         </Logger>
         
-        <Logger name="org.springframework" level="WARN" additivity="false">
+        <Logger name="org.springframework" level="INFO" additivity="false">
             <AppenderRef ref="AppLogFile"/>
         </Logger>
 
-        <!-- Root logger with less noise -->
-        <Root level="WARN">
+        <!-- Root logger with INFO level -->
+        <Root level="INFO">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="AppLogFile"/>
         </Root>

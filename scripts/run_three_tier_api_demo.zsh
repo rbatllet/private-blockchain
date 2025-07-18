@@ -3,12 +3,14 @@
 # 🎯 Three-Tier API Demo - Showcase all three blockchain search APIs
 # Demonstrates UserFriendlyEncryptionAPI, SearchSpecialistAPI, and SearchFrameworkEngine
 
-# Set script directory and navigate to project root
+# Set script directory before changing directories
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR/.."
 
 # Load common functions
 source "${SCRIPT_DIR}/lib/common_functions.zsh"
+
+# Change to project root directory
+cd "$SCRIPT_DIR/.."
 
 DEMO_TITLE="🚀 Three-Tier Blockchain API Demo"
 
@@ -48,7 +50,8 @@ run_tier1_demo() {
     echo "ℹ️  Running UserFriendlyEncryptionAPI Demo..."
     echo ""
     
-    mvn exec:java -Dexec.mainClass="demo.UserFriendlyEncryptionDemo" -q 2>&1 | while IFS= read -r line; do
+    java -cp "target/classes:$(mvn -q dependency:build-classpath -Dmdep.outputFile=/dev/stdout)" \
+        demo.UserFriendlyEncryptionDemo 2>&1 | while IFS= read -r line; do
         if [[ "$line" =~ "SUCCESS:|✅" ]]; then
             echo "✅ $line"
         elif [[ "$line" =~ "ERROR:|❌" ]]; then
@@ -77,7 +80,7 @@ run_tier2_demo() {
                      "Specialized search operations with advanced features and analytics" \
                      "Search specialists - analytics, discovery tools, search optimization"
     
-    echo "ℹ️  Running SearchSpecialistAPI Demo (via SearchFrameworkDemo)..."
+    echo "ℹ️  Running SearchSpecialistAPI Demo..."
     echo ""
     
     echo "📊 SearchSpecialistAPI provides:"
@@ -88,12 +91,13 @@ run_tier2_demo() {
     echo "   📊 Comprehensive diagnostics and capability reporting"
     echo ""
     
-    echo "🎬 Running actual SearchFrameworkEngine demonstration:"
+    echo "🎬 Running actual SearchSpecialistAPI demonstration:"
     echo "═══════════════════════════════════════════════════════════════════════════════════════"
     
-    mvn exec:java -Dexec.mainClass="demo.SearchFrameworkDemo" -q 2>&1 | while IFS= read -r line; do
-        if [[ "$line" =~ "SEARCH ENGINE|ENGINE DEMO" ]]; then
-            echo "🔧 $line"
+    java -cp "target/classes:$(mvn -q dependency:build-classpath -Dmdep.outputFile=/dev/stdout)" \
+        demo.SearchSpecialistAPIDemo 2>&1 | while IFS= read -r line; do
+        if [[ "$line" =~ "SPECIALIST|SEARCH" ]]; then
+            echo "⚡ $line"
         elif [[ "$line" =~ "Fast search|Simple search|Secure search|Intelligent search" ]]; then
             echo "⚡ $line"
         elif [[ "$line" =~ "Performance|Statistics|Metrics|diagnostics" ]]; then
@@ -140,7 +144,8 @@ run_tier3_demo() {
     echo "🎬 Running actual SearchFrameworkEngine demonstration:"
     echo "═══════════════════════════════════════════════════════════════════════════════════════"
     
-    mvn exec:java -Dexec.mainClass="demo.SearchFrameworkDemo" -q 2>&1 | while IFS= read -r line; do
+    java -cp "target/classes:$(mvn -q dependency:build-classpath -Dmdep.outputFile=/dev/stdout)" \
+        demo.SearchFrameworkDemo 2>&1 | while IFS= read -r line; do
         if [[ "$line" =~ "SEARCH ENGINE|ENGINE DEMO" ]]; then
             echo "🔧 $line"
         elif [[ "$line" =~ "indexing|Indexing" ]]; then

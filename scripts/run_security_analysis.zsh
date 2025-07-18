@@ -4,38 +4,48 @@
 # Usage: ./run_security_analysis.zsh
 # Version: 1.0.1
 
-# Load shared functions for database cleanup
-
-# Set script directory and navigate to project root
+# Set script directory before changing directories
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR/.."
 
 # Load common functions library
 source "${SCRIPT_DIR}/lib/common_functions.zsh"
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-if [ -f "$SCRIPT_DIR/scripts/lib/common_functions.zsh" ]; then
-    source "$SCRIPT_DIR/scripts/lib/common_functions.zsh"
-    clean_database > /dev/null 2>&1
-fi
+# Change to project root directory
+cd "$SCRIPT_DIR/.."
 
-print_step "=== ADVANCED BLOCKCHAIN SECURITY ANALYSIS ==="
-print_info "Project directory: $(pwd)"
-echo
+echo "🔐 ADVANCED BLOCKCHAIN SECURITY ANALYSIS"
+echo "========================================"
+echo ""
 
 # Check if we're in the correct directory
-if [ ! -f "pom.xml" ]; then
-    error_exit "pom.xml not found. Make sure to run this script from the project root directory."
+if [[ ! -f "pom.xml" ]]; then
+    print_error "pom.xml not found. Make sure to run this script from the project root directory."
+    exit 1
 fi
 
-# Clean and compile
-print_step "Compiling project..."
-mvn clean compile -q > /dev/null 2>&1
-if [ $? -ne 0 ]; then
-    error_exit "Compilation failed!"
+print_info "🏠 Project directory: $(pwd)"
+
+# Check prerequisites
+print_info "🔍 Checking prerequisites..."
+
+if ! check_java; then
+    exit 1
 fi
-print_success "Compilation successful"
-echo
+
+if ! check_maven; then
+    exit 1
+fi
+
+print_success "All prerequisites satisfied"
+
+# Clean and compile
+cleanup_database
+
+if ! compile_project; then
+    exit 1
+fi
+
+print_separator
 
 # Test Categories
 TESTS_PASSED=0
@@ -99,7 +109,8 @@ print_step "SECURITY DEMONSTRATION ANALYSIS"
 echo "==================================="
 print_info "Running comprehensive security demo..."
 echo
-mvn compile exec:java -Dexec.mainClass="demo.DangerousDeleteDemo" -q
+java -cp "target/classes:$(mvn -q dependency:build-classpath -Dmdep.outputFile=/dev/stdout)" \
+    demo.DangerousDeleteDemo
 DEMO_RESULT=$?
 
 if [ $DEMO_RESULT -eq 0 ]; then
@@ -139,8 +150,8 @@ else
 fi
 
 # Cleanup
-if command -v clean_database &> /dev/null; then
-    clean_database > /dev/null 2>&1
+if command -v cleanup_database &> /dev/null; then
+    cleanup_database > /dev/null 2>&1
 fi
 
 # Exit with appropriate code

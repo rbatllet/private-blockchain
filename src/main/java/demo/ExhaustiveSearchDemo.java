@@ -125,6 +125,9 @@ public class ExhaustiveSearchDemo {
             System.err.println("❌ Demo failed: " + e.getMessage());
             e.printStackTrace();
         }
+        
+        // Force exit to stop background threads
+        System.exit(0);
     }
     
     private static void createMixedContentBlockchain(Blockchain blockchain, 

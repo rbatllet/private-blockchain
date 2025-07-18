@@ -4,40 +4,16 @@
 # Tests complex scenarios that combine multiple operations to detect hidden race conditions
 # Version: 1.0.0
 
-
-# Set script directory and navigate to project root
+# Set script directory
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR/.."
 
 # Load common functions library
 source "${SCRIPT_DIR}/lib/common_functions.zsh"
 
-echo "📊 Private Blockchain - Advanced Thread-Safety Test Suite"
-echo "========================================================"
+# Change to project root directory
+cd "$SCRIPT_DIR/.."
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-# Function to print colored output
-print_status() {
-    echo -e "${BLUE}$1${NC}"
-}
-
-print_success() {
-    echo -e "${GREEN}✅ $1${NC}"
-}
-
-print_warning() {
-    echo -e "${YELLOW}⚠️ $1${NC}"
-}
-
-print_error() {
-    echo -e "${RED}❌ $1${NC}"
-}
+print_header "Private Blockchain - Advanced Thread-Safety Test Suite"
 
 # Universal timeout function that works on both macOS and Linux
 run_with_timeout() {
@@ -74,11 +50,11 @@ run_with_timeout() {
 }
 
 # Clean previous test database
-print_status "🧹 Cleaning previous test database..."
+print_info "🧹 Cleaning previous test database..."
 rm -f blockchain.db blockchain.db-shm blockchain.db-wal
 
 # Compile project
-print_status "ℹ️ Compiling project..."
+print_info "ℹ️ Compiling project..."
 if mvn compile test-compile -q; then
     print_success "Compilation successful!"
 else
@@ -87,7 +63,7 @@ else
 fi
 
 echo ""
-print_status "📋 Running Advanced Thread-Safety Tests..."
+print_info "📋 Running Advanced Thread-Safety Tests..."
 echo "=============================================="
 
 # Track test results
@@ -101,7 +77,7 @@ run_test() {
     local test_name=$2
     
     echo ""
-    print_status "📋 Running: $test_name"
+    print_info "📋 Running: $test_name"
     echo "----------------------------------------"
     
     TOTAL_TESTS=$((TOTAL_TESTS + 1))
@@ -132,7 +108,7 @@ run_test "DataIntegrityThreadSafetyTest" "Data Integrity Test"
 
 # Test 4: Check if original thread safety test class exists
 echo ""
-print_status "🔍 Checking for Original Thread-Safety Test..."
+print_info "🔍 Checking for Original Thread-Safety Test..."
 echo "--------------------------------------------------------"
 
 # First check if the test class exists
@@ -140,7 +116,7 @@ if mvn test -Dtest="ThreadSafetyTest" -DfailIfNoTests=false -q > /dev/null 2>&1;
     TOTAL_TESTS=$((TOTAL_TESTS + 1))
     
     echo ""
-    print_status "🔍 Running Original Thread-Safety Test..."
+    print_info "🔍 Running Original Thread-Safety Test..."
     
     # Run with universal timeout
     if run_with_timeout 120 mvn test -Dtest="ThreadSafetyTest"; then
@@ -162,7 +138,7 @@ fi
 # Summary
 echo ""
 echo "========================================================"
-print_status "📊 Advanced Thread-Safety Test Results Summary"
+print_info "📊 Advanced Thread-Safety Test Results Summary"
 echo "========================================================"
 
 echo "📊 Test Statistics:"
@@ -184,7 +160,7 @@ if [[ $FAILED_TESTS -eq 0 ]]; then
     echo "🔗 Your blockchain is ready for production-level concurrency!"
     
     # Database cleanup
-    print_status "🧹 Cleaning up test database..."
+    print_info "🧹 Cleaning up test database..."
     rm -f blockchain.db blockchain.db-shm blockchain.db-wal
     
     exit 0

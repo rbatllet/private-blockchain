@@ -201,6 +201,21 @@
                 <version>${maven-surefire-plugin.version}</version>
             </plugin>
             
+            <!-- Maven Exec Plugin for running Java applications -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.5.0</version>
+                <configuration>
+                    <systemProperties>
+                        <systemProperty>
+                            <key>log4j2.configurationFile</key>
+                            <value>file:src/main/resources/${log4j2.configurationFile}</value>
+                        </systemProperty>
+                    </systemProperties>
+                </configuration>
+            </plugin>
+            
             <!-- JaCoCo Plugin for code coverage -->
             <plugin>
                 <groupId>org.jacoco</groupId>
@@ -252,55 +267,26 @@
         </plugins>
     </build>
 
-    <!-- LOGGING CONFIGURATION PROFILES -->
+
+    <!-- Maven Profiles for different environments -->
     <profiles>
-        <!-- Development profile - detailed logging -->
+        <!-- Development profile - verbose logging -->
         <profile>
             <id>development</id>
             <activation>
                 <activeByDefault>true</activeByDefault>
             </activation>
-            <build>
-                <resources>
-                    <resource>
-                        <directory>src/main/resources</directory>
-                        <excludes>
-                            <exclude>logback-production.xml</exclude>
-                        </excludes>
-                    </resource>
-                    <resource>
-                        <directory>src/main/resources</directory>
-                        <includes>
-                            <include>logback-development.xml</include>
-                        </includes>
-                        <filtering>false</filtering>
-                        <targetPath>${project.build.outputDirectory}</targetPath>
-                    </resource>
-                </resources>
-            </build>
+            <properties>
+                <log4j2.configurationFile>log4j2.xml</log4j2.configurationFile>
+            </properties>
         </profile>
 
-        <!-- Production profile - optimized logging -->
+        <!-- Production profile - minimal logging -->
         <profile>
             <id>production</id>
-            <build>
-                <resources>
-                    <resource>
-                        <directory>src/main/resources</directory>
-                        <excludes>
-                            <exclude>logback-development.xml</exclude>
-                        </excludes>
-                    </resource>
-                    <resource>
-                        <directory>src/main/resources</directory>
-                        <includes>
-                            <include>logback-production.xml</include>
-                        </includes>
-                        <filtering>false</filtering>
-                        <targetPath>${project.build.outputDirectory}</targetPath>
-                    </resource>
-                </resources>
-            </build>
+            <properties>
+                <log4j2.configurationFile>log4j2-production.xml</log4j2.configurationFile>
+            </properties>
         </profile>
     </profiles>
 

@@ -77,5 +77,8 @@ public class SimpleDemo {
             System.err.println("❌ Error: " + e.getMessage());
             e.printStackTrace();
         }
+        
+        // Force exit to stop background threads
+        System.exit(0);
     }
 }

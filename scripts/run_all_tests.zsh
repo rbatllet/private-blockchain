@@ -4,12 +4,14 @@
 # Executes all 47 test classes in logical categories
 # Version: 2.0.0 - COMPLETE TEST COVERAGE
 
-# Set script directory and navigate to project root
+# Set script directory before changing directories
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR/.."
 
 # Load common functions library
 source "${SCRIPT_DIR}/lib/common_functions.zsh"
+
+# Change to project root directory
+cd "$SCRIPT_DIR/.."
 
 print_header "COMPREHENSIVE BLOCKCHAIN TEST RUNNER"
 print_info "This script runs ALL 47 available test classes in logical categories"
@@ -89,8 +91,8 @@ print_separator
 
 # 3. SEARCH & METADATA TESTS
 print_header "3. SEARCH & METADATA TESTS"
-run_test_suite "Search Basic" "AdvancedSearchBasicTest" "Basic search functionality"
-run_test_suite "Search Exhaustive" "AdvancedSearchExhaustiveTest" "Exhaustive search testing"
+run_test_suite "Search Basic" "SearchFrameworkBasicTest" "Basic search functionality"
+run_test_suite "Search Exhaustive" "SearchFrameworkExhaustiveTest" "Exhaustive search testing"
 run_test_suite "Search Debug" "DebugEncryptionFormatTest" "Search debug utilities"
 run_test_suite "Metadata Compression" "MetadataCompressionTest" "Metadata compression"
 run_test_suite "Term Visibility" "TermVisibilityMapTest" "Term visibility mapping"

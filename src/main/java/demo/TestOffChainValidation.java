@@ -60,6 +60,9 @@ public class TestOffChainValidation {
         } finally {
             cleanup();
         }
+        
+        // Force exit to stop background threads
+        System.exit(0);
     }
     
     private static void initializeTest() throws Exception {

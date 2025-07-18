@@ -100,5 +100,8 @@ public class BlockchainDemo {
         }
         
         System.out.println("\n=== DEMO COMPLETED ===");
+        
+        // Force exit to stop background threads
+        System.exit(0);
     }
 }

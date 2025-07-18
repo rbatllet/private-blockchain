@@ -6,11 +6,11 @@
 echo "🔧 Starting Private Blockchain in DEVELOPMENT mode..."
 echo "📊 Logging: Detailed with colors and debug info"
 
-# Set development logging configuration
-export LOGBACK_CONFIG_FILE=logback-development.xml
+# Change to project root directory
+cd "$(dirname "$0")/.."
 
-# Run with development profile
+# Run with development profile (uses log4j2.xml by default)
 mvn clean compile -Pdevelopment
-mvn exec:java -Pdevelopment -Dexec.mainClass="demo.BlockchainDemo"
+mvn exec:java -Dexec.mainClass="demo.BlockchainDemo" -Pdevelopment
 
 echo "✅ Development session completed"

@@ -170,5 +170,8 @@ public class CoreFunctionsDemo {
             System.err.println("❌ ERROR: " + e.getMessage());
             e.printStackTrace();
         }
+        
+        // Force exit to stop background threads
+        System.exit(0);
     }
 }

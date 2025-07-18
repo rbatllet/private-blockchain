@@ -5,50 +5,82 @@
 # Version: 1.0.1
 
 
-# Set script directory and navigate to project root
+# Set script directory before changing directories
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR/.."
 
 # Load common functions library
 source "${SCRIPT_DIR}/lib/common_functions.zsh"
+
+# Change to project root directory
+cd "$SCRIPT_DIR/.."
 
 echo "🧪 IMPROVED ROLLBACK STRATEGY TEST"
 echo "=================================="
 echo ""
 
-# Load shared functions for consistent output formatting and error handling
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-if [ -f "$SCRIPT_DIR/scripts/lib/common_functions.zsh" ]; then
-    source "$SCRIPT_DIR/scripts/lib/common_functions.zsh"
-else
-    echo "❌ Error: common_functions.zsh not found. Please ensure the scripts/lib directory exists."
+# Check if we're in the correct directory
+if [[ ! -f "pom.xml" ]]; then
+    print_error "pom.xml not found. Make sure to run this script from the project root directory."
     exit 1
 fi
 
+print_info "🏠 Project directory: $(pwd)"
+
+# Check prerequisites
+print_info "🔍 Checking prerequisites..."
+
+if ! check_java; then
+    exit 1
+fi
+
+if ! check_maven; then
+    exit 1
+fi
+
+print_success "All prerequisites satisfied"
+
+# Clean and compile
+cleanup_database
+
+if ! compile_project; then
+    exit 1
+fi
+
+print_separator
+
+# Run the improved rollback strategy test
+print_info "🚀 Running Improved Rollback Strategy Test..."
 print_info "Running ImprovedRollbackStrategyTest..."
 echo ""
 
-# Check if we're in the correct directory
-if [ ! -f "pom.xml" ]; then
-    error_exit "pom.xml not found. Please run this script from the project root directory."
-fi
-
-# Run the specific test
+# Execute the test
 mvn test -Dtest=ImprovedRollbackStrategyTest
+TEST_RESULT=$?
 
-TEST_EXIT_CODE=$?
-
-echo ""
-if [ $TEST_EXIT_CODE -eq 0 ]; then
+print_separator
+if [ $TEST_RESULT -eq 0 ]; then
     print_success "Improved Rollback Strategy Test: PASSED"
     echo ""
     print_info "Test verified:"
-    echo "   • Intelligent rollback analysis"
-    echo "   • Security-first approach with data preservation"
-    echo "   • Hash chain integrity verification"
-    echo "   • Multiple safety checks and fallbacks"
+    print_info "   • Intelligent rollback analysis"
+    print_info "   • Security-first approach with data preservation"
+    print_info "   • Hash chain integrity verification"
+    print_info "   • Multiple safety checks and fallbacks"
 else
     print_error "Improved Rollback Strategy Test: FAILED"
 fi
 
-exit $TEST_EXIT_CODE
+print_separator
+
+# Display next steps
+print_info "Next steps:"
+echo "  1. Run 'scripts/run_advanced_thread_safety_tests.zsh' for thread safety testing"
+echo "  2. Run 'scripts/run_blockchain_demo.zsh' for blockchain operations"
+echo "  3. Check 'target/surefire-reports/' for detailed test reports"
+echo ""
+
+# Final cleanup
+cleanup_database > /dev/null 2>&1
+
+print_success "Improved Rollback Strategy Test completed!"
+exit $TEST_RESULT
