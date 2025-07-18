@@ -47,22 +47,10 @@ public class SearchSpecialistAPIRigorousTest {
     void testSearchSpecialistAPIInitialization() throws Exception {
         System.out.println("=== TEST 1: INITIALIZATION STATE ===");
         
-        // Before initialization
-        searchAPI = blockchain.getSearchSpecialistAPI();
-        System.out.println("📊 SearchSpecialistAPI exists: " + (searchAPI != null));
-        System.out.println("📊 SearchSpecialistAPI ready before init: " + (searchAPI != null ? searchAPI.isReady() : "null"));
-        
-        // Initialize advanced search with proper password
-        blockchain.initializeAdvancedSearch(testPassword);
-        
-        // CRITICAL: Initialize SearchSpecialistAPI directly with blockchain
-        searchAPI = blockchain.getSearchSpecialistAPI();
-        if (!searchAPI.isReady()) {
-            // Create test user keys for initialization
-            KeyPair testKeys = api.createUser("search-init-user");
-            System.out.println("🔑 Initializing SearchSpecialistAPI with blockchain...");
-            searchAPI.initializeWithBlockchain(blockchain, testPassword, testKeys.getPrivate());
-        }
+        // Use new improved constructor that requires blockchain, password, and private key
+        System.out.println("🔑 Creating SearchSpecialistAPI with improved constructor...");
+        KeyPair userKeys = api.createUser("rigorous-test-user");
+        searchAPI = new SearchSpecialistAPI(blockchain, testPassword, userKeys.getPrivate());
         
         // After initialization
         System.out.println("📊 SearchSpecialistAPI ready after init: " + searchAPI.isReady());

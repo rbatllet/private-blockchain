@@ -3,22 +3,39 @@
 # Data Consistency Validation Test
 # Version: 1.0.0
 
-# Set script directory and navigate to project root
+# Set script directory before changing directories
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR/.."
 
 # Load common functions library
 source "${SCRIPT_DIR}/lib/common_functions.zsh"
 
-print_header "DATA CONSISTENCY VALIDATION TEST"
+# Change to project root directory
+cd "$SCRIPT_DIR/.."
+
+echo "📝 DATA CONSISTENCY VALIDATION TEST"
+echo "===================================="
+echo ""
 
 # Check if we're in the correct directory
-check_project_directory
-
-# Check prerequisites
-if ! check_java || ! check_maven; then
+if [[ ! -f "pom.xml" ]]; then
+    print_error "pom.xml not found. Make sure to run this script from the project root directory."
     exit 1
 fi
+
+print_info "🏠 Project directory: $(pwd)"
+
+# Check prerequisites
+print_info "🔍 Checking prerequisites..."
+
+if ! check_java; then
+    exit 1
+fi
+
+if ! check_maven; then
+    exit 1
+fi
+
+print_success "All prerequisites satisfied"
 
 # Clean and compile
 cleanup_database
@@ -27,15 +44,17 @@ if ! compile_project; then
     exit 1
 fi
 
-print_step "📝 Running data consistency test using demo class..."
+print_separator
 
-# Run the test using Maven
-print_step "🚀 Running data consistency validation..."
-mvn -q exec:java -Dexec.mainClass="demo.TestDataConsistency"
+print_info "📝 Running data consistency test using demo class..."
+print_info "🚀 Running data consistency validation..."
+java -cp "target/classes:$(mvn -q dependency:build-classpath -Dmdep.outputFile=/dev/stdout)" \
+    demo.TestDataConsistency
 
 print_separator
 
-print_header "FINAL VALIDATION"
+print_info "📊 FINAL VALIDATION"
+echo "==================="
 
 # Check if any test artifacts remain
 if [[ -d "off-chain-data" ]]; then

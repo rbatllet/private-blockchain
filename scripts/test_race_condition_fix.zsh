@@ -5,14 +5,14 @@
 # Usage: ./test_race_condition_fix.zsh
 # Version: 1.0.0
 
-# Load shared functions for database cleanup and utility functions
-
-# Set script directory and navigate to project root
+# Set script directory before changing directories
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR/.."
 
 # Load common functions library
 source "${SCRIPT_DIR}/lib/common_functions.zsh"
+
+# Change to project root directory
+cd "$SCRIPT_DIR/.."
 
 print_header "RACE CONDITION FIX VALIDATION TEST"
 
@@ -41,11 +41,11 @@ print_info "The RaceConditionTest.java class is located in src/main/java/demo/"
 
 # Compile and run the test
 print_step "🔨 Compiling and running race condition test..."
-mvn exec:java -Dexec.mainClass="demo.RaceConditionTest" \
+java -cp "target/classes:target/test-classes:$(mvn -q dependency:build-classpath -Dmdep.outputFile=/dev/stdout)" \
   -Djava.util.logging.config.file=src/main/resources/logging.properties \
   -Djakarta.persistence.show_sql=false \
   -Dorg.slf4j.simpleLogger.defaultLogLevel=warn \
-  -q 2>/dev/null || mvn exec:java -Dexec.mainClass="demo.RaceConditionTest" -q
+  demo.RaceConditionTest 2>/dev/null || java -cp "target/classes:target/test-classes:$(mvn -q dependency:build-classpath -Dmdep.outputFile=/dev/stdout)" demo.RaceConditionTest
 
 TEST_RESULT=$?
 

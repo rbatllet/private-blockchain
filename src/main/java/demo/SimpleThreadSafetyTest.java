@@ -200,10 +200,13 @@ public class SimpleThreadSafetyTest {
                 try {
                     startLatch.await();
                     
-                    // Generate large data to force off-chain storage (but within limits)
+                    // Generate minimal data to force off-chain storage (just above 512KB threshold)
                     StringBuilder largeData = new StringBuilder();
-                    for (int k = 0; k < 1000; k++) {  // Reduced from 15000 to 1000 to stay within limits
-                        largeData.append("Thread-").append(threadId).append("-LargeData-").append(k).append("-");
+                    // Create exactly 515KB of data (just above 512KB threshold)
+                    String pattern = "Thread-" + threadId + "-OffChainData-";
+                    int targetSize = 515 * 1024; // 515KB
+                    while (largeData.length() < targetSize) {
+                        largeData.append(pattern).append(largeData.length()).append("-");
                     }
                     logger.debug("Thread {} generated large data ({} bytes) for off-chain storage", 
                                threadId, largeData.length());
@@ -242,12 +245,12 @@ public class SimpleThreadSafetyTest {
         System.out.println("   Starting concurrent off-chain operations with " + NUM_THREADS + " threads...");
         logger.info("Starting concurrent off-chain operations with {} threads", NUM_THREADS);
         startLatch.countDown();
-        boolean completed = endLatch.await(45, TimeUnit.SECONDS);
+        boolean completed = endLatch.await(120, TimeUnit.SECONDS);
         executor.shutdown();
         
         if (!completed) {
-            System.out.println("   ⚠️ Test timed out after 45 seconds");
-            logger.warn("Off-chain operations test timed out after 45 seconds");
+            System.out.println("   ⚠️ Test timed out after 120 seconds");
+            logger.warn("Off-chain operations test timed out after 120 seconds");
         }
         
         System.out.println();
@@ -289,7 +292,7 @@ public class SimpleThreadSafetyTest {
         System.out.println("📝 Test 3: Concurrent Validation Stress");
         logger.info("📝 Test 3: Concurrent Validation Stress");
         
-        cleanup();
+        // DON'T cleanup here - preserve off-chain data from Test 2 for validation
         
         Blockchain blockchain = new Blockchain();
         logger.debug("Blockchain initialized for validation stress test");

@@ -50,6 +50,7 @@ public class UserFriendlyEncryptionAPI {
     private final SearchCacheManager searchCache;
     private final SearchMetrics globalSearchMetrics;
     private final StorageTieringManager tieringManager;
+    private final EncryptionConfig encryptionConfig;
     private KeyPair defaultKeyPair;
     private String defaultUsername;
     
@@ -58,7 +59,17 @@ public class UserFriendlyEncryptionAPI {
      * @param blockchain The blockchain to operate on
      */
     public UserFriendlyEncryptionAPI(Blockchain blockchain) {
+        this(blockchain, EncryptionConfig.createBalancedConfig());
+    }
+    
+    /**
+     * Initialize the API with a blockchain instance and custom encryption configuration
+     * @param blockchain The blockchain to operate on
+     * @param encryptionConfig The encryption configuration to use
+     */
+    public UserFriendlyEncryptionAPI(Blockchain blockchain, EncryptionConfig encryptionConfig) {
         this.blockchain = blockchain;
+        this.encryptionConfig = encryptionConfig;
         this.keyDerivation = new ECKeyDerivation();
         this.recoveryManager = new ChainRecoveryManager(blockchain);
         this.offChainStorage = new OffChainStorageService();
@@ -76,7 +87,19 @@ public class UserFriendlyEncryptionAPI {
      * @param defaultKeyPair Default key pair for signing
      */
     public UserFriendlyEncryptionAPI(Blockchain blockchain, String defaultUsername, KeyPair defaultKeyPair) {
+        this(blockchain, defaultUsername, defaultKeyPair, EncryptionConfig.createBalancedConfig());
+    }
+    
+    /**
+     * Initialize the API with default user credentials and custom encryption configuration
+     * @param blockchain The blockchain to operate on
+     * @param defaultUsername Default username for operations
+     * @param defaultKeyPair Default key pair for signing
+     * @param encryptionConfig The encryption configuration to use
+     */
+    public UserFriendlyEncryptionAPI(Blockchain blockchain, String defaultUsername, KeyPair defaultKeyPair, EncryptionConfig encryptionConfig) {
         this.blockchain = blockchain;
+        this.encryptionConfig = encryptionConfig;
         this.keyDerivation = new ECKeyDerivation();
         this.recoveryManager = new ChainRecoveryManager(blockchain);
         this.offChainStorage = new OffChainStorageService();
@@ -1395,7 +1418,7 @@ public class UserFriendlyEncryptionAPI {
      * @return Default encryption configuration settings
      */
     public EncryptionConfig getDefaultEncryptionConfig() {
-        return new EncryptionConfig();
+        return encryptionConfig;
     }
     
     /**

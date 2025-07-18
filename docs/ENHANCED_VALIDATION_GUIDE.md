@@ -408,7 +408,7 @@ mvn test -Dtest=DataIntegrityThreadSafetyTest
 **run_all_tests.zsh** ✨ COMPREHENSIVE
 **Purpose**: Complete test suite execution with all categories
 ```bash
-./run_all_tests.zsh
+./scripts/run_all_tests.zsh
 ```
 **Features**:
 - Executes JUnit 5 tests (Additional Advanced Functions, Temporal Validation, Key Authorization, Critical Consistency)
@@ -420,25 +420,25 @@ mvn test -Dtest=DataIntegrityThreadSafetyTest
 **run_basic_tests.zsh**
 **Purpose**: Basic core functionality tests
 ```bash
-./run_basic_tests.zsh
+./scripts/run_basic_tests.zsh
 ```
 
 **run_advanced_tests.zsh**
 **Purpose**: Advanced blockchain functionality tests
 ```bash
-./run_advanced_tests.zsh
+./scripts/run_advanced_tests.zsh
 ```
 
 **run_security_tests.zsh**
 **Purpose**: Security and cryptographic validation tests
 ```bash
-./run_security_tests.zsh
+./scripts/run_security_tests.zsh
 ```
 
 **run_recovery_tests.zsh**
 **Purpose**: Chain recovery and repair functionality tests
 ```bash
-./run_recovery_tests.zsh
+./scripts/run_recovery_tests.zsh
 ```
 
 #### Thread Safety Scripts
@@ -446,19 +446,19 @@ mvn test -Dtest=DataIntegrityThreadSafetyTest
 **run_thread_safety_test.zsh**
 **Purpose**: Basic thread safety validation
 ```bash
-./run_thread_safety_test.zsh
+./scripts/run_thread_safety_test.zsh
 ```
 
 **run_advanced_thread_safety_tests.zsh**
 **Purpose**: Comprehensive concurrent operations testing
 ```bash
-./run_advanced_thread_safety_tests.zsh
+./scripts/run_advanced_thread_safety_tests.zsh
 ```
 
 **test_race_condition_fix.zsh**
 **Purpose**: Race condition detection and validation
 ```bash
-./test_race_condition_fix.zsh
+./scripts/test_race_condition_fix.zsh
 ```
 
 #### Demo Scripts
@@ -466,7 +466,7 @@ mvn test -Dtest=DataIntegrityThreadSafetyTest
 **run_api_migration_demo.zsh** ✨ ENHANCED
 **Purpose**: Complete API migration benefits demonstration
 ```bash
-./run_api_migration_demo.zsh
+./scripts/run_api_migration_demo.zsh
 ```
 **Features**:
 - Demonstrates all 11 demos with enhanced validation
@@ -477,13 +477,13 @@ mvn test -Dtest=DataIntegrityThreadSafetyTest
 **run_crypto_security_demo.zsh**
 **Purpose**: Cryptographic security features demonstration
 ```bash
-./run_crypto_security_demo.zsh
+./scripts/run_crypto_security_demo.zsh
 ```
 
 **run_enhanced_dangerous_delete_demo.zsh**
 **Purpose**: Enhanced key deletion impact analysis
 ```bash
-./run_enhanced_dangerous_delete_demo.zsh
+./scripts/run_enhanced_dangerous_delete_demo.zsh
 ```
 
 #### Specialized Test Scripts
@@ -491,20 +491,20 @@ mvn test -Dtest=DataIntegrityThreadSafetyTest
 **run_improved_rollback_test.zsh**
 **Purpose**: Enhanced rollback operation testing
 ```bash
-./run_improved_rollback_test.zsh
+./scripts/run_improved_rollback_test.zsh
 ```
 
 **run_eckeyderivation_tests.zsh**
 **Purpose**: Elliptic curve key derivation testing
 ```bash
-./run_eckeyderivation_tests.zsh
+./scripts/run_eckeyderivation_tests.zsh
 ```
 > See [SECURITY_CLASSES_GUIDE.md](SECURITY_CLASSES_GUIDE.md) for EC key derivation details
 
 **run_security_analysis.zsh**
 **Purpose**: Complete security analysis and validation
 ```bash
-./run_security_analysis.zsh
+./scripts/run_security_analysis.zsh
 ```
 
 #### Utility Scripts
@@ -512,7 +512,7 @@ mvn test -Dtest=DataIntegrityThreadSafetyTest
 **clean-database.zsh**
 **Purpose**: Database cleanup and maintenance
 ```bash
-./clean-database.zsh
+./scripts/clean-database.zsh
 ```
 
 **scripts/check-db-cleanup.zsh**
@@ -549,7 +549,7 @@ source ./scripts/lib/common_functions.zsh
 **test_thread_safety_full.zsh** ✨ COMPREHENSIVE (Production)
 **Purpose**: Complete thread safety validation with 20 threads, 10 operations, 7 test types
 ```bash
-./test_thread_safety_full.zsh
+./scripts/test_thread_safety_full.zsh
 ```
 **Features**:
 - Multiple concurrent operations testing
@@ -561,7 +561,7 @@ source ./scripts/lib/common_functions.zsh
 **test_thread_safety_simple.zsh** ✨ SIMPLE (Debug)
 **Purpose**: Simplified thread safety testing with 10 threads, 5 operations, detailed logging
 ```bash
-./test_thread_safety_simple.zsh
+./scripts/test_thread_safety_simple.zsh
 ```
 **Features**:
 - Focused testing for debugging
@@ -575,7 +575,7 @@ source ./scripts/lib/common_functions.zsh
 **test_data_consistency.zsh** ✨ ENHANCED
 **Purpose**: Data consistency validation with off-chain analysis
 ```bash
-./test_data_consistency.zsh
+./scripts/test_data_consistency.zsh
 ```
 **Features**:
 - Rollback operations with off-chain cleanup
@@ -586,7 +586,7 @@ source ./scripts/lib/common_functions.zsh
 **test_export_import.zsh** ✨ ENHANCED
 **Purpose**: Export/import functionality with validation
 ```bash
-./test_export_import.zsh
+./scripts/test_export_import.zsh
 ```
 **Features**:
 - Export includes off-chain file backups
@@ -597,7 +597,7 @@ source ./scripts/lib/common_functions.zsh
 **test_validation.zsh** ✨ ENHANCED
 **Purpose**: Comprehensive validation testing
 ```bash
-./test_validation.zsh
+./scripts/test_validation.zsh
 ```
 **Features**:
 - Enhanced validateChainDetailed() testing
@@ -644,27 +644,27 @@ source ./scripts/lib/common_functions.zsh
 
 ### Run All Core Tests
 ```bash
-./run_all_tests.zsh
+./scripts/run_all_tests.zsh
 ```
 
 ### Test Thread Safety
 ```bash
-./test_thread_safety_full.zsh
+./scripts/test_thread_safety_full.zsh
 ```
 
 ### Validate Data Consistency
 ```bash
-./test_data_consistency.zsh
+./scripts/test_data_consistency.zsh
 ```
 
 ### Demonstrate API Migration
 ```bash
-./run_api_migration_demo.zsh
+./scripts/run_api_migration_demo.zsh
 ```
 
 ### Security Analysis
 ```bash
-./run_security_analysis.zsh
+./scripts/run_security_analysis.zsh
 ```
 
 ## 💡 Benefits of Enhanced Validation

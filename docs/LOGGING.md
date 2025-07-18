@@ -1,244 +1,205 @@
-# 📊 Professional Logging System
+# 📊 Logging System Guide
 
 ## Overview
 
-The Private Blockchain project uses **SLF4J with Logback** for professional logging, replacing all `System.out.println` statements with structured, configurable logging.
+The Private Blockchain project uses **SLF4J with Log4j2** for professional logging. The system provides automatic configuration based on Maven profiles with specialized appenders for different log types.
 
-## 🎯 Benefits
+## 🎯 Key Features
 
-### Performance
-- **Production**: +10-15% speed (zero debug overhead)
-- **Development**: Optimized debugging workflow
-- **Testing**: Ultra-fast execution with minimal logging
+- **Automatic profile-based configuration** via Maven
+- **Specialized log files** for different event types
+- **Thread-safe concurrent logging** with proper synchronization
+- **Configurable log levels** per environment
+- **Automatic file rotation** with compression
+- **Zero manual configuration** required
 
-### Operational
-- **Structured logs** with consistent formatting
-- **Configurable levels** per component
-- **File rotation** with size and time limits
-- **Thread-safe** concurrent logging
-- **Professional monitoring** ready
+## 📁 Configuration Files
 
-## 🔧 Configuration Modes
+### Active Configurations
+- `log4j2.xml` - Development configuration (default)
+- `log4j2-production.xml` - Production configuration 
+- `log4j2-test.xml` - Test configuration (automatic during tests)
 
-### 1. Development Mode (Default)
+### Log Files Generated
+- `logs/blockchain.log` - Main application logs
+- `logs/structured-alerts.log` - JSON-formatted alerts
+- `logs/performance-metrics.log` - Performance tracking data
+- `logs/security-events.log` - Security-related events
+- `logs/test-app.log` - Test execution logs (tests only)
+
+## ⚙️ Maven Profiles
+
+### Development Profile (Default)
 ```bash
-./scripts/run-development.sh
+mvn exec:java -Dexec.mainClass="demo.BlockchainDemo" -Pdevelopment
 # OR
-mvn clean compile -Pdevelopment && mvn exec:java
+./scripts/run-development.zsh
 ```
 
-**Features:**
-- Detailed logging with colors
-- DEBUG level for security components
-- INFO level for core operations
-- Console + file output
-- Fast development feedback
+**Configuration**: `log4j2.xml` (automatic)
+- **Application logs**: DEBUG level
+- **Framework logs**: INFO level
+- **Console output**: Enabled with thread names
+- **SQL logging**: Enabled for development
+- **File rotation**: 10MB files, 10 files max
 
-**Log Levels:**
-- `com.rbatllet.blockchain.core`: INFO
-- `com.rbatllet.blockchain.security`: DEBUG
-- `com.rbatllet.blockchain.dao`: INFO
-- `com.rbatllet.blockchain.search`: INFO
-- `com.rbatllet.blockchain.service`: DEBUG
-
-### 2. Production Mode
+### Production Profile
 ```bash
-./scripts/run-production.sh
+mvn exec:java -Dexec.mainClass="demo.BlockchainDemo" -Pproduction
 # OR
-mvn clean compile -Pproduction && mvn exec:java
+./scripts/run-production.zsh
 ```
 
-**Features:**
-- Minimal overhead logging
-- WARN+ only on console
-- Essential monitoring data
-- Optimized file rotation
-- Maximum performance
-
-**Log Levels:**
-- `com.rbatllet.blockchain.core`: INFO
-- `com.rbatllet.blockchain.security`: INFO
-- `com.rbatllet.blockchain.dao`: WARN
-- `com.rbatllet.blockchain.search`: WARN
-- `com.rbatllet.blockchain.service`: WARN
-
-### 3. Test Mode
-```bash
-mvn test
-```
-
-**Features:**
-- Ultra-minimal logging
-- ERROR level only
-- Maximum test speed
-- Test-specific log files
-
-## 📁 Log Files
-
-### Development
-- Location: `logs/blockchain-development.log`
-- Rotation: 10MB files, 7 days retention, 100MB total
-- Pattern: `yyyy-MM-dd HH:mm:ss.SSS [thread] LEVEL logger - message`
-
-### Production
-- Location: `logs/blockchain-production.log`
-- Rotation: 50MB files, 30 days retention, 1GB total
-- Pattern: `yyyy-MM-dd HH:mm:ss.SSS [thread] LEVEL logger - message`
-
-### Tests
-- Location: `target/test-logs/blockchain-tests.log`
-- Rotation: 5MB files, 3 files max
-- Pattern: `HH:mm:ss.SSS [thread] LEVEL logger - message`
-
-## 🎨 Icon System
-
-Following CLAUDE.md guidelines, all log messages use consistent icons:
-
-| Icon | Meaning | Usage |
-|------|---------|-------|
-| 🔍 | Debug/Validation | Debugging information, validation steps |
-| ⚠️ | Warning | Non-critical issues, fallback modes |
-| ❌ | Error | Critical failures, exceptions |
-| ✅ | Success | Successful operations, completions |
-| 📊 | Statistics | Performance data, counts, metrics |
-| 🔐 | Security | Authentication, encryption, keys |
-| 📝 | Data | Data operations, content processing |
-| 🔑 | Keys | Key management, authorization |
-| 🧹 | Cleanup | Maintenance, cleanup operations |
-| 📦 | Storage | Block storage, file operations |
+**Configuration**: `log4j2-production.xml` (automatic)
+- **Application logs**: WARN level only
+- **Framework logs**: ERROR level only
+- **Console output**: Errors only to STDERR
+- **SQL logging**: Disabled
+- **File rotation**: 50-100MB files, 30-180 files retention
 
 ## 🚀 Usage Examples
 
-### Development Debugging
-```java
-// Security operations with detailed context
-logger.debug("🔍 Attempting password validation for user: {}", username);
-logger.warn("⚠️ Fallback authentication mode activated");
-logger.info("✅ User authenticated successfully");
+### Running the Application
+```bash
+# Interactive profile selection
+./scripts/run-with-profile.zsh
 
-// Performance monitoring
-logger.info("📊 Block #{} processed in {}ms", blockNumber, duration);
-logger.debug("🔍 Cache hit ratio: {}/{}", hits, total);
+# Direct execution
+./scripts/run-development.zsh
+./scripts/run-production.zsh
+
+# Manual Maven execution
+mvn exec:java -Dexec.mainClass="demo.BlockchainDemo" -Pdevelopment
+mvn exec:java -Dexec.mainClass="demo.BlockchainDemo" -Pproduction
 ```
 
-### Production Monitoring
+### Logging in Code
 ```java
-// Critical operations only
-logger.info("✅ Block #{} added to chain", blockNumber);
-logger.warn("⚠️ Chain validation took longer than expected: {}ms", duration);
-logger.error("❌ Failed to validate block {}: {}", blockId, error);
-```
+private static final Logger logger = LoggerFactory.getLogger(MyClass.class);
 
-### Error Handling
-```java
-// Structured error logging
-try {
-    processBlock(block);
-    logger.info("✅ Block processed successfully");
-} catch (ValidationException e) {
-    logger.error("❌ Block validation failed: {}", e.getMessage(), e);
-} catch (SecurityException e) {
-    logger.error("🔐 Security violation: {}", e.getMessage(), e);
-}
+// Standard application logging
+logger.info("Processing block {}", blockId);
+logger.error("Failed to validate block", exception);
+
+// Specialized loggers
+Logger alertLogger = LoggerFactory.getLogger("alerts.structured");
+alertLogger.error(structuredAlert);
+
+Logger perfLogger = LoggerFactory.getLogger("performance.metrics");
+perfLogger.info(performanceData);
+
+Logger secLogger = LoggerFactory.getLogger("security.events");
+secLogger.warn(securityEvent);
 ```
 
 ## 📈 Performance Impact
 
-| Scenario | Before (System.out) | After (SLF4J) | Improvement |
-|----------|-------------------|---------------|-------------|
-| **Production** | Always active | Zero overhead | +15% speed |
-| **Development** | No structure | Rich debugging | +70% debug efficiency |
-| **Testing** | Always visible | Silent | +20% test speed |
+| Environment | Console Output | File Logging | Performance |
+|-------------|---------------|--------------|-------------|
+| **Development** | Full (with colors) | Verbose | Optimized for debugging |
+| **Production** | Errors only | Minimal | Maximum performance |
+| **Testing** | Application logs | Separate files | Fast execution |
 
-## 🔧 Configuration Files
+## 🔧 Technical Implementation
 
-### logback-development.xml
-- Colorized console output
-- Detailed file logging
-- INFO/DEBUG levels
-- 7-day retention
+### Maven Configuration
+```xml
+<profiles>
+    <profile>
+        <id>development</id>
+        <properties>
+            <log4j2.configurationFile>log4j2.xml</log4j2.configurationFile>
+        </properties>
+    </profile>
+    <profile>
+        <id>production</id>
+        <properties>
+            <log4j2.configurationFile>log4j2-production.xml</log4j2.configurationFile>
+        </properties>
+    </profile>
+</profiles>
+```
 
-### logback-production.xml
-- Minimal console output (WARN+)
-- Optimized file logging
-- 30-day retention
-- 1GB total size limit
+### Exec Plugin Configuration
+```xml
+<plugin>
+    <groupId>org.codehaus.mojo</groupId>
+    <artifactId>exec-maven-plugin</artifactId>
+    <configuration>
+        <mainClass>demo.BlockchainDemo</mainClass>
+        <systemProperties>
+            <systemProperty>
+                <key>log4j2.configurationFile</key>
+                <value>file:src/main/resources/${log4j2.configurationFile}</value>
+            </systemProperty>
+        </systemProperties>
+    </configuration>
+</plugin>
+```
 
-### logback-test.xml
-- ERROR level only
-- Fast test execution
-- Minimal file output
+## 🎨 Icon System
 
-## 🎯 Migration Summary
+Following project guidelines, all log messages use consistent icons:
 
-Successfully migrated **150+ logging statements** across **13 production files**:
-
-### Migrated Files
-- ✅ `Blockchain.java` - Core blockchain operations
-- ✅ `ChainRecoveryManager.java` - Recovery system
-- ✅ `UserFriendlyEncryptionAPI.java` - Encryption interface
-- ✅ `BlockDAO.java` - Data access layer
-- ✅ `MetadataLayerManager.java` - Metadata management
-- ✅ `OffChainFileSearch.java` - File search system
-- ✅ `OnChainContentSearch.java` - Content search
-- ✅ `BlockPasswordRegistry.java` - Password management
-- ✅ `OffChainStorageService.java` - Storage operations
-- ✅ `KeyFileLoader.java` - Key loading utilities
-- ✅ `SecureKeyStorage.java` - Secure key storage
-- ✅ `BlockDataEncryptionService.java` - Data encryption
-- ✅ `PasswordUtil.java` - Password utilities (partial)
-
-### Preserved System.out Usage
-Some `System.out.print` statements remain for **direct user interaction**:
-- Password prompts with visibility warnings
-- Interactive console input/output
-- User confirmation dialogs
-
-These are appropriate as they represent direct user interface, not logging.
+| Icon | Usage | Example |
+|------|-------|---------|
+| 🔍 | Debug/Validation | `logger.debug("🔍 Validating block {}", id)` |
+| ⚠️ | Warnings | `logger.warn("⚠️ High memory usage: {}MB", usage)` |
+| ❌ | Errors | `logger.error("❌ Block validation failed", ex)` |
+| ✅ | Success | `logger.info("✅ Block processed successfully")` |
+| 📊 | Statistics | `logger.info("📊 Processed {} blocks", count)` |
+| 🔐 | Security | `logger.warn("🔐 Security event detected")` |
+| 📝 | Data | `logger.info("📝 Data operation completed")` |
 
 ## 🔍 Troubleshooting
 
-### Tests Running Too Verbosely
-If tests show too much logging:
-```bash
-# Verify test configuration is active
-ls src/test/resources/logback-test.xml
+### Common Issues
 
-# Run specific test with minimal output
-mvn test -Dtest=SpecificTest -q
+**Logs not creating:**
+1. Check `logs/` directory permissions
+2. Verify Maven profile is active: `mvn help:active-profiles`
+3. Ensure Log4j2 dependencies are present
+
+**Wrong log levels:**
+1. Verify correct profile: `mvn help:active-profiles`
+2. Check configuration file being used
+3. Override with system property: `-Dlog4j2.level=DEBUG`
+
+**Performance issues:**
+- Use production profile for performance-critical operations
+- Check file rotation settings
+- Verify async logging configuration
+
+### Verification Commands
+```bash
+# Check active Maven profile
+mvn help:active-profiles
+
+# Verify log files are created
+ls -la logs/
+
+# Check log file sizes
+wc -l logs/*.log
+
+# Monitor logs in real-time
+tail -f logs/blockchain.log
 ```
 
-### Production Logs Too Detailed
-```bash
-# Verify production profile
-mvn clean compile -Pproduction -X | grep "logback-production"
+## 📚 Migration from Previous System
 
-# Check log level configuration
-grep -A 5 "root level" src/main/resources/logback-production.xml
-```
+The system has been fully migrated from Logback to Log4j2:
+- ✅ All Logback configurations removed
+- ✅ Maven profiles configured for automatic selection
+- ✅ Specialized appenders for different log types
+- ✅ Performance optimized for production use
+- ✅ Test configuration isolated from main application
 
-### Development Mode Too Quiet
-```bash
-# Switch to development mode
-mvn clean compile -Pdevelopment
+## 🎉 Summary
 
-# Check development configuration
-grep -A 5 "blockchain.core" src/main/resources/logback-development.xml
-```
-
-## 📚 References
-
-- [SLF4J Documentation](https://www.slf4j.org/manual.html)
-- [Logback Configuration](https://logback.qos.ch/manual/configuration.html)
-- [Maven Profiles](https://maven.apache.org/guides/introduction/introduction-to-profiles.html)
-
-## 🎉 Conclusion
-
-The Private Blockchain now features **enterprise-grade logging** with:
-- **Professional structure** and formatting
-- **Configurable performance** for different environments
-- **Consistent iconography** for easy visual parsing
-- **Zero-overhead production** mode
-- **Rich development** debugging capabilities
-
-This transforms the project from a development prototype to a **production-ready enterprise application**.
+The Private Blockchain logging system provides:
+- **Zero-configuration** profile-based logging
+- **Automatic environment detection** via Maven profiles
+- **Specialized log files** for different event types
+- **Production-optimized performance** with minimal overhead
+- **Developer-friendly** detailed logging in development mode
+- **Enterprise-ready** with proper file rotation and retention

@@ -100,7 +100,7 @@ The project includes comprehensive test suites to verify all functionality and e
 
 #### 1. Run All Tests (Complete Validation) ⭐ **RECOMMENDED**
 ```zsh
-./run_all_tests.zsh
+./scripts/run_all_tests.zsh
 ```
 
 This runs everything: basic core tests + advanced function tests.
@@ -128,7 +128,7 @@ This runs everything: basic core tests + advanced function tests.
 
 #### 2. Advanced Functions Only (JUnit 5 Tests)
 ```zsh
-./run_advanced_tests.zsh
+./scripts/run_advanced_tests.zsh
 ```
 
 Runs professional JUnit 5 tests for additional advanced functions only.
@@ -157,7 +157,7 @@ Test Results:
 
 #### 3. Recovery Tests (Chain Recovery & Rollback)
 ```zsh
-./run_recovery_tests.zsh
+./scripts/run_recovery_tests.zsh
 ```
 
 Runs all recovery-related tests including chain recovery manager, recovery configuration, and improved rollback strategy.
@@ -233,7 +233,7 @@ open target/site/jacoco/index.html
 
 #### 6. Improved Rollback Strategy Test
 ```zsh
-./run_improved_rollback_test.zsh
+./scripts/run_improved_rollback_test.zsh
 ```
 
 Runs only the improved rollback strategy tests that verify the intelligent rollback analysis.
@@ -256,7 +256,7 @@ Running ImprovedRollbackStrategyTest...
 
 #### 5. Basic Tests Only (Quick Verification)
 ```zsh
-./run_basic_tests.zsh
+./scripts/run_basic_tests.zsh
 ```
 
 Runs the comprehensive basic core functions test that validates fundamental blockchain operations.
@@ -629,7 +629,7 @@ mvn exec:java -Dexec.mainClass="demo.CoreFunctionsDemo"
 mvn exec:java -Dexec.mainClass="demo.SearchFrameworkDemo"
 
 # Or use the provided script
-./run_advanced_search_demo.zsh
+./scripts/run_advanced_search_demo.zsh
 ```
 
 **Expected output:**
@@ -664,15 +664,15 @@ All test scripts now include automatic database cleanup to prevent SQLite corrup
 
 ```zsh
 # All scripts include automatic cleanup
-./run_all_tests.zsh                   # Auto-cleans before execution
-./run_advanced_tests.zsh              # Auto-cleans before execution  
-./run_advanced_thread_safety_tests.zsh # Advanced thread safety tests
-./run_basic_tests.zsh                 # Auto-cleans before execution
-./run_crypto_security_demo.zsh        # Cryptographic security demo
-./run_security_analysis.zsh           # Security analysis tests
-./run_security_tests.zsh              # Security tests runner
-./run_thread_safety_test.zsh          # Thread-safety testing
-./test_race_condition_fix.zsh         # Race condition testing
+./scripts/run_all_tests.zsh                   # Auto-cleans before execution
+./scripts/run_advanced_tests.zsh              # Auto-cleans before execution  
+./scripts/run_advanced_thread_safety_tests.zsh # Advanced thread safety tests
+./scripts/run_basic_tests.zsh                 # Auto-cleans before execution
+./scripts/run_crypto_security_demo.zsh        # Cryptographic security demo
+./scripts/run_security_analysis.zsh           # Security analysis tests
+./scripts/run_security_tests.zsh              # Security tests runner
+./scripts/run_thread_safety_test.zsh          # Thread-safety testing
+./scripts/test_race_condition_fix.zsh         # Race condition testing
 ```
 
 #### Manual Database Cleanup
@@ -680,10 +680,10 @@ For persistent database issues:
 
 ```zsh
 # Manual cleanup of corrupted database files
-./clean-database.zsh
+./scripts/clean-database.zsh
 
 # Skip automatic cleanup for debugging
-SKIP_DB_CLEANUP=true ./run_all_tests.zsh
+SKIP_DB_CLEANUP=true ./scripts/run_all_tests.zsh
 ```
 
 #### Database Cleanup Verification
@@ -715,7 +715,7 @@ Caused by: java.sql.SQLException: [SQLITE_BUSY] The database file is locked
 ```zsh
 # Solution 1: Reset database
 rm blockchain.db*
-./run_all_tests.zsh
+./scripts/run_all_tests.zsh
 
 # Solution 2: Check for hanging processes
 ps aux | grep java
@@ -723,7 +723,7 @@ kill -9 <java_process_id>
 
 # Solution 3: Restart and clean build
 mvn clean compile
-./run_all_tests.zsh
+./scripts/run_all_tests.zsh
 ```
 
 #### Issue: JUnit Tests Show "Intentional" Error Messages
@@ -775,7 +775,7 @@ mvn dependency:tree
 ```zsh
 # Reset and retest
 rm blockchain.db*
-./run_all_tests.zsh
+./scripts/run_all_tests.zsh
 
 # Check for data corruption
 mvn exec:java -Dexec.mainClass="demo.CoreFunctionsDemo"
@@ -796,7 +796,7 @@ rm -f *.json
 rm -f *.tmp
 
 # Restart tests
-./run_all_tests.zsh
+./scripts/run_all_tests.zsh
 ```
 
 #### Check Database Permissions
@@ -973,7 +973,7 @@ df -h
 du -h blockchain.db*
 
 # Monitor test execution
-./run_all_tests.zsh 2>&1 | tee test_output.log
+./scripts/run_all_tests.zsh 2>&1 | tee test_output.log
 ```
 
 **Solutions:**
@@ -981,7 +981,7 @@ du -h blockchain.db*
 # Clean and optimize
 rm blockchain.db*
 mvn clean compile
-./run_basic_tests.zsh  # Test with smaller suite first
+./scripts/run_basic_tests.zsh  # Test with smaller suite first
 
 # Check for resource conflicts
 ps aux | grep java
@@ -1020,7 +1020,7 @@ mvn compile
 
 **Symptoms:**
 ```zsh
-Permission denied: ./run_all_tests.zsh
+Permission denied: ./scripts/run_all_tests.zsh
 touch: cannot touch 'blockchain.db': Permission denied
 ```
 
@@ -1111,7 +1111,7 @@ rm *.json  # Remove any export files
 rm -f *.tmp
 mvn clean
 mvn compile
-./run_all_tests.zsh
+./scripts/run_all_tests.zsh
 
 # If problems persist, check for hidden files
 ls -la
@@ -1157,7 +1157,7 @@ file blockchain_export.json
 **Solutions:**
 ```cmd
 # Use Git Bash or WSL for shell scripts
-zsh ./run_all_tests.zsh
+zsh ./scripts/run_all_tests.zsh
 
 # Or run Maven commands directly
 mvn clean compile
@@ -1191,7 +1191,7 @@ brew install sqlite
 
 # Check if issue persists
 mvn clean compile
-./run_basic_tests.zsh
+./scripts/run_basic_tests.zsh
 ```
 
 #### Linux-Specific Issues
@@ -1237,7 +1237,7 @@ mvn -Dmaven.surefire.debug test
 
 ```zsh
 # Capture complete test output
-./run_all_tests.zsh > test_complete.log 2>&1
+./scripts/run_all_tests.zsh > test_complete.log 2>&1
 
 # Search for specific errors
 grep -i error test_complete.log
@@ -1292,7 +1292,7 @@ echo "🔨 Compilation Test:"
 mvn compile -q && echo "✅ Compilation successful" || echo "❌ Compilation failed"
 echo
 
-echo "🎯 Run './run_all_tests.zsh' to execute full test suite"
+echo "🎯 Run './scripts/run_all_tests.zsh' to execute full test suite"
 ```
 
 Make the script executable and run:
@@ -1333,10 +1333,10 @@ Control script behavior with environment variables:
 
 ```zsh
 # Skip database cleanup (for debugging)
-SKIP_DB_CLEANUP=true ./run_all_tests.zsh
+SKIP_DB_CLEANUP=true ./scripts/run_all_tests.zsh
 
 # Skip Maven unit tests (if applicable)
-SKIP_UNIT_TESTS=true ./run_basic_tests.zsh
+SKIP_UNIT_TESTS=true ./scripts/run_basic_tests.zsh
 ```
 
 ### Script Compliance

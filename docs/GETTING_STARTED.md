@@ -244,5 +244,5 @@ if (data != null && !data.trim().isEmpty()) {
 For questions or issues:
 1. Check the [Troubleshooting Guide](TROUBLESHOOTING_GUIDE.md)
 2. Review the [JavaDoc documentation](../API_GUIDE.md)
-3. Run the interactive demos in `/demos/` folder
+3. Run the interactive demos in `/scripts/` folder
 4. Check the comprehensive test suite for usage examples

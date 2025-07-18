@@ -9,9 +9,8 @@
 #   2. Update the script description and test logic
 #   3. Make it executable: chmod +x run_your_test_name.zsh
 
-# Set script directory and navigate to project root
+# Set script directory before changing directories
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR/.."
 
 # Load common functions library
 if [ -f "${SCRIPT_DIR}/lib/common_functions.zsh" ]; then
@@ -21,7 +20,8 @@ else
     exit 1
 fi
 
-# Note: We don't use error_exit here because we haven't loaded common_functions.zsh yet
+# Change to project root directory
+cd "$SCRIPT_DIR/.."
 
 # Script configuration
 SCRIPT_NAME="$(basename "$0")"
@@ -36,12 +36,25 @@ fi
 # Main script execution
 main() {
     # Check if we're in the correct directory
-    check_project_directory
-    
-    # Check prerequisites
-    if ! check_java || ! check_maven; then
+    if [[ ! -f "pom.xml" ]]; then
+        print_error "pom.xml not found. Make sure to run this script from the project root directory."
         exit 1
     fi
+    
+    print_info "🏠 Project directory: $(pwd)"
+    
+    # Check prerequisites
+    print_info "🔍 Checking prerequisites..."
+    
+    if ! check_java; then
+        exit 1
+    fi
+    
+    if ! check_maven; then
+        exit 1
+    fi
+    
+    print_success "All prerequisites satisfied"
     
     # Clean and compile
     cleanup_database
@@ -59,7 +72,8 @@ main() {
     # YOUR TEST LOGIC GOES HERE
     # ========================================
     
-    print_header "YOUR TEST SUITE NAME"
+    echo "📋 YOUR TEST SUITE NAME"
+    echo "========================"
     
     # Example test execution:
     # cleanup_database  # Call between test suites if needed
@@ -80,7 +94,8 @@ main() {
     
     # Print test summary
     print_separator
-    print_header "TEST SUMMARY"
+    print_info "📊 TEST SUMMARY"
+    echo "==============="
     print_info "Total tests: $total_tests"
     print_info "Passed: $passed_tests"
     print_info "Failed: $failed_tests"
@@ -90,7 +105,8 @@ main() {
         print_success "All tests passed!"
         exit 0
     else
-        error_exit "Some tests have failed. Check the results above."
+        print_error "Some tests have failed. Check the results above."
+        exit 1
     fi
 }
 

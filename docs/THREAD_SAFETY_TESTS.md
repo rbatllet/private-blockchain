@@ -8,14 +8,14 @@ This project includes two complementary thread safety test suites designed for d
 
 | Script | Purpose | Duration | Best For |
 |--------|---------|----------|----------|
-| `./test_thread_safety_simple.zsh` | **Debug & Development** | ~30-60s | Finding specific issues |
-| `./test_thread_safety_full.zsh` | **Production Validation** | ~2-3min | Complete verification |
+| `./scripts/test_thread_safety_simple.zsh` | **Debug & Development** | ~30-60s | Finding specific issues |
+| `./scripts/test_thread_safety_full.zsh` | **Production Validation** | ~2-3min | Complete verification |
 
 ---
 
 ## 🔍 Simple Thread Safety Test
 
-**Script:** `./test_thread_safety_simple.zsh`  
+**Script:** `./scripts/test_thread_safety_simple.zsh`  
 **Class:** `SimpleThreadSafetyTest.java`
 
 ### ✅ **When to Use:**
@@ -47,7 +47,7 @@ This project includes two complementary thread safety test suites designed for d
 
 ## 🏭 Full Thread Safety Test
 
-**Script:** `./test_thread_safety_full.zsh`  
+**Script:** `./scripts/test_thread_safety_full.zsh`  
 **Class:** `ComprehensiveThreadSafetyTest.java`
 
 ### ✅ **When to Use:**
@@ -86,22 +86,22 @@ This project includes two complementary thread safety test suites designed for d
 ### For Development & Debugging:
 ```bash
 # Run simple test with detailed logging
-./test_thread_safety_simple.zsh
+./scripts/test_thread_safety_simple.zsh
 
 # Keep logs for analysis
-KEEP_LOGS=true ./test_thread_safety_simple.zsh
+KEEP_LOGS=true ./scripts/test_thread_safety_simple.zsh
 
 # Keep all test files for inspection
-KEEP_TEST_FILES=true ./test_thread_safety_simple.zsh
+KEEP_TEST_FILES=true ./scripts/test_thread_safety_simple.zsh
 ```
 
 ### For Production Validation:
 ```bash
 # Run full comprehensive test
-./test_thread_safety_full.zsh
+./scripts/test_thread_safety_full.zsh
 
 # Run in CI/CD with file preservation
-KEEP_TEST_FILES=true ./test_thread_safety_full.zsh
+KEEP_TEST_FILES=true ./scripts/test_thread_safety_full.zsh
 ```
 
 ---
@@ -141,17 +141,17 @@ KEEP_TEST_FILES=true ./test_thread_safety_full.zsh
 
 ### Development Phase:
 ```bash
-./test_thread_safety_simple.zsh  # Quick verification
+./scripts/test_thread_safety_simple.zsh  # Quick verification
 ```
 
 ### Pre-commit:
 ```bash
-./test_thread_safety_full.zsh    # Complete validation
+./scripts/test_thread_safety_full.zsh    # Complete validation
 ```
 
 ### CI/CD Pipeline:
 ```bash
-./test_thread_safety_full.zsh    # Production certification
+./scripts/test_thread_safety_full.zsh    # Production certification
 ```
 
 ---

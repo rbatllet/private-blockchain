@@ -5,16 +5,16 @@
 # Version: 1.0.0
 # Created: 2025-07-10
 
-# Colors for output
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-PURPLE='\033[0;35m'
-CYAN='\033[0;36m'
-NC='\033[0m' # No Color
+# Set script directory before changing directories
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# Icons (matching CLAUDE.md style)
+# Load common functions library
+source "${SCRIPT_DIR}/lib/common_functions.zsh"
+
+# Change to project root directory
+cd "$SCRIPT_DIR/.."
+
+# Icons (matching CLAUDE.md style) - kept for compatibility
 SUCCESS="✅"
 ERROR="❌"
 INFO="ℹ️"
@@ -29,135 +29,132 @@ SECURITY="🔐"
 BLOCKS="📦"
 CLEANUP="🧹"
 
-# Navigate to project root (parent directory of scripts)
-SCRIPT_DIR="$(cd "$(dirname "${(%):-%N}")" && pwd)"
-PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-cd "$PROJECT_ROOT"
-
 # Check if project directory exists
 if [[ ! -f "pom.xml" ]]; then
-    echo "${ERROR} pom.xml not found in project root: $PROJECT_ROOT"
-    echo "${INFO} Please ensure this script is in the scripts/ directory of the project"
+    print_error "pom.xml not found. Make sure to run this script from the project root directory."
     exit 1
 fi
 
-echo "${CYAN}🔍 EXHAUSTIVE SEARCH - Practical Examples${NC}"
-echo "${CYAN}================================================================${NC}"
-echo "${CYAN}📋 Script Version: 1.0.0 | $(date '+%Y-%m-%d')${NC}"
+echo "🔍 EXHAUSTIVE SEARCH - Practical Examples"
+echo "================================================================"
+echo "📋 Script Version: 1.0.0 | $(date '+%Y-%m-%d')"
 echo
 
-echo "${INFO} This script demonstrates practical usage of TRUE exhaustive search:"
-echo "   ${SEARCH} On-chain content search (encrypted and plain text)"
-echo "   ${BLOCKS} Off-chain file search with various formats"
-echo "   ${SECURITY} Mixed content scenarios and security validation"
-echo "   ${STATS} Performance optimization and caching"
-echo "   ${TEST} Thread safety and concurrent operations"
+print_info "This script demonstrates practical usage of TRUE exhaustive search:"
+print_info "   🔍 On-chain content search (encrypted and plain text)"
+print_info "   📦 Off-chain file search with various formats"
+print_info "   🔐 Mixed content scenarios and security validation"
+print_info "   📊 Performance optimization and caching"
+print_info "   📋 Thread safety and concurrent operations"
 echo
 
-echo "${INFO} Working in project directory: $PROJECT_ROOT"
-echo
+print_info "🏠 Project directory: $(pwd)"
 
-# Check if Maven is available
-if ! command -v mvn &> /dev/null; then
-    echo "${ERROR} Maven is not installed or not in PATH"
-    echo "${INFO} Please install Maven to run these examples"
+# Check prerequisites
+print_info "🔍 Checking prerequisites..."
+
+if ! check_java; then
     exit 1
 fi
 
-# Function to print section header
-print_section() {
-    echo "${PURPLE}$1${NC}"
-    echo "${PURPLE}$(echo $1 | sed 's/./=/g')${NC}"
-}
+if ! check_maven; then
+    exit 1
+fi
+
+print_success "All prerequisites satisfied"
+
+# Clean and compile
+cleanup_database
+
+if ! compile_project; then
+    exit 1
+fi
+
+print_separator
 
 # Function to run command with error checking
 run_command() {
     local cmd="$1"
     local description="$2"
     
-    echo "${INFO} $description..."
+    print_info "$description..."
     if eval "$cmd"; then
-        echo "${SUCCESS} $description completed successfully"
+        print_success "$description completed successfully"
     else
-        echo "${ERROR} $description failed"
+        print_error "$description failed"
         return 1
     fi
 }
 
-# Compile the project first
-print_section "STEP 1: Compilation"
-run_command "mvn compile -q" "Compiling project" || exit 1
-echo
-
 # Run the examples
-print_section "STEP 2: Running Practical Examples"
-echo "${INFO} Starting comprehensive exhaustive search examples..."
-echo "${INFO} Each example demonstrates specific real-world scenarios"
+print_step "STEP 2: Running Practical Examples"
+print_info "Starting comprehensive exhaustive search examples..."
+print_info "Each example demonstrates specific real-world scenarios"
 echo
 
 # Set Java options for better performance
 export MAVEN_OPTS="-Xmx2g -XX:+UseG1GC"
 
 # Run the examples with proper error handling
-echo "${SEARCH} Executing ExhaustiveSearchExamples..."
-if mvn exec:java -Dexec.mainClass="demo.ExhaustiveSearchExamples" -Dexec.cleanupDaemonThreads=false -q; then
+print_info "🚀 Launching ExhaustiveSearchExamples..."
+if java -cp "target/classes:$(mvn -q dependency:build-classpath -Dmdep.outputFile=/dev/stdout)" \
+    demo.ExhaustiveSearchExamples; then
     echo
-    echo "${SUCCESS} Examples execution completed successfully!"
+    print_success "Examples execution completed successfully!"
 else
     echo
-    echo "${ERROR} Examples execution failed"
-    echo "${INFO} Checking for common issues..."
+    print_error "Examples execution failed"
+    print_info "Checking for common issues..."
     
     # Check if the examples class exists
-    if [[ ! -f "$PROJECT_ROOT/src/main/java/demo/ExhaustiveSearchExamples.java" ]]; then
-        echo "${ERROR} ExhaustiveSearchExamples.java not found in $PROJECT_ROOT/src/main/java/demo/"
-        echo "${INFO} Please ensure the examples file is created in the correct location"
+    if [[ ! -f "src/main/java/demo/ExhaustiveSearchExamples.java" ]]; then
+        print_error "ExhaustiveSearchExamples.java not found in src/main/java/demo/"
+        print_info "Please ensure the examples file is created in the correct location"
     fi
     
     # Check compilation
-    echo "${INFO} Attempting to compile examples specifically..."
-    if mvn compile -Dexec.mainClass="demo.ExhaustiveSearchExamples" -q; then
-        echo "${SUCCESS} Examples class compiled successfully"
-        echo "${WARNING} There might be a runtime issue - check the output above"
+    print_info "Attempting to compile examples specifically..."
+    if mvn compile -q; then
+        print_success "Examples class compiled successfully"
+        print_warning "There might be a runtime issue - check the output above"
     else
-        echo "${ERROR} Examples class compilation failed"
-        echo "${INFO} Please check for compilation errors"
+        print_error "Examples class compilation failed"
+        print_info "Please check for compilation errors"
     fi
     
     exit 1
 fi
 
-echo
-print_section "STEP 3: Examples Summary"
-echo "${STATS} The examples demonstrated:"
-echo "   ${SEARCH} Example 1: Basic on-chain content search (encrypted + plain text)"
-echo "   ${BLOCKS} Example 2: Off-chain file search with medical records"
-echo "   ${DATA} Example 3: Mixed content search (JSON, text, encrypted files)"
-echo "   ${SECURITY} Example 4: Security validation and access control"
-echo "   ${STATS} Example 5: Performance optimization and intelligent caching"
-echo "   ${TEST} Example 6: Thread safety with concurrent search operations"
+print_separator
+
+print_step "STEP 3: Examples Summary"
+print_info "📊 The examples demonstrated:"
+print_info "   🔍 Example 1: Basic on-chain content search (encrypted + plain text)"
+print_info "   📦 Example 2: Off-chain file search with medical records"
+print_info "   📝 Example 3: Mixed content search (JSON, text, encrypted files)"
+print_info "   🔐 Example 4: Security validation and access control"
+print_info "   📊 Example 5: Performance optimization and intelligent caching"
+print_info "   📋 Example 6: Thread safety with concurrent search operations"
 echo
 
-echo "${SUCCESS} All practical examples completed successfully!"
-echo "${INFO} Review the output above for detailed implementation patterns"
-echo
+print_success "All practical examples completed successfully!"
+print_info "Review the output above for detailed implementation patterns"
 
-# Optional: Offer to run tests
-echo "${TEST} Would you like to run the OnChainContentSearchTest to verify functionality? (y/n)"
-read -r response
-if [[ "$response" =~ ^[Yy]$ ]]; then
-    echo
-    print_section "BONUS: Running OnChainContentSearchTest"
-    run_command "mvn test -Dtest=OnChainContentSearchTest -q" "Running OnChainContentSearchTest"
-    echo
-    echo "${SUCCESS} Tests validate the exhaustive search implementation!"
-fi
+print_separator
 
-echo
-echo "${CLEANUP} Examples script completed - all temporary files cleaned up automatically"
-echo "${CYAN}================================================================${NC}"
-echo
-echo "${INFO} 📚 For detailed documentation, see:"
-echo "   📖 docs/EXHAUSTIVE_SEARCH_GUIDE.md - Complete guide with API reference"
-echo "   🔧 src/main/java/demo/ExhaustiveSearchExamples.java - Source code for examples"
-echo "   🎯 Run './scripts/run_exhaustive_search_demo.zsh' for interactive demonstration"
+# Display next steps
+print_info "Next steps:"
+echo "  1. Run 'scripts/run_exhaustive_search_demo.zsh' for interactive demonstration"
+echo "  2. Run 'scripts/run_search_framework_demo.zsh' for advanced search features"
+echo "  3. Test with 'mvn test -Dtest=OnChainContentSearchTest' to verify functionality"
+echo ""
+
+# Final cleanup
+cleanup_database > /dev/null 2>&1
+
+print_success "🧹 Examples script completed - all temporary files cleaned up automatically"
+echo ""
+print_info "📚 For detailed documentation, see:"
+print_info "   📖 docs/EXHAUSTIVE_SEARCH_GUIDE.md - Complete guide with API reference"
+print_info "   🔧 src/main/java/demo/ExhaustiveSearchExamples.java - Source code for examples"
+print_info "   🎯 Run './scripts/run_exhaustive_search_demo.zsh' for interactive demonstration"

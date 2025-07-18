@@ -4,60 +4,40 @@
 # Comprehensive demonstration of all blockchain core functionality
 # Version: 1.0.0
 
-echo "💎 COMPREHENSIVE BLOCKCHAIN FUNCTIONS DEMO"
-echo "=========================================="
-echo ""
-
-# Set script directory and navigate to project root
+# Set script directory before changing directories
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR/.."
 
 # Load common functions library
 source "${SCRIPT_DIR}/lib/common_functions.zsh"
 
-# Function to print colored output (specific to this script)
-print_status() {
-    echo "\033[1;34m$1\033[0m"
-}
+# Change to project root directory
+cd "$SCRIPT_DIR/.."
 
-print_success() {
-    echo "\033[1;32m✅ $1\033[0m"
-}
+echo "💎 COMPREHENSIVE BLOCKCHAIN FUNCTIONS DEMO"
+echo "=========================================="
+echo ""
 
-print_error() {
-    echo "\033[1;31m❌ $1\033[0m"
-}
-
-print_info() {
-    echo "\033[1;36mℹ️  $1\033[0m"
-}
-
-print_step() {
-    echo "\033[1;35m📋 $1\033[0m"
-}
-
-print_warning() {
-    echo "\033[1;33m⚠️  $1\033[0m"
-}
+# Functions are already loaded from common_functions.zsh
 
 # Function to run the demo
 run_demo() {
     print_step "Starting Core Functions Demo..."
     print_info "This comprehensive demo covers:"
-    print_info "  • Complete blockchain initialization"
-    print_info "  • Advanced key management"
-    print_info "  • All block operations (add, validate, search)"
-    print_info "  • Chain integrity and recovery"
-    print_info "  • Export/Import functionality"
-    print_info "  • Thread safety demonstrations"
-    print_info "  • Performance metrics"
+    print_info "  • Complete blockchain initialization with genesis block"
+    print_info "  • Advanced key management and authorization"
+    print_info "  • All block operations (add, validate, retrieve)"
+    print_info "  • Chain integrity validation and detailed checking"
+    print_info "  • Core blockchain functionality demonstration"
+    print_info "  • Authorized key management and validation"
+    print_info "  • Block data integrity and chain validation"
     echo ""
     
     print_warning "This is a comprehensive test - it may take a few minutes"
     echo ""
     
-    print_status "🚀 Launching CoreFunctionsDemo..."
-    mvn exec:java -Dexec.mainClass="demo.CoreFunctionsDemo" -q
+    print_info "🚀 Launching CoreFunctionsDemo..."
+    java -cp "target/classes:$(mvn -q dependency:build-classpath -Dmdep.outputFile=/dev/stdout)" \
+        demo.CoreFunctionsDemo
     
     if [ $? -eq 0 ]; then
         print_success "Core functions demo completed successfully!"
@@ -78,7 +58,7 @@ if [[ ! -f "pom.xml" ]]; then
 fi
 
 # Check prerequisites
-print_status "🔍 Checking prerequisites..."
+print_info "🔍 Checking prerequisites..."
 
 if ! check_java; then
     exit 1

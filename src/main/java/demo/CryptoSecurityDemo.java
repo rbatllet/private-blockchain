@@ -88,6 +88,9 @@ public class CryptoSecurityDemo {
         resetDatabaseState();
         
         System.out.println("👍 Demo completed and environment cleaned up for subsequent tests");
+        
+        // Force exit to stop background threads
+        System.exit(0);
     }
     
     private static void demonstrateHashAlgorithms() {

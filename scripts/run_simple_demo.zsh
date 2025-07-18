@@ -4,37 +4,19 @@
 # Quick demonstration of basic blockchain operations
 # Version: 1.0.0
 
-echo "⚡ SIMPLE BLOCKCHAIN DEMO"
-echo "========================"
-echo ""
 
-# Set script directory and navigate to project root
+# Set script directory before changing directories
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR/.."
 
 # Load common functions library
 source "${SCRIPT_DIR}/lib/common_functions.zsh"
 
-# Function to print colored output (specific to this script)
-print_status() {
-    echo "\033[1;34m$1\033[0m"
-}
+# Change to project root directory
+cd "$SCRIPT_DIR/.."
 
-print_success() {
-    echo "\033[1;32m✅ $1\033[0m"
-}
-
-print_error() {
-    echo "\033[1;31m❌ $1\033[0m"
-}
-
-print_info() {
-    echo "\033[1;36mℹ️  $1\033[0m"
-}
-
-print_step() {
-    echo "\033[1;35m📋 $1\033[0m"
-}
+echo "⚡ SIMPLE BLOCKCHAIN DEMO"
+echo "========================"
+echo ""
 
 # Function to run the demo
 run_demo() {
@@ -45,8 +27,9 @@ run_demo() {
     print_info "  • Quick validation checks"
     echo ""
     
-    print_status "🚀 Launching SimpleDemo..."
-    mvn exec:java -Dexec.mainClass="demo.SimpleDemo" -q
+    print_step "🚀 Launching SimpleDemo..."
+    java -cp "target/classes:$(mvn -q dependency:build-classpath -Dmdep.outputFile=/dev/stdout)" \
+        demo.SimpleDemo
     
     if [ $? -eq 0 ]; then
         print_success "Simple demo completed successfully!"
@@ -67,7 +50,7 @@ if [[ ! -f "pom.xml" ]]; then
 fi
 
 # Check prerequisites
-print_status "🔍 Checking prerequisites..."
+print_step "🔍 Checking prerequisites..."
 
 if ! check_java; then
     exit 1

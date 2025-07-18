@@ -47,8 +47,18 @@ public class PerformanceMetricsService {
     private final AtomicLong totalErrors = new AtomicLong(0);
     private final long startTime = System.currentTimeMillis();
     
+    // Alert service integration
+    private AlertService alertService;
+    
     private PerformanceMetricsService() {
-        logger.info("🚀 Performance Metrics Service initialized");
+        // Initialize alert service integration
+        try {
+            this.alertService = AlertService.getInstance();
+            logger.info("🚀 Performance Metrics Service initialized with alert integration");
+        } catch (Exception e) {
+            logger.warn("⚠️ Alert service integration failed: {}", e.getMessage());
+            this.alertService = null;
+        }
     }
     
     public static synchronized PerformanceMetricsService getInstance() {
@@ -68,13 +78,18 @@ public class PerformanceMetricsService {
         );
         metrics.recordTime(responseTimeMs);
         
-        // Check for slow operations
+        // Check for slow operations and send structured alerts
         if (responseTimeMs > SLOW_OPERATION_THRESHOLD_MS) {
             createPerformanceAlert(
                 "SLOW_OPERATION",
                 "Operation " + operationType + " took " + responseTimeMs + "ms",
                 AlertSeverity.WARNING
             );
+            
+            // Send structured alert
+            if (alertService != null) {
+                alertService.sendPerformanceAlert(operationType, responseTimeMs, 0);
+            }
         }
         
         // Log to performance metrics logger
@@ -91,19 +106,29 @@ public class PerformanceMetricsService {
         );
         metrics.recordUsage(memoryUsedMB);
         
-        // Check memory thresholds
+        // Check memory thresholds and send structured alerts
         if (memoryUsedMB > MEMORY_CRITICAL_THRESHOLD_MB) {
             createPerformanceAlert(
                 "CRITICAL_MEMORY_USAGE",
                 "Operation " + operationType + " used " + memoryUsedMB + "MB",
                 AlertSeverity.CRITICAL
             );
+            
+            // Send structured alert
+            if (alertService != null) {
+                alertService.sendPerformanceAlert(operationType, 0, memoryUsedMB);
+            }
         } else if (memoryUsedMB > MEMORY_WARNING_THRESHOLD_MB) {
             createPerformanceAlert(
                 "HIGH_MEMORY_USAGE",
                 "Operation " + operationType + " used " + memoryUsedMB + "MB",
                 AlertSeverity.WARNING
             );
+            
+            // Send structured alert
+            if (alertService != null) {
+                alertService.sendPerformanceAlert(operationType, 0, memoryUsedMB);
+            }
         }
         
         // Log to performance metrics logger
@@ -239,10 +264,16 @@ public class PerformanceMetricsService {
             // Calculate health score
             double healthScore = calculateHealthScore();
             String healthStatus = getHealthStatus(healthScore);
+            double errorRate = getErrorRate();
+            
+            // Send health alerts if needed
+            if (alertService != null) {
+                alertService.sendHealthAlert(healthScore, errorRate, healthStatus);
+            }
             
             summary.append("Health Score: ").append(String.format("%.1f/100", healthScore)).append("\n");
             summary.append("Status: ").append(healthStatus).append("\n");
-            summary.append("Error Rate: ").append(String.format("%.2f%%", getErrorRate())).append("\n");
+            summary.append("Error Rate: ").append(String.format("%.2f%%", errorRate)).append("\n");
             summary.append("Memory Usage: ").append(getCurrentMemoryUsage()).append("MB\n");
             summary.append("Active Alerts: ").append(activeAlerts.size()).append("\n");
             

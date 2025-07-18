@@ -1,8 +1,6 @@
 package com.rbatllet.blockchain.search;
 
 import com.rbatllet.blockchain.core.Blockchain;
-import com.rbatllet.blockchain.config.EncryptionConfig;
-import com.rbatllet.blockchain.search.SearchFrameworkEngine.IndexingResult;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.EnhancedSearchResult;
 import com.rbatllet.blockchain.util.CryptoUtil;
 
@@ -52,8 +50,8 @@ public class SearchFrameworkDemoTest {
         assertNotNull(privateKey, "Private key should not be null");
         assertNotNull(publicKey, "Public key should not be null");
         
-        // Initialize advanced search engine
-        searchAPI = new SearchSpecialistAPI(EncryptionConfig.createHighSecurityConfig());
+        // Initialize advanced search engine with improved constructor
+        searchAPI = new SearchSpecialistAPI(blockchain, demoPassword, privateKey);
     }
     
     @Test
@@ -76,25 +74,20 @@ public class SearchFrameworkDemoTest {
     @Order(2)
     @DisplayName("Test search engine initialization")
     void testSearchEngineInitialization() throws Exception {
-        // Index the blockchain
-        IndexingResult indexingResult = searchAPI.initializeWithBlockchain(blockchain, demoPassword, privateKey);
+        // Search API should be ready immediately with new constructor
+        assertTrue(searchAPI.isReady(), "Search API should be ready after constructor");
         
-        assertNotNull(indexingResult, "Indexing result should not be null");
-        assertTrue(indexingResult.getBlocksIndexed() > 0, "Should have indexed blocks");
-        assertTrue(indexingResult.getIndexingTimeMs() > 0, "Indexing should take measurable time");
-        
-        // Check that search API is ready
-        assertTrue(searchAPI.isReady(), "Search API should be ready after initialization");
+        // Test statistics to verify initialization
+        SearchFrameworkEngine.SearchStats stats = searchAPI.getStatistics();
+        assertNotNull(stats, "Statistics should not be null");
+        assertTrue(stats.getTotalBlocksIndexed() > 0, "Should have indexed blocks");
     }
     
     @Test
     @Order(3)
     @DisplayName("Test search engine capabilities")
     void testSearchEngineCapabilities() throws Exception {
-        // Initialize search engine
-        searchAPI.initializeWithBlockchain(blockchain, demoPassword, privateKey);
-        
-        // Test capabilities summary
+        // Test capabilities summary (no initialization needed with new constructor)
         String capabilities = searchAPI.getCapabilitiesSummary();
         assertNotNull(capabilities, "Capabilities summary should not be null");
         assertFalse(capabilities.isEmpty(), "Capabilities summary should not be empty");
@@ -109,10 +102,7 @@ public class SearchFrameworkDemoTest {
     @Order(4)
     @DisplayName("Test performance metrics")
     void testPerformanceMetrics() throws Exception {
-        // Initialize search engine
-        searchAPI.initializeWithBlockchain(blockchain, demoPassword, privateKey);
-        
-        // Test performance metrics
+        // Test performance metrics (no initialization needed with new constructor)
         String metrics = searchAPI.getPerformanceMetrics();
         assertNotNull(metrics, "Performance metrics should not be null");
         assertFalse(metrics.isEmpty(), "Performance metrics should not be empty");
@@ -131,8 +121,7 @@ public class SearchFrameworkDemoTest {
     @Order(5)
     @DisplayName("Test system diagnostics")
     void testSystemDiagnostics() throws Exception {
-        // Initialize search engine
-        searchAPI.initializeWithBlockchain(blockchain, demoPassword, privateKey);
+        // No initialization needed with new constructor
         
         // Test diagnostics
         String diagnostics = searchAPI.runDiagnostics();
@@ -149,8 +138,7 @@ public class SearchFrameworkDemoTest {
     @Order(6)
     @DisplayName("Test search functionality - Simple Search")
     void testSimpleSearch() throws Exception {
-        // Initialize search engine
-        searchAPI.initializeWithBlockchain(blockchain, demoPassword, privateKey);
+        // No initialization needed with new constructor
         
         // Test simple searches with terms that should exist in our demo data
         String[] searchTerms = {"financial", "medical", "public", "blockchain", "technology"};
@@ -173,8 +161,7 @@ public class SearchFrameworkDemoTest {
     @Order(7)
     @DisplayName("Test search functionality - Secure Search")
     void testSecureSearch() throws Exception {
-        // Initialize search engine
-        searchAPI.initializeWithBlockchain(blockchain, demoPassword, privateKey);
+        // No initialization needed with new constructor
         
         // Test secure searches
         String[] searchTerms = {"transfer", "patient", "contract"};
@@ -194,8 +181,7 @@ public class SearchFrameworkDemoTest {
     @Order(8)
     @DisplayName("Test search functionality - Intelligent Search")
     void testIntelligentSearch() throws Exception {
-        // Initialize search engine
-        searchAPI.initializeWithBlockchain(blockchain, demoPassword, privateKey);
+        // No initialization needed with new constructor
         
         // Test intelligent searches
         String[] searchTerms = {"medical research", "financial transaction", "blockchain technology"};
@@ -215,8 +201,7 @@ public class SearchFrameworkDemoTest {
     @Order(9)
     @DisplayName("Test search engine shutdown")
     void testSearchEngineShutdown() throws Exception {
-        // Initialize search engine
-        searchAPI.initializeWithBlockchain(blockchain, demoPassword, privateKey);
+        // No initialization needed with new constructor
         
         // Verify it's ready
         assertTrue(searchAPI.isReady(), "Search API should be ready before shutdown");

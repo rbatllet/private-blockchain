@@ -92,7 +92,7 @@ public class Blockchain {
         // Initialize Search Framework Engine with high security configuration
         EncryptionConfig searchConfig = EncryptionConfig.createHighSecurityConfig();
         this.searchFrameworkEngine = new SearchFrameworkEngine(searchConfig);
-        this.searchSpecialistAPI = new SearchSpecialistAPI(searchConfig);
+        this.searchSpecialistAPI = new SearchSpecialistAPI(true); // Internal constructor
         
         initializeGenesisBlock();
         

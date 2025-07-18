@@ -4,12 +4,14 @@
 # Usage: ./run_user_friendly_encryption_demo.zsh
 # Version: 1.0.0
 
-# Set script directory and navigate to project root
+# Set script directory before changing directories
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR/.."
 
 # Load common functions library
 source "${SCRIPT_DIR}/lib/common_functions.zsh"
+
+# Change to project root directory
+cd "$SCRIPT_DIR/.."
 
 print_header "🔐 USER-FRIENDLY ENCRYPTION API DEMO RUNNER"
 print_info "Project directory: $(pwd)"
@@ -44,7 +46,8 @@ print_info "• Advanced search across encrypted and public data"
 print_info "• Blockchain validation and integrity checking"
 print_info ""
 
-mvn exec:java -Dexec.mainClass="demo.UserFriendlyEncryptionDemo" -q
+java -cp "target/classes:$(mvn -q dependency:build-classpath -Dmdep.outputFile=/dev/stdout)" \
+    demo.UserFriendlyEncryptionDemo
 DEMO_RESULT=$?
 print_info ""
 
@@ -92,15 +95,17 @@ else
 fi
 
 print_info ""
-print_info "🔍 API Features Demonstrated:"
-print_info "  • 🏥 Medical Records: storeMedicalRecord(), findMedicalRecords()"
-print_info "  • 💰 Financial Data: storeFinancialRecord(), findFinancialRecords()"
-print_info "  • ⚖️ Legal Documents: storeLegalDocument(), findLegalDocuments()"
+print_info "🔍 API Features Actually Demonstrated:"
+print_info "  • 📊 Searchable Data: storeSearchableData() - Store data with custom search terms"
 print_info "  • 🔐 Generic Secrets: storeSecret(), retrieveSecret()"
-print_info "  • 🔍 Privacy Search: findEncryptedData(), searchEverything()"
-print_info "  • 🔓 Content Search: findAndDecryptData(), searchEverythingWithPassword()"
+print_info "  • 🔍 Search & Decrypt: searchAndDecryptByTerms() - Search and decrypt by keywords"
+print_info "  • 🌐 Global Search: searchEverything() - Search all blockchain data"
+print_info "  • 🔓 Authenticated Search: searchEverythingWithPassword() - Full access search"
 print_info "  • 👤 User Management: createUser(), setDefaultCredentials()"
 print_info "  • 🛡️ Security: generateSecurePassword(), validateEncryptedBlocks()"
+print_info "  • 📈 Status: getBlockchainSummary(), hasEncryptedData(), getEncryptedBlockCount()"
+print_info "  • 🏥 Use Cases: Medical, financial, legal data (all via storeSearchableData)"
+print_info "  • 🔑 Validation: Proper key authorization and encryption verification"
 print_info ""
 
 # Final cleanup

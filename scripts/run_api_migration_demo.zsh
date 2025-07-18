@@ -5,14 +5,14 @@
 # Usage: ./run_api_migration_demo.zsh
 # Version: 2.0.0 - COMPLETE MIGRATION
 
-# Load shared functions for database cleanup
-
-# Set script directory and navigate to project root
+# Set script directory
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR/.."
 
 # Load common functions library
 source "${SCRIPT_DIR}/lib/common_functions.zsh"
+
+# Change to project root directory
+cd "$SCRIPT_DIR/.."
 
 
 print_step "=== 🔄 COMPLETE API MIGRATION BENEFITS DEMONSTRATION ==="
@@ -172,8 +172,8 @@ print_info "  🎯 Enhanced demo: src/main/java/demo/EnhancedDangerousDeleteDemo
 print_info ""
 
 # Final cleanup
-if command -v clean_database &> /dev/null; then
-    clean_database > /dev/null 2>&1
+if command -v cleanup_database &> /dev/null; then
+    cleanup_database > /dev/null 2>&1
 fi
 
 # Exit with appropriate code

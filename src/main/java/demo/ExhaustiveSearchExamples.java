@@ -86,6 +86,9 @@ public class ExhaustiveSearchExamples {
             System.err.println("❌ Example failed: " + e.getMessage());
             e.printStackTrace();
         }
+        
+        // Force exit to stop background threads
+        System.exit(0);
     }
     
     /**

@@ -3,11 +3,16 @@
 # Advanced Logging System Demo Script
 # Demonstrates comprehensive logging capabilities with detailed operation tracking
 
+
 set -e
 
 # Script configuration
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Change to project root directory
+cd "$PROJECT_DIR"
+
 DEMO_CLASS="demo.AdvancedLoggingDemo"
 
 # Color codes for output
@@ -79,7 +84,7 @@ run_demo() {
     cd "$PROJECT_DIR"
     
     # Set JVM options for better logging
-    export JAVA_OPTS="-Xmx1024m -Dlogback.configurationFile=src/main/resources/logback-development.xml"
+    export JAVA_OPTS="-Xmx1024m -Dlog4j2.configurationFile=file:src/main/resources/log4j2.xml"
     
     print_colored $CYAN "🚀 Starting Advanced Logging System Demo..."
     print_colored $YELLOW "ℹ️  This demo will show comprehensive logging capabilities"
@@ -88,7 +93,8 @@ run_demo() {
     echo ""
     
     # Run the demo
-    if ! mvn exec:java -Dexec.mainClass="$DEMO_CLASS" -Dexec.args="" -q; then
+    if ! java -cp "target/classes:$(mvn -q dependency:build-classpath -Dmdep.outputFile=/dev/stdout)" \
+        "$DEMO_CLASS"; then
         print_colored $RED "❌ Demo execution failed"
         exit 1
     fi

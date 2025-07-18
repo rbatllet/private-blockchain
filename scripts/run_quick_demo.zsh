@@ -4,39 +4,56 @@
 # Fast demonstration of basic blockchain functionality
 # Version: 1.0.0
 
-echo "⚡ QUICK BLOCKCHAIN DEMO"
-echo "========================"
-echo ""
 
-# Set script directory and navigate to project root
+# Set script directory before changing directories
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR/.."
 
 # Load common functions library
 source "${SCRIPT_DIR}/lib/common_functions.zsh"
 
-# Function to print colored output (specific to this script)
-print_status() {
-    echo "\033[1;34m$1\033[0m"
-}
+# Change to project root directory
+cd "$SCRIPT_DIR/.."
 
-print_success() {
-    echo "\033[1;32m✅ $1\033[0m"
-}
+echo "⚡ QUICK BLOCKCHAIN DEMO"
+echo "========================"
+echo ""
 
-print_error() {
-    echo "\033[1;31m❌ $1\033[0m"
-}
+# Check if we're in the correct directory
+if [[ ! -f "pom.xml" ]]; then
+    print_error "pom.xml not found. Make sure to run this script from the project root directory."
+    exit 1
+fi
 
-print_info() {
-    echo "\033[1;36mℹ️  $1\033[0m"
-}
+print_info "🏠 Project directory: $(pwd)"
+
+# Check prerequisites
+print_info "🔍 Checking prerequisites..."
+
+if ! check_java; then
+    exit 1
+fi
+
+if ! check_maven; then
+    exit 1
+fi
+
+print_success "All prerequisites satisfied"
+
+# Clean and compile
+cleanup_database
+
+if ! compile_project; then
+    exit 1
+fi
+
+print_separator
 
 # Function to run the demo
 run_demo() {
-    print_info "Running quick blockchain test..."
+    print_info "🚀 Launching QuickDemo..."
     
-    mvn exec:java -Dexec.mainClass="demo.QuickDemo" -q
+    java -cp "target/classes:$(mvn -q dependency:build-classpath -Dmdep.outputFile=/dev/stdout)" \
+        demo.QuickDemo
     
     if [ $? -eq 0 ]; then
         print_success "Quick demo completed!"
@@ -46,29 +63,19 @@ run_demo() {
     fi
 }
 
-# Main execution
-print_info "🏠 Project directory: $(pwd)"
-
-# Check if we're in the correct directory
-if [[ ! -f "pom.xml" ]]; then
-    print_error "This script must be run from the project root directory"
-    exit 1
-fi
-
-# Check prerequisites
-if ! check_java || ! check_maven; then
-    exit 1
-fi
-
-# Clean, compile and run
-cleanup_database
-
-if ! compile_project; then
-    exit 1
-fi
-
-print_separator
+# Run the demo
 run_demo
+
 print_separator
+
+# Display next steps
+print_info "Next steps:"
+echo "  1. Run 'scripts/run_simple_demo.zsh' for more detailed demonstrations"
+echo "  2. Run 'scripts/run_blockchain_demo.zsh' for comprehensive blockchain operations"
+echo "  3. Check the 'logs/' directory for execution logs"
+echo ""
+
+# Final cleanup
+cleanup_database > /dev/null 2>&1
 
 print_success "Quick test complete! Run other demos for more features."

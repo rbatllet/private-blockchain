@@ -14,7 +14,6 @@ import org.junit.jupiter.api.MethodOrderer;
 import java.security.KeyPair;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -62,12 +61,8 @@ public class SearchSpecialistAPIComprehensiveTest {
     }
     
     private void initializeSearchAPI() throws Exception {
-        blockchain.initializeAdvancedSearch(testPassword);
-        searchAPI = blockchain.getSearchSpecialistAPI();
-        
-        if (!searchAPI.isReady()) {
-            searchAPI.initializeWithBlockchain(blockchain, testPassword, userKeys.getPrivate());
-        }
+        // Use new constructor that requires blockchain, password, and private key
+        searchAPI = new SearchSpecialistAPI(blockchain, testPassword, userKeys.getPrivate());
         
         assertTrue(searchAPI.isReady(), "SearchSpecialistAPI should be ready after initialization");
     }
@@ -305,32 +300,29 @@ public class SearchSpecialistAPIComprehensiveTest {
     
     @Test
     @Order(8)
-    @DisplayName("Test 8: Async initialization")
-    void testAsyncInitialization() throws Exception {
-        System.out.println("\n=== TEST 8: ASYNC INITIALIZATION ===");
+    @DisplayName("Test 8: Constructor comparison - old vs new")
+    void testConstructorComparison() throws Exception {
+        System.out.println("\n=== TEST 8: CONSTRUCTOR COMPARISON ===");
         
-        // Create a new API instance for async testing
-        SearchSpecialistAPI asyncAPI = new SearchSpecialistAPI();
-        assertFalse(asyncAPI.isReady(), "New API should not be ready");
+        // Test old constructor (should work but with warning)
+        SearchSpecialistAPI oldAPI = new SearchSpecialistAPI();
+        assertFalse(oldAPI.isReady(), "Old API should not be ready without initialization");
         
-        // Test async initialization
-        CompletableFuture<IndexingResult> future = asyncAPI.initializeWithBlockchainAsync(
-            blockchain, testPassword, userKeys.getPrivate());
+        // Test search with old API (should return empty results)
+        List<EnhancedSearchResult> oldResults = oldAPI.searchSimple("financial");
+        System.out.println("📊 Old constructor search results: " + oldResults.size());
+        assertEquals(0, oldResults.size(), "Old API without initialization should return no results");
         
-        // Wait for completion
-        IndexingResult result = future.get();
-        System.out.println("📊 Async initialization result:");
-        System.out.println("    Blocks indexed: " + result.getBlocksIndexed());
-        System.out.println("    Time: " + result.getIndexingTimeMs() + "ms");
+        // Test new constructor (should work correctly)
+        SearchSpecialistAPI newAPI = new SearchSpecialistAPI(blockchain, testPassword, userKeys.getPrivate());
+        assertTrue(newAPI.isReady(), "New API should be ready immediately");
         
-        assertTrue(result.getBlocksIndexed() > 0, "Should have indexed blocks");
-        assertTrue(asyncAPI.isReady(), "API should be ready after async initialization");
+        // Test search with new API (should find results)
+        List<EnhancedSearchResult> newResults = newAPI.searchSimple("financial");
+        System.out.println("📊 New constructor search results: " + newResults.size());
+        assertTrue(newResults.size() > 0, "New API should find results immediately");
         
-        // Test that async-initialized API works
-        List<EnhancedSearchResult> asyncResults = asyncAPI.searchSimple("financial");
-        assertTrue(asyncResults.size() > 0, "Async-initialized API should find results");
-        
-        System.out.println("✅ Async initialization validated");
+        System.out.println("✅ Constructor comparison validated");
     }
     
     @Test
