@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Collections;
 
 /**
  * Comprehensive validation report for blockchain health and integrity
@@ -42,10 +43,10 @@ public class ValidationReport {
     public String getSummary() { return summary; }
     public String getMessage() { return summary; } // Alias for compatibility
     public LocalDateTime getTimestamp() { return timestamp; }
-    public List<ValidationIssue> getIssues() { return issues; }
+    public List<ValidationIssue> getIssues() { return Collections.unmodifiableList(issues); }
     public ValidationMetrics getMetrics() { return metrics; }
     public ValidationMetrics getValidationMetrics() { return metrics; } // Alias for compatibility
-    public Map<String, Object> getDetails() { return details; }
+    public Map<String, Object> getDetails() { return Collections.unmodifiableMap(details); }
     public String getValidationId() { return validationId; }
     public Duration getValidationTime() { return validationTime; }
     public double getValidationScore() { return validationScore; }

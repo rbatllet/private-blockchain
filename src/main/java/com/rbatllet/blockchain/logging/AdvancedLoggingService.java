@@ -343,7 +343,7 @@ public class AdvancedLoggingService {
         public String getOperationType() { return operationType; }
         public String getOperationName() { return operationName; }
         public long getStartTime() { return startTime; }
-        public Map<String, String> getContext() { return context; }
+        public Map<String, String> getContext() { return Collections.unmodifiableMap(context); }
     }
     
     /**

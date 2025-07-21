@@ -200,11 +200,11 @@ public class ChainRecoveryResult {
     public String getMessage() { return message; }
     public LocalDateTime getStartTime() { return startTime; }
     public LocalDateTime getEndTime() { return endTime; }
-    public List<RecoveryAction> getActions() { return actions; }
+    public List<RecoveryAction> getActions() { return Collections.unmodifiableList(actions); }
     public RecoveryStatistics getStatistics() { return statistics; }
-    public List<String> getWarnings() { return warnings; }
-    public List<String> getRecommendations() { return recommendations; }
-    public Map<String, Object> getMetadata() { return metadata; }
+    public List<String> getWarnings() { return Collections.unmodifiableList(warnings); }
+    public List<String> getRecommendations() { return Collections.unmodifiableList(recommendations); }
+    public Map<String, Object> getMetadata() { return Collections.unmodifiableMap(metadata); }
     
     public String getFormattedSummary() {
         StringBuilder sb = new StringBuilder();

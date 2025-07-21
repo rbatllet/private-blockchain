@@ -2,7 +2,7 @@ package com.rbatllet.blockchain.service;
 
 import java.time.LocalDateTime;
 import java.util.Map;
-import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -19,7 +19,7 @@ public class SearchMetrics {
     private volatile LocalDateTime lastSearchTime;
     
     public SearchMetrics() {
-        this.searchTypeStats = new HashMap<>();
+        this.searchTypeStats = new ConcurrentHashMap<>();
         this.totalSearches = new AtomicLong(0);
         this.totalCacheHits = new AtomicLong(0);
         this.totalSearchTimeMs = new AtomicLong(0);
@@ -62,7 +62,7 @@ public class SearchMetrics {
     }
     
     public Map<String, PerformanceStats> getSearchTypeStats() {
-        return new HashMap<>(searchTypeStats);
+        return new ConcurrentHashMap<>(searchTypeStats);
     }
     
     /**
@@ -201,7 +201,7 @@ public class SearchMetrics {
         // Additional methods needed by UserFriendlyEncryptionAPI
         public Map<String, Long> getSearchTypeCounts() {
             // Simplified implementation - in real scenario would track by type
-            Map<String, Long> counts = new HashMap<>();
+            Map<String, Long> counts = new ConcurrentHashMap<>();
             counts.put("KEYWORD", totalSearches / 3);
             counts.put("REGEX", totalSearches / 4);
             counts.put("SEMANTIC", totalSearches / 5);

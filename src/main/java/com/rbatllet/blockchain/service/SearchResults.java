@@ -2,6 +2,7 @@ package com.rbatllet.blockchain.service;
 
 import com.rbatllet.blockchain.entity.Block;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
@@ -31,11 +32,11 @@ public class SearchResults {
     
     // Getters
     public String getQuery() { return query; }
-    public List<Block> getBlocks() { return blocks; }
+    public List<Block> getBlocks() { return Collections.unmodifiableList(blocks); }
     public SearchMetrics getMetrics() { return metrics; }
     public LocalDateTime getTimestamp() { return timestamp; }
-    public Map<String, Object> getSearchDetails() { return searchDetails; }
-    public List<String> getWarnings() { return warnings; }
+    public Map<String, Object> getSearchDetails() { return Collections.unmodifiableMap(searchDetails); }
+    public List<String> getWarnings() { return Collections.unmodifiableList(warnings); }
     
     public int getResultCount() { return blocks.size(); }
     public boolean hasResults() { return !blocks.isEmpty(); }

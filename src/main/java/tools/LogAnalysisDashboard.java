@@ -26,8 +26,8 @@ public class LogAnalysisDashboard {
     private int warnings = 0;
     private double avgResponseTime = 0;
     private long memoryUsage = 0;
-    private final List<String> recentAlerts = new ArrayList<>();
-    private final Map<String, Integer> operationCounts = new HashMap<>();
+    private final List<String> recentAlerts = Collections.synchronizedList(new ArrayList<>());
+    private final Map<String, Integer> operationCounts = new ConcurrentHashMap<>();
     
     public void start() {
         printHeader();
@@ -235,7 +235,9 @@ public class LogAnalysisDashboard {
         if (operationCounts.isEmpty()) {
             System.out.println("No operations recorded yet");
         } else {
-            operationCounts.entrySet().stream()
+            // Create snapshot for safe iteration
+            Map<String, Integer> operationSnapshot = new HashMap<>(operationCounts);
+            operationSnapshot.entrySet().stream()
                 .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
                 .forEach(e -> System.out.printf("%-15s: %d%n", e.getKey(), e.getValue()));
         }
@@ -246,7 +248,9 @@ public class LogAnalysisDashboard {
         if (recentAlerts.isEmpty()) {
             System.out.println("✅ No recent alerts");
         } else {
-            recentAlerts.forEach(alert -> System.out.println("• " + alert));
+            // Create snapshot for safe iteration
+            List<String> alertsSnapshot = new ArrayList<>(recentAlerts);
+            alertsSnapshot.forEach(alert -> System.out.println("• " + alert));
         }
         
         // Health Status
@@ -336,7 +340,9 @@ public class LogAnalysisDashboard {
                 writer.printf("Total Warnings: %d%n", warnings);
                 writer.println();
                 writer.println("Operation Summary:");
-                operationCounts.forEach((op, count) -> 
+                // Create snapshot for safe iteration  
+                Map<String, Integer> operationSnapshot = new HashMap<>(operationCounts);
+                operationSnapshot.forEach((op, count) -> 
                     writer.printf("  %s: %d%n", op, count));
             }
             

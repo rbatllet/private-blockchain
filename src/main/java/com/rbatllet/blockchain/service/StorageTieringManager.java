@@ -117,8 +117,8 @@ public class StorageTieringManager {
         }
         
         // Getters
-        public Map<StorageTier, Integer> getTierCounts() { return tierCounts; }
-        public Map<StorageTier, Long> getTierSizes() { return tierSizes; }
+        public Map<StorageTier, Integer> getTierCounts() { return Collections.unmodifiableMap(tierCounts); }
+        public Map<StorageTier, Long> getTierSizes() { return Collections.unmodifiableMap(tierSizes); }
         public long getTotalDataSize() { return totalDataSize; }
         public long getTotalCompressedSize() { return totalCompressedSize; }
         public double getCompressionRatio() { return compressionRatio; }
@@ -616,7 +616,7 @@ public class StorageTieringManager {
         // Getters
         public int getBlocksAnalyzed() { return blocksAnalyzed; }
         public int getBlocksMigrated() { return blocksMigrated; }
-        public List<TieringResult> getResults() { return results; }
+        public List<TieringResult> getResults() { return Collections.unmodifiableList(results); }
         public String getSummary() { return summary; }
     }
 }

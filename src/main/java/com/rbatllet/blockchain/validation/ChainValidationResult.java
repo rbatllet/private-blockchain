@@ -1,6 +1,7 @@
 package com.rbatllet.blockchain.validation;
 
 import com.rbatllet.blockchain.entity.Block;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -53,7 +54,7 @@ public class ChainValidationResult {
     public int getValidBlocks() { return validBlocks; }
     public int getRevokedBlocks() { return revokedBlocks; }
     public int getInvalidBlocks() { return invalidBlocks; }
-    public List<BlockValidationResult> getBlockResults() { return blockResults; }
+    public List<BlockValidationResult> getBlockResults() { return Collections.unmodifiableList(blockResults); }
     public String getSummary() { return summary; }
     
     /**

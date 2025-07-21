@@ -71,8 +71,8 @@ public class AdvancedSearchResult {
         // Getters
         public Block getBlock() { return block; }
         public double getRelevanceScore() { return relevanceScore; }
-        public List<String> getMatchedTerms() { return matchedTerms; }
-        public Map<String, String> getHighlightedSnippets() { return highlightedSnippets; }
+        public List<String> getMatchedTerms() { return Collections.unmodifiableList(matchedTerms); }
+        public Map<String, String> getHighlightedSnippets() { return Collections.unmodifiableMap(highlightedSnippets); }
         public MatchLocation getLocation() { return location; }
     }
     
@@ -118,7 +118,7 @@ public class AdvancedSearchResult {
         public int getEncryptedBlocksDecrypted() { return encryptedBlocksDecrypted; }
         public int getOffChainFilesAccessed() { return offChainFilesAccessed; }
         public long getTotalBytesProcessed() { return totalBytesProcessed; }
-        public Map<String, Integer> getPerformanceMetrics() { return performanceMetrics; }
+        public Map<String, Integer> getPerformanceMetrics() { return Collections.unmodifiableMap(performanceMetrics); }
     }
     
     public AdvancedSearchResult(String searchQuery, SearchType searchType, Duration searchDuration) {
@@ -184,12 +184,12 @@ public class AdvancedSearchResult {
     // Getters
     public String getSearchQuery() { return searchQuery; }
     public SearchType getSearchType() { return searchType; }
-    public List<SearchMatch> getMatches() { return matches; }
+    public List<SearchMatch> getMatches() { return Collections.unmodifiableList(matches); }
     public SearchStatistics getStatistics() { return statistics; }
     public LocalDateTime getSearchTimestamp() { return searchTimestamp; }
     public Duration getSearchDuration() { return searchDuration; }
-    public Map<String, Integer> getCategoryDistribution() { return categoryDistribution; }
-    public List<String> getSuggestedRefinements() { return suggestedRefinements; }
+    public Map<String, Integer> getCategoryDistribution() { return Collections.unmodifiableMap(categoryDistribution); }
+    public List<String> getSuggestedRefinements() { return Collections.unmodifiableList(suggestedRefinements); }
     public int getTotalMatches() { return matches.size(); }
     
     // Formatted output
