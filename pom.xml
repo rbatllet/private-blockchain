@@ -16,9 +16,9 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <hibernate.version>6.6.18.Final</hibernate.version>
+        <hibernate.version>7.0.6.Final</hibernate.version>
         <jakarta.persistence.version>3.2.0</jakarta.persistence.version>
-        <sqlite.version>3.50.2.0</sqlite.version>
+        <sqlite.version>3.50.3.0</sqlite.version>
         <jackson.version>2.19.1</jackson.version>
         <slf4j.version>2.0.17</slf4j.version>
         <junit-jupiter.version>5.13.2</junit-jupiter.version>
@@ -29,6 +29,7 @@
         <maven-compiler-plugin.version>3.14.0</maven-compiler-plugin.version>
         <maven-assembly-plugin.version>3.7.1</maven-assembly-plugin.version>
         <maven-surefire-plugin.version>3.5.3</maven-surefire-plugin.version>
+        <maven-execution-plugin.version>3.5.1</maven-execution-plugin.version>
         <maven-jacoco-plugin.version>0.8.13</maven-jacoco-plugin.version>
     </properties>
 
@@ -205,7 +206,7 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
-                <version>3.5.0</version>
+                <version>${maven-execution-plugin.version}</version>
                 <configuration>
                     <systemProperties>
                         <systemProperty>
@@ -226,6 +227,8 @@
                     <excludes>
                         <!-- Exclude all demo classes -->
                         <exclude>demo/**/*</exclude>
+                        <!-- Exclude tools classes -->
+                        <exclude>tools/**/*</exclude>
                     </excludes>
                 </configuration>
                 <executions>
