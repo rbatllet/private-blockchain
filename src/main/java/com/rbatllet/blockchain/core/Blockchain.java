@@ -149,17 +149,31 @@ public class Blockchain {
     /**
      * Initialize Search Framework Engine with existing blockchain data
      * ENHANCED: Now properly indexes encrypted keywords using password registry
+     * Thread-safe: Uses read lock to protect blockchain state access
      */
     public void initializeAdvancedSearch() {
-        initializeAdvancedSearch(null);
+        GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
+        try {
+            initializeAdvancedSearch(null);
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
+        }
     }
     
     /**
      * Initialize Search Framework Engine with existing blockchain data
      * ENHANCED: Now properly indexes encrypted keywords using password registry
+     * Thread-safe: Uses read lock to protect blockchain state access
      * @param password Optional password to use for indexing encrypted keywords
      */
     public void initializeAdvancedSearch(String password) {
+        // Check if lock is already held by current thread (to avoid recursive locking)
+        boolean needsLock = !GLOBAL_BLOCKCHAIN_LOCK.isWriteLockedByCurrentThread() && 
+                           GLOBAL_BLOCKCHAIN_LOCK.getReadLockCount() == 0;
+        
+        if (needsLock) {
+            GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
+        }
         try {
             // Only initialize if there are blocks to index
             if (blockDAO.getBlockCount() > 0) {
@@ -181,6 +195,10 @@ public class Blockchain {
             logger.warn("⚠️ Failed to initialize Search Framework Engine", e);
             e.printStackTrace();
             // Continue operation even if search initialization fails
+        } finally {
+            if (needsLock) {
+                GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
+            }
         }
     }
     
