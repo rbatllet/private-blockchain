@@ -33,6 +33,7 @@ import java.util.regex.Matcher;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.concurrent.atomic.AtomicReference;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine;
 
 /**
@@ -51,8 +52,17 @@ public class UserFriendlyEncryptionAPI {
     private final SearchMetrics globalSearchMetrics;
     private final StorageTieringManager tieringManager;
     private final EncryptionConfig encryptionConfig;
-    private KeyPair defaultKeyPair;
-    private String defaultUsername;
+    private final AtomicReference<KeyPair> defaultKeyPair = new AtomicReference<>();
+    private final AtomicReference<String> defaultUsername = new AtomicReference<>();
+    
+    /**
+     * Thread-safe getter for default key pair
+     */
+    private KeyPair getDefaultKeyPair() {
+        return defaultKeyPair.get();
+    }
+    
+    
     
     /**
      * Initialize the API with a blockchain instance
@@ -108,12 +118,11 @@ public class UserFriendlyEncryptionAPI {
         this.tieringManager = new StorageTieringManager(
             StorageTieringManager.TieringPolicy.getDefaultPolicy(), 
             this.offChainStorage);
-        this.defaultUsername = defaultUsername;
-        this.defaultKeyPair = defaultKeyPair;
+        setDefaultCredentials(defaultUsername, defaultKeyPair);
         
         // Auto-register the user if not already registered
         try {
-            String publicKeyString = CryptoUtil.publicKeyToString(defaultKeyPair.getPublic());
+            String publicKeyString = CryptoUtil.publicKeyToString(getDefaultKeyPair().getPublic());
             blockchain.addAuthorizedKey(publicKeyString, defaultUsername);
         } catch (IllegalArgumentException e) {
             logger.debug("User key already registered: {}", defaultUsername);
@@ -166,7 +175,8 @@ public class UserFriendlyEncryptionAPI {
         validateInputData(secretData, 50 * 1024 * 1024, "Secret data"); // 50MB limit
         validatePasswordSecurity(password, "Password");
         validateKeyPair();
-        return blockchain.addEncryptedBlock(secretData, password, defaultKeyPair.getPrivate(), defaultKeyPair.getPublic());
+        KeyPair keyPair = getDefaultKeyPair();
+        return blockchain.addEncryptedBlock(secretData, password, keyPair.getPrivate(), keyPair.getPublic());
     }
     
     
@@ -227,8 +237,9 @@ public class UserFriendlyEncryptionAPI {
         }
         validateKeyPair();
         String[] keywords = identifier != null ? new String[]{identifier} : null;
+        KeyPair keyPair = getDefaultKeyPair();
         return blockchain.addEncryptedBlockWithKeywords(data, password, keywords, null, 
-                                                       defaultKeyPair.getPrivate(), defaultKeyPair.getPublic());
+                                                       keyPair.getPrivate(), keyPair.getPublic());
     }
     
     // ===== SIMPLE RETRIEVAL OPERATIONS =====
@@ -1189,8 +1200,8 @@ public class UserFriendlyEncryptionAPI {
             throw new IllegalArgumentException("KeyPair cannot be null");
         }
         
-        this.defaultUsername = username;
-        this.defaultKeyPair = keyPair;
+        this.defaultUsername.set(username);
+        this.defaultKeyPair.set(keyPair);
         
         // Auto-register the user if not already registered
         try {
@@ -1478,7 +1489,7 @@ public class UserFriendlyEncryptionAPI {
     // ===== HELPER METHODS =====
     
     private void validateKeyPair() {
-        if (defaultKeyPair == null) {
+        if (getDefaultKeyPair() == null) {
             throw new IllegalStateException("No default key pair set. Call setDefaultCredentials() or use methods with explicit keys.");
         }
     }
@@ -1493,11 +1504,11 @@ public class UserFriendlyEncryptionAPI {
     }
     
     /**
-     * Get the default username
+     * Get the default username (thread-safe)
      * @return The default username, or null if not set
      */
     public String getDefaultUsername() {
-        return defaultUsername;
+        return defaultUsername.get();
     }
     
     /**
@@ -1505,7 +1516,7 @@ public class UserFriendlyEncryptionAPI {
      * @return true if default credentials are available
      */
     public boolean hasDefaultCredentials() {
-        return defaultKeyPair != null && defaultUsername != null;
+        return getDefaultKeyPair() != null && getDefaultUsername() != null;
     }
     
     // ===== FORMATTING AND DISPLAY UTILITIES =====
@@ -1754,10 +1765,10 @@ public class UserFriendlyEncryptionAPI {
      */
     public boolean saveUserKeySecurely(String password) {
         validateKeyPair();
-        if (defaultUsername == null) {
+        if (getDefaultUsername() == null) {
             throw new IllegalStateException("No default username set. Call setDefaultCredentials() first.");
         }
-        return SecureKeyStorage.savePrivateKey(defaultUsername, defaultKeyPair.getPrivate(), password);
+        return SecureKeyStorage.savePrivateKey(getDefaultUsername(), getDefaultKeyPair().getPrivate(), password);
     }
     
     /**
@@ -1802,8 +1813,8 @@ public class UserFriendlyEncryptionAPI {
         if (privateKey != null) {
             try {
                 PublicKey publicKey = keyDerivation.derivePublicKeyFromPrivate(privateKey);
-                this.defaultKeyPair = new KeyPair(publicKey, privateKey);
-                this.defaultUsername = username;
+                this.defaultKeyPair.set(new KeyPair(publicKey, privateKey));
+                this.defaultUsername.set(username);
                 
                 // Auto-register the user
                 String publicKeyString = CryptoUtil.publicKeyToString(publicKey);
@@ -2438,8 +2449,8 @@ public class UserFriendlyEncryptionAPI {
         }
         
         try {
-            String publicKeyString = CryptoUtil.publicKeyToString(defaultKeyPair.getPublic());
-            return offChainStorage.storeData(fileData, password, defaultKeyPair.getPrivate(), 
+            String publicKeyString = CryptoUtil.publicKeyToString(getDefaultKeyPair().getPublic());
+            return offChainStorage.storeData(fileData, password, getDefaultKeyPair().getPrivate(), 
                                            publicKeyString, contentType);
         } catch (Exception e) {
             throw new RuntimeException("Failed to store large file: " + e.getMessage(), e);
@@ -2820,7 +2831,7 @@ public class UserFriendlyEncryptionAPI {
     public Block storeSearchableData(String data, String password, String[] searchTerms) {
         validateKeyPair();
         return blockchain.addEncryptedBlockWithKeywords(data, password, searchTerms, null, 
-                                                       defaultKeyPair.getPrivate(), defaultKeyPair.getPublic());
+                                                       getDefaultKeyPair().getPrivate(), getDefaultKeyPair().getPublic());
     }
     
     /**
@@ -2867,7 +2878,7 @@ public class UserFriendlyEncryptionAPI {
         // Store the block with encryption
         Block block = blockchain.addEncryptedBlockWithKeywords(data, password, 
                                                               allKeywords.toArray(new String[0]), "USER_DEFINED", 
-                                                              defaultKeyPair.getPrivate(), defaultKeyPair.getPublic());
+                                                              getDefaultKeyPair().getPrivate(), getDefaultKeyPair().getPublic());
         
         return block;
     }
@@ -2970,7 +2981,7 @@ public class UserFriendlyEncryptionAPI {
         }
         
         return blockchain.addEncryptedBlockWithKeywords(data, password, finalTerms, null, 
-                                                       defaultKeyPair.getPrivate(), defaultKeyPair.getPublic());
+                                                       getDefaultKeyPair().getPrivate(), getDefaultKeyPair().getPublic());
     }
     
     /**
@@ -4828,7 +4839,7 @@ public class UserFriendlyEncryptionAPI {
             
             // Perform exhaustive search with off-chain content
             SearchFrameworkEngine.SearchResult searchResult = 
-                searchEngine.searchExhaustiveOffChain(query, password, defaultKeyPair.getPrivate(), 100);
+                searchEngine.searchExhaustiveOffChain(query, password, getDefaultKeyPair().getPrivate(), 100);
             
             // Convert EnhancedSearchResult to Block objects
             List<Block> resultBlocks = new ArrayList<>();
@@ -5834,8 +5845,8 @@ public class UserFriendlyEncryptionAPI {
         try {
             // Create block first
             Block block = blockchain.addEncryptedBlock(data, password, 
-                                                      defaultKeyPair != null ? defaultKeyPair.getPrivate() : null,
-                                                      defaultKeyPair != null ? defaultKeyPair.getPublic() : null);
+                                                      defaultKeyPair != null ? getDefaultKeyPair().getPrivate() : null,
+                                                      getDefaultKeyPair() != null ? getDefaultKeyPair().getPublic() : null);
             
             // Analyze and apply tiering
             StorageTieringManager.StorageTier recommendedTier = tieringManager.analyzeStorageTier(block);
@@ -7202,8 +7213,8 @@ public class UserFriendlyEncryptionAPI {
                 offChainData, 
                 keywords, 
                 password, 
-                defaultKeyPair.getPrivate(), 
-                defaultKeyPair.getPublic()
+                getDefaultKeyPair().getPrivate(), 
+                getDefaultKeyPair().getPublic()
             );
             
         } catch (Exception e) {
@@ -7241,8 +7252,8 @@ public class UserFriendlyEncryptionAPI {
                 offChainData, 
                 keywords, 
                 password, 
-                defaultKeyPair.getPrivate(), 
-                defaultKeyPair.getPublic()
+                getDefaultKeyPair().getPrivate(), 
+                getDefaultKeyPair().getPublic()
             );
             
         } catch (Exception e) {
@@ -7295,8 +7306,8 @@ public class UserFriendlyEncryptionAPI {
                 offChainData, 
                 allKeywords, 
                 password, 
-                defaultKeyPair.getPrivate(), 
-                defaultKeyPair.getPublic()
+                getDefaultKeyPair().getPrivate(), 
+                getDefaultKeyPair().getPublic()
             );
             
         } catch (Exception e) {
