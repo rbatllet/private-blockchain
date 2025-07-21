@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Collections;
 
 /**
  * Result container for key management operations
@@ -63,11 +64,11 @@ public class KeyManagementResult {
     public String getOperationalKeyId() { return operationalKeyId; }
     public String getGeneratedKeyId() { return generatedKeyId; }
     public LocalDateTime getTimestamp() { return timestamp; }
-    public List<String> getWarnings() { return warnings; }
+    public List<String> getWarnings() { return Collections.unmodifiableList(warnings); }
     public KeyStatistics getStatistics() { return statistics; }
     public KeyStatistics getKeyStatistics() { return statistics; } // Alias for compatibility
     public Duration getOperationDuration() { return operationDuration; }
-    public Map<String, Object> getDetails() { return details; }
+    public Map<String, Object> getDetails() { return Collections.unmodifiableMap(details); }
     
     // Builder methods
     public KeyManagementResult addWarning(String warning) {

@@ -62,7 +62,7 @@ public class OffChainIntegrityReport {
         public String getDetails() { return details; }
         public LocalDateTime getCheckTime() { return checkTime; }
         public Duration getCheckDuration() { return checkDuration; }
-        public Map<String, Object> getMetadata() { return metadata; }
+        public Map<String, Object> getMetadata() { return Collections.unmodifiableMap(metadata); }
     }
     
     public static class IntegrityStatistics {
@@ -233,10 +233,10 @@ public class OffChainIntegrityReport {
     // Getters
     public String getReportId() { return reportId; }
     public LocalDateTime getReportTimestamp() { return reportTimestamp; }
-    public List<IntegrityCheckResult> getCheckResults() { return checkResults; }
+    public List<IntegrityCheckResult> getCheckResults() { return Collections.unmodifiableList(checkResults); }
     public IntegrityStatistics getStatistics() { return statistics; }
-    public Map<String, List<String>> getIssuesByCategory() { return issuesByCategory; }
-    public List<String> getRecommendations() { return recommendations; }
+    public Map<String, List<String>> getIssuesByCategory() { return Collections.unmodifiableMap(issuesByCategory); }
+    public List<String> getRecommendations() { return Collections.unmodifiableList(recommendations); }
     public IntegrityStatus getOverallStatus() { return overallStatus; }
     
     public String getFormattedSummary() {

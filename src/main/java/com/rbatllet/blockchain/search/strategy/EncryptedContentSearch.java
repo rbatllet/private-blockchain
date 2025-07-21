@@ -502,7 +502,7 @@ public class EncryptedContentSearch {
         public String getContentCategory() { return contentCategory; }
         public boolean hasSensitiveContent() { return hasSensitiveContent; }
         public int getTotalKeywords() { return totalKeywords; }
-        public List<String> getMatchingTerms() { return matchingTerms; }
+        public List<String> getMatchingTerms() { return Collections.unmodifiableList(matchingTerms); }
         
         @Override
         public String toString() {

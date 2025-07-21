@@ -122,8 +122,8 @@ public class RecoveryCheckpoint {
     public Long getLastBlockNumber() { return lastBlockNumber; }
     public String getLastBlockHash() { return lastBlockHash; }
     public long getTotalBlocks() { return totalBlocks; }
-    public Map<String, Object> getChainState() { return chainState; }
-    public List<String> getCriticalHashes() { return criticalHashes; }
+    public Map<String, Object> getChainState() { return Collections.unmodifiableMap(chainState); }
+    public List<String> getCriticalHashes() { return Collections.unmodifiableList(criticalHashes); }
     public long getDataSize() { return dataSize; }
     public String getDescription() { return description; }
     public CheckpointStatus getStatus() { return status; }

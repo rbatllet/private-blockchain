@@ -5,6 +5,7 @@ import com.rbatllet.blockchain.entity.Block;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.security.PasswordUtil;
@@ -382,7 +383,7 @@ public class UserFriendlyEncryptionAPI {
     public List<Block> findEncryptedData(String searchTerm) {
         // Handle null search term gracefully
         if (searchTerm == null) {
-            return new ArrayList<>();
+            return Collections.emptyList();
         }
         
         // Use Advanced Search public metadata search (no password required)
@@ -398,7 +399,7 @@ public class UserFriendlyEncryptionAPI {
                 logger.warn("⚠️ Could not retrieve block {}", enhancedResult.getBlockHash(), e);
             }
         }
-        return blocks;
+        return Collections.unmodifiableList(blocks);
     }
     
     /**
@@ -507,7 +508,7 @@ public class UserFriendlyEncryptionAPI {
      */
     public List<Block> findRecordsByIdentifier(String identifier) {
         if (identifier == null || identifier.trim().isEmpty()) {
-            return new ArrayList<>();
+            return Collections.emptyList();
         }
         return searchByTerms(new String[]{identifier}, null, 50);
     }
@@ -573,7 +574,7 @@ public class UserFriendlyEncryptionAPI {
     public List<Block> searchEverything(String searchTerm) {
         // Handle null or empty search term gracefully
         if (searchTerm == null || searchTerm.trim().isEmpty()) {
-            return new ArrayList<>();
+            return Collections.emptyList();
         }
         
         // Use Advanced Search public search (no password, metadata only)
@@ -589,7 +590,7 @@ public class UserFriendlyEncryptionAPI {
                 logger.warn("⚠️ Could not retrieve block {}", enhancedResult.getBlockHash(), e);
             }
         }
-        return blocks;
+        return Collections.unmodifiableList(blocks);
     }
     
     /**
@@ -877,7 +878,7 @@ public class UserFriendlyEncryptionAPI {
             }
         }
         
-        return blocks;
+        return Collections.unmodifiableList(blocks);
     }
     
     /**
@@ -2787,10 +2788,10 @@ public class UserFriendlyEncryptionAPI {
                 }
             }
             
-            return blocks;
+            return Collections.unmodifiableList(blocks);
         } catch (Exception e) {
             logger.error("❌ Search with adaptive decryption failed", e);
-            return new ArrayList<>();
+            return Collections.emptyList();
         }
     }
     
@@ -2815,7 +2816,7 @@ public class UserFriendlyEncryptionAPI {
                 logger.warn("⚠️ Warning: Could not convert enhanced result to block: {}", e.getMessage());
             }
         }
-        return blocks;
+        return Collections.unmodifiableList(blocks);
     }
     
     // ===== FLEXIBLE USER-DEFINED SEARCH TERMS API =====
@@ -3050,7 +3051,7 @@ public class UserFriendlyEncryptionAPI {
      */
     public List<Block> searchByTerms(String[] searchTerms, String password, int maxResults) {
         if (searchTerms == null || searchTerms.length == 0) {
-            return new ArrayList<>();
+            return Collections.emptyList();
         }
         
         List<Block> results = new ArrayList<>();
@@ -3519,7 +3520,7 @@ public class UserFriendlyEncryptionAPI {
             
         } catch (Exception e) {
             logger.error("❌ Failed to list managed keys: {}", e.getMessage(), e);
-            return new ArrayList<>();
+            return Collections.emptyList();
         }
     }
     

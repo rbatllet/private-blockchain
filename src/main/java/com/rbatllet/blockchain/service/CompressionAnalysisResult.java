@@ -165,7 +165,7 @@ public class CompressionAnalysisResult {
     // Getters
     public String getDataIdentifier() { return dataIdentifier; }
     public LocalDateTime getAnalysisTimestamp() { return analysisTimestamp; }
-    public Map<CompressionAlgorithm, CompressionMetrics> getResults() { return results; }
+    public Map<CompressionAlgorithm, CompressionMetrics> getResults() { return Collections.unmodifiableMap(results); }
     public CompressionAlgorithm getRecommendedAlgorithm() { return recommendedAlgorithm; }
     public String getContentType() { return contentType; }
     public long getOriginalDataSize() { return originalDataSize; }

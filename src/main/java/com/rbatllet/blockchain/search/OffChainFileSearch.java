@@ -452,6 +452,6 @@ public class OffChainFileSearch {
         // Add thread safety info
         stats.put("threadSafe", true);
         stats.put("synchronizationMethod", "synchronized");
-        return stats;
+        return Collections.unmodifiableMap(stats);
     }
 }

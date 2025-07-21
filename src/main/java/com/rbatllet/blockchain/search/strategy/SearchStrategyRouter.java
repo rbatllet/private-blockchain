@@ -517,7 +517,7 @@ public class SearchStrategyRouter {
             this.searchTimeMs = searchTimeMs;
         }
         
-        public List<SearchResultItem> getResults() { return results; }
+        public List<SearchResultItem> getResults() { return Collections.unmodifiableList(results); }
         public SearchLevel getSearchLevel() { return searchLevel; }
         public double getSearchTimeMs() { return searchTimeMs; }
     }

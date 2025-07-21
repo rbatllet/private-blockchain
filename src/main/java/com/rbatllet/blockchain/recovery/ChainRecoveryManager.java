@@ -607,7 +607,7 @@ public class ChainRecoveryManager {
         public int getTotalBlocks() { return totalBlocks; }
         public int getValidBlocks() { return validBlocks; }
         public int getCorruptedBlocks() { return corruptedBlocks; }
-        public List<Block> getCorruptedBlocksList() { return corruptedBlocksList; }
+        public List<Block> getCorruptedBlocksList() { return Collections.unmodifiableList(corruptedBlocksList); }
         
         public boolean isHealthy() { return corruptedBlocks == 0; }
         

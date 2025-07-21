@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Collections;
 
 /**
  * Comprehensive health report for blockchain system diagnostics
@@ -57,13 +58,13 @@ public class HealthReport {
     public String getSummary() { return summary; }
     public String getMessage() { return summary; } // Alias for compatibility
     public LocalDateTime getTimestamp() { return timestamp; }
-    public List<HealthIssue> getIssues() { return issues; }
+    public List<HealthIssue> getIssues() { return Collections.unmodifiableList(issues); }
     public HealthMetrics getMetrics() { return metrics; }
     public HealthMetrics getHealthMetrics() { return metrics; } // Alias for compatibility
-    public Map<String, Object> getSystemInfo() { return systemInfo; }
+    public Map<String, Object> getSystemInfo() { return Collections.unmodifiableMap(systemInfo); }
     public String getReportId() { return reportId; }
     public Duration getGenerationTime() { return generationTime; }
-    public List<String> getRecommendations() { return recommendations; }
+    public List<String> getRecommendations() { return Collections.unmodifiableList(recommendations); }
     
     // Builder methods
     public HealthReport addIssue(String component, String description, String severity, String recommendation) {

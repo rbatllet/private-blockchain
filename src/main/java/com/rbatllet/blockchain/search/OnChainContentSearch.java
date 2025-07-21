@@ -211,7 +211,7 @@ public class OnChainContentSearch {
         
         // Getters
         public String getSearchTerm() { return searchTerm; }
-        public List<OnChainMatch> getMatches() { return matches; }
+        public List<OnChainMatch> getMatches() { return Collections.unmodifiableList(matches); }
         public int getTotalBlocksSearched() { return totalBlocksSearched; }
         public int getEncryptedBlocksDecrypted() { return encryptedBlocksDecrypted; }
         public boolean hasMatches() { return !matches.isEmpty(); }
