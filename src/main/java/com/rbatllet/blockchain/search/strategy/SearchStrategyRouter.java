@@ -381,7 +381,7 @@ public class SearchStrategyRouter {
             }
             encryptedContentSearch.indexEncryptedBlock(blockHash, encryptedPrivateLayer);
         } else {
-            logger.debug("🔍 ⚠️ NO private layer - skipping encrypted search indexing");
+            logger.debug("🔍 ℹ️ NO private layer - skipping encrypted search indexing");
         }
         
     }
