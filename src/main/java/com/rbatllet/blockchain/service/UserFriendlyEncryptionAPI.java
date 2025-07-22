@@ -14,6 +14,7 @@ import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.security.ECKeyDerivation;
 import com.rbatllet.blockchain.recovery.ChainRecoveryManager;
 import com.rbatllet.blockchain.util.format.FormatUtil;
+import com.rbatllet.blockchain.util.JPAUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.rbatllet.blockchain.util.validation.BlockValidationUtil;
@@ -5794,7 +5795,7 @@ public class UserFriendlyEncryptionAPI {
         metrics.put("searchSystemHealth", calculateSearchSystemHealth(cacheStats, null));
         metrics.put("timestamp", Instant.now());
         
-        return metrics;
+        return Collections.unmodifiableMap(metrics);
     }
     
     // Helper methods for cache and performance
@@ -6052,7 +6053,7 @@ public class UserFriendlyEncryptionAPI {
             for (StorageTieringManager.StorageTier tier : StorageTieringManager.StorageTier.values()) {
                 tierDistribution.put(tier.name(), stats.getTierCounts().getOrDefault(tier, 0));
             }
-            metrics.put("tierDistribution", tierDistribution);
+            metrics.put("tierDistribution", Collections.unmodifiableMap(tierDistribution));
             
             // Size metrics
             metrics.put("totalDataSizeMB", stats.getTotalDataSize() / (1024.0 * 1024.0));
@@ -6072,7 +6073,7 @@ public class UserFriendlyEncryptionAPI {
             metrics.put("error", e.getMessage());
         }
         
-        return metrics;
+        return Collections.unmodifiableMap(metrics);
     }
     
     // Helper methods for Phase 3
@@ -7577,6 +7578,7 @@ public class UserFriendlyEncryptionAPI {
         private String[] keywords;
         private boolean encrypt = false;
         private boolean offChain = false;
+        private String offChainFilePath;
         private String recipientUsername;
         private Map<String, String> metadata = new HashMap<>();
         
@@ -7609,6 +7611,10 @@ public class UserFriendlyEncryptionAPI {
             this.offChain = offChain; return this;
         }
         
+        public BlockCreationOptions withOffChainFilePath(String offChainFilePath) {
+            this.offChainFilePath = offChainFilePath; return this;
+        }
+        
         public BlockCreationOptions withRecipient(String recipientUsername) {
             this.recipientUsername = recipientUsername; return this;
         }
@@ -7625,6 +7631,7 @@ public class UserFriendlyEncryptionAPI {
         public String[] getKeywords() { return keywords; }
         public boolean isEncrypt() { return encrypt; }
         public boolean isOffChain() { return offChain; }
+        public String getOffChainFilePath() { return offChainFilePath; }
         public String getRecipientUsername() { return recipientUsername; }
         public Map<String, String> getMetadata() { return new HashMap<>(metadata); }
     }
@@ -7643,24 +7650,96 @@ public class UserFriendlyEncryptionAPI {
                 throw new IllegalArgumentException("Block content cannot be empty");
             }
             
-            // Choose creation method based on options
-            if (options.isEncrypt() && options.getPassword() != null && !options.getPassword().trim().isEmpty()) {
-                if (options.getIdentifier() != null && !options.getIdentifier().trim().isEmpty()) {
-                    return storeDataWithIdentifier(content, options.getPassword(), options.getIdentifier());
-                } else {
-                    return storeSecret(content, options.getPassword());
+            // Create user if needed
+            String effectiveUsername = options.getUsername() != null ? 
+                options.getUsername() : "cli-user-" + System.currentTimeMillis();
+            
+            KeyPair userKeyPair = createUser(effectiveUsername);
+            
+            // Check if off-chain storage is requested (handles both encrypted and unencrypted)
+            if (options.isOffChain() && options.getOffChainFilePath() != null) {
+                try {
+                    // Read file content for off-chain storage (thread-safe)
+                    byte[] fileContent = java.nio.file.Files.readAllBytes(
+                        java.nio.file.Paths.get(options.getOffChainFilePath()));
+                    
+                    // Determine content type from file extension
+                    String contentType = detectContentType(options.getOffChainFilePath());
+                    
+                    // Create off-chain data using thread-safe service
+                    OffChainData offChainData = offChainStorage.storeData(
+                        fileContent,
+                        options.getPassword(), // Use password if provided for encryption
+                        userKeyPair.getPrivate(),
+                        CryptoUtil.publicKeyToString(userKeyPair.getPublic()),
+                        contentType
+                    );
+                    
+                    // Use addBlockWithOffChainData (thread-safe) - handles encryption if password provided
+                    return blockchain.addBlockWithOffChainData(
+                        content,
+                        offChainData,
+                        options.getKeywords(),
+                        options.getPassword(),
+                        userKeyPair.getPrivate(),
+                        userKeyPair.getPublic()
+                    );
+                    
+                } catch (java.io.IOException e) {
+                    logger.error("❌ Failed to read off-chain file: {}", options.getOffChainFilePath(), e);
+                    throw new RuntimeException("Failed to read off-chain file: " + e.getMessage(), e);
                 }
-            } else {
-                // Create user if needed
-                String effectiveUsername = options.getUsername() != null ? 
-                    options.getUsername() : "cli-user-" + System.currentTimeMillis();
+            } else if (options.isOffChain()) {
+                logger.warn("⚠️ Off-chain storage requested but no file path provided. Using regular storage.");
+            }
+            
+            // Handle encrypted blocks (only if not off-chain)
+            if (options.isEncrypt() && options.getPassword() != null && !options.getPassword().trim().isEmpty()) {
+                Block encryptedBlock;
+                if (options.getIdentifier() != null && !options.getIdentifier().trim().isEmpty()) {
+                    encryptedBlock = storeDataWithIdentifier(content, options.getPassword(), options.getIdentifier());
+                } else {
+                    encryptedBlock = storeSecret(content, options.getPassword());
+                }
                 
-                KeyPair userKeyPair = createUser(effectiveUsername);
-                return blockchain.addBlockAndReturn(
-                    content, 
-                    userKeyPair.getPrivate(),
-                    userKeyPair.getPublic()
-                );
+                // Add category and keywords to encrypted block if provided (thread-safe)
+                if (encryptedBlock != null && 
+                    (options.getCategory() != null || (options.getKeywords() != null && options.getKeywords().length > 0))) {
+                    
+                    // Use JPA transaction for thread-safe block update
+                    return JPAUtil.executeInTransaction(em -> {
+                        Block managedBlock = em.find(Block.class, encryptedBlock.getId());
+                        if (managedBlock != null) {
+                            if (options.getCategory() != null && !options.getCategory().trim().isEmpty()) {
+                                managedBlock.setContentCategory(options.getCategory().toUpperCase());
+                            }
+                            if (options.getKeywords() != null && options.getKeywords().length > 0) {
+                                managedBlock.setManualKeywords(String.join(" ", options.getKeywords()).toLowerCase());
+                            }
+                            em.merge(managedBlock);
+                            return managedBlock;
+                        }
+                        return encryptedBlock;
+                    });
+                }
+                return encryptedBlock;
+            } else {
+                // Handle regular blocks with category/keywords
+                if (options.getCategory() != null || options.getKeywords() != null) {
+                    return blockchain.addBlockWithKeywords(
+                        content,
+                        options.getKeywords(),
+                        options.getCategory(),
+                        userKeyPair.getPrivate(),
+                        userKeyPair.getPublic()
+                    );
+                } else {
+                    return blockchain.addBlockAndReturn(
+                        content, 
+                        userKeyPair.getPrivate(),
+                        userKeyPair.getPublic()
+                    );
+                }
             }
             
         } catch (Exception e) {

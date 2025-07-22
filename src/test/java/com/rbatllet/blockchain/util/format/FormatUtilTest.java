@@ -64,7 +64,7 @@ public class FormatUtilTest {
                 "Result should contain ellipsis");
         assertTrue(result.startsWith(longHash.substring(0, 16)), 
                 "Result should start with beginning of original hash");
-        assertTrue(result.endsWith(longHash.substring(longHash.length() - 20)), 
+        assertTrue(result.endsWith(longHash.substring(longHash.length() - 16)), 
                 "Result should end with end of original hash");
     }
     

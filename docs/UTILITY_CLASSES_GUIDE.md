@@ -145,7 +145,7 @@ System.out.println("Summary: " + result.toString());
 
 ### FormatUtil
 
-`FormatUtil` provides methods for formatting blockchain data for display and storage.
+`FormatUtil` provides comprehensive methods for formatting blockchain data for display and storage. **Enhanced with new functions migrated from BlockchainDisplayUtils**.
 
 #### Location
 
@@ -153,38 +153,104 @@ System.out.println("Summary: " + result.toString());
 com.rbatllet.blockchain.util.format.FormatUtil
 ```
 
-#### Main Methods
+#### Core Display Methods
 
 | Method | Description |
 |--------|-------------|
-| `truncateHash(String)` | Truncates a hash for display purposes with ellipsis in the middle |
-| `formatTimestamp(LocalDateTime)` | Formats a timestamp using the default format (yyyy-MM-dd HH:mm:ss) |
-| `formatTimestamp(LocalDateTime, String)` | Formats a timestamp using a custom pattern |
-| `formatBlockInfo(Block)` | Formats complete block information for display with proper truncation |
-| `fixedWidth(String, int)` | Formats a string to a fixed width by truncating with ellipsis or padding with spaces |
+| `truncateHash(String)` | **🔄 ENHANCED:** Truncates hash with symmetric 16+16 format (improved from 16+20) |
+| `truncateKey(String)` | **✨ NEW:** Truncates public keys with 20+20 format for readability |
+| `formatBlockInfo(Block)` | Formats complete block information with consistent hash truncation |
+| `formatTimestamp(LocalDateTime)` | Formats timestamp using default format (yyyy-MM-dd HH:mm:ss) |
+| `formatTimestamp(LocalDateTime, String)` | Formats timestamp using custom pattern |
+| `fixedWidth(String, int)` | Formats string to fixed width with intelligent word-boundary truncation |
 
-#### Usage Example
+#### Data Formatting Methods
+
+| Method | Description |
+|--------|-------------|
+| `formatBytes(long)` | **✨ NEW:** Convert bytes to human-readable format (B, KB, MB, GB) |
+| `formatDate(LocalDateTime)` | **✨ NEW:** Format date-only display (yyyy-MM-dd) |
+| `formatDuration(long)` | **✨ NEW:** Format nanosecond durations with appropriate precision |
+| `formatPercentage(double)` | **✨ NEW:** Format percentage values with smart precision |
+| `formatBlockchainState(long, boolean, LocalDateTime)` | **✨ NEW:** Format blockchain state summary |
+
+#### Utility Methods
+
+| Method | Description |
+|--------|-------------|
+| `escapeJson(String)` | **✨ NEW:** Safely escape strings for JSON output |
+| `createSeparator(int)` | **✨ NEW:** Generate separator lines for formatted output |
+
+#### Enhanced Usage Examples
 
 ```java
-// Truncate a hash for display
-String hash = "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2";
-String truncatedHash = FormatUtil.truncateHash(hash); // "a1b2c3d4e5f6a1b2...4e5f6a1b2c3d4e5f6a1b2"
+// 🔄 ENHANCED: Symmetric hash truncation (16+16)
+String hash = "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456";
+String truncated = FormatUtil.truncateHash(hash); 
+// Result: "a1b2c3d4e5f67890...ef123456" (symmetric 16+16)
 
-// Format a timestamp with default format
+// ✨ NEW: Public key truncation (20+20)
+String publicKey = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA7nJlL...";
+String truncatedKey = FormatUtil.truncateKey(publicKey);
+// Result: "MIIBIjANBgkqhkiG9w0B...Q8AMIIBCgKCAQEA7nJl"
+
+// ✨ NEW: Byte formatting
+FormatUtil.formatBytes(1536);          // "1.5 KB"
+FormatUtil.formatBytes(2097152);       // "2.0 MB"
+FormatUtil.formatBytes(3221225472L);   // "3.0 GB"
+
+// ✨ NEW: Duration formatting with smart precision
+FormatUtil.formatDuration(50_000L);      // "0.050 ms" (high precision)
+FormatUtil.formatDuration(150_000_000L); // "150 ms" (low precision)
+
+// ✨ NEW: Percentage formatting
+FormatUtil.formatPercentage(0.25);   // "0.25%"
+FormatUtil.formatPercentage(5.7);    // "5.7%"
+FormatUtil.formatPercentage(100);    // "100%"
+
+// ✨ NEW: JSON escaping
+String input = "User said: \"Hello\nWorld!\"";
+String escaped = FormatUtil.escapeJson(input);
+// Result: "User said: \\\"Hello\\nWorld!\\\""
+
+// ✨ NEW: Blockchain state formatting
+String state = FormatUtil.formatBlockchainState(42, true, LocalDateTime.now());
+/* Result:
+Total Blocks        : 42
+Chain Valid         : Yes
+Last Block Time     : 2024-06-28 19:30:02
+*/
+
+// ✨ NEW: Separator lines
+String separator = FormatUtil.createSeparator(50);
+// Result: "=================================================="
+
+// Original timestamp formatting
 LocalDateTime timestamp = LocalDateTime.now();
-String formattedTimestamp = FormatUtil.formatTimestamp(timestamp); // "2025-06-18 13:30:37"
+String fullTimestamp = FormatUtil.formatTimestamp(timestamp);   // "2024-06-28 19:30:02"
+String dateOnly = FormatUtil.formatDate(timestamp);             // "2024-06-28"
+String custom = FormatUtil.formatTimestamp(timestamp, "dd/MM/yyyy HH:mm");  // "28/06/2024 19:30"
 
-// Format a timestamp with custom pattern
-String customFormatted = FormatUtil.formatTimestamp(timestamp, "dd/MM/yyyy"); // "18/06/2025"
-
-// Format complete block information
-Block block = blockchain.getBlockByNumber(1L);
-String blockInfo = FormatUtil.formatBlockInfo(block); // Multi-line formatted block info
-
-// Format to fixed width with intelligent truncation
+// Fixed-width formatting with intelligent truncation
 String text = "Very long text that needs to be truncated";
-String fixedWidthText = FormatUtil.fixedWidth(text, 20); // Will truncate at word boundary if possible
+String fixedWidthText = FormatUtil.fixedWidth(text, 20); // Truncates at word boundary when possible
 ```
+
+#### Migration from BlockchainDisplayUtils
+
+**🔄 MIGRATION COMPLETED:** All display utilities have been migrated from `BlockchainDisplayUtils` to `FormatUtil` for better code reusability and consistency.
+
+**Key Improvements:**
+- **Symmetric Hash Truncation**: Changed from asymmetric 16+20 to symmetric 16+16 for better visual consistency
+- **Consolidated Functions**: All formatting functions now in one location
+- **Enhanced Functionality**: Added 7 new utility functions for comprehensive formatting needs
+- **CLI Integration**: All CLI commands updated to use FormatUtil instead of BlockchainDisplayUtils
+
+**Files Updated in Migration:**
+- `AddBlockCommand.java` - Updated import and method calls
+- `SearchCommand.java` - Updated import and method calls  
+- `OffChainCommand.java` - Updated import and method calls
+- `EncryptCommand.java` - Updated import and method calls
 
 #### Testing Best Practices
 
