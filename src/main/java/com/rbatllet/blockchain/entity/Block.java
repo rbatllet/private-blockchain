@@ -56,6 +56,9 @@ public class Block {
     
     @Column(name = "encryption_metadata", columnDefinition = "TEXT")
     private String encryptionMetadata;    // Serialized EncryptedBlockData (when encrypted)
+    
+    @Column(name = "custom_metadata", columnDefinition = "TEXT")
+    private String customMetadata;        // Custom metadata in JSON format
 
     // Constructors
     public Block() {}
@@ -129,6 +132,9 @@ public class Block {
     
     public String getEncryptionMetadata() { return encryptionMetadata; }
     public void setEncryptionMetadata(String encryptionMetadata) { this.encryptionMetadata = encryptionMetadata; }
+    
+    public String getCustomMetadata() { return customMetadata; }
+    public void setCustomMetadata(String customMetadata) { this.customMetadata = customMetadata; }
     
     /**
      * Returns true if this block contains encrypted data

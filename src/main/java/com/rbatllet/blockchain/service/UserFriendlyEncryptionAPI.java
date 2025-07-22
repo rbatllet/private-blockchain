@@ -37,6 +37,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.concurrent.atomic.AtomicReference;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine;
+import com.rbatllet.blockchain.util.CustomMetadataUtil;
 
 /**
  * User-friendly API for encrypted blockchain operations
@@ -7694,17 +7695,28 @@ public class UserFriendlyEncryptionAPI {
             }
             
             // Handle encrypted blocks (only if not off-chain)
-            if (options.isEncrypt() && options.getPassword() != null && !options.getPassword().trim().isEmpty()) {
-                Block encryptedBlock;
-                if (options.getIdentifier() != null && !options.getIdentifier().trim().isEmpty()) {
-                    encryptedBlock = storeDataWithIdentifier(content, options.getPassword(), options.getIdentifier());
+            if (options.isEncrypt()) {
+                final Block encryptedBlock;
+                
+                // Check if recipient-specific encryption is requested
+                if (options.getRecipientUsername() != null && !options.getRecipientUsername().trim().isEmpty()) {
+                    // Recipient-specific encryption using public key cryptography
+                    encryptedBlock = createRecipientEncryptedBlock(content, options, userKeyPair);
+                } else if (options.getPassword() != null && !options.getPassword().trim().isEmpty()) {
+                    // Password-based encryption
+                    if (options.getIdentifier() != null && !options.getIdentifier().trim().isEmpty()) {
+                        encryptedBlock = storeDataWithIdentifier(content, options.getPassword(), options.getIdentifier());
+                    } else {
+                        encryptedBlock = storeSecret(content, options.getPassword());
+                    }
                 } else {
-                    encryptedBlock = storeSecret(content, options.getPassword());
+                    throw new IllegalArgumentException("Encryption requested but neither recipient username nor password provided");
                 }
                 
-                // Add category and keywords to encrypted block if provided (thread-safe)
+                // Add category, keywords, and custom metadata to encrypted block if provided (thread-safe)
                 if (encryptedBlock != null && 
-                    (options.getCategory() != null || (options.getKeywords() != null && options.getKeywords().length > 0))) {
+                    (options.getCategory() != null || (options.getKeywords() != null && options.getKeywords().length > 0) ||
+                     (options.getMetadata() != null && !options.getMetadata().isEmpty()))) {
                     
                     // Use JPA transaction for thread-safe block update
                     return JPAUtil.executeInTransaction(em -> {
@@ -7716,6 +7728,12 @@ public class UserFriendlyEncryptionAPI {
                             if (options.getKeywords() != null && options.getKeywords().length > 0) {
                                 managedBlock.setManualKeywords(String.join(" ", options.getKeywords()).toLowerCase());
                             }
+                            if (options.getMetadata() != null && !options.getMetadata().isEmpty()) {
+                                // Validate and serialize custom metadata
+                                CustomMetadataUtil.validateMetadata(options.getMetadata());
+                                String serializedMetadata = CustomMetadataUtil.serializeMetadata(options.getMetadata());
+                                managedBlock.setCustomMetadata(serializedMetadata);
+                            }
                             em.merge(managedBlock);
                             return managedBlock;
                         }
@@ -7724,9 +7742,11 @@ public class UserFriendlyEncryptionAPI {
                 }
                 return encryptedBlock;
             } else {
-                // Handle regular blocks with category/keywords
+                // Handle regular blocks with category/keywords/metadata
+                Block regularBlock;
+                
                 if (options.getCategory() != null || options.getKeywords() != null) {
-                    return blockchain.addBlockWithKeywords(
+                    regularBlock = blockchain.addBlockWithKeywords(
                         content,
                         options.getKeywords(),
                         options.getCategory(),
@@ -7734,17 +7754,332 @@ public class UserFriendlyEncryptionAPI {
                         userKeyPair.getPublic()
                     );
                 } else {
-                    return blockchain.addBlockAndReturn(
+                    regularBlock = blockchain.addBlockAndReturn(
                         content, 
                         userKeyPair.getPrivate(),
                         userKeyPair.getPublic()
                     );
                 }
+                
+                // Add custom metadata if provided (thread-safe)
+                if (regularBlock != null && options.getMetadata() != null && !options.getMetadata().isEmpty()) {
+                    return JPAUtil.executeInTransaction(em -> {
+                        Block managedBlock = em.find(Block.class, regularBlock.getId());
+                        if (managedBlock != null) {
+                            // Validate and serialize custom metadata
+                            CustomMetadataUtil.validateMetadata(options.getMetadata());
+                            String serializedMetadata = CustomMetadataUtil.serializeMetadata(options.getMetadata());
+                            managedBlock.setCustomMetadata(serializedMetadata);
+                            em.merge(managedBlock);
+                            return managedBlock;
+                        }
+                        return regularBlock;
+                    });
+                }
+                
+                return regularBlock;
             }
             
         } catch (Exception e) {
             logger.error("Failed to create block with options", e);
             throw new RuntimeException("Failed to create block: " + e.getMessage(), e);
         }
+    }
+    
+    /**
+     * Create an encrypted block for a specific recipient using public key cryptography
+     * 
+     * @param content The content to encrypt
+     * @param options Block creation options containing recipient username and other settings
+     * @param senderKeyPair The sender's key pair for signing
+     * @return Block with encrypted content for the specified recipient
+     * @throws RuntimeException if recipient not found or encryption fails
+     */
+    private Block createRecipientEncryptedBlock(String content, BlockCreationOptions options, KeyPair senderKeyPair) {
+        try {
+            String recipientUsername = options.getRecipientUsername().trim();
+            
+            // Find recipient's public key from authorized keys (with defensive copy)
+            var authorizedKeysOriginal = blockchain.getAuthorizedKeys();
+            if (authorizedKeysOriginal == null) {
+                throw new IllegalArgumentException("No authorized keys available");
+            }
+            
+            // Create defensive copy to avoid ConcurrentModificationException
+            final List<com.rbatllet.blockchain.entity.AuthorizedKey> authorizedKeys;
+            try {
+                authorizedKeys = new ArrayList<>(authorizedKeysOriginal);
+            } catch (Exception e) {
+                logger.error("❌ Failed to create defensive copy of authorized keys", e);
+                throw new RuntimeException("Failed to access authorized keys", e);
+            }
+            
+            PublicKey recipientPublicKey = null;
+            for (var key : authorizedKeys) {
+                if (recipientUsername.equals(key.getOwnerName())) {
+                    String publicKeyString = key.getPublicKey();
+                    recipientPublicKey = CryptoUtil.stringToPublicKey(publicKeyString);
+                    break;
+                }
+            }
+            
+            if (recipientPublicKey == null) {
+                throw new IllegalArgumentException("Recipient user '" + recipientUsername + "' not found in authorized keys");
+            }
+            
+            // Use BlockDataEncryptionService to encrypt for recipient
+            BlockDataEncryptionService.EncryptedBlockData encryptedData = 
+                BlockDataEncryptionService.encryptBlockData(content, recipientPublicKey, senderKeyPair.getPrivate());
+            
+            // Create block with encrypted content
+            String serializedEncryptedData = encryptedData.serialize();
+            
+            // Add block to blockchain with encrypted data
+            Block encryptedBlock = blockchain.addBlockAndReturn(
+                serializedEncryptedData,
+                senderKeyPair.getPrivate(),
+                senderKeyPair.getPublic()
+            );
+            
+            if (encryptedBlock != null) {
+                // Mark block as encrypted and set recipient info (thread-safe)
+                final Block updatedBlock = JPAUtil.executeInTransaction(em -> {
+                    Block managedBlock = em.find(Block.class, encryptedBlock.getId());
+                    if (managedBlock != null) {
+                        managedBlock.setIsEncrypted(true);
+                        // Store recipient username in a custom metadata field or extend Block entity
+                        // For now, we'll use a prefix in content to indicate recipient encryption
+                        String originalData = managedBlock.getData();
+                        managedBlock.setData("RECIPIENT_ENCRYPTED:" + recipientUsername + ":" + originalData);
+                        em.merge(managedBlock);
+                        em.flush(); // Ensure changes are persisted
+                        em.refresh(managedBlock); // Refresh to get updated state
+                        return managedBlock;
+                    }
+                    return encryptedBlock;
+                });
+                
+                logger.info("✅ Created recipient-encrypted block for user: {}", recipientUsername);
+                return updatedBlock;
+            }
+            
+            return encryptedBlock;
+            
+        } catch (Exception e) {
+            logger.error("❌ Failed to create recipient-encrypted block", e);
+            throw new RuntimeException("Failed to create recipient-encrypted block: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Decrypt a recipient-encrypted block using the recipient's private key
+     * 
+     * @param block The encrypted block to decrypt
+     * @param recipientPrivateKey The recipient's private key for decryption
+     * @return The decrypted content
+     * @throws IllegalArgumentException if block is not encrypted or not recipient-encrypted
+     * @throws RuntimeException if decryption fails
+     */
+    public String decryptRecipientBlock(Block block, PrivateKey recipientPrivateKey) {
+        if (block == null) {
+            throw new IllegalArgumentException("Block cannot be null");
+        }
+        
+        if (!block.getIsEncrypted()) {
+            throw new IllegalArgumentException("Block is not encrypted");
+        }
+        
+        // Check if this is a recipient-encrypted block
+        String blockData = block.getData();
+        if (!blockData.startsWith("RECIPIENT_ENCRYPTED:")) {
+            throw new IllegalArgumentException("Block is not recipient-encrypted");
+        }
+        
+        try {
+            // Extract the serialized encrypted data
+            // Format: RECIPIENT_ENCRYPTED:recipientUsername:serializedEncryptedData
+            String[] parts = blockData.split(":", 3);
+            if (parts.length != 3) {
+                throw new IllegalArgumentException("Invalid recipient-encrypted block format");
+            }
+            
+            String recipientUsername = parts[1];
+            String serializedEncryptedData = parts[2];
+            
+            // Deserialize the encrypted data
+            BlockDataEncryptionService.EncryptedBlockData encryptedData = 
+                BlockDataEncryptionService.EncryptedBlockData.deserialize(serializedEncryptedData);
+            
+            // Decrypt using BlockDataEncryptionService
+            String decryptedContent = BlockDataEncryptionService.decryptBlockData(encryptedData, recipientPrivateKey);
+            
+            logger.info("✅ Successfully decrypted block for recipient: {}", recipientUsername);
+            return decryptedContent;
+            
+        } catch (Exception e) {
+            logger.error("❌ Failed to decrypt recipient block", e);
+            throw new RuntimeException("Failed to decrypt recipient block: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Check if a block is recipient-encrypted
+     * 
+     * @param block The block to check
+     * @return true if the block is recipient-encrypted, false otherwise
+     */
+    public boolean isRecipientEncrypted(Block block) {
+        if (block == null || !block.getIsEncrypted()) {
+            return false;
+        }
+        return block.getData() != null && block.getData().startsWith("RECIPIENT_ENCRYPTED:");
+    }
+    
+    /**
+     * Get the recipient username from a recipient-encrypted block
+     * 
+     * @param block The block to check
+     * @return The recipient username, or null if not a recipient-encrypted block
+     */
+    public String getRecipientUsername(Block block) {
+        if (!isRecipientEncrypted(block)) {
+            return null;
+        }
+        
+        String[] parts = block.getData().split(":", 3);
+        if (parts.length >= 2) {
+            return parts[1];
+        }
+        return null;
+    }
+    
+    /**
+     * Find all blocks encrypted for a specific recipient
+     * 
+     * @param recipientUsername The recipient username to search for
+     * @return List of blocks encrypted for the specified recipient
+     */
+    public List<Block> findBlocksByRecipient(String recipientUsername) {
+        if (recipientUsername == null || recipientUsername.trim().isEmpty()) {
+            return Collections.emptyList();
+        }
+        
+        String trimmedUsername = recipientUsername.trim();
+        List<Block> recipientBlocks = new ArrayList<>();
+        
+        // Get all blocks from blockchain (defensive copy to avoid concurrent modification)
+        List<Block> allBlocks = blockchain.getAllBlocks();
+        if (allBlocks != null) {
+            // Create defensive copy to avoid ConcurrentModificationException
+            List<Block> blocksCopy = new ArrayList<>(allBlocks);
+            
+            // Filter blocks that are recipient-encrypted for this specific user
+            for (Block block : blocksCopy) {
+                if (isRecipientEncrypted(block)) {
+                    String blockRecipient = getRecipientUsername(block);
+                    if (trimmedUsername.equals(blockRecipient)) {
+                        recipientBlocks.add(block);
+                    }
+                }
+            }
+        }
+        
+        logger.info("🔍 Found {} blocks for recipient: {}", recipientBlocks.size(), trimmedUsername);
+        return Collections.unmodifiableList(recipientBlocks);
+    }
+    
+    /**
+     * Deserialize custom metadata from a block
+     * 
+     * @param block The block containing custom metadata
+     * @return Map of metadata key-value pairs, or empty map if no metadata
+     */
+    public Map<String, String> getBlockMetadata(Block block) {
+        if (block == null || block.getCustomMetadata() == null) {
+            return Collections.emptyMap();
+        }
+        
+        return CustomMetadataUtil.deserializeMetadata(block.getCustomMetadata());
+    }
+    
+    /**
+     * Find blocks by custom metadata key-value pair
+     * 
+     * @param metadataKey The metadata key to search for
+     * @param metadataValue The metadata value to match (exact match)
+     * @return List of blocks containing the specified metadata
+     */
+    public List<Block> findBlocksByMetadata(String metadataKey, String metadataValue) {
+        if (metadataKey == null || metadataKey.trim().isEmpty()) {
+            return Collections.emptyList();
+        }
+        
+        List<Block> matchingBlocks = new ArrayList<>();
+        List<Block> allBlocks = blockchain.getAllBlocks();
+        
+        if (allBlocks != null) {
+            // Create defensive copy to avoid ConcurrentModificationException
+            List<Block> blocksCopy = new ArrayList<>(allBlocks);
+            
+            for (Block block : blocksCopy) {
+                Map<String, String> metadata = getBlockMetadata(block);
+                if (!metadata.isEmpty()) {
+                    String value = metadata.get(metadataKey);
+                    if (value != null && value.equals(metadataValue)) {
+                        matchingBlocks.add(block);
+                    }
+                }
+            }
+        }
+        
+        logger.info("🔍 Found {} blocks with metadata {}={}", 
+                   matchingBlocks.size(), metadataKey, metadataValue);
+        return Collections.unmodifiableList(matchingBlocks);
+    }
+    
+    /**
+     * Find blocks containing any of the specified metadata keys
+     * 
+     * @param metadataKeys The metadata keys to search for
+     * @return List of blocks containing at least one of the specified keys
+     */
+    public List<Block> findBlocksByMetadataKeys(Set<String> metadataKeys) {
+        if (metadataKeys == null || metadataKeys.isEmpty()) {
+            return Collections.emptyList();
+        }
+        
+        // Create defensive copy of metadataKeys to avoid ConcurrentModificationException
+        final Set<String> keysCopy;
+        try {
+            keysCopy = new HashSet<>(metadataKeys);
+        } catch (Exception e) {
+            logger.error("❌ Failed to create defensive copy of metadata keys", e);
+            throw new RuntimeException("Failed to create defensive copy of metadata keys", e);
+        }
+        
+        List<Block> matchingBlocks = new ArrayList<>();
+        List<Block> allBlocks = blockchain.getAllBlocks();
+        
+        if (allBlocks != null) {
+            // Create defensive copy to avoid ConcurrentModificationException
+            List<Block> blocksCopy = new ArrayList<>(allBlocks);
+            
+            for (Block block : blocksCopy) {
+                Map<String, String> metadata = getBlockMetadata(block);
+                if (!metadata.isEmpty()) {
+                    // Check if any of the requested keys exist in this block's metadata
+                    for (String key : keysCopy) {
+                        if (metadata.containsKey(key)) {
+                            matchingBlocks.add(block);
+                            break; // Only add the block once
+                        }
+                    }
+                }
+            }
+        }
+        
+        logger.info("🔍 Found {} blocks containing metadata keys: {}", 
+                   matchingBlocks.size(), metadataKeys);
+        return Collections.unmodifiableList(matchingBlocks);
     }
 }
