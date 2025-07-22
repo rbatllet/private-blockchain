@@ -1,6 +1,7 @@
 package com.rbatllet.blockchain.search.metadata;
 
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.entity.OffChainData;
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.CompressionUtil;
@@ -10,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.Collections;
 import java.security.PrivateKey;
 import com.rbatllet.blockchain.service.SecureBlockEncryptionService;
 
@@ -322,10 +324,10 @@ public class MetadataLayerManager {
         // Content statistics
         metadata.setContentStatistics(generateContentStatistics(analysis));
         
-        // Set empty placeholders for optional metadata
-        metadata.setOwnerDetails("encrypted");
-        metadata.setTechnicalDetails(new HashMap<>());
-        metadata.setValidationInfo(new HashMap<>());
+        // Extract detailed metadata using implemented methods
+        metadata.setOwnerDetails(extractOwnerDetails(block, analysis));
+        metadata.setTechnicalDetails(extractTechnicalDetails(block, analysis));
+        metadata.setValidationInfo(extractValidationInfo(block, analysis));
         
         // Content summary for search (first 100 chars of actual decrypted content)
         if (analysis.getContentLength() > 0 && actualContent != null) {
@@ -710,7 +712,79 @@ public class MetadataLayerManager {
         return "STANDARD";
     }
     
-    // Removed placeholder methods extractOwnerDetails() and extractTechnicalDetails() - not implemented
+    /**
+     * Extract owner details from block information
+     * Thread-safe analysis of block ownership and signer details
+     */
+    private String extractOwnerDetails(Block block, ContentAnalysis analysis) {
+        StringBuilder ownerInfo = new StringBuilder();
+        
+        // Get signer information if available
+        if (block.getSignerPublicKey() != null && !block.getSignerPublicKey().trim().isEmpty()) {
+            String signerHash = CryptoUtil.calculateHash(block.getSignerPublicKey());
+            ownerInfo.append("signer_hash:").append(signerHash.substring(0, 16));
+        }
+        
+        // Add block creation timestamp as ownership evidence
+        if (block.getTimestamp() != null) {
+            ownerInfo.append(",created:").append(block.getTimestamp().toString());
+        }
+        
+        // Add content category as ownership context
+        if (block.getContentCategory() != null && !block.getContentCategory().trim().isEmpty()) {
+            ownerInfo.append(",category:").append(block.getContentCategory().toLowerCase());
+        }
+        
+        // Add content size as ownership metadata
+        ownerInfo.append(",content_size:").append(analysis.getContentLength());
+        
+        return ownerInfo.toString();
+    }
+    
+    /**
+     * Extract technical details from block and content analysis
+     * Thread-safe generation of technical metadata for private layer
+     */
+    private Map<String, Object> extractTechnicalDetails(Block block, ContentAnalysis analysis) {
+        Map<String, Object> techDetails = new LinkedHashMap<>();
+        
+        // Block technical info
+        techDetails.put("block_number", block.getBlockNumber());
+        techDetails.put("block_hash", block.getHash());
+        techDetails.put("previous_hash", block.getPreviousHash());
+        
+        // Content analysis technical details
+        techDetails.put("content_length", analysis.getContentLength());
+        techDetails.put("word_count", analysis.getWordCount());
+        techDetails.put("keyword_density", analysis.getAllKeywords().size() * 100.0 / Math.max(analysis.getWordCount(), 1));
+        techDetails.put("numerical_values_count", analysis.getNumericalValues().size());
+        
+        // Encryption technical details
+        if (block.getIsEncrypted()) {
+            techDetails.put("encryption_status", "encrypted");
+            techDetails.put("encryption_metadata_size", 
+                block.getEncryptionMetadata() != null ? block.getEncryptionMetadata().length() : 0);
+        } else {
+            techDetails.put("encryption_status", "plaintext");
+        }
+        
+        // Off-chain technical details
+        if (block.hasOffChainData()) {
+            OffChainData offChainData = block.getOffChainData();
+            techDetails.put("offchain_file_path", offChainData.getFilePath());
+            techDetails.put("offchain_file_size", offChainData.getFileSize());
+            techDetails.put("offchain_content_type", offChainData.getContentType());
+            techDetails.put("offchain_data_hash", offChainData.getDataHash());
+        }
+        
+        // Timestamp technical details
+        if (block.getTimestamp() != null) {
+            techDetails.put("creation_timestamp", block.getTimestamp().toString());
+            techDetails.put("timestamp_epoch", block.getTimestamp().toEpochSecond(java.time.ZoneOffset.UTC));
+        }
+        
+        return Collections.unmodifiableMap(techDetails);
+    }
     
     private Map<String, Object> generateContentStatistics(ContentAnalysis analysis) {
         Map<String, Object> stats = new HashMap<>();
@@ -720,7 +794,60 @@ public class MetadataLayerManager {
         return stats;
     }
     
-    // Removed placeholder method extractValidationInfo() - not implemented
+    /**
+     * Extract validation information from block
+     * Thread-safe generation of cryptographic validation metadata
+     */
+    private Map<String, Object> extractValidationInfo(Block block, ContentAnalysis analysis) {
+        Map<String, Object> validationInfo = new LinkedHashMap<>();
+        
+        // Cryptographic validation info
+        if (block.getHash() != null) {
+            validationInfo.put("block_hash_algorithm", "SHA3-256");
+            validationInfo.put("block_hash_length", block.getHash().length());
+            validationInfo.put("block_hash_prefix", block.getHash().substring(0, Math.min(8, block.getHash().length())));
+        }
+        
+        // Signature validation info
+        if (block.getSignature() != null && !block.getSignature().trim().isEmpty()) {
+            validationInfo.put("signature_algorithm", "ECDSA");
+            validationInfo.put("signature_length", block.getSignature().length());
+            validationInfo.put("has_digital_signature", true);
+        } else {
+            validationInfo.put("has_digital_signature", false);
+        }
+        
+        // Chain validation info
+        validationInfo.put("has_previous_hash", block.getPreviousHash() != null);
+        validationInfo.put("block_position", block.getBlockNumber());
+        
+        // Content validation info
+        validationInfo.put("content_integrity_check", analysis.getContentLength() > 0);
+        validationInfo.put("has_keywords", !analysis.getAllKeywords().isEmpty());
+        validationInfo.put("content_category_assigned", block.getContentCategory() != null);
+        
+        // Encryption validation info
+        if (block.getIsEncrypted()) {
+            validationInfo.put("encryption_validation", "encrypted_content");
+            validationInfo.put("encryption_metadata_present", block.getEncryptionMetadata() != null);
+        }
+        
+        // Off-chain validation info
+        if (block.hasOffChainData()) {
+            validationInfo.put("offchain_data_validation", true);
+            validationInfo.put("offchain_hash_present", block.getOffChainData().getDataHash() != null);
+        }
+        
+        // Timestamp validation
+        if (block.getTimestamp() != null) {
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+            boolean timestampValid = block.getTimestamp().isBefore(now.plusMinutes(5)) && 
+                                   block.getTimestamp().isAfter(now.minusYears(10));
+            validationInfo.put("timestamp_validation", timestampValid ? "valid_range" : "suspicious_timestamp");
+        }
+        
+        return Collections.unmodifiableMap(validationInfo);
+    }
     
     
     

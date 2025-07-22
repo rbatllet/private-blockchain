@@ -668,6 +668,17 @@ public class SearchFrameworkEngine {
                 contextBuilder.append(match.getMatchingSnippets().get(0));
             }
             
+            // Get private metadata if available and password provided
+            PrivateMetadata privateMetadata = null;
+            if (password != null && metadata != null && metadata.hasPrivateLayer()) {
+                try {
+                    privateMetadata = metadataManager.decryptPrivateMetadata(
+                        metadata.getEncryptedPrivateLayer(), password);
+                } catch (Exception e) {
+                    // Ignore decryption failures - private layer will remain null
+                }
+            }
+            
             // Create enhanced result with on-chain source
             EnhancedSearchResult enhancedResult = new EnhancedSearchResult(
                 blockHash,
@@ -676,7 +687,7 @@ public class SearchFrameworkEngine {
                 contextBuilder.toString(),
                 0.0, // Search time already accounted for
                 metadata != null ? metadata.getPublicLayer() : null,
-                null, // Private layer would need decryption
+                privateMetadata, // Private layer now properly decrypted when available
                 metadata != null ? metadata.getSecurityLevel() : null
             );
             
@@ -711,6 +722,17 @@ public class SearchFrameworkEngine {
             // Boost relevance score for off-chain matches
             double boostedRelevance = match.getRelevanceScore() + 20.0; // Off-chain bonus
             
+            // Get private metadata if available and password provided
+            PrivateMetadata privateMetadata = null;
+            if (password != null && metadata != null && metadata.hasPrivateLayer()) {
+                try {
+                    privateMetadata = metadataManager.decryptPrivateMetadata(
+                        metadata.getEncryptedPrivateLayer(), password);
+                } catch (Exception e) {
+                    // Ignore decryption failures - private layer will remain null
+                }
+            }
+            
             EnhancedSearchResult enhancedResult = new EnhancedSearchResult(
                 blockHash,
                 boostedRelevance,
@@ -718,7 +740,7 @@ public class SearchFrameworkEngine {
                 contextBuilder.toString(),
                 0.0, // Search time already accounted for
                 metadata != null ? metadata.getPublicLayer() : null,
-                null, // Private layer access not implemented yet
+                privateMetadata, // Private layer now properly decrypted when available
                 metadata != null ? metadata.getSecurityLevel() : null,
                 match // Now we can include the actual OffChainMatch object!
             );
