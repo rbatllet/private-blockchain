@@ -261,6 +261,79 @@ The FormatUtil class follows these testing best practices:
 - Tests use assertions that allow implementation to evolve without breaking
 - Edge cases are properly handled and tested (null inputs, empty strings, etc.)
 
+### CustomMetadataUtil
+
+**✨ NEW UTILITY:** `CustomMetadataUtil` provides secure JSON serialization and validation for custom block metadata.
+
+#### Location
+
+```
+com.rbatllet.blockchain.util.CustomMetadataUtil
+```
+
+#### Core Methods
+
+| Method | Description |
+|--------|-------------|
+| `serializeMetadata(Map<String,String>)` | Converts metadata map to JSON string (thread-safe) |
+| `deserializeMetadata(String)` | Converts JSON string back to metadata map (thread-safe) |
+| `validateMetadata(Map<String,String>)` | Validates metadata against security and size constraints |
+
+#### Security Features
+
+**Built-in Security Validation:**
+- **SQL Injection Prevention**: Keys are validated for dangerous characters (`'`, `"`, `<`, `>`)
+- **Size Limits**: Maximum 50 entries, 100-char keys, 1000-char values, 10KB total
+- **XSS Prevention**: Prevents malicious key patterns that could cause security issues
+- **Null Safety**: Handles null inputs gracefully without throwing exceptions
+
+#### Usage Examples
+
+```java
+// ✅ Basic metadata operations
+Map<String, String> metadata = new HashMap<>();
+metadata.put("author", "John Doe");
+metadata.put("version", "1.2.0");
+metadata.put("project_id", "PROJ-2024-001");
+
+// Serialize to JSON for storage
+String jsonString = CustomMetadataUtil.serializeMetadata(metadata);
+// Result: {"author":"John Doe","version":"1.2.0","project_id":"PROJ-2024-001"}
+
+// Deserialize from JSON
+Map<String, String> restored = CustomMetadataUtil.deserializeMetadata(jsonString);
+// Result: Original map perfectly restored
+
+// ✅ Validation prevents security issues
+CustomMetadataUtil.validateMetadata(metadata); // Passes validation
+
+// ❌ Security validation catches dangerous inputs
+Map<String, String> dangerousMetadata = new HashMap<>();
+dangerousMetadata.put("key'with'quotes", "value"); // Throws IllegalArgumentException
+dangerousMetadata.put("key_too_long".repeat(20), "value"); // Throws IllegalArgumentException
+```
+
+#### Thread Safety
+
+`CustomMetadataUtil` is fully thread-safe:
+- Uses Jackson's thread-safe ObjectMapper
+- Static methods with no mutable state
+- Concurrent access safe for high-throughput applications
+
+#### Integration with BlockCreationOptions
+
+```java
+// Integrated usage with createBlockWithOptions
+BlockCreationOptions options = new BlockCreationOptions()
+    .withCategory("PROJECT")
+    .withMetadata("author", "Alice Smith")          // Automatically validated
+    .withMetadata("document_type", "specification") // JSON serialized on save
+    .withMetadata("security_level", "internal");    // Thread-safe operations
+
+Block result = api.createBlockWithOptions("Document content", options);
+// Custom metadata automatically serialized and stored in block.customMetadata field
+```
+
 ## Testing
 
 The utility classes are fully tested with JUnit to ensure their correct operation:
@@ -269,6 +342,23 @@ The utility classes are fully tested with JUnit to ensure their correct operatio
 - `BlockValidationUtilTest`: Tests the block validation utilities
 - `BlockValidationResultTest`: Tests the block validation result class
 - `FormatUtilTest`: Tests the formatting utilities
+- `UserFriendlyEncryptionAPIRecipientTest`: **NEW** Tests recipient-specific encryption functionality
+- `UserFriendlyEncryptionAPICustomMetadataTest`: **NEW** Tests custom metadata serialization and validation
+
+### New Test Coverage
+
+**Recipient Encryption Tests:**
+- ✅ Successful recipient encryption with public key cryptography
+- ✅ Error handling for non-existent recipients
+- ✅ Combined encryption with metadata and keywords
+- ✅ Validation of encryption parameters
+
+**Custom Metadata Tests:**
+- ✅ JSON serialization and deserialization
+- ✅ Security validation (dangerous characters, size limits)
+- ✅ Integration with encrypted and regular blocks
+- ✅ Edge cases (empty metadata, null handling)
+- ✅ Thread safety verification
 
 Example of running tests:
 

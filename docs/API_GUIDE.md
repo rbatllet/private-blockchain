@@ -150,7 +150,8 @@ The UserFriendlyEncryptionAPI provides an enhanced **thread-safe** `createBlockW
 | `password` | Encryption password | ✅ Concurrent-safe encryption |
 | `encryption` | Force encryption mode | ✅ Thread-safe crypto operations |
 | `username` | Block username | ✅ Atomic username assignment |
-| `recipientUsername` | Target recipient | ⚠️ Future enhancement |
+| `recipientUsername` | Target recipient encryption | ✅ **NEW**: Public key cryptography |
+| `customMetadata` | Custom key-value metadata | ✅ **NEW**: JSON serialization |
 
 ### Thread-Safe Implementation Details
 
@@ -284,6 +285,201 @@ try {
     // Handles invalid file paths gracefully
     System.err.println("File operation failed: " + e.getMessage());
 }
+```
+
+### ✨ New Features: Recipient Encryption & Custom Metadata
+
+#### Recipient-Specific Encryption
+**NEW**: Encrypt blocks for specific users using their public keys:
+
+```java
+// Create recipient user first
+api.createUser("recipient-user");
+
+BlockCreationOptions options = new BlockCreationOptions()
+    .withEncryption(true)
+    .withRecipient("recipient-user")  // NEW: Sets recipientUsername for encryption
+    .withCategory("CONFIDENTIAL");
+
+Block result = api.createBlockWithOptions("Secret message for recipient", options);
+
+// Result:
+// - Block encrypted using recipient's public key
+// - Only recipient can decrypt with their private key
+// - Thread-safe public key cryptography via BlockDataEncryptionService
+// - Data marked with "RECIPIENT_ENCRYPTED:recipient-user:" prefix
+```
+
+#### Custom Metadata Support
+**NEW**: Add arbitrary key-value metadata to blocks:
+
+```java
+BlockCreationOptions options = new BlockCreationOptions()
+    .withCategory("PROJECT")
+    .withMetadata("author", "Alice Smith")           // NEW: Custom metadata
+    .withMetadata("document_type", "specification")  // NEW: Multiple entries
+    .withMetadata("version", "2.1.0")                // NEW: Version tracking
+    .withMetadata("clearance_level", "internal");    // NEW: Custom fields
+
+Block result = api.createBlockWithOptions("Project specification document", options);
+
+// Result:
+// - Block with standard category "PROJECT"
+// - Custom metadata stored as JSON in customMetadata field
+// - Thread-safe JSON serialization via CustomMetadataUtil
+// - Metadata validation prevents injection attacks
+```
+
+#### Combined Usage Example
+```java
+// Create recipient
+api.createUser("project-lead");
+
+BlockCreationOptions options = new BlockCreationOptions()
+    .withEncryption(true)
+    .withRecipient("project-lead")          // Encrypt for specific user
+    .withCategory("PROJECT_CONFIDENTIAL") 
+    .withKeywords(new String[]{"budget", "planning"})
+    .withMetadata("project_id", "PROJ-2024-001")     // Custom tracking
+    .withMetadata("deadline", "2024-12-31")          // Custom deadline
+    .withMetadata("budget_approved", "true")         // Custom approval flag
+    .withMetadata("confidentiality", "high");        // Custom security level
+
+Block result = api.createBlockWithOptions("Q4 Budget Planning", options);
+
+// Result:
+// - Encrypted for project-lead using public key cryptography
+// - Standard blockchain metadata (category, keywords)
+// - Rich custom metadata for application-specific needs
+// - All operations thread-safe with proper validation
+```
+
+#### Metadata Security & Validation
+
+The `CustomMetadataUtil` provides comprehensive security:
+
+```java
+// Automatic validation prevents security issues
+Map<String, String> metadata = new HashMap<>();
+metadata.put("safe_key", "valid_value");          // ✅ Valid
+metadata.put("dangerous'key", "value");           // ❌ Throws exception
+metadata.put("key_too_long".repeat(20), "value"); // ❌ Throws exception
+
+// Built-in limits:
+// - Maximum 50 metadata entries per block
+// - Keys limited to 100 characters
+// - Values limited to 1000 characters  
+// - Total metadata size limited to 10KB
+// - SQL injection prevention
+// - XSS prevention for keys
+```
+
+### ✨ New Methods for Working with Encrypted Blocks & Metadata
+
+#### Recipient Encryption Methods
+
+**Decrypt recipient-encrypted blocks:**
+```java
+// Decrypt a block encrypted for a specific recipient
+KeyPair recipientKeyPair = /* recipient's key pair */;
+Block encryptedBlock = /* recipient-encrypted block */;
+
+String decryptedContent = api.decryptRecipientBlock(encryptedBlock, recipientKeyPair.getPrivate());
+// Returns original content if recipient owns the correct private key
+// Throws RuntimeException if block is not recipient-encrypted or wrong key
+```
+
+**Check if block is recipient-encrypted:**
+```java
+Block block = /* any block */;
+boolean isRecipientEncrypted = api.isRecipientEncrypted(block);
+// Returns true only for blocks encrypted with recipient's public key
+// Returns false for password-encrypted or regular blocks
+```
+
+**Get recipient username from encrypted block:**
+```java
+Block recipientBlock = /* recipient-encrypted block */;
+String recipientName = api.getRecipientUsername(recipientBlock);
+// Returns recipient username (e.g., "alice-smith")
+// Returns null if not recipient-encrypted
+```
+
+#### Block Search Methods
+
+**Find all blocks for a specific recipient:**
+```java
+List<Block> recipientBlocks = api.findBlocksByRecipient("alice-smith");
+// Returns all blocks encrypted for "alice-smith" (case-sensitive exact match)
+// Empty list if no blocks found for recipient or username doesn't exist
+// Thread-safe search through entire blockchain
+```
+
+**Find blocks by metadata key-value pair:**
+```java
+List<Block> projectBlocks = api.findBlocksByMetadata("project_id", "PROJ-2024-001");
+// Returns blocks with metadata: "project_id" = "PROJ-2024-001"
+// Exact match only, case-sensitive
+// Works with any metadata key-value combination
+```
+
+**Find blocks containing specific metadata keys:**
+```java
+Set<String> searchKeys = Set.of("author", "version", "deadline");
+List<Block> blocksWithKeys = api.findBlocksByMetadataKeys(searchKeys);
+// Returns blocks containing ANY of the specified keys
+// Useful for finding blocks with specific metadata structure
+// Each block returned only once, even if it has multiple matching keys
+```
+
+#### Metadata Extraction Methods
+
+**Extract metadata from any block:**
+```java
+Block block = /* any block with metadata */;
+Map<String, String> metadata = api.getBlockMetadata(block);
+// Returns deserialized metadata as Map
+// Returns empty Map if no metadata
+// Thread-safe JSON deserialization
+// Handles null blocks gracefully
+```
+
+#### Complete Workflow Example
+
+```java
+// 1. Create users
+KeyPair aliceKeyPair = api.createUser("alice");
+KeyPair bobKeyPair = api.createUser("bob");
+
+// 2. Alice creates encrypted block for Bob with metadata
+Block confidentialBlock = api.createBlockWithOptions("Confidential project data", 
+    new BlockCreationOptions()
+        .withEncryption(true)
+        .withRecipient("bob")
+        .withCategory("CONFIDENTIAL")
+        .withMetadata("project", "SECRET-PROJECT")
+        .withMetadata("sender", "alice")
+        .withMetadata("priority", "urgent"));
+
+// 3. Find all blocks for Bob
+List<Block> bobsBlocks = api.findBlocksByRecipient("bob");
+logger.info("📦 Bob has {} encrypted blocks", bobsBlocks.size());
+
+// 4. Bob decrypts his blocks
+for (Block block : bobsBlocks) {
+    if (api.isRecipientEncrypted(block)) {
+        String content = api.decryptRecipientBlock(block, bobKeyPair.getPrivate());
+        Map<String, String> metadata = api.getBlockMetadata(block);
+        
+        logger.info("📝 Decrypted: {}", content);
+        logger.info("📋 From: {}, Priority: {}", 
+                   metadata.get("sender"), metadata.get("priority"));
+    }
+}
+
+// 5. Search blocks by metadata
+List<Block> urgentBlocks = api.findBlocksByMetadata("priority", "urgent");
+List<Block> projectBlocks = api.findBlocksByMetadataKeys(Set.of("project", "sender"));
 ```
 
 ### Performance Characteristics
