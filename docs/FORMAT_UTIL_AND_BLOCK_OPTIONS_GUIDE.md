@@ -203,7 +203,7 @@ The `createBlockWithOptions()` method now supports all 8 BlockCreationOptions fe
 | **Password** | Enable encryption | ✅ Concurrent-safe encryption operations |
 | **Encryption** | Force encryption mode | ✅ Thread-safe cryptographic operations |
 | **Username** | Set block username | ✅ Atomic username assignment |
-| **RecipientUsername** | Target recipient (future enhancement) | ⚠️ Planned for future implementation |
+| **RecipientUsername** | Target recipient for encryption | ✅ Public key encryption with recipient lookup |
 
 ### Thread-Safe Implementation
 

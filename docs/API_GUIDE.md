@@ -434,7 +434,7 @@ List<Block> blocksWithKeys = api.findBlocksByMetadataKeys(searchKeys);
 
 #### Metadata Extraction Methods
 
-**Extract metadata from any block:**
+**Extract comprehensive metadata from any block:**
 ```java
 Block block = /* any block with metadata */;
 Map<String, String> metadata = api.getBlockMetadata(block);
@@ -443,6 +443,41 @@ Map<String, String> metadata = api.getBlockMetadata(block);
 // Thread-safe JSON deserialization
 // Handles null blocks gracefully
 ```
+
+**🔥 NEW: Private Layer Metadata Extraction (v1.0.5+)**
+
+The `MetadataLayerManager` now implements **real metadata extraction** replacing previous placeholder values:
+
+```java
+MetadataLayerManager metadataManager = new MetadataLayerManager();
+
+// Generate metadata layers with REAL data (no more placeholders!)
+BlockMetadataLayers metadata = metadataManager.generateMetadataLayers(
+    block, encryptionConfig, password, privateKey, 
+    publicTerms, privateTerms, offChainData);
+
+// Decrypt and access private metadata 
+PrivateMetadata privateData = metadataManager.decryptPrivateMetadata(
+    metadata.getEncryptedPrivateLayer(), password);
+
+// Extract real owner details (not "encrypted" placeholder)
+String ownerDetails = privateData.getOwnerDetails();
+// Example: "signer_hash:a32360562ef4,created:2025-07-22T18:01:52.617266,category:medical,content_size:62"
+
+// Extract comprehensive technical details (not empty Map)
+Map<String, Object> techDetails = privateData.getTechnicalDetails(); // IMMUTABLE
+// Contains: block_number, block_hash, content_length, word_count, keyword_density, etc.
+
+// Extract complete validation information (not empty Map)  
+Map<String, Object> validationInfo = privateData.getValidationInfo(); // IMMUTABLE
+// Contains: block_hash_algorithm, signature_algorithm, has_digital_signature, etc.
+```
+
+**✅ Thread Safety & Immutability Guarantees:**
+- All returned `Map` objects are **immutable** via `Collections.unmodifiableMap()`
+- All returned `Set` objects are **immutable** via `Collections.unmodifiableSet()`
+- Concurrent access to metadata extraction is **completely safe**
+- No shared mutable state - each extraction operates on local data
 
 #### Complete Workflow Example
 

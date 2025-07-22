@@ -6,6 +6,7 @@ import java.util.Set;
 import java.util.Map;
 import java.util.HashSet;
 import java.util.HashMap;
+import java.util.Collections;
 
 /**
  * Content Analysis Helper Class
@@ -43,7 +44,7 @@ public class ContentAnalysis {
     // ===== GETTERS AND SETTERS =====
     
     public Set<String> getAllKeywords() {
-        return allKeywords;
+        return Collections.unmodifiableSet(allKeywords);
     }
     
     public void setAllKeywords(Set<String> allKeywords) {
@@ -67,7 +68,7 @@ public class ContentAnalysis {
     }
     
     public Set<String> getSensitiveTerms() {
-        return sensitiveTerms;
+        return Collections.unmodifiableSet(sensitiveTerms);
     }
     
     public void setSensitiveTerms(Set<String> sensitiveTerms) {
@@ -75,7 +76,7 @@ public class ContentAnalysis {
     }
     
     public Set<String> getNumericalValues() {
-        return numericalValues;
+        return Collections.unmodifiableSet(numericalValues);
     }
     
     public void setNumericalValues(Set<String> numericalValues) {
@@ -83,7 +84,7 @@ public class ContentAnalysis {
     }
     
     public Set<String> getDateReferences() {
-        return dateReferences;
+        return Collections.unmodifiableSet(dateReferences);
     }
     
     public void setDateReferences(Set<String> dateReferences) {
@@ -91,7 +92,7 @@ public class ContentAnalysis {
     }
     
     public Set<String> getIdentifiers() {
-        return identifiers;
+        return Collections.unmodifiableSet(identifiers);
     }
     
     public void setIdentifiers(Set<String> identifiers) {
@@ -99,7 +100,7 @@ public class ContentAnalysis {
     }
     
     public Set<String> getTechnicalTerms() {
-        return technicalTerms;
+        return Collections.unmodifiableSet(technicalTerms);
     }
     
     public void setTechnicalTerms(Set<String> technicalTerms) {
@@ -107,7 +108,7 @@ public class ContentAnalysis {
     }
     
     public Map<String, Object> getStructuralElements() {
-        return structuralElements;
+        return Collections.unmodifiableMap(structuralElements);
     }
     
     public void setStructuralElements(Map<String, Object> structuralElements) {
