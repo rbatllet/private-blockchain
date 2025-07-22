@@ -7316,4 +7316,356 @@ public class UserFriendlyEncryptionAPI {
             throw new RuntimeException("Failed to store searchable data with off-chain file: " + e.getMessage(), e);
         }
     }
+    
+    // ===== CLI INTEGRATION METHODS =====
+    
+    /**
+     * Find blocks within a date range
+     * Enhanced version for CLI with string date parsing support
+     * 
+     * @param fromDate Start date (yyyy-MM-dd format) or null for no start limit
+     * @param toDate End date (yyyy-MM-dd format) or null for no end limit  
+     * @return List of blocks within the date range
+     */
+    public List<Block> findBlocksByDateRange(String fromDate, String toDate) {
+        try {
+            java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd");
+            
+            java.time.LocalDate startDate = fromDate != null ? 
+                java.time.LocalDate.parse(fromDate, formatter) : java.time.LocalDate.MIN;
+            java.time.LocalDate endDate = toDate != null ? 
+                java.time.LocalDate.parse(toDate, formatter) : java.time.LocalDate.MAX;
+            
+            return blockchain.getBlocksByDateRange(startDate, endDate);
+            
+        } catch (java.time.format.DateTimeParseException e) {
+            logger.error("Invalid date format. Use yyyy-MM-dd format", e);
+            throw new IllegalArgumentException("Invalid date format. Use yyyy-MM-dd format: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Find blocks by content category
+     * 
+     * @param category The category to search for (case-insensitive)
+     * @return List of blocks with matching category
+     */
+    public List<Block> findBlocksByCategory(String category) {
+        if (category == null || category.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        String upperCategory = category.toUpperCase();
+        List<Block> results = new ArrayList<>();
+        
+        long blockCount = blockchain.getBlockCount();
+        for (long i = 1; i <= blockCount; i++) {
+            Block block = blockchain.getBlock(i);
+            if (block != null && block.getContentCategory() != null && 
+                block.getContentCategory().toUpperCase().contains(upperCategory)) {
+                results.add(block);
+            }
+        }
+        
+        logger.debug("Found {} blocks with category containing '{}'", results.size(), category);
+        return results;
+    }
+    
+    /**
+     * User search types for CLI integration
+     */
+    public enum UserSearchType {
+        CREATED_BY,    // Blocks created by the user
+        ACCESSIBLE,    // Blocks the user can decrypt
+        ENCRYPTED_FOR  // Blocks encrypted for the user
+    }
+    
+    /**
+     * Find blocks by user with different search criteria
+     * 
+     * @param username The username to search for
+     * @param searchType Type of search to perform
+     * @return List of blocks matching the criteria
+     */
+    public List<Block> findBlocksByUser(String username, UserSearchType searchType) {
+        if (username == null || username.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        List<Block> results = new ArrayList<>();
+        long blockCount = blockchain.getBlockCount();
+        
+        for (long i = 1; i <= blockCount; i++) {
+            Block block = blockchain.getBlock(i);
+            if (block == null) continue;
+            
+            switch (searchType) {
+                case CREATED_BY:
+                    // Find blocks signed by this user's key
+                    var authorizedKey = blockchain.getAuthorizedKeys().stream()
+                        .filter(key -> username.equals(key.getOwnerName()))
+                        .findFirst();
+                    
+                    if (authorizedKey.isPresent() && 
+                        authorizedKey.get().getPublicKey().equals(block.getSignerPublicKey())) {
+                        results.add(block);
+                    }
+                    break;
+                    
+                case ACCESSIBLE:
+                case ENCRYPTED_FOR:
+                    // For encrypted blocks, check if user has access
+                    if (block.getIsEncrypted() != null && block.getIsEncrypted()) {
+                        // This is a simplified check - in practice would need to verify decryption capability
+                        if (block.getEncryptionMetadata() != null && 
+                            block.getEncryptionMetadata().contains(username)) {
+                            results.add(block);
+                        }
+                    } else if (searchType == UserSearchType.ACCESSIBLE) {
+                        // Non-encrypted blocks are accessible to all
+                        results.add(block);
+                    }
+                    break;
+            }
+        }
+        
+        logger.debug("Found {} blocks for user '{}' with search type {}", results.size(), username, searchType);
+        return results;
+    }
+    
+    /**
+     * Get only encrypted blocks matching a search term
+     * 
+     * @param searchTerm The term to search for (empty string returns all encrypted blocks)
+     * @return List of encrypted blocks matching the search term
+     */
+    public List<Block> getEncryptedBlocksOnly(String searchTerm) {
+        List<Block> encryptedBlocks = new ArrayList<>();
+        long blockCount = blockchain.getBlockCount();
+        
+        for (long i = 1; i <= blockCount; i++) {
+            Block block = blockchain.getBlock(i);
+            if (block == null || block.getIsEncrypted() == null || !block.getIsEncrypted()) {
+                continue;
+            }
+            
+            if (searchTerm == null || searchTerm.trim().isEmpty()) {
+                // Return all encrypted blocks if no search term
+                encryptedBlocks.add(block);
+            } else {
+                // Check if search term appears in searchable metadata
+                boolean matches = false;
+                
+                if (block.getSearchableContent() != null && 
+                    block.getSearchableContent().toLowerCase().contains(searchTerm.toLowerCase())) {
+                    matches = true;
+                }
+                
+                if (block.getManualKeywords() != null && 
+                    block.getManualKeywords().toLowerCase().contains(searchTerm.toLowerCase())) {
+                    matches = true;
+                }
+                
+                if (matches) {
+                    encryptedBlocks.add(block);
+                }
+            }
+        }
+        
+        logger.debug("Found {} encrypted blocks matching '{}'", encryptedBlocks.size(), searchTerm);
+        return encryptedBlocks;
+    }
+    
+    /**
+     * Enhanced encryption analysis for CLI tools
+     */
+    public static class EncryptionAnalysis {
+        private final long totalBlocks;
+        private final long encryptedBlocks;
+        private final long unencryptedBlocks;
+        private final long offChainBlocks;
+        private final double encryptionRate;
+        private final java.time.LocalDateTime analysisTime;
+        private final Map<String, Long> categoryBreakdown;
+        
+        public EncryptionAnalysis(long totalBlocks, long encryptedBlocks, long unencryptedBlocks,
+                                long offChainBlocks, Map<String, Long> categoryBreakdown) {
+            this.totalBlocks = totalBlocks;
+            this.encryptedBlocks = encryptedBlocks;
+            this.unencryptedBlocks = unencryptedBlocks;
+            this.offChainBlocks = offChainBlocks;
+            this.encryptionRate = totalBlocks > 0 ? (double) encryptedBlocks / totalBlocks : 0.0;
+            this.analysisTime = java.time.LocalDateTime.now();
+            this.categoryBreakdown = new HashMap<>(categoryBreakdown);
+        }
+        
+        // Getters
+        public long getTotalBlocks() { return totalBlocks; }
+        public long getEncryptedBlocks() { return encryptedBlocks; }
+        public long getUnencryptedBlocks() { return unencryptedBlocks; }
+        public long getOffChainBlocks() { return offChainBlocks; }
+        public double getEncryptionRate() { return encryptionRate; }
+        public java.time.LocalDateTime getAnalysisTime() { return analysisTime; }
+        public Map<String, Long> getCategoryBreakdown() { return new HashMap<>(categoryBreakdown); }
+        
+        public String getSummary() {
+            StringBuilder sb = new StringBuilder();
+            sb.append("Encryption Analysis Summary\n");
+            sb.append("  Total blocks: ").append(totalBlocks).append("\n");
+            sb.append("  Encrypted: ").append(encryptedBlocks);
+            sb.append(" (").append(String.format("%.1f%%", encryptionRate * 100)).append(")\n");
+            sb.append("  Unencrypted: ").append(unencryptedBlocks).append("\n");
+            sb.append("  Off-chain: ").append(offChainBlocks).append("\n");
+            sb.append("  Analysis time: ").append(analysisTime).append("\n");
+            
+            if (!categoryBreakdown.isEmpty()) {
+                sb.append("\n  Category breakdown:\n");
+                categoryBreakdown.forEach((category, count) -> 
+                    sb.append("    ").append(category).append(": ").append(count).append("\n"));
+            }
+            
+            return sb.toString();
+        }
+    }
+    
+    /**
+     * Analyze encryption usage across the blockchain
+     * 
+     * @return Comprehensive encryption analysis
+     */
+    public EncryptionAnalysis analyzeEncryption() {
+        long blockCount = blockchain.getBlockCount();
+        long encrypted = 0;
+        long unencrypted = 0;
+        long offChain = 0;
+        Map<String, Long> categoryBreakdown = new HashMap<>();
+        
+        for (long i = 1; i <= blockCount; i++) {
+            Block block = blockchain.getBlock(i);
+            if (block == null) continue;
+            
+            if (block.getIsEncrypted() != null && block.getIsEncrypted()) {
+                encrypted++;
+            } else {
+                unencrypted++;
+            }
+            
+            if (block.hasOffChainData()) {
+                offChain++;
+            }
+            
+            String category = block.getContentCategory();
+            if (category != null && !category.trim().isEmpty()) {
+                categoryBreakdown.merge(category, 1L, Long::sum);
+            }
+        }
+        
+        logger.debug("Completed encryption analysis: {} total, {} encrypted, {} unencrypted", 
+                    blockCount, encrypted, unencrypted);
+        
+        return new EncryptionAnalysis(blockCount, encrypted, unencrypted, offChain, categoryBreakdown);
+    }
+    
+    /**
+     * Enhanced block creation with comprehensive options
+     */
+    public static class BlockCreationOptions {
+        private String username;
+        private String password;
+        private String identifier;
+        private String category;
+        private String[] keywords;
+        private boolean encrypt = false;
+        private boolean offChain = false;
+        private String recipientUsername;
+        private Map<String, String> metadata = new HashMap<>();
+        
+        // Builder pattern methods
+        public BlockCreationOptions withUsername(String username) {
+            this.username = username; return this;
+        }
+        
+        public BlockCreationOptions withPassword(String password) {
+            this.password = password; return this;
+        }
+        
+        public BlockCreationOptions withIdentifier(String identifier) {
+            this.identifier = identifier; return this;
+        }
+        
+        public BlockCreationOptions withCategory(String category) {
+            this.category = category; return this;
+        }
+        
+        public BlockCreationOptions withKeywords(String[] keywords) {
+            this.keywords = keywords; return this;
+        }
+        
+        public BlockCreationOptions withEncryption(boolean encrypt) {
+            this.encrypt = encrypt; return this;
+        }
+        
+        public BlockCreationOptions withOffChain(boolean offChain) {
+            this.offChain = offChain; return this;
+        }
+        
+        public BlockCreationOptions withRecipient(String recipientUsername) {
+            this.recipientUsername = recipientUsername; return this;
+        }
+        
+        public BlockCreationOptions withMetadata(String key, String value) {
+            this.metadata.put(key, value); return this;
+        }
+        
+        // Getters
+        public String getUsername() { return username; }
+        public String getPassword() { return password; }
+        public String getIdentifier() { return identifier; }
+        public String getCategory() { return category; }
+        public String[] getKeywords() { return keywords; }
+        public boolean isEncrypt() { return encrypt; }
+        public boolean isOffChain() { return offChain; }
+        public String getRecipientUsername() { return recipientUsername; }
+        public Map<String, String> getMetadata() { return new HashMap<>(metadata); }
+    }
+    
+    /**
+     * Create a block with comprehensive options for CLI integration
+     * 
+     * @param content The block content
+     * @param options Block creation options
+     * @return Created block
+     */
+    public Block createBlockWithOptions(String content, BlockCreationOptions options) {
+        try {
+            // Validate required parameters
+            if (content == null || content.trim().isEmpty()) {
+                throw new IllegalArgumentException("Block content cannot be empty");
+            }
+            
+            // Choose creation method based on options
+            if (options.isEncrypt() && options.getPassword() != null && !options.getPassword().trim().isEmpty()) {
+                if (options.getIdentifier() != null && !options.getIdentifier().trim().isEmpty()) {
+                    return storeDataWithIdentifier(content, options.getPassword(), options.getIdentifier());
+                } else {
+                    return storeSecret(content, options.getPassword());
+                }
+            } else {
+                // Create user if needed
+                String effectiveUsername = options.getUsername() != null ? 
+                    options.getUsername() : "cli-user-" + System.currentTimeMillis();
+                
+                KeyPair userKeyPair = createUser(effectiveUsername);
+                return blockchain.addBlockAndReturn(
+                    content, 
+                    userKeyPair.getPrivate(),
+                    userKeyPair.getPublic()
+                );
+            }
+            
+        } catch (Exception e) {
+            logger.error("Failed to create block with options", e);
+            throw new RuntimeException("Failed to create block: " + e.getMessage(), e);
+        }
+    }
 }
