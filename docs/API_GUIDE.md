@@ -11,6 +11,7 @@ Comprehensive guide to the Private Blockchain API, core functions, off-chain sto
 - [Core Functions Usage](#-core-functions-usage)
 - [API Reference](#-api-reference)
 - [Chain Validation Result](#-chain-validation-result)
+- [Enhanced Block Creation API](#-enhanced-block-creation-api)
 - [Granular Term Visibility API](#-granular-term-visibility-api)
 - [Off-Chain Storage API](#-off-chain-storage-api)
 - [EncryptionConfig Integration](#-encryptionconfig-integration)
@@ -131,6 +132,181 @@ metrics.recordValidationResult(
 - Use `toString()` for user-friendly status messages
 - Log detailed validation results for debugging
 - Consider automatic recovery procedures for common issues
+
+## 🚀 Enhanced Block Creation API
+
+The UserFriendlyEncryptionAPI provides an enhanced **thread-safe** `createBlockWithOptions()` method that supports all available BlockCreationOptions features for advanced block creation with metadata, encryption, and off-chain storage.
+
+### BlockCreationOptions Support
+
+**✅ All 8 Options Supported** with thread-safe implementation:
+
+| Option | Description | Implementation |
+|--------|-------------|----------------|
+| `category` | Block category (MEDICAL, FINANCIAL, etc.) | ✅ JPA transaction metadata update |
+| `keywords` | Searchable keywords array | ✅ Atomic keyword string creation |
+| `offChain` | Enable off-chain storage | ✅ Synchronized off-chain operations |
+| `offChainFilePath` | File path for off-chain data | ✅ Thread-safe file operations |
+| `password` | Encryption password | ✅ Concurrent-safe encryption |
+| `encryption` | Force encryption mode | ✅ Thread-safe crypto operations |
+| `username` | Block username | ✅ Atomic username assignment |
+| `recipientUsername` | Target recipient | ⚠️ Future enhancement |
+
+### Thread-Safe Implementation Details
+
+#### Metadata Operations
+```java
+// Thread-safe metadata updates using JPA transactions
+if (options.getCategory() != null || options.getKeywords() != null) {
+    // Synchronized transaction ensures thread safety
+    blockchain.updateBlockMetadata(result.getId(), 
+                                 options.getCategory(), 
+                                 keywordsString);
+}
+```
+
+#### Off-Chain Storage Priority
+```java
+// Off-chain operations take priority and are thread-safe
+if (options.isOffChain() && options.getOffChainFilePath() != null) {
+    // Thread-safe off-chain storage service
+    OffChainData offChainData = offChainStorage.storeData(
+        fileContent, options.getPassword(), // Optional encryption
+        userKeyPair.getPrivate(), CryptoUtil.publicKeyToString(userKeyPair.getPublic()),
+        contentType
+    );
+    
+    // Synchronized blockchain method with proper locking
+    return blockchain.addBlockWithOffChainData(
+        content, offChainData, options.getKeywords(),
+        options.getPassword(), userKeyPair.getPrivate(), userKeyPair.getPublic()
+    );
+}
+```
+
+### Usage Examples
+
+#### Basic Category and Keywords
+```java
+import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI.BlockCreationOptions;
+
+BlockCreationOptions options = new BlockCreationOptions()
+    .withCategory("MEDICAL")
+    .withKeywords(new String[]{"patient", "diagnosis", "cardiology"})
+    .withUsername("doctor");
+
+Block result = api.createBlockWithOptions("Patient medical record", options);
+
+// Result:
+// - Block with category "MEDICAL"
+// - Keywords: "patient diagnosis cardiology"
+// - Thread-safe metadata via JPA transaction
+```
+
+#### Encrypted Block with Metadata
+```java
+BlockCreationOptions options = new BlockCreationOptions()
+    .withPassword("SecurePass123!")
+    .withEncryption(true)
+    .withCategory("CONFIDENTIAL")
+    .withKeywords(new String[]{"classified", "project-alpha"});
+
+Block result = api.createBlockWithOptions("Top secret data", options);
+
+// Result:
+// - Encrypted block with password protection
+// - Category: "CONFIDENTIAL"
+// - Keywords: "classified project-alpha" (encrypted metadata)
+// - Thread-safe encryption and metadata operations
+```
+
+#### Off-Chain Storage with Encryption
+```java
+// Create file for off-chain storage
+Path documentFile = Files.createTempFile("report", ".pdf");
+Files.writeString(documentFile, "Large quarterly report content...");
+
+BlockCreationOptions options = new BlockCreationOptions()
+    .withOffChain(true)
+    .withOffChainFilePath(documentFile.toString())
+    .withPassword("FilePassword123!")
+    .withCategory("REPORT")
+    .withKeywords(new String[]{"quarterly", "financial"});
+
+Block result = api.createBlockWithOptions("Q4 Report metadata", options);
+
+// Result:
+// - Large file stored off-chain with AES encryption
+// - Category automatically set to "OFF_CHAIN_LINKED"
+// - MIME type detected automatically (application/pdf)
+// - Thread-safe file operations and blockchain updates
+```
+
+#### Unencrypted Off-Chain Storage
+```java
+BlockCreationOptions options = new BlockCreationOptions()
+    .withOffChain(true)
+    .withOffChainFilePath("/path/to/public-document.txt")
+    .withCategory("PUBLIC_DOCUMENT")
+    .withKeywords(new String[]{"announcement", "policy"})
+    .withUsername("publisher");
+
+Block result = api.createBlockWithOptions("Public announcement", options);
+
+// Result:
+// - File stored off-chain without encryption
+// - Public metadata preserved
+// - Thread-safe operations maintained
+```
+
+### Error Handling and Edge Cases
+
+#### Graceful Null Handling
+```java
+BlockCreationOptions options = new BlockCreationOptions()
+    .withCategory("TEST")
+    .withKeywords(null)  // Handled gracefully
+    .withUsername("tester");
+
+Block result = api.createBlockWithOptions("Test content", options);
+// Result: Creates block with category but no keywords
+```
+
+#### Validation and Error Responses
+```java
+try {
+    BlockCreationOptions options = new BlockCreationOptions()
+        .withOffChain(true)
+        .withOffChainFilePath("/nonexistent/file.txt");
+    
+    Block result = api.createBlockWithOptions("Test", options);
+} catch (RuntimeException e) {
+    // Handles invalid file paths gracefully
+    System.err.println("File operation failed: " + e.getMessage());
+}
+```
+
+### Performance Characteristics
+
+- **Concurrent Safety**: All operations use proper synchronization
+- **Transaction Integrity**: JPA transactions ensure atomicity
+- **File Operations**: Thread-safe off-chain storage with proper locking
+- **Memory Efficiency**: Minimal memory overhead for metadata operations
+- **Error Recovery**: Graceful handling of edge cases and failures
+
+### Integration with Existing APIs
+
+The enhanced `createBlockWithOptions()` integrates seamlessly with existing blockchain functionality:
+
+```java
+// Works with all existing validation and query methods
+ChainValidationResult validation = blockchain.validateChainDetailed();
+List<Block> categoryBlocks = blockchain.searchBlocksByCategory("MEDICAL");
+List<Block> keywordBlocks = blockchain.searchBlocksByKeywords("patient");
+
+// Off-chain data automatically handled in validation
+boolean offChainIntegrity = blockchain.verifyOffChainIntegrity(result);
+```
 
 ## 🔐 Granular Term Visibility API
 

@@ -199,4 +199,13 @@ public class FormatUtil {
             lastBlockTime != null ? formatTimestamp(lastBlockTime) : "N/A"));
         return sb.toString();
     }
+    
+    /**
+     * Create a separator line of a specified length
+     * @param length The length of the separator
+     * @return A string of equals signs
+     */
+    public static String createSeparator(int length) {
+        return "=".repeat(length);
+    }
 }
