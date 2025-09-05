@@ -65,6 +65,7 @@ This is a **private blockchain** for controlled environments where only authoriz
   - **Searchable Off-Chain**: storeSearchableDataWithOffChainFile() with keyword indexing
 - **Data Size Management**: Intelligent data placement based on configurable size thresholds
 - **Integrity Verification**: Cryptographic verification of off-chain data with hash and signature validation
+- **Enhanced Integrity Reporting**: **NEW v2.0** - Thread-safe `OffChainIntegrityReport` with comprehensive validation, resource protection, and intelligent recommendations
 - **Detailed Validation**: Enhanced `validateChainDetailed()` with comprehensive off-chain data analysis
 - **Real-time Monitoring**: Live validation results with detailed file status, integrity checks, and storage metrics
 - **Data Consistency**: Complete synchronization between database and file system operations
@@ -107,6 +108,7 @@ This is a **private blockchain** for controlled environments where only authoriz
 - **🔍 Advanced Search**: Multi-level search (fast/balanced/exhaustive) with encrypted content support
 - **🔑 Smart Key Management**: Hierarchical key system with automatic rotation and secure storage
 - **📊 Health Monitoring**: Real-time validation, integrity checks, and performance diagnostics
+- **🛡️ Robust Integrity Reports**: Thread-safe reporting with overflow protection, input validation, and context-aware recommendations
 - **🛡️ Security Features**: Password generation, term visibility control, and audit trails
 - **💾 Storage Tiering**: Intelligent data placement with compression and optimization
 - **🔧 Chain Recovery**: Automated corruption detection and recovery mechanisms
@@ -120,6 +122,45 @@ This is a **private blockchain** for controlled environments where only authoriz
 - **Production Ready**: Complete documentation and deployment guides with performance optimization
 - **Clean Architecture**: Well-structured code with DAO pattern and enterprise logging
 - **Scalable Storage**: Support for data up to 100MB per block through off-chain storage
+
+## 🛡️ OffChainIntegrityReport v2.0 - Enhanced Robustness
+
+**NEW in v2.0**: The `OffChainIntegrityReport` class has been completely rewritten for enterprise-grade reliability and performance:
+
+### 🚀 Key Improvements
+- **🧵 Thread Safety**: Full concurrent access support with `ReentrantReadWriteLock` and atomic operations
+- **✅ Input Validation**: Comprehensive parameter validation with descriptive error messages and security limits
+- **🛡️ Resource Protection**: Memory limits, overflow protection, and DoS attack prevention
+- **🤖 Smart Recommendations**: Context-aware AI-driven suggestions based on data health and performance
+- **📊 Enhanced Statistics**: Thread-safe counters with overflow detection and performance metrics
+- **🔍 Structured Logging**: Professional SLF4J logging with appropriate levels for monitoring
+
+### 🎯 Production Features
+- **Memory Safety**: Collection size limits (100K results), string length validation, metadata limits
+- **Error Handling**: Graceful degradation, exception chaining, and comprehensive error recovery
+- **Performance**: Read-optimized data structures, lazy loading, efficient concurrent operations  
+- **Security**: Input sanitization, resource limits, thread-safe operations, defensive copying
+
+### 📋 Usage Example
+```java
+// Thread-safe creation with validation
+OffChainIntegrityReport report = new OffChainIntegrityReport("REPORT_ID");
+
+// Add validated check results
+IntegrityCheckResult result = new IntegrityCheckResult(
+    "data_001", "HASH_VERIFICATION", IntegrityStatus.HEALTHY,
+    "Verification successful", Duration.ofMillis(100)
+).addMetadata("bytesChecked", 2048L);
+
+report.addCheckResult(result); // Thread-safe
+report.generateRecommendations(); // AI-driven suggestions
+System.out.println(report.getFormattedSummary()); // Rich output
+```
+
+**📚 Documentation**: 
+- **Quick Start**: [OFFCHAIN_INTEGRITY_REPORT_QUICK_START.md](docs/OFFCHAIN_INTEGRITY_REPORT_QUICK_START.md)
+- **Complete Guide**: [OFFCHAIN_INTEGRITY_REPORT_ROBUSTNESS_IMPROVEMENTS.md](docs/OFFCHAIN_INTEGRITY_REPORT_ROBUSTNESS_IMPROVEMENTS.md)
+- **Test Coverage**: 10 comprehensive tests covering thread safety, validation, and robustness
 
 ## 🛠️ Technologies Used
 
@@ -378,8 +419,10 @@ ChainRecoveryResult recovery = api.recoverFromCorruption(options);
 // Safe rollback with data preservation
 ChainRecoveryResult rollback = api.rollbackToSafeState(targetBlock, options);
 
-// Integrity verification and repair
+// Enhanced integrity verification and repair (v2.0)
 OffChainIntegrityReport integrity = api.verifyOffChainIntegrity(blockNumbers);
+integrity.generateRecommendations(); // AI-driven recommendations
+System.out.println(integrity.getFormattedSummary()); // Rich formatted output
 ```
 
 ### 📊 Testing & Quality Assurance
@@ -755,6 +798,7 @@ mvn test -Dtest=DataIntegrityThreadSafetyTest
 
 #### Off-Chain Storage Demos
 - **`TestOffChainValidation.java`** - ✨ **ENHANCED**: Comprehensive off-chain data validation tests
+- **`OffChainIntegrityReportTest.java`** - ✨ **NEW v2.0**: Thread-safe integrity reporting with 10 comprehensive tests
 - **`TestDataConsistency.java`** - ✨ **ENHANCED**: Data consistency validation with detailed output
 - **`TestExportImport.java`** - ✨ **ENHANCED**: Export/import operations with validation analysis
 
@@ -1376,6 +1420,7 @@ This project includes comprehensive documentation for different use cases:
 - **[ENCRYPTION_GUIDE.md](docs/ENCRYPTION_GUIDE.md)** - Block encryption and metadata layer management
 - **[ENCRYPTED_EXPORT_IMPORT_GUIDE.md](docs/ENCRYPTED_EXPORT_IMPORT_GUIDE.md)** - Encrypted chain export/import procedures
 - **[ENHANCED_VALIDATION_GUIDE.md](docs/ENHANCED_VALIDATION_GUIDE.md)** - Advanced chain validation techniques
+- **[OFFCHAIN_INTEGRITY_REPORT_ROBUSTNESS_IMPROVEMENTS.md](docs/OFFCHAIN_INTEGRITY_REPORT_ROBUSTNESS_IMPROVEMENTS.md)** - 🆕 **v2.0** Thread-safe integrity reporting with comprehensive validation and robustness improvements
 
 ### 🏢 Technical & Production
 - **[TROUBLESHOOTING_GUIDE.md](docs/TROUBLESHOOTING_GUIDE.md)** - Common issues and solutions with diagnostic tools
@@ -1394,6 +1439,8 @@ This project includes comprehensive documentation for different use cases:
 | Learn the complete API and core functions | [API_GUIDE.md](docs/API_GUIDE.md) |
 | Implement UserFriendlyAPI search functionality | [USER_FRIENDLY_SEARCH_GUIDE.md](docs/USER_FRIENDLY_SEARCH_GUIDE.md) |
 | Use Search Framework Engine | [SEARCH_FRAMEWORK_GUIDE.md](docs/SEARCH_FRAMEWORK_GUIDE.md) |
+| **Implement robust integrity reporting** | **[OFFCHAIN_INTEGRITY_REPORT_ROBUSTNESS_IMPROVEMENTS.md](docs/OFFCHAIN_INTEGRITY_REPORT_ROBUSTNESS_IMPROVEMENTS.md)** |
+| **Quick start with integrity reports** | **[OFFCHAIN_INTEGRITY_REPORT_QUICK_START.md](docs/OFFCHAIN_INTEGRITY_REPORT_QUICK_START.md)** |
 | Manage keys and security | [KEY_MANAGEMENT_GUIDE.md](docs/KEY_MANAGEMENT_GUIDE.md) |
 | Follow security best practices | [SECURITY_GUIDE.md](docs/SECURITY_GUIDE.md) |
 | Troubleshoot common issues | [TROUBLESHOOTING_GUIDE.md](docs/TROUBLESHOOTING_GUIDE.md) |
