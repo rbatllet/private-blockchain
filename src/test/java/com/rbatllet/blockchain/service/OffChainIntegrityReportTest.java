@@ -579,6 +579,31 @@ public class OffChainIntegrityReportTest {
             "Should reject null metadata key"
         );
 
+        // Now test the report with valid and invalid data
+        report.addCheckResult(result);
+        assertEquals(
+            1,
+            report.getCheckResultsCount(),
+            "Report should have 1 check result"
+        );
+
+        // Test adding results with invalid data to the report
+        assertThrows(
+            NullPointerException.class,
+            () -> report.addCheckResult(null),
+            "Should reject null check result"
+        );
+
+        // Verify report state is still valid
+        assertTrue(
+            report.validateInternalState(),
+            "Report should maintain valid state"
+        );
+        assertNotNull(
+            report.getFormattedSummary(),
+            "Report should generate formatted output"
+        );
+
         logger.info("✅ Validation and limits test completed");
     }
 
@@ -595,12 +620,57 @@ public class OffChainIntegrityReportTest {
             "EQUALS_TEST"
         );
 
+        // Validate that report timestamps are within expected range
+        LocalDateTime after = LocalDateTime.now();
+        assertTrue(
+            !report1.getReportTimestamp().isBefore(now),
+            "Report1 timestamp should not be before capture time"
+        );
+        assertTrue(
+            !report1.getReportTimestamp().isAfter(after),
+            "Report1 timestamp should not be after creation time"
+        );
+        assertTrue(
+            !report2.getReportTimestamp().isBefore(now),
+            "Report2 timestamp should not be before capture time"
+        );
+        assertTrue(
+            !report2.getReportTimestamp().isAfter(after),
+            "Report2 timestamp should not be after creation time"
+        );
+
         // Test reflexivity
         assertEquals(report1, report1, "Report should equal itself");
         assertEquals(
             report1.hashCode(),
             report1.hashCode(),
             "HashCode should be consistent"
+        );
+
+        // Test that reports with same ID but different timestamps are NOT equal
+        assertNotEquals(
+            report1,
+            report2,
+            "Reports with same ID but different timestamps should not be equal"
+        );
+        assertNotEquals(report2, report1, "Inequality should be symmetric");
+
+        // Test that hashCodes are different for different timestamps
+        assertNotEquals(
+            report1.hashCode(),
+            report2.hashCode(),
+            "Reports with different timestamps should have different hashCodes"
+        );
+
+        // Verify report2 has valid properties
+        assertEquals(
+            "EQUALS_TEST",
+            report2.getReportId(),
+            "Report2 should have correct ID"
+        );
+        assertNotNull(
+            report2.getReportTimestamp(),
+            "Report2 should have valid timestamp"
         );
 
         // Test with different IDs

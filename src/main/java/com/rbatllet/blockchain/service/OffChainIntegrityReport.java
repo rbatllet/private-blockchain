@@ -830,9 +830,65 @@ public class OffChainIntegrityReport {
 
             boolean isValid = expectedTotal == actualTotal;
 
-            if (!isValid) {
+            // Validate individual status counts
+            if (isValid) {
+                long expectedHealthy = statistics.getHealthyCount();
+                long actualHealthy = actualCounts.getOrDefault(
+                    IntegrityStatus.HEALTHY,
+                    0L
+                );
+
+                long expectedWarning = statistics.getWarningCount();
+                long actualWarning = actualCounts.getOrDefault(
+                    IntegrityStatus.WARNING,
+                    0L
+                );
+
+                long expectedCorrupted = statistics.getCorruptedCount();
+                long actualCorrupted = actualCounts.getOrDefault(
+                    IntegrityStatus.CORRUPTED,
+                    0L
+                );
+
+                long expectedMissing = statistics.getMissingCount();
+                long actualMissing = actualCounts.getOrDefault(
+                    IntegrityStatus.MISSING,
+                    0L
+                );
+
+                long expectedUnknown = statistics.getUnknownCount();
+                long actualUnknown = actualCounts.getOrDefault(
+                    IntegrityStatus.UNKNOWN,
+                    0L
+                );
+
+                isValid =
+                    expectedHealthy == actualHealthy &&
+                    expectedWarning == actualWarning &&
+                    expectedCorrupted == actualCorrupted &&
+                    expectedMissing == actualMissing &&
+                    expectedUnknown == actualUnknown;
+
+                if (!isValid) {
+                    logger.warn(
+                        "Status counts validation failed - Expected: H={}, W={}, C={}, M={}, U={} | Actual: H={}, W={}, C={}, M={}, U={}",
+                        expectedHealthy,
+                        expectedWarning,
+                        expectedCorrupted,
+                        expectedMissing,
+                        expectedUnknown,
+                        actualHealthy,
+                        actualWarning,
+                        actualCorrupted,
+                        actualMissing,
+                        actualUnknown
+                    );
+                }
+            }
+
+            if (!isValid && expectedTotal != actualTotal) {
                 logger.warn(
-                    "Internal state validation failed: expected {} checks, found {}",
+                    "Total counts validation failed: expected {} checks, found {}",
                     expectedTotal,
                     actualTotal
                 );

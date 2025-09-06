@@ -12,7 +12,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
-import org.junit.jupiter.params.provider.ValueSource;
 
 @DisplayName("RecoveryCheckpoint Test Suite")
 class RecoveryCheckpointTest {
@@ -261,11 +260,32 @@ class RecoveryCheckpointTest {
             LocalDateTime afterCreation = LocalDateTime.now();
 
             long age = newCheckpoint.getAgeInHours();
+            LocalDateTime checkpointCreatedAt = newCheckpoint.getCreatedAt();
+
+            // Validate that creation time is within expected bounds
+            assertTrue(
+                !checkpointCreatedAt.isBefore(beforeCreation),
+                "Checkpoint creation time should not be before beforeCreation"
+            );
+            assertTrue(
+                !checkpointCreatedAt.isAfter(afterCreation),
+                "Checkpoint creation time should not be after afterCreation"
+            );
+
+            // Calculate expected age based on our time measurements
+            long expectedMaxAgeHours = java.time.Duration.between(
+                beforeCreation,
+                LocalDateTime.now()
+            ).toHours();
 
             // Age should be 0 or very small for a just-created checkpoint
             assertTrue(
-                age <= 1,
-                "Newly created checkpoint should have age <= 1 hour"
+                age <= Math.max(1L, expectedMaxAgeHours),
+                String.format(
+                    "Newly created checkpoint age (%d hours) should be <= max expected age (%d hours)",
+                    age,
+                    Math.max(1L, expectedMaxAgeHours)
+                )
             );
         }
     }
@@ -724,8 +744,11 @@ class RecoveryCheckpointTest {
         @Test
         @DisplayName("equals() should return false for different class")
         void equalsShouldReturnFalseForDifferentClass() {
-            assertFalse(checkpoint.equals("not a checkpoint"));
-            assertFalse(checkpoint.equals(42));
+            // Test with different object types - should return false
+            Object stringObject = "not a checkpoint";
+            Object integerObject = Integer.valueOf(42);
+            assertFalse(checkpoint.equals(stringObject));
+            assertFalse(checkpoint.equals(integerObject));
         }
 
         @Test

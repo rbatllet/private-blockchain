@@ -6,7 +6,6 @@ import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI.EncryptionAnalysis;
-import com.rbatllet.blockchain.util.CryptoUtil;
 import java.security.KeyPair;
 import java.time.LocalDateTime;
 import java.util.HashMap;

@@ -6,7 +6,6 @@ import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI.UserSearchType;
-import com.rbatllet.blockchain.util.CryptoUtil;
 import java.security.KeyPair;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -467,5 +466,218 @@ public class UserSearchTypeTest {
         }
 
         logger.info("Consistency test passed");
+    }
+
+    @Test
+    @Order(15)
+    @DisplayName("Test findBlocksByUser CREATED_BY with multiple users")
+    void testFindBlocksByUserCreatedByMultipleUsers() throws Exception {
+        // Create blocks with test-user
+        Block block1 = createEncryptedBlock(
+            "Content by test-user",
+            testPassword
+        );
+        Block block2 = createPublicBlock("Public content by test-user");
+
+        // Create blocks with other-user
+        api.setDefaultCredentials("other-user", otherUserKeys);
+        Block block3 = blockchain.addEncryptedBlock(
+            "Content by other-user",
+            testPassword,
+            otherUserKeys.getPrivate(),
+            otherUserKeys.getPublic()
+        );
+        Block block4 = blockchain.addBlockAndReturn(
+            "Public content by other-user",
+            otherUserKeys.getPrivate(),
+            otherUserKeys.getPublic()
+        );
+
+        // Search for blocks created by test-user
+        List<Block> testUserBlocks = api.findBlocksByUser(
+            "test-user",
+            UserSearchType.CREATED_BY
+        );
+        assertNotNull(testUserBlocks, "Result should not be null");
+        assertEquals(
+            2,
+            testUserBlocks.size(),
+            "Should find 2 blocks for test-user"
+        );
+
+        // Search for blocks created by other-user
+        List<Block> otherUserBlocks = api.findBlocksByUser(
+            "other-user",
+            UserSearchType.CREATED_BY
+        );
+        assertNotNull(otherUserBlocks, "Result should not be null");
+        assertEquals(
+            2,
+            otherUserBlocks.size(),
+            "Should find 2 blocks for other-user"
+        );
+
+        // Verify test-user blocks are found in test-user results
+        boolean hasBlock1 = testUserBlocks
+            .stream()
+            .anyMatch(b -> b.getBlockNumber().equals(block1.getBlockNumber()));
+        assertTrue(hasBlock1, "test-user results should contain block1");
+
+        boolean hasBlock2 = testUserBlocks
+            .stream()
+            .anyMatch(b -> b.getBlockNumber().equals(block2.getBlockNumber()));
+        assertTrue(hasBlock2, "test-user results should contain block2");
+
+        // Verify user separation - test-user blocks should not contain other-user blocks
+        boolean hasOtherUserBlock = testUserBlocks
+            .stream()
+            .anyMatch(
+                b ->
+                    b.getBlockNumber().equals(block3.getBlockNumber()) ||
+                    b.getBlockNumber().equals(block4.getBlockNumber())
+            );
+        assertFalse(
+            hasOtherUserBlock,
+            "test-user results should not contain other-user blocks"
+        );
+
+        logger.info("Multi-user CREATED_BY test passed");
+    }
+
+    @Test
+    @Order(16)
+    @DisplayName("Test findBlocksByUser ACCESSIBLE with user separation")
+    void testFindBlocksByUserAccessibleSeparation() throws Exception {
+        // Create encrypted block for test-user only
+        Block testUserBlock = createEncryptedBlock(
+            "Secret for test-user",
+            testPassword
+        );
+
+        // Create encrypted block for other-user only
+        api.setDefaultCredentials("other-user", otherUserKeys);
+        Block otherUserBlock = blockchain.addEncryptedBlock(
+            "Secret for other-user",
+            "DifferentPassword123!",
+            otherUserKeys.getPrivate(),
+            otherUserKeys.getPublic()
+        );
+
+        // test-user should only access their own blocks
+        api.setDefaultCredentials("test-user", testUserKeys);
+        List<Block> testUserAccessible = api.findBlocksByUser(
+            "test-user",
+            UserSearchType.ACCESSIBLE
+        );
+        assertNotNull(testUserAccessible, "Result should not be null");
+
+        // Verify test-user cannot access other-user's block
+        boolean canAccessOtherBlock = testUserAccessible
+            .stream()
+            .anyMatch(b ->
+                b.getBlockNumber().equals(otherUserBlock.getBlockNumber())
+            );
+        assertFalse(
+            canAccessOtherBlock,
+            "test-user should not access other-user's encrypted blocks"
+        );
+
+        // other-user should only access their own blocks
+        api.setDefaultCredentials("other-user", otherUserKeys);
+        List<Block> otherUserAccessible = api.findBlocksByUser(
+            "other-user",
+            UserSearchType.ACCESSIBLE
+        );
+        assertNotNull(otherUserAccessible, "Result should not be null");
+
+        // Verify other-user cannot access test-user's block
+        boolean canAccessTestBlock = otherUserAccessible
+            .stream()
+            .anyMatch(b ->
+                b.getBlockNumber().equals(testUserBlock.getBlockNumber())
+            );
+        assertFalse(
+            canAccessTestBlock,
+            "other-user should not access test-user's encrypted blocks"
+        );
+
+        logger.info("User separation ACCESSIBLE test passed");
+    }
+
+    @Test
+    @Order(17)
+    @DisplayName("Test findBlocksByUser ENCRYPTED_FOR with multiple users")
+    void testFindBlocksByUserEncryptedForMultipleUsers() throws Exception {
+        // Create blocks encrypted for test-user
+        Block testBlock = createEncryptedBlock(
+            "Encrypted for test-user",
+            testPassword
+        );
+
+        // Create block encrypted for other-user
+        api.setDefaultCredentials("other-user", otherUserKeys);
+        Block otherBlock = blockchain.addEncryptedBlock(
+            "Encrypted for other-user",
+            "OtherPassword123!",
+            otherUserKeys.getPrivate(),
+            otherUserKeys.getPublic()
+        );
+
+        // Search for blocks encrypted for test-user
+        List<Block> testUserEncrypted = api.findBlocksByUser(
+            "test-user",
+            UserSearchType.ENCRYPTED_FOR
+        );
+        assertNotNull(testUserEncrypted, "Result should not be null");
+
+        // Should find test-user's encrypted block
+        boolean foundTestBlock = testUserEncrypted
+            .stream()
+            .anyMatch(b ->
+                b.getBlockNumber().equals(testBlock.getBlockNumber())
+            );
+        assertTrue(foundTestBlock, "Should find block encrypted for test-user");
+
+        // Should not find other-user's encrypted block
+        boolean foundOtherBlock = testUserEncrypted
+            .stream()
+            .anyMatch(b ->
+                b.getBlockNumber().equals(otherBlock.getBlockNumber())
+            );
+        assertFalse(
+            foundOtherBlock,
+            "Should not find block encrypted for other-user"
+        );
+
+        // Search for blocks encrypted for other-user
+        List<Block> otherUserEncrypted = api.findBlocksByUser(
+            "other-user",
+            UserSearchType.ENCRYPTED_FOR
+        );
+        assertNotNull(otherUserEncrypted, "Result should not be null");
+
+        // Should find other-user's encrypted block
+        boolean foundOtherUserBlock = otherUserEncrypted
+            .stream()
+            .anyMatch(b ->
+                b.getBlockNumber().equals(otherBlock.getBlockNumber())
+            );
+        assertTrue(
+            foundOtherUserBlock,
+            "Should find block encrypted for other-user"
+        );
+
+        // Should not find test-user's encrypted block
+        boolean foundTestUserBlock = otherUserEncrypted
+            .stream()
+            .anyMatch(b ->
+                b.getBlockNumber().equals(testBlock.getBlockNumber())
+            );
+        assertFalse(
+            foundTestUserBlock,
+            "Should not find block encrypted for test-user"
+        );
+
+        logger.info("Multi-user ENCRYPTED_FOR test passed");
     }
 }
