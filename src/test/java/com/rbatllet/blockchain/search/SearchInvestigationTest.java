@@ -38,15 +38,15 @@ public class SearchInvestigationTest {
     void testSearchInvestigation() throws Exception {
         System.out.println("=== SMART SEARCH INVESTIGATION ===");
         
-        // 1. Store data with both methods and compare
+        // 1. CRITICAL FIX: Initialize Search Framework BEFORE storing data
+        blockchain.initializeAdvancedSearch(testPassword);
+        System.out.println("✅ Search Framework initialized");
+        
+        // 2. Store data with SearchSpecialistAPI properly initialized
         String[] keywords = {"financial", "test", "investigation"};
         Block storedBlock = api.storeSearchableData("Test financial data for investigation", testPassword, keywords);
         
         System.out.println("✅ Stored block #" + storedBlock.getBlockNumber() + " with keywords: " + String.join(", ", keywords));
-        
-        // 2. Initialize Search Framework
-        blockchain.initializeAdvancedSearch(testPassword);
-        System.out.println("✅ Search Framework initialized");
         
         // 3. Test both search methods with identical parameters
         System.out.println("\n🔍 Comparing search methods:");
@@ -141,11 +141,12 @@ public class SearchInvestigationTest {
     void testMinimalSmartSearchReproduction() throws Exception {
         System.out.println("\n=== MINIMAL REPRODUCTION TEST ===");
         
-        // Simplest possible case
+        // CRITICAL FIX: Initialize SearchSpecialistAPI BEFORE storing data
+        blockchain.initializeAdvancedSearch(testPassword);
+        
+        // Now store data with SearchSpecialistAPI properly initialized
         String[] simpleKeywords = {"test"};
         api.storeSearchableData("Simple test data", testPassword, simpleKeywords);
-        
-        blockchain.initializeAdvancedSearch(testPassword);
         
         // Test both methods on identical simple data
         List<Block> smartResults = api.smartSearchWithPassword("test", testPassword);

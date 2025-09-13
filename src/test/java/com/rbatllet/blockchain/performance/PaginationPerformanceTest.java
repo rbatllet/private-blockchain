@@ -35,6 +35,14 @@ public class PaginationPerformanceTest {
         // Set up default credentials
         api.setDefaultCredentials("TestUser", keyPair);
         
+        // Initialize SearchSpecialistAPI before creating test data
+        try {
+            blockchain.initializeAdvancedSearch(password);
+            blockchain.getSearchSpecialistAPI().initializeWithBlockchain(blockchain, password, keyPair.getPrivate());
+        } catch (Exception e) {
+            logger.error("⚠️ SearchSpecialistAPI initialization failed", e);
+        }
+        
         // Create just a few test blocks
         createTestBlocks(10);
     }

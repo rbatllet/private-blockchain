@@ -69,10 +69,13 @@ The Search Framework Engine automatically selects the optimal strategy:
 // Initialize the API
 SearchSpecialistAPI searchAPI = new SearchSpecialistAPI();
 
-// Simple public search
-List<EnhancedSearchResult> results = searchAPI.searchSimple("medical records");
+// Fast public-only search (sub-50ms)
+List<EnhancedSearchResult> publicResults = searchAPI.searchPublic("medical records");
 
-// Authenticated search with password
+// Hybrid search (public + private with default password)  
+List<EnhancedSearchResult> hybridResults = searchAPI.searchSimple("patient data");
+
+// Encrypted-only search with explicit password
 List<EnhancedSearchResult> privateResults = searchAPI.searchSecure(
     "patient diagnosis", "myPassword123", 50);
 
@@ -169,15 +172,18 @@ String blockId = blockchain.addBlockWithVisibility(
 ### Searching with Visibility Awareness
 
 ```java
-// Public search returns only public terms
-List<EnhancedSearchResult> publicResults = searchAPI.searchSimple("medical");
-// Will find blocks but won't expose private terms
+// Public-only search returns only public content
+List<EnhancedSearchResult> publicResults = searchAPI.searchPublic("medical");
+// Will find only public blocks - private content completely ignored
 
-// Authenticated search returns all matching terms
-Map<String, String> passwords = Map.of("block123", "password123");
+// Hybrid search uses default credentials to access both public and private content  
+List<EnhancedSearchResult> hybridResults = searchAPI.searchSimple("patient");
+// Will find both public and private content using default password
+
+// Encrypted-only search returns only private/encrypted content
 List<EnhancedSearchResult> authResults = searchAPI.searchSecure(
-    "patient-id", passwords, 50);
-// Will find blocks and expose private terms after authentication
+    "patient-id", "password123", 50);
+// Will find only encrypted blocks with the provided password
 ```
 
 ## 🏥 Specialized Domain Searches
@@ -321,7 +327,7 @@ public class MedicalResearchPlatform {
         
         // 1. Quick public search for general studies
         List<EnhancedSearchResult> publicStudies = 
-            searchAPI.searchSimple(condition + " study");
+            searchAPI.searchPublic(condition + " study");
             
         // 2. Authenticated search for detailed data
         List<EnhancedSearchResult> detailedStudies = 
@@ -397,13 +403,19 @@ public class MonitoringDashboard {
 
 ### 1. **Choose the Right Search Strategy**
 ```java
-// For quick discovery
+// For fast public-only discovery (<50ms)
+searchAPI.searchPublic("keyword");
+
+// For convenient hybrid search (public + private with default credentials)
 searchAPI.searchSimple("keyword");
 
-// For sensitive data
+// For encrypted-only sensitive data
 searchAPI.searchSecure("confidential", password, limit);
 
-// For comprehensive analysis
+// For comprehensive analysis with auto-strategy
+searchAPI.searchIntelligent("complex query", password, limit);
+
+// For expert-level control
 searchAPI.searchAdvanced("detailed search", password, config, maxResults);
 ```
 
@@ -451,6 +463,8 @@ try {
 ## 🔗 Related Documentation
 
 - [API Guide](API_GUIDE.md) - Complete API reference
+- [Atomic Protection & Multi-Instance Coordination](ATOMIC_PROTECTION_MULTI_INSTANCE_GUIDE.md) - Thread-safe multi-instance operations
+- [IndexingCoordinator Examples](INDEXING_COORDINATOR_EXAMPLES.md) - Practical examples for indexing coordination and loop prevention
 - [Granular Term Visibility Demo](../scripts/run_granular_term_visibility_demo.zsh) - Interactive demonstration
 - [Search Comparison](SEARCH_COMPARISON.md) - Performance benchmarks
 - [Technical Details](TECHNICAL_DETAILS.md) - Implementation details
@@ -461,18 +475,22 @@ try {
 
 | Method | Speed | Privacy | Use Case |
 |--------|-------|---------|----------|
-| `searchSimple()` | ⚡ Fast | Public only | Discovery |
-| `searchSecure()` | 🔒 Moderate | Authenticated | Sensitive data |
-| `searchIntelligent()` | 🧠 Adaptive | Auto-detect | General purpose |
-| `searchAdvanced()` | 🔍 Comprehensive | Complete | Expert control |
+| `searchPublic()` | ⚡ Ultra-Fast (<50ms) | Public only | Fast discovery, anonymous access |
+| `searchSimple()` | ⚡ Fast | Public + Private (default) | Convenient hybrid search |
+| `searchSecure()` | 🔒 Moderate | Encrypted only | Sensitive data with explicit password |
+| `searchIntelligent()` | 🧠 Adaptive | Auto-detect | General purpose with smart routing |
+| `searchAdvanced()` | 🔍 Comprehensive | Complete control | Expert configuration |
 
 ### Common Search Patterns
 
 ```java
-// Pattern 1: Progressive search
-List<EnhancedSearchResult> quick = searchAPI.searchSimple(term);
-if (needMore) {
-    List<EnhancedSearchResult> detailed = searchAPI.searchSecure(term, pass, 100);
+// Pattern 1: Progressive search (public → hybrid → encrypted)
+List<EnhancedSearchResult> fast = searchAPI.searchPublic(term);
+if (needMoreScope) {
+    List<EnhancedSearchResult> hybrid = searchAPI.searchSimple(term);
+}
+if (needEncryptedOnly) {
+    List<EnhancedSearchResult> encrypted = searchAPI.searchSecure(term, pass, 100);
 }
 
 // Pattern 2: Filtered search

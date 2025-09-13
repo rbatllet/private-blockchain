@@ -136,7 +136,7 @@ public class SearchFrameworkDemo {
                 String content = block.getData();
                 if (block.isDataEncrypted()) {
                     try {
-                        content = api.retrieveSecret(block.getBlockNumber(), password);
+                        content = api.retrieveSecret(block.getId(), password);
                         if (content == null) {
                             content = "[ENCRYPTED - Decryption returned null]";
                         }
@@ -207,7 +207,7 @@ public class SearchFrameworkDemo {
                 String content = block.getData();
                 if (block.isDataEncrypted()) {
                     try {
-                        content = api.retrieveSecret(block.getBlockNumber(), password);
+                        content = api.retrieveSecret(block.getId(), password);
                         if (content == null) {
                             content = "[ENCRYPTED - Decryption returned null]";
                         }

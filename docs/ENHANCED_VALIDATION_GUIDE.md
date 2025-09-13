@@ -14,6 +14,36 @@ This guide covers the enhanced `validateChainDetailed()` functionality and compr
 
 ## 🔍 Enhanced Validation Features
 
+### Critical Security Update: Encrypted Block Validation Fix
+
+**🔒 SECURITY ENHANCEMENT** (September 2025)
+
+A critical security vulnerability in encrypted block validation has been resolved:
+
+**Technical Details**:
+- **Issue**: `validateBlock()` method used standard content building for all blocks, including encrypted ones
+- **Root Cause**: Inconsistent content building methods between block creation and validation
+- **Fix**: Enhanced `validateBlock()` to use encryption-aware content building via `getContentForHashing()`
+
+**Implementation**:
+```java
+// Before (vulnerable):
+String content = buildBlockContent(/* standard parameters */);
+
+// After (secure):
+String content;
+if (block.isEncrypted()) {
+    content = getContentForHashing(block);  // Encryption-aware
+} else {
+    content = buildBlockContent(/* standard parameters */);
+}
+```
+
+**Verification**: 
+- `UserFriendlyEncryptionAPIBlockCorruptionTest.testValidationMissesSubtleCorruption()` now passes
+- Corrupted encrypted blocks are properly detected and rejected
+- SearchSpecialistAPI initialization warnings eliminated through on-demand initialization
+
 ### What's New
 
 The blockchain now provides **detailed validation output** with comprehensive off-chain data analysis, showing:
@@ -311,6 +341,63 @@ mvn test -Dtest=DataIntegrityThreadSafetyTest
 ```
 🔍 Detailed validation after concurrent block number sequence operations:
 [Comprehensive validation output with off-chain analysis]
+```
+
+## 🔐 Encrypted Block Validation
+
+### Security-Enhanced Validation Process
+
+The validation system now properly handles encrypted blocks with specialized content building:
+
+**Encrypted Block Validation Flow**:
+1. **Detection**: Check if block is encrypted using `block.isEncrypted()`
+2. **Content Building**: Use `getContentForHashing(block)` for encryption-aware content
+3. **Hash Calculation**: Calculate hash using proper encrypted content format
+4. **Integrity Check**: Compare calculated hash with stored hash
+5. **Corruption Detection**: Fail validation if content has been tampered
+
+**Example Test Case**:
+```java
+// Test that demonstrates proper corruption detection
+@Test
+void testValidationMissesSubtleCorruption() {
+    // Create encrypted block with valid data
+    Block encryptedBlock = api.storeSecret("sensitive data", "password123!");
+    
+    // Simulate corruption (change E→F in encryption marker)
+    String corruptContent = block.getContent().replace("[ENCRYPTED]", "[FNCRYPTFD]");
+    
+    // ✅ PASS: Validation properly detects corruption
+    assertFalse(blockchain.validateBlock(block, publicKey));
+}
+```
+
+**Corruption Detection Results**:
+```
+❌ [main] VALIDATION FAILURE: Block hash integrity check failed
+🔍 Stored hash: 1bc5d3476d3738938716fc2cc7e4eaffdaf9e5da...
+🔍 Calculated hash: 82a68442929ba826810a42a9b47dae60185cd961d...
+🔍 Block content: [FNCRYPTFD]1757675046MFk... (corrupted)
+✅ CORRUPTION PROPERLY DETECTED
+```
+
+### SearchSpecialistAPI Integration Fix
+
+**On-Demand Initialization**: Resolved initialization warnings through lazy initialization:
+
+```java
+// Enhanced addEncryptedBlock with on-demand initialization
+private void addEncryptedBlock(Block block, String password) {
+    if (searchSpecialistAPI != null && !searchSpecialistAPI.isReady()) {
+        try {
+            searchSpecialistAPI.initializeWithBlockchain(this, password);
+            logger.info("✅ SearchSpecialistAPI initialized on-demand");
+        } catch (Exception e) {
+            logger.debug("SearchSpecialistAPI initialization failed: {}", e.getMessage());
+        }
+    }
+    // Continue with block indexing...
+}
 ```
 
 ## 🔍 Validation Output Reference

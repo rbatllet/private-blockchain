@@ -1,6 +1,6 @@
 # FormatUtil Functions & Enhanced BlockCreationOptions Guide
 
-📊 This document provides comprehensive documentation for the enhanced FormatUtil class functions and the thread-safe BlockCreationOptions functionality in UserFriendlyEncryptionAPI.
+📊 This document provides comprehensive documentation for the enhanced FormatUtil class functions and the thread-safe BlockCreationOptions functionality in UserFriendlyEncryptionAPI. For FormatUtil quality assessment and production readiness evaluation, see [FORMATUTIL_QUALITY_ASSESSMENT.md](FORMATUTIL_QUALITY_ASSESSMENT.md).
 
 ## 📋 Table of Contents
 

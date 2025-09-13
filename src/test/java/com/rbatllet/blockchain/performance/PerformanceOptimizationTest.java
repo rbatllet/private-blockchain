@@ -36,6 +36,10 @@ public class PerformanceOptimizationTest {
             // Set up default credentials
             api.setDefaultCredentials("TestUser", keyPair);
             
+            // Initialize SearchSpecialistAPI before creating test data
+            blockchain.initializeAdvancedSearch(password);
+            blockchain.getSearchSpecialistAPI().initializeWithBlockchain(blockchain, password, keyPair.getPrivate());
+            
             // Create a moderate amount of test data
             createTestBlocks(50);
             

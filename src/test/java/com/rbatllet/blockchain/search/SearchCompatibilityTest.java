@@ -4,7 +4,9 @@ import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.*;
+import com.rbatllet.blockchain.test.util.TestDatabaseUtils;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -33,6 +35,9 @@ public class SearchCompatibilityTest {
     
     @BeforeEach
     void setUp() throws Exception {
+        // Clean database and enable test mode before each test to ensure test isolation
+        TestDatabaseUtils.setupTest();
+        
         blockchain = new Blockchain();
         api = new UserFriendlyEncryptionAPI(blockchain);
         testPassword = "CompatibilityTest123!";
@@ -41,33 +46,51 @@ public class SearchCompatibilityTest {
         userKeys = api.createUser("compatibility-test-user");
         api.setDefaultCredentials("compatibility-test-user", userKeys);
         
-        // Create diverse test data
-        createTestData();
-        
-        // Initialize SearchSpecialistAPI
+        // Initialize SearchSpecialistAPI BEFORE creating test data
         blockchain.initializeAdvancedSearch(testPassword);
         searchAPI = blockchain.getSearchSpecialistAPI();
         
         assertTrue(searchAPI.isReady(), "SearchSpecialistAPI should be ready");
+        
+        // Create diverse test data
+        createTestData();
     }
     
     private void createTestData() throws Exception {
-        // Create blocks with different types of content
-        String[] keywords1 = {"blockchain", "technology", "innovation"};
-        api.storeSearchableData("Revolutionary blockchain technology for secure transactions", testPassword, keywords1);
+        // Create blocks with both public and private terms for testing compatibility
         
-        String[] keywords2 = {"healthcare", "patient", "medical"};
-        api.storeSearchableData("Patient healthcare data management system", testPassword, keywords2);
+        // Mix of public and private terms for blockchain block
+        String[] publicTerms1 = {"blockchain", "technology"};
+        String[] privateTerms1 = {"innovation", "secure"};
+        api.storeSearchableDataWithLayers("Revolutionary blockchain technology for secure transactions", 
+                                         testPassword, publicTerms1, privateTerms1);
         
-        String[] keywords3 = {"financial", "report", "analysis"};
-        api.storeSearchableData("Financial analysis report for quarterly review", testPassword, keywords3);
+        // Healthcare with some public terms
+        String[] publicTerms2 = {"healthcare"};
+        String[] privateTerms2 = {"patient", "medical", "confidential"};
+        api.storeSearchableDataWithLayers("Patient healthcare data management system", 
+                                         testPassword, publicTerms2, privateTerms2);
         
-        String[] keywords4 = {"education", "learning", "platform"};
-        api.storeSearchableData("Educational learning platform for students", testPassword, keywords4);
+        // Financial data with public reports
+        String[] publicTerms3 = {"financial", "report"};
+        String[] privateTerms3 = {"analysis", "quarterly"};
+        api.storeSearchableDataWithLayers("Financial analysis report for quarterly review", 
+                                         testPassword, publicTerms3, privateTerms3);
         
-        // Create public content
+        // Education platform - mostly public
+        String[] publicTerms4 = {"education", "learning", "platform"};
+        String[] privateTerms4 = {"students"};
+        api.storeSearchableDataWithLayers("Educational learning platform for students", 
+                                         testPassword, publicTerms4, privateTerms4);
+        
+        // Fully public content
         String[] publicKeywords = {"public", "announcement", "news"};
-        api.storeSearchableData("Public announcement for community news", testPassword, publicKeywords);
+        api.storeSearchableDataWithLayers("Public announcement for community news", 
+                                         testPassword, publicKeywords, null);
+        
+        // Ensure SearchSpecialistAPI is ready after adding test data
+        // NOTE: No need to re-initialize as it's already initialized with the same password
+        assertTrue(searchAPI.isReady(), "SearchSpecialistAPI should be ready after test data creation");
     }
     
     @Test
@@ -86,6 +109,14 @@ public class SearchCompatibilityTest {
             List<EnhancedSearchResult> apiResults = searchAPI.searchSecure(term, testPassword);
             
             System.out.println("📊 Term '" + term + "': Direct=" + directResults.size() + ", API=" + apiResults.size());
+            
+            // Debug output for failed searches
+            if (directResults.isEmpty()) {
+                System.out.println("⚠️ Direct search returned no results for: " + term);
+            }
+            if (apiResults.isEmpty()) {
+                System.out.println("⚠️ API search returned no results for: " + term);
+            }
             
             // Both should return results for valid terms
             assertFalse(directResults.isEmpty(), "Direct search should find results for: " + term);
@@ -192,8 +223,8 @@ public class SearchCompatibilityTest {
         
         System.out.println("📊 Common results: " + intersection.size());
         
-        // Both methods should find some common blocks
-        assertFalse(intersection.isEmpty(), "Both methods should find some common blocks");
+        // Both methods should find some common blocks - this is the expected behavior
+        assertTrue(!intersection.isEmpty(), "Both methods should find some common blocks");
     }
     
     @Test
@@ -281,5 +312,11 @@ public class SearchCompatibilityTest {
         // Both should return empty results for non-existent terms
         assertTrue(directNonExistent.isEmpty(), "Direct search should return empty for non-existent term");
         assertTrue(apiNonExistent.isEmpty(), "API search should return empty for non-existent term");
+    }
+    
+    @AfterEach
+    void tearDown() {
+        // Clean database and disable test mode after each test to ensure test isolation
+        TestDatabaseUtils.teardownTest();
     }
 }

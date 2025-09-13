@@ -130,4 +130,31 @@ public class BlockValidationResult {
             return new BlockValidationResult(this);
         }
     }
+    
+    // Static factory methods for common cases
+    public static BlockValidationResult success(String message) {
+        // Create a dummy block for success case - this is for general validation results
+        Block dummyBlock = new Block();
+        return new Builder(dummyBlock)
+            .status(BlockStatus.VALID)
+            .structurallyValid(true)
+            .cryptographicallyValid(true)
+            .authorizationValid(true)
+            .offChainDataValid(true)
+            .warningMessage(message)
+            .build();
+    }
+    
+    public static BlockValidationResult failure(String errorMessage) {
+        // Create a dummy block for failure case - this is for general validation results
+        Block dummyBlock = new Block();
+        return new Builder(dummyBlock)
+            .status(BlockStatus.INVALID)
+            .structurallyValid(false)
+            .cryptographicallyValid(false)
+            .authorizationValid(false)
+            .offChainDataValid(false)
+            .errorMessage(errorMessage)
+            .build();
+    }
 }

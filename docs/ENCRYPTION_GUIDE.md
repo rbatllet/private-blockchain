@@ -35,7 +35,7 @@ The system uses a **clean separation approach** for encrypting search terms:
 
 #### 1. Term Classification
 ```java
-String[] keywords = {"PUBLIC:patient", "PUBLIC:treatment", "diabetes", "insulin"};
+String[] keywords = {"public:patient", "public:treatment", "diabetes", "insulin"};
 
 // Classification:
 // Public terms: ["patient", "treatment"] → No encryption
@@ -213,9 +213,9 @@ private void processEncryptedBlockKeywords(Block block, String[] manualKeywords,
     List<String> publicKeywords = new ArrayList<>();
     List<String> privateKeywords = new ArrayList<>();
     
-    // Classify keywords by PUBLIC: prefix
+    // Classify keywords by public: prefix (lowercase for consistency)
     for (String keyword : manualKeywords) {
-        if (keyword.startsWith("PUBLIC:")) {
+        if (keyword.toLowerCase().startsWith("public:")) {
             publicKeywords.add(keyword.toLowerCase());
         } else {
             privateKeywords.add(keyword.toLowerCase());

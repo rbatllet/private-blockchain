@@ -15,6 +15,12 @@ import com.rbatllet.blockchain.config.EncryptionConfig.SecurityLevel;
  */
 public class BlockMetadataLayers {
     
+    /**
+     * Sentinel instance used as a processing placeholder in concurrent environments
+     */
+    public static final BlockMetadataLayers PROCESSING_PLACEHOLDER = 
+        new BlockMetadataLayers(null, "PROCESSING");
+    
     private final PublicMetadata publicLayer;
     private final String encryptedPrivateLayer; // JSON string, encrypted
     
@@ -36,6 +42,13 @@ public class BlockMetadataLayers {
     
     
     // ===== UTILITY METHODS =====
+    
+    /**
+     * Check if this is a processing placeholder
+     */
+    public boolean isProcessingPlaceholder() {
+        return this == PROCESSING_PLACEHOLDER;
+    }
     
     /**
      * Check if the block has a private layer

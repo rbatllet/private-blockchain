@@ -2,6 +2,8 @@ package com.rbatllet.blockchain.search.strategy;
 
 import com.rbatllet.blockchain.search.metadata.BlockMetadataLayers;
 import com.rbatllet.blockchain.search.metadata.PublicMetadata;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -23,6 +25,7 @@ import java.util.stream.Collectors;
  * Performance Target: <50ms for 1M+ blocks
  */
 public class FastIndexSearch {
+    private static final Logger logger = LoggerFactory.getLogger(FastIndexSearch.class);
     
     private final Map<String, Set<String>> keywordIndex;
     private final Map<String, BlockMetadataLayers> metadataCache;
@@ -55,7 +58,11 @@ public class FastIndexSearch {
         }
         
         // Index keywords
+        logger.debug("🔍 FastIndexSearch.indexBlock: block={}, keywords={}", 
+            blockHash, publicLayer.getGeneralKeywords());
         for (String keyword : publicLayer.getGeneralKeywords()) {
+            logger.debug("🔍 FastIndexSearch.indexBlock: adding keyword='{}' for block={}", 
+                keyword.toLowerCase(), blockHash);
             keywordIndex.computeIfAbsent(keyword.toLowerCase(), k -> ConcurrentHashMap.newKeySet())
                        .add(blockHash);
         }
@@ -111,6 +118,8 @@ public class FastIndexSearch {
         
         // Parse query into keywords
         Set<String> queryKeywords = parseQuery(query);
+        logger.debug("🔍 FastIndexSearch: query='{}', parsed keywords={}, total indexed keywords={}", 
+            query, queryKeywords, keywordIndex.size());
         
         // Find matching blocks
         Map<String, Double> blockScores = new HashMap<>();
@@ -118,6 +127,8 @@ public class FastIndexSearch {
         for (String keyword : queryKeywords) {
             // Exact matches
             Set<String> exactMatches = keywordIndex.get(keyword.toLowerCase());
+            logger.debug("🔍 FastIndexSearch: checking keyword='{}', exact matches={}", 
+                keyword.toLowerCase(), exactMatches != null ? exactMatches.size() : 0);
             if (exactMatches != null) {
                 for (String blockHash : exactMatches) {
                     blockScores.merge(blockHash, 3.0, Double::sum); // High score for exact match

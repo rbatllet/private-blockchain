@@ -313,13 +313,58 @@ public String recoverDataFromBackup(String blockId) {
 
 ## 🔍 Search and Query Failures
 
+### Problem: SearchSpecialistAPI returns no results due to initialization order
+
+**Error Symptoms:**
+```
+Test failure: smartSearchWithPassword should return results (was 0 before bug fix) ==> expected: <true> but was: <false>
+```
+
+**Cause:**
+SearchSpecialistAPI initialized before calling `initializeAdvancedSearch()` on the blockchain causes blocks to be indexed with "public metadata only" mode, making encrypted keyword searches return empty results.
+
+**Root Cause:**
+When `storeSearchableData()` or similar methods are called BEFORE initializing SearchSpecialistAPI properly, the blocks are created without proper encrypted keyword indexing.
+
+**Solutions:**
+
+```java
+// ❌ WRONG: Creating SearchSpecialistAPI after storing blocks without initialization
+dataAPI.storeSearchableData("medical data", password, keywords);
+// Blocks created with "public metadata only" indexing
+SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(blockchain, password, privateKey);
+
+// ✅ CORRECT: Initialize SearchSpecialistAPI BEFORE storing searchable data
+SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(blockchain, password, privateKey);
+// Or ensure initializeAdvancedSearch is called first
+blockchain.initializeAdvancedSearch(password);
+dataAPI.storeSearchableData("medical data", password, keywords);
+
+// ✅ ALTERNATIVE: Use proper initialization order in tests
+@BeforeEach
+void setUp() {
+    blockchain = new Blockchain();
+    dataAPI = new UserFriendlyEncryptionAPI(blockchain);
+    
+    // CRITICAL: Initialize SearchSpecialistAPI BEFORE storing data
+    blockchain.initializeAdvancedSearch(password);
+    
+    // Now store test data
+    dataAPI.storeSearchableData("test data", password, keywords);
+}
+```
+
+**Prevention:**
+Always ensure `initializeAdvancedSearch()` is called or SearchSpecialistAPI constructor is used BEFORE any `storeSearchableData()` operations when you plan to use `smartSearchWithPassword()` methods.
+
 ### Problem: "Search returns no results" when data exists
 
 **Causes:**
-- Incorrect search terms
+- Incorrect search terms  
 - Missing password for encrypted content
 - Index not built or corrupted
 - Terms not in searchable metadata
+- **NEW:** SearchSpecialistAPI initialization order issue (see above)
 
 **Diagnosis:**
 ```java

@@ -56,6 +56,14 @@ public abstract class UserFriendlyEncryptionAPIBaseTest {
         // Create API instance with test credentials
         api = new UserFriendlyEncryptionAPI(blockchain, TEST_USERNAME, testKeyPair);
         
+        // Initialize SearchSpecialistAPI to enable storeSecret and storeSearchableData methods
+        try {
+            blockchain.initializeAdvancedSearch(TEST_PASSWORD);
+            blockchain.getSearchSpecialistAPI().initializeWithBlockchain(blockchain, TEST_PASSWORD, testKeyPair.getPrivate());
+        } catch (Exception e) {
+            System.err.printf("⚠️ Warning: SearchSpecialistAPI initialization failed in test #%d: %s%n", testNumber, e.getMessage());
+        }
+        
         // Log test execution for debugging
         System.out.printf("🧪 Test #%d: %s.%s%n", 
                          testNumber, 

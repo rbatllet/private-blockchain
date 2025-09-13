@@ -2,8 +2,10 @@ package com.rbatllet.blockchain.service;
 
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.entity.AuthorizedKey;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.entity.OffChainData;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.recovery.ChainRecoveryManager;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.EnhancedSearchResult;
@@ -17,6 +19,8 @@ import com.rbatllet.blockchain.util.CustomMetadataUtil;
 import com.rbatllet.blockchain.util.JPAUtil;
 import com.rbatllet.blockchain.util.format.FormatUtil;
 import com.rbatllet.blockchain.util.validation.BlockValidationUtil;
+import com.rbatllet.blockchain.validation.BlockStatus;
+import com.rbatllet.blockchain.validation.BlockValidationResult;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -26,6 +30,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -33,11 +38,13 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,6 +70,25 @@ public class UserFriendlyEncryptionAPI {
         new AtomicReference<>();
     private final AtomicReference<String> defaultUsername =
         new AtomicReference<>();
+
+    // Performance optimization: Metadata index cache
+    private final Map<String, Map<String, Set<Long>>> metadataIndex =
+        new HashMap<>(); // key -> value -> Set<blockNumbers>
+    private final AtomicReference<Long> lastIndexedBlock =
+        new AtomicReference<>(0L);
+    private final Object indexLock = new Object();
+
+    // Performance optimization: Recipient cache
+    private final Map<String, Set<Long>> recipientIndex = new HashMap<>(); // username -> Set<blockNumbers>
+    private final AtomicReference<Long> lastRecipientIndexedBlock =
+        new AtomicReference<>(0L);
+    private final Object recipientIndexLock = new Object();
+
+    // Performance optimization: Encrypted blocks cache
+    private final Set<Long> encryptedBlocksCache = new HashSet<>();
+    private final AtomicReference<Long> lastEncryptedIndexedBlock =
+        new AtomicReference<>(0L);
+    private final Object encryptedIndexLock = new Object();
 
     /**
      * Thread-safe getter for default key pair
@@ -340,9 +366,6 @@ public class UserFriendlyEncryptionAPI {
      * @see #findAndDecryptData(String, String)
      * @since 1.0
      */
-    public String retrieveSecret(Long blockId, String password) {
-        return blockchain.getDecryptedBlockData(blockId, password);
-    }
 
     /**
      * Check if a specific blockchain block contains encrypted data.
@@ -431,32 +454,85 @@ public class UserFriendlyEncryptionAPI {
      * @since 1.0
      */
     public List<Block> findEncryptedData(String searchTerm) {
+        logger.info("🔍 DEBUG: findEncryptedData called with searchTerm='{}'", searchTerm);
+        
         // Handle null search term gracefully
         if (searchTerm == null) {
+            logger.debug("🔍 DEBUG: searchTerm is null, returning empty list");
             return Collections.emptyList();
         }
 
         // Use Advanced Search public metadata search (no password required)
+        logger.debug("🔍 DEBUG: Calling searchSimple() with term '{}'", searchTerm);
         var enhancedResults = blockchain
             .getSearchSpecialistAPI()
             .searchSimple(searchTerm, 50);
-        List<Block> blocks = new ArrayList<>();
-        for (var enhancedResult : enhancedResults) {
+            
+        logger.warn("🔧 DEBUG: searchSimple() returned {} enhanced results", enhancedResults.size());
+        for (int i = 0; i < enhancedResults.size(); i++) {
+            var result = enhancedResults.get(i);
+            logger.warn("🔧 DEBUG: Enhanced result {}: hash={}, score={}", 
+                       i, result.getBlockHash(), result.getRelevanceScore());
+        }
+        
+        // BATCH OPTIMIZATION: Collect all hashes and retrieve blocks in single query
+        List<String> blockHashes = enhancedResults.stream()
+            .map(enhancedResult -> enhancedResult.getBlockHash())
+            .filter(hash -> hash != null && !hash.trim().isEmpty())
+            .collect(Collectors.toList());
+            
+        logger.warn("🔧 DEBUG: Extracted {} valid block hashes from search results", blockHashes.size());
+        for (int i = 0; i < blockHashes.size(); i++) {
+            logger.warn("🔧 DEBUG: Hash {}: {}", i, blockHashes.get(i));
+        }
+        
+        if (blockHashes.isEmpty()) {
+            logger.info("🔍 DEBUG: No valid block hashes found, returning empty list");
+            return new ArrayList<>();
+        }
+        
+        // Single optimized database query instead of N+1 individual queries
+        List<Block> allBlocks = blockchain.getBlockDAO().batchRetrieveBlocksByHash(blockHashes);
+        logger.warn("🔧 DEBUG: Retrieved {} blocks from database", allBlocks.size());
+        for (int i = 0; i < allBlocks.size(); i++) {
+            Block block = allBlocks.get(i);
+            logger.warn("🔧 DEBUG: DB result {}: Block #{} hash={}", 
+                       i, block.getBlockNumber(), block.getHash());
+        }
+        
+        // Filter for encrypted blocks only
+        List<Block> blocks = allBlocks.stream()
+            .filter(block -> block != null && block.isDataEncrypted())
+            .collect(Collectors.toList());
+            
+        logger.info("🔍 DEBUG: Filtered to {} encrypted blocks", blocks.size());
+        
+        // DIAGNOSTIC: Check if returned blocks actually contain the search term
+        for (Block block : blocks) {
+            logger.warn("🔍 DIAGNOSTIC: Block #{} returned for search term '{}'", 
+                       block.getBlockNumber(), searchTerm);
+            
+            // Try to decrypt and check content
             try {
-                Block block = blockchain.getBlockByHash(
-                    enhancedResult.getBlockHash()
-                );
-                if (block != null && block.isDataEncrypted()) {
-                    blocks.add(block);
-                }
+                // Note: This assumes we have access to a common password or can decrypt
+                // In a real scenario, we'd need the actual password used for encryption
+                String blockData = block.getData(); // This might be encrypted
+                logger.warn("🔍 DIAGNOSTIC: Block #{} data preview: '{}'", 
+                           block.getBlockNumber(), 
+                           blockData != null && blockData.length() > 100 
+                               ? blockData.substring(0, 100) + "..." 
+                               : blockData);
             } catch (Exception e) {
-                logger.warn(
-                    "⚠️ Could not retrieve block {}",
-                    enhancedResult.getBlockHash(),
-                    e
-                );
+                logger.warn("🔍 DIAGNOSTIC: Could not preview Block #{} data: {}", 
+                           block.getBlockNumber(), e.getMessage());
             }
         }
+            
+        logger.info(
+            "✅ Found {} encrypted blocks from {} search results using batch optimization", 
+            blocks.size(), 
+            enhancedResults.size()
+        );
         return Collections.unmodifiableList(blocks);
     }
 
@@ -643,23 +719,26 @@ public class UserFriendlyEncryptionAPI {
         var enhancedResults = blockchain
             .getSearchSpecialistAPI()
             .searchSimple(searchTerm, 50);
-        List<Block> blocks = new ArrayList<>();
-        for (var enhancedResult : enhancedResults) {
-            try {
-                Block block = blockchain.getBlockByHash(
-                    enhancedResult.getBlockHash()
-                );
-                if (block != null) {
-                    blocks.add(block);
-                }
-            } catch (Exception e) {
-                logger.warn(
-                    "⚠️ Could not retrieve block {}",
-                    enhancedResult.getBlockHash(),
-                    e
-                );
-            }
+            
+        // BATCH OPTIMIZATION: Collect all hashes and retrieve blocks in single query
+        List<String> blockHashes = enhancedResults.stream()
+            .map(enhancedResult -> enhancedResult.getBlockHash())
+            .filter(hash -> hash != null && !hash.trim().isEmpty())
+            .collect(Collectors.toList());
+            
+        if (blockHashes.isEmpty()) {
+            return new ArrayList<>();
         }
+        
+        // Single optimized database query instead of N+1 individual queries
+        List<Block> blocks = blockchain.getBlockDAO().batchRetrieveBlocksByHash(blockHashes);
+        
+        logger.info(
+            "✅ Found {} blocks from {} search results using batch optimization", 
+            blocks.size(), 
+            enhancedResults.size()
+        );
+        
         return Collections.unmodifiableList(blocks);
     }
 
@@ -954,38 +1033,47 @@ public class UserFriendlyEncryptionAPI {
      */
     public List<Block> searchSecure(String query, String password) {
         if (query == null || query.trim().isEmpty()) {
-            throw new IllegalArgumentException("Query cannot be null or empty");
+            logger.debug(
+                "Search query is null or empty, returning empty results"
+            );
+            return Collections.emptyList();
         }
         if (password == null) {
-            throw new IllegalArgumentException(
-                "Password cannot be null for secure search"
+            logger.debug(
+                "Password is null for secure search, returning empty results"
             );
+            return Collections.emptyList();
         }
 
-        // Use SearchSpecialistAPI for advanced secure search
-        var enhancedResults = blockchain
-            .getSearchSpecialistAPI()
-            .searchSecure(query, password, 50);
-        List<Block> blocks = new ArrayList<>();
-
-        for (var enhancedResult : enhancedResults) {
-            try {
-                Block block = blockchain.getBlockByHash(
-                    enhancedResult.getBlockHash()
-                );
-                if (block != null) {
-                    blocks.add(block);
-                }
-            } catch (Exception e) {
-                logger.warn(
-                    "Could not retrieve block with hash: {}",
-                    enhancedResult.getBlockHash(),
-                    e
-                );
+        try {
+            // Use SearchSpecialistAPI for advanced secure search
+            var enhancedResults = blockchain
+                .getSearchSpecialistAPI()
+                .searchSecure(query, password, 50);
+            // BATCH OPTIMIZATION: Collect all hashes and retrieve blocks in single query
+            List<String> blockHashes = enhancedResults.stream()
+                .map(enhancedResult -> enhancedResult.getBlockHash())
+                .filter(hash -> hash != null && !hash.trim().isEmpty())
+                .collect(Collectors.toList());
+                
+            if (blockHashes.isEmpty()) {
+                return Collections.emptyList();
             }
-        }
+            
+            // Single optimized database query instead of N+1 individual queries
+            List<Block> blocks = blockchain.getBlockDAO().batchRetrieveBlocksByHash(blockHashes);
+            
+            logger.info(
+                "✅ Found {} blocks from {} secure search results using batch optimization", 
+                blocks.size(), 
+                enhancedResults.size()
+            );
 
-        return Collections.unmodifiableList(blocks);
+            return Collections.unmodifiableList(blocks);
+        } catch (Exception e) {
+            logger.error("Error during secure search: {}", e.getMessage());
+            return Collections.emptyList();
+        }
     }
 
     /**
@@ -1006,14 +1094,6 @@ public class UserFriendlyEncryptionAPI {
      * @see SearchSpecialistAPI#getPerformanceMetrics()
      * @since 1.1
      */
-    public String getSearchAnalytics() {
-        try {
-            return blockchain.getSearchSpecialistAPI().getPerformanceMetrics();
-        } catch (Exception e) {
-            logger.warn("Could not retrieve search analytics", e);
-            return "Search analytics temporarily unavailable";
-        }
-    }
 
     /**
      * Runs comprehensive search engine diagnostics and health checks.
@@ -1025,14 +1105,6 @@ public class UserFriendlyEncryptionAPI {
      * @see SearchSpecialistAPI#runDiagnostics()
      * @since 1.1
      */
-    public String runSearchDiagnostics() {
-        try {
-            return blockchain.getSearchSpecialistAPI().runDiagnostics();
-        } catch (Exception e) {
-            logger.warn("Could not run search diagnostics", e);
-            return "Search diagnostics temporarily unavailable";
-        }
-    }
 
     /**
      * Analyze content and provide keyword-based insights
@@ -1140,52 +1212,12 @@ public class UserFriendlyEncryptionAPI {
         return blockchain.getSearchStatistics();
     }
 
-    /**
-     * Check if the blockchain contains any encrypted data
-     * @return true if there are encrypted blocks, false otherwise
-     */
-    public boolean hasEncryptedData() {
-        String stats = blockchain.getSearchStatistics();
-        return (
-            stats.contains("Encrypted blocks: ") &&
-            !stats.contains("Encrypted blocks: 0")
-        );
-    }
-
-    /**
-     * Get the total number of encrypted blocks
-     * @return Number of encrypted blocks
-     */
-    public long getEncryptedBlockCount() {
-        List<Block> allBlocks = blockchain.getAllBlocks();
-        return allBlocks
-            .stream()
-            .mapToLong(block -> block.isDataEncrypted() ? 1 : 0)
-            .sum();
-    }
-
-    /**
-     * Get the total number of unencrypted blocks
-     * @return Number of unencrypted blocks
-     */
-    public long getUnencryptedBlockCount() {
-        List<Block> allBlocks = blockchain.getAllBlocks();
-        return allBlocks
-            .stream()
-            .mapToLong(block -> !block.isDataEncrypted() ? 1 : 0)
-            .sum();
-    }
-
     // ===== VALIDATION AND UTILITIES =====
 
     /**
      * Validate that the blockchain's encrypted blocks are intact
      * @return true if all encrypted blocks are valid, false if any issues found
      */
-    public boolean validateEncryptedBlocks() {
-        var result = blockchain.validateChainDetailed();
-        return result.isStructurallyIntact() && result.isFullyCompliant();
-    }
 
     /**
      * Get a comprehensive validation report for the blockchain with human-readable analysis.
@@ -1222,8 +1254,104 @@ public class UserFriendlyEncryptionAPI {
      * @see #validateChainIntegrity()
      * @since 1.0
      */
-    public String getValidationReport() {
-        return blockchain.getValidationReport();
+
+    // ===== METADATA OPERATIONS =====
+
+    /**
+     * Updates the metadata of an existing block and invalidates relevant caches.
+     *
+     * <p>This method allows updating searchable metadata for existing blocks without 
+     * modifying the encrypted content. It's particularly useful for updating:</p>
+     * 
+     * <ul>
+     *   <li><strong>Search Keywords:</strong> Update manual keywords and searchable content</li>
+     *   <li><strong>Content Categories:</strong> Change classification categories</li>
+     *   <li><strong>Custom Metadata:</strong> Add or modify custom metadata fields</li>
+     *   <li><strong>Recipient Information:</strong> Update recipient data for encrypted blocks</li>
+     * </ul>
+     *
+     * <p><strong>Performance Features:</strong></p>
+     * <ul>
+     *   <li><strong>Automatic Cache Invalidation:</strong> Clears search caches after update</li>
+     *   <li><strong>Index Synchronization:</strong> Ensures search indexes are updated</li>
+     *   <li><strong>Transaction Safety:</strong> Updates are atomic and safe</li>
+     * </ul>
+     *
+     * <p><strong>Usage Examples:</strong></p>
+     * <pre>{@code
+     * // Find a block to update
+     * List<Block> blocks = api.getEncryptedBlocksOnly("patient-123");
+     * if (!blocks.isEmpty()) {
+     *     Block block = blocks.get(0);
+     *     
+     *     // Update metadata
+     *     block.setContentCategory("medical-urgent");
+     *     block.setManualKeywords("patient-123 emergency cardiology");
+     *     block.setSearchableContent("Emergency cardiac consultation for patient 123");
+     *     
+     *     // Apply the update
+     *     boolean success = api.updateBlockMetadata(block);
+     *     if (success) {
+     *         System.out.println("✅ Block metadata updated successfully");
+     *     }
+     * }
+     * }</pre>
+     *
+     * @param block The block with updated metadata. Must not be null and must have a valid block number.
+     * @return true if the update was successful and caches were invalidated, false otherwise
+     * @throws IllegalArgumentException if block is null or has invalid block number
+     * @throws RuntimeException if database update fails or cache invalidation fails
+     * @see #getEncryptedBlocksOnly(String)
+     * @see Block#setContentCategory(String)
+     * @see Block#setManualKeywords(String)
+     * @see Block#setSearchableContent(String)
+     * @since 1.1
+     */
+    public boolean updateBlockMetadata(Block block) {
+        if (block == null) {
+            throw new IllegalArgumentException("Block cannot be null");
+        }
+        
+        if (block.getBlockNumber() == null) {
+            throw new IllegalArgumentException("Block must have a valid block number");
+        }
+        
+        try {
+            logger.debug("Updating metadata for block #{}", block.getBlockNumber());
+            
+            // Update the block using the blockchain's updateBlock method
+            boolean success = blockchain.updateBlock(block);
+            
+            if (success) {
+                logger.debug("Successfully updated metadata for block #{}", block.getBlockNumber());
+                
+                // Force cache and index invalidation after metadata update to ensure consistency
+                try {
+                    rebuildEncryptedBlocksCache();
+                    
+                    // Also invalidate metadata index to pick up changes
+                    synchronized (indexLock) {
+                        metadataIndex.clear();
+                        lastIndexedBlock.set(0L);
+                    }
+                    
+                    logger.debug("Cache and metadata index invalidated after metadata update for block #{}", block.getBlockNumber());
+                } catch (Exception cacheEx) {
+                    logger.warn("Failed to rebuild cache/index after metadata update for block #{}: {}", 
+                              block.getBlockNumber(), cacheEx.getMessage());
+                    // Don't fail the entire operation if cache rebuild fails
+                }
+                
+                return true;
+            } else {
+                logger.warn("Failed to update metadata for block #{}", block.getBlockNumber());
+                return false;
+            }
+        } catch (Exception e) {
+            logger.error("Failed to update block metadata for block #{}: {}", 
+                        block.getBlockNumber(), e.getMessage());
+            throw new RuntimeException("Block metadata update failed: " + e.getMessage(), e);
+        }
     }
 
     // ===== SETUP AND CONFIGURATION =====
@@ -1456,7 +1584,43 @@ public class UserFriendlyEncryptionAPI {
      * @return The entered password, or null if cancelled
      */
     public String readPasswordSecurely(String prompt) {
-        return PasswordUtil.readPassword(prompt);
+        // CRITICAL FIX: Validate input parameter
+        if (prompt == null) {
+            throw new IllegalArgumentException("Prompt cannot be null");
+        }
+
+        if (prompt.trim().isEmpty()) {
+            prompt = "Password: ";
+        }
+
+        try {
+            return PasswordUtil.readPassword(prompt);
+        } catch (RuntimeException e) {
+            logger.error(
+                "❌ Failed to read password securely: {}",
+                e.getMessage()
+            );
+            // Check if it's a console unavailability issue
+            if (
+                e.getMessage() != null &&
+                (e.getMessage().contains("Console") ||
+                    e.getMessage().contains("console") ||
+                    e.getMessage().contains("headless"))
+            ) {
+                throw new IllegalStateException(
+                    "Cannot read password in headless environment. Console is not available.",
+                    e
+                );
+            }
+            // Re-throw other runtime exceptions
+            throw e;
+        } catch (Exception e) {
+            logger.error(
+                "❌ Unexpected error reading password: {}",
+                e.getMessage()
+            );
+            throw new RuntimeException("Failed to read password securely", e);
+        }
     }
 
     /**
@@ -1466,7 +1630,56 @@ public class UserFriendlyEncryptionAPI {
      * @return The confirmed password, or null if passwords don't match or cancelled
      */
     public String readPasswordWithConfirmation(String prompt) {
-        return PasswordUtil.readPasswordWithConfirmation(prompt);
+        // CRITICAL FIX: Validate input parameter
+        if (prompt == null) {
+            throw new IllegalArgumentException("Prompt cannot be null");
+        }
+
+        if (prompt.trim().isEmpty()) {
+            throw new IllegalArgumentException("Prompt cannot be empty");
+        }
+
+        try {
+            String password = PasswordUtil.readPasswordWithConfirmation(prompt);
+
+            // Additional validation for password confirmation result
+            if (password == null) {
+                logger.warn(
+                    "⚠️ Password confirmation failed - passwords did not match or operation was cancelled"
+                );
+                return null;
+            }
+
+            return password;
+        } catch (RuntimeException e) {
+            logger.error(
+                "❌ Failed to read password with confirmation: {}",
+                e.getMessage()
+            );
+            // Check if it's a console unavailability issue
+            if (
+                e.getMessage() != null &&
+                (e.getMessage().contains("Console") ||
+                    e.getMessage().contains("console") ||
+                    e.getMessage().contains("headless"))
+            ) {
+                throw new IllegalStateException(
+                    "Cannot read password in headless environment. Console is not available for confirmation.",
+                    e
+                );
+            }
+            // Re-throw other runtime exceptions
+            throw e;
+        } catch (Exception e) {
+            logger.error(
+                "❌ Unexpected error reading password with confirmation: {}",
+                e.getMessage()
+            );
+            throw new RuntimeException(
+                "Failed to read password with confirmation",
+                e
+            );
+        }
     }
 
     /**
@@ -1949,8 +2162,14 @@ public class UserFriendlyEncryptionAPI {
         // Basic statistics
         List<Block> allBlocks = blockchain.getAllBlocks();
         long totalBlocks = allBlocks.size();
-        long encryptedBlocks = getEncryptedBlockCount();
-        long unencryptedBlocks = getUnencryptedBlockCount();
+        long encryptedBlocks = allBlocks
+            .stream()
+            .mapToLong(block -> block.isDataEncrypted() ? 1 : 0)
+            .sum();
+        long unencryptedBlocks = allBlocks
+            .stream()
+            .mapToLong(block -> !block.isDataEncrypted() ? 1 : 0)
+            .sum();
 
         sb.append("📊 Block Statistics:\n");
         sb.append("   📝 Total Blocks: ").append(totalBlocks).append("\n");
@@ -2000,7 +2219,9 @@ public class UserFriendlyEncryptionAPI {
         }
 
         // Validation status
-        boolean isValid = validateEncryptedBlocks();
+        var result = blockchain.validateChainDetailed();
+        boolean isValid =
+            result.isStructurallyIntact() && result.isFullyCompliant();
         sb.append("🔍 Validation Status:\n");
         sb
             .append("   ")
@@ -2540,185 +2761,23 @@ public class UserFriendlyEncryptionAPI {
     // ===== ADVANCED VALIDATION AND INTEGRITY SERVICES =====
 
     /**
-     * Validate a specific block with comprehensive off-chain data integrity checking
-     * Uses advanced validation algorithms for enterprise-grade security
-     * @param blockId The ID of the block to validate
-     * @return Detailed validation result with specific failure reasons
+     * Helper method to check if a block has off-chain data
+     * @param block The block to check
+     * @return true if the block has off-chain data
      */
-    public BlockValidationUtil.OffChainValidationResult validateBlockDetailed(
-        Long blockId
-    ) {
-        if (blockId == null) {
-            return new BlockValidationUtil.OffChainValidationResult(
-                false,
-                "Block ID cannot be null"
-            );
-        }
-
+    private boolean hasOffChainData(Block block) {
         try {
-            List<Block> allBlocks = blockchain.getAllBlocks();
-            Block targetBlock = null;
-
-            for (Block block : allBlocks) {
-                if (block.getBlockNumber().equals(blockId)) {
-                    targetBlock = block;
-                    break;
-                }
-            }
-
-            if (targetBlock == null) {
-                return new BlockValidationUtil.OffChainValidationResult(
-                    false,
-                    "Block #" + blockId + " not found in blockchain"
-                );
-            }
-
-            return BlockValidationUtil.validateOffChainDataDetailed(
-                targetBlock
+            return (
+                block.getOffChainData() != null &&
+                block.getOffChainData().getDataHash() != null &&
+                !block.getOffChainData().getDataHash().trim().isEmpty()
             );
         } catch (Exception e) {
-            return new BlockValidationUtil.OffChainValidationResult(
-                false,
-                "Validation error: " + e.getMessage()
+            logger.debug(
+                "Error checking for off-chain data in block #{}: {}",
+                block.getBlockNumber(),
+                e.getMessage()
             );
-        }
-    }
-
-    /**
-     * Detect potential tampering in off-chain data using advanced algorithms
-     * Analyzes file timestamps, sizes, and integrity markers
-     * @param blockId The block ID to check for tampering
-     * @return true if no tampering detected, false if suspicious activity found
-     */
-    public boolean detectDataTampering(Long blockId) {
-        if (blockId == null) {
-            return false;
-        }
-
-        try {
-            List<Block> allBlocks = blockchain.getAllBlocks();
-
-            for (Block block : allBlocks) {
-                if (block.getBlockNumber().equals(blockId)) {
-                    return BlockValidationUtil.detectOffChainTampering(block);
-                }
-            }
-
-            return false; // Block not found
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    /**
-     * Validate off-chain data integrity for a specific block
-     * Performs comprehensive file existence, size, and metadata validation
-     * @param blockId The block ID to validate
-     * @return true if off-chain data is valid or not present
-     */
-    public boolean validateOffChainData(Long blockId) {
-        if (blockId == null) {
-            return false;
-        }
-
-        try {
-            List<Block> allBlocks = blockchain.getAllBlocks();
-
-            for (Block block : allBlocks) {
-                if (block.getBlockNumber().equals(blockId)) {
-                    return BlockValidationUtil.validateOffChainData(
-                        blockchain,
-                        block
-                    );
-                }
-            }
-
-            return false; // Block not found
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    /**
-     * Check if off-chain files exist and are accessible for a specific block
-     * @param blockId The block ID to check
-     * @return true if files exist or block has no off-chain data
-     */
-    public boolean offChainFilesExist(Long blockId) {
-        if (blockId == null) {
-            return false;
-        }
-
-        try {
-            List<Block> allBlocks = blockchain.getAllBlocks();
-
-            for (Block block : allBlocks) {
-                if (block.getBlockNumber().equals(blockId)) {
-                    return BlockValidationUtil.offChainFileExists(block);
-                }
-            }
-
-            return false; // Block not found
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    /**
-     * Validate genesis block with specialized validation logic
-     * @return true if genesis block is properly formatted
-     */
-    public boolean validateGenesisBlock() {
-        try {
-            List<Block> allBlocks = blockchain.getAllBlocks();
-            if (allBlocks.isEmpty()) {
-                return false;
-            }
-
-            Block genesisBlock = allBlocks.get(0);
-            return BlockValidationUtil.validateGenesisBlock(genesisBlock);
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    /**
-     * Check if a key was authorized at a specific timestamp
-     * Advanced temporal authorization validation for audit trails
-     * @param username Username to check
-     * @param timestamp Timestamp to check authorization at
-     * @return true if the key was authorized at the given time
-     */
-    public boolean wasKeyAuthorizedAt(
-        String username,
-        java.time.LocalDateTime timestamp
-    ) {
-        if (username == null || timestamp == null) {
-            return false;
-        }
-
-        try {
-            // Find the public key for this username
-            var authorizedKeys = blockchain.getAuthorizedKeys();
-            String publicKeyString = null;
-
-            for (var key : authorizedKeys) {
-                if (key.getOwnerName().equals(username)) {
-                    publicKeyString = key.getPublicKey();
-                    break;
-                }
-            }
-
-            if (publicKeyString == null) {
-                return false;
-            }
-
-            return BlockValidationUtil.wasKeyAuthorizedAt(
-                blockchain,
-                publicKeyString,
-                timestamp
-            );
-        } catch (Exception e) {
             return false;
         }
     }
@@ -3031,10 +3090,60 @@ public class UserFriendlyEncryptionAPI {
      */
     public boolean deleteLargeFile(OffChainData offChainData) {
         if (offChainData == null) {
+            logger.warn("⚠️ deleteLargeFile called with null OffChainData");
             return false;
         }
 
-        return offChainStorage.deleteData(offChainData);
+        // Validate OffChainData internal state
+        if (
+            offChainData.getFilePath() == null ||
+            offChainData.getFilePath().trim().isEmpty()
+        ) {
+            logger.error(
+                "❌ OffChainData has invalid file path: {}",
+                offChainData.getId()
+            );
+            return false;
+        }
+
+        // Check if file exists before attempting deletion
+        if (!largeFileExists(offChainData)) {
+            logger.warn(
+                "⚠️ Attempting to delete non-existent file: {}",
+                offChainData.getFilePath()
+            );
+            return true; // Consider it successful since the desired state is achieved
+        }
+
+        try {
+            boolean deleted = offChainStorage.deleteData(offChainData);
+            if (deleted) {
+                logger.info(
+                    "✅ Successfully deleted large file: {}",
+                    offChainData.getFilePath()
+                );
+            } else {
+                logger.warn(
+                    "⚠️ File deletion returned false for: {}",
+                    offChainData.getFilePath()
+                );
+            }
+            return deleted;
+        } catch (SecurityException e) {
+            logger.error(
+                "❌ Security error deleting file {}: {}",
+                offChainData.getFilePath(),
+                e.getMessage()
+            );
+            return false;
+        } catch (Exception e) {
+            logger.error(
+                "❌ Failed to delete large file for OffChainData {}: {}",
+                offChainData.getId(),
+                e.getMessage()
+            );
+            return false;
+        }
     }
 
     /**
@@ -3044,10 +3153,45 @@ public class UserFriendlyEncryptionAPI {
      */
     public boolean largeFileExists(OffChainData offChainData) {
         if (offChainData == null) {
+            logger.warn("⚠️ largeFileExists called with null OffChainData");
             return false;
         }
 
-        return offChainStorage.fileExists(offChainData);
+        // Validate OffChainData internal state
+        if (
+            offChainData.getFilePath() == null ||
+            offChainData.getFilePath().trim().isEmpty()
+        ) {
+            logger.error(
+                "❌ OffChainData has invalid file path: {}",
+                offChainData.getId()
+            );
+            return false;
+        }
+
+        try {
+            boolean exists = offChainStorage.fileExists(offChainData);
+            logger.debug(
+                "File existence check for {}: {}",
+                offChainData.getFilePath(),
+                exists
+            );
+            return exists;
+        } catch (SecurityException e) {
+            logger.error(
+                "❌ Security error checking file existence {}: {}",
+                offChainData.getFilePath(),
+                e.getMessage()
+            );
+            return false;
+        } catch (Exception e) {
+            logger.error(
+                "❌ Failed to check file existence for OffChainData {}: {}",
+                offChainData.getId(),
+                e.getMessage()
+            );
+            return false;
+        }
     }
 
     /**
@@ -3057,10 +3201,48 @@ public class UserFriendlyEncryptionAPI {
      */
     public long getLargeFileSize(OffChainData offChainData) {
         if (offChainData == null) {
+            logger.warn("⚠️ getLargeFileSize called with null OffChainData");
             return -1;
         }
 
-        return offChainStorage.getFileSize(offChainData);
+        // Validate OffChainData internal state
+        if (
+            offChainData.getFilePath() == null ||
+            offChainData.getFilePath().trim().isEmpty()
+        ) {
+            logger.error(
+                "❌ OffChainData has invalid file path: {}",
+                offChainData.getId()
+            );
+            return -1;
+        }
+
+        try {
+            long fileSize = offChainStorage.getFileSize(offChainData);
+            if (fileSize < 0) {
+                logger.warn(
+                    "⚠️ Storage returned negative file size for {}: {}",
+                    offChainData.getId(),
+                    fileSize
+                );
+                return -1;
+            }
+            return fileSize;
+        } catch (SecurityException e) {
+            logger.error(
+                "❌ Security error accessing file {}: {}",
+                offChainData.getFilePath(),
+                e.getMessage()
+            );
+            return -1;
+        } catch (Exception e) {
+            logger.error(
+                "❌ Failed to get file size for OffChainData {}: {}",
+                offChainData.getId(),
+                e.getMessage()
+            );
+            return -1;
+        }
     }
 
     /**
@@ -3365,24 +3547,25 @@ public class UserFriendlyEncryptionAPI {
                 .getSearchSpecialistAPI()
                 .searchIntelligent(searchTerm, password, maxResults);
 
-            List<Block> blocks = new ArrayList<>();
-            for (EnhancedSearchResult enhancedResult : enhancedResults) {
-                try {
-                    Block block = blockchain.getBlockByHash(
-                        enhancedResult.getBlockHash()
-                    );
-                    if (block != null) {
-                        blocks.add(block);
-                    }
-                } catch (Exception e) {
-                    logger.warn(
-                        "⚠️ Could not retrieve block {}",
-                        enhancedResult.getBlockHash(),
-                        e
-                    );
-                }
+            // BATCH OPTIMIZATION: Collect all hashes and retrieve blocks in single query
+            List<String> blockHashes = enhancedResults.stream()
+                .map(enhancedResult -> enhancedResult.getBlockHash())
+                .filter(hash -> hash != null && !hash.trim().isEmpty())
+                .collect(Collectors.toList());
+                
+            if (blockHashes.isEmpty()) {
+                return new ArrayList<>();
             }
-
+            
+            // Single optimized database query instead of N+1 individual queries
+            List<Block> blocks = blockchain.getBlockDAO().batchRetrieveBlocksByHash(blockHashes);
+            
+            logger.info(
+                "✅ Found {} blocks from {} adaptive decryption results using batch optimization", 
+                blocks.size(), 
+                enhancedResults.size()
+            );
+            
             return Collections.unmodifiableList(blocks);
         } catch (Exception e) {
             logger.error("❌ Search with adaptive decryption failed", e);
@@ -3400,7 +3583,8 @@ public class UserFriendlyEncryptionAPI {
     private List<Block> convertEnhancedResultsToBlocks(
         List<?> enhancedResults
     ) {
-        List<Block> blocks = new ArrayList<>();
+        // BATCH OPTIMIZATION: Collect all hashes using reflection, then retrieve blocks in single query
+        List<String> blockHashes = new ArrayList<>();
         for (var enhancedResult : enhancedResults) {
             try {
                 // Use reflection to get block hash since we don't know the exact type
@@ -3408,17 +3592,30 @@ public class UserFriendlyEncryptionAPI {
                     .getClass()
                     .getMethod("getBlockHash")
                     .invoke(enhancedResult);
-                Block block = blockchain.getBlockByHash(blockHash);
-                if (block != null) {
-                    blocks.add(block);
+                if (blockHash != null && !blockHash.trim().isEmpty()) {
+                    blockHashes.add(blockHash);
                 }
             } catch (Exception e) {
                 logger.warn(
-                    "⚠️ Warning: Could not convert enhanced result to block: {}",
+                    "⚠️ Warning: Could not extract block hash from enhanced result: {}",
                     e.getMessage()
                 );
             }
         }
+        
+        if (blockHashes.isEmpty()) {
+            return Collections.emptyList();
+        }
+        
+        // Single optimized database query instead of N+1 individual queries
+        List<Block> blocks = blockchain.getBlockDAO().batchRetrieveBlocksByHash(blockHashes);
+        
+        logger.info(
+            "✅ Converted {} enhanced results to {} blocks using batch optimization", 
+            enhancedResults.size(),
+            blocks.size()
+        );
+        
         return Collections.unmodifiableList(blocks);
     }
 
@@ -3493,7 +3690,7 @@ public class UserFriendlyEncryptionAPI {
         // Add public terms as special keywords that can be searched without password
         Set<String> publicKeywords = new HashSet<>();
         for (String publicTerm : publicTerms) {
-            publicKeywords.add("PUBLIC:" + publicTerm); // Mark public terms with prefix
+            publicKeywords.add("public:" + publicTerm.toLowerCase()); // Mark public terms with prefix (lowercase for consistency)
         }
 
         // Add private terms as regular keywords
@@ -3741,7 +3938,7 @@ public class UserFriendlyEncryptionAPI {
 
                 // First, try to find blocks where this term is marked as public
                 List<Block> publicResults = findBlocksWithPublicTerm(
-                    searchTerm
+                    searchTerm.toLowerCase()
                 );
                 for (Block block : publicResults) {
                     if (
@@ -3754,7 +3951,7 @@ public class UserFriendlyEncryptionAPI {
                 // If we have a password, also search in encrypted keywords
                 if (password != null && results.size() < maxResults) {
                     List<Block> encryptedResults = findBlocksWithPrivateTerm(
-                        searchTerm,
+                        searchTerm.toLowerCase(),
                         password
                     );
                     for (Block block : encryptedResults) {
@@ -3833,6 +4030,12 @@ public class UserFriendlyEncryptionAPI {
         List<Block> decryptedResults = new ArrayList<>();
 
         for (Block block : encryptedResults) {
+            // If no password provided, don't attempt decryption - just return the block as-is
+            if (password == null || password.trim().isEmpty()) {
+                decryptedResults.add(block);
+                continue;
+            }
+            
             try {
                 String decryptedData = blockchain.getDecryptedBlockData(
                     block.getId(),
@@ -3905,7 +4108,7 @@ public class UserFriendlyEncryptionAPI {
             List<Block> allBlocks = blockchain.getAllBlocks();
 
             for (Block block : allBlocks) {
-                if (isTermPublicInBlock(block, searchTerm)) {
+                if (isTermPublicInBlock(block, searchTerm.toLowerCase())) {
                     publicResults.add(block);
                 }
             }
@@ -3966,15 +4169,20 @@ public class UserFriendlyEncryptionAPI {
      */
     private boolean isTermPublicInBlock(Block block, String searchTerm) {
         try {
-            // Check if the block has the public keyword marker
+            // Check if the block has the public keyword marker (consistent with storage format)
+            // Use lowercase prefix as this is how data is actually stored in the database
             String publicKeyword = "public:" + searchTerm.toLowerCase();
+            
+            logger.debug("🔍 Debug: isTermPublicInBlock searching for '{}' in block #{}", publicKeyword, block.getBlockNumber());
 
             // Check in manual keywords
             String manualKeywords = block.getManualKeywords();
             if (manualKeywords != null) {
+                logger.debug("🔍 Debug: manualKeywords = '{}'", manualKeywords);
                 String[] keywords = manualKeywords.split("\\s+");
                 for (String keyword : keywords) {
-                    if (keyword.trim().toLowerCase().equals(publicKeyword)) {
+                    String trimmedKeyword = keyword.trim();
+                    if (trimmedKeyword.equals(publicKeyword)) {
                         logger.debug(
                             "🔍 Debug: Block #{} - term '{}' is PUBLIC (found in manual keywords)",
                             block.getBlockNumber(),
@@ -3988,9 +4196,11 @@ public class UserFriendlyEncryptionAPI {
             // Check in auto keywords
             String autoKeywords = block.getAutoKeywords();
             if (autoKeywords != null) {
+                logger.debug("🔍 Debug: autoKeywords = '{}'", autoKeywords);
                 String[] keywords = autoKeywords.split("\\s+");
                 for (String keyword : keywords) {
-                    if (keyword.trim().toLowerCase().equals(publicKeyword)) {
+                    String trimmedKeyword = keyword.trim();
+                    if (trimmedKeyword.equals(publicKeyword)) {
                         logger.debug(
                             "🔍 Debug: Block #{} - term '{}' is PUBLIC (found in auto keywords)",
                             block.getBlockNumber(),
@@ -5679,7 +5889,7 @@ public class UserFriendlyEncryptionAPI {
 
             // Get all managed keys
             List<CryptoUtil.KeyInfo> allKeys = CryptoUtil.getActiveKeys();
-            List<com.rbatllet.blockchain.entity.AuthorizedKey> authorizedKeys =
+            List<AuthorizedKey> authorizedKeys =
                 blockchain.getAuthorizedKeys();
 
             // Basic key availability check
@@ -6310,17 +6520,58 @@ public class UserFriendlyEncryptionAPI {
      * @return Block if found, null otherwise
      */
     private Block findBlockByHash(String blockHash) {
+        // Validate input
+        if (blockHash == null || blockHash.trim().isEmpty()) {
+            logger.warn("⚠️ findBlockByHash called with null/empty hash");
+            return null;
+        }
+
+        if (blockHash.length() < 8) {
+            logger.warn(
+                "⚠️ findBlockByHash called with suspiciously short hash: {}",
+                blockHash
+            );
+            return null;
+        }
+
         try {
+            // First try to get block directly from blockchain if it has indexing
+            Block directBlock = blockchain.getBlockByHash(blockHash);
+            if (directBlock != null) {
+                return directBlock;
+            }
+
+            // Fallback to linear search with optimization
             List<Block> allBlocks = blockchain.getValidChain();
-            return allBlocks
-                .stream()
-                .filter(block -> blockHash.equals(block.getHash()))
-                .findFirst()
-                .orElse(null);
-        } catch (Exception e) {
+
+            if (allBlocks == null || allBlocks.isEmpty()) {
+                logger.debug("No blocks available for hash search");
+                return null;
+            }
+
+            // Performance optimization: search from newest to oldest
+            // (most searches are for recent blocks)
+            for (int i = allBlocks.size() - 1; i >= 0; i--) {
+                Block block = allBlocks.get(i);
+                if (block != null && blockHash.equals(block.getHash())) {
+                    logger.debug(
+                        "✅ Found block #{} with hash {}...",
+                        block.getBlockNumber(),
+                        blockHash.substring(0, 8)
+                    );
+                    return block;
+                }
+            }
+
             logger.debug(
-                "🔍 Could not find block with hash {}: {}",
-                blockHash,
+                "Block not found for hash: {}...",
+                blockHash.substring(0, 8)
+            );
+            return null;
+        } catch (Exception e) {
+            logger.error(
+                "❌ Error finding block with hash {}: {}",
+                blockHash.substring(0, Math.min(8, blockHash.length())),
                 e.getMessage()
             );
             return null;
@@ -7264,32 +7515,161 @@ public class UserFriendlyEncryptionAPI {
     }
 
     private double calculateSemanticRelevance(String concept, Block block) {
-        double score = 0.0;
-        String content = block.getData().toLowerCase();
-        String conceptLower = concept.toLowerCase();
-
-        // Direct match
-        if (content.contains(conceptLower)) {
-            score += 2.0;
+        // Input validation
+        if (concept == null || concept.trim().isEmpty()) {
+            logger.debug(
+                "calculateSemanticRelevance called with null/empty concept"
+            );
+            return 0.0;
         }
 
-        // Partial matches
-        String[] conceptWords = conceptLower.split("\\s+");
-        for (String word : conceptWords) {
-            if (word.length() > 3 && content.contains(word)) {
-                score += 0.5;
+        if (block == null) {
+            logger.debug("calculateSemanticRelevance called with null block");
+            return 0.0;
+        }
+
+        if (block.getData() == null || block.getData().trim().isEmpty()) {
+            logger.debug(
+                "Block #{} has no data for semantic analysis",
+                block.getBlockNumber()
+            );
+            return 0.0;
+        }
+
+        try {
+            double score = 0.0;
+            String content = block.getData().toLowerCase();
+            String conceptLower = concept.trim().toLowerCase();
+
+            // Enhanced direct match with weight adjustment based on content length
+            if (content.contains(conceptLower)) {
+                double baseScore = 2.0;
+                // Adjust score based on how much of the content matches
+                double matchRatio =
+                    (double) conceptLower.length() / content.length();
+                score += baseScore + (matchRatio * 1.0);
+            }
+
+            // Enhanced partial matches with stemming-like logic
+            String[] conceptWords = conceptLower.split("\\s+");
+            Set<String> uniqueMatches = new HashSet<>();
+
+            for (String word : conceptWords) {
+                if (word.length() > 2) {
+                    // Reduced minimum length for better matching
+                    if (content.contains(word)) {
+                        uniqueMatches.add(word);
+                        score += 0.5;
+
+                        // Bonus for longer words (more specific)
+                        if (word.length() > 5) {
+                            score += 0.2;
+                        }
+
+                        // Check for word boundaries for more accurate matching
+                        if (content.matches(".*\\b" + word + "\\b.*")) {
+                            score += 0.3; // Bonus for exact word match
+                        }
+                    }
+
+                    // Simple stemming check (remove common suffixes)
+                    String stem = removeSuffix(word);
+                    if (!stem.equals(word) && content.contains(stem)) {
+                        score += 0.25;
+                    }
+                }
+            }
+
+            // Bonus for multiple word matches
+            if (uniqueMatches.size() > 1) {
+                score += uniqueMatches.size() * 0.1;
+            }
+
+            // Enhanced category bonus with multiple checks
+            if (block.getContentCategory() != null) {
+                String category = block.getContentCategory().toLowerCase();
+                if (category.contains(conceptLower)) {
+                    score += 1.5;
+                } else {
+                    // Check for partial category matches
+                    for (String word : conceptWords) {
+                        if (word.length() > 3 && category.contains(word)) {
+                            score += 0.3;
+                        }
+                    }
+                }
+            }
+
+            // Metadata relevance check
+            Map<String, String> metadata = getBlockMetadata(block);
+            if (!metadata.isEmpty()) {
+                for (String value : metadata.values()) {
+                    if (
+                        value != null &&
+                        value.toLowerCase().contains(conceptLower)
+                    ) {
+                        score += 0.8;
+                    }
+                }
+            }
+
+            // Timestamp relevance (newer blocks get slight bonus)
+            if (block.getTimestamp() != null) {
+                long daysSinceCreation = ChronoUnit.DAYS.between(
+                    block.getTimestamp(),
+                    LocalDateTime.now()
+                );
+                if (daysSinceCreation < 30) {
+                    // Recent blocks
+                    score += 0.1;
+                }
+            }
+
+            logger.debug(
+                "Semantic relevance for '{}' in block #{}: {:.2f}",
+                concept,
+                block.getBlockNumber(),
+                score
+            );
+
+            return Math.max(0.0, score); // Ensure non-negative score
+        } catch (Exception e) {
+            logger.error(
+                "Error calculating semantic relevance for block #{}: {}",
+                block.getBlockNumber(),
+                e.getMessage()
+            );
+            return 0.0;
+        }
+    }
+
+    /**
+     * Simple stemming helper - removes common English suffixes
+     * @param word The word to stem
+     * @return The stemmed word
+     */
+    private String removeSuffix(String word) {
+        if (word.length() < 4) return word;
+
+        // Common suffixes to remove
+        String[] suffixes = {
+            "ing",
+            "ed",
+            "er",
+            "est",
+            "ly",
+            "tion",
+            "sion",
+            "ness",
+        };
+
+        for (String suffix : suffixes) {
+            if (word.endsWith(suffix) && word.length() > suffix.length() + 2) {
+                return word.substring(0, word.length() - suffix.length());
             }
         }
 
-        // Category bonus
-        if (
-            block.getContentCategory() != null &&
-            block.getContentCategory().toLowerCase().contains(conceptLower)
-        ) {
-            score += 1.5;
-        }
-
-        return score;
+        return word;
     }
 
     private String exportAsJson(AdvancedSearchResult result) {
@@ -7695,19 +8075,215 @@ public class UserFriendlyEncryptionAPI {
     }
 
     private void clearLowPerformingCacheEntries() {
-        // Implementation would analyze and clear entries with low access counts
-        logger.debug("🧹 Clearing low-performing cache entries");
+        try {
+            logger.info("🧹 Starting analysis of low-performing cache entries");
+
+            // Get current cache statistics
+            SearchCacheManager.CacheStatistics stats =
+                searchCache.getStatistics();
+
+            if (stats.getSize() == 0) {
+                logger.debug("Cache is empty - nothing to clear");
+                return;
+            }
+
+            // Calculate performance thresholds
+            double avgHitRate = stats.getHitRate();
+            double lowPerformanceThreshold = Math.max(avgHitRate * 0.5, 10.0); // Min 10% hit rate
+
+            // Get cache entries with performance data
+            Map<String, Double> entryHitRates = searchCache.getEntryHitRates();
+
+            // Identify low-performing entries
+            List<String> entriesToRemove = entryHitRates
+                .entrySet()
+                .stream()
+                .filter(entry -> entry.getValue() < lowPerformanceThreshold)
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
+
+            if (entriesToRemove.isEmpty()) {
+                logger.debug("No low-performing cache entries found");
+                return;
+            }
+
+            // Remove low-performing entries
+            int removedCount = 0;
+            for (String key : entriesToRemove) {
+                if (searchCache.remove(key)) {
+                    removedCount++;
+                }
+            }
+
+            // Log results
+            logger.info(
+                "✅ Cleared {} low-performing cache entries (threshold: {:.1f}%)",
+                removedCount,
+                lowPerformanceThreshold
+            );
+
+            // Update metrics
+            globalSearchMetrics.recordCacheOptimization(
+                "low_performance_cleanup",
+                removedCount
+            );
+        } catch (Exception e) {
+            logger.error(
+                "❌ Error clearing low-performing cache entries: {}",
+                e.getMessage()
+            );
+        }
     }
 
     private void warmUpCacheWithPopularSearches() {
-        // Implementation would analyze search history and pre-warm popular searches
-        List<String> popularTerms = Arrays.asList(
-            "payment",
-            "transaction",
-            "contract",
-            "medical"
-        );
-        warmUpCache(popularTerms);
+        try {
+            logger.info("🔥 Starting cache warm-up with popular searches");
+
+            // Get actual search analytics from metrics
+            Map<String, SearchMetrics.PerformanceStats> searchTypeStats =
+                globalSearchMetrics.getSearchTypeStats();
+
+            // Get most popular search terms from real usage data
+            List<String> popularTerms = searchTypeStats
+                .entrySet()
+                .stream()
+                .filter(entry -> entry.getValue().getSearches() > 10) // Min 10 searches
+                .sorted((a, b) ->
+                    Long.compare(
+                        b.getValue().getSearches(),
+                        a.getValue().getSearches()
+                    )
+                )
+                .limit(20) // Top 20 most popular
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
+
+            // If no real data available, use intelligent defaults based on blockchain content
+            if (popularTerms.isEmpty()) {
+                logger.info(
+                    "No search history available, analyzing blockchain content for popular terms"
+                );
+                popularTerms = analyzeBlockchainForPopularTerms();
+            }
+
+            if (popularTerms.isEmpty()) {
+                // Fallback to basic terms if still empty
+                popularTerms = Arrays.asList(
+                    "payment",
+                    "transaction",
+                    "contract",
+                    "data",
+                    "user",
+                    "encrypted"
+                );
+                logger.info("Using fallback terms for cache warm-up");
+            }
+
+            // Warm up cache with popular terms
+            int warmedCount = 0;
+            for (String term : popularTerms) {
+                try {
+                    // Pre-execute search to populate cache
+                    SearchResults searchResults = searchPublicFast(term);
+                    List<Block> results = searchResults.getBlocks();
+                    if (!results.isEmpty()) {
+                        warmedCount++;
+                        logger.debug(
+                            "Warmed cache for term '{}': {} results",
+                            term,
+                            results.size()
+                        );
+                    }
+
+                    // Small delay to avoid overwhelming the system
+                    Thread.sleep(10);
+                } catch (Exception e) {
+                    logger.debug(
+                        "Failed to warm cache for term '{}': {}",
+                        term,
+                        e.getMessage()
+                    );
+                }
+            }
+
+            logger.info(
+                "✅ Cache warm-up completed: {} terms processed, {} successfully cached",
+                popularTerms.size(),
+                warmedCount
+            );
+
+            // Update metrics
+            globalSearchMetrics.recordCacheOptimization("warm_up", warmedCount);
+        } catch (Exception e) {
+            logger.error("❌ Error warming up cache: {}", e.getMessage());
+
+            // Fallback warm-up with basic terms
+            try {
+                List<String> fallbackTerms = Arrays.asList(
+                    "data",
+                    "user",
+                    "transaction"
+                );
+                warmUpCache(fallbackTerms);
+            } catch (Exception fallbackError) {
+                logger.error(
+                    "❌ Fallback cache warm-up also failed: {}",
+                    fallbackError.getMessage()
+                );
+            }
+        }
+    }
+
+    /**
+     * Analyze blockchain content to identify popular terms for cache warm-up
+     * @return List of terms that appear frequently in the blockchain
+     */
+    private List<String> analyzeBlockchainForPopularTerms() {
+        try {
+            Map<String, Integer> termFrequency = new HashMap<>();
+            List<Block> allBlocks = blockchain.getAllBlocks();
+
+            // Analyze block data for common terms
+            for (Block block : allBlocks) {
+                if (block.getData() != null && !block.getData().isEmpty()) {
+                    // Extract meaningful terms from block data
+                    String[] words = block
+                        .getData()
+                        .toLowerCase()
+                        .replaceAll("[^a-zA-Z0-9\\s]", " ")
+                        .split("\\s+");
+
+                    for (String word : words) {
+                        if (word.length() > 3) {
+                            // Skip very short words
+                            termFrequency.merge(word, 1, Integer::sum);
+                        }
+                    }
+                }
+
+                // Also check categories if available
+                if (block.getContentCategory() != null) {
+                    String category = block.getContentCategory().toLowerCase();
+                    termFrequency.merge(category, 5, Integer::sum); // Weight categories higher
+                }
+            }
+
+            // Return top terms sorted by frequency
+            return termFrequency
+                .entrySet()
+                .stream()
+                .filter(entry -> entry.getValue() >= 3) // Must appear at least 3 times
+                .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
+                .limit(15)
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
+        } catch (Exception e) {
+            logger.error(
+                "Error analyzing blockchain for popular terms: {}",
+                e.getMessage()
+            );
+            return new ArrayList<>();
+        }
     }
 
     private String calculateSearchSystemHealth(
@@ -8722,7 +9298,7 @@ public class UserFriendlyEncryptionAPI {
         for (Long blockNumber : blockNumbers) {
             if (quickMode) {
                 // Quick check - just verify existence
-                results.add(performQuickIntegrityCheck(blockNumber));
+                results.add(performQuickIntegrityCheckDetailed(blockNumber));
             } else {
                 // Full verification
                 results.add(verifyBlockIntegrity(blockNumber));
@@ -8732,31 +9308,160 @@ public class UserFriendlyEncryptionAPI {
         return results;
     }
 
-    private OffChainIntegrityReport.IntegrityCheckResult performQuickIntegrityCheck(
+    private OffChainIntegrityReport.IntegrityCheckResult performQuickIntegrityCheckDetailed(
         Long blockNumber
     ) {
         Instant start = Instant.now();
 
+        // Validate input parameter
+        if (blockNumber == null || blockNumber <= 0) {
+            logger.warn(
+                "⚠️ performQuickIntegrityCheck called with invalid blockNumber: {}",
+                blockNumber
+            );
+            return new OffChainIntegrityReport.IntegrityCheckResult(
+                blockNumber != null ? blockNumber.toString() : "null",
+                "QUICK_CHECK",
+                OffChainIntegrityReport.IntegrityStatus.CORRUPTED,
+                "Invalid block number provided",
+                Duration.between(start, Instant.now())
+            ).addMetadata("bytesChecked", 0L);
+        }
+
         try {
             Block block = blockchain.getBlock(blockNumber);
 
-            OffChainIntegrityReport.IntegrityStatus status = block != null
-                ? OffChainIntegrityReport.IntegrityStatus.HEALTHY
-                : OffChainIntegrityReport.IntegrityStatus.MISSING;
+            if (block == null) {
+                logger.debug(
+                    "Block #{} not found during quick integrity check",
+                    blockNumber
+                );
+                return new OffChainIntegrityReport.IntegrityCheckResult(
+                    blockNumber.toString(),
+                    "QUICK_CHECK",
+                    OffChainIntegrityReport.IntegrityStatus.MISSING,
+                    "Block not found in blockchain",
+                    Duration.between(start, Instant.now())
+                ).addMetadata("bytesChecked", 0L);
+            }
 
-            String details = block != null ? "Block exists" : "Block not found";
-            long dataSize = block != null && block.getData() != null
-                ? block.getData().length()
-                : 0;
+            // Comprehensive integrity checks
+            StringBuilder details = new StringBuilder();
+            OffChainIntegrityReport.IntegrityStatus status =
+                OffChainIntegrityReport.IntegrityStatus.HEALTHY;
+            long dataSize = 0;
+
+            // Check basic block structure
+            if (block.getData() == null || block.getData().isEmpty()) {
+                details.append("Missing block data; ");
+                status = OffChainIntegrityReport.IntegrityStatus.CORRUPTED;
+            } else {
+                dataSize = block.getData().length();
+                details
+                    .append("Data present (")
+                    .append(dataSize)
+                    .append(" bytes); ");
+            }
+
+            // Check hash integrity
+            if (block.getHash() == null || block.getHash().length() < 32) {
+                details.append("Invalid hash format; ");
+                status = OffChainIntegrityReport.IntegrityStatus.CORRUPTED;
+            } else {
+                // Verify hash matches content
+                try {
+                    String expectedHash = CryptoUtil.calculateHash(
+                        block.toString()
+                    );
+                    if (!expectedHash.equals(block.getHash())) {
+                        details.append("Hash mismatch detected; ");
+                        status =
+                            OffChainIntegrityReport.IntegrityStatus.CORRUPTED;
+                    } else {
+                        details.append("Hash valid; ");
+                    }
+                } catch (Exception hashException) {
+                    details.append("Hash validation failed; ");
+                    status = OffChainIntegrityReport.IntegrityStatus.CORRUPTED;
+                }
+            }
+
+            // Check timestamp validity
+            if (block.getTimestamp() == null) {
+                details.append("Missing timestamp; ");
+                status = OffChainIntegrityReport.IntegrityStatus.CORRUPTED;
+            } else if (
+                block.getTimestamp().isAfter(LocalDateTime.now().plusMinutes(5))
+            ) {
+                details.append("Future timestamp; ");
+                status = OffChainIntegrityReport.IntegrityStatus.CORRUPTED;
+            } else {
+                details.append("Timestamp valid; ");
+            }
+
+            // Check off-chain data if present
+            if (hasOffChainData(block)) {
+                try {
+                    boolean offChainValid =
+                        BlockValidationUtil.validateOffChainData(
+                            blockchain,
+                            block
+                        );
+                    if (offChainValid) {
+                        details.append("Off-chain data valid; ");
+                    } else {
+                        details.append("Off-chain data invalid; ");
+                        status =
+                            OffChainIntegrityReport.IntegrityStatus.CORRUPTED;
+                    }
+                } catch (Exception offChainException) {
+                    details.append("Off-chain validation failed; ");
+                    status = OffChainIntegrityReport.IntegrityStatus.UNKNOWN;
+                }
+            } else {
+                details.append("No off-chain data; ");
+            }
+
+            // Log result
+            if (status == OffChainIntegrityReport.IntegrityStatus.CORRUPTED) {
+                logger.debug(
+                    "⚠️ Quick integrity check found issues in block #{}: {}",
+                    blockNumber,
+                    details.toString().trim()
+                );
+            } else {
+                logger.debug(
+                    "✅ Quick integrity check passed for block #{}",
+                    blockNumber
+                );
+            }
 
             return new OffChainIntegrityReport.IntegrityCheckResult(
                 blockNumber.toString(),
                 "QUICK_CHECK",
                 status,
-                details,
+                details.toString().trim(),
                 Duration.between(start, Instant.now())
             ).addMetadata("bytesChecked", dataSize);
+        } catch (SecurityException e) {
+            logger.error(
+                "❌ Security error during quick integrity check for block #{}: {}",
+                blockNumber,
+                e.getMessage()
+            );
+            return new OffChainIntegrityReport.IntegrityCheckResult(
+                blockNumber.toString(),
+                "QUICK_CHECK",
+                OffChainIntegrityReport.IntegrityStatus.CORRUPTED,
+                "Security error: " + e.getMessage(),
+                Duration.between(start, Instant.now())
+            ).addMetadata("bytesChecked", 0L);
         } catch (Exception e) {
+            logger.error(
+                "❌ Error during quick integrity check for block #{}: {}",
+                blockNumber,
+                e.getMessage()
+            );
             return new OffChainIntegrityReport.IntegrityCheckResult(
                 blockNumber.toString(),
                 "QUICK_CHECK",
@@ -9044,10 +9749,43 @@ public class UserFriendlyEncryptionAPI {
             int repairedLinks = 0;
             int totalChecked = 0;
 
+            // 🚀 N+1 OPTIMIZATION: Batch retrieve all blocks in range for chain recovery
+            List<Long> blockNumbers = new ArrayList<>();
+            for (long i = startBlock; i <= endBlock; i++) {
+                blockNumbers.add(i);
+            }
+            
+            logger.info("📦 Batch retrieving {} blocks for chain recovery (#{} to #{})", 
+                blockNumbers.size(), startBlock, endBlock);
+            
+            Map<Long, Block> blockMap = new HashMap<>();
+            try {
+                List<Block> retrievedBlocks = blockchain.getBlockDAO().batchRetrieveBlocks(blockNumbers);
+                for (Block block : retrievedBlocks) {
+                    if (block != null) {
+                        blockMap.put(block.getBlockNumber(), block);
+                    }
+                }
+                logger.info("✅ Chain recovery batch optimization: retrieved {} valid blocks", blockMap.size());
+            } catch (Exception batchEx) {
+                logger.error("❌ Batch retrieval failed for chain recovery, falling back to individual queries", batchEx);
+                // Fallback: individual queries
+                for (Long blockNum : blockNumbers) {
+                    try {
+                        Block block = blockchain.getBlock(blockNum);
+                        if (block != null) {
+                            blockMap.put(blockNum, block);
+                        }
+                    } catch (Exception e) {
+                        logger.warn("Error retrieving block #{}: {}", blockNum, e.getMessage());
+                    }
+                }
+            }
+
             for (Long blockNum = startBlock; blockNum <= endBlock; blockNum++) {
                 totalChecked++;
 
-                Block currentBlock = blockchain.getBlock(blockNum);
+                Block currentBlock = blockMap.get(blockNum);
                 if (currentBlock == null) {
                     actions.add(
                         new ChainRecoveryResult.RecoveryAction(
@@ -9063,7 +9801,7 @@ public class UserFriendlyEncryptionAPI {
 
                 // Check link to previous block
                 if (blockNum > 0) {
-                    Block previousBlock = blockchain.getBlock(blockNum - 1);
+                    Block previousBlock = blockMap.get(blockNum - 1);
                     if (
                         previousBlock != null &&
                         !currentBlock
@@ -9857,80 +10595,228 @@ public class UserFriendlyEncryptionAPI {
         try {
             List<Block> allBlocks = blockchain.getAllBlocks();
 
+            if (allBlocks == null || allBlocks.isEmpty()) {
+                logger.debug("No blocks available for corruption analysis");
+                return corruptedBlocks;
+            }
+
+            logger.info(
+                "🔍 Analyzing {} blocks for corruption",
+                allBlocks.size()
+            );
+
+            // Use existing blockchain validation systems
             for (Block block : allBlocks) {
-                // Check for various corruption indicators
-                if (isBlockCorrupted(block)) {
+                try {
+                    // Use the blockchain's own validation logic
+                    boolean isValid = blockchain.validateSingleBlock(block);
+                    if (!isValid) {
+                        corruptedBlocks.add(block.getBlockNumber());
+                        logger.debug(
+                            "Block #{} identified as corrupted by blockchain validation",
+                            block.getBlockNumber()
+                        );
+                    }
+                } catch (Exception e) {
+                    logger.debug(
+                        "Error validating block #{}: {}",
+                        block.getBlockNumber(),
+                        e.getMessage()
+                    );
                     corruptedBlocks.add(block.getBlockNumber());
                 }
             }
+
+            if (corruptedBlocks.isEmpty()) {
+                logger.info("✅ No corrupted blocks found");
+            } else {
+                logger.warn(
+                    "⚠️ Found {} corrupted blocks: {}",
+                    corruptedBlocks.size(),
+                    corruptedBlocks
+                );
+            }
         } catch (Exception e) {
-            logger.error("❌ Error identifying corrupted blocks", e);
+            logger.error(
+                "❌ Error identifying corrupted blocks: {}",
+                e.getMessage()
+            );
         }
 
         return corruptedBlocks;
     }
 
-    private boolean isBlockCorrupted(Block block) {
-        try {
-            // Basic corruption checks
-            if (block.getHash() == null || block.getHash().length() < 10) {
-                return true;
-            }
-
-            if (block.getData() == null) {
-                return true;
-            }
-
-            // Check timestamp validity
-            if (
-                block.getTimestamp() == null ||
-                block.getTimestamp().isAfter(LocalDateTime.now().plusMinutes(5))
-            ) {
-                return true;
-            }
-
-            return false;
-        } catch (Exception e) {
-            logger.debug("Error checking block corruption: {}", e.getMessage());
-            return true; // Assume corrupted if we can't check
-        }
-    }
-
     private boolean repairSingleBlock(Long blockNumber) {
         try {
+            // CRITICAL FIX: Validate input parameter
+            if (blockNumber == null || blockNumber <= 0) {
+                logger.error(
+                    "❌ Cannot repair block: invalid block number provided"
+                );
+                return false;
+            }
+
             Block block = blockchain.getBlock(blockNumber);
             if (block == null) {
-                logger.debug(
-                    "Cannot repair block #{} - block not found",
+                logger.error(
+                    "❌ Cannot repair block #{} - block not found",
                     blockNumber
                 );
                 return false;
             }
 
-            // Basic repair attempts
-            if (block.getHash() == null || block.getHash().length() < 10) {
-                // Regenerate hash for corrupted block
-                String newHash = CryptoUtil.calculateHash(block.toString());
-                block.setHash(newHash);
-                logger.debug(
-                    "✅ Block #{} hash regenerated: {}",
+            // CRITICAL FIX: Check for subsequent blocks before any modifications
+            if (hasSubsequentBlocks(block)) {
+                int subsequentCount = getSubsequentBlockCount(block);
+                logger.error(
+                    "❌ Cannot repair block #{}: would invalidate {} subsequent blocks",
                     blockNumber,
-                    newHash.substring(0, 16) + "..."
+                    subsequentCount
+                );
+                return false;
+            }
+
+            // Store original values for rollback capability
+            String originalHash = block.getHash();
+            String originalData = block.getData();
+
+            // CRITICAL FIX: Comprehensive corruption detection
+            boolean needsRepair = false;
+            StringBuilder repairLog = new StringBuilder();
+
+            // Check for hash corruption
+            if (block.getHash() == null || block.getHash().length() < 32) {
+                needsRepair = true;
+                repairLog.append("invalid_hash ");
+            }
+
+            // Check for data corruption
+            if (block.getData() == null || block.getData().isEmpty()) {
+                logger.error(
+                    "❌ Block #{} has null/empty data - cannot repair",
+                    blockNumber
+                );
+                return false; // Cannot repair if data is completely missing
+            }
+
+            // Verify hash matches content
+            try {
+                String expectedHash = CryptoUtil.calculateHash(
+                    block.toString()
+                );
+                if (!expectedHash.equals(block.getHash())) {
+                    needsRepair = true;
+                    repairLog.append("hash_mismatch ");
+                }
+            } catch (Exception e) {
+                logger.error(
+                    "❌ Cannot calculate hash for block #{}: {}",
+                    blockNumber,
+                    e.getMessage()
+                );
+                return false;
+            }
+
+            // Check timestamp integrity
+            if (
+                block.getTimestamp() == null ||
+                block.getTimestamp().isAfter(LocalDateTime.now().plusMinutes(5))
+            ) {
+                needsRepair = true;
+                repairLog.append("invalid_timestamp ");
+                // Fix timestamp if it's in the future
+                if (
+                    block.getTimestamp() != null &&
+                    block
+                        .getTimestamp()
+                        .isAfter(LocalDateTime.now().plusMinutes(5))
+                ) {
+                    block.setTimestamp(LocalDateTime.now());
+                }
+            }
+
+            if (!needsRepair) {
+                logger.debug(
+                    "✅ Block #{} is already valid - no repair needed",
+                    blockNumber
                 );
                 return true;
             }
 
-            // Additional repair logic would go here
-            logger.debug("Block #{} repair attempt completed", blockNumber);
-            return true;
+            logger.info(
+                "🔧 Repairing block #{}: {}",
+                blockNumber,
+                repairLog.toString().trim()
+            );
+
+            try {
+                // CRITICAL FIX: Safe hash regeneration with validation
+                String newHash = CryptoUtil.calculateHash(block.toString());
+
+                // Validate the new hash before applying
+                if (newHash == null || newHash.length() < 32) {
+                    logger.error(
+                        "❌ Generated invalid hash for block #{}",
+                        blockNumber
+                    );
+                    return false;
+                }
+
+                block.setHash(newHash);
+
+                // CRITICAL FIX: Validate the entire repaired block
+                if (!validateRepairedBlock(block)) {
+                    // Rollback changes
+                    block.setHash(originalHash);
+                    block.setData(originalData);
+                    logger.error(
+                        "❌ Block repair validation failed for block #{}, changes rolled back",
+                        blockNumber
+                    );
+                    return false;
+                }
+
+                logger.info(
+                    "✅ Block #{} successfully repaired: {} -> {}",
+                    blockNumber,
+                    originalHash != null
+                        ? originalHash.substring(0, 8) + "..."
+                        : "null",
+                    newHash.substring(0, 8) + "..."
+                );
+
+                return true;
+            } catch (Exception repairException) {
+                // Rollback changes on any error
+                block.setHash(originalHash);
+                block.setData(originalData);
+                logger.error(
+                    "❌ Failed to repair block #{}: {}",
+                    blockNumber,
+                    repairException.getMessage()
+                );
+                throw repairException;
+            }
         } catch (Exception e) {
-            logger.error("Error repairing block #{}", blockNumber, e);
+            logger.error(
+                "❌ Error repairing block #{}: {}",
+                blockNumber,
+                e.getMessage()
+            );
             return false;
         }
     }
 
     private boolean repairBlockLink(Block currentBlock, Block previousBlock) {
         try {
+            // CRITICAL FIX: Validate input parameters
+            if (currentBlock == null || previousBlock == null) {
+                logger.error(
+                    "❌ Cannot repair block link: null blocks provided"
+                );
+                return false;
+            }
+
             // Check if the link needs repair
             if (
                 currentBlock.getPreviousHash().equals(previousBlock.getHash())
@@ -9938,20 +10824,213 @@ public class UserFriendlyEncryptionAPI {
                 return true; // Already correct
             }
 
-            // Update the previousHash to repair the link
-            currentBlock.setPreviousHash(previousBlock.getHash());
+            // CRITICAL FIX: Check for subsequent blocks to prevent chain corruption
+            if (hasSubsequentBlocks(currentBlock)) {
+                int subsequentCount = getSubsequentBlockCount(currentBlock);
+                logger.error(
+                    "❌ Cannot repair block #{}: would invalidate {} subsequent blocks and corrupt the entire chain",
+                    currentBlock.getBlockNumber(),
+                    subsequentCount
+                );
+                return false;
+            }
 
-            // Regenerate current block's hash after fixing the link
-            String newHash = CryptoUtil.calculateHash(currentBlock.toString());
-            currentBlock.setHash(newHash);
+            // CRITICAL FIX: Validate that this repair makes cryptographic sense
+            if (!isRepairSafe(currentBlock, previousBlock)) {
+                logger.error(
+                    "❌ Unsafe repair detected for block #{}: cryptographic validation failed",
+                    currentBlock.getBlockNumber()
+                );
+                return false;
+            }
 
-            logger.debug(
-                "✅ Block link repaired for block #{}",
-                currentBlock.getBlockNumber()
+            // Store original values for rollback
+            String originalPreviousHash = currentBlock.getPreviousHash();
+            String originalCurrentHash = currentBlock.getHash();
+
+            try {
+                // Update the previousHash to repair the link
+                currentBlock.setPreviousHash(previousBlock.getHash());
+
+                // Regenerate current block's hash after fixing the link
+                String newHash = CryptoUtil.calculateHash(
+                    currentBlock.toString()
+                );
+                currentBlock.setHash(newHash);
+
+                // CRITICAL FIX: Validate the repaired block
+                if (!validateRepairedBlock(currentBlock)) {
+                    // Rollback changes
+                    currentBlock.setPreviousHash(originalPreviousHash);
+                    currentBlock.setHash(originalCurrentHash);
+                    logger.error(
+                        "❌ Block repair validation failed, changes rolled back"
+                    );
+                    return false;
+                }
+
+                logger.info(
+                    "✅ Block link safely repaired for block #{}: {} -> {}",
+                    currentBlock.getBlockNumber(),
+                    originalCurrentHash.substring(0, 8) + "...",
+                    newHash.substring(0, 8) + "..."
+                );
+                return true;
+            } catch (Exception repairException) {
+                // Rollback changes on any error
+                currentBlock.setPreviousHash(originalPreviousHash);
+                currentBlock.setHash(originalCurrentHash);
+                throw repairException;
+            }
+        } catch (Exception e) {
+            logger.error(
+                "❌ Error repairing block link for block #{}: {}",
+                currentBlock != null
+                    ? currentBlock.getBlockNumber()
+                    : "unknown",
+                e.getMessage()
             );
+            return false;
+        }
+    }
+
+    /**
+     * CRITICAL SAFETY METHOD: Check if a block has subsequent blocks
+     * @param block The block to check
+     * @return true if there are blocks that reference this block
+     */
+    private boolean hasSubsequentBlocks(Block block) {
+        try {
+            List<Block> allBlocks = blockchain.getAllBlocks();
+            String blockHash = block.getHash();
+
+            return allBlocks
+                .stream()
+                .anyMatch(b -> blockHash.equals(b.getPreviousHash()));
+        } catch (Exception e) {
+            logger.warn(
+                "Error checking for subsequent blocks: {}",
+                e.getMessage()
+            );
+            return true; // Err on the side of caution
+        }
+    }
+
+    /**
+     * CRITICAL SAFETY METHOD: Count subsequent blocks
+     * @param block The block to check
+     * @return number of subsequent blocks
+     */
+    private int getSubsequentBlockCount(Block block) {
+        try {
+            List<Block> allBlocks = blockchain.getAllBlocks();
+            String blockHash = block.getHash();
+
+            return (int) allBlocks
+                .stream()
+                .filter(b -> blockHash.equals(b.getPreviousHash()))
+                .count();
+        } catch (Exception e) {
+            logger.warn("Error counting subsequent blocks: {}", e.getMessage());
+            return Integer.MAX_VALUE; // Err on the side of caution
+        }
+    }
+
+    /**
+     * CRITICAL SAFETY METHOD: Validate that a repair is cryptographically safe
+     * @param currentBlock The block being repaired
+     * @param previousBlock The previous block
+     * @return true if the repair is safe
+     */
+    private boolean isRepairSafe(Block currentBlock, Block previousBlock) {
+        try {
+            // Check block sequence integrity
+            if (
+                previousBlock.getBlockNumber() >= currentBlock.getBlockNumber()
+            ) {
+                logger.error(
+                    "Invalid block sequence: previous block #{} >= current block #{}",
+                    previousBlock.getBlockNumber(),
+                    currentBlock.getBlockNumber()
+                );
+                return false;
+            }
+
+            // Check timestamp integrity
+            if (
+                previousBlock
+                    .getTimestamp()
+                    .isAfter(currentBlock.getTimestamp())
+            ) {
+                logger.error(
+                    "Invalid timestamp sequence: previous block is newer than current block"
+                );
+                return false;
+            }
+
+            // Verify previous block integrity
+            String expectedPreviousHash = CryptoUtil.calculateHash(
+                previousBlock.toString()
+            );
+            if (!expectedPreviousHash.equals(previousBlock.getHash())) {
+                logger.error(
+                    "Previous block #{} has invalid hash - cannot safely link to corrupted block",
+                    previousBlock.getBlockNumber()
+                );
+                return false;
+            }
+
             return true;
         } catch (Exception e) {
-            logger.error("Error repairing block link", e);
+            logger.error("Error validating repair safety: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * CRITICAL SAFETY METHOD: Validate a repaired block
+     * @param block The block that was repaired
+     * @return true if the block is valid after repair
+     */
+    private boolean validateRepairedBlock(Block block) {
+        try {
+            // Verify hash matches content
+            String expectedHash = CryptoUtil.calculateHash(block.toString());
+            if (!expectedHash.equals(block.getHash())) {
+                logger.error(
+                    "Repaired block #{} hash mismatch: expected {}, got {}",
+                    block.getBlockNumber(),
+                    expectedHash.substring(0, 8) + "...",
+                    block.getHash().substring(0, 8) + "..."
+                );
+                return false;
+            }
+
+            // Additional validation checks
+            if (
+                block.getData() == null ||
+                block.getHash() == null ||
+                block.getPreviousHash() == null ||
+                block.getTimestamp() == null
+            ) {
+                logger.error(
+                    "Repaired block #{} has null critical fields",
+                    block.getBlockNumber()
+                );
+                return false;
+            }
+
+            if (block.getHash().length() < 32) {
+                logger.error(
+                    "Repaired block #{} has invalid hash length",
+                    block.getBlockNumber()
+                );
+                return false;
+            }
+
+            return true;
+        } catch (Exception e) {
+            logger.error("Error validating repaired block: {}", e.getMessage());
             return false;
         }
     }
@@ -10144,23 +11223,128 @@ public class UserFriendlyEncryptionAPI {
      * @return List of blocks within the date range
      */
     public List<Block> findBlocksByDateRange(String fromDate, String toDate) {
+        // Enhanced input validation
+        if (fromDate == null && toDate == null) {
+            logger.warn("⚠️ findBlocksByDateRange called with both dates null");
+            return new ArrayList<>();
+        }
+
         try {
             java.time.format.DateTimeFormatter formatter =
                 java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
-            java.time.LocalDate startDate = fromDate != null
-                ? java.time.LocalDate.parse(fromDate, formatter)
-                : java.time.LocalDate.MIN;
-            java.time.LocalDate endDate = toDate != null
-                ? java.time.LocalDate.parse(toDate, formatter)
-                : java.time.LocalDate.MAX;
+            java.time.LocalDate startDate = null;
+            java.time.LocalDate endDate = null;
 
-            return blockchain.getBlocksByDateRange(startDate, endDate);
-        } catch (java.time.format.DateTimeParseException e) {
-            logger.error("Invalid date format. Use yyyy-MM-dd format", e);
-            throw new IllegalArgumentException(
-                "Invalid date format. Use yyyy-MM-dd format: " + e.getMessage()
+            // Enhanced date parsing with validation
+            if (fromDate != null) {
+                if (fromDate.trim().isEmpty()) {
+                    logger.warn(
+                        "⚠️ Empty fromDate provided, using minimum date"
+                    );
+                    startDate = java.time.LocalDate.MIN;
+                } else {
+                    try {
+                        startDate = java.time.LocalDate.parse(
+                            fromDate.trim(),
+                            formatter
+                        );
+                    } catch (java.time.format.DateTimeParseException e) {
+                        logger.error(
+                            "Invalid fromDate format '{}': {}",
+                            fromDate,
+                            e.getMessage()
+                        );
+                        throw new IllegalArgumentException(
+                            "Invalid fromDate format '" +
+                            fromDate +
+                            "'. Use yyyy-MM-dd format: " +
+                            e.getMessage()
+                        );
+                    }
+                }
+            } else {
+                startDate = java.time.LocalDate.MIN;
+            }
+
+            if (toDate != null) {
+                if (toDate.trim().isEmpty()) {
+                    logger.warn("⚠️ Empty toDate provided, using current date");
+                    endDate = java.time.LocalDate.now();
+                } else {
+                    try {
+                        endDate = java.time.LocalDate.parse(
+                            toDate.trim(),
+                            formatter
+                        );
+                    } catch (java.time.format.DateTimeParseException e) {
+                        logger.error(
+                            "Invalid toDate format '{}': {}",
+                            toDate,
+                            e.getMessage()
+                        );
+                        throw new IllegalArgumentException(
+                            "Invalid toDate format '" +
+                            toDate +
+                            "'. Use yyyy-MM-dd format: " +
+                            e.getMessage()
+                        );
+                    }
+                }
+            } else {
+                endDate = java.time.LocalDate.now();
+            }
+
+            // Validate date range logic
+            if (startDate.isAfter(endDate)) {
+                logger.warn(
+                    "⚠️ Start date {} is after end date {}, swapping",
+                    startDate,
+                    endDate
+                );
+                java.time.LocalDate temp = startDate;
+                startDate = endDate;
+                endDate = temp;
+            }
+
+            // Check for reasonable date ranges
+            long daysBetween = ChronoUnit.DAYS.between(startDate, endDate);
+            if (daysBetween > 365 * 10) {
+                // More than 10 years
+                logger.warn(
+                    "⚠️ Large date range requested: {} days",
+                    daysBetween
+                );
+            }
+
+            logger.debug("Searching blocks from {} to {}", startDate, endDate);
+
+            List<Block> results = blockchain.getBlocksByDateRange(
+                startDate,
+                endDate
             );
+
+            if (results == null) {
+                logger.warn("Blockchain returned null for date range query");
+                return new ArrayList<>();
+            }
+
+            logger.info(
+                "✅ Found {} blocks in date range {} to {}",
+                results.size(),
+                startDate,
+                endDate
+            );
+            return results;
+        } catch (IllegalArgumentException e) {
+            // Re-throw validation errors
+            throw e;
+        } catch (Exception e) {
+            logger.error(
+                "❌ Error finding blocks by date range: {}",
+                e.getMessage()
+            );
+            return new ArrayList<>();
         }
     }
 
@@ -10171,31 +11355,171 @@ public class UserFriendlyEncryptionAPI {
      * @return List of blocks with matching category
      */
     public List<Block> findBlocksByCategory(String category) {
+        // Enhanced input validation
         if (category == null || category.trim().isEmpty()) {
+            logger.warn(
+                "⚠️ findBlocksByCategory called with null/empty category"
+            );
             return new ArrayList<>();
         }
 
-        String upperCategory = category.toUpperCase();
-        List<Block> results = new ArrayList<>();
+        String normalizedCategory = category.trim().toUpperCase();
 
-        long blockCount = blockchain.getBlockCount();
-        for (long i = 1; i <= blockCount; i++) {
-            Block block = blockchain.getBlock(i);
-            if (
-                block != null &&
-                block.getContentCategory() != null &&
-                block.getContentCategory().toUpperCase().contains(upperCategory)
-            ) {
-                results.add(block);
-            }
+        // Validate category length
+        if (normalizedCategory.length() > 100) {
+            logger.warn(
+                "⚠️ Category search term too long: {} characters",
+                normalizedCategory.length()
+            );
+            throw new IllegalArgumentException(
+                "Category search term cannot exceed 100 characters"
+            );
         }
 
-        logger.debug(
-            "Found {} blocks with category containing '{}'",
-            results.size(),
-            category
-        );
-        return results;
+        try {
+            List<Block> results = new ArrayList<>();
+
+            // Performance optimization: Try to use blockchain's built-in category search if available
+            try {
+                List<Block> optimizedResults = blockchain.searchByCategory(
+                    normalizedCategory
+                );
+                if (optimizedResults != null) {
+                    logger.debug("✅ Used optimized category search");
+                    return optimizedResults;
+                }
+            } catch (Exception e) {
+                logger.debug(
+                    "Optimized category search not available, falling back to manual search"
+                );
+            }
+
+            // Fallback: Manual search with optimizations
+            long blockCount = blockchain.getBlockCount();
+
+            if (blockCount == 0) {
+                logger.debug("No blocks in blockchain");
+                return results;
+            }
+
+            logger.debug(
+                "Searching {} blocks for category '{}'",
+                blockCount,
+                category
+            );
+
+            // Performance optimization: Process in batches to avoid memory issues
+            int processedBlocks = 0;
+
+            // 🚀 N+1 OPTIMIZATION: Batch retrieve all blocks for category search
+            try {
+                List<Long> allBlockNumbers = new ArrayList<>();
+                for (long i = 1; i <= blockCount; i++) {
+                    allBlockNumbers.add(i);
+                }
+                
+                logger.info("📦 Batch retrieving {} blocks for category search", allBlockNumbers.size());
+                List<Block> allBlocks = blockchain.getBlockDAO().batchRetrieveBlocks(allBlockNumbers);
+                
+                for (Block block : allBlocks) {
+                    try {
+                        if (
+                            block != null &&
+                            block.getContentCategory() != null &&
+                            !block.getContentCategory().trim().isEmpty()
+                        ) {
+                            String blockCategory = block
+                                .getContentCategory()
+                                .toUpperCase();
+
+                            // Enhanced matching: exact match first, then contains
+                            if (
+                                blockCategory.equals(normalizedCategory) ||
+                                blockCategory.contains(normalizedCategory)
+                            ) {
+                                results.add(block);
+                            }
+                        }
+
+                        processedBlocks++;
+
+                        // Progress logging for large searches
+                        if (processedBlocks % 1000 == 0) {
+                            logger.debug(
+                                "Category search progress: {} blocks processed",
+                                processedBlocks
+                            );
+                        }
+                    } catch (Exception e) {
+                        logger.warn(
+                            "Error processing block #{}: {}",
+                            block != null ? block.getBlockNumber() : "null",
+                            e.getMessage()
+                        );
+                    }
+                }
+                
+                logger.info("✅ Category search batch optimization completed: {} matching blocks", results.size());
+                
+            } catch (Exception batchEx) {
+                logger.error("❌ Batch optimization failed for category search, falling back", batchEx);
+                
+                // Fallback to individual queries
+                for (long i = 1; i <= blockCount; i++) {
+                    try {
+                        Block block = blockchain.getBlock(i);
+                        if (
+                            block != null &&
+                            block.getContentCategory() != null &&
+                            !block.getContentCategory().trim().isEmpty()
+                        ) {
+                            String blockCategory = block
+                                .getContentCategory()
+                                .toUpperCase();
+
+                            if (
+                                blockCategory.equals(normalizedCategory) ||
+                                blockCategory.contains(normalizedCategory)
+                            ) {
+                                results.add(block);
+                            }
+                        }
+                        processedBlocks++;
+                    } catch (Exception e) {
+                        logger.warn(
+                            "Error accessing block #{}: {}",
+                            i,
+                            e.getMessage()
+                        );
+                    }
+                }
+            }
+
+            logger.info(
+                "✅ Found {} blocks with category containing '{}' (searched {} blocks)",
+                results.size(),
+                category,
+                processedBlocks
+            );
+
+            return results;
+        } catch (SecurityException e) {
+            logger.error(
+                "❌ Security error during category search: {}",
+                e.getMessage()
+            );
+            throw new RuntimeException(
+                "Access denied during category search",
+                e
+            );
+        } catch (Exception e) {
+            logger.error(
+                "❌ Error finding blocks by category '{}': {}",
+                category,
+                e.getMessage()
+            );
+            return new ArrayList<>();
+        }
     }
 
     /**
@@ -10248,68 +11572,100 @@ public class UserFriendlyEncryptionAPI {
 
         String trimmedUsername = username.trim();
 
-        for (long i = 1; i <= blockCount; i++) {
-            Block block;
-            try {
-                block = blockchain.getBlock(i);
-            } catch (Exception e) {
-                logger.debug(
-                    "Error retrieving block {}: {}",
-                    i,
-                    e.getMessage()
-                );
-                continue;
+        // 🚀 N+1 OPTIMIZATION: Batch retrieve all blocks for creator search
+        try {
+            List<Long> allBlockNumbers = new ArrayList<>();
+            for (long i = 1; i <= blockCount; i++) {
+                allBlockNumbers.add(i);
             }
+            
+            logger.info("📦 Batch retrieving {} blocks for creator search", allBlockNumbers.size());
+            List<Block> allBlocks = blockchain.getBlockDAO().batchRetrieveBlocks(allBlockNumbers);
+            
+            for (Block block : allBlocks) {
+                if (block == null) continue;
 
-            if (block == null) continue;
-
-            try {
-                switch (searchType) {
-                    case CREATED_BY:
-                        if (
-                            handleCreatedBySearch(
-                                block,
-                                trimmedUsername,
-                                results
-                            )
-                        ) {
-                            // Block was added to results
-                        }
-                        break;
-                    case ACCESSIBLE:
-                        if (
-                            handleAccessibleSearch(
-                                block,
-                                trimmedUsername,
-                                results
-                            )
-                        ) {
-                            // Block was added to results
-                        }
-                        break;
-                    case ENCRYPTED_FOR:
-                        if (
-                            handleEncryptedForSearch(
-                                block,
-                                trimmedUsername,
-                                results
-                            )
-                        ) {
-                            // Block was added to results
-                        }
-                        break;
-                    default:
-                        logger.warn("Unknown search type: {}", searchType);
-                        break;
+                try {
+                    switch (searchType) {
+                        case CREATED_BY:
+                            if (
+                                handleCreatedBySearch(
+                                    block,
+                                    trimmedUsername,
+                                    results
+                                )
+                            ) {
+                                // Block was added to results
+                            }
+                            break;
+                        case ACCESSIBLE:
+                            if (
+                                handleAccessibleSearch(
+                                    block,
+                                    trimmedUsername,
+                                    results
+                                )
+                            ) {
+                                // Block was added to results
+                            }
+                            break;
+                        case ENCRYPTED_FOR:
+                            if (
+                                handleEncryptedForSearch(
+                                    block,
+                                    trimmedUsername,
+                                    results
+                                )
+                            ) {
+                                // Block was added to results
+                            }
+                            break;
+                        default:
+                            logger.warn("Unknown search type: {}", searchType);
+                            break;
+                    }
+                } catch (Exception e) {
+                    logger.debug(
+                        "Error processing block {} for search type {}: {}",
+                        block.getBlockNumber(),
+                        searchType,
+                        e.getMessage()
+                    );
                 }
-            } catch (Exception e) {
-                logger.debug(
-                    "Error processing block {} for search type {}: {}",
-                    i,
-                    searchType,
-                    e.getMessage()
-                );
-                continue;
+            }
+            
+            logger.info("✅ Creator search batch optimization completed: found {} matching blocks", results.size());
+            
+        } catch (Exception batchEx) {
+            logger.error("❌ Batch optimization failed for creator search, falling back", batchEx);
+            
+            // Fallback to individual queries
+            for (long i = 1; i <= blockCount; i++) {
+                Block block;
+                try {
+                    block = blockchain.getBlock(i);
+                } catch (Exception e) {
+                    logger.debug("Error retrieving block {}: {}", i, e.getMessage());
+                    continue;
+                }
+
+                if (block == null) continue;
+
+                try {
+                    switch (searchType) {
+                        case CREATED_BY:
+                            handleCreatedBySearch(block, trimmedUsername, results);
+                            break;
+                        case ACCESSIBLE:
+                            handleAccessibleSearch(block, trimmedUsername, results);
+                            break;
+                        case ENCRYPTED_FOR:
+                            handleEncryptedForSearch(block, trimmedUsername, results);
+                            break;
+                    }
+                } catch (Exception e) {
+                    logger.debug("Error processing block {} for search type {}: {}", i, searchType, e.getMessage());
+                }
             }
         }
 
@@ -10419,14 +11775,35 @@ public class UserFriendlyEncryptionAPI {
 
             // ENCRYPTED_FOR only returns encrypted blocks
             if (isEncrypted != null && isEncrypted) {
-                String encryptionMetadata = block.getEncryptionMetadata();
+                // Validate blockchain and get authorized keys safely
+                if (blockchain == null) return false;
+
+                var authorizedKeys = blockchain.getAuthorizedKeys();
+                if (authorizedKeys == null) return false;
+
+                var authorizedKey = authorizedKeys
+                    .stream()
+                    .filter(
+                        key ->
+                            key != null && username.equals(key.getOwnerName())
+                    )
+                    .findFirst();
+
                 if (
-                    encryptionMetadata != null &&
-                    !encryptionMetadata.trim().isEmpty() &&
-                    encryptionMetadata.contains(username)
+                    authorizedKey.isPresent() &&
+                    block.getSignerPublicKey() != null
                 ) {
-                    results.add(block);
-                    return true;
+                    String blockSignerKey = block.getSignerPublicKey();
+                    String userPublicKey = authorizedKey.get().getPublicKey();
+
+                    if (
+                        blockSignerKey != null &&
+                        userPublicKey != null &&
+                        blockSignerKey.equals(userPublicKey)
+                    ) {
+                        results.add(block);
+                        return true;
+                    }
                 }
             }
         } catch (Exception e) {
@@ -10441,63 +11818,130 @@ public class UserFriendlyEncryptionAPI {
 
     /**
      * Get only encrypted blocks matching a search term
+     * OPTIMIZED: Uses encrypted blocks cache for O(1) identification and parallel search
      *
      * @param searchTerm The term to search for (empty string returns all encrypted blocks)
      * @return List of encrypted blocks matching the search term
      */
     public List<Block> getEncryptedBlocksOnly(String searchTerm) {
-        List<Block> encryptedBlocks = new ArrayList<>();
-        long blockCount = blockchain.getBlockCount();
+        // Input validation
+        String normalizedSearchTerm = searchTerm != null
+            ? searchTerm.trim()
+            : "";
 
-        for (long i = 1; i <= blockCount; i++) {
-            Block block = blockchain.getBlock(i);
-            if (
-                block == null ||
-                block.getIsEncrypted() == null ||
-                !block.getIsEncrypted()
-            ) {
-                continue;
-            }
-
-            if (searchTerm == null || searchTerm.trim().isEmpty()) {
-                // Return all encrypted blocks if no search term
-                encryptedBlocks.add(block);
-            } else {
-                // Check if search term appears in searchable metadata
-                boolean matches = false;
-
-                if (
-                    block.getSearchableContent() != null &&
-                    block
-                        .getSearchableContent()
-                        .toLowerCase()
-                        .contains(searchTerm.toLowerCase())
-                ) {
-                    matches = true;
-                }
-
-                if (
-                    block.getManualKeywords() != null &&
-                    block
-                        .getManualKeywords()
-                        .toLowerCase()
-                        .contains(searchTerm.toLowerCase())
-                ) {
-                    matches = true;
-                }
-
-                if (matches) {
-                    encryptedBlocks.add(block);
-                }
-            }
+        // Validate search term length to prevent DoS
+        if (normalizedSearchTerm.length() > 1000) {
+            logger.warn(
+                "⚠️ Search term too long: {} characters",
+                normalizedSearchTerm.length()
+            );
+            throw new IllegalArgumentException(
+                "Search term cannot exceed 1000 characters"
+            );
         }
 
-        logger.debug(
-            "Found {} encrypted blocks matching '{}'",
-            encryptedBlocks.size(),
-            searchTerm
-        );
-        return encryptedBlocks;
+        try {
+            // 🚀 PERFORMANCE OPTIMIZATION: Update encrypted blocks cache first
+            updateEncryptedBlocksCache();
+
+            List<Block> matchingBlocks = new ArrayList<>();
+
+            synchronized (encryptedIndexLock) {
+                if (encryptedBlocksCache.isEmpty()) {
+                    logger.debug("🎯 Cache lookup: No encrypted blocks found");
+                    return Collections.emptyList();
+                }
+
+                logger.debug(
+                    "🎯 Cache lookup: Processing {} encrypted blocks for search term '{}'",
+                    encryptedBlocksCache.size(),
+                    normalizedSearchTerm
+                );
+
+                // If no search term, return all encrypted blocks
+                if (normalizedSearchTerm.isEmpty()) {
+                    // 🚀 N+1 OPTIMIZATION: Batch retrieve encrypted blocks
+                    try {
+                        List<Long> cachedBlockNumbers = new ArrayList<>(encryptedBlocksCache);
+                        logger.info("📦 Batch retrieving {} encrypted blocks from cache", cachedBlockNumbers.size());
+                        List<Block> cachedBlocks = blockchain.getBlockDAO().batchRetrieveBlocks(cachedBlockNumbers);
+                        
+                        for (Block block : cachedBlocks) {
+                            if (block != null) {
+                                matchingBlocks.add(block);
+                            }
+                        }
+                        
+                        logger.info("✅ Encrypted blocks batch retrieval completed: {} blocks", matchingBlocks.size());
+                        
+                    } catch (Exception batchEx) {
+                        logger.error("❌ Batch optimization failed for encrypted blocks, falling back", batchEx);
+                        
+                        // Fallback to individual queries
+                        for (Long blockNumber : encryptedBlocksCache) {
+                            try {
+                                Block block = blockchain.getBlock(blockNumber);
+                                if (block != null) {
+                                    matchingBlocks.add(block);
+                                }
+                            } catch (Exception e) {
+                                logger.warn(
+                                    "Error retrieving encrypted block #{}: {}",
+                                    blockNumber,
+                                    e.getMessage()
+                                );
+                            }
+                        }
+                    }
+                } else {
+                    // Search with term filtering - use parallel processing for large datasets
+                    if (encryptedBlocksCache.size() > 100) {
+                        matchingBlocks.addAll(
+                            searchEncryptedBlocksParallel(
+                                encryptedBlocksCache,
+                                normalizedSearchTerm
+                            )
+                        );
+                    } else {
+                        matchingBlocks.addAll(
+                            searchEncryptedBlocksSequential(
+                                encryptedBlocksCache,
+                                normalizedSearchTerm
+                            )
+                        );
+                    }
+                }
+
+                // Sort by block number for consistent ordering
+                matchingBlocks.sort((a, b) ->
+                    Long.compare(a.getBlockNumber(), b.getBlockNumber())
+                );
+            }
+
+            logger.info(
+                "✅ Found {} encrypted blocks matching '{}' using optimized cache",
+                matchingBlocks.size(),
+                normalizedSearchTerm
+            );
+            return Collections.unmodifiableList(matchingBlocks);
+        } catch (SecurityException e) {
+            logger.error(
+                "❌ Security error during encrypted blocks search: {}",
+                e.getMessage()
+            );
+            throw new RuntimeException(
+                "Access denied during encrypted blocks search",
+                e
+            );
+        } catch (Exception e) {
+            logger.error(
+                "❌ Error finding encrypted blocks with term '{}': {}",
+                normalizedSearchTerm,
+                e.getMessage()
+            );
+            // Fallback to linear search if cache fails
+            return getEncryptedBlocksOnlyLinear(normalizedSearchTerm);
+        }
     }
 
     /**
@@ -10631,86 +12075,126 @@ public class UserFriendlyEncryptionAPI {
             return new EncryptionAnalysis(0, 0, 0, 0, new HashMap<>());
         }
 
-        for (long i = 1; i <= blockCount; i++) {
-            Block block;
-            try {
-                block = blockchain.getBlock(i);
-            } catch (Exception e) {
-                logger.debug(
-                    "Error retrieving block {}: {}",
-                    i,
-                    e.getMessage()
-                );
-                continue;
+        // 🚀 N+1 OPTIMIZATION: Batch retrieve all blocks for encryption analysis
+        try {
+            List<Long> allBlockNumbers = new ArrayList<>();
+            for (long i = 1; i <= blockCount; i++) {
+                allBlockNumbers.add(i);
             }
-
-            if (block == null) {
-                logger.debug("Block {} is null, skipping", i);
-                continue;
-            }
-
-            try {
-                // Safe check for encryption status with detailed validation
-                Boolean isEncrypted = block.getIsEncrypted();
-                if (isEncrypted != null && isEncrypted.booleanValue()) {
-                    encrypted++;
-                } else {
-                    unencrypted++;
+            
+            logger.info("📦 Batch retrieving {} blocks for encryption analysis", allBlockNumbers.size());
+            List<Block> allBlocks = blockchain.getBlockDAO().batchRetrieveBlocks(allBlockNumbers);
+            
+            for (Block block : allBlocks) {
+                if (block == null) {
+                    logger.debug("Block is null, skipping");
+                    continue;
                 }
 
-                // Safe check for off-chain data
                 try {
+                    // Safe check for encryption status with detailed validation
+                    Boolean isEncrypted = block.getIsEncrypted();
+                    if (isEncrypted != null && isEncrypted.booleanValue()) {
+                        encrypted++;
+                    } else {
+                        unencrypted++;
+                    }
+
+                    // Safe check for off-chain data
+                    try {
+                        if (block.hasOffChainData()) {
+                            offChain++;
+                        }
+                    } catch (Exception offChainException) {
+                        logger.debug(
+                            "Error checking off-chain data for block {}: {}",
+                            block.getBlockNumber(),
+                            offChainException.getMessage()
+                        );
+                    }
+
+                    // Safe category handling with enhanced validation
+                    try {
+                        String category = block.getContentCategory();
+                        if (category != null) {
+                            String trimmedCategory = category.trim();
+                            if (!trimmedCategory.isEmpty()) {
+                                categoryBreakdown.merge(
+                                    trimmedCategory,
+                                    1L,
+                                    Long::sum
+                                );
+                            } else {
+                                // Count empty categories as "Uncategorized"
+                                categoryBreakdown.merge(
+                                    "Uncategorized",
+                                    1L,
+                                    Long::sum
+                                );
+                            }
+                        } else {
+                            // Count null categories as "Unknown"
+                            categoryBreakdown.merge("Unknown", 1L, Long::sum);
+                        }
+                    } catch (Exception categoryException) {
+                        logger.debug(
+                            "Error processing category for block {}: {}",
+                            block.getBlockNumber(),
+                            categoryException.getMessage()
+                        );
+                        categoryBreakdown.merge("Error", 1L, Long::sum);
+                    }
+                } catch (Exception blockProcessingException) {
+                    logger.debug(
+                        "Error processing block {}: {}",
+                        block.getBlockNumber(),
+                        blockProcessingException.getMessage()
+                    );
+                    // Still count as unencrypted if we can't determine encryption status
+                    unencrypted++;
+                    categoryBreakdown.merge("ProcessingError", 1L, Long::sum);
+                }
+            }
+            
+            logger.info("✅ Encryption analysis batch optimization completed");
+            
+        } catch (Exception batchEx) {
+            logger.error("❌ Batch optimization failed for encryption analysis, falling back", batchEx);
+            
+            // Fallback to individual queries
+            for (long i = 1; i <= blockCount; i++) {
+                Block block;
+                try {
+                    block = blockchain.getBlock(i);
+                } catch (Exception e) {
+                    logger.debug("Error retrieving block {}: {}", i, e.getMessage());
+                    continue;
+                }
+
+                if (block == null) continue;
+
+                try {
+                    Boolean isEncrypted = block.getIsEncrypted();
+                    if (isEncrypted != null && isEncrypted.booleanValue()) {
+                        encrypted++;
+                    } else {
+                        unencrypted++;
+                    }
+
                     if (block.hasOffChainData()) {
                         offChain++;
                     }
-                } catch (Exception offChainException) {
-                    logger.debug(
-                        "Error checking off-chain data for block {}: {}",
-                        i,
-                        offChainException.getMessage()
-                    );
-                }
 
-                // Safe category handling with enhanced validation
-                try {
                     String category = block.getContentCategory();
-                    if (category != null) {
-                        String trimmedCategory = category.trim();
-                        if (!trimmedCategory.isEmpty()) {
-                            categoryBreakdown.merge(
-                                trimmedCategory,
-                                1L,
-                                Long::sum
-                            );
-                        } else {
-                            // Count empty categories as "Uncategorized"
-                            categoryBreakdown.merge(
-                                "Uncategorized",
-                                1L,
-                                Long::sum
-                            );
-                        }
+                    if (category != null && !category.trim().isEmpty()) {
+                        categoryBreakdown.merge(category.trim(), 1L, Long::sum);
                     } else {
-                        // Count null categories as "Unknown"
-                        categoryBreakdown.merge("Unknown", 1L, Long::sum);
+                        categoryBreakdown.merge("Uncategorized", 1L, Long::sum);
                     }
-                } catch (Exception categoryException) {
-                    logger.debug(
-                        "Error processing category for block {}: {}",
-                        i,
-                        categoryException.getMessage()
-                    );
-                    categoryBreakdown.merge("Error", 1L, Long::sum);
+                } catch (Exception blockProcessingException) {
+                    unencrypted++;
+                    categoryBreakdown.merge("ProcessingError", 1L, Long::sum);
                 }
-            } catch (Exception blockProcessingException) {
-                logger.debug(
-                    "Error processing block {}: {}",
-                    i,
-                    blockProcessingException.getMessage()
-                );
-                // Still count as unencrypted if we can't determine encryption status
-                unencrypted++;
-                categoryBreakdown.merge("ProcessingError", 1L, Long::sum);
             }
         }
 
@@ -11113,9 +12597,7 @@ public class UserFriendlyEncryptionAPI {
             }
 
             // Create defensive copy to avoid ConcurrentModificationException
-            final List<
-                com.rbatllet.blockchain.entity.AuthorizedKey
-            > authorizedKeys;
+            final List<AuthorizedKey> authorizedKeys;
             try {
                 authorizedKeys = new ArrayList<>(authorizedKeysOriginal);
             } catch (Exception e) {
@@ -11314,41 +12796,174 @@ public class UserFriendlyEncryptionAPI {
 
     /**
      * Find all blocks encrypted for a specific recipient
+     * OPTIMIZED: Uses recipient index for O(1) lookup performance
      *
      * @param recipientUsername The recipient username to search for
      * @return List of blocks encrypted for the specified recipient
      */
     public List<Block> findBlocksByRecipient(String recipientUsername) {
         if (recipientUsername == null || recipientUsername.trim().isEmpty()) {
+            logger.warn(
+                "⚠️ findBlocksByRecipient called with null/empty username"
+            );
             return Collections.emptyList();
         }
 
         String trimmedUsername = recipientUsername.trim();
+
+        // Validate username length
+        if (trimmedUsername.length() > 100) {
+            logger.warn(
+                "⚠️ Recipient username too long: {} characters",
+                trimmedUsername.length()
+            );
+            throw new IllegalArgumentException(
+                "Recipient username cannot exceed 100 characters"
+            );
+        }
+
+        try {
+            // 🚀 PERFORMANCE OPTIMIZATION: Update index first for latest data
+            updateRecipientIndex();
+
+            List<Block> recipientBlocks = new ArrayList<>();
+
+            synchronized (recipientIndexLock) {
+                Set<Long> blockNumbers = recipientIndex.get(trimmedUsername);
+
+                if (blockNumbers == null || blockNumbers.isEmpty()) {
+                    logger.debug(
+                        "🎯 Index lookup: No blocks found for recipient '{}'",
+                        trimmedUsername
+                    );
+                    return Collections.emptyList();
+                }
+
+                logger.debug(
+                    "🎯 Index lookup: Found {} blocks for recipient '{}' using optimized index",
+                    blockNumbers.size(),
+                    trimmedUsername
+                );
+
+                // 🚀 N+1 OPTIMIZATION: Batch retrieve recipient blocks
+                try {
+                    List<Long> blockNumbersList = new ArrayList<>(blockNumbers);
+                    logger.info("📦 Batch retrieving {} recipient blocks for '{}'", blockNumbersList.size(), trimmedUsername);
+                    List<Block> retrievedBlocks = blockchain.getBlockDAO().batchRetrieveBlocks(blockNumbersList);
+                    
+                    for (Block block : retrievedBlocks) {
+                        if (block != null) {
+                            recipientBlocks.add(block);
+                        }
+                    }
+                    
+                    logger.info("✅ Recipient blocks batch retrieval completed: {} blocks for '{}'", recipientBlocks.size(), trimmedUsername);
+                    
+                } catch (Exception batchEx) {
+                    logger.error("❌ Batch optimization failed for recipient blocks, falling back", batchEx);
+                    
+                    // Fallback to individual queries
+                    for (Long blockNumber : blockNumbers) {
+                        try {
+                            Block block = blockchain.getBlock(blockNumber);
+                            if (block != null) {
+                                recipientBlocks.add(block);
+                            }
+                        } catch (Exception e) {
+                            logger.warn(
+                                "Error retrieving indexed block #{} for recipient '{}': {}",
+                                blockNumber,
+                                trimmedUsername,
+                                e.getMessage()
+                            );
+                        }
+                    }
+                }
+
+                // Sort by block number for consistent ordering
+                recipientBlocks.sort((a, b) ->
+                    Long.compare(a.getBlockNumber(), b.getBlockNumber())
+                );
+            }
+
+            logger.info(
+                "✅ Found {} blocks for recipient '{}' using optimized index",
+                recipientBlocks.size(),
+                trimmedUsername
+            );
+            return Collections.unmodifiableList(recipientBlocks);
+        } catch (SecurityException e) {
+            logger.error(
+                "❌ Security error during recipient search: {}",
+                e.getMessage()
+            );
+            throw new RuntimeException(
+                "Access denied during recipient search",
+                e
+            );
+        } catch (Exception e) {
+            logger.error(
+                "❌ Error finding blocks for recipient '{}': {}",
+                trimmedUsername,
+                e.getMessage()
+            );
+            // Fallback to linear search if index fails
+            return findBlocksByRecipientLinear(trimmedUsername);
+        }
+    }
+
+    /**
+     * Fallback linear search method for recipient when index fails
+     */
+    private List<Block> findBlocksByRecipientLinear(String recipientUsername) {
+        logger.warn(
+            "⚠️ Falling back to linear recipient search for '{}'",
+            recipientUsername
+        );
+
         List<Block> recipientBlocks = new ArrayList<>();
-
-        // Get all blocks from blockchain (defensive copy to avoid concurrent modification)
         List<Block> allBlocks = blockchain.getAllBlocks();
-        if (allBlocks != null) {
-            // Create defensive copy to avoid ConcurrentModificationException
-            List<Block> blocksCopy = new ArrayList<>(allBlocks);
 
-            // Filter blocks that are recipient-encrypted for this specific user
-            for (Block block : blocksCopy) {
-                if (isRecipientEncrypted(block)) {
+        if (allBlocks == null || allBlocks.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // Process in batches to avoid memory issues for large blockchains
+        int batchSize = Math.min(1000, allBlocks.size());
+        int processedBlocks = 0;
+
+        for (Block block : allBlocks) {
+            try {
+                if (block != null && isRecipientEncrypted(block)) {
                     String blockRecipient = getRecipientUsername(block);
-                    if (trimmedUsername.equals(blockRecipient)) {
+                    if (recipientUsername.equals(blockRecipient)) {
                         recipientBlocks.add(block);
                     }
                 }
+
+                processedBlocks++;
+
+                // Progress logging for large searches
+                if (processedBlocks % batchSize == 0) {
+                    logger.debug(
+                        "Recipient search progress: {}/{} blocks processed, {} matches found",
+                        processedBlocks,
+                        allBlocks.size(),
+                        recipientBlocks.size()
+                    );
+                }
+            } catch (Exception e) {
+                logger.warn(
+                    "Error processing block #{} in recipient search: {}",
+                    block != null ? block.getBlockNumber() : "unknown",
+                    e.getMessage()
+                );
+                processedBlocks++;
+                continue;
             }
         }
 
-        logger.info(
-            "🔍 Found {} blocks for recipient: {}",
-            recipientBlocks.size(),
-            trimmedUsername
-        );
-        return Collections.unmodifiableList(recipientBlocks);
+        return recipientBlocks;
     }
 
     /**
@@ -11358,55 +12973,954 @@ public class UserFriendlyEncryptionAPI {
      * @return Map of metadata key-value pairs, or empty map if no metadata
      */
     public Map<String, String> getBlockMetadata(Block block) {
-        if (block == null || block.getCustomMetadata() == null) {
+        if (block == null) {
+            logger.warn("⚠️ getBlockMetadata called with null block");
             return Collections.emptyMap();
         }
 
-        return CustomMetadataUtil.deserializeMetadata(
-            block.getCustomMetadata()
-        );
+        if (
+            block.getCustomMetadata() == null ||
+            block.getCustomMetadata().trim().isEmpty()
+        ) {
+            logger.debug(
+                "Block #{} has no custom metadata",
+                block.getBlockNumber()
+            );
+            return Collections.emptyMap();
+        }
+
+        try {
+            Map<String, String> metadata =
+                CustomMetadataUtil.deserializeMetadata(
+                    block.getCustomMetadata()
+                );
+
+            if (metadata == null) {
+                logger.warn(
+                    "CustomMetadataUtil returned null for block #{}",
+                    block.getBlockNumber()
+                );
+                return Collections.emptyMap();
+            }
+
+            // Validate metadata content
+            if (metadata.size() > 100) {
+                logger.warn(
+                    "Block #{} has excessive metadata entries: {}",
+                    block.getBlockNumber(),
+                    metadata.size()
+                );
+            }
+
+            logger.debug(
+                "✅ Retrieved {} metadata entries for block #{}",
+                metadata.size(),
+                block.getBlockNumber()
+            );
+            return metadata;
+        } catch (SecurityException e) {
+            logger.error(
+                "❌ Security error deserializing metadata for block #{}: {}",
+                block.getBlockNumber(),
+                e.getMessage()
+            );
+            throw new RuntimeException(
+                "Access denied during metadata deserialization",
+                e
+            );
+        } catch (Exception e) {
+            logger.error(
+                "❌ Error deserializing metadata for block #{}: {}",
+                block.getBlockNumber(),
+                e.getMessage()
+            );
+            return Collections.emptyMap();
+        }
     }
 
     /**
-     * Find blocks by custom metadata key-value pair
+     * Find blocks by metadata key-value pair
+     * OPTIMIZED: Uses metadata index for O(1) lookup performance
      *
-     * @param metadataKey The metadata key to search for
-     * @param metadataValue The metadata value to match (exact match)
+     * @param metadataKey   The metadata key to search for
+     * @param metadataValue The metadata value to match (null matches any value)
      * @return List of blocks containing the specified metadata
      */
     public List<Block> findBlocksByMetadata(
         String metadataKey,
         String metadataValue
     ) {
+        // Enhanced input validation
         if (metadataKey == null || metadataKey.trim().isEmpty()) {
+            logger.warn(
+                "⚠️ findBlocksByMetadata called with null/empty metadata key"
+            );
             return Collections.emptyList();
         }
+
+        String normalizedKey = metadataKey.trim();
+
+        // Validate key length
+        if (normalizedKey.length() > 100) {
+            logger.warn(
+                "⚠️ Metadata key too long: {} characters",
+                normalizedKey.length()
+            );
+            throw new IllegalArgumentException(
+                "Metadata key cannot exceed 100 characters"
+            );
+        }
+
+        try {
+            // 🚀 PERFORMANCE OPTIMIZATION: Update index first for latest data
+            updateMetadataIndex();
+
+            List<Block> matchingBlocks = new ArrayList<>();
+
+            synchronized (indexLock) {
+                Map<String, Set<Long>> keyIndex = metadataIndex.get(
+                    normalizedKey
+                );
+
+                if (keyIndex == null || keyIndex.isEmpty()) {
+                    logger.debug(
+                        "No blocks found with metadata key: {}",
+                        normalizedKey
+                    );
+                    return Collections.emptyList();
+                }
+
+                Set<Long> candidateBlockNumbers = new HashSet<>();
+
+                if (metadataValue == null) {
+                    // Match any value for this key - collect all block numbers
+                    for (Set<Long> blockNumbers : keyIndex.values()) {
+                        candidateBlockNumbers.addAll(blockNumbers);
+                    }
+                    logger.debug(
+                        "🎯 Index lookup: Found {} blocks with key '{}' (any value)",
+                        candidateBlockNumbers.size(),
+                        normalizedKey
+                    );
+                } else {
+                    String normalizedValue = metadataValue.trim();
+
+                    if (normalizedValue.contains("*")) {
+                        // Wildcard matching - need to check all values
+                        for (Map.Entry<
+                            String,
+                            Set<Long>
+                        > entry : keyIndex.entrySet()) {
+                            if (
+                                matchesWildcard(entry.getKey(), normalizedValue)
+                            ) {
+                                candidateBlockNumbers.addAll(entry.getValue());
+                            }
+                        }
+                        logger.debug(
+                            "🎯 Index lookup: Found {} blocks with key '{}' matching wildcard '{}'",
+                            candidateBlockNumbers.size(),
+                            normalizedKey,
+                            normalizedValue
+                        );
+                    } else {
+                        // Exact match - O(1) lookup!
+                        Set<Long> exactMatches = keyIndex.get(normalizedValue);
+                        if (exactMatches != null) {
+                            candidateBlockNumbers.addAll(exactMatches);
+                        }
+                        logger.debug(
+                            "🎯 Index lookup: Found {} blocks with exact match {}={}",
+                            candidateBlockNumbers.size(),
+                            normalizedKey,
+                            normalizedValue
+                        );
+                    }
+                }
+
+                // 🚀 OPTIMIZED: Batch load blocks to avoid N+1 query problem using DAO
+                if (!candidateBlockNumbers.isEmpty()) {
+                    try {
+                        // Convert to sorted list for efficient batch retrieval
+                        List<Long> sortedBlockNumbers = new ArrayList<>(candidateBlockNumbers);
+                        Collections.sort(sortedBlockNumbers);
+                        
+                        logger.debug(
+                            "🚀 Batch loading {} blocks to avoid N+1 queries using BlockDAO",
+                            sortedBlockNumbers.size()
+                        );
+                        
+                        // Use proper DAO layer for batch retrieval
+                        matchingBlocks = blockchain.getBlockDAO().batchRetrieveBlocks(sortedBlockNumbers);
+                        
+                    } catch (Exception e) {
+                        logger.warn(
+                            "Batch retrieval failed, falling back to individual queries: {}",
+                            e.getMessage()
+                        );
+                        
+                        // Fallback to individual queries if batch fails
+                        for (Long blockNumber : candidateBlockNumbers) {
+                            try {
+                                Block block = blockchain.getBlock(blockNumber);
+                                if (block != null) {
+                                    matchingBlocks.add(block);
+                                }
+                            } catch (Exception individualError) {
+                                logger.warn(
+                                    "Error retrieving block #{}: {}",
+                                    blockNumber,
+                                    individualError.getMessage()
+                                );
+                            }
+                        }
+                    }
+                }
+
+                // Sort by block number for consistent ordering
+                matchingBlocks.sort((a, b) ->
+                    Long.compare(a.getBlockNumber(), b.getBlockNumber())
+                );
+            }
+
+            logger.info(
+                "✅ Found {} blocks with metadata {}={} using optimized index",
+                matchingBlocks.size(),
+                normalizedKey,
+                metadataValue
+            );
+            return Collections.unmodifiableList(matchingBlocks);
+        } catch (SecurityException e) {
+            logger.error(
+                "❌ Security error during metadata search: {}",
+                e.getMessage()
+            );
+            throw new RuntimeException(
+                "Access denied during metadata search",
+                e
+            );
+        } catch (Exception e) {
+            logger.error(
+                "❌ Error finding blocks by metadata {}={}: {}",
+                normalizedKey,
+                metadataValue,
+                e.getMessage()
+            );
+            // Fallback to linear search if index fails
+            return findBlocksByMetadataLinear(normalizedKey, metadataValue);
+        }
+    }
+
+    /**
+     * Fallback linear search method for metadata when index fails
+     */
+    private List<Block> findBlocksByMetadataLinear(
+        String metadataKey,
+        String metadataValue
+    ) {
+        logger.warn(
+            "⚠️ Falling back to linear metadata search for {}={}",
+            metadataKey,
+            metadataValue
+        );
 
         List<Block> matchingBlocks = new ArrayList<>();
         List<Block> allBlocks = blockchain.getAllBlocks();
 
-        if (allBlocks != null) {
-            // Create defensive copy to avoid ConcurrentModificationException
-            List<Block> blocksCopy = new ArrayList<>(allBlocks);
+        if (allBlocks == null || allBlocks.isEmpty()) {
+            return Collections.emptyList();
+        }
 
-            for (Block block : blocksCopy) {
+        for (Block block : allBlocks) {
+            try {
+                if (block == null) continue;
+
                 Map<String, String> metadata = getBlockMetadata(block);
-                if (!metadata.isEmpty()) {
-                    String value = metadata.get(metadataKey);
-                    if (value != null && value.equals(metadataValue)) {
+                String value = metadata.get(metadataKey);
+
+                if (value != null) {
+                    if (
+                        metadataValue == null ||
+                        value.equals(metadataValue) ||
+                        (metadataValue.contains("*") &&
+                            matchesWildcard(value, metadataValue))
+                    ) {
                         matchingBlocks.add(block);
                     }
+                }
+            } catch (Exception e) {
+                logger.warn(
+                    "Error in linear search for block #{}: {}",
+                    block.getBlockNumber(),
+                    e.getMessage()
+                );
+                continue;
+            }
+        }
+
+        return matchingBlocks;
+    }
+
+
+
+    /**
+     * Helper method for wildcard pattern matching
+     * @param text The text to match against
+     * @param pattern The pattern with * wildcards
+     * @return true if text matches the pattern
+     */
+    private boolean matchesWildcard(String text, String pattern) {
+        if (text == null || pattern == null) {
+            return false;
+        }
+
+        // Convert wildcard pattern to regex
+        String regex = pattern.replace("*", ".*");
+        return text.matches(regex);
+    }
+
+    /**
+     * Build or update metadata index for faster searches
+     * This method indexes all metadata from blocks for O(1) lookup performance
+     */
+    private void updateMetadataIndex() {
+        synchronized (indexLock) {
+            try {
+                long currentBlockCount = blockchain.getBlockCount();
+                Long lastIndexed = lastIndexedBlock.get();
+
+                if (lastIndexed >= currentBlockCount) {
+                    // Index is up to date
+                    return;
+                }
+
+                logger.debug(
+                    "🔄 Updating metadata index from block {} to {}",
+                    lastIndexed + 1,
+                    currentBlockCount
+                );
+
+                // 🚀 N+1 OPTIMIZATION: Batch retrieve new blocks for metadata indexing
+                List<Long> newBlockNumbers = new ArrayList<>();
+                for (long blockNum = lastIndexed + 1; blockNum <= currentBlockCount; blockNum++) {
+                    newBlockNumbers.add(blockNum);
+                }
+
+                if (!newBlockNumbers.isEmpty()) {
+                    logger.info("📦 Batch retrieving {} new blocks for metadata indexing", newBlockNumbers.size());
+                    
+                    try {
+                        List<Block> newBlocks = blockchain.getBlockDAO().batchRetrieveBlocks(newBlockNumbers);
+                        for (Block block : newBlocks) {
+                            if (block != null) {
+                                indexBlockMetadata(block);
+                            }
+                        }
+                        logger.info("✅ Metadata index batch optimization completed: indexed {} blocks", newBlocks.size());
+                    } catch (Exception batchEx) {
+                        logger.error("❌ Batch retrieval failed for metadata indexing, falling back", batchEx);
+                        
+                        // Fallback to individual queries
+                        for (Long blockNum : newBlockNumbers) {
+                            try {
+                                Block block = blockchain.getBlock(blockNum);
+                                if (block != null) {
+                                    indexBlockMetadata(block);
+                                }
+                            } catch (Exception e) {
+                                logger.warn("Error indexing block #{}: {}", blockNum, e.getMessage());
+                            }
+                        }
+                    }
+                }
+
+                lastIndexedBlock.set(currentBlockCount);
+                logger.debug(
+                    "✅ Metadata index updated - {} blocks indexed",
+                    currentBlockCount - lastIndexed
+                );
+            } catch (Exception e) {
+                logger.error(
+                    "❌ Error updating metadata index: {}",
+                    e.getMessage()
+                );
+            }
+        }
+    }
+
+    /**
+     * Index metadata from a single block
+     */
+    private void indexBlockMetadata(Block block) {
+        if (block == null) return;
+
+        try {
+            Map<String, String> metadata = getBlockMetadata(block);
+            if (metadata.isEmpty()) return;
+
+            Long blockNumber = block.getBlockNumber();
+
+            for (Map.Entry<String, String> entry : metadata.entrySet()) {
+                String key = entry.getKey();
+                String value = entry.getValue();
+
+                if (key != null && value != null) {
+                    metadataIndex
+                        .computeIfAbsent(key, k -> new HashMap<>())
+                        .computeIfAbsent(value, v -> new HashSet<>())
+                        .add(blockNumber);
+                }
+            }
+        } catch (Exception e) {
+            logger.warn(
+                "Error indexing metadata for block #{}: {}",
+                block.getBlockNumber(),
+                e.getMessage()
+            );
+        }
+    }
+
+    /**
+     * Clear and rebuild the entire metadata index
+     * Use this method if blockchain has been modified externally
+     */
+    public void rebuildMetadataIndex() {
+        IndexingCoordinator coordinator = IndexingCoordinator.getInstance();
+
+        IndexingCoordinator.IndexingRequest request =
+            new IndexingCoordinator.IndexingRequest.Builder()
+                .operation("METADATA_INDEX_REBUILD")
+                .blockchain(blockchain)
+                .forceRebuild()
+                .forceExecution()
+                .build();
+
+        coordinator
+            .coordinateIndexing(request)
+            .thenAccept(result -> {
+                if (result.isSuccess()) {
+                    logger.info(
+                        "✅ Metadata index rebuild completed via coordinator"
+                    );
+                } else {
+                    logger.warn(
+                        "⚠️ Metadata index rebuild failed: {}",
+                        result.getMessage()
+                    );
+                    // Fallback to direct execution
+                    fallbackRebuildMetadataIndex();
+                }
+            });
+    }
+
+    /**
+     * Fallback method for direct metadata index rebuild
+     */
+    private void fallbackRebuildMetadataIndex() {
+        synchronized (indexLock) {
+            logger.info("🔄 Rebuilding metadata index from scratch (fallback)");
+            metadataIndex.clear();
+            lastIndexedBlock.set(0L);
+            updateMetadataIndex();
+        }
+    }
+
+    /**
+     * Build or update encrypted blocks cache for faster searches
+     */
+    private void updateEncryptedBlocksCache() {
+        synchronized (encryptedIndexLock) {
+            try {
+                long currentBlockCount = blockchain.getBlockCount();
+                Long lastIndexed = lastEncryptedIndexedBlock.get();
+
+                if (lastIndexed >= currentBlockCount) {
+                    return; // Cache is up to date
+                }
+
+                logger.debug(
+                    "🔄 Updating encrypted blocks cache from block {} to {}",
+                    lastIndexed + 1,
+                    currentBlockCount
+                );
+
+                // 🚀 N+1 OPTIMIZATION: Batch retrieve new blocks for encrypted cache
+                List<Long> newBlockNumbers = new ArrayList<>();
+                for (long blockNum = lastIndexed + 1; blockNum <= currentBlockCount; blockNum++) {
+                    newBlockNumbers.add(blockNum);
+                }
+
+                if (!newBlockNumbers.isEmpty()) {
+                    logger.info("📦 Batch retrieving {} new blocks for encrypted cache", newBlockNumbers.size());
+                    
+                    try {
+                        List<Block> newBlocks = blockchain.getBlockDAO().batchRetrieveBlocks(newBlockNumbers);
+                        for (Block block : newBlocks) {
+                            if (
+                                block != null &&
+                                block.getIsEncrypted() != null &&
+                                block.getIsEncrypted()
+                            ) {
+                                encryptedBlocksCache.add(block.getBlockNumber());
+                            }
+                        }
+                        logger.info("✅ Encrypted cache batch optimization completed: processed {} blocks", newBlocks.size());
+                    } catch (Exception batchEx) {
+                        logger.error("❌ Batch retrieval failed for encrypted cache, falling back", batchEx);
+                        
+                        // Fallback to individual queries
+                        for (Long blockNum : newBlockNumbers) {
+                            try {
+                                Block block = blockchain.getBlock(blockNum);
+                                if (
+                                    block != null &&
+                                    block.getIsEncrypted() != null &&
+                                    block.getIsEncrypted()
+                                ) {
+                                    encryptedBlocksCache.add(block.getBlockNumber());
+                                }
+                            } catch (Exception e) {
+                                logger.warn("Error processing block #{} for encrypted cache: {}", blockNum, e.getMessage());
+                            }
+                        }
+                    }
+                }
+
+                lastEncryptedIndexedBlock.set(currentBlockCount);
+                logger.debug(
+                    "✅ Encrypted blocks cache updated - {} total encrypted blocks",
+                    encryptedBlocksCache.size()
+                );
+            } catch (Exception e) {
+                logger.error(
+                    "❌ Error updating encrypted blocks cache: {}",
+                    e.getMessage()
+                );
+            }
+        }
+    }
+
+    /**
+     * Parallel search for encrypted blocks with search term
+     */
+    private List<Block> searchEncryptedBlocksParallel(
+        Set<Long> blockNumbers,
+        String searchTerm
+    ) {
+        logger.debug(
+            "🚀 Using parallel search for {} encrypted blocks",
+            blockNumbers.size()
+        );
+
+        // 🚀 N+1 OPTIMIZATION: Batch retrieve blocks first, then process in parallel
+        try {
+            List<Long> blockNumbersList = new ArrayList<>(blockNumbers);
+            logger.info("📦 Batch retrieving {} blocks for parallel search", blockNumbersList.size());
+            List<Block> retrievedBlocks = blockchain.getBlockDAO().batchRetrieveBlocks(blockNumbersList);
+            
+            // Process the retrieved blocks in parallel for term matching
+            return retrievedBlocks
+                .parallelStream()
+                .filter(Objects::nonNull)
+                .filter(block -> matchesSearchTerm(block, searchTerm))
+                .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
+                
+        } catch (Exception e) {
+            logger.warn("❌ Batch retrieval failed in parallel search, using fallback: {}", e.getMessage());
+            
+            // Fallback: parallel individual queries (original implementation)
+            return blockNumbers
+                .parallelStream()
+                .map(blockNumber -> {
+                    try {
+                        return blockchain.getBlock(blockNumber);
+                    } catch (Exception ex) {
+                        logger.warn(
+                            "Error retrieving block #{} in parallel search fallback: {}",
+                            blockNumber,
+                            ex.getMessage()
+                        );
+                        return null;
+                    }
+                })
+                .filter(Objects::nonNull)
+                .filter(block -> matchesSearchTerm(block, searchTerm))
+                .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
+        }
+    }
+
+    /**
+     * Sequential search for encrypted blocks with search term
+     */
+    private List<Block> searchEncryptedBlocksSequential(
+        Set<Long> blockNumbers,
+        String searchTerm
+    ) {
+        List<Block> matchingBlocks = new ArrayList<>();
+
+        // 🚀 N+1 OPTIMIZATION: Batch retrieve blocks for sequential search
+        try {
+            List<Long> blockNumbersList = new ArrayList<>(blockNumbers);
+            logger.info("📦 Batch retrieving {} blocks for sequential search", blockNumbersList.size());
+            List<Block> retrievedBlocks = blockchain.getBlockDAO().batchRetrieveBlocks(blockNumbersList);
+            
+            for (Block block : retrievedBlocks) {
+                if (block != null && matchesSearchTerm(block, searchTerm)) {
+                    matchingBlocks.add(block);
+                }
+            }
+            
+            logger.info("✅ Sequential search batch optimization completed: {} matching blocks", matchingBlocks.size());
+            
+        } catch (Exception batchEx) {
+            logger.error("❌ Batch optimization failed for sequential search, falling back", batchEx);
+            
+            // Fallback to individual queries
+            for (Long blockNumber : blockNumbers) {
+                try {
+                    Block block = blockchain.getBlock(blockNumber);
+                    if (block != null && matchesSearchTerm(block, searchTerm)) {
+                        matchingBlocks.add(block);
+                    }
+                } catch (Exception e) {
+                    logger.warn(
+                        "Error retrieving block #{} in sequential search: {}",
+                        blockNumber,
+                        e.getMessage()
+                    );
                 }
             }
         }
 
-        logger.info(
-            "🔍 Found {} blocks with metadata {}={}",
-            matchingBlocks.size(),
-            metadataKey,
-            metadataValue
+        return matchingBlocks;
+    }
+
+    /**
+     * Check if a block matches the search term
+     */
+    private boolean matchesSearchTerm(Block block, String searchTerm) {
+        if (block == null || searchTerm == null || searchTerm.isEmpty()) {
+            return false;
+        }
+
+        String lowerSearchTerm = searchTerm.toLowerCase();
+
+        // Check searchable content
+        if (
+            block.getSearchableContent() != null &&
+            block.getSearchableContent().toLowerCase().contains(lowerSearchTerm)
+        ) {
+            return true;
+        }
+
+        // Check manual keywords
+        if (
+            block.getManualKeywords() != null &&
+            block.getManualKeywords().toLowerCase().contains(lowerSearchTerm)
+        ) {
+            return true;
+        }
+
+        // Check content category
+        if (
+            block.getContentCategory() != null &&
+            block.getContentCategory().toLowerCase().contains(lowerSearchTerm)
+        ) {
+            return true;
+        }
+
+        // Check custom metadata
+        try {
+            Map<String, String> metadata = getBlockMetadata(block);
+            for (String value : metadata.values()) {
+                if (
+                    value != null &&
+                    value.toLowerCase().contains(lowerSearchTerm)
+                ) {
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            logger.debug(
+                "Error checking metadata for block #{}: {}",
+                block.getBlockNumber(),
+                e.getMessage()
+            );
+        }
+
+        return false;
+    }
+
+    /**
+     * Fallback linear search method for encrypted blocks when cache fails
+     */
+    private List<Block> getEncryptedBlocksOnlyLinear(String searchTerm) {
+        logger.warn(
+            "⚠️ Falling back to linear encrypted blocks search for '{}'",
+            searchTerm
         );
-        return Collections.unmodifiableList(matchingBlocks);
+
+        List<Block> encryptedBlocks = new ArrayList<>();
+        long blockCount = blockchain.getBlockCount();
+
+        // Process in batches to avoid memory issues
+        int processedBlocks = 0;
+
+        // 🚀 N+1 OPTIMIZATION: Batch retrieve all blocks for encrypted search
+        try {
+            List<Long> allBlockNumbers = new ArrayList<>();
+            for (long i = 1; i <= blockCount; i++) {
+                allBlockNumbers.add(i);
+            }
+            
+            logger.info("📦 Batch retrieving {} blocks for encrypted search", allBlockNumbers.size());
+            List<Block> allBlocks = blockchain.getBlockDAO().batchRetrieveBlocks(allBlockNumbers);
+            
+            for (Block block : allBlocks) {
+                if (
+                    block != null &&
+                    block.getIsEncrypted() != null &&
+                    block.getIsEncrypted()
+                ) {
+                    if (
+                        searchTerm == null ||
+                        searchTerm.isEmpty() ||
+                        matchesSearchTerm(block, searchTerm)
+                    ) {
+                        encryptedBlocks.add(block);
+                    }
+                }
+
+                processedBlocks++;
+
+                // Progress logging for large searches
+                if (processedBlocks % 1000 == 0) {
+                    logger.debug(
+                        "Encrypted blocks search progress: {} blocks processed, {} matches found",
+                        processedBlocks,
+                        encryptedBlocks.size()
+                    );
+                }
+            }
+            
+            logger.info("✅ Encrypted search batch optimization completed: {} matching blocks", encryptedBlocks.size());
+            
+        } catch (Exception batchEx) {
+            logger.error("❌ Batch optimization failed for encrypted search, falling back", batchEx);
+            
+            // Fallback to individual queries
+            for (long i = 1; i <= blockCount; i++) {
+                try {
+                    Block block = blockchain.getBlock(i);
+                    if (
+                        block != null &&
+                        block.getIsEncrypted() != null &&
+                        block.getIsEncrypted()
+                    ) {
+                        if (
+                            searchTerm == null ||
+                            searchTerm.isEmpty() ||
+                            matchesSearchTerm(block, searchTerm)
+                        ) {
+                            encryptedBlocks.add(block);
+                        }
+                    }
+                } catch (Exception e) {
+                    logger.warn("Error processing block #{} in encrypted search: {}", i, e.getMessage());
+                }
+            }
+        }
+
+        return encryptedBlocks;
+    }
+
+    /**
+     * Clear and rebuild the entire encrypted blocks cache
+     */
+    public void rebuildEncryptedBlocksCache() {
+        IndexingCoordinator coordinator = IndexingCoordinator.getInstance();
+
+        IndexingCoordinator.IndexingRequest request =
+            new IndexingCoordinator.IndexingRequest.Builder()
+                .operation("ENCRYPTED_BLOCKS_CACHE_REBUILD")
+                .blockchain(blockchain)
+                .forceRebuild()
+                .forceExecution()
+                .build();
+
+        coordinator
+            .coordinateIndexing(request)
+            .thenAccept(result -> {
+                if (result.isSuccess()) {
+                    logger.info(
+                        "✅ Encrypted blocks cache rebuild completed via coordinator"
+                    );
+                } else {
+                    logger.warn(
+                        "⚠️ Encrypted blocks cache rebuild failed: {}",
+                        result.getMessage()
+                    );
+                    // Fallback to direct execution
+                    fallbackRebuildEncryptedBlocksCache();
+                }
+            });
+    }
+
+    /**
+     * Fallback method for direct encrypted blocks cache rebuild
+     */
+    private void fallbackRebuildEncryptedBlocksCache() {
+        synchronized (encryptedIndexLock) {
+            logger.info(
+                "🔄 Rebuilding encrypted blocks cache from scratch (fallback)"
+            );
+            encryptedBlocksCache.clear();
+            lastEncryptedIndexedBlock.set(0L);
+            updateEncryptedBlocksCache();
+        }
+    }
+
+    /**
+     * Build or update recipient index for faster recipient searches
+     */
+    private void updateRecipientIndex() {
+        synchronized (recipientIndexLock) {
+            try {
+                long currentBlockCount = blockchain.getBlockCount();
+                Long lastIndexed = lastRecipientIndexedBlock.get();
+
+                if (lastIndexed >= currentBlockCount) {
+                    return; // Index is up to date
+                }
+
+                logger.debug(
+                    "🔄 Updating recipient index from block {} to {}",
+                    lastIndexed + 1,
+                    currentBlockCount
+                );
+
+                // 🚀 N+1 OPTIMIZATION: Batch retrieve new blocks for recipient indexing
+                List<Long> newBlockNumbers = new ArrayList<>();
+                for (long blockNum = lastIndexed + 1; blockNum <= currentBlockCount; blockNum++) {
+                    newBlockNumbers.add(blockNum);
+                }
+
+                if (!newBlockNumbers.isEmpty()) {
+                    logger.info("📦 Batch retrieving {} new blocks for recipient indexing", newBlockNumbers.size());
+                    
+                    try {
+                        List<Block> newBlocks = blockchain.getBlockDAO().batchRetrieveBlocks(newBlockNumbers);
+                        for (Block block : newBlocks) {
+                            try {
+                                if (block != null && isRecipientEncrypted(block)) {
+                                    String recipient = getRecipientUsername(block);
+                                    if (
+                                        recipient != null && !recipient.trim().isEmpty()
+                                    ) {
+                                        recipientIndex
+                                            .computeIfAbsent(recipient.trim(), k ->
+                                                new HashSet<>()
+                                            )
+                                            .add(block.getBlockNumber());
+                                    }
+                                }
+                            } catch (Exception e) {
+                                logger.warn(
+                                    "Error indexing recipient for block #{}: {}",
+                                    block != null ? block.getBlockNumber() : "null",
+                                    e.getMessage()
+                                );
+                            }
+                        }
+                        logger.info("✅ Recipient indexing batch optimization completed: processed {} blocks", newBlocks.size());
+                    } catch (Exception batchEx) {
+                        logger.error("❌ Batch retrieval failed for recipient indexing, falling back", batchEx);
+                        
+                        // Fallback to individual queries
+                        for (Long blockNum : newBlockNumbers) {
+                            try {
+                                Block block = blockchain.getBlock(blockNum);
+                                if (block != null && isRecipientEncrypted(block)) {
+                                    String recipient = getRecipientUsername(block);
+                                    if (
+                                        recipient != null && !recipient.trim().isEmpty()
+                                    ) {
+                                        recipientIndex
+                                            .computeIfAbsent(recipient.trim(), k ->
+                                                new HashSet<>()
+                                            )
+                                            .add(block.getBlockNumber());
+                                    }
+                                }
+                            } catch (Exception e) {
+                                logger.warn(
+                                    "Error indexing recipient for block #{}: {}",
+                                    blockNum,
+                                    e.getMessage()
+                                );
+                            }
+                        }
+                    }
+                }
+
+                lastRecipientIndexedBlock.set(currentBlockCount);
+                logger.debug(
+                    "✅ Recipient index updated - {} blocks processed",
+                    currentBlockCount - lastIndexed
+                );
+            } catch (Exception e) {
+                logger.error(
+                    "❌ Error updating recipient index: {}",
+                    e.getMessage()
+                );
+            }
+        }
+    }
+
+    /**
+     * Clear and rebuild the entire recipient index
+     */
+    public void rebuildRecipientIndex() {
+        IndexingCoordinator coordinator = IndexingCoordinator.getInstance();
+
+        IndexingCoordinator.IndexingRequest request =
+            new IndexingCoordinator.IndexingRequest.Builder()
+                .operation("RECIPIENT_INDEX_REBUILD")
+                .blockchain(blockchain)
+                .forceRebuild()
+                .forceExecution()
+                .build();
+
+        coordinator
+            .coordinateIndexing(request)
+            .thenAccept(result -> {
+                if (result.isSuccess()) {
+                    logger.info(
+                        "✅ Recipient index rebuild completed via coordinator"
+                    );
+                } else {
+                    logger.warn(
+                        "⚠️ Recipient index rebuild failed: {}",
+                        result.getMessage()
+                    );
+                    // Fallback to direct execution
+                    fallbackRebuildRecipientIndex();
+                }
+            });
+    }
+
+    /**
+     * Fallback method for direct recipient index rebuild
+     */
+    private void fallbackRebuildRecipientIndex() {
+        synchronized (recipientIndexLock) {
+            logger.info(
+                "🔄 Rebuilding recipient index from scratch (fallback)"
+            );
+            recipientIndex.clear();
+            lastRecipientIndexedBlock.set(0L);
+            updateRecipientIndex();
+        }
     }
 
     /**
@@ -11462,5 +13976,351 @@ public class UserFriendlyEncryptionAPI {
             metadataKeys
         );
         return Collections.unmodifiableList(matchingBlocks);
+    }
+
+    // ===== MISSING VALIDATION METHODS =====
+
+    /**
+     * Validate the genesis block of the blockchain
+     * @return true if genesis block is valid, false otherwise
+     */
+    public boolean validateGenesisBlock() {
+        try {
+            Block genesisBlock = blockchain.getBlock(0L);
+            if (genesisBlock == null) {
+                return false;
+            }
+            return BlockValidationUtil.validateGenesisBlock(genesisBlock);
+        } catch (Exception e) {
+            logger.error("Error validating genesis block", e);
+            return false;
+        }
+    }
+
+    /**
+     * Perform detailed validation of a specific block
+     * @param blockNumber the block number to validate
+     * @return BlockValidationResult with detailed validation information
+     */
+    public BlockValidationResult validateBlockDetailed(Long blockNumber) {
+        try {
+            Block block = blockchain.getBlock(blockNumber);
+            if (block == null) {
+                return new BlockValidationResult.Builder(null)
+                    .status(BlockStatus.INVALID)
+                    .errorMessage("Block not found")
+                    .build();
+            }
+
+            Block previousBlock = null;
+            if (blockNumber > 0) {
+                previousBlock = blockchain.getBlock(blockNumber - 1);
+            }
+
+            return blockchain.validateBlockDetailed(block, previousBlock);
+        } catch (Exception e) {
+            logger.error(
+                "Error performing detailed validation for block " + blockNumber,
+                e
+            );
+            return new BlockValidationResult.Builder(null)
+                .status(BlockStatus.INVALID)
+                .errorMessage("Validation error: " + e.getMessage())
+                .build();
+        }
+    }
+
+    /**
+     * Detect data tampering in a specific block
+     * @param blockNumber the block number to check for tampering
+     * @return true if no tampering detected, false if tampering found
+     */
+    public boolean detectDataTampering(Long blockNumber) {
+        try {
+            Block block = blockchain.getBlock(blockNumber);
+            if (block == null) {
+                return false;
+            }
+
+            // Validate block integrity - need previous block for validation
+            Block previousBlock = null;
+            if (blockNumber > 0) {
+                previousBlock = blockchain.getBlock(blockNumber - 1);
+            }
+            boolean isValid = blockchain.validateBlock(block, previousBlock);
+            return isValid; // true means no tampering
+        } catch (Exception e) {
+            logger.error(
+                "Error detecting tampering for block " + blockNumber,
+                e
+            );
+            return false;
+        }
+    }
+
+    /**
+     * Validate off-chain data for a specific block
+     * @param blockNumber the block number to validate off-chain data for
+     * @return true if off-chain data is valid or not present
+     */
+    public boolean validateOffChainData(Long blockNumber) {
+        try {
+            Block block = blockchain.getBlock(blockNumber);
+            if (block == null) {
+                return false;
+            }
+
+            return BlockValidationUtil.validateOffChainData(blockchain, block);
+        } catch (Exception e) {
+            logger.error(
+                "Error validating off-chain data for block " + blockNumber,
+                e
+            );
+            return false;
+        }
+    }
+
+    /**
+     * Check if a key was authorized at a specific timestamp
+     * @param publicKeyString the public key to check
+     * @param timestamp the timestamp to check authorization at
+     * @return true if key was authorized at that time
+     */
+    public boolean wasKeyAuthorizedAt(
+        String publicKeyString,
+        LocalDateTime timestamp
+    ) {
+        try {
+            return blockchain.wasKeyAuthorizedAt(publicKeyString, timestamp);
+        } catch (Exception e) {
+            logger.error("Error checking key authorization", e);
+            return false;
+        }
+    }
+
+    /**
+     * Retrieve and decrypt secret data from a specific block
+     * @param blockId the block ID to retrieve from
+     * @param password the password for decryption
+     * @return decrypted data or null if failed
+     */
+    public String retrieveSecret(Long blockId, String password) {
+        logger.debug("🔓 DEBUG: retrieveSecret called for block #{}", blockId);
+        
+        if (blockId == null) {
+            throw new IllegalArgumentException("Block ID cannot be null");
+        }
+        if (password == null || password.trim().isEmpty()) {
+            throw new IllegalArgumentException("Password cannot be null or empty");
+        }
+        
+        try {
+            // Use block ID (not block number) for decryption
+            String decryptedData = blockchain.getDecryptedBlockData(blockId, password);
+            logger.info("🔓 DEBUG: Block ID #{} decrypted successfully. Content: '{}'", 
+                       blockId, 
+                       decryptedData != null && decryptedData.length() > 100 
+                           ? decryptedData.substring(0, 100) + "..." 
+                           : decryptedData);
+            return decryptedData;
+        } catch (Exception e) {
+            logger.error("🔓 ERROR: Failed to decrypt block #{}: {}", blockId, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Check if the blockchain has any encrypted data
+     * @return true if there are encrypted blocks
+     */
+    public boolean hasEncryptedData() {
+        try {
+            EncryptionAnalysis analysis = analyzeEncryption();
+            return analysis.getEncryptedBlocks() > 0;
+        } catch (Exception e) {
+            logger.error("Error checking for encrypted data", e);
+            return false;
+        }
+    }
+
+    /**
+     * Get the count of encrypted blocks
+     * @return number of encrypted blocks
+     */
+    public int getEncryptedBlockCount() {
+        try {
+            EncryptionAnalysis analysis = analyzeEncryption();
+            return (int) analysis.getEncryptedBlocks();
+        } catch (Exception e) {
+            logger.error("Error getting encrypted block count", e);
+            return 0;
+        }
+    }
+
+    /**
+     * Get the count of unencrypted blocks
+     * @return number of unencrypted blocks
+     */
+    public int getUnencryptedBlockCount() {
+        try {
+            EncryptionAnalysis analysis = analyzeEncryption();
+            return (int) analysis.getUnencryptedBlocks();
+        } catch (Exception e) {
+            logger.error("Error getting unencrypted block count", e);
+            return 0;
+        }
+    }
+
+    /**
+     * Validate all encrypted blocks in the blockchain
+     * @return true if all encrypted blocks are valid
+     */
+    public boolean validateEncryptedBlocks() {
+        try {
+            List<Block> encryptedBlocks = getEncryptedBlocksOnly("");
+            for (Block block : encryptedBlocks) {
+                Block previousBlock = null;
+                if (block.getBlockNumber() > 0) {
+                    previousBlock = blockchain.getBlock(
+                        block.getBlockNumber() - 1
+                    );
+                }
+                if (!blockchain.validateBlock(block, previousBlock)) {
+                    return false;
+                }
+            }
+            return true;
+        } catch (Exception e) {
+            logger.error("Error validating encrypted blocks", e);
+            return false;
+        }
+    }
+
+    /**
+     * Get comprehensive blockchain validation report
+     * @return detailed validation report string
+     */
+    public String getValidationReport() {
+        try {
+            return blockchain.getValidationReport();
+        } catch (Exception e) {
+            logger.error("Error getting validation report", e);
+            return (
+                "Validation report temporarily unavailable: " + e.getMessage()
+            );
+        }
+    }
+
+    /**
+     * Run search engine diagnostics
+     * @return diagnostic report string
+     */
+    public String runSearchDiagnostics() {
+        try {
+            return blockchain.getSearchSpecialistAPI().runDiagnostics();
+        } catch (Exception e) {
+            logger.error("Error running search diagnostics", e);
+            return (
+                "Search diagnostics temporarily unavailable: " + e.getMessage()
+            );
+        }
+    }
+
+    /**
+     * Get search analytics and performance metrics
+     * @return search analytics string
+     */
+    public String getSearchAnalytics() {
+        try {
+            return blockchain.getSearchSpecialistAPI().getPerformanceMetrics();
+        } catch (Exception e) {
+            logger.error("Error getting search analytics", e);
+            return (
+                "Search analytics temporarily unavailable: " + e.getMessage()
+            );
+        }
+    }
+
+    /**
+     * Check if off-chain files exist for a specific block
+     * @param blockId the block ID to check
+     * @return true if off-chain files exist
+     */
+    public boolean offChainFilesExist(Long blockId) {
+        try {
+            Block block = blockchain.getBlock(blockId);
+            if (block == null || !block.hasOffChainData()) {
+                return false;
+            }
+            return BlockValidationUtil.offChainFileExists(
+                block
+            );
+        } catch (Exception e) {
+            logger.error(
+                "Error checking off-chain files for block " + blockId,
+                e
+            );
+            return false;
+        }
+    }
+
+    /**
+     * Check if a specific block is corrupted
+     * @param block the block to check for corruption
+     * @return true if the block is corrupted, false otherwise
+     */
+    public boolean isBlockCorrupted(Block block) {
+        try {
+            if (block == null) {
+                return true; // Null blocks are considered corrupted
+            }
+            
+            // Validate block integrity
+            Block previousBlock = null;
+            if (block.getBlockNumber() > 0) {
+                previousBlock = blockchain.getBlock(block.getBlockNumber() - 1);
+            }
+            
+            // Use blockchain's built-in validation
+            boolean isValid = blockchain.validateBlock(block, previousBlock);
+            return !isValid; // Return true if corrupted (not valid)
+            
+        } catch (Exception e) {
+            logger.error("Error checking block corruption for block " + 
+                        (block != null ? block.getBlockNumber() : "null"), e);
+            return true; // Consider corrupted if we can't validate
+        }
+    }
+
+    /**
+     * Perform a quick integrity check on a specific block by ID
+     * @param blockId the ID of the block to check (null safe)
+     * @return true if the block passes integrity check, false otherwise
+     */
+    public boolean performQuickIntegrityCheck(Long blockId) {
+        if (blockId == null) {
+            return false; // Null blockId fails integrity check
+        }
+        
+        try {
+            Block block = blockchain.getBlock(blockId);
+            if (block == null) {
+                return false; // Non-existent block fails integrity check
+            }
+            
+            // Get previous block for validation
+            Block previousBlock = null;
+            if (block.getBlockNumber() > 0) {
+                previousBlock = blockchain.getBlock(block.getBlockNumber() - 1);
+            }
+            
+            // Use existing validation utility
+            BlockValidationResult result = BlockValidationUtil.performQuickIntegrityCheck(block, previousBlock);
+            return result.isValid();
+            
+        } catch (Exception e) {
+            logger.error("Error performing quick integrity check for block " + blockId, e);
+            return false; // Consider failed if we can't validate
+        }
     }
 }

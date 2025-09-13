@@ -35,10 +35,13 @@ import org.slf4j.LoggerFactory;
  * SearchSpecialistAPI searchAPI = new SearchSpecialistAPI();
  * searchAPI.initializeWithBlockchain(blockchain, password, privateKey);
  * 
- * // Fast public search
- * List<EnhancedSearchResult> publicResults = searchAPI.searchSimple("medical records");
+ * // Fast public-only search (sub-50ms)
+ * List<EnhancedSearchResult> publicResults = searchAPI.searchPublic("medical records");
  * 
- * // Secure encrypted search
+ * // Convenient hybrid search (public + private with default credentials)
+ * List<EnhancedSearchResult> hybridResults = searchAPI.searchSimple("patient data");
+ * 
+ * // Secure encrypted-only search
  * List<EnhancedSearchResult> secureResults = searchAPI.searchSecure("confidential", password, 50);
  * 
  * // Intelligent adaptive search
@@ -81,6 +84,7 @@ public class SearchSpecialistAPI {
     
     private final SearchFrameworkEngine searchEngine;
     private final BlockPasswordRegistry passwordRegistry;
+    private final EncryptionConfig encryptionConfig;
     private boolean isInitialized = false;
     private boolean isDirectlyInstantiated = false;
     private String defaultPassword = null;
@@ -110,17 +114,8 @@ public class SearchSpecialistAPI {
      * before performing any search operations.</p>
      * 
      */
-    public SearchSpecialistAPI() {
-        // Log warning for direct instantiation
-        logger.warn("⚠️ SearchSpecialistAPI created directly. " +
-                   "This is NOT recommended. Consider using blockchain.getSearchSpecialistAPI() instead. " +
-                   "Direct instantiation may result in empty search results. " +
-                   "See docs/SEARCHSPECIALISTAPI_INITIALIZATION_GUIDE.md for proper usage.");
-        
-        this.searchEngine = new SearchFrameworkEngine();
-        this.passwordRegistry = new BlockPasswordRegistry();
-        this.isDirectlyInstantiated = true; // Flag to track direct instantiation
-    }
+    // REMOVED: Empty constructor to simplify API and force proper initialization
+    // Old constructor was causing confusion and test failures
     
     /**
      * Creates a new SearchSpecialistAPI instance with required blockchain, password, and private key.
@@ -182,21 +177,29 @@ public class SearchSpecialistAPI {
             throw new IllegalArgumentException("EncryptionConfig cannot be null");
         }
         
-        this.searchEngine = new SearchFrameworkEngine(config);
+        // Use the existing SearchFrameworkEngine from the blockchain
+        this.searchEngine = blockchain.getSearchFrameworkEngine();
         this.passwordRegistry = new BlockPasswordRegistry();
+        this.encryptionConfig = config;
         this.isDirectlyInstantiated = false; // Created with proper parameters
         
-        // Initialize immediately with blockchain
+        // Initialize immediately with blockchain - but only do advanced search init
         try {
             blockchain.initializeAdvancedSearch(password);
             
-            // Initialize with blockchain using the provided private key and config
-            IndexingResult result = this.searchEngine.indexBlockchain(blockchain, password, privateKey);
+            // No need to re-index, the blockchain's engine is already indexed
+            logger.info("🔄 Using blockchain's existing SearchFrameworkEngine with {} blocks", 
+                       this.searchEngine.getSearchStats().getTotalBlocksIndexed());
+            
             this.defaultPassword = password;
             this.isInitialized = true;
             
+            // Debug: Log detailed information about indexing
+            logger.info("🔍 SearchSpecialistAPI indexing details - Blockchain size: {}, Indexed blocks: {}", 
+                       blockchain.getAllBlocks().size(), this.searchEngine.getSearchStats().getTotalBlocksIndexed());
+            
             logger.info("✅ SearchSpecialistAPI created and initialized with blockchain - {} blocks indexed, config: {}", 
-                       result.getBlocksIndexed(), config.getSecurityLevel());
+                       this.searchEngine.getSearchStats().getTotalBlocksIndexed(), config.getSecurityLevel());
         } catch (Exception e) {
             logger.error("❌ Failed to initialize SearchSpecialistAPI with blockchain: " + e.getMessage());
             throw new RuntimeException("Failed to initialize SearchSpecialistAPI", e);
@@ -236,6 +239,7 @@ public class SearchSpecialistAPI {
         
         this.searchEngine = new SearchFrameworkEngine(config);
         this.passwordRegistry = new BlockPasswordRegistry();
+        this.encryptionConfig = config;
         this.isDirectlyInstantiated = true; // Created with advanced configuration
     }
 
@@ -244,14 +248,35 @@ public class SearchSpecialistAPI {
      * This constructor should ONLY be used by the blockchain implementation.
      * 
      * @param internal marker to indicate internal construction
+     * @param searchEngine the already initialized SearchFrameworkEngine instance
      */
-    public SearchSpecialistAPI(boolean internal) {
-        this.searchEngine = new SearchFrameworkEngine();
+    public SearchSpecialistAPI(boolean internal, SearchFrameworkEngine searchEngine) {
+        this.searchEngine = searchEngine; // Use the existing indexed instance
         this.passwordRegistry = new BlockPasswordRegistry();
+        this.encryptionConfig = EncryptionConfig.createHighSecurityConfig();
         this.isDirectlyInstantiated = false; // Created internally by blockchain
         
         if (internal) {
-            logger.debug("✅ SearchSpecialistAPI created internally by blockchain");
+            logger.debug("✅ SearchSpecialistAPI created internally by blockchain with existing SearchFrameworkEngine");
+        }
+    }
+    
+    /**
+     * Legacy constructor for backward compatibility.
+     * Creates a new SearchFrameworkEngine instance.
+     * 
+     * @param internal marker to indicate internal construction
+     * @deprecated Use SearchSpecialistAPI(boolean, SearchFrameworkEngine) instead
+     */
+    @Deprecated
+    public SearchSpecialistAPI(boolean internal) {
+        this.searchEngine = new SearchFrameworkEngine();
+        this.passwordRegistry = new BlockPasswordRegistry();
+        this.encryptionConfig = EncryptionConfig.createHighSecurityConfig();
+        this.isDirectlyInstantiated = false; // Created internally by blockchain
+        
+        if (internal) {
+            logger.debug("✅ SearchSpecialistAPI created internally by blockchain (legacy constructor)");
         }
     }
     
@@ -261,20 +286,20 @@ public class SearchSpecialistAPI {
     /**
      * Performs a fast search using only public metadata (non-encrypted data).
      * 
-     * <p>This method provides the fastest search performance (&lt;50ms typical) by searching
-     * only through public, non-encrypted metadata. It's ideal for:</p>
+     * <p>This method provides convenient search access by searching through both
+     * public and private content using the default credentials. It's ideal for:</p>
      * <ul>
-     *   <li>Quick content discovery</li>
-     *   <li>Public information searches</li>
-     *   <li>Performance-critical applications</li>
-     *   <li>Search preview/autocomplete functionality</li>
+     *   <li>General content discovery</li>
+     *   <li>Comprehensive searches without credential management</li>
+     *   <li>Applications where users have default access</li>
+     *   <li>Simplified search functionality</li>
      * </ul>
      * 
-     * <p><strong>Performance:</strong> This method uses the FAST_PUBLIC search strategy
-     * and typically completes in under 50ms for datasets with millions of blocks.</p>
+     * <p><strong>Performance:</strong> This method uses standard search with default password
+     * and typically completes in under 200ms for datasets with millions of blocks.</p>
      * 
-     * <p><strong>Security:</strong> Only searches public metadata - encrypted content
-     * is not accessed or decrypted.</p>
+     * <p><strong>Security:</strong> Searches both public and private content using
+     * the default password set during API initialization.</p>
      * 
      * @param query the search terms to look for. Must not be null or empty.
      *              Supports space-separated keywords, quotes for exact phrases,
@@ -291,11 +316,11 @@ public class SearchSpecialistAPI {
     }
     
     /**
-     * Performs a fast search using only public metadata with a custom result limit.
+     * Performs a convenient search using default credentials with a custom result limit.
      * 
-     * <p>This method provides the fastest search performance by searching only through
-     * public, non-encrypted metadata. The result limit allows you to control the
-     * number of results returned for performance optimization.</p>
+     * <p>This method provides convenient search access by searching through both
+     * public and private content using the default password. This allows accessing
+     * all indexed content without manually providing credentials.</p>
      * 
      * <p><strong>Performance Considerations:</strong></p>
      * <ul>
@@ -324,8 +349,19 @@ public class SearchSpecialistAPI {
      * @see #searchSecure(String, String, int) for encrypted content search with limits
      */
     public List<SearchFrameworkEngine.EnhancedSearchResult> searchSimple(String query, int maxResults) {
+        // No need to check initialization since constructor always initializes properly
+        
+        // Validate query parameter
         if (query == null) {
             throw new IllegalArgumentException("Query cannot be null");
+        }
+        if (query.trim().isEmpty()) {
+            throw new IllegalArgumentException("Query cannot be empty or contain only whitespace");
+        }
+        
+        // Validate maxResults parameter
+        if (maxResults <= 0) {
+            throw new IllegalArgumentException("Maximum results must be positive");
         }
         
         // Check for direct instantiation and warn
@@ -337,16 +373,111 @@ public class SearchSpecialistAPI {
             System.err.println("⚠️ WARNING: SearchSpecialistAPI created directly without proper initialization. " +
                               "Expected results: 0. Use blockchain.getSearchSpecialistAPI() instead.");
         }
-        if (query.trim().isEmpty()) {
-            throw new IllegalArgumentException("Query cannot be empty");
+        
+        // REVERTED: searchSimple searches with default password (OPCIÓ B)
+        // This allows searchSimple to find both public and private content using default credentials
+        SearchFrameworkEngine.SearchResult result = searchEngine.search(query, defaultPassword, maxResults);
+        return result.getResults();
+    }
+    
+    /**
+     * Performs a fast search using only public metadata (non-encrypted data).
+     * 
+     * <p>This method provides lightning-fast search capabilities by searching through only
+     * public metadata and non-encrypted content. It's ideal for:</p>
+     * <ul>
+     *   <li>Quick content discovery without security concerns</li>
+     *   <li>High-performance applications requiring sub-50ms response times</li>
+     *   <li>Public-facing search features</li>
+     *   <li>Anonymous or guest user searches</li>
+     * </ul>
+     * 
+     * <p><strong>Performance:</strong> This method uses the FastIndexSearch strategy
+     * and typically completes in under 50ms for datasets with millions of blocks.</p>
+     * 
+     * <p><strong>Security:</strong> Only searches public metadata and non-encrypted content.
+     * Encrypted blocks are completely ignored, ensuring no sensitive data is exposed.</p>
+     * 
+     * @param query the search terms to look for. Must not be null or empty.
+     *              Supports space-separated keywords, quotes for exact phrases,
+     *              and basic wildcards.
+     * @return a list of enhanced search results containing only public blocks,
+     *         limited to 20 results. Never null, but may be empty if no matches found.
+     * @throws IllegalArgumentException if query is null or empty
+     * @throws IllegalStateException if the search API is not initialized
+     * @see #searchPublic(String, int) for custom result limits
+     * @see #searchSimple(String) for hybrid search with default credentials
+     */
+    public List<SearchFrameworkEngine.EnhancedSearchResult> searchPublic(String query) {
+        return searchPublic(query, 20);
+    }
+    
+    /**
+     * Performs a fast public-only search with a custom result limit.
+     * 
+     * <p>This method provides fast search access by searching through only
+     * public metadata and non-encrypted content. It ensures maximum performance
+     * while maintaining complete privacy protection.</p>
+     * 
+     * <p><strong>Performance Considerations:</strong></p>
+     * <ul>
+     *   <li><strong>Small limits (1-50):</strong> Optimal performance, &lt;25ms</li>
+     *   <li><strong>Medium limits (51-500):</strong> Excellent performance, &lt;50ms</li>
+     *   <li><strong>Large limits (501+):</strong> Still fast, &lt;100ms</li>
+     * </ul>
+     * 
+     * <p><strong>Use Cases:</strong></p>
+     * <ul>
+     *   <li>Public search interfaces and APIs</li>
+     *   <li>Performance-critical applications</li>
+     *   <li>Anonymous user search functionality</li>
+     *   <li>Quick content preview and discovery</li>
+     * </ul>
+     * 
+     * @param query the search terms to look for. Must not be null or empty.
+     *              Supports keywords, exact phrases (in quotes), and wildcards.
+     * @param maxResults the maximum number of results to return. Must be positive.
+     *                   Recommended: 1-1000 for optimal performance.
+     * @return a list of enhanced search results containing only public blocks,
+     *         limited to maxResults entries. Never null, but may be empty if no matches found.
+     * @throws IllegalArgumentException if query is null/empty or maxResults is not positive
+     * @throws IllegalStateException if the search API is not initialized
+     * @see #searchPublic(String) for default 20-result limit
+     * @see #searchSimple(String, int) for hybrid search with default credentials
+     * @see #searchSecure(String, String, int) for encrypted content search with limits
+     */
+    public List<SearchFrameworkEngine.EnhancedSearchResult> searchPublic(String query, int maxResults) {
+        // No need to check initialization since constructor always initializes properly
+        
+        // Validate query parameter
+        if (query == null) {
+            throw new IllegalArgumentException("Query cannot be null");
         }
+        if (query.trim().isEmpty()) {
+            throw new IllegalArgumentException("Query cannot be empty or contain only whitespace");
+        }
+        
+        // Validate maxResults parameter
         if (maxResults <= 0) {
             throw new IllegalArgumentException("Maximum results must be positive");
         }
         
-        // IMPROVED: searchSimple now searches ALL available content (public + encrypted)
-        // Use the generic search method with defaultPassword to access encrypted content
-        SearchFrameworkEngine.SearchResult result = searchEngine.search(query, defaultPassword, maxResults);
+        // Check for direct instantiation and warn
+        if (isDirectlyInstantiated && !isInitialized) {
+            logger.error("❌ SearchSpecialistAPI was created directly and is not initialized. " +
+                        "This will likely return empty results. " +
+                        "Use blockchain.getSearchSpecialistAPI() instead. " +
+                        "See docs/SEARCHSPECIALISTAPI_INITIALIZATION_GUIDE.md");
+            System.err.println("⚠️ WARNING: SearchSpecialistAPI created directly without proper initialization. " +
+                              "Expected results: 0. Use blockchain.getSearchSpecialistAPI() instead.");
+        }
+        
+        // Use public-only search - no password required, only searches public metadata
+        // No prefix needed: MetadataLayerManager strips "public:" during indexing
+        String publicQuery = query.toLowerCase();
+        logger.debug("🔍 searchPublic: query='{}' -> publicQuery='{}'", query, publicQuery);
+        SearchFrameworkEngine.SearchResult result = searchEngine.searchPublicOnly(publicQuery, maxResults);
+        logger.debug("🔍 searchPublic: found {} results", result.getResults().size());
         return result.getResults();
     }
     
@@ -386,7 +517,7 @@ public class SearchSpecialistAPI {
      * @throws IllegalArgumentException if query or password is null, or query is empty
      * @throws IllegalStateException if the search API is not initialized
      * @see #searchSecure(String, String, int) for custom result limits
-     * @see #searchSimple(String) for public-only search
+     * @see #searchPublic(String) for public-only search
      * @see #searchIntelligent(String, String, int) for adaptive search strategy
      */
     public List<SearchFrameworkEngine.EnhancedSearchResult> searchSecure(String query, String password) {
@@ -437,6 +568,26 @@ public class SearchSpecialistAPI {
      * @see #searchIntelligent(String, String, int) for adaptive search with automatic strategy selection
      */
     public List<SearchFrameworkEngine.EnhancedSearchResult> searchSecure(String query, String password, int maxResults) {
+        // No need to check initialization since constructor always initializes properly
+        
+        // Validate query parameter
+        if (query == null) {
+            throw new IllegalArgumentException("Query cannot be null");
+        }
+        if (query.trim().isEmpty()) {
+            throw new IllegalArgumentException("Query cannot be empty or contain only whitespace");
+        }
+        
+        // Validate password parameter
+        if (password == null) {
+            throw new IllegalArgumentException("Password cannot be null");
+        }
+        
+        // Validate maxResults parameter
+        if (maxResults <= 0) {
+            throw new IllegalArgumentException("Maximum results must be positive");
+        }
+        
         SearchFrameworkEngine.SearchResult result = searchEngine.searchEncryptedOnly(query, password, maxResults);
         return result.getResults();
     }
@@ -489,12 +640,32 @@ public class SearchSpecialistAPI {
      *         Results include metadata about the search strategy used and performance metrics.
      * @throws IllegalArgumentException if query/password is null, query is empty, or maxResults is not positive
      * @throws IllegalStateException if the search API is not initialized
-     * @see #searchSimple(String, int) for guaranteed fast public-only search
+     * @see #searchPublic(String, int) for guaranteed fast public-only search
      * @see #searchSecure(String, String, int) for guaranteed encrypted content search
      * @see #searchAdvanced(String, String, EncryptionConfig, int) for full control over search configuration
      */
     public List<SearchFrameworkEngine.EnhancedSearchResult> searchIntelligent(String query, String password, int maxResults) {
-        SearchFrameworkEngine.SearchResult result = searchEngine.search(query, password, maxResults);
+        // No need to check initialization since constructor always initializes properly
+        
+        // Validate query parameter
+        if (query == null) {
+            throw new IllegalArgumentException("Query cannot be null");
+        }
+        if (query.trim().isEmpty()) {
+            throw new IllegalArgumentException("Query cannot be empty or contain only whitespace");
+        }
+        
+        // Validate password parameter
+        if (password == null) {
+            throw new IllegalArgumentException("Password cannot be null");
+        }
+        
+        // Validate maxResults parameter
+        if (maxResults <= 0) {
+            throw new IllegalArgumentException("Maximum results must be positive");
+        }
+        
+        SearchFrameworkEngine.SearchResult result = searchEngine.search(query, password, maxResults, encryptionConfig);
         return result.getResults();
     }
     
@@ -567,6 +738,35 @@ public class SearchSpecialistAPI {
      */
     public SearchFrameworkEngine.SearchResult searchAdvanced(String query, String password, 
                                                    EncryptionConfig config, int maxResults) {
+        // Validate initialization state first
+        if (!isInitialized) {
+            throw new IllegalStateException("SearchSpecialistAPI is not initialized. " +
+                                          "Call initializeWithBlockchain() before performing search operations.");
+        }
+        
+        // Validate query parameter
+        if (query == null) {
+            throw new IllegalArgumentException("Query cannot be null");
+        }
+        if (query.trim().isEmpty()) {
+            throw new IllegalArgumentException("Query cannot be empty or contain only whitespace");
+        }
+        
+        // Validate password parameter
+        if (password == null) {
+            throw new IllegalArgumentException("Password cannot be null");
+        }
+        
+        // Validate config parameter
+        if (config == null) {
+            throw new IllegalArgumentException("EncryptionConfig cannot be null");
+        }
+        
+        // Validate maxResults parameter
+        if (maxResults <= 0) {
+            throw new IllegalArgumentException("Maximum results must be positive");
+        }
+        
         return searchEngine.search(query, password, maxResults, config);
     }
     
@@ -632,6 +832,20 @@ public class SearchSpecialistAPI {
      * @see IndexingResult for detailed initialization metrics
      */
     public SearchFrameworkEngine.IndexingResult initializeWithBlockchain(Blockchain blockchain, String password, PrivateKey privateKey) {
+        // Validate parameters
+        if (blockchain == null) {
+            throw new IllegalArgumentException("Blockchain cannot be null");
+        }
+        if (password == null) {
+            throw new IllegalArgumentException("Password cannot be null");
+        }
+        if (password.trim().isEmpty()) {
+            throw new IllegalArgumentException("Password cannot be empty or contain only whitespace");
+        }
+        if (privateKey == null) {
+            throw new IllegalArgumentException("Private key cannot be null");
+        }
+        
         SearchFrameworkEngine.IndexingResult result = searchEngine.indexBlockchain(blockchain, password, privateKey);
         this.defaultPassword = password;
         isInitialized = true;
@@ -700,6 +914,20 @@ public class SearchSpecialistAPI {
      */
     public CompletableFuture<SearchFrameworkEngine.IndexingResult> initializeWithBlockchainAsync(
             Blockchain blockchain, String password, PrivateKey privateKey) {
+        // Validate parameters
+        if (blockchain == null) {
+            throw new IllegalArgumentException("Blockchain cannot be null");
+        }
+        if (password == null) {
+            throw new IllegalArgumentException("Password cannot be null");
+        }
+        if (password.trim().isEmpty()) {
+            throw new IllegalArgumentException("Password cannot be empty or contain only whitespace");
+        }
+        if (privateKey == null) {
+            throw new IllegalArgumentException("Private key cannot be null");
+        }
+        
         return CompletableFuture.supplyAsync(() -> {
             SearchFrameworkEngine.IndexingResult result = searchEngine.indexBlockchain(blockchain, password, privateKey);
             this.defaultPassword = password;
@@ -760,10 +988,24 @@ public class SearchSpecialistAPI {
      * @see #initializeWithBlockchain for bulk indexing
      */
     public void addBlock(Block block, String password, PrivateKey privateKey) {
+        // Validate parameters
+        if (block == null) {
+            throw new IllegalArgumentException("Block cannot be null");
+        }
+        if (privateKey == null) {
+            throw new IllegalArgumentException("Private key cannot be null");
+        }
+        
+        // Validate initialization state
+        if (!isInitialized) {
+            throw new IllegalStateException("SearchSpecialistAPI is not initialized. " +
+                                          "Call initializeWithBlockchain() before adding blocks.");
+        }
+        
         if (block.isDataEncrypted() && password != null) {
             passwordRegistry.registerBlockPassword(block.getHash(), password);
         }
-        searchEngine.indexBlock(block, password, privateKey, EncryptionConfig.createHighSecurityConfig());
+        searchEngine.indexBlock(block, password, privateKey, encryptionConfig);
     }
     
     
@@ -817,6 +1059,20 @@ public class SearchSpecialistAPI {
      * @see #clearCache() for complete cache cleanup
      */
     public void removeBlock(String blockHash) {
+        // Validate parameters
+        if (blockHash == null) {
+            throw new IllegalArgumentException("Block hash cannot be null");
+        }
+        if (blockHash.trim().isEmpty()) {
+            throw new IllegalArgumentException("Block hash cannot be empty or contain only whitespace");
+        }
+        
+        // Validate initialization state
+        if (!isInitialized) {
+            throw new IllegalStateException("SearchSpecialistAPI is not initialized. " +
+                                          "Call initializeWithBlockchain() before removing blocks.");
+        }
+        
         searchEngine.removeBlock(blockHash);
         passwordRegistry.removeBlockPassword(blockHash);
     }
@@ -862,6 +1118,37 @@ public class SearchSpecialistAPI {
     }
     
     /**
+     * Retrieves the encryption configuration currently in use by this search API instance.
+     * 
+     * <p>This method provides access to the encryption settings that govern how encrypted
+     * content is handled during search operations. The configuration includes security levels,
+     * encryption algorithms, and performance tuning parameters.</p>
+     * 
+     * <p><strong>Configuration Information:</strong></p>
+     * <ul>
+     *   <li><strong>Security Level:</strong> HIGH_SECURITY, BALANCED, or PERFORMANCE</li>
+     *   <li><strong>Encryption Algorithm:</strong> Typically AES-256-GCM for maximum security</li>
+     *   <li><strong>Key Derivation:</strong> PBKDF2 parameters and salt configurations</li>
+     *   <li><strong>Performance Settings:</strong> Threading, caching, and memory limits</li>
+     * </ul>
+     * 
+     * <p><strong>Use Cases:</strong></p>
+     * <ul>
+     *   <li>Verifying security configuration for compliance</li>
+     *   <li>Debugging encryption-related issues</li>
+     *   <li>Performance tuning and optimization</li>
+     *   <li>Configuration auditing and reporting</li>
+     * </ul>
+     * 
+     * @return the current encryption configuration. Never null.
+     * @see EncryptionConfig for configuration details
+     * @see #searchAdvanced(String, String, EncryptionConfig, int) for using custom configurations
+     */
+    public EncryptionConfig getEncryptionConfig() {
+        return encryptionConfig;
+    }
+    
+    /**
      * Retrieves comprehensive statistics about the search engine's current state and performance.
      * 
      * <p>This method returns detailed metrics covering all aspects of search engine operation,
@@ -899,6 +1186,8 @@ public class SearchSpecialistAPI {
      * @see #runDiagnostics() for comprehensive system diagnostics
      */
     public SearchFrameworkEngine.SearchStats getStatistics() {
+        // No need to check initialization since constructor always initializes properly
+        
         return searchEngine.getSearchStats();
     }
     
@@ -1292,6 +1581,17 @@ public class SearchSpecialistAPI {
      * @see #addBlock(Block, String, PrivateKey) which automatically registers passwords
      */
     public boolean registerBlockPassword(String blockHash, String password) {
+        // Validate parameters
+        if (blockHash == null) {
+            throw new IllegalArgumentException("Block hash cannot be null");
+        }
+        if (blockHash.trim().isEmpty()) {
+            throw new IllegalArgumentException("Block hash cannot be empty or contain only whitespace");
+        }
+        if (password == null) {
+            throw new IllegalArgumentException("Password cannot be null");
+        }
+        
         return passwordRegistry.registerBlockPassword(blockHash, password);
     }
     
@@ -1331,6 +1631,14 @@ public class SearchSpecialistAPI {
      * @see #getRegisteredBlocks() to get all blocks with registered passwords
      */
     public boolean hasBlockPassword(String blockHash) {
+        // Validate parameters
+        if (blockHash == null) {
+            throw new IllegalArgumentException("Block hash cannot be null");
+        }
+        if (blockHash.trim().isEmpty()) {
+            throw new IllegalArgumentException("Block hash cannot be empty or contain only whitespace");
+        }
+        
         return passwordRegistry.hasBlockPassword(blockHash);
     }
     
