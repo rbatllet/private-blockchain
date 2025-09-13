@@ -1,6 +1,7 @@
 package com.rbatllet.blockchain.util.validation;
 
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.validation.BlockValidationResult;
 import com.rbatllet.blockchain.core.Blockchain;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -314,5 +315,52 @@ public class BlockValidationUtil {
         return hash.length() > 32 ? 
             hash.substring(0, 16) + "..." + hash.substring(hash.length() - 20, hash.length()) :
             hash;
+    }
+
+    /**
+     * Perform a quick integrity check on a block
+     * @param block The block to check
+     * @param previousBlock The previous block in the chain
+     * @return BlockValidationResult containing the validation results
+     */
+    public static BlockValidationResult performQuickIntegrityCheck(Block block, Block previousBlock) {
+        try {
+            if (block == null) {
+                return BlockValidationResult.failure("Block is null");
+            }
+            
+            // Quick hash validation
+            if (block.getHash() == null || block.getHash().isEmpty()) {
+                return BlockValidationResult.failure("Block hash is missing");
+            }
+            
+            // Validate hash format
+            if (!block.getHash().matches("^[a-fA-F0-9]{64}$")) {
+                return BlockValidationResult.failure("Invalid hash format");
+            }
+            
+            // Validate previous hash link
+            if (previousBlock != null) {
+                String expectedPreviousHash = previousBlock.getHash();
+                if (!expectedPreviousHash.equals(block.getPreviousHash())) {
+                    return BlockValidationResult.failure("Previous hash mismatch");
+                }
+            }
+            
+            // Validate timestamp
+            if (block.getTimestamp() == null) {
+                return BlockValidationResult.failure("Block timestamp is missing");
+            }
+            
+            // Validate block number sequence
+            if (previousBlock != null && block.getBlockNumber() != previousBlock.getBlockNumber() + 1) {
+                return BlockValidationResult.failure("Block number sequence error");
+            }
+            
+            return BlockValidationResult.success("Quick integrity check passed");
+            
+        } catch (Exception e) {
+            return BlockValidationResult.failure("Integrity check error: " + e.getMessage());
+        }
     }
 }

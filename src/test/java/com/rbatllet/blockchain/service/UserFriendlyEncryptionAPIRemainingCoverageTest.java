@@ -1,7 +1,9 @@
 package com.rbatllet.blockchain.service;
 
+import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.search.metadata.TermVisibilityMap;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.*;
 import java.security.KeyPair;
@@ -181,8 +183,7 @@ class UserFriendlyEncryptionAPIRemainingCoverageTest {
         @DisplayName("Should generate password for config")
         void shouldGeneratePasswordForConfig() {
             // Given
-            com.rbatllet.blockchain.config.EncryptionConfig config = 
-                com.rbatllet.blockchain.config.EncryptionConfig.createTestConfig();
+            EncryptionConfig config = EncryptionConfig.createTestConfig();
             
             // When & Then
             assertDoesNotThrow(() -> {
@@ -222,7 +223,7 @@ class UserFriendlyEncryptionAPIRemainingCoverageTest {
         @DisplayName("Should create custom config builder")
         void shouldCreateCustomConfig() {
             // When
-            com.rbatllet.blockchain.config.EncryptionConfig.Builder builder = api.createCustomConfig();
+            EncryptionConfig.Builder builder = api.createCustomConfig();
             
             // Then
             assertNotNull(builder, "Config builder should not be null");
@@ -389,7 +390,7 @@ class UserFriendlyEncryptionAPIRemainingCoverageTest {
         void shouldListManagedKeys() {
             // When & Then
             assertDoesNotThrow(() -> {
-                List<com.rbatllet.blockchain.util.CryptoUtil.KeyInfo> keys = api.listManagedKeys();
+                List<CryptoUtil.KeyInfo> keys = api.listManagedKeys();
                 assertNotNull(keys, "Keys list should not be null");
             }, "Should list managed keys without throwing");
         }
@@ -480,8 +481,8 @@ class UserFriendlyEncryptionAPIRemainingCoverageTest {
             String data = "Granular control test data";
             String password = "password123";
             Set<String> allTerms = new HashSet<>(Arrays.asList("encrypted", "secure", "public", "visible"));
-            com.rbatllet.blockchain.search.metadata.TermVisibilityMap visibility = 
-                new com.rbatllet.blockchain.search.metadata.TermVisibilityMap();
+            TermVisibilityMap visibility = 
+                new TermVisibilityMap();
             
             // When & Then
             assertDoesNotThrow(() -> {

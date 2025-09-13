@@ -4,6 +4,7 @@ import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.*;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.test.util.TestDatabaseUtils;
 import org.junit.jupiter.api.*;
 
 import java.security.KeyPair;
@@ -44,6 +45,9 @@ public class SearchFrameworkExhaustiveTest {
     
     @BeforeEach
     void setUp() throws Exception {
+        // Clean database and enable test mode before each test to ensure test isolation
+        TestDatabaseUtils.setupTest();
+        
         // Use high security configuration for exhaustive testing
         highSecurityConfig = EncryptionConfig.createHighSecurityConfig();
         searchEngine = new SearchFrameworkEngine(highSecurityConfig);
@@ -58,6 +62,9 @@ public class SearchFrameworkExhaustiveTest {
         
         // Create comprehensive test blockchain
         createExhaustiveTestBlockchain();
+        
+        // Clear global processing map before indexing to ensure clean state
+        SearchFrameworkEngine.clearGlobalProcessingMapForTesting();
         
         // Index the blockchain
         IndexingResult indexingResult = searchEngine.indexBlockchain(testBlockchain, testPassword, testPrivateKey);
@@ -75,6 +82,9 @@ public class SearchFrameworkExhaustiveTest {
         if (specialistAPI != null) {
             specialistAPI.shutdown();
         }
+        
+        // Clean database and disable test mode after each test to ensure test isolation
+        TestDatabaseUtils.teardownTest();
     }
     
     // ===== FAST PUBLIC SEARCH EXHAUSTIVE TESTS =====
@@ -330,6 +340,9 @@ public class SearchFrameworkExhaustiveTest {
         System.out.println("\n🎯 TESTING SPECIALIST ADVANCED SEARCH API");
         System.out.println("==========================================");
         
+        // Clear global processing map to allow specialist API to index blocks
+        SearchFrameworkEngine.clearGlobalProcessingMapForTesting();
+        
         // Initialize advanced API
         IndexingResult initResult = specialistAPI.initializeWithBlockchain(testBlockchain, testPassword, testPrivateKey);
         assertTrue(initResult.getBlocksIndexed() > 0);
@@ -552,6 +565,9 @@ public class SearchFrameworkExhaustiveTest {
         System.out.println("\n🏢 TESTING REAL-WORLD ENTERPRISE SCENARIOS");
         System.out.println("=========================================");
         
+        // Initialize specialist API for real-world scenarios
+        specialistAPI.initializeWithBlockchain(testBlockchain, testPassword, testPrivateKey);
+        
         // Scenario 1: Financial Compliance Search
         System.out.printf("  💰 Financial Compliance Scenario:%n");
         List<EnhancedSearchResult> financialCompliance = specialistAPI.searchIntelligent("SWIFT transfer large amount", testPassword, 50);
@@ -589,6 +605,17 @@ public class SearchFrameworkExhaustiveTest {
     
     private void createExhaustiveTestBlockchain() throws Exception {
         System.out.println("🏗️ Creating exhaustive test blockchain...");
+        
+        // Authorize the test key for adding blocks
+        String publicKeyString = CryptoUtil.publicKeyToString(testPublicKey);
+        boolean keyAuthorized = testBlockchain.addAuthorizedKey(
+            publicKeyString,
+            "ExhaustiveTestUser",
+            null
+        );
+        if (!keyAuthorized) {
+            throw new RuntimeException("Failed to authorize test key for exhaustive blockchain creation");
+        }
         
         // Financial blocks
         testBlockchain.addBlock(

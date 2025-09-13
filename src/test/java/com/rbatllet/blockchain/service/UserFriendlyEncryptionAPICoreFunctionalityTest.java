@@ -37,6 +37,14 @@ class UserFriendlyEncryptionAPICoreFunctionalityTest {
         KeyPair defaultKeyPair = CryptoUtil.generateKeyPair();
         api = new UserFriendlyEncryptionAPI(realBlockchain, testUsername, defaultKeyPair);
         
+        // Initialize SearchSpecialistAPI before storing encrypted data
+        try {
+            realBlockchain.initializeAdvancedSearch(testPassword);
+            realBlockchain.getSearchSpecialistAPI().initializeWithBlockchain(realBlockchain, testPassword, defaultKeyPair.getPrivate());
+        } catch (Exception e) {
+            System.err.println("⚠️ Warning: SearchSpecialistAPI initialization failed: " + e.getMessage());
+        }
+        
         // Add some test data - encrypted and unencrypted blocks
         api.storeSecret("Secret document content", testPassword);
         api.storeSecret("Config data", testPassword);

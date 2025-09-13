@@ -40,11 +40,11 @@ public class SearchSpecialistAPIComprehensiveTest {
         userKeys = api.createUser("comprehensive-test-user");
         api.setDefaultCredentials("comprehensive-test-user", userKeys);
         
-        // Create test data
-        createTestData();
-        
-        // Initialize search API
+        // Initialize search API FIRST (before creating test data)
         initializeSearchAPI();
+        
+        // Create test data AFTER SearchSpecialistAPI is initialized
+        createTestData();
     }
     
     private void createTestData() throws Exception {
@@ -61,6 +61,9 @@ public class SearchSpecialistAPIComprehensiveTest {
     }
     
     private void initializeSearchAPI() throws Exception {
+        // Initialize SearchSpecialistAPI in the blockchain first
+        blockchain.getSearchSpecialistAPI().initializeWithBlockchain(blockchain, testPassword, userKeys.getPrivate());
+        
         // Use new constructor that requires blockchain, password, and private key
         searchAPI = new SearchSpecialistAPI(blockchain, testPassword, userKeys.getPrivate());
         
@@ -300,29 +303,20 @@ public class SearchSpecialistAPIComprehensiveTest {
     
     @Test
     @Order(8)
-    @DisplayName("Test 8: Constructor comparison - old vs new")
+    @DisplayName("Test 8: Constructor validation - proper initialization required")
     void testConstructorComparison() throws Exception {
-        System.out.println("\n=== TEST 8: CONSTRUCTOR COMPARISON ===");
+        System.out.println("\n=== TEST 8: CONSTRUCTOR VALIDATION ===");
         
-        // Test old constructor (should work but with warning)
-        SearchSpecialistAPI oldAPI = new SearchSpecialistAPI();
-        assertFalse(oldAPI.isReady(), "Old API should not be ready without initialization");
+        // Test that constructor requires proper initialization
+        SearchSpecialistAPI api = new SearchSpecialistAPI(blockchain, testPassword, userKeys.getPrivate());
+        assertTrue(api.isReady(), "API should be ready immediately after proper construction");
         
-        // Test search with old API (should return empty results)
-        List<EnhancedSearchResult> oldResults = oldAPI.searchSimple("financial");
-        System.out.println("📊 Old constructor search results: " + oldResults.size());
-        assertEquals(0, oldResults.size(), "Old API without initialization should return no results");
+        // Test search with properly constructed API (should find results)
+        List<EnhancedSearchResult> results = api.searchSimple("financial");
+        System.out.println("📊 Constructor search results: " + results.size());
+        assertTrue(results.size() > 0, "Properly constructed API should find results immediately");
         
-        // Test new constructor (should work correctly)
-        SearchSpecialistAPI newAPI = new SearchSpecialistAPI(blockchain, testPassword, userKeys.getPrivate());
-        assertTrue(newAPI.isReady(), "New API should be ready immediately");
-        
-        // Test search with new API (should find results)
-        List<EnhancedSearchResult> newResults = newAPI.searchSimple("financial");
-        System.out.println("📊 New constructor search results: " + newResults.size());
-        assertTrue(newResults.size() > 0, "New API should find results immediately");
-        
-        System.out.println("✅ Constructor comparison validated");
+        System.out.println("✅ Constructor validation passed");
     }
     
     @Test

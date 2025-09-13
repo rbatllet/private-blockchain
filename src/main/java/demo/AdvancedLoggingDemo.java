@@ -1,6 +1,7 @@
 package demo;
 
 import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.logging.AdvancedLoggingService;
 import com.rbatllet.blockchain.logging.LoggingManager;
 import com.rbatllet.blockchain.util.CryptoUtil;
@@ -400,9 +401,9 @@ public class AdvancedLoggingDemo {
                         blockchain.addBlock("Original valid data", keyPair.getPrivate(), keyPair.getPublic());
                         
                         // Get the last block and corrupt its hash
-                        List<com.rbatllet.blockchain.entity.Block> blocks = blockchain.getAllBlocks();
+                        List<Block> blocks = blockchain.getAllBlocks();
                         if (!blocks.isEmpty()) {
-                            com.rbatllet.blockchain.entity.Block lastBlock = blocks.get(blocks.size() - 1);
+                            Block lastBlock = blocks.get(blocks.size() - 1);
                             // Try to validate with wrong previous hash
                             String originalHash = lastBlock.getHash();
                             String corruptedHash = originalHash.substring(0, 10) + "CORRUPTED" + originalHash.substring(20);

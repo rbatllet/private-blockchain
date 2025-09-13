@@ -432,6 +432,7 @@ public class SearchMetrics {
 
 ### **Internal References:**
 - [Thread Safety Tests Guide](THREAD_SAFETY_TESTS.md)
+- [Atomic Protection & Multi-Instance Coordination](ATOMIC_PROTECTION_MULTI_INSTANCE_GUIDE.md)
 - [Security Classes Guide](SECURITY_CLASSES_GUIDE.md)
 - [Performance Optimization](PERFORMANCE_OPTIMIZATION_SUMMARY.md)
 

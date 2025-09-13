@@ -56,6 +56,33 @@ public class SearchMetrics {
         lastSearchTime = LocalDateTime.now();
     }
 
+    /**
+     * Record a cache optimization operation
+     * @param operationType Type of optimization (e.g., "low_performance_cleanup", "memory_eviction")
+     * @param itemsAffected Number of cache entries affected by the optimization
+     */
+    public void recordCacheOptimization(
+        String operationType,
+        int itemsAffected
+    ) {
+        if (operationType == null || operationType.trim().isEmpty()) {
+            return;
+        }
+
+        // Record the optimization in search type stats for tracking
+        String metricKey = "cache_optimization_" + operationType.toLowerCase();
+
+        searchTypeStats
+            .computeIfAbsent(metricKey, k -> new PerformanceStats())
+            .recordOptimization(itemsAffected);
+
+        logger.debug(
+            "📈 Recorded cache optimization: {} affected {} items",
+            operationType,
+            itemsAffected
+        );
+    }
+
     // Getters
     public long getTotalSearches() {
         return totalSearches.get();
@@ -708,6 +735,15 @@ public class SearchMetrics {
             // Update min/max (simple volatile update, not atomic but acceptable for metrics)
             if (durationMs < minTimeMs) minTimeMs = durationMs;
             if (durationMs > maxTimeMs) maxTimeMs = durationMs;
+        }
+
+        /**
+         * Record an optimization operation
+         * @param itemsAffected Number of items affected by the optimization
+         */
+        public void recordOptimization(int itemsAffected) {
+            searches.incrementAndGet(); // Count as a search operation
+            totalResults.addAndGet(itemsAffected); // Store items affected as "results"
         }
 
         public long getSearches() {

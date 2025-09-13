@@ -161,6 +161,49 @@ logger.info("Search performed: {}", sanitizedQuery);
 
 ## 🔐 Encryption Best Practices
 
+### Critical Security Fix: Encrypted Block Validation
+
+**⚠️ SECURITY VULNERABILITY RESOLVED** (September 2025)
+
+A critical security vulnerability in encrypted block validation was identified and resolved:
+
+**Issue**: The `validateBlock()` method was using standard content building (`buildBlockContent()`) for encrypted blocks instead of encryption-aware content building (`buildBlockContentForEncrypted()`). This caused corrupted encrypted block data to pass validation incorrectly.
+
+**Impact**: 
+- Corrupted encrypted blocks could be accepted as valid
+- Data integrity violations in encrypted content went undetected
+- Security breaches could occur without detection
+
+**Resolution**: Enhanced `validateBlock()` method to:
+```java
+// ✅ FIXED: Proper validation for encrypted blocks
+public boolean validateBlock(Block block, String publicKey) {
+    // ... existing validation logic ...
+    
+    // 🔒 SECURITY FIX: Use encryption-aware content building for encrypted blocks
+    String content;
+    if (block.isEncrypted()) {
+        content = getContentForHashing(block);  // Encryption-aware content building
+    } else {
+        content = buildBlockContent(/* ... */); // Standard content building
+    }
+    
+    // Continue with hash validation using proper content
+    String calculatedHash = HashUtil.calculateHash(content);
+    return calculatedHash.equals(block.getHash());
+}
+```
+
+**Verification**: The security fix was verified through comprehensive testing:
+- `UserFriendlyEncryptionAPIBlockCorruptionTest` now properly detects corrupted encrypted blocks
+- Tampered encryption markers (e.g., `[ENCRYPTED]` → `[FNCRYPTFD]`) are correctly identified
+- Validation properly fails when encrypted block content is corrupted
+
+**Prevention**: To prevent similar issues:
+- Always use encryption-aware methods for encrypted block operations
+- Implement comprehensive security testing for all encryption features  
+- Regular security audits of validation logic
+
 ### Layered Security
 ```java
 // Layer 1: Strong passwords
@@ -358,6 +401,9 @@ Before deploying to production:
 - [ ] Key rotation schedule established
 - [ ] DoS protection limits appropriate for your use case
 - [ ] Off-chain storage configured for large files
+- [ ] **Encrypted block validation security fix applied** (validateBlock uses encryption-aware content building)
+- [ ] Corruption detection tests pass for encrypted blocks
+- [ ] SearchSpecialistAPI initialization warnings resolved
 
 ## 📚 Additional Resources
 

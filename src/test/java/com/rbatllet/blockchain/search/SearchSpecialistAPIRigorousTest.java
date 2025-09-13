@@ -1,8 +1,10 @@
 package com.rbatllet.blockchain.search;
 
+import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.search.BlockPasswordRegistry.RegistryStats;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.*;
 import com.rbatllet.blockchain.service.SecureBlockEncryptionService;
 import org.junit.jupiter.api.Test;
@@ -221,7 +223,7 @@ public class SearchSpecialistAPIRigorousTest {
         System.out.println("   Memory usage: " + stats.getEstimatedMemoryBytes() + " bytes");
         
         // Password registry stats
-        com.rbatllet.blockchain.search.BlockPasswordRegistry.RegistryStats registryStats = searchAPI.getPasswordRegistryStats();
+        RegistryStats registryStats = searchAPI.getPasswordRegistryStats();
         System.out.println("   Password registry blocks: " + registryStats.getRegisteredBlocks());
         System.out.println("   Password registry memory: " + registryStats.getEstimatedMemoryBytes() + " bytes");
         
@@ -259,7 +261,7 @@ public class SearchSpecialistAPIRigorousTest {
         }
         
         // Check password registry
-        com.rbatllet.blockchain.search.BlockPasswordRegistry.RegistryStats registryStats = searchAPI.getPasswordRegistryStats();
+        RegistryStats registryStats = searchAPI.getPasswordRegistryStats();
         System.out.println("📊 Password registry blocks: " + registryStats.getRegisteredBlocks());
         System.out.println("📊 Password registry memory: " + registryStats.getEstimatedMemoryBytes() + " bytes");
         
@@ -319,7 +321,7 @@ public class SearchSpecialistAPIRigorousTest {
             SearchResult advancedResult = searchAPI.searchAdvanced(
                 "financial", 
                 testPassword, 
-                com.rbatllet.blockchain.config.EncryptionConfig.createHighSecurityConfig(), 
+                EncryptionConfig.createHighSecurityConfig(), 
                 10);
             
             System.out.println("🔍 Advanced search result:");

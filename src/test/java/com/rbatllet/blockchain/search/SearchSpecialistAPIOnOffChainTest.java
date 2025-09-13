@@ -46,11 +46,11 @@ public class SearchSpecialistAPIOnOffChainTest {
         userKeys = api.createUser("onoffchain-test-user");
         api.setDefaultCredentials("onoffchain-test-user", userKeys);
         
-        // Create comprehensive test data
-        createComprehensiveTestData();
-        
-        // Initialize search API
+        // Initialize search API FIRST
         initializeSearchAPI();
+        
+        // Create comprehensive test data AFTER initialization
+        createComprehensiveTestData();
     }
     
     private void createComprehensiveTestData() throws Exception {
@@ -97,6 +97,7 @@ public class SearchSpecialistAPIOnOffChainTest {
     
     private void initializeSearchAPI() throws Exception {
         blockchain.initializeAdvancedSearch(testPassword);
+        blockchain.getSearchSpecialistAPI().initializeWithBlockchain(blockchain, testPassword, userKeys.getPrivate());
         searchAPI = blockchain.getSearchSpecialistAPI();
         
         if (!searchAPI.isReady()) {

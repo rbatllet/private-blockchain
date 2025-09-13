@@ -1,20 +1,20 @@
 package com.rbatllet.blockchain.service;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.rbatllet.blockchain.core.Blockchain;
-import com.rbatllet.blockchain.util.CryptoUtil;
-import com.rbatllet.blockchain.util.validation.BlockValidationUtil;
 import com.rbatllet.blockchain.entity.OffChainData;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.mockito.MockitoAnnotations;
+import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.validation.BlockValidationResult;
 
 import java.security.KeyPair;
 import java.time.LocalDateTime;
 import java.util.*;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.mockito.MockitoAnnotations;
 
 /**
  * Comprehensive security tests for UserFriendlyEncryptionAPI
@@ -32,14 +32,18 @@ class UserFriendlyEncryptionAPISecurityTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        
+
         // Generate test key pair
         testKeyPair = CryptoUtil.generateKeyPair();
-        
+
         // Initialize API with real blockchain
         realBlockchain = new Blockchain();
-        api = new UserFriendlyEncryptionAPI(realBlockchain, testUsername, testKeyPair);
-        
+        api = new UserFriendlyEncryptionAPI(
+            realBlockchain,
+            testUsername,
+            testKeyPair
+        );
+
         // Setup test blockchain with some data
         setupTestBlockchain();
     }
@@ -49,7 +53,11 @@ class UserFriendlyEncryptionAPISecurityTest {
             // Add test blocks with different security scenarios
             api.storeSecret("Confidential data 1", testPassword);
             api.storeSecret("Secret information 2", testPassword);
-            api.storeDataWithIdentifier("Public data", testPassword, "public-id");
+            api.storeDataWithIdentifier(
+                "Public data",
+                testPassword,
+                "public-id"
+            );
         } catch (Exception e) {
             // Ignore setup errors for tests that don't need initial blocks
         }
@@ -63,20 +71,44 @@ class UserFriendlyEncryptionAPISecurityTest {
         @DisplayName("Should validate strong passwords")
         void shouldValidateStrongPasswords() {
             // Test strong passwords
-            assertTrue(api.validatePassword("StrongPassword123!"), "Should accept strong password");
-            assertTrue(api.validatePassword("Complex@Pass#2024"), "Should accept complex password");
-            assertTrue(api.validatePassword("MySecure$Pass99"), "Should accept secure password");
+            assertTrue(
+                api.validatePassword("StrongPassword123!"),
+                "Should accept strong password"
+            );
+            assertTrue(
+                api.validatePassword("Complex@Pass#2024"),
+                "Should accept complex password"
+            );
+            assertTrue(
+                api.validatePassword("MySecure$Pass99"),
+                "Should accept secure password"
+            );
         }
 
         @Test
         @DisplayName("Should reject weak passwords")
         void shouldRejectWeakPasswords() {
             // Test weak passwords
-            assertFalse(api.validatePassword("weak"), "Should reject too short password");
-            assertFalse(api.validatePassword("password"), "Should reject common password");
-            assertFalse(api.validatePassword("12345678"), "Should reject numeric only password");
-            assertFalse(api.validatePassword(""), "Should reject empty password");
-            assertFalse(api.validatePassword(null), "Should reject null password");
+            assertFalse(
+                api.validatePassword("weak"),
+                "Should reject too short password"
+            );
+            assertFalse(
+                api.validatePassword("password"),
+                "Should reject common password"
+            );
+            assertFalse(
+                api.validatePassword("12345678"),
+                "Should reject numeric only password"
+            );
+            assertFalse(
+                api.validatePassword(""),
+                "Should reject empty password"
+            );
+            assertFalse(
+                api.validatePassword(null),
+                "Should reject null password"
+            );
         }
 
         @Test
@@ -89,21 +121,41 @@ class UserFriendlyEncryptionAPISecurityTest {
 
             // Verify properties
             assertNotNull(shortPassword, "Should generate short password");
-            assertEquals(12, shortPassword.length(), "Should have correct length");
+            assertEquals(
+                12,
+                shortPassword.length(),
+                "Should have correct length"
+            );
             // Note: Generated passwords may not pass validation due to special characters
             assertTrue(shortPassword.length() > 0, "Should have content");
 
             assertNotNull(mediumPassword, "Should generate medium password");
-            assertEquals(16, mediumPassword.length(), "Should have correct length");
+            assertEquals(
+                16,
+                mediumPassword.length(),
+                "Should have correct length"
+            );
             assertTrue(mediumPassword.length() > 0, "Should have content");
 
             assertNotNull(longPassword, "Should generate long password");
-            assertEquals(32, longPassword.length(), "Should have correct length");
+            assertEquals(
+                32,
+                longPassword.length(),
+                "Should have correct length"
+            );
             assertTrue(longPassword.length() > 0, "Should have content");
 
             // Verify uniqueness
-            assertNotEquals(shortPassword, mediumPassword, "Generated passwords should be unique");
-            assertNotEquals(mediumPassword, longPassword, "Generated passwords should be unique");
+            assertNotEquals(
+                shortPassword,
+                mediumPassword,
+                "Generated passwords should be unique"
+            );
+            assertNotEquals(
+                mediumPassword,
+                longPassword,
+                "Generated passwords should be unique"
+            );
         }
 
         @Test
@@ -111,15 +163,27 @@ class UserFriendlyEncryptionAPISecurityTest {
         void shouldGenerateValidatedPasswordWithConfirmation() {
             // Test without confirmation
             String password1 = api.generateValidatedPassword(16, false);
-            assertNotNull(password1, "Should generate password without confirmation");
+            assertNotNull(
+                password1,
+                "Should generate password without confirmation"
+            );
             assertEquals(16, password1.length(), "Should have correct length");
-            assertTrue(api.validatePassword(password1), "Should be valid password");
+            assertTrue(
+                api.validatePassword(password1),
+                "Should be valid password"
+            );
 
             // Test with confirmation disabled to avoid interactive input
             String password2 = api.generateValidatedPassword(20, false);
-            assertNotNull(password2, "Should generate password without confirmation");
+            assertNotNull(
+                password2,
+                "Should generate password without confirmation"
+            );
             assertEquals(20, password2.length(), "Should have correct length");
-            assertTrue(api.validatePassword(password2), "Should be valid password");
+            assertTrue(
+                api.validatePassword(password2),
+                "Should be valid password"
+            );
         }
     }
 
@@ -132,21 +196,34 @@ class UserFriendlyEncryptionAPISecurityTest {
         void shouldEncryptAndDecryptSearchableDataSecurely() {
             // Test data
             String sensitiveData = "TOP SECRET: Financial data $1,000,000";
-            String[] searchTerms = {"financial", "secret", "data"};
+            String[] searchTerms = { "financial", "secret", "data" };
 
             // Store searchable data
-            var block = api.storeSearchableData(sensitiveData, testPassword, searchTerms);
+            var block = api.storeSearchableData(
+                sensitiveData,
+                testPassword,
+                searchTerms
+            );
             assertNotNull(block, "Should store searchable data");
-            
+
             // Verify data is encrypted in block
             String blockData = block.getData();
-            assertFalse(blockData.contains("TOP SECRET"), "Raw data should not be visible");
-            assertFalse(blockData.contains("1,000,000"), "Sensitive info should not be visible");
+            assertFalse(
+                blockData.contains("TOP SECRET"),
+                "Raw data should not be visible"
+            );
+            assertFalse(
+                blockData.contains("1,000,000"),
+                "Sensitive info should not be visible"
+            );
 
             // Verify search functionality works (may or may not find results depending on indexing)
             var results = api.searchExhaustive("financial", testPassword);
             assertNotNull(results, "Should provide search results object");
-            assertTrue(results.getResultCount() >= 0, "Should have valid result count");
+            assertTrue(
+                results.getResultCount() >= 0,
+                "Should have valid result count"
+            );
         }
 
         @Test
@@ -154,23 +231,37 @@ class UserFriendlyEncryptionAPISecurityTest {
         void shouldHandleLayeredSearchableEncryption() {
             // Test layered encryption
             String confidentialData = "CLASSIFIED: Project Alpha details";
-            String[] publicTerms = {"project", "details"};
-            String[] privateTerms = {"classified", "alpha"};
+            String[] publicTerms = { "project", "details" };
+            String[] privateTerms = { "classified", "alpha" };
 
             // Store with layered encryption
-            var block = api.storeSearchableDataWithLayers(confidentialData, testPassword, publicTerms, privateTerms);
+            var block = api.storeSearchableDataWithLayers(
+                confidentialData,
+                testPassword,
+                publicTerms,
+                privateTerms
+            );
             assertNotNull(block, "Should store layered searchable data");
 
             // Verify encryption
             String blockData = block.getData();
-            assertFalse(blockData.contains("CLASSIFIED"), "Classified data should not be visible");
-            assertFalse(blockData.contains("Alpha"), "Secret project name should not be visible");
+            assertFalse(
+                blockData.contains("CLASSIFIED"),
+                "Classified data should not be visible"
+            );
+            assertFalse(
+                blockData.contains("Alpha"),
+                "Secret project name should not be visible"
+            );
 
             // Test search capabilities
             var publicResults = api.searchPublicFast("project");
             assertNotNull(publicResults, "Should perform public search");
 
-            var encryptedResults = api.searchEncryptedOnly("classified", testPassword);
+            var encryptedResults = api.searchEncryptedOnly(
+                "classified",
+                testPassword
+            );
             assertNotNull(encryptedResults, "Should search encrypted content");
         }
 
@@ -178,41 +269,68 @@ class UserFriendlyEncryptionAPISecurityTest {
         @DisplayName("Should securely store large files with encryption")
         void shouldSecurelyStoreLargeFilesWithEncryption() {
             // Test large file encryption
-            byte[] largeFileData = "This is a large confidential document with sensitive information".getBytes();
+            byte[] largeFileData =
+                "This is a large confidential document with sensitive information".getBytes();
             String contentType = "text/plain";
 
             // Store securely
-            var offChainData = api.storeLargeFileSecurely(largeFileData, testPassword, contentType);
+            var offChainData = api.storeLargeFileSecurely(
+                largeFileData,
+                testPassword,
+                contentType
+            );
             assertNotNull(offChainData, "Should store large file securely");
             assertNotNull(offChainData.getDataHash(), "Should have data hash");
 
             // Verify we can retrieve and decrypt
-            byte[] retrievedData = api.retrieveLargeFile(offChainData, testPassword);
+            byte[] retrievedData = api.retrieveLargeFile(
+                offChainData,
+                testPassword
+            );
             assertNotNull(retrievedData, "Should retrieve large file");
-            assertArrayEquals(largeFileData, retrievedData, "Retrieved data should match original");
+            assertArrayEquals(
+                largeFileData,
+                retrievedData,
+                "Retrieved data should match original"
+            );
 
             // Verify integrity
-            assertTrue(api.verifyLargeFileIntegrity(offChainData, testPassword), 
-                      "File integrity should be verified");
+            assertTrue(
+                api.verifyLargeFileIntegrity(offChainData, testPassword),
+                "File integrity should be verified"
+            );
         }
 
         @Test
         @DisplayName("Should handle large file storage with digital signatures")
         void shouldHandleLargeFileStorageWithDigitalSignatures() {
             // Test with signer
-            byte[] documentData = "Important signed document content".getBytes();
+            byte[] documentData =
+                "Important signed document content".getBytes();
             KeyPair signerKeyPair = CryptoUtil.generateKeyPair();
             String filename = "signed_document.txt";
 
             // Store with signature
-            var offChainData = api.storeLargeFileWithSigner(documentData, testPassword, 
-                                                          signerKeyPair, "text/plain", filename);
+            var offChainData = api.storeLargeFileWithSigner(
+                documentData,
+                testPassword,
+                signerKeyPair,
+                "text/plain",
+                filename
+            );
             assertNotNull(offChainData, "Should store signed large file");
-            
+
             // Verify retrieval
-            byte[] retrievedData = api.retrieveLargeFile(offChainData, testPassword);
+            byte[] retrievedData = api.retrieveLargeFile(
+                offChainData,
+                testPassword
+            );
             assertNotNull(retrievedData, "Should retrieve signed file");
-            assertArrayEquals(documentData, retrievedData, "Retrieved data should match original");
+            assertArrayEquals(
+                documentData,
+                retrievedData,
+                "Retrieved data should match original"
+            );
         }
 
         @Test
@@ -228,10 +346,14 @@ class UserFriendlyEncryptionAPISecurityTest {
             // Results should be empty or not contain the actual secret
             if (results.getResultCount() > 0) {
                 // If any results, they shouldn't contain the actual secret data
-                results.getBlocks().forEach(block -> {
-                    assertFalse(block.getData().contains("Ultra secret"), 
-                               "Should not decrypt with wrong password");
-                });
+                results
+                    .getBlocks()
+                    .forEach(block -> {
+                        assertFalse(
+                            block.getData().contains("Ultra secret"),
+                            "Should not decrypt with wrong password"
+                        );
+                    });
             }
         }
     }
@@ -245,7 +367,7 @@ class UserFriendlyEncryptionAPISecurityTest {
         void shouldValidateEncryptedBlocksIntegrity() {
             // Add some encrypted data
             api.storeSecret("Important data for validation", testPassword);
-            
+
             // Validate all encrypted blocks
             boolean isValid = api.validateEncryptedBlocks();
             assertTrue(isValid, "Encrypted blocks should be valid");
@@ -255,11 +377,15 @@ class UserFriendlyEncryptionAPISecurityTest {
         @DisplayName("Should perform detailed block validation")
         void shouldPerformDetailedBlockValidation() {
             // Store test data
-            var block = api.storeSecret("Data for detailed validation", testPassword);
+            var block = api.storeSecret(
+                "Data for detailed validation",
+                testPassword
+            );
             Long blockId = block.getBlockNumber();
 
             // Perform detailed validation
-            BlockValidationUtil.OffChainValidationResult result = api.validateBlockDetailed(blockId);
+            BlockValidationResult result =
+                api.validateBlockDetailed(blockId);
             assertNotNull(result, "Should provide detailed validation result");
             assertTrue(result.isValid(), "Block should be valid");
             // Validation result provides basic info without detailed validation data
@@ -269,25 +395,38 @@ class UserFriendlyEncryptionAPISecurityTest {
         @DisplayName("Should validate off-chain data integrity")
         void shouldValidateOffChainDataIntegrity() {
             // Store large file off-chain
-            byte[] fileData = "Off-chain test data for integrity validation".getBytes();
-            var offChainData = api.storeLargeFileSecurely(fileData, testPassword, "text/plain");
-            
+            byte[] fileData =
+                "Off-chain test data for integrity validation".getBytes();
+            var offChainData = api.storeLargeFileSecurely(
+                fileData,
+                testPassword,
+                "text/plain"
+            );
+
             // Validate off-chain data integrity
-            assertTrue(api.verifyLargeFileIntegrity(offChainData, testPassword), 
-                      "Off-chain data should be valid");
+            assertTrue(
+                api.verifyLargeFileIntegrity(offChainData, testPassword),
+                "Off-chain data should be valid"
+            );
         }
 
         @Test
         @DisplayName("Should detect data tampering")
         void shouldDetectDataTampering() {
             // Store test data
-            var block = api.storeSecret("Data to test tampering detection", testPassword);
+            var block = api.storeSecret(
+                "Data to test tampering detection",
+                testPassword
+            );
             Long blockId = block.getBlockNumber();
 
             // Check tampering detection (implementation may have different behavior)
             boolean tamperingDetected = api.detectDataTampering(blockId);
             // Both true and false are valid - just verify method executes
-            assertTrue(tamperingDetected || !tamperingDetected, "Should execute tampering detection");
+            assertTrue(
+                tamperingDetected || !tamperingDetected,
+                "Should execute tampering detection"
+            );
 
             // Note: In a real test, we would tamper with the data and verify detection
             // For now, we just verify the method runs without error
@@ -298,27 +437,39 @@ class UserFriendlyEncryptionAPISecurityTest {
         void shouldGenerateComprehensiveIntegrityReport() {
             // Add various types of data
             api.storeSecret("Secret data 1", testPassword);
-            api.storeDataWithIdentifier("Identified data", testPassword, "test-id");
-            
+            api.storeDataWithIdentifier(
+                "Identified data",
+                testPassword,
+                "test-id"
+            );
+
             // Generate integrity report
             String report = api.generateIntegrityReport();
             assertNotNull(report, "Should generate integrity report");
             assertTrue(report.length() > 100, "Report should be detailed");
-            assertTrue(report.contains("INTEGRITY") || report.contains("integrity"), 
-                      "Report should mention integrity");
+            assertTrue(
+                report.contains("INTEGRITY") || report.contains("integrity"),
+                "Report should mention integrity"
+            );
         }
 
         @Test
         @DisplayName("Should detect data tampering detailed")
         void shouldDetectDataTamperingDetailed() {
             // Store test data
-            var block = api.storeSecret("Tampering detection test data", testPassword);
+            var block = api.storeSecret(
+                "Tampering detection test data",
+                testPassword
+            );
             Long blockId = block.getBlockNumber();
 
             // Check tampering detection functionality
             boolean tamperingResult = api.detectDataTampering(blockId);
             // Method should execute without error - actual result may vary
-            assertTrue(tamperingResult || !tamperingResult, "Should execute tampering detection");
+            assertTrue(
+                tamperingResult || !tamperingResult,
+                "Should execute tampering detection"
+            );
         }
 
         @Test
@@ -326,16 +477,23 @@ class UserFriendlyEncryptionAPISecurityTest {
         void shouldVerifyOffChainIntegrityForMultipleBlocks() {
             // Store multiple large files and verify integrity
             List<OffChainData> offChainFiles = new ArrayList<>();
-            
+
             for (int i = 0; i < 3; i++) {
                 byte[] data = ("Off-chain data " + i).getBytes();
-                var offChainData = api.storeLargeFileSecurely(data, testPassword, "text/plain");
+                var offChainData = api.storeLargeFileSecurely(
+                    data,
+                    testPassword,
+                    "text/plain"
+                );
                 offChainFiles.add(offChainData);
             }
 
             // Verify integrity for all files
             for (OffChainData offChainData : offChainFiles) {
-                boolean isValid = api.verifyLargeFileIntegrity(offChainData, testPassword);
+                boolean isValid = api.verifyLargeFileIntegrity(
+                    offChainData,
+                    testPassword
+                );
                 assertTrue(isValid, "Each off-chain file should be valid");
             }
         }
@@ -348,20 +506,38 @@ class UserFriendlyEncryptionAPISecurityTest {
         @Test
         @DisplayName("Should check key authorization at specific timestamp")
         void shouldCheckKeyAuthorizationAtSpecificTimestamp() {
+            // Get the public key string for the test
+            String testPublicKey = CryptoUtil.publicKeyToString(testKeyPair.getPublic());
+            
             // Test current authorization
             LocalDateTime now = LocalDateTime.now();
-            boolean isAuthorized = api.wasKeyAuthorizedAt(testUsername, now);
-            assertTrue(isAuthorized, "Current user should be authorized at current time");
+            boolean isAuthorized = api.wasKeyAuthorizedAt(testPublicKey, now);
+            assertTrue(
+                isAuthorized,
+                "Current user should be authorized at current time"
+            );
 
             // Test authorization in the past
             LocalDateTime pastTime = now.minusHours(1);
-            boolean wasAuthorized = api.wasKeyAuthorizedAt(testUsername, pastTime);
+            boolean wasAuthorized = api.wasKeyAuthorizedAt(
+                testPublicKey,
+                pastTime
+            );
             // This may be true or false depending on when the key was added
-            assertTrue(wasAuthorized || !wasAuthorized, "Should handle past authorization check");
+            assertTrue(
+                wasAuthorized || !wasAuthorized,
+                "Should handle past authorization check"
+            );
 
-            // Test with non-existent user
-            boolean nonExistentAuth = api.wasKeyAuthorizedAt("nonexistentuser", now);
-            assertFalse(nonExistentAuth, "Non-existent user should not be authorized");
+            // Test with non-existent key
+            boolean nonExistentAuth = api.wasKeyAuthorizedAt(
+                "fake-public-key-string",
+                now
+            );
+            assertFalse(
+                nonExistentAuth,
+                "Non-existent key should not be authorized"
+            );
         }
 
         @Test
@@ -378,10 +554,15 @@ class UserFriendlyEncryptionAPISecurityTest {
             // Perform comprehensive chain validation
             ValidationReport report = api.validateChainIntegrity();
             assertNotNull(report, "Should provide validation report");
-            assertNotNull(report.getValidationId(), "Should have validation ID");
+            assertNotNull(
+                report.getValidationId(),
+                "Should have validation ID"
+            );
             // Validation ID format may vary in implementation
-            assertTrue(report.getValidationId().length() > 0, 
-                      "Should have non-empty validation ID");
+            assertTrue(
+                report.getValidationId().length() > 0,
+                "Should have non-empty validation ID"
+            );
         }
     }
 
@@ -395,16 +576,24 @@ class UserFriendlyEncryptionAPISecurityTest {
             // Store searchable encrypted data
             String[] searchableData = {
                 "Confidential report alpha",
-                "Secret project beta", 
-                "Private document gamma"
+                "Secret project beta",
+                "Private document gamma",
             };
-            
+
             for (String data : searchableData) {
-                api.storeSearchableData(data, testPassword, new String[]{"report", "project", "document"});
+                api.storeSearchableData(
+                    data,
+                    testPassword,
+                    new String[] { "report", "project", "document" }
+                );
             }
 
             // Search with adaptive decryption
-            var results = api.searchWithAdaptiveDecryption("project", testPassword, 10);
+            var results = api.searchWithAdaptiveDecryption(
+                "project",
+                testPassword,
+                10
+            );
             assertNotNull(results, "Should perform adaptive decryption search");
             assertTrue(results.size() >= 0, "Should return valid results list");
         }
@@ -414,24 +603,34 @@ class UserFriendlyEncryptionAPISecurityTest {
         void shouldHandleMixedTermStorageAndSearchSecurely() {
             // Store with mixed terms
             String data = "Mixed security classification document";
-            String[] terms = {"security", "classification", "document"};
-            
+            String[] terms = { "security", "classification", "document" };
+
             api.storeDataWithMixedTerms(data, testPassword, terms, true);
-            
+
             // Verify storage completed without error
-            assertTrue(true, "Mixed terms storage should complete successfully");
+            assertTrue(
+                true,
+                "Mixed terms storage should complete successfully"
+            );
         }
 
         @Test
         @DisplayName("Should handle content analysis securely")
         void shouldHandleContentAnalysisSecurely() {
             // Test content analysis (this is a public method)
-            String analysisResult = api.analyzeContent("This is a test document with security keywords");
+            String analysisResult = api.analyzeContent(
+                "This is a test document with security keywords"
+            );
             assertNotNull(analysisResult, "Should analyze content");
-            assertTrue(analysisResult.length() > 0, "Should provide analysis result");
-            
+            assertTrue(
+                analysisResult.length() > 0,
+                "Should provide analysis result"
+            );
+
             // Test with security-sensitive content
-            String secureAnalysis = api.analyzeContent("CONFIDENTIAL: Important data analysis");
+            String secureAnalysis = api.analyzeContent(
+                "CONFIDENTIAL: Important data analysis"
+            );
             assertNotNull(secureAnalysis, "Should analyze secure content");
         }
 
@@ -439,12 +638,21 @@ class UserFriendlyEncryptionAPISecurityTest {
         @DisplayName("Should find similar content securely")
         void shouldFindSimilarContentSecurely() {
             // Store some content first
-            api.storeSecret("Similar content example for testing", testPassword);
-            
+            api.storeSecret(
+                "Similar content example for testing",
+                testPassword
+            );
+
             // Find similar content
-            var similarBlocks = api.findSimilarContent("similar content example", 0.5);
+            var similarBlocks = api.findSimilarContent(
+                "similar content example",
+                0.5
+            );
             assertNotNull(similarBlocks, "Should find similar content");
-            assertTrue(similarBlocks.size() >= 0, "Should return valid results");
+            assertTrue(
+                similarBlocks.size() >= 0,
+                "Should return valid results"
+            );
         }
     }
 
@@ -463,7 +671,7 @@ class UserFriendlyEncryptionAPISecurityTest {
             assertNotNull(size1, "Should format small file size");
             assertNotNull(size2, "Should format medium file size");
             assertNotNull(size3, "Should format large file size");
-            
+
             // Verify readable format
             assertTrue(size1.length() > 0, "Should have readable format");
             assertTrue(size2.length() > 0, "Should have readable format");
@@ -474,32 +682,53 @@ class UserFriendlyEncryptionAPISecurityTest {
         @DisplayName("Should handle text document storage securely")
         void shouldHandleTextDocumentStorageSecurely() {
             // Test large text document storage
-            String textContent = "This is a large text document with sensitive information";
+            String textContent =
+                "This is a large text document with sensitive information";
             String filename = "sensitive_document.txt";
-            
-            var offChainData = api.storeLargeTextDocument(textContent, testPassword, filename);
+
+            var offChainData = api.storeLargeTextDocument(
+                textContent,
+                testPassword,
+                filename
+            );
             assertNotNull(offChainData, "Should store large text document");
-            
+
             // Retrieve the document
-            String retrievedContent = api.retrieveLargeTextDocument(offChainData, testPassword);
+            String retrievedContent = api.retrieveLargeTextDocument(
+                offChainData,
+                testPassword
+            );
             assertNotNull(retrievedContent, "Should retrieve text document");
-            assertEquals(textContent, retrievedContent, "Retrieved content should match original");
+            assertEquals(
+                textContent,
+                retrievedContent,
+                "Retrieved content should match original"
+            );
         }
 
         @Test
         @DisplayName("Should format search results securely")
         void shouldFormatSearchResultsSecurely() {
             // Store some searchable data
-            api.storeSearchableData("Formatted results test data", testPassword, 
-                                   new String[]{"formatted", "results", "test"});
-            
+            api.storeSearchableData(
+                "Formatted results test data",
+                testPassword,
+                new String[] { "formatted", "results", "test" }
+            );
+
             // Search and get results
             var searchResults = api.searchExhaustive("formatted", testPassword);
-            
+
             // Format the results
-            String formattedResults = api.formatSearchResults("formatted", searchResults.getBlocks());
+            String formattedResults = api.formatSearchResults(
+                "formatted",
+                searchResults.getBlocks()
+            );
             assertNotNull(formattedResults, "Should format search results");
-            assertTrue(formattedResults.length() > 0, "Should have formatted content");
+            assertTrue(
+                formattedResults.length() > 0,
+                "Should have formatted content"
+            );
         }
     }
 
@@ -511,13 +740,19 @@ class UserFriendlyEncryptionAPISecurityTest {
         @DisplayName("Should optimize search cache securely")
         void shouldOptimizeSearchCacheSecurely() {
             // Add some searchable data first
-            api.storeSearchableData("Cache optimization test data", testPassword, 
-                                   new String[]{"cache", "optimization", "test"});
+            api.storeSearchableData(
+                "Cache optimization test data",
+                testPassword,
+                new String[] { "cache", "optimization", "test" }
+            );
 
             // Optimize cache
-            assertDoesNotThrow(() -> {
-                api.optimizeSearchCache();
-            }, "Cache optimization should not throw");
+            assertDoesNotThrow(
+                () -> {
+                    api.optimizeSearchCache();
+                },
+                "Cache optimization should not throw"
+            );
         }
 
         @Test
@@ -525,23 +760,32 @@ class UserFriendlyEncryptionAPISecurityTest {
         void shouldOptimizeSearchPerformanceSecurely() {
             // Add test data
             for (int i = 0; i < 5; i++) {
-                api.storeSearchableData("Performance test data " + i, testPassword, 
-                                       new String[]{"performance", "test", "data"});
+                api.storeSearchableData(
+                    "Performance test data " + i,
+                    testPassword,
+                    new String[] { "performance", "test", "data" }
+                );
             }
 
             // Optimize performance
-            assertDoesNotThrow(() -> {
-                api.optimizeSearchPerformance();
-            }, "Performance optimization should not throw");
+            assertDoesNotThrow(
+                () -> {
+                    api.optimizeSearchPerformance();
+                },
+                "Performance optimization should not throw"
+            );
         }
 
         @Test
         @DisplayName("Should get search engine report securely")
         void shouldGetSearchEngineReportSecurely() {
             // Add some searchable data
-            api.storeSearchableData("Search engine report test", testPassword, 
-                                   new String[]{"search", "engine", "report"});
-            
+            api.storeSearchableData(
+                "Search engine report test",
+                testPassword,
+                new String[] { "search", "engine", "report" }
+            );
+
             // Get search engine report
             String report = api.getSearchEngineReport();
             assertNotNull(report, "Should generate search engine report");
@@ -554,7 +798,7 @@ class UserFriendlyEncryptionAPISecurityTest {
             // Perform some searches to generate metrics
             api.searchExhaustive("metrics", testPassword);
             api.searchPublicFast("realtime");
-            
+
             // Get realtime metrics
             var metrics = api.getRealtimeSearchMetrics();
             assertNotNull(metrics, "Should provide realtime search metrics");

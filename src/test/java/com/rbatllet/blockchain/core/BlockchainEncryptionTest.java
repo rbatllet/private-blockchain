@@ -124,7 +124,7 @@ public class BlockchainEncryptionTest {
         assertTrue(encryptedBlock.isDataEncrypted());
         assertEquals("MEDICAL", encryptedBlock.getContentCategory());
         
-        // Keywords should be encrypted in autoKeywords (since no PUBLIC: prefix)
+        // Keywords should be encrypted in autoKeywords (since no public: prefix)
         // manualKeywords should be null since no public keywords provided
         assertNull(encryptedBlock.getManualKeywords());
         

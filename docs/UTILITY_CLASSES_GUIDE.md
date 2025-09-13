@@ -145,7 +145,12 @@ System.out.println("Summary: " + result.toString());
 
 ### FormatUtil
 
-`FormatUtil` provides comprehensive methods for formatting blockchain data for display and storage. **Enhanced with new functions migrated from BlockchainDisplayUtils**.
+`FormatUtil` provides comprehensive methods for formatting blockchain data for display and storage. **Enhanced with new functions migrated from BlockchainDisplayUtils**. 
+
+**Documentation:**
+- **[Quality Assessment](FORMATUTIL_QUALITY_ASSESSMENT.md)** - Production readiness evaluation and overall quality score
+- **[Technical Analysis](FORMAT_UTIL_ROBUSTNESS_ANALYSIS.md)** - Detailed robustness analysis with specific issues and fixes
+- **[Functions Guide](FORMAT_UTIL_AND_BLOCK_OPTIONS_GUIDE.md)** - Complete method documentation and usage examples
 
 #### Location
 
@@ -341,7 +346,7 @@ The utility classes are fully tested with JUnit to ensure their correct operatio
 - `ExitUtilTest`: Tests the safe exit functionality
 - `BlockValidationUtilTest`: Tests the block validation utilities
 - `BlockValidationResultTest`: Tests the block validation result class
-- `FormatUtilTest`: Tests the formatting utilities
+- `FormatUtilTest`: Tests the formatting utilities - see [detailed analysis](FORMAT_UTIL_ROBUSTNESS_ANALYSIS.md)
 - `UserFriendlyEncryptionAPIRecipientTest`: **NEW** Tests recipient-specific encryption functionality
 - `UserFriendlyEncryptionAPICustomMetadataTest`: **NEW** Tests custom metadata serialization and validation
 

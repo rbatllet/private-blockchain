@@ -280,6 +280,15 @@ public class OffChainIntegrityReport {
             return Objects.hash(dataId, checkType, status, checkTime);
         }
 
+        /**
+         * Checks if this integrity check result indicates healthy status.
+         *
+         * @return true if status is HEALTHY, false otherwise
+         */
+        public boolean isHealthy() {
+            return status == IntegrityStatus.HEALTHY;
+        }
+
         @Override
         public String toString() {
             return String.format(

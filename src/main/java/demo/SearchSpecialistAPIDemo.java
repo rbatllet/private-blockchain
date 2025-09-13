@@ -37,17 +37,18 @@ public class SearchSpecialistAPIDemo {
             Blockchain blockchain = new Blockchain();
             
             // Set up test data using UserFriendlyEncryptionAPI for convenience
-            System.out.println("🔍 Setting up searchable test data...");
+            System.out.println("🔍 Setting up demo environment...");
             UserFriendlyEncryptionAPI dataAPI = new UserFriendlyEncryptionAPI(blockchain);
             KeyPair demoKeys = dataAPI.createUser("search-specialist");
             dataAPI.setDefaultCredentials("search-specialist", demoKeys);
             
-            // Store diverse searchable data exactly like the test
-            storeSearchableTestData(dataAPI, demoPassword, blockchain);
-            
-            // Initialize SearchSpecialistAPI with improved constructor
+            // CRITICAL FIX: Initialize SearchSpecialistAPI BEFORE storing data
             System.out.println("⚡ Initializing SearchSpecialistAPI with improved constructor...");
             SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(blockchain, demoPassword, demoKeys.getPrivate());
+            
+            // Store diverse searchable data AFTER SearchSpecialistAPI is initialized
+            System.out.println("🔍 Storing searchable test data with proper initialization...");
+            storeSearchableTestData(dataAPI, demoPassword, blockchain);
             
             if (!searchAPI.isReady()) {
                 System.out.println("❌ SearchSpecialistAPI is not ready after initialization!");

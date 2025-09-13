@@ -2,6 +2,7 @@ package com.rbatllet.blockchain.core;
 
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.validation.ChainValidationResult;
+import com.rbatllet.blockchain.test.util.TestDatabaseUtils;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -38,24 +39,14 @@ class CriticalConsistencyTest {
         alicePublicKey = CryptoUtil.publicKeyToString(aliceKeyPair.getPublic());
         bobPublicKey = CryptoUtil.publicKeyToString(bobKeyPair.getPublic());
         
-        clearDatabase();
+        // Clean database and enable test mode before each test to ensure test isolation
+        TestDatabaseUtils.setupTest();
     }
     
     @AfterEach
     void tearDown() {
-        // Clean database after each test to ensure test isolation
-        clearDatabase();
-    }
-    
-    private void clearDatabase() {
-        try {
-            // Use the standard clearAndReinitialize method for consistency
-            Blockchain tempBlockchain = new Blockchain();
-            tempBlockchain.clearAndReinitialize();
-            Thread.sleep(50);
-        } catch (Exception e) {
-            System.err.println("Warning: Could not clear database: " + e.getMessage());
-        }
+        // Clean database and disable test mode after each test to ensure test isolation
+        TestDatabaseUtils.teardownTest();
     }
 
     @Test

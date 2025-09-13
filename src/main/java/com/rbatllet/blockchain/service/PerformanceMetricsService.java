@@ -17,6 +17,10 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+// PERFORMANCE OPTIMIZATION INTEGRATION: Additional imports for blockchain optimization
+import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.core.Blockchain;
+
 /**
  * Advanced performance metrics service for comprehensive system monitoring
  * Provides detailed response times, memory usage, and system performance tracking
@@ -34,6 +38,10 @@ public class PerformanceMetricsService {
     private static final long MEMORY_WARNING_THRESHOLD_MB = 512;   // 512 MB
     private static final long MEMORY_CRITICAL_THRESHOLD_MB = 1024; // 1 GB
     
+    // PERFORMANCE OPTIMIZATION: Additional constants for blockchain optimization
+    private static final int MAX_BATCH_SIZE = 100; // Max blocks per batch operation
+    private static final int OPTIMIZATION_MEMORY_THRESHOLD_MB = 50; // Memory limit for optimizations
+    
     // Metrics storage
     private final Map<String, ResponseTimeMetrics> responseTimeMetrics = new ConcurrentHashMap<>();
     private final Map<String, MemoryUsageMetrics> memoryMetrics = new ConcurrentHashMap<>();
@@ -49,6 +57,11 @@ public class PerformanceMetricsService {
     
     // Alert service integration
     private AlertService alertService;
+    
+    // PERFORMANCE OPTIMIZATION: Cache and optimization state
+    private final Map<String, Object> performanceCache = new ConcurrentHashMap<>();
+    private volatile boolean shutdownRequested = false;
+    private final Object optimizationLock = new Object();
     
     private PerformanceMetricsService() {
         // Initialize alert service integration
@@ -442,6 +455,133 @@ public class PerformanceMetricsService {
             return String.format("%dm %ds", minutes, seconds % 60);
         } else {
             return String.format("%ds", seconds);
+        }
+    }
+    
+    // Performance optimization methods integrated from PerformanceOptimizationFixes
+    public List<Block> getBlocksOptimized(Blockchain blockchain, int startIndex, int batchSize) {
+        // Check for shutdown request
+        synchronized (optimizationLock) {
+            if (shutdownRequested) {
+                logger.info("Optimization shutdown requested, returning empty result");
+                return new ArrayList<>();
+            }
+        }
+        
+        // Memory-aware batch size adjustment
+        long usedMemory = getUsedMemory();
+        if (usedMemory > OPTIMIZATION_MEMORY_THRESHOLD_MB * 1024 * 1024) {
+            batchSize = Math.max(1, batchSize / 2);
+            logger.info("High memory usage detected ({}MB), reducing batch size to {}", 
+                       usedMemory / (1024 * 1024), batchSize);
+        }
+        
+        int effectiveBatchSize = Math.min(batchSize, MAX_BATCH_SIZE);
+        List<Block> allBlocks = blockchain.getAllBlocks();
+        
+        int endIndex = Math.min(startIndex + effectiveBatchSize, allBlocks.size());
+        if (startIndex >= allBlocks.size()) {
+            return new ArrayList<>();
+        }
+        
+        return allBlocks.subList(startIndex, endIndex);
+    }
+    
+    public void rebuildCacheMemoryOptimized(Blockchain blockchain) {
+        long startTime = System.currentTimeMillis();
+        
+        // Check for shutdown request before starting
+        synchronized (optimizationLock) {
+            if (shutdownRequested) {
+                logger.info("Optimization shutdown requested, cancelling cache rebuild");
+                return;
+            }
+        }
+        
+        try {
+            // Monitor memory usage during rebuild
+            long initialMemory = getUsedMemory();
+            logger.info("Starting cache rebuild with {}MB memory usage", initialMemory / (1024 * 1024));
+            
+            List<Block> allBlocks = blockchain.getAllBlocks();
+            int processedBlocks = 0;
+            
+            for (Block block : allBlocks) {
+                // Process block for cache rebuild - store block hash in performance cache
+                String blockKey = "block_" + block.getHash();
+                performanceCache.put(blockKey, block.getTimestamp());
+                processedBlocks++;
+                
+                // Check memory usage every 100 blocks
+                if (processedBlocks % 100 == 0) {
+                    // Check for shutdown request during processing
+                    synchronized (optimizationLock) {
+                        if (shutdownRequested) {
+                            logger.info("Shutdown requested during cache rebuild, stopping at block {}", processedBlocks);
+                            break;
+                        }
+                    }
+                    
+                    long currentMemory = getUsedMemory();
+                    if (currentMemory > OPTIMIZATION_MEMORY_THRESHOLD_MB * 1024 * 1024) {
+                        System.gc(); // Suggest garbage collection
+                        logger.warn("High memory usage during cache rebuild: {}MB, suggesting GC", 
+                                   currentMemory / (1024 * 1024));
+                    }
+                }
+            }
+            
+            logger.info("Cache rebuild completed. Processed {} blocks", processedBlocks);
+            
+        } catch (Exception e) {
+            logger.error("Error during memory-optimized cache rebuild", e);
+            throw new RuntimeException("Cache rebuild failed", e);
+        } finally {
+            long endTime = System.currentTimeMillis();
+            recordResponseTime("cache_rebuild", endTime - startTime);
+        }
+    }
+    
+    private long getUsedMemory() {
+        Runtime runtime = Runtime.getRuntime();
+        return runtime.totalMemory() - runtime.freeMemory();
+    }
+    
+    /**
+     * Request graceful shutdown of optimization operations
+     */
+    public void requestShutdown() {
+        synchronized (optimizationLock) {
+            shutdownRequested = true;
+            logger.info("Performance optimization shutdown requested");
+        }
+    }
+    
+    /**
+     * Check if shutdown has been requested
+     */
+    public boolean isShutdownRequested() {
+        synchronized (optimizationLock) {
+            return shutdownRequested;
+        }
+    }
+    
+    /**
+     * Clear performance cache
+     */
+    public void clearPerformanceCache() {
+        synchronized (optimizationLock) {
+            performanceCache.clear();
+            logger.info("Performance cache cleared, {} entries removed", performanceCache.size());
+        }
+    }
+    
+    /**
+     * Get performance cache size
+     */
+    public int getPerformanceCacheSize() {
+        synchronized (optimizationLock) {
+            return performanceCache.size();
         }
     }
     

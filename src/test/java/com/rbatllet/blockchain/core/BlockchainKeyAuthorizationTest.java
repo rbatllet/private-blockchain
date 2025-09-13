@@ -5,6 +5,7 @@ import com.rbatllet.blockchain.entity.AuthorizedKey;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.validation.ChainValidationResult;
+import com.rbatllet.blockchain.test.util.TestDatabaseUtils;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -56,31 +57,17 @@ class BlockchainKeyAuthorizationTest {
         alicePublicKey = aliceKeyInfo.getPublicKeyEncoded();
         bobPublicKey = bobKeyInfo.getPublicKeyEncoded();
         
-        // Clean database before each test to ensure test isolation
-        clearDatabase();
+        // Clean database and enable test mode before each test to ensure test isolation
+        TestDatabaseUtils.setupTest();
     }
     
     @AfterEach
     void tearDown() {
-        // Clean database after each test to ensure test isolation
-        clearDatabase();
+        // Clean database and disable test mode after each test to ensure test isolation
+        TestDatabaseUtils.teardownTest();
     }
     
-    /**
-     * Clear the database to ensure test isolation using the standard method
-     */
-    private void clearDatabase() {
-        try {
-            // Use the standard Blockchain clearAndReinitialize method
-            Blockchain tempBlockchain = new Blockchain();
-            tempBlockchain.clearAndReinitialize();
-            
-            // Small delay to ensure database operations complete
-            Thread.sleep(50);
-        } catch (Exception e) {
-            System.err.println("Warning: Could not clear database: " + e.getMessage());
-        }
-    }
+
 
     // ===============================
     // Historical Block Validation Tests

@@ -55,6 +55,10 @@ public class MultiAPIConfigurationDemo {
         KeyPair userKeys = highSecAPI.createUser("high-sec-user");
         highSecAPI.setDefaultCredentials("high-sec-user", userKeys);
         
+        // Initialize SearchSpecialistAPI to fix search operations
+        String searchPassword = highSecAPI.generateSecurePassword(16);
+        blockchain.getSearchSpecialistAPI().initializeWithBlockchain(blockchain, searchPassword, userKeys.getPrivate());
+        
         // Store data with high security
         highSecAPI.storeSearchableData("High security financial data", password, new String[]{"financial", "secure"});
         
@@ -94,6 +98,11 @@ public class MultiAPIConfigurationDemo {
         UserFriendlyEncryptionAPI dataAPI = new UserFriendlyEncryptionAPI(blockchain);
         KeyPair userKeys = dataAPI.createUser("search-user");
         dataAPI.setDefaultCredentials("search-user", userKeys);
+        
+        // Initialize SearchSpecialistAPI to fix search operations
+        String searchPassword = dataAPI.generateSecurePassword(16);
+        blockchain.getSearchSpecialistAPI().initializeWithBlockchain(blockchain, searchPassword, userKeys.getPrivate());
+        
         dataAPI.storeSearchableData("Search test data", password, new String[]{"search", "test", "data"});
         
         // High Security Search
@@ -168,6 +177,10 @@ public class MultiAPIConfigurationDemo {
         UserFriendlyEncryptionAPI dataAPI = new UserFriendlyEncryptionAPI(blockchain, unifiedConfig);
         KeyPair userKeys = dataAPI.createUser("unified-user");
         dataAPI.setDefaultCredentials("unified-user", userKeys);
+        
+        // Initialize SearchSpecialistAPI to fix search operations
+        String searchPassword = dataAPI.generateSecurePassword(16);
+        blockchain.getSearchSpecialistAPI().initializeWithBlockchain(blockchain, searchPassword, userKeys.getPrivate());
         
         // Store data using the unified config
         dataAPI.storeSearchableData("Unified configuration test data", password, new String[]{"unified", "config", "test"});

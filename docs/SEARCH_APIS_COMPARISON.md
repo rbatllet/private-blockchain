@@ -63,9 +63,10 @@ EncryptionConfig config = EncryptionConfig.createPerformanceConfig();
 SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(blockchain, password, privateKey, config);
 
 // Specialized search operations
-List<EnhancedSearchResult> fast = searchAPI.searchSimple("medical");
-List<EnhancedSearchResult> secure = searchAPI.searchSecure("confidential", password, 50);
-List<EnhancedSearchResult> smart = searchAPI.searchIntelligent("diagnosis", password, 100);
+List<EnhancedSearchResult> publicOnly = searchAPI.searchPublic("medical");        // Fast public-only search
+List<EnhancedSearchResult> hybrid = searchAPI.searchSimple("patient data");      // Hybrid search (public + private)
+List<EnhancedSearchResult> secure = searchAPI.searchSecure("confidential", password, 50);  // Encrypted-only search
+List<EnhancedSearchResult> smart = searchAPI.searchIntelligent("diagnosis", password, 100); // Adaptive strategy
 ```
 
 ### 🎯 **When to Use SearchSpecialistAPI:**
@@ -134,8 +135,8 @@ List<Block> patientRecords = api.searchByTerms(new String[]{"diabetes"}, medical
 // Specialized search analytics - NEW IMPROVED CONSTRUCTOR
 SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(blockchain, adminPassword, adminKey);
 
-// Fast public search for dashboard metrics
-List<EnhancedSearchResult> publicMetrics = searchAPI.searchSimple("transactions");
+// Fast public search for dashboard metrics  
+List<EnhancedSearchResult> publicMetrics = searchAPI.searchPublic("transactions");
 
 // Detailed analysis with full access
 List<EnhancedSearchResult> detailedAnalysis = searchAPI.searchAdvanced(

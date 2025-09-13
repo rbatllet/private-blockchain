@@ -112,6 +112,26 @@ public class MetadataLayerManager {
                                                     String userMimeType) {
         try {
             
+            // Add detailed tracking for this generation operation
+            String blockHash = block != null ? block.getHash() : "NULL_BLOCK";
+            String shortHash = blockHash != null ? blockHash.substring(0, Math.min(8, blockHash.length())) : "NULL";
+            
+            // Get caller information for tracking
+            StackTraceElement[] stack = Thread.currentThread().getStackTrace();
+            String callerInfo = "UNKNOWN";
+            for (int i = 2; i < Math.min(stack.length, 6); i++) {
+                StackTraceElement element = stack[i];
+                if (!element.getMethodName().equals("generateMetadataLayers")) {
+                    callerInfo = element.getClassName() + "." + element.getMethodName() + ":" + element.getLineNumber();
+                    break;
+                }
+            }
+            
+            logger.info("🔧 METADATA GENERATION START: Block {} | Thread: {} | Caller: {}", 
+                shortHash, 
+                Thread.currentThread().getName(),
+                callerInfo);
+            
             // Get content for keyword extraction - decrypt if encrypted and password available
             String contentForKeywords = block.getData();
             if (block.isDataEncrypted() && password != null && !password.trim().isEmpty()) {
@@ -159,24 +179,39 @@ public class MetadataLayerManager {
             }
             
             // Use user-provided search terms or extract from block if none provided
-            Set<String> keywordSet = new HashSet<>();
-            if (publicSearchTerms != null) keywordSet.addAll(publicSearchTerms);
-            if (privateSearchTerms != null) keywordSet.addAll(privateSearchTerms);
+            Set<String> publicKeywordSet = new HashSet<>();
+            Set<String> privateKeywordSet = new HashSet<>();
+            if (publicSearchTerms != null) publicKeywordSet.addAll(publicSearchTerms);
+            if (privateSearchTerms != null) privateKeywordSet.addAll(privateSearchTerms);
             
             // CRITICAL FIX: If no external keywords provided, extract from block's stored keywords
-            if (keywordSet.isEmpty()) {
+            if (publicKeywordSet.isEmpty() && privateKeywordSet.isEmpty()) {
                 // Try to extract keywords from autoKeywords (encrypted) and manualKeywords (public)
                 logger.debug("🔍 no external keywords provided, extracting from block...");
                 
-                // Extract manual keywords (public)
+                // Extract manual keywords - separate public vs private based on prefix
                 if (block.getManualKeywords() != null && !block.getManualKeywords().trim().isEmpty()) {
                     String[] manualKeywords = block.getManualKeywords().split("\\s+");
                     for (String keyword : manualKeywords) {
                         if (!keyword.trim().isEmpty()) {
-                            keywordSet.add(keyword.trim());
+                            String cleanKeyword = keyword.trim();
+                            // Check for "public:" prefix - these go to public layer
+                            if (cleanKeyword.toLowerCase().startsWith("public:")) {
+                                String originalKeyword = cleanKeyword;
+                                cleanKeyword = cleanKeyword.substring(7); // Remove "public:" prefix
+                                logger.debug("🔍 STRIPPED PREFIX: '{}' -> '{}' (PUBLIC)", originalKeyword, cleanKeyword);
+                                if (!cleanKeyword.isEmpty()) {
+                                    publicKeywordSet.add(cleanKeyword);
+                                    logger.debug("🔍 ADDED TO PUBLIC INDEX: '{}'", cleanKeyword);
+                                }
+                            } else {
+                                // No prefix = private keyword
+                                logger.debug("🔍 ADDED TO PRIVATE INDEX: '{}'", cleanKeyword);
+                                privateKeywordSet.add(cleanKeyword);
+                            }
                         }
                     }
-                    logger.debug("🔍 extracted manual keywords: {}", keywordSet);
+                    logger.debug("🔍 extracted manual keywords - public: {}, private: {}", publicKeywordSet, privateKeywordSet);
                 }
                 
                 // Extract auto keywords (encrypted) if password available
@@ -203,7 +238,7 @@ public class MetadataLayerManager {
                                     String[] keywordArray = decryptedKeywords.split("\\s+");
                                     for (String keyword : keywordArray) {
                                         if (!keyword.trim().isEmpty()) {
-                                            keywordSet.add(keyword.trim());
+                                            privateKeywordSet.add(keyword.trim());
                                         }
                                     }
                                 }
@@ -214,24 +249,26 @@ public class MetadataLayerManager {
                             }
                         }
                         
-                        logger.debug("🔍 extracted encrypted keywords: {}", keywordSet);
+                        logger.debug("🔍 extracted encrypted keywords: {}", privateKeywordSet);
                     } catch (Exception e) {
                         logger.debug("🔍 failed to process autoKeywords: {}", e.getMessage());
                     }
                 }
             }
             
-            if (!keywordSet.isEmpty()) {
-                logger.debug("🔍 using keywords: {}", keywordSet);
+            if (!publicKeywordSet.isEmpty() || !privateKeywordSet.isEmpty()) {
+                logger.debug("🔍 using keywords - public: {}, private: {}", publicKeywordSet, privateKeywordSet);
             } else {
                 logger.debug("🔍 no keywords available, using minimal metadata");
             }
             
             // Analyze content characteristics using decrypted content if available
-            ContentAnalysis analysis = analyzeContent(contentForKeywords, keywordSet);
+            Set<String> allKeywords = new HashSet<>(publicKeywordSet);
+            allKeywords.addAll(privateKeywordSet);
+            ContentAnalysis analysis = analyzeContent(contentForKeywords, allKeywords);
             
-            // Generate layers based on security configuration and user-defined terms
-            PublicMetadata publicLayer = generatePublicLayer(block, analysis, config, publicSearchTerms, userMimeType);
+            // Generate layers based on security configuration and user-defined terms  
+            PublicMetadata publicLayer = generatePublicLayer(block, analysis, config, publicKeywordSet, userMimeType);
             
             // Only generate private layer if password is provided
             PrivateMetadata privateLayer = null;
@@ -239,7 +276,7 @@ public class MetadataLayerManager {
             logger.debug("🔍 checking password condition: {}", (password != null && !password.trim().isEmpty()));
             if (password != null && !password.trim().isEmpty()) {
                 logger.debug("🔍 Debug: generating private layer...");
-                privateLayer = generatePrivateLayer(block, analysis, keywordSet, config, contentForKeywords, privateSearchTerms);
+                privateLayer = generatePrivateLayer(block, analysis, privateKeywordSet, config, contentForKeywords, privateSearchTerms);
                 logger.debug("🔍 Debug: privateLayer generated: {}", (privateLayer != null ? "yes" : "null"));
                 if (privateLayer != null) {
                     logger.debug("🔍 Debug: privateLayer.isEmpty(): {}", privateLayer.isEmpty());
@@ -264,11 +301,11 @@ public class MetadataLayerManager {
      * Generate public metadata layer - always searchable
      * Only includes objective data and user-provided search terms
      */
-    private PublicMetadata generatePublicLayer(Block block, ContentAnalysis analysis, EncryptionConfig config, Set<String> publicSearchTerms, String userMimeType) {
+    private PublicMetadata generatePublicLayer(Block block, ContentAnalysis analysis, EncryptionConfig config, Set<String> processedKeywords, String userMimeType) {
         PublicMetadata metadata = new PublicMetadata();
         
-        // User-defined search terms (no filtering - user controls visibility)
-        metadata.setGeneralKeywords(publicSearchTerms != null ? publicSearchTerms : new HashSet<>());
+        // User-defined search terms (already processed - prefixes removed)
+        metadata.setGeneralKeywords(processedKeywords != null ? processedKeywords : new HashSet<>());
         
         // Time range based on security level
         metadata.setTimeRange(generateTimeRange(block.getTimestamp(), config));
@@ -544,10 +581,61 @@ public class MetadataLayerManager {
             String processedMetadata = CompressionUtil.compressConditionally(
                 jsonMetadata, config.isEnableCompression());
             
-            // Log compression statistics for performance monitoring
+            // 🔍 RACE CONDITION DEBUGGING: Enhanced compression logging with detailed context
             if (config.isEnableCompression()) {
                 CompressionUtil.CompressionStats stats = CompressionUtil.getCompressionStats(jsonMetadata);
-                logger.info("📦 Metadata compression: {}", stats.toString());
+                
+                // Get stack trace to identify caller origin
+                StackTraceElement[] stack = Thread.currentThread().getStackTrace();
+                String callerInfo = "UNKNOWN";
+                String searchFrameworkEngineInfo = "NOT_FOUND";
+                String blockHashInfo = "UNKNOWN";
+                
+                // Look for the calling method and SearchFrameworkEngine reference
+                for (int i = 2; i < Math.min(stack.length, 12); i++) {
+                    StackTraceElement element = stack[i];
+                    String className = element.getClassName();
+                    String methodName = element.getMethodName();
+                    
+                    if (callerInfo.equals("UNKNOWN") && 
+                        !methodName.equals("encryptPrivateMetadata") && 
+                        !className.equals("com.rbatllet.blockchain.search.metadata.MetadataLayerManager")) {
+                        callerInfo = className + "." + methodName + ":" + element.getLineNumber();
+                    }
+                    
+                    // Look for SearchFrameworkEngine in the stack
+                    if (className.contains("SearchFrameworkEngine")) {
+                        searchFrameworkEngineInfo = className + "." + methodName + ":" + element.getLineNumber();
+                    }
+                }
+                
+                // 🔍 Try to extract block hash from method parameters for tracking
+                try {
+                    // This is a heuristic approach - in a real debugging scenario you might pass the block hash as a parameter
+                    blockHashInfo = "EXTRACTED"; // Placeholder for now
+                } catch (Exception e) {
+                    blockHashInfo = "EXTRACTION_FAILED";
+                }
+                
+                // 🔍 ENHANCED LOGGING: Include thread, caller, SearchFrameworkEngine context, and instance tracking
+                logger.info("📦 Metadata compression: {} | Thread: {} | Caller: {} | SFE: {} | BlockHash: {} | StackDepth: {}", 
+                    stats.toString(), 
+                    Thread.currentThread().getName(),
+                    callerInfo,
+                    searchFrameworkEngineInfo,
+                    blockHashInfo,
+                    Math.min(stack.length, 12));
+                    
+                // 🔍 DEBUG: Log partial stack trace for race condition debugging
+                StringBuilder stackTrace = new StringBuilder();
+                for (int i = 2; i < Math.min(stack.length, 8); i++) {
+                    StackTraceElement element = stack[i];
+                    stackTrace.append(element.getClassName().substring(element.getClassName().lastIndexOf('.') + 1))
+                             .append(".")
+                             .append(element.getMethodName())
+                             .append(":");
+                }
+                logger.debug("🔍 Compression stack trace: {} | Thread: {}", stackTrace.toString(), Thread.currentThread().getName());
             }
             
             // Encrypt using CryptoUtil (reuse existing encryption infrastructure)
