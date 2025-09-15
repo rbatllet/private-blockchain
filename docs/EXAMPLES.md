@@ -99,9 +99,12 @@ public class MedicalRecordsEncryptionSystem {
         List<Block> privateResults = api.searchWithAdaptiveDecryption("john-doe", patientPassword, 10);
         System.out.println("🔐 Private search for 'john-doe': " + privateResults.size() + " results");
         
-        // Advanced semantic search for medical concepts
-        AdvancedSearchResult semanticResults = api.performSemanticSearch("heart conditions", patientPassword);
-        System.out.println("🧠 Semantic search for 'heart conditions': " + semanticResults.getTotalResults() + " results");
+        // Advanced search with multiple criteria (language-independent)
+        Map<String, Object> advancedCriteria = new HashMap<>();
+        advancedCriteria.put("terms", Arrays.asList("cardiology", "heart", "ecg"));
+        advancedCriteria.put("includeEncrypted", true);
+        AdvancedSearchResult advancedResults = api.performAdvancedSearch(advancedCriteria, patientPassword, 50);
+        System.out.println("🔍 Advanced search for heart-related records: " + advancedResults.getTotalResults() + " results");
         
         // Generate comprehensive health report
         System.out.println("\n📊 System health and compliance check...");
@@ -139,7 +142,7 @@ public class MedicalRecordsEncryptionSystem {
         System.out.println("   • HIPAA-compliant hierarchical security");
         System.out.println("   • Encrypted patient data with granular search");
         System.out.println("   • Smart storage tiering for large medical files");
-        System.out.println("   • Multi-level search (public/private/semantic)");
+        System.out.println("   • Multi-level search (public/private/advanced)");
         System.out.println("   • Health monitoring and compliance validation");
         System.out.println("   • Research data export with anonymization");
         System.out.println("   • Automated backup and recovery systems");
@@ -151,7 +154,7 @@ public class MedicalRecordsEncryptionSystem {
 - **🔐 Medical-Grade Security**: Hierarchical key management with strong passwords
 - **🔍 HIPAA-Compliant Search**: Public medical terms vs. private patient identifiers
 - **💾 Smart Storage**: Automatic tiering for large medical files (MRI, CT scans)
-- **🧠 Semantic Search**: AI-like search for medical concepts and conditions
+- **🔍 Advanced Search**: Multi-criteria search with encrypted content access
 - **📊 Compliance Monitoring**: Real-time health checks and validation reports
 - **📈 Research Export**: Anonymized data export for medical research
 - **🔧 Data Recovery**: Automated backup and recovery for critical medical data

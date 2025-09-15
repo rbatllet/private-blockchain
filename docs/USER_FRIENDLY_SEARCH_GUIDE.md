@@ -2,7 +2,7 @@
 
 ## 🔍 Overview
 
-The UserFriendlyEncryptionAPI provides powerful search capabilities that allow you to find data across your blockchain while maintaining privacy and security. This guide covers all search features from basic term searches to advanced AI-powered semantic analysis.
+The UserFriendlyEncryptionAPI provides powerful search capabilities that allow you to find data across your blockchain while maintaining privacy and security. This guide covers all search features from basic term searches to advanced AI-powered analysis.
 
 ## 🎯 Search Strategy Overview
 
@@ -88,7 +88,6 @@ searchCriteria.put("categories", Set.of("medical", "clinical"));
 searchCriteria.put("dataTypes", Set.of("patient-record", "treatment-plan"));
 
 // Content analysis options
-searchCriteria.put("enableSemanticSearch", true);
 searchCriteria.put("enableKeywordExtraction", true);
 searchCriteria.put("confidenceThreshold", 0.75);
 
@@ -125,7 +124,7 @@ List<Block> transactions = identifiers.stream()
 
 ### Smart Search
 
-AI-powered search that understands context and semantics:
+AI-powered search that understands context and relationships:
 
 ```java
 // Smart search with natural language
@@ -326,7 +325,6 @@ public class MedicalRecordsSearch {
         criteria.put("keywords", condition + " " + patientId);
         criteria.put("categories", Set.of("medical", "patient-records"));
         criteria.put("includeEncrypted", true);
-        criteria.put("enableSemanticSearch", true);
         
         AdvancedSearchResult results = api.performAdvancedSearch(
             criteria, medicalPassword, 50);
@@ -398,7 +396,6 @@ public class ResearchDataSearch {
         criteria.put("keywords", topic);
         criteria.put("categories", Set.of("research", "scientific"));
         criteria.put("startDate", startDate);
-        criteria.put("enableSemanticSearch", true);
         criteria.put("confidenceThreshold", 0.8);
         
         AdvancedSearchResult results = api.performAdvancedSearch(

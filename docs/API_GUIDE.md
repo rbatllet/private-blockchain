@@ -3672,9 +3672,6 @@ List<Block> searchWithAdaptiveDecryption(String searchTerm, String password, int
 AdvancedSearchResult performAdvancedSearch(Map<String, Object> searchCriteria, 
                                          String password, int maxResults)
 
-// Semantic search for concept-based discovery
-AdvancedSearchResult performSemanticSearch(String concept, String password)
-
 // Time-based search
 AdvancedSearchResult performTimeRangeSearch(LocalDateTime startDate, LocalDateTime endDate, 
                                           Map<String, Object> filters)

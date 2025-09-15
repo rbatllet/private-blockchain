@@ -41,7 +41,7 @@ The project includes comprehensive test suites to verify all functionality and e
 - ✅ **Advanced Search**: Content, hash, and date range search
 - ✅ **UserFriendlyEncryptionAPI**: Comprehensive 212-method encryption and blockchain API
 - ✅ **Security Testing**: Encryption, key management, and authentication
-- ✅ **Search Testing**: Multi-level search, caching, and semantic search
+- ✅ **Search Testing**: Multi-level search, caching, and advanced search
 - ✅ **Storage Testing**: Off-chain storage, compression, and tiering
 - ✅ **Recovery Testing**: Chain recovery, corruption detection, and repair
 - ✅ **Integration**: All functions working together
@@ -208,7 +208,7 @@ mvn test -Dtest=UserFriendlyEncryptionAPIRemainingCoverageTest # Full coverage
 
 **Test Categories Covered:**
 - **📦 Core Functionality**: Data storage, retrieval, encryption/decryption
-- **🔍 Search Operations**: Multi-level search, caching, semantic search  
+- **🔍 Search Operations**: Multi-level search, caching, advanced search  
 - **🔐 Security Features**: Key management, authentication, validation
 - **💾 Storage Management**: Off-chain storage, compression, tiering
 - **🔧 Recovery Operations**: Chain recovery, corruption detection, repair

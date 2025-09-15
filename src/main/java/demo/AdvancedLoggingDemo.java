@@ -146,13 +146,13 @@ public class AdvancedLoggingDemo {
             );
             
             LoggingManager.logSearchOperation(
-                "SEMANTIC_SEARCH", 
+                "KEYWORD_SEARCH", 
                 "technology",
                 () -> {
-                    // Real semantic search through blockchain data
-                    String[] semanticTerms = {"technology", "system", "advanced", "innovation"};
+                    // Real keyword search through blockchain data
+                    String[] searchTerms = {"technology", "system", "advanced", "innovation"};
                     return blockchain.getAllBlocks().stream()
-                        .filter(block -> Arrays.stream(semanticTerms).anyMatch(term -> block.getData().toLowerCase().contains(term.toLowerCase())))
+                        .filter(block -> Arrays.stream(searchTerms).anyMatch(term -> block.getData().toLowerCase().contains(term.toLowerCase())))
                         .map(block -> "Match in Block " + block.getBlockNumber() + ": " + block.getData().substring(0, Math.min(60, block.getData().length())))
                         .collect(java.util.stream.Collectors.toList());
                 }

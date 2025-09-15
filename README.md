@@ -387,8 +387,11 @@ Block block = api.storeWithSmartTiering(largeDocument, password, metadata);
 List<Block> fastResults = api.searchByTerms(new String[]{"medical"}, null, 10);
 List<Block> deepResults = api.searchWithAdaptiveDecryption("patient", password, 10);
 
-// Semantic search for concept-based discovery
-AdvancedSearchResult results = api.performSemanticSearch("blockchain security", password);
+// Advanced search with multiple criteria
+Map<String, Object> criteria = new HashMap<>();
+criteria.put("keywords", "blockchain security");
+criteria.put("includeEncrypted", true);
+AdvancedSearchResult results = api.performAdvancedSearch(criteria, password, 50);
 
 // Time-based search with filtering
 LocalDateTime start = LocalDateTime.now().minusDays(30);

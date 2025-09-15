@@ -417,7 +417,7 @@ public List<Block> flexibleSearch(String query, String password) {
         }
     }
     
-    // Try smart search for semantic matching
+    // Try smart search for contextual matching
     results.addAll(api.smartSearch(query, password, 25));
     
     // Remove duplicates
@@ -431,7 +431,6 @@ public List<Block> broadSearch(String query, String password) {
     Map<String, Object> criteria = new HashMap<>();
     criteria.put("keywords", query);
     criteria.put("includeEncrypted", true);
-    criteria.put("enableSemanticSearch", true);
     criteria.put("confidenceThreshold", 0.5); // Lower threshold
     criteria.put("maxResults", 200);
     

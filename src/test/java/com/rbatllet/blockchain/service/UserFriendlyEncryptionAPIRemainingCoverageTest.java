@@ -623,19 +623,7 @@ class UserFriendlyEncryptionAPIRemainingCoverageTest {
             }, "Should export search results without throwing");
         }
         
-        @Test
-        @DisplayName("Should test calculateSemanticRelevance via semantic search")
-        void shouldTestSemanticRelevanceViaSemanticSearch() {
-            // Given
-            String concept = "blockchain security";
-            String password = "semanticTest123";
-            
-            // When & Then - performSemanticSearch calls private calculateSemanticRelevance
-            assertDoesNotThrow(() -> {
-                AdvancedSearchResult result = api.performSemanticSearch(concept, password);
-                assertNotNull(result, "Semantic search result should not be null");
-            }, "Should perform semantic search without throwing");
-        }
+
         
         @Test
         @DisplayName("Should test compression methods via adaptive compression")

@@ -23,7 +23,6 @@ public class AdvancedSearchResult {
     public enum SearchType {
         KEYWORD_SEARCH("🔍 Keyword Search"),
         REGEX_SEARCH("🔤 Regex Search"),
-        SEMANTIC_SEARCH("🧠 Semantic Search"),
         TIME_RANGE_SEARCH("📅 Time Range Search"),
         COMBINED_SEARCH("🔗 Combined Search");
         
