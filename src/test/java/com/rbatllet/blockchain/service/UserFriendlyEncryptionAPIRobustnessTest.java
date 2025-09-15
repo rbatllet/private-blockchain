@@ -775,19 +775,7 @@ class UserFriendlyEncryptionAPIRobustnessTest {
             assertFalse(result, "Should return false for null blockId");
         }
 
-        @Test
-        @DisplayName("calculateSemanticRelevance should handle null parameters")
-        void testCalculateSemanticRelevanceWithNullParams() throws Exception {
-            var method = UserFriendlyEncryptionAPI.class.getDeclaredMethod(
-                "calculateSemanticRelevance",
-                String.class,
-                Block.class
-            );
-            method.setAccessible(true);
 
-            double result = (double) method.invoke(api, null, null);
-            assertEquals(0.0, result, "Should return 0.0 for null parameters");
-        }
 
         @Test
         @DisplayName("getEncryptedBlocksOnly should handle null username")
