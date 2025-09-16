@@ -2959,6 +2959,13 @@ public class UserFriendlyEncryptionAPI {
             );
         }
 
+        // Security: Enforce file size limits to prevent DoS attacks
+        if (fileData.length > 50 * 1024 * 1024) { // 50MB limit
+            throw new IllegalArgumentException(
+                "File size cannot exceed 50MB (DoS protection)"
+            );
+        }
+
         try {
             String publicKeyString = CryptoUtil.publicKeyToString(
                 getDefaultKeyPair().getPublic()
@@ -3008,6 +3015,13 @@ public class UserFriendlyEncryptionAPI {
         if (signerKeyPair == null) {
             throw new IllegalArgumentException(
                 "Signer key pair cannot be null"
+            );
+        }
+
+        // Security: Enforce file size limits to prevent DoS attacks
+        if (fileData.length > 50 * 1024 * 1024) { // 50MB limit
+            throw new IllegalArgumentException(
+                "File size cannot exceed 50MB (DoS protection)"
             );
         }
 
@@ -3261,6 +3275,13 @@ public class UserFriendlyEncryptionAPI {
         if (textContent == null || textContent.isEmpty()) {
             throw new IllegalArgumentException(
                 "Text content cannot be null or empty"
+            );
+        }
+
+        // Security: Enforce text content size limits to prevent DoS attacks
+        if (textContent.length() > 50 * 1024 * 1024) { // 50MB limit for text
+            throw new IllegalArgumentException(
+                "Text content size cannot exceed 50MB (DoS protection)"
             );
         }
 
@@ -10805,6 +10826,13 @@ public class UserFriendlyEncryptionAPI {
             );
         }
 
+        // Security: Enforce file size limits to prevent DoS attacks
+        if (fileData.length > 50 * 1024 * 1024) { // 50MB limit
+            throw new IllegalArgumentException(
+                "File size cannot exceed 50MB (DoS protection)"
+            );
+        }
+
         try {
             // First store the file off-chain
             OffChainData offChainData = storeLargeFileSecurely(
@@ -10854,6 +10882,13 @@ public class UserFriendlyEncryptionAPI {
         if (textContent == null || textContent.trim().isEmpty()) {
             throw new IllegalArgumentException(
                 "Text content cannot be null or empty"
+            );
+        }
+
+        // Security: Enforce text content size limits to prevent DoS attacks
+        if (textContent.length() > 50 * 1024 * 1024) { // 50MB limit for text
+            throw new IllegalArgumentException(
+                "Text content size cannot exceed 50MB (DoS protection)"
             );
         }
 
