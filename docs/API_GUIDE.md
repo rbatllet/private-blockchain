@@ -4307,3 +4307,106 @@ For comprehensive metadata management documentation including advanced examples,
 - **[SECURITY_CLASSES_GUIDE.md](SECURITY_CLASSES_GUIDE.md)** - Security classes usage guide
 - **[UTILITY_CLASSES_GUIDE.md](UTILITY_CLASSES_GUIDE.md)** - Utility classes reference with FormatUtil robustness analysis
 - **[THREAD_SAFETY_TESTS.md](THREAD_SAFETY_TESTS.md)** - Thread safety testing guide
+
+## AdvancedSearchResult Robustness Enhancements
+
+### Defensive Programming Implementation
+
+The `AdvancedSearchResult` class has been enhanced with comprehensive robustness patterns following the same defensive programming standards implemented across the blockchain search framework.
+
+### Constructor Robustness
+```java
+public AdvancedSearchResult(String searchQuery, SearchType searchType, Duration searchDuration) {
+    // Defensive programming: sanitize and validate inputs
+    this.searchQuery = (searchQuery != null) ? searchQuery : "";
+    this.searchType = (searchType != null) ? searchType : SearchType.KEYWORD_SEARCH;
+    this.searchDuration = (searchDuration != null) ? searchDuration : Duration.ZERO;
+    // ... remaining initialization
+}
+```
+
+### Method Robustness Features
+
+#### getTopMatches(int limit)
+- **Null Safety**: Handles null matches collection
+- **Input Validation**: Prevents negative limits with `Math.max(0, limit)`  
+- **Null Filtering**: Removes null entries using `Objects::nonNull`
+- **Immutable Return**: Returns `Collections.unmodifiableList()` for thread safety
+
+```java
+public List<SearchMatch> getTopMatches(int limit) {
+    if (matches == null || matches.isEmpty()) {
+        return Collections.emptyList();
+    }
+    
+    int safeLimit = Math.max(0, limit);
+    List<SearchMatch> result = matches.stream()
+        .filter(Objects::nonNull)
+        .sorted((a, b) -> Double.compare(b.getRelevanceScore(), a.getRelevanceScore()))
+        .limit(safeLimit)
+        .collect(java.util.stream.Collectors.toList());
+    
+    return Collections.unmodifiableList(result);
+}
+```
+
+#### groupByCategory()
+- **Null Collection Handling**: Safely processes null matches
+- **Null Match Filtering**: Skips null entries and null blocks
+- **Category Sanitization**: Handles null/empty categories with "UNCATEGORIZED" default
+- **Immutable Return**: Prevents external modification of grouped results
+
+#### getAverageRelevanceScore()
+- **Empty Collection Safety**: Returns 0.0 for null/empty matches
+- **NaN/Infinite Protection**: Filters out invalid relevance scores
+- **Null Match Filtering**: Processes only valid match objects
+
+#### getSuggestedRefinements()
+- **Null Collection Safety**: Returns empty list for null refinements
+- **Content Filtering**: Removes null and blank strings
+- **Whitespace Validation**: Filters empty/whitespace-only entries
+- **Immutable Return**: Prevents external list modification
+
+#### getCategoryDistribution()
+- **Null Safety**: Handles null distribution maps
+- **Entry Validation**: Filters null keys, null values, and negative counts
+- **Key Sanitization**: Removes empty/whitespace-only category names
+- **Immutable Return**: Provides read-only map view
+
+### Test Coverage
+
+Comprehensive test suite with 12 test cases covering:
+- ✅ Null parameter handling in constructor
+- ✅ Empty collection handling
+- ✅ Negative input validation  
+- ✅ Null filtering in all methods
+- ✅ Immutability of returned collections
+- ✅ Edge cases with all null parameters
+
+### Thread Safety Features
+
+All public methods return immutable views of collections:
+- `Collections.unmodifiableList()` for lists
+- `Collections.unmodifiableMap()` for maps  
+- `Collections.emptyList()` and `Collections.emptyMap()` for empty scenarios
+
+### Usage Example with Robustness
+
+```java
+// Safe instantiation with potential null inputs
+AdvancedSearchResult result = new AdvancedSearchResult(
+    null,  // Safely defaults to ""
+    null,  // Safely defaults to KEYWORD_SEARCH  
+    null   // Safely defaults to Duration.ZERO
+);
+
+// Safe method calls with defensive handling
+List<SearchMatch> matches = result.getTopMatches(-5);  // Returns empty list
+Map<String, Integer> distribution = result.getCategoryDistribution();  // Returns empty map
+double avgScore = result.getAverageRelevanceScore();  // Returns 0.0
+
+// All returned collections are immutable
+matches.add(newMatch);  // Throws UnsupportedOperationException
+```
+
+This robustness implementation ensures the `AdvancedSearchResult` class operates reliably in production environments with unpredictable input data and maintains data integrity through immutable return values.
