@@ -43,6 +43,9 @@ public class OffChainFileSearch {
     private final Map<String, Long> cacheTimestamps = new ConcurrentHashMap<>();
     private static final long CACHE_EXPIRY_MS = 300_000; // 5 minutes
     
+    // Recursion control for JSON search
+    private static final int MAX_RECURSION_DEPTH = 50;
+    
     // Supported content types for text search
     private static final Set<String> TEXT_CONTENT_TYPES = Set.of(
         "text/plain", "text/html", "text/xml", "text/csv",
@@ -194,6 +197,20 @@ public class OffChainFileSearch {
      * Search for terms within decrypted content based on content type
      */
     private List<String> searchContent(byte[] data, String contentType, String searchTerm) {
+        // Defensive parameter validation
+        if (data == null || data.length == 0) {
+            logger.warn("⚠️ Search content: data is null or empty");
+            return new ArrayList<>();
+        }
+        if (contentType == null || contentType.trim().isEmpty()) {
+            logger.warn("⚠️ Search content: contentType is null or empty, defaulting to binary search");
+            contentType = "application/octet-stream";
+        }
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            logger.warn("⚠️ Search content: searchTerm is null or empty");
+            return new ArrayList<>();
+        }
+        
         List<String> matches = new ArrayList<>();
         
         try {
@@ -224,10 +241,21 @@ public class OffChainFileSearch {
      * Perform text-based search with context snippets
      */
     private List<String> performTextSearch(String content, String searchTerm) {
-        List<String> matches = new ArrayList<>();
-        Pattern pattern = Pattern.compile(Pattern.quote(searchTerm), Pattern.CASE_INSENSITIVE);
+        // Defensive parameter validation
+        if (content == null) {
+            logger.warn("⚠️ Text search: content is null");
+            return new ArrayList<>();
+        }
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            logger.warn("⚠️ Text search: searchTerm is null or empty");
+            return new ArrayList<>();
+        }
         
-        String[] lines = content.split("\\r?\\n");
+        List<String> matches = new ArrayList<>();
+        
+        try {
+            Pattern pattern = Pattern.compile(Pattern.quote(searchTerm.trim()), Pattern.CASE_INSENSITIVE);
+            String[] lines = content.split("\\r?\\n");
         
         for (int i = 0; i < lines.length; i++) {
             String line = lines[i];
@@ -253,6 +281,10 @@ public class OffChainFileSearch {
             }
         }
         
+        } catch (Exception e) {
+            logger.error("❌ Error during text search: {}", e.getMessage());
+        }
+        
         return matches;
     }
     
@@ -260,16 +292,30 @@ public class OffChainFileSearch {
      * Perform JSON-specific search (search in values and keys)
      */
     private List<String> performJsonSearch(String jsonContent, String searchTerm) {
+        // Defensive parameter validation
+        if (jsonContent == null) {
+            logger.warn("⚠️ JSON search: jsonContent is null");
+            return new ArrayList<>();
+        }
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            logger.warn("⚠️ JSON search: searchTerm is null or empty");
+            return new ArrayList<>();
+        }
+        
         List<String> matches = new ArrayList<>();
         
         try {
-            // First, try regular text search
+            // First, try regular text search (safe due to our validation above)
             matches.addAll(performTextSearch(jsonContent, searchTerm));
             
-            // Then, try structured JSON search
-            @SuppressWarnings("unchecked")
-            Map<String, Object> jsonMap = objectMapper.readValue(jsonContent, Map.class);
-            searchJsonObject(jsonMap, searchTerm, "", matches);
+            // Then, try structured JSON search if content is not empty
+            if (!jsonContent.trim().isEmpty()) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> jsonMap = objectMapper.readValue(jsonContent, Map.class);
+                if (jsonMap != null) {
+                    searchJsonObject(jsonMap, searchTerm, "", matches);
+                }
+            }
             
         } catch (Exception e) {
             // If JSON parsing fails, fall back to text search
@@ -283,7 +329,34 @@ public class OffChainFileSearch {
      * Recursively search within JSON objects
      */
     private void searchJsonObject(Object obj, String searchTerm, String path, List<String> matches) {
-        if (obj instanceof Map) {
+        searchJsonObject(obj, searchTerm, path, matches, 0);
+    }
+    
+    /**
+     * Recursively search within JSON objects with depth control
+     */
+    private void searchJsonObject(Object obj, String searchTerm, String path, List<String> matches, int depth) {
+        // Defensive parameter validation
+        if (obj == null || matches == null) {
+            return;
+        }
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            logger.warn("⚠️ JSON object search: searchTerm is null or empty");
+            return;
+        }
+        if (path == null) {
+            path = "";
+        }
+        
+        // Prevent infinite recursion and stack overflow
+        if (depth > MAX_RECURSION_DEPTH) {
+            logger.warn("⚠️ JSON recursion depth limit reached ({}), stopping search at path: {}", 
+                       MAX_RECURSION_DEPTH, path);
+            return;
+        }
+        
+        try {
+            if (obj instanceof Map) {
             @SuppressWarnings("unchecked")
             Map<String, Object> map = (Map<String, Object>) obj;
             for (Map.Entry<String, Object> entry : map.entrySet()) {
@@ -301,14 +374,20 @@ public class OffChainFileSearch {
                     matches.add("JSON value match: " + newPath + " = **" + value + "**");
                 }
                 
-                // Recurse into nested objects
-                searchJsonObject(value, searchTerm, newPath, matches);
+                // Recurse into nested objects with depth control
+                if (key != null) { // Additional safety check
+                    searchJsonObject(value, searchTerm, newPath, matches, depth + 1);
+                }
             }
         } else if (obj instanceof List) {
             List<?> list = (List<?>) obj;
             for (int i = 0; i < list.size(); i++) {
-                searchJsonObject(list.get(i), searchTerm, path + "[" + i + "]", matches);
+                searchJsonObject(list.get(i), searchTerm, path + "[" + i + "]", matches, depth + 1);
             }
+        }
+        
+        } catch (Exception e) {
+            logger.error("❌ Error during JSON object search at path '{}': {}", path, e.getMessage());
         }
     }
     
@@ -316,18 +395,36 @@ public class OffChainFileSearch {
      * Perform binary search (look for text patterns in binary data)
      */
     private List<String> performBinarySearch(String content, String searchTerm) {
+        // Defensive parameter validation
+        if (content == null) {
+            logger.warn("⚠️ Binary search: content is null");
+            return new ArrayList<>();
+        }
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            logger.warn("⚠️ Binary search: searchTerm is null or empty");
+            return new ArrayList<>();
+        }
+        
         List<String> matches = new ArrayList<>();
         
-        // Look for readable text patterns
-        if (content.toLowerCase().contains(searchTerm.toLowerCase())) {
-            // Extract context around the match
-            int index = content.toLowerCase().indexOf(searchTerm.toLowerCase());
-            int start = Math.max(0, index - 50);
-            int end = Math.min(content.length(), index + searchTerm.length() + 50);
+        try {
+            // Look for readable text patterns (safe due to validation above)
+            String lowerContent = content.toLowerCase();
+            String lowerSearchTerm = searchTerm.toLowerCase();
             
-            String snippet = content.substring(start, end);
-            snippet = snippet.replaceAll("[\\p{Cntrl}]", ""); // Remove control characters
-            matches.add("Binary content match: ..." + snippet + "...");
+            if (lowerContent.contains(lowerSearchTerm)) {
+                // Extract context around the match
+                int index = lowerContent.indexOf(lowerSearchTerm);
+                int start = Math.max(0, index - 50);
+                int end = Math.min(content.length(), index + searchTerm.length() + 50);
+            
+                String snippet = content.substring(start, end);
+                snippet = snippet.replaceAll("[\\p{Cntrl}]", ""); // Remove control characters
+                matches.add("Binary content match: ..." + snippet + "...");
+            }
+        
+        } catch (Exception e) {
+            logger.error("❌ Error during binary search: {}", e.getMessage());
         }
         
         return matches;
@@ -411,25 +508,52 @@ public class OffChainFileSearch {
     }
     
     /**
-     * Clean up expired cache entries
+     * Clean up expired cache entries with enhanced safety
      */
     private synchronized void cleanupCache() {
-        long currentTime = System.currentTimeMillis();
-        List<String> expiredKeys = new ArrayList<>();
-        
-        // Create snapshot for safe iteration
-        Map<String, Long> timestampSnapshot = new HashMap<>(cacheTimestamps);
-        
-        for (Map.Entry<String, Long> entry : timestampSnapshot.entrySet()) {
-            if ((currentTime - entry.getValue()) > CACHE_EXPIRY_MS) {
-                expiredKeys.add(entry.getKey());
+        try {
+            long currentTime = System.currentTimeMillis();
+            List<String> expiredKeys = new ArrayList<>();
+            
+            // Defensive check for cache state
+            if (cacheTimestamps == null || cacheTimestamps.isEmpty()) {
+                return;
             }
-        }
-        
-        // Remove expired entries atomically
-        for (String key : expiredKeys) {
-            searchCache.remove(key);
-            cacheTimestamps.remove(key);
+            
+            // Create snapshot for safe iteration
+            Map<String, Long> timestampSnapshot = new HashMap<>(cacheTimestamps);
+            
+            // Memory protection: if cache is too large, clean more aggressively
+            boolean forceCleanup = searchCache.size() > 500;
+            
+            for (Map.Entry<String, Long> entry : timestampSnapshot.entrySet()) {
+                if (entry.getKey() == null || entry.getValue() == null) {
+                    // Remove entries with null keys or values
+                    expiredKeys.add(entry.getKey());
+                } else if (forceCleanup || (currentTime - entry.getValue()) > CACHE_EXPIRY_MS) {
+                    expiredKeys.add(entry.getKey());
+                }
+            }
+            
+            // Remove expired entries atomically
+            int removedCount = 0;
+            for (String key : expiredKeys) {
+                if (searchCache.remove(key) != null) {
+                    removedCount++;
+                }
+                cacheTimestamps.remove(key);
+            }
+            
+            if (removedCount > 0) {
+                logger.debug("🧹 Cache cleanup: removed {} expired entries, cache size: {}", 
+                           removedCount, searchCache.size());
+            }
+            
+        } catch (Exception e) {
+            logger.error("❌ Error during cache cleanup: {}", e.getMessage());
+            // In case of error, clear cache to prevent corruption
+            searchCache.clear();
+            cacheTimestamps.clear();
         }
     }
     

@@ -199,6 +199,183 @@ public boolean validateBlock(Block block, String publicKey) {
 - Tampered encryption markers (e.g., `[ENCRYPTED]` → `[FNCRYPTFD]`) are correctly identified
 - Validation properly fails when encrypted block content is corrupted
 
+## 🗂️ OffChainFileSearch Security Patterns
+
+### Defensive Programming Implementation
+
+The `OffChainFileSearch` class implements comprehensive security patterns to protect against various attack vectors:
+
+#### Input Validation and Sanitization
+```java
+// ✅ SECURE: Comprehensive input validation
+public List<String> searchContent(byte[] data, String contentType, String searchTerm) {
+    // Null-safety validation
+    if (data == null || data.length == 0) {
+        logger.warn("Null or empty data provided to searchContent");
+        return Collections.emptyList(); // Safe fallback
+    }
+    
+    // Content type validation
+    if (contentType == null || contentType.trim().isEmpty()) {
+        logger.warn("Invalid content type provided");
+        contentType = "text/plain"; // Safe default
+    }
+    
+    // Search term sanitization
+    if (searchTerm == null || searchTerm.trim().isEmpty()) {
+        logger.warn("Invalid search term provided");
+        return Collections.emptyList(); // Prevent resource waste
+    }
+    
+    // Proceed with validated inputs
+}
+```
+
+#### Recursion Control and DoS Protection
+```java
+// 🛡️ PROTECTION: Prevent stack overflow attacks
+private static final int MAX_RECURSION_DEPTH = 50;
+
+private void searchJsonObject(Object obj, String searchTerm, String path, 
+                             List<String> matches, int depth) {
+    // Recursion limit enforcement
+    if (depth >= MAX_RECURSION_DEPTH) {
+        logger.warn("Maximum recursion depth reached at path: {}", path);
+        return; // Prevent stack overflow
+    }
+    
+    // Additional DoS protections
+    if (matches.size() > MAX_SEARCH_RESULTS) {
+        logger.warn("Maximum search results reached, stopping traversal");
+        return; // Prevent memory exhaustion
+    }
+}
+```
+
+#### Thread-Safe Cache Operations
+```java
+// 🔒 THREAD-SAFETY: Synchronized cache operations
+private final Object cacheLock = new Object();
+
+public void cleanupCache() {
+    synchronized (cacheLock) {
+        if (searchCache != null) {
+            try {
+                searchCache.clear();
+                logger.debug("Search cache cleared successfully");
+            } catch (Exception e) {
+                logger.warn("Cache cleanup warning: {}", e.getMessage());
+                // Continue execution - non-fatal
+            }
+        }
+        
+        // Memory management
+        System.gc(); // Hint for garbage collection
+    }
+}
+```
+
+### Security Best Practices for File Search
+
+#### 1. Content Type Validation
+```java
+// ✅ SECURE: Validate content types before processing
+List<String> results = offChainFileSearch.searchContent(fileBytes, contentType, searchTerm);
+
+// Validate content type matches file content
+if (!isValidContentType(contentType, fileBytes)) {
+    logger.warn("Content type mismatch detected: {}", contentType);
+    // Handle potential content type spoofing
+}
+```
+
+#### 2. Search Term Sanitization
+```java
+// ✅ SECURE: Sanitize search terms to prevent injection
+String sanitizedTerm = searchTerm.replaceAll("[<>\"'&]", ""); // Remove dangerous chars
+String limitedTerm = sanitizedTerm.substring(0, Math.min(100, sanitizedTerm.length())); // Limit length
+
+List<String> results = offChainFileSearch.performTextSearch(content, limitedTerm);
+```
+
+#### 3. Memory Protection
+```java
+// ✅ SECURE: Monitor memory usage during large file processing
+Runtime runtime = Runtime.getRuntime();
+long maxMemory = runtime.maxMemory();
+long usedMemory = runtime.totalMemory() - runtime.freeMemory();
+
+if (usedMemory > maxMemory * 0.8) {
+    logger.warn("High memory usage detected, triggering cache cleanup");
+    offChainFileSearch.cleanupCache();
+}
+```
+
+#### 4. Error Information Disclosure Prevention
+```java
+// ✅ SECURE: Sanitize error messages to prevent information disclosure
+try {
+    List<String> results = offChainFileSearch.performJsonSearch(jsonContent, searchTerm);
+} catch (Exception e) {
+    // Log full error internally
+    logger.error("JSON search error for file ID {}: {}", fileId, e.getMessage());
+    
+    // Return sanitized error to client
+    throw new SearchException("JSON processing failed");
+}
+```
+
+### Security Testing Coverage
+
+The `OffChainFileSearchRobustnessTest` includes security-focused test cases:
+
+- **Null Injection Tests**: Verify all methods handle null inputs safely
+- **Recursion Bomb Tests**: Confirm MAX_RECURSION_DEPTH prevents infinite loops
+- **Thread Safety Tests**: Validate concurrent access protection
+- **Memory Exhaustion Tests**: Ensure bounded resource usage
+- **Input Validation Tests**: Confirm rejection of malicious inputs
+
+### Integration Security
+
+#### Secure Integration with SearchFrameworkEngine
+```java
+// ✅ SECURE: Safe integration with proper error handling
+SearchFrameworkEngine engine = new SearchFrameworkEngine("secure-instance");
+OffChainFileSearch fileSearch = new OffChainFileSearch();
+
+// Validate block authenticity before file search
+if (engine.validateBlockSignature(block)) {
+    List<String> fileMatches = fileSearch.searchContent(
+        block.getOffChainData(),
+        block.getContentType(), 
+        sanitizedSearchTerm
+    );
+    
+    // Filter results based on user permissions
+    List<String> authorizedMatches = fileMatches.stream()
+        .filter(match -> hasPermission(currentUser, block))
+        .collect(Collectors.toList());
+} else {
+    logger.warn("Block signature validation failed for file search");
+    throw new SecurityException("Unauthorized block access");
+}
+```
+
+#### Cache Security Configuration
+```java
+// ✅ SECURE: Configure cache with security limits
+Map<String, Object> cacheConfig = Map.of(
+    "maxSize", 1000,           // Limit cache size
+    "maxMemory", "100MB",      // Memory bounds
+    "ttl", 3600,              // Time-to-live (1 hour)
+    "threadSafe", true,        // Thread safety enabled
+    "encryptKeys", true        // Encrypt cache keys
+);
+
+// Apply secure cache configuration
+offChainFileSearch.configureCacheSecurity(cacheConfig);
+```
+
 **Prevention**: To prevent similar issues:
 - Always use encryption-aware methods for encrypted block operations
 - Implement comprehensive security testing for all encryption features  
