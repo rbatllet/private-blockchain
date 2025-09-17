@@ -200,28 +200,80 @@ List<Block> optimizedResults = api.searchWithOptions(
     "patient medical records", password, 50, performanceOptions);
 ```
 
-### Search Result Formatting
+### SearchResults - Enhanced Robustness and Safety
 
-Format search results for different use cases:
+The `SearchResults` class now provides comprehensive null safety and defensive programming:
 
 ```java
-List<Block> searchResults = api.searchByTerms(new String[]{"diabetes"}, password, 10);
+// Safe SearchResults creation and usage
+SearchResults results = api.searchExhaustive("diabetes", password);
 
-// Format for medical category
-String medicalFormat = api.formatSearchResults("medical", searchResults);
-System.out.println("🏥 Medical Format:\n" + medicalFormat);
+// All methods are null-safe and guaranteed to return valid values
+System.out.println("🔍 Query: " + results.getQuery());          // Never null
+System.out.println("📊 Found: " + results.getResultCount());    // Safe count
+System.out.println("⏰ Time: " + results.getTimestamp());       // Always valid
 
-// Format for financial category
-String financialFormat = api.formatSearchResults("financial", searchResults);
-System.out.println("💰 Financial Format:\n" + financialFormat);
+// Enhanced result analysis with builder pattern
+results.addDetail("category", "medical")
+       .addDetail("searchDepth", "exhaustive")
+       .addWarning("Large dataset processed - 5.2s execution time");
 
-// Custom formatting
-String customFormat = searchResults.stream()
-    .map(block -> String.format("📦 Block #%d: %s (Created: %s)", 
-                                block.getBlockNumber(), 
-                                block.getId(), 
-                                block.getTimestamp()))
-    .collect(Collectors.joining("\n"));
+// Null-safe result processing
+if (results.hasResults()) {
+    System.out.println("✅ Processing " + results.getResultCount() + " results");
+    
+    // Safe iteration - getBlocks() never returns null
+    for (Block block : results.getBlocks()) {
+        System.out.println("📦 Block #" + block.getBlockNumber());
+    }
+    
+    // Access immutable search details
+    Map<String, Object> details = results.getSearchDetails();
+    details.forEach((key, value) -> 
+        System.out.println("📝 " + key + ": " + value));
+        
+    // Check for warnings
+    List<String> warnings = results.getWarnings();
+    if (!warnings.isEmpty()) {
+        warnings.forEach(warning -> 
+            System.out.println("⚠️  " + warning));
+    }
+} else {
+    System.out.println("❌ No results found for: " + results.getQuery());
+}
+
+// Safe toString() - handles all null scenarios
+System.out.println("\n📋 Complete Report:");
+System.out.println(results.toString());  // Never throws NPE
+```
+
+### Search Result Formatting
+
+Format search results safely with enhanced robustness:
+
+```java
+// Enhanced search with robust result handling
+SearchResults medicalResults = api.searchExhaustive("diabetes treatment", password);
+
+// Safe formatting even with edge cases
+if (medicalResults.hasResults()) {
+    // Format for medical category
+    String medicalFormat = api.formatSearchResults("medical", medicalResults.getBlocks());
+    System.out.println("🏥 Medical Format:\n" + medicalFormat);
+    
+    // Custom formatting with null safety
+    String customFormat = medicalResults.getBlocks().stream()
+        .filter(Objects::nonNull)  // Additional safety
+        .map(block -> String.format("📦 Block #%d: %s (Created: %s)", 
+                                    block.getBlockNumber(), 
+                                    block.getId(), 
+                                    block.getTimestamp()))
+        .collect(Collectors.joining("\n"));
+        
+    System.out.println("🎯 Custom Format:\n" + customFormat);
+} else {
+    System.out.println("⚠️  No medical data found for query: " + medicalResults.getQuery());
+}
 ```
 
 ## 🔐 Security and Privacy in Search

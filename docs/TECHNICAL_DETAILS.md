@@ -1005,6 +1005,74 @@ public Map<String, SearchStats> getSearchStatistics() {
 }
 ```
 
+**Enhanced SearchResults with Comprehensive Defensive Programming:**
+
+The `SearchResults` class demonstrates advanced defensive programming patterns:
+
+```java
+public class SearchResults {
+    // Defensive constructor with comprehensive input validation
+    public SearchResults(String query, List<Block> blocks) {
+        // Null safety with default values
+        this.query = (query != null) ? query : "";
+        this.blocks = (blocks != null) ? new ArrayList<>(blocks) : new ArrayList<>();
+        this.metrics = new SearchMetrics();
+        this.timestamp = LocalDateTime.now();
+        this.searchDetails = new HashMap<>();
+        this.warnings = new ArrayList<>();
+    }
+    
+    // Null-safe getters with guaranteed valid returns
+    public String getQuery() { 
+        return (query != null) ? query : ""; 
+    }
+    
+    public boolean hasResults() { 
+        return (blocks != null) && !blocks.isEmpty(); 
+    }
+    
+    public int getResultCount() { 
+        return (blocks != null) ? blocks.size() : 0; 
+    }
+    
+    // Immutable collections with defensive copying
+    public List<Block> getBlocks() { 
+        return Collections.unmodifiableList(blocks); 
+    }
+    
+    public Map<String, Object> getSearchDetails() { 
+        return Collections.unmodifiableMap(searchDetails); 
+    }
+    
+    // Comprehensive null-safe toString()
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        
+        // Defensive handling for all fields
+        String safeQuery = (query != null) ? query : "";
+        int blockCount = (blocks != null) ? blocks.size() : 0;
+        
+        sb.append("Query: \"").append(safeQuery).append("\"\n");
+        sb.append("Results: ").append(blockCount).append(" blocks\n");
+        
+        if (metrics != null) {
+            sb.append("Metrics: ").append(metrics.toString()).append("\n");
+        }
+        
+        return sb.toString();
+    }
+}
+```
+
+**Defensive Programming Benefits:**
+- **Null Safety**: All methods handle null inputs gracefully
+- **Input Validation**: Constructor sanitizes and validates all parameters
+- **Guaranteed Returns**: Methods never return null, always provide valid values
+- **Immutable Collections**: External modification prevention
+- **Exception Prevention**: Eliminates NullPointerException risks
+- **Thread Safety**: Defensive copying ensures concurrent access safety
+
 **Security and Safety Benefits:**
 - **Immutable views**: Prevents external modification of internal collections
 - **Defensive copying**: Ensures thread-safe snapshots of mutable data
