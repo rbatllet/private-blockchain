@@ -3,6 +3,8 @@ package com.rbatllet.blockchain.service;
 import java.time.LocalDateTime;
 import java.time.Duration;
 import java.util.*;
+import java.util.Objects;
+import java.util.Comparator;
 
 /**
  * Result container for compression analysis operations
@@ -78,6 +80,17 @@ public class CompressionAnalysisResult {
     private final List<String> optimizationRecommendations;
     
     public CompressionAnalysisResult(String dataIdentifier, String contentType, long originalDataSize) {
+        // Defensive parameter validation
+        if (dataIdentifier == null || dataIdentifier.trim().isEmpty()) {
+            throw new IllegalArgumentException("Data identifier cannot be null or empty");
+        }
+        if (contentType == null || contentType.trim().isEmpty()) {
+            throw new IllegalArgumentException("Content type cannot be null or empty");
+        }
+        if (originalDataSize < 0) {
+            throw new IllegalArgumentException("Original data size cannot be negative");
+        }
+        
         this.dataIdentifier = dataIdentifier;
         this.contentType = contentType;
         this.originalDataSize = originalDataSize;
@@ -120,7 +133,8 @@ public class CompressionAnalysisResult {
     public void generateRecommendations() {
         optimizationRecommendations.clear();
         
-        CompressionMetrics bestMetrics = results.get(recommendedAlgorithm);
+        // Use the actual best result instead of fixed recommendedAlgorithm
+        CompressionMetrics bestMetrics = getBestResult();
         if (bestMetrics == null) return;
         
         // Size-based recommendations
@@ -143,7 +157,7 @@ public class CompressionAnalysisResult {
         }
         
         // Algorithm-specific recommendations
-        switch (recommendedAlgorithm) {
+        switch (bestMetrics.getAlgorithm()) {
             case GZIP:
                 optimizationRecommendations.add("🗜️ GZIP selected - standard compression with wide compatibility");
                 break;
@@ -169,10 +183,26 @@ public class CompressionAnalysisResult {
     public CompressionAlgorithm getRecommendedAlgorithm() { return recommendedAlgorithm; }
     public String getContentType() { return contentType; }
     public long getOriginalDataSize() { return originalDataSize; }
-    public List<String> getOptimizationRecommendations() { return optimizationRecommendations; }
+    public List<String> getOptimizationRecommendations() { 
+        return Collections.unmodifiableList(optimizationRecommendations); 
+    }
     
+    /**
+     * Gets the compression metrics for the best available algorithm.
+     * 
+     * @return the compression metrics for the best available algorithm based on efficiency score,
+     *         or null if no compression results are available. Callers should always check for null.
+     */
     public CompressionMetrics getBestResult() {
-        return results.get(recommendedAlgorithm);
+        if (results == null || results.isEmpty()) {
+            return null;
+        }
+        
+        // Find the actual best result based on efficiency score from available results
+        return results.values().stream()
+            .filter(Objects::nonNull)
+            .max(Comparator.comparingDouble(CompressionMetrics::getEfficiencyScore))
+            .orElse(null);
     }
     
     public String getFormattedSummary() {
@@ -180,12 +210,18 @@ public class CompressionAnalysisResult {
         sb.append("🗜️ Compression Analysis Report\n");
         sb.append("=====================================\n\n");
         
-        sb.append(String.format("📊 Data: %s\n", dataIdentifier));
-        sb.append(String.format("📁 Content Type: %s\n", contentType));
+        // Defensive null-safe formatting
+        sb.append(String.format("📊 Data: %s\n", dataIdentifier != null ? dataIdentifier : "Unknown"));
+        sb.append(String.format("📁 Content Type: %s\n", contentType != null ? contentType : "Unknown"));
         sb.append(String.format("📏 Original Size: %.2f MB\n", originalDataSize / (1024.0 * 1024.0)));
-        sb.append(String.format("📅 Analysis Time: %s\n\n", analysisTimestamp));
+        sb.append(String.format("📅 Analysis Time: %s\n\n", analysisTimestamp != null ? analysisTimestamp : "Unknown"));
         
-        sb.append("🏆 Recommended Algorithm: ").append(recommendedAlgorithm.getDisplayName()).append("\n");
+        // Safe algorithm display
+        if (recommendedAlgorithm != null) {
+            sb.append("🏆 Recommended Algorithm: ").append(recommendedAlgorithm.getDisplayName()).append("\n");
+        } else {
+            sb.append("🏆 Recommended Algorithm: Not determined\n");
+        }
         
         CompressionMetrics best = getBestResult();
         if (best != null) {
@@ -193,15 +229,21 @@ public class CompressionAnalysisResult {
             sb.append(String.format("   • Compressed Size: %.2f MB\n", best.getCompressedSize() / (1024.0 * 1024.0)));
             sb.append(String.format("   • Speed: %.2f MB/s\n", best.getSpeedMbps()));
             sb.append(String.format("   • Efficiency Score: %.2f/100\n\n", best.getEfficiencyScore()));
+        } else {
+            sb.append("   • No compression results available\n\n");
         }
         
-        if (!results.isEmpty()) {
+        // Null-safe results processing
+        if (results != null && !results.isEmpty()) {
             sb.append("📈 All Results:\n");
             results.values().stream()
+                .filter(Objects::nonNull) // Additional null safety
                 .sorted((a, b) -> Double.compare(b.getEfficiencyScore(), a.getEfficiencyScore()))
                 .forEach(metrics -> {
+                    String algorithmName = metrics.getAlgorithm() != null ? 
+                        metrics.getAlgorithm().getDisplayName() : "Unknown Algorithm";
                     sb.append(String.format("   %s: %.2f%% ratio, %.2f MB/s, score: %.2f\n",
-                        metrics.getAlgorithm().getDisplayName(),
+                        algorithmName,
                         metrics.getCompressionRatio(),
                         metrics.getSpeedMbps(),
                         metrics.getEfficiencyScore()));
@@ -209,9 +251,12 @@ public class CompressionAnalysisResult {
             sb.append("\n");
         }
         
-        if (!optimizationRecommendations.isEmpty()) {
+        // Null-safe recommendations processing
+        if (optimizationRecommendations != null && !optimizationRecommendations.isEmpty()) {
             sb.append("💡 Optimization Recommendations:\n");
-            optimizationRecommendations.forEach(rec -> sb.append("   ").append(rec).append("\n"));
+            optimizationRecommendations.stream()
+                .filter(Objects::nonNull) // Filter out null recommendations
+                .forEach(rec -> sb.append("   ").append(rec).append("\n"));
         }
         
         return sb.toString();
