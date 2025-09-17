@@ -293,20 +293,82 @@ public class SearchAnalytics {
     public void analyzeSearchPerformance() {
         // Collect search metrics
         SearchMetrics metrics = api.getSearchMetrics();
+        SearchMetrics.PerformanceSnapshot snapshot = metrics.getPerformanceSnapshot();
         
         System.out.println("📊 Search Performance Report:");
-        System.out.println("Total Searches: " + metrics.getTotalSearches());
-        System.out.println("Average Response Time: " + metrics.getAverageResponseTime() + "ms");
-        System.out.println("Cache Hit Rate: " + metrics.getCacheHitRate() + "%");
-        System.out.println("Most Common Queries: " + metrics.getTopQueries());
+        System.out.println("Total Searches: " + snapshot.getTotalSearches());
+        System.out.println("Average Response Time: " + snapshot.getAverageDuration() + "ms");
+        System.out.println("Cache Hit Rate: " + snapshot.getCacheHitRate() + "%");
+        System.out.println("Runtime: " + snapshot.getRuntimeMinutes() + " minutes");
+        System.out.println("Search Rate: " + snapshot.getRecentSearchRate() + " searches/min");
         
-        // Performance recommendations
-        if (metrics.getAverageResponseTime() > 2000) {
+        // Enhanced analysis with PerformanceSnapshot
+        String mostActive = snapshot.getMostActiveSearchType();
+        if (mostActive != null) {
+            System.out.println("Most Used Search Type: " + mostActive);
+        }
+        
+        // Search type distribution
+        Map<String, Long> typeCounts = snapshot.getSearchTypeCounts();
+        if (!typeCounts.isEmpty()) {
+            System.out.println("\n🔍 Search Type Distribution:");
+            typeCounts.forEach((type, count) -> 
+                System.out.println("  " + type + ": " + count + " searches"));
+        }
+        
+        // Data validation and summary
+        if (snapshot.hasValidData()) {
+            System.out.println("\n📋 " + snapshot.getSummary());
+        } else {
+            System.out.println("⚠️  Insufficient data for analysis");
+        }
+        
+        // Performance recommendations with enhanced metrics
+        if (snapshot.getAverageDuration() > 2000) {
             System.out.println("⚠️  Recommendation: Enable search caching to improve performance");
         }
         
-        if (metrics.getCacheHitRate() < 50) {
+        if (snapshot.getCacheHitRate() < 50) {
             System.out.println("⚠️  Recommendation: Increase cache size or TTL");
+        }
+        
+        if (snapshot.getRecentSearchRate() > 10) {
+            System.out.println("💡 Info: High search activity detected (" + 
+                             snapshot.getRecentSearchRate() + " searches/min)");
+        }
+    }
+    
+    public void generateDetailedReport() {
+        SearchMetrics.PerformanceSnapshot snapshot = api.getSearchMetrics().getPerformanceSnapshot();
+        
+        if (!snapshot.hasValidData()) {
+            System.out.println("❌ Cannot generate report - insufficient data");
+            return;
+        }
+        
+        System.out.println("📈 Detailed Performance Analysis");
+        System.out.println("================================");
+        System.out.println(snapshot.getSummary());
+        System.out.println("\n🎯 Key Insights:");
+        
+        // Performance analysis
+        double avgDuration = snapshot.getAverageDuration();
+        if (avgDuration < 100) {
+            System.out.println("✅ Excellent response time (" + avgDuration + "ms)");
+        } else if (avgDuration < 500) {
+            System.out.println("🟡 Good response time (" + avgDuration + "ms)");
+        } else {
+            System.out.println("🔴 Poor response time (" + avgDuration + "ms) - optimization needed");
+        }
+        
+        // Cache efficiency
+        double cacheRate = snapshot.getCacheHitRate();
+        if (cacheRate > 80) {
+            System.out.println("✅ Excellent cache performance (" + cacheRate + "%)");
+        } else if (cacheRate > 50) {
+            System.out.println("🟡 Moderate cache performance (" + cacheRate + "%)");  
+        } else {
+            System.out.println("🔴 Poor cache performance (" + cacheRate + "%) - review cache strategy");
         }
     }
 }

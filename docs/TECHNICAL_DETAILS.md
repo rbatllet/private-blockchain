@@ -918,6 +918,38 @@ public class SearchMetrics {
 - **Volatile fields**: Ensures visibility of lastSearchTime across threads
 - **Lock-free operations**: High-performance concurrent access to search metrics
 
+**Enhanced PerformanceSnapshot with Defensive Programming:**
+
+The `PerformanceSnapshot` inner class implements comprehensive robustness patterns:
+
+```java
+public static class PerformanceSnapshot {
+    // Robust constructor with comprehensive input validation
+    PerformanceSnapshot(long totalSearches, double averageDuration, double cacheHitRate,
+                       long searchesSinceStart, LocalDateTime lastSearchTime,
+                       Map<String, PerformanceStats> searchTypeStats, LocalDateTime startTime) {
+        
+        // Defensive programming: sanitize all inputs
+        this.totalSearches = Math.max(0, totalSearches);
+        this.averageDuration = Double.isNaN(averageDuration) ? 0.0 : Math.max(0.0, averageDuration);
+        this.cacheHitRate = Double.isNaN(cacheHitRate) ? 0.0 : Math.max(0.0, Math.min(100.0, cacheHitRate));
+        this.searchesSinceStart = Math.max(0, searchesSinceStart);
+        this.lastSearchTime = lastSearchTime;
+        this.searchTypeStats = (searchTypeStats != null) ? 
+            new ConcurrentHashMap<>(searchTypeStats) : new ConcurrentHashMap<>();
+        this.startTime = (startTime != null) ? startTime : LocalDateTime.now();
+    }
+}
+```
+
+**Robustness Improvements:**
+- **NaN Sanitization**: Automatically converts NaN values to 0.0 for reliable calculations
+- **Negative Value Protection**: Uses Math.max(0, value) to ensure non-negative metrics
+- **Null Safety**: Provides default values for null timestamps and collections  
+- **Boundary Validation**: Clamps cache hit rate between 0.0-100.0%
+- **Thread-Safe Collections**: Uses ConcurrentHashMap for search type statistics
+- **Data Integrity Validation**: `hasValidData()` method ensures metric validity
+
 ##### 2. UserFriendlyEncryptionAPI with AtomicReference
 
 **Atomic State Management:**

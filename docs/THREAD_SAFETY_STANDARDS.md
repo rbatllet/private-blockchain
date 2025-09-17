@@ -426,6 +426,72 @@ public class SearchMetrics {
 }
 ```
 
+### **PerformanceSnapshot Class** (Enhanced Defensive Implementation)
+
+The `PerformanceSnapshot` inner class demonstrates advanced defensive programming and thread safety patterns:
+
+```java
+/**
+ * Thread-safe performance snapshot with comprehensive defensive programming.
+ * 
+ * <p><strong>Thread Safety:</strong> Immutable after construction with thread-safe collections.</p>
+ * <p><strong>Defensive Programming:</strong> Validates and sanitizes all input parameters.</p>
+ * <p><strong>Robustness:</strong> Handles NaN, null, and negative values gracefully.</p>
+ */
+public static class PerformanceSnapshot {
+    // ✅ Immutable fields after construction
+    private final long totalSearches;
+    private final double averageDuration;
+    private final double cacheHitRate;
+    private final LocalDateTime lastSearchTime;
+    private final Map<String, PerformanceStats> searchTypeStats;
+    private final LocalDateTime startTime;
+    
+    // ✅ Defensive constructor with comprehensive validation
+    PerformanceSnapshot(long totalSearches, double averageDuration, double cacheHitRate,
+                       long searchesSinceStart, LocalDateTime lastSearchTime,
+                       Map<String, PerformanceStats> searchTypeStats, LocalDateTime startTime) {
+        
+        // Sanitize numeric inputs
+        this.totalSearches = Math.max(0, totalSearches);
+        this.averageDuration = Double.isNaN(averageDuration) ? 0.0 : Math.max(0.0, averageDuration);
+        this.cacheHitRate = Double.isNaN(cacheHitRate) ? 0.0 : Math.max(0.0, Math.min(100.0, cacheHitRate));
+        
+        // Handle null references safely
+        this.lastSearchTime = lastSearchTime;
+        this.startTime = (startTime != null) ? startTime : LocalDateTime.now();
+        
+        // Thread-safe defensive copying
+        this.searchTypeStats = (searchTypeStats != null) ? 
+            new ConcurrentHashMap<>(searchTypeStats) : new ConcurrentHashMap<>();
+    }
+    
+    // ✅ Thread-safe access methods with defensive programming
+    public Map<String, Long> getSearchTypeCounts() {
+        return searchTypeStats.entrySet().stream()
+            .collect(Collectors.toMap(
+                Map.Entry::getKey,
+                entry -> Math.max(0L, entry.getValue().getCount()),
+                (a, b) -> a,
+                ConcurrentHashMap::new  // Thread-safe result collection
+            ));
+    }
+    
+    // ✅ Robust validation with null safety
+    public boolean hasValidData() {
+        return totalSearches > 0 && lastSearchTime != null && startTime != null &&
+               !Double.isInfinite(averageDuration) && !Double.isInfinite(cacheHitRate);
+    }
+}
+```
+
+**Thread Safety Guarantees:**
+- **Immutable State**: All fields are final and immutable after construction
+- **Thread-Safe Collections**: Uses ConcurrentHashMap for defensive copying
+- **Null Safety**: Comprehensive null checking and default value provision
+- **Data Validation**: Input sanitization prevents invalid state
+- **Lock-Free Access**: All getter methods are lock-free and thread-safe
+
 ---
 
 ## 📚 Additional Resources
