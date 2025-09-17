@@ -24,7 +24,7 @@ public class SearchResults {
     public SearchResults(String query, List<Block> blocks) {
         this.query = query;
         this.blocks = new ArrayList<>(blocks);
-        this.metrics = new SearchMetrics();
+        this.metrics = new SearchMetrics(); // Using standalone SearchMetrics class
         this.timestamp = LocalDateTime.now();
         this.searchDetails = new HashMap<>();
         this.warnings = new ArrayList<>();
@@ -54,11 +54,9 @@ public class SearchResults {
     
     public SearchResults withMetrics(long searchTimeMs, int onChainResults, int offChainResults, 
                                    boolean cacheHit, String searchType) {
-        this.metrics.setSearchTimeMs(searchTimeMs);
-        this.metrics.setOnChainResults(onChainResults);
-        this.metrics.setOffChainResults(offChainResults);
-        this.metrics.setCacheHit(cacheHit);
-        this.metrics.setSearchType(searchType);
+        // Record the search using the new SearchMetrics API
+        int totalResults = onChainResults + offChainResults;
+        this.metrics.recordSearch(searchType, searchTimeMs, totalResults, cacheHit);
         return this;
     }
     
@@ -86,43 +84,4 @@ public class SearchResults {
         return sb.toString();
     }
     
-    /**
-     * Search performance metrics
-     */
-    public static class SearchMetrics {
-        private long searchTimeMs = 0;
-        private int onChainResults = 0;
-        private int offChainResults = 0;
-        private boolean cacheHit = false;
-        private String searchType = "UNKNOWN";
-        
-        // Getters and setters
-        public long getSearchTimeMs() { return searchTimeMs; }
-        public void setSearchTimeMs(long searchTimeMs) { this.searchTimeMs = searchTimeMs; }
-        
-        public int getOnChainResults() { return onChainResults; }
-        public void setOnChainResults(int onChainResults) { this.onChainResults = onChainResults; }
-        
-        public int getOffChainResults() { return offChainResults; }
-        public void setOffChainResults(int offChainResults) { this.offChainResults = offChainResults; }
-        
-        public boolean isCacheHit() { return cacheHit; }
-        public void setCacheHit(boolean cacheHit) { this.cacheHit = cacheHit; }
-        
-        public String getSearchType() { return searchType; }
-        public void setSearchType(String searchType) { this.searchType = searchType; }
-        
-        public int getTotalResults() { return onChainResults + offChainResults; }
-        
-        public double getSearchSpeed() {
-            return searchTimeMs > 0 ? (double) getTotalResults() / searchTimeMs * 1000 : 0;
-        }
-        
-        @Override
-        public String toString() {
-            return String.format("Metrics: %dms (%s), %d on-chain + %d off-chain = %d total%s", 
-                               searchTimeMs, searchType, onChainResults, offChainResults, 
-                               getTotalResults(), cacheHit ? " [CACHED]" : "");
-        }
-    }
 }
