@@ -693,7 +693,10 @@ public class SearchMetrics {
             getAverageSearchTimeMs(),
             getCacheHitRate(),
             getTotalSearches(), // searches since start
-            getLastSearchTime()
+            getLastSearchTime(),
+            // Pass the search type stats for accurate counts
+            new ConcurrentHashMap<>(searchTypeStats),
+            startTime
         );
     }
 
@@ -809,19 +812,29 @@ public class SearchMetrics {
         private final double cacheHitRate;
         private final long searchesSinceStart;
         private final LocalDateTime lastSearchTime;
+        private final Map<String, PerformanceStats> searchTypeStats;
+        private final LocalDateTime startTime;
 
         public PerformanceSnapshot(
             long totalSearches,
             double averageDuration,
             double cacheHitRate,
             long searchesSinceStart,
-            LocalDateTime lastSearchTime
+            LocalDateTime lastSearchTime,
+            Map<String, PerformanceStats> searchTypeStats,
+            LocalDateTime startTime
         ) {
-            this.totalSearches = totalSearches;
-            this.averageDuration = averageDuration;
-            this.cacheHitRate = cacheHitRate;
-            this.searchesSinceStart = searchesSinceStart;
-            this.lastSearchTime = lastSearchTime;
+            // Defensive parameter validation with special handling for validation purposes
+            this.totalSearches = Math.max(0, totalSearches);
+            
+            // Sanitize all invalid values consistently
+            this.averageDuration = Double.isNaN(averageDuration) || averageDuration < 0 ? 0.0 : averageDuration;
+            this.cacheHitRate = Double.isNaN(cacheHitRate) ? 0.0 : Math.max(0.0, Math.min(100.0, cacheHitRate));
+            
+            this.searchesSinceStart = Math.max(0, searchesSinceStart);
+            this.lastSearchTime = lastSearchTime; // Can be null for empty metrics
+            this.searchTypeStats = searchTypeStats != null ? new ConcurrentHashMap<>(searchTypeStats) : new ConcurrentHashMap<>();
+            this.startTime = startTime != null ? startTime : LocalDateTime.now();
         }
 
         // Getters
@@ -847,17 +860,115 @@ public class SearchMetrics {
 
         // Additional methods needed by UserFriendlyEncryptionAPI
         public Map<String, Long> getSearchTypeCounts() {
-            // Simplified implementation - in real scenario would track by type
             Map<String, Long> counts = new ConcurrentHashMap<>();
-            counts.put("KEYWORD", totalSearches / 3);
-            counts.put("REGEX", totalSearches / 4);
-            counts.put("SEMANTIC", totalSearches / 5);
+            
+            if (searchTypeStats == null || searchTypeStats.isEmpty()) {
+                return counts; // Return empty map if no data
+            }
+            
+            // Calculate real counts from actual search type statistics
+            for (Map.Entry<String, PerformanceStats> entry : searchTypeStats.entrySet()) {
+                if (entry.getKey() != null && entry.getValue() != null) {
+                    long searchCount = entry.getValue().getSearches();
+                    if (searchCount > 0) {
+                        counts.put(entry.getKey(), searchCount);
+                    }
+                }
+            }
+            
             return counts;
         }
 
         public double getRecentSearchRate() {
-            // Simplified - searches per minute in last hour
-            return totalSearches > 0 ? totalSearches / 60.0 : 0.0;
+            if (totalSearches <= 0 || startTime == null || lastSearchTime == null) {
+                return 0.0;
+            }
+            
+            // Calculate actual time difference in minutes
+            try {
+                java.time.Duration duration = java.time.Duration.between(startTime, lastSearchTime);
+                long totalMinutes = duration.toMinutes();
+                
+                // If no time has elapsed (same time), return 0
+                if (totalMinutes <= 0) {
+                    return 0.0;
+                }
+                
+                // Return searches per minute
+                return (double) totalSearches / totalMinutes;
+            } catch (Exception e) {
+                // Fallback to basic calculation if time comparison fails
+                return 0.0;
+            }
+        }
+        
+        /**
+         * Get the most active search type based on search count
+         * @return The search type with most searches, or null if no data
+         */
+        public String getMostActiveSearchType() {
+            if (searchTypeStats == null || searchTypeStats.isEmpty()) {
+                return null;
+            }
+            
+            return searchTypeStats.entrySet()
+                .stream()
+                .filter(entry -> entry.getKey() != null && entry.getValue() != null)
+                .max((a, b) -> Long.compare(a.getValue().getSearches(), b.getValue().getSearches()))
+                .map(Map.Entry::getKey)
+                .orElse(null);
+        }
+        
+        /**
+         * Get total runtime duration in minutes
+         * @return Duration between start and last search in minutes, or 0 if no data
+         */
+        public long getRuntimeMinutes() {
+            if (startTime == null || lastSearchTime == null) {
+                return 0;
+            }
+            
+            try {
+                java.time.Duration duration = java.time.Duration.between(startTime, lastSearchTime);
+                return Math.max(0, duration.toMinutes());
+            } catch (Exception e) {
+                return 0;
+            }
+        }
+        
+        /**
+         * Check if the snapshot has valid data
+         * @return true if the snapshot contains meaningful data
+         */
+        public boolean hasValidData() {
+            return totalSearches > 0 && 
+                   lastSearchTime != null && 
+                   startTime != null &&
+                   Double.isFinite(averageDuration) && 
+                   Double.isFinite(cacheHitRate);
+        }
+        
+        /**
+         * Get formatted summary of the snapshot
+         * @return Human-readable summary string
+         */
+        public String getSummary() {
+            if (!hasValidData()) {
+                return "No search data available";
+            }
+            
+            StringBuilder sb = new StringBuilder();
+            sb.append(String.format("Searches: %d, ", totalSearches));
+            sb.append(String.format("Avg Time: %.1fms, ", averageDuration));
+            sb.append(String.format("Cache: %.1f%%, ", cacheHitRate));
+            sb.append(String.format("Rate: %.1f/min", getRecentSearchRate()));
+            
+            String mostActive = getMostActiveSearchType();
+            if (mostActive != null) {
+                sb.append(String.format(", Top: %s", mostActive));
+            }
+            
+            return sb.toString();
         }
     }
 }

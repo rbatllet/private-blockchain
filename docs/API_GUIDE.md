@@ -3712,6 +3712,67 @@ String optimizeSearchPerformance()
 Map<String, Object> getRealtimeSearchMetrics()
 ```
 
+#### SearchMetrics.PerformanceSnapshot Class
+
+The `PerformanceSnapshot` is a robust inner class of `SearchMetrics` designed for detailed performance analysis with comprehensive validation and defensive programming patterns:
+
+```java
+// Core Performance Methods
+long getTotalSearches()                    // Total searches performed
+double getAverageDuration()               // Average search duration in ms  
+double getCacheHitRate()                  // Cache hit percentage (0.0-100.0)
+long getSearchesSinceStart()              // Searches since system start
+LocalDateTime getLastSearchTime()         // Last search execution time
+
+// Enhanced Analysis Methods  
+Map<String, Long> getSearchTypeCounts()   // Count per search type (KEYWORD, REGEX, etc.)
+double getRecentSearchRate()              // Searches per minute based on actual runtime
+String getMostActiveSearchType()          // Most frequently used search type
+long getRuntimeMinutes()                  // Total runtime in minutes
+
+// Validation and Summary
+boolean hasValidData()                    // Validates data integrity
+String getSummary()                       // Human-readable performance summary
+
+// Defensive Constructor Features
+// • Automatically sanitizes NaN values to 0.0
+// • Handles negative values with Math.max(0, value)
+// • Provides default values for null timestamps
+// • Ensures thread-safe collections (ConcurrentHashMap)
+```
+
+#### PerformanceSnapshot Usage Examples
+
+```java
+// Get comprehensive performance snapshot
+SearchMetrics metrics = api.getSearchMetrics();
+SearchMetrics.PerformanceSnapshot snapshot = metrics.getPerformanceSnapshot();
+
+// Basic performance metrics
+System.out.println("📊 Performance Overview:");
+System.out.println("Total Searches: " + snapshot.getTotalSearches());
+System.out.println("Average Duration: " + snapshot.getAverageDuration() + "ms");
+System.out.println("Cache Hit Rate: " + snapshot.getCacheHitRate() + "%");
+
+// Advanced analysis with new methods
+System.out.println("\n🔍 Detailed Analysis:");
+System.out.println("Runtime: " + snapshot.getRuntimeMinutes() + " minutes");
+System.out.println("Search Rate: " + snapshot.getRecentSearchRate() + " searches/min");
+System.out.println("Most Active Type: " + snapshot.getMostActiveSearchType());
+
+// Search type distribution
+Map<String, Long> typeCounts = snapshot.getSearchTypeCounts();
+typeCounts.forEach((type, count) -> 
+    System.out.println(type + ": " + count + " searches"));
+
+// Data validation and summary
+if (snapshot.hasValidData()) {
+    System.out.println("\n📋 Summary: " + snapshot.getSummary());
+} else {
+    System.out.println("⚠️  Invalid or insufficient performance data");
+}
+```
+
 #### Thread-Safe SearchMetrics Example
 ```java
 // Multiple threads can safely collect metrics concurrently
