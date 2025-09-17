@@ -22,8 +22,9 @@ public class SearchResults {
     private final List<String> warnings;
     
     public SearchResults(String query, List<Block> blocks) {
-        this.query = query;
-        this.blocks = new ArrayList<>(blocks);
+        // Defensive programming: sanitize and validate inputs
+        this.query = (query != null) ? query : "";
+        this.blocks = (blocks != null) ? new ArrayList<>(blocks) : new ArrayList<>();
         this.metrics = new SearchMetrics(); // Using standalone SearchMetrics class
         this.timestamp = LocalDateTime.now();
         this.searchDetails = new HashMap<>();
@@ -31,15 +32,15 @@ public class SearchResults {
     }
     
     // Getters
-    public String getQuery() { return query; }
+    public String getQuery() { return (query != null) ? query : ""; }
     public List<Block> getBlocks() { return Collections.unmodifiableList(blocks); }
     public SearchMetrics getMetrics() { return metrics; }
     public LocalDateTime getTimestamp() { return timestamp; }
     public Map<String, Object> getSearchDetails() { return Collections.unmodifiableMap(searchDetails); }
     public List<String> getWarnings() { return Collections.unmodifiableList(warnings); }
     
-    public int getResultCount() { return blocks.size(); }
-    public boolean hasResults() { return !blocks.isEmpty(); }
+    public int getResultCount() { return (blocks != null) ? blocks.size() : 0; }
+    public boolean hasResults() { return (blocks != null) && !blocks.isEmpty(); }
     
     // Builder methods
     public SearchResults addDetail(String key, Object value) {
@@ -64,22 +65,45 @@ public class SearchResults {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("🔍 Search Results\n");
-        sb.append("Query: \"").append(query).append("\"\n");
-        sb.append("Results: ").append(blocks.size()).append(" blocks found\n");
-        sb.append("📊 ").append(metrics.toString()).append("\n");
         
-        if (!warnings.isEmpty()) {
+        // Defensive null handling for query
+        String safeQuery = (query != null) ? query : "";
+        sb.append("Query: \"").append(safeQuery).append("\"\n");
+        
+        // Defensive null handling for blocks
+        int blockCount = (blocks != null) ? blocks.size() : 0;
+        sb.append("Results: ").append(blockCount).append(" blocks found\n");
+        
+        // Metrics should always be initialized, but add safety
+        if (metrics != null) {
+            sb.append("📊 ").append(metrics.toString()).append("\n");
+        }
+        
+        // Warnings list should always be initialized
+        if (warnings != null && !warnings.isEmpty()) {
             sb.append("⚠️ Warnings:\n");
-            warnings.forEach(w -> sb.append("  - ").append(w).append("\n"));
+            warnings.forEach(w -> {
+                if (w != null) {
+                    sb.append("  - ").append(w).append("\n");
+                }
+            });
         }
         
-        if (!searchDetails.isEmpty()) {
+        // Search details map should always be initialized
+        if (searchDetails != null && !searchDetails.isEmpty()) {
             sb.append("📝 Search Details:\n");
-            searchDetails.forEach((key, value) -> 
-                sb.append("  ").append(key).append(": ").append(value).append("\n"));
+            searchDetails.forEach((key, value) -> {
+                if (key != null) {
+                    sb.append("  ").append(key).append(": ");
+                    sb.append((value != null) ? value.toString() : "null");
+                    sb.append("\n");
+                }
+            });
         }
         
-        sb.append("📅 Executed: ").append(timestamp);
+        // Timestamp should always be initialized
+        sb.append("📅 Executed: ");
+        sb.append((timestamp != null) ? timestamp.toString() : "Unknown");
         
         return sb.toString();
     }

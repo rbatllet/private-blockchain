@@ -189,10 +189,26 @@ System.out.println("Blockchain has data: " + healthy);
 String summary = api.getBlockchainSummary();
 System.out.println(summary);
 
-// Format search results
-List<Block> results = api.searchByTerms(terms, password, 10);
-String formatted = api.formatSearchResults("medical", results);
-System.out.println(formatted);
+// Enhanced SearchResults with robustness
+SearchResults results = api.searchExhaustive("medical data", password);
+
+// Safe result processing - all methods are null-safe
+if (results.hasResults()) {
+    System.out.println("Found: " + results.getResultCount() + " results");
+    System.out.println("Query: " + results.getQuery());  // Never returns null
+    
+    // Safe formatting with null protection
+    String formatted = api.formatSearchResults("medical", results.getBlocks());
+    System.out.println(formatted);
+    
+    // Enhanced analysis with metadata
+    results.addDetail("category", "medical")
+           .addDetail("searchTime", System.currentTimeMillis());
+           
+    System.out.println("Complete report:\n" + results.toString());
+} else {
+    System.out.println("No results found for: " + results.getQuery());
+}
 ```
 
 ## ⚠️ Common Mistakes to Avoid

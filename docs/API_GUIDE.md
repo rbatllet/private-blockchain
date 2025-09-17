@@ -3696,6 +3696,65 @@ SearchResults searchPublicFast(String query)
 SearchResults searchEncryptedOnly(String query, String password)
 ```
 
+#### SearchResults Class - Enhanced with Defensive Programming
+
+The `SearchResults` class provides a robust container for search operations with comprehensive null safety:
+
+```java
+// Core SearchResults Methods
+String getQuery()                          // Returns empty string if null (never returns null)
+List<Block> getBlocks()                   // Immutable list of result blocks
+SearchMetrics getMetrics()                // Search performance metrics
+LocalDateTime getTimestamp()              // Search execution timestamp
+Map<String, Object> getSearchDetails()    // Immutable map of search parameters
+List<String> getWarnings()               // Immutable list of search warnings
+int getResultCount()                      // Safe count (handles null blocks)
+boolean hasResults()                      // Null-safe result validation
+
+// Builder Pattern Methods (Fluent API)
+SearchResults addDetail(String key, Object value)     // Add search parameters
+SearchResults addWarning(String warning)              // Add search warnings
+SearchResults withMetrics(long searchTimeMs, ...)     // Record search metrics
+
+// Defensive Programming Features
+// • Constructor validates null inputs with default values
+// • All getters are null-safe and return valid objects
+// • Immutable collections prevent external modification
+// • toString() handles all null scenarios gracefully
+```
+
+#### SearchResults Usage Examples
+
+```java
+// Safe SearchResults usage with null protection
+SearchResults results = api.searchExhaustive("blockchain", password);
+
+// All methods are guaranteed to return valid values
+String query = results.getQuery();              // Never null (returns "" if originally null)
+boolean hasData = results.hasResults();         // Null-safe validation
+int count = results.getResultCount();           // Safe count (0 if blocks is null)
+
+// Enhanced error handling and analysis
+results.addDetail("searchType", "EXHAUSTIVE")
+       .addDetail("maxResults", 100)
+       .addWarning("Large dataset - consider pagination");
+
+if (results.hasResults()) {
+    System.out.println("Found " + results.getResultCount() + " results");
+    System.out.println("Search completed in: " + results.getTimestamp());
+    
+    // Process results safely
+    for (Block block : results.getBlocks()) {  // getBlocks() never returns null
+        System.out.println("Block: " + block.getBlockNumber());
+    }
+} else {
+    System.out.println("No results found for query: " + results.getQuery());
+}
+
+// Safe toString() with comprehensive null handling
+System.out.println(results.toString());  // Never throws NPE, handles all null scenarios
+```
+
 #### Search Management
 ```java
 // Cache management
