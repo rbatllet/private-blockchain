@@ -154,6 +154,22 @@ public class OffChainFileSearch {
      */
     private OffChainMatch searchSingleOffChainFile(OffChainData offChainData, Block block, 
                                                   String searchTerm, String password) {
+        // Defensive parameter validation
+        if (offChainData == null) {
+            logger.warn("⚠️ OffChainData is null, cannot perform search");
+            return null;
+        }
+        
+        if (block == null) {
+            logger.warn("⚠️ Block is null, cannot perform search");
+            return null;
+        }
+        
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            logger.warn("⚠️ SearchTerm is null or empty, cannot perform search");
+            return null;
+        }
+        
         try {
             // Verify file exists
             if (!offChainService.fileExists(offChainData)) {
@@ -186,8 +202,8 @@ public class OffChainFileSearch {
         } catch (SecurityException e) {
             logger.error("🔐 Security error accessing off-chain file: {}", e.getMessage());
         } catch (Exception e) {
-            logger.warn("⚠️ Error searching off-chain file {}: {}", offChainData.getFilePath(), 
-                              e.getMessage());
+            String filePath = (offChainData != null) ? offChainData.getFilePath() : "null";
+            logger.warn("⚠️ Error searching off-chain file {}: {}", filePath, e.getMessage());
         }
         
         return null;
