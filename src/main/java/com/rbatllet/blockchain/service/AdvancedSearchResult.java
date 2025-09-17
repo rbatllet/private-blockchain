@@ -4,6 +4,7 @@ import com.rbatllet.blockchain.entity.Block;
 import java.time.LocalDateTime;
 import java.time.Duration;
 import java.util.*;
+import java.util.Objects;
 
 /**
  * Advanced search result container with rich metadata and analytics
@@ -121,12 +122,13 @@ public class AdvancedSearchResult {
     }
     
     public AdvancedSearchResult(String searchQuery, SearchType searchType, Duration searchDuration) {
-        this.searchQuery = searchQuery;
-        this.searchType = searchType;
+        // Defensive programming: sanitize and validate inputs
+        this.searchQuery = (searchQuery != null) ? searchQuery : "";
+        this.searchType = (searchType != null) ? searchType : SearchType.KEYWORD_SEARCH;
         this.matches = new ArrayList<>();
         this.statistics = new SearchStatistics();
         this.searchTimestamp = LocalDateTime.now();
-        this.searchDuration = searchDuration;
+        this.searchDuration = (searchDuration != null) ? searchDuration : Duration.ZERO;
         this.categoryDistribution = new HashMap<>();
         this.suggestedRefinements = new ArrayList<>();
     }
@@ -156,26 +158,59 @@ public class AdvancedSearchResult {
     
     // Analysis methods
     public List<SearchMatch> getTopMatches(int limit) {
-        return matches.stream()
+        // Defensive programming: validate inputs and handle null scenarios
+        if (matches == null || matches.isEmpty()) {
+            return Collections.emptyList();
+        }
+        
+        int safeLimit = Math.max(0, limit);  // Prevent negative limit
+        List<SearchMatch> result = matches.stream()
+            .filter(Objects::nonNull)  // Filter out null matches
             .sorted((a, b) -> Double.compare(b.getRelevanceScore(), a.getRelevanceScore()))
-            .limit(limit)
+            .limit(safeLimit)
             .collect(java.util.stream.Collectors.toList());
+        
+        return Collections.unmodifiableList(result);
     }
     
     public Map<String, List<SearchMatch>> groupByCategory() {
         Map<String, List<SearchMatch>> grouped = new HashMap<>();
+        
+        // Defensive programming: handle null matches collection
+        if (matches == null) {
+            return Collections.unmodifiableMap(grouped);
+        }
+        
         for (SearchMatch match : matches) {
+            // Handle null match or null block
+            if (match == null || match.getBlock() == null) {
+                continue;
+            }
+            
             String category = match.getBlock().getContentCategory();
-            if (category == null) category = "UNCATEGORIZED";
+            if (category == null || category.trim().isEmpty()) {
+                category = "UNCATEGORIZED";
+            }
+            
             grouped.computeIfAbsent(category, k -> new ArrayList<>()).add(match);
         }
-        return grouped;
+        
+        return Collections.unmodifiableMap(grouped);  // Return immutable map
     }
     
     public double getAverageRelevanceScore() {
-        if (matches.isEmpty()) return 0.0;
+        // Defensive programming: handle null matches and empty collections
+        if (matches == null || matches.isEmpty()) {
+            return 0.0;
+        }
+        
         return matches.stream()
-            .mapToDouble(SearchMatch::getRelevanceScore)
+            .filter(Objects::nonNull)  // Filter out null matches
+            .mapToDouble(match -> {
+                double score = match.getRelevanceScore();
+                // Handle NaN and infinite values
+                return (Double.isNaN(score) || Double.isInfinite(score)) ? 0.0 : score;
+            })
             .average()
             .orElse(0.0);
     }
@@ -187,8 +222,32 @@ public class AdvancedSearchResult {
     public SearchStatistics getStatistics() { return statistics; }
     public LocalDateTime getSearchTimestamp() { return searchTimestamp; }
     public Duration getSearchDuration() { return searchDuration; }
-    public Map<String, Integer> getCategoryDistribution() { return Collections.unmodifiableMap(categoryDistribution); }
-    public List<String> getSuggestedRefinements() { return Collections.unmodifiableList(suggestedRefinements); }
+    public Map<String, Integer> getCategoryDistribution() {
+        if (categoryDistribution == null) {
+            return Collections.emptyMap();
+        }
+        // Return filtered immutable copy without null keys/values
+        Map<String, Integer> filtered = new HashMap<>();
+        categoryDistribution.entrySet().stream()
+            .filter(entry -> entry.getKey() != null && entry.getValue() != null)
+            .filter(entry -> !entry.getKey().trim().isEmpty())
+            .filter(entry -> entry.getValue() >= 0)  // Ensure non-negative counts
+            .forEach(entry -> filtered.put(entry.getKey(), entry.getValue()));
+        
+        return Collections.unmodifiableMap(filtered);
+    }
+    public List<String> getSuggestedRefinements() {
+        if (suggestedRefinements == null) {
+            return Collections.emptyList();
+        }
+        // Return filtered immutable copy without null elements
+        return Collections.unmodifiableList(
+            suggestedRefinements.stream()
+                .filter(Objects::nonNull)
+                .filter(s -> !s.trim().isEmpty())
+                .collect(ArrayList::new, ArrayList::add, ArrayList::addAll)
+        );
+    }
     public int getTotalMatches() { return matches.size(); }
     
     // Formatted output
