@@ -347,6 +347,7 @@ The utility classes are fully tested with JUnit to ensure their correct operatio
 - `BlockValidationUtilTest`: Tests the block validation utilities
 - `BlockValidationResultTest`: Tests the block validation result class
 - `FormatUtilTest`: Tests the formatting utilities - see [detailed analysis](FORMAT_UTIL_ROBUSTNESS_ANALYSIS.md)
+- `CompressionAnalysisResultTest`: **NEW** Comprehensive robustness tests (18 tests, 100% pass rate) - see [robustness guide](COMPRESSION_ANALYSIS_RESULT_ROBUSTNESS_GUIDE.md)
 - `UserFriendlyEncryptionAPIRecipientTest`: **NEW** Tests recipient-specific encryption functionality
 - `UserFriendlyEncryptionAPICustomMetadataTest`: **NEW** Tests custom metadata serialization and validation
 
