@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     
     env:
-      MAVEN_OPTS: "-Xmx1024m -XX:MaxMetaspaceSize=256m"
+      MAVEN_OPTS: "-Xmx1024m -XX:MaxMetaspaceSize=256m -Dorg.slf4j.simpleLogger.defaultLogLevel=error"
       CI: true
     
     steps:
@@ -43,14 +43,21 @@ jobs:
         
     - name: Run tests
       run: |
-        mvn clean test \
+        mvn clean test -q -B \
+          -Dorg.slf4j.simpleLogger.defaultLogLevel=error \
+          -Dorg.slf4j.simpleLogger.log.org.springframework=error \
+          -Dorg.slf4j.simpleLogger.log.org.hibernate=error \
+          -Dorg.slf4j.simpleLogger.log.com.rbatllet=error \
           -Dmaven.test.failure.ignore=false \
           -Dlogback.configurationFile=src/test/resources/logback-test.xml
       shell: zsh {0}
     
     - name: Build JAR with dependencies
       run: |
-        mvn clean package \
+        mvn clean package -q -B \
+          -Dorg.slf4j.simpleLogger.defaultLogLevel=error \
+          -Dorg.slf4j.simpleLogger.log.org.springframework=error \
+          -Dorg.slf4j.simpleLogger.log.org.hibernate=error \
           -DskipTests=true \
           -Dmaven.javadoc.skip=true
       shell: zsh {0}
