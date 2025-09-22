@@ -24,6 +24,17 @@ public class OperationLoggingInterceptor {
      * @return Method result
      */
     public static Object intercept(Object target, Method method, Object[] args, OperationLogger annotation) {
+        // Defensive programming: validate critical parameters
+        if (target == null) {
+            throw new IllegalArgumentException("Target object cannot be null");
+        }
+        if (method == null) {
+            throw new IllegalArgumentException("Method cannot be null");
+        }
+        if (annotation == null) {
+            throw new IllegalArgumentException("OperationLogger annotation cannot be null");
+        }
+        
         String operationType = annotation.operationType();
         String operationName = annotation.operationName().isEmpty() ? 
                               method.getName() : annotation.operationName();
@@ -96,6 +107,14 @@ public class OperationLoggingInterceptor {
      */
     public static <T> T wrapWithLogging(Object target, String methodName, String operationType, 
                                        Object[] args, MethodCall<T> methodCall) {
+        // Defensive programming: validate critical parameters
+        if (target == null) {
+            throw new IllegalArgumentException("Target object cannot be null");
+        }
+        if (methodCall == null) {
+            throw new IllegalArgumentException("MethodCall cannot be null");
+        }
+        
         Map<String, String> context = new HashMap<>();
         context.put("class", target.getClass().getSimpleName());
         context.put("method", methodName);
@@ -124,6 +143,11 @@ public class OperationLoggingInterceptor {
      * @return Method result
      */
     public static <T> T logDatabaseOperation(String operation, String table, DatabaseCall<T> methodCall) {
+        // Defensive programming: validate critical parameters
+        if (methodCall == null) {
+            throw new IllegalArgumentException("MethodCall cannot be null");
+        }
+        
         long startTime = System.currentTimeMillis();
         
         try {
@@ -153,6 +177,11 @@ public class OperationLoggingInterceptor {
      */
     public static <T> T logPerformanceMetrics(String operationType, String operationName, 
                                              long dataSize, MethodCall<T> methodCall) {
+        // Defensive programming: validate critical parameters
+        if (methodCall == null) {
+            throw new IllegalArgumentException("MethodCall cannot be null");
+        }
+        
         long startTime = System.currentTimeMillis();
         
         try {
