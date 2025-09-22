@@ -114,6 +114,14 @@ public class FastIndexSearch {
             return new ArrayList<>();
         }
         
+        // Validate maxResults parameter
+        if (maxResults < 0) {
+            throw new IllegalArgumentException("maxResults cannot be negative: " + maxResults);
+        }
+        if (maxResults == 0) {
+            return new ArrayList<>();
+        }
+        
         long startTime = System.nanoTime();
         
         // Parse query into keywords
@@ -180,6 +188,11 @@ public class FastIndexSearch {
      * @return Filtered search results
      */
     public List<FastSearchResult> searchByContentType(String query, String contentType, int maxResults) {
+        // Validate maxResults parameter
+        if (maxResults < 0) {
+            throw new IllegalArgumentException("maxResults cannot be negative: " + maxResults);
+        }
+        
         if (contentType == null || contentType.trim().isEmpty()) {
             return searchFast(query, maxResults);
         }
@@ -207,6 +220,11 @@ public class FastIndexSearch {
      * @return Time-filtered search results
      */
     public List<FastSearchResult> searchByTimeRange(String query, String timeRange, int maxResults) {
+        // Validate maxResults parameter
+        if (maxResults < 0) {
+            throw new IllegalArgumentException("maxResults cannot be negative: " + maxResults);
+        }
+        
         if (timeRange == null || timeRange.trim().isEmpty()) {
             return searchFast(query, maxResults);
         }
@@ -232,6 +250,10 @@ public class FastIndexSearch {
      * Parse query string into individual keywords
      */
     private Set<String> parseQuery(String query) {
+        if (query == null) {
+            throw new IllegalArgumentException("Query cannot be null");
+        }
+        
         return Arrays.stream(query.toLowerCase().split("\\s+"))
                      .filter(word -> word.length() > 1) // Skip very short words
                      .collect(Collectors.toSet());
@@ -281,6 +303,10 @@ public class FastIndexSearch {
      * Calculate edit distance between two strings
      */
     private int calculateEditDistance(String s1, String s2) {
+        if (s1 == null || s2 == null) {
+            throw new IllegalArgumentException("Strings cannot be null");
+        }
+        
         int[][] dp = new int[s1.length() + 1][s2.length() + 1];
         
         for (int i = 0; i <= s1.length(); i++) {
@@ -377,9 +403,11 @@ public class FastIndexSearch {
         
         @Override
         public String toString() {
+            String hashDisplay = blockHash != null ? 
+                blockHash.substring(0, Math.min(8, blockHash.length())) : 
+                "null";
             return String.format("FastResult{hash=%s, score=%.2f, time=%.2fms}", 
-                               blockHash.substring(0, Math.min(8, blockHash.length())), 
-                               relevanceScore, searchTimeMs);
+                               hashDisplay, relevanceScore, searchTimeMs);
         }
     }
     
