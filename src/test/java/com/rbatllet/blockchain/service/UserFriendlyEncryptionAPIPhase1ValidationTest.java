@@ -305,9 +305,15 @@ class UserFriendlyEncryptionAPIPhase1ValidationTest {
             HealthReport detailedReport = api.generateHealthReport(detailedOptions);
             assertNotNull(detailedReport, "Should generate detailed health report");
             
-            // Detailed report should potentially have more information
-            assertTrue(detailedReport.getGenerationTime().compareTo(basicReport.getGenerationTime()) >= 0,
-                      "Detailed report should take at least as long as basic");
+            // Detailed report should have more comprehensive information
+            assertNotNull(detailedReport.getGenerationTime(), "Detailed report should have generation time");
+            assertNotNull(basicReport.getGenerationTime(), "Basic report should have generation time");
+            
+            // Compare content quality instead of timing (timing can be inconsistent in fast test environments)
+            String detailedContent = detailedReport.toString();
+            String basicContent = basicReport.toString();
+            assertTrue(detailedContent.length() >= basicContent.length(), 
+                      "Detailed report should have at least as much content as basic report");
         }
 
         @Test
