@@ -507,6 +507,11 @@ public class BlockDAO {
      * Check if a block with a specific hash exists
      */
     public boolean existsBlockWithHash(String hash) {
+        // VULNERABILITY FIX: Validate null hash parameter
+        if (hash == null) {
+            throw new IllegalArgumentException("Hash cannot be null");
+        }
+        
         lock.readLock().lock();
         try {
             EntityManager em = JPAUtil.getEntityManager();
@@ -821,6 +826,11 @@ public class BlockDAO {
             return new ArrayList<>();
         }
         
+        // VULNERABILITY FIX: Validate null SearchLevel parameter
+        if (level == null) {
+            throw new IllegalArgumentException("SearchLevel cannot be null");
+        }
+        
         lock.readLock().lock();
         try {
             String term = "%" + searchTerm.toLowerCase() + "%";
@@ -830,10 +840,8 @@ public class BlockDAO {
                 String queryString = buildSearchQuery(level);
                 TypedQuery<Block> query = em.createQuery(queryString, Block.class);
                 
-                // Only set the term parameter if the query actually uses it
-                if (level != SearchLevel.INCLUDE_DATA) {
-                    query.setParameter("term", term);
-                }
+                // VULNERABILITY FIX: All queries need the :term parameter
+                query.setParameter("term", term);
                 
                 List<Block> results = query.getResultList();
                 
@@ -902,6 +910,11 @@ public class BlockDAO {
     }
     
     private String buildSearchQuery(SearchLevel level) {
+        // VULNERABILITY FIX: Validate null SearchLevel parameter
+        if (level == null) {
+            throw new IllegalArgumentException("SearchLevel cannot be null");
+        }
+        
         StringBuilder query = new StringBuilder("SELECT b FROM Block b WHERE ");
         
         switch (level) {
@@ -924,6 +937,11 @@ public class BlockDAO {
     }
     
     private int compareSearchPriority(Block a, Block b) {
+        // VULNERABILITY FIX: Validate null Block parameters
+        if (a == null || b == null) {
+            throw new IllegalArgumentException("Block parameters cannot be null");
+        }
+        
         // Priority: manual keywords > auto keywords > data > recency
         // Higher priority blocks appear first in search results
         
