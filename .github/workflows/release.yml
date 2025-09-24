@@ -42,15 +42,12 @@ jobs:
     - name: Run tests
       run: |
         mvn clean test -q -B \
-          -Dlog4j2.level=ERROR \
-          -Dlog4j2.configurationFile=file:src/test/resources/log4j2-test.xml \
+          -Dlog4j2.configurationFile=file:src/test/resources/log4j2-ci.xml \
           -Dmaven.test.failure.ignore=false
-      shell: zsh {0}
-    
+      shell: zsh {0}    
     - name: Build JAR with dependencies
       run: |
         mvn clean package -q -B \
-          -Dlog4j2.level=ERROR \
           -Dlog4j2.configurationFile=file:src/main/resources/log4j2-production.xml \
           -DskipTests=true \
           -Dmaven.javadoc.skip=true
