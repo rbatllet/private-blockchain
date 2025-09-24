@@ -1107,15 +1107,15 @@ public class Blockchain {
         );
         
         // DEBUG: Log detailed hash calculation inputs for encrypted blocks
-        logger.warn("🔧 ENCRYPTED HASH DEBUG: Block #{} hash calculation:", block.getBlockNumber());
-        logger.warn("  - blockNumber: {}", block.getBlockNumber());
-        logger.warn("  - previousHash: {}", block.getPreviousHash());
-        logger.warn("  - data: {}", block.getData() != null ? block.getData().substring(0, Math.min(50, block.getData().length())) + "..." : "null");
-        logger.warn("  - timestampSeconds: {}", timestampSeconds);
-        logger.warn("  - signerPublicKey: {}", block.getSignerPublicKey() != null ? block.getSignerPublicKey().substring(0, Math.min(20, block.getSignerPublicKey().length())) + "..." : "null");
-        logger.warn("  - Final content: {}", content.substring(0, Math.min(100, content.length())) + "...");
+        logger.debug("🔧 ENCRYPTED HASH DEBUG: Block #{} hash calculation:", block.getBlockNumber());
+        logger.debug("  - blockNumber: {}", block.getBlockNumber());
+        logger.debug("  - previousHash: {}", block.getPreviousHash());
+        logger.debug("  - data: {}", block.getData() != null ? block.getData().substring(0, Math.min(50, block.getData().length())) + "..." : "null");
+        logger.debug("  - timestampSeconds: {}", timestampSeconds);
+        logger.debug("  - signerPublicKey: {}", block.getSignerPublicKey() != null ? block.getSignerPublicKey().substring(0, Math.min(20, block.getSignerPublicKey().length())) + "..." : "null");
+        logger.debug("  - Final content: {}", content.substring(0, Math.min(100, content.length())) + "...");
         String calculatedHash = CryptoUtil.calculateHash(content);
-        logger.warn("  - Calculated hash: {}", calculatedHash);
+        logger.debug("  - Calculated hash: {}", calculatedHash);
         
         return content;
     }
@@ -1559,8 +1559,8 @@ public class Blockchain {
                         threadName,
                         warningMessage
                     );
-                    logger.warn("🔍 Signer: {}", block.getSignerPublicKey());
-                    logger.warn("🔍 Block timestamp: {}", block.getTimestamp());
+                    logger.debug("🔍 Signer: {}", block.getSignerPublicKey());
+                    logger.debug("🔍 Block timestamp: {}", block.getTimestamp());
                 }
             }
 
@@ -2103,15 +2103,15 @@ public class Blockchain {
                     : "");
         
         // DEBUG: Log detailed hash calculation inputs
-        logger.warn("🔧 HASH DEBUG: Block #{} hash calculation:", block.getBlockNumber());
-        logger.warn("  - blockNumber: {}", block.getBlockNumber());
-        logger.warn("  - previousHash: {}", block.getPreviousHash());
-        logger.warn("  - data: {}", block.getData() != null ? block.getData().substring(0, Math.min(50, block.getData().length())) + "..." : "null");
-        logger.warn("  - timestampSeconds: {}", timestampSeconds);
-        logger.warn("  - signerPublicKey: {}", block.getSignerPublicKey() != null ? block.getSignerPublicKey().substring(0, Math.min(20, block.getSignerPublicKey().length())) + "..." : "null");
-        logger.warn("  - Final content: {}", content.substring(0, Math.min(100, content.length())) + "...");
+        logger.debug("🔧 HASH DEBUG: Block #{} hash calculation:", block.getBlockNumber());
+        logger.debug("  - blockNumber: {}", block.getBlockNumber());
+        logger.debug("  - previousHash: {}", block.getPreviousHash());
+        logger.debug("  - data: {}", block.getData() != null ? block.getData().substring(0, Math.min(50, block.getData().length())) + "..." : "null");
+        logger.debug("  - timestampSeconds: {}", timestampSeconds);
+        logger.debug("  - signerPublicKey: {}", block.getSignerPublicKey() != null ? block.getSignerPublicKey().substring(0, Math.min(20, block.getSignerPublicKey().length())) + "..." : "null");
+        logger.debug("  - Final content: {}", content.substring(0, Math.min(100, content.length())) + "...");
         String calculatedHash = CryptoUtil.calculateHash(content);
-        logger.warn("  - Calculated hash: {}", calculatedHash);
+        logger.debug("  - Calculated hash: {}", calculatedHash);
         
         return content;
     }
@@ -3703,16 +3703,16 @@ public class Blockchain {
                     logger.warn(
                         "🚨 CRITICAL OPERATION: Attempting to permanently delete authorized key"
                     );
-                    logger.warn(
+                    logger.info(
                         "🔑 Key fingerprint: {}...",
                         publicKey.substring(0, Math.min(32, publicKey.length()))
                     );
-                    logger.warn(
+                    logger.info(
                         "📝 Reason: {}",
                         (reason != null ? reason : "No reason provided")
                     );
-                    logger.warn("⚡ Force mode: {}", force);
-                    logger.warn(
+                    logger.info("⚡ Force mode: {}", force);
+                    logger.info(
                         "⏰ Timestamp: {}",
                         LocalDateTime.now().format(
                             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
