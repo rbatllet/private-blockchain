@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+    <Properties>
+        <!-- Custom pattern for tests -->
+        <Property name="PATTERN">%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n</Property>
+    </Properties>
+
+    <Appenders>
+        <!-- Console for development and tests -->
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="${PATTERN}"/>
+        </Console>
+        
+        <!-- File for persistent logs (optional for tests) -->
+        <File name="FileAppender" fileName="logs/test-app.log" append="true">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
+        </File>
+
+        <!-- Structured alerts file -->
+        <RollingFile name="StructuredAlertsFile" fileName="logs/structured-alerts.log" 
+                     filePattern="logs/structured-alerts-%d{yyyy-MM-dd}-%i.log.gz">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} - %msg%n"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy />
+                <SizeBasedTriggeringPolicy size="25MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="30"/>
+        </RollingFile>
+
+        <!-- Performance metrics file -->
+        <RollingFile name="PerformanceMetricsFile" fileName="logs/performance-metrics.log" 
+                     filePattern="logs/performance-metrics-%d{yyyy-MM-dd}-%i.log.gz">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} - %msg%n"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy />
+                <SizeBasedTriggeringPolicy size="20MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="30"/>
+        </RollingFile>
+
+        <!-- Security events file -->
+        <RollingFile name="SecurityEventsFile" fileName="logs/security-events.log" 
+                     filePattern="logs/security-events-%d{yyyy-MM-dd}-%i.log.gz">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} - %msg%n"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy />
+                <SizeBasedTriggeringPolicy size="15MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="60"/>
+        </RollingFile>
+    </Appenders>
+
+    <Loggers>
+        <!-- Application logs -->
+        <Logger name="com.rbatllet.blockchain" level="ERROR" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="FileAppender"/>
+        </Logger>
+        
+        <!-- Demo test logs - appear on screen and file -->
+        <Logger name="demo" level="ERROR" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="FileAppender"/>
+        </Logger>
+
+        <!-- HIBERNATE LOGGERS -->
+        <!-- General Hibernate logs - only warnings to console -->
+        <Logger name="org.hibernate" level="ERROR" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="FileAppender"/>
+        </Logger>
+        
+        <!-- SQL statements - only to file to avoid console saturation -->
+        <Logger name="org.hibernate.SQL" level="ERROR" additivity="false">
+            <AppenderRef ref="FileAppender"/>
+        </Logger>
+        
+        <!-- JDBC bind parameters - WARNING: may show sensitive data -->
+        <!-- Uncomment only if you need to debug parameters -->
+        <!--
+        <Logger name="org.hibernate.orm.jdbc.bind" level="TRACE" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
+        <Logger name="org.hibernate.orm.jdbc.extract" level="TRACE" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
+        -->
+        
+        <!-- HikariCP (connection pool) -->
+        <Logger name="com.zaxxer.hikari" level="ERROR" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
+        
+        <!-- JBoss Logging (Hibernate internal) -->
+        <Logger name="org.jboss.logging" level="ERROR" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
+
+        <!-- Structured alerts logger -->
+        <Logger name="alerts.structured" level="ERROR" additivity="false">
+            <AppenderRef ref="StructuredAlertsFile"/>
+            <AppenderRef ref="Console"/>
+        </Logger>
+
+        <!-- Performance metrics logger -->
+        <Logger name="performance.metrics" level="ERROR" additivity="false">
+            <AppenderRef ref="PerformanceMetricsFile"/>
+            <AppenderRef ref="Console"/>
+        </Logger>
+
+        <!-- Security events logger -->
+        <Logger name="security.events" level="ERROR" additivity="false">
+            <AppenderRef ref="SecurityEventsFile"/>
+            <AppenderRef ref="Console"/>
+        </Logger>
+
+        <!-- Root logger -->
+        <Root level="ERROR">
+            <AppenderRef ref="Console"/>
+        </Root>
+    </Loggers>
+</Configuration>
