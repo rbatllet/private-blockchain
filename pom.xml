@@ -209,7 +209,7 @@
                 <configuration>
                     <!-- Default configuration for running all tests -->
                     <executable>java</executable>
-                    <commandlineArgs>-cp "%classpath" org.junit.platform.console.ConsoleLauncher --scan-classpath --include-classname=".*Test.*" --details=summary</commandlineArgs>
+                    <commandlineArgs>${argLine} -cp "%classpath" org.junit.platform.console.ConsoleLauncher --scan-classpath --include-classname=".*Test.*" --details=summary</commandlineArgs>
                     <classpathScope>test</classpathScope>
                     <systemProperties>
                         <systemProperty>
