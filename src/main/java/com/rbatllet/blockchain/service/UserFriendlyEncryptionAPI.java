@@ -12339,6 +12339,8 @@ public class UserFriendlyEncryptionAPI {
 
                 return regularBlock;
             }
+        } catch (IllegalArgumentException e) {
+            throw e;
         } catch (Exception e) {
             logger.error("Failed to create block with options", e);
             throw new RuntimeException(

@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Tests hierarchical key generation, validation, and rotation functionality
  */
 @DisplayName("🔑 UserFriendlyEncryptionAPI Phase 1 - Key Management Tests")
-class UserFriendlyEncryptionAPIPhase1KeyManagementTest {
+public class UserFriendlyEncryptionAPIPhase1KeyManagementTest {
 
     @Mock
     private Blockchain mockBlockchain;

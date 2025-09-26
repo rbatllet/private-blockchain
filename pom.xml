@@ -21,14 +21,14 @@
         <sqlite.version>3.50.3.0</sqlite.version>
         <jackson.version>2.19.1</jackson.version>
         <slf4j.version>2.0.17</slf4j.version>
-        <junit-jupiter.version>5.13.2</junit-jupiter.version>
+        <junit-jupiter.version>5.13.4</junit-jupiter.version>
         <bouncycastle.version>1.81</bouncycastle.version>
         <hikaricp.version>7.0.2</hikaricp.version>
         <log4j.version>2.25.1</log4j.version>
         <mockito.version>5.19.0</mockito.version>
         <maven-compiler-plugin.version>3.14.0</maven-compiler-plugin.version>
         <maven-assembly-plugin.version>3.7.1</maven-assembly-plugin.version>
-        <maven-surefire-plugin.version>3.5.3</maven-surefire-plugin.version>
+        <maven-surefire-plugin.version>3.5.4</maven-surefire-plugin.version>
         <maven-execution-plugin.version>3.5.1</maven-execution-plugin.version>
         <maven-jacoco-plugin.version>0.8.13</maven-jacoco-plugin.version>
     </properties>
@@ -126,6 +126,12 @@
             <version>${junit-jupiter.version}</version>
             <scope>test</scope>
         </dependency>
+
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-console-standalone</artifactId>
+            <version>1.13.4</version>
+        </dependency>
         
         <!-- Mockito for mocking in tests -->
         <dependency>
@@ -195,19 +201,16 @@
                 </executions>
             </plugin>
             
-            <!-- Maven Surefire Plugin for running tests -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>${maven-surefire-plugin.version}</version>
-            </plugin>
-            
-            <!-- Maven Exec Plugin for running Java applications -->
+            <!-- Maven Exec Plugin for running tests via JUnit Platform Console Launcher -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>${maven-execution-plugin.version}</version>
                 <configuration>
+                    <!-- Default configuration for running all tests -->
+                    <executable>java</executable>
+                    <commandlineArgs>-cp "%classpath" org.junit.platform.console.ConsoleLauncher --scan-classpath --include-classname=".*Test.*" --details=summary</commandlineArgs>
+                    <classpathScope>test</classpathScope>
                     <systemProperties>
                         <systemProperty>
                             <key>log4j2.configurationFile</key>
@@ -258,12 +261,12 @@
                                         <limit>
                                             <counter>COMPLEXITY</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.21</minimum>
+                                            <minimum>0.55</minimum>
                                         </limit>
                                         <limit>
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.70</minimum>
+                                            <minimum>0.74</minimum>
                                         </limit>
                                     </limits>
                                 </rule>
@@ -274,7 +277,6 @@
             </plugin>
         </plugins>
     </build>
-
 
     <!-- Maven Profiles for different environments -->
     <profiles>

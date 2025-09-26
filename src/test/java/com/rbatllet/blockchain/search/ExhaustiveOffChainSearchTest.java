@@ -37,7 +37,6 @@ import org.junit.jupiter.api.*;
  * - End-to-end scenarios
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class ExhaustiveOffChainSearchTest {
 
     private SearchFrameworkEngine searchEngine;
@@ -49,14 +48,14 @@ public class ExhaustiveOffChainSearchTest {
     private EncryptionConfig testConfig;
 
     // Test data storage
-    private File tempDir;
+    private static File tempDir;
     private static final String TEST_TEXT_CONTENT =
         "This is sensitive medical data about patient diagnosis and treatment plans. Contains confidential information.";
     private static final String TEST_JSON_CONTENT =
         "{\"patient\": \"John Doe\", \"diagnosis\": \"diabetes\", \"treatment\": \"insulin therapy\", \"notes\": \"confidential medical records\"}";
 
     @BeforeAll
-    void setUpAll() throws Exception {
+    static void setUpAll() throws Exception {
         // Create temporary directory for test files
         tempDir = new File(
             System.getProperty("java.io.tmpdir"),
@@ -1028,7 +1027,7 @@ public class ExhaustiveOffChainSearchTest {
     }
 
     @AfterAll
-    void tearDownAll() {
+    static void tearDownAll() {
         // Clean up temporary directory
         if (tempDir != null && tempDir.exists()) {
             File[] files = tempDir.listFiles();

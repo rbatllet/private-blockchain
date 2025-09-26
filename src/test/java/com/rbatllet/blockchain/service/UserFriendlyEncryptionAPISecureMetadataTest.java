@@ -29,7 +29,7 @@ import org.junit.jupiter.api.Timeout;
  * 4. Shows security validation prevents unsafe operations (as designed)
  */
 @DisplayName("🔒 UserFriendlyEncryptionAPI Secure Metadata Tests")
-class UserFriendlyEncryptionAPISecureMetadataTest {
+public class UserFriendlyEncryptionAPISecureMetadataTest {
 
     private static final Logger logger = LoggerFactory.getLogger(UserFriendlyEncryptionAPISecureMetadataTest.class);
     

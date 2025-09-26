@@ -787,7 +787,7 @@ All demos now show detailed validation information:
 
 #### Run All Tests with Enhanced Output
 ```bash
-mvn test
+mvn exec:exec
 ```
 
 #### Run Specific Enhanced Test Categories

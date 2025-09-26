@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Focuses on basic encrypted operations and essential blockchain functionality
  */
 @DisplayName("🎯 UserFriendlyEncryptionAPI Core Functionality Tests")
-class UserFriendlyEncryptionAPICoreFunctionalityTest {
+public class UserFriendlyEncryptionAPICoreFunctionalityTest {
 
     private UserFriendlyEncryptionAPI api;
     private Blockchain realBlockchain;

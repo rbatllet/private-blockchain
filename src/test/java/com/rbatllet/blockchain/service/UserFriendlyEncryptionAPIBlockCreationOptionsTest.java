@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Tests the new comprehensive block creation functionality
  */
 @DisplayName("📦 UserFriendlyEncryptionAPI BlockCreationOptions Tests")
-class UserFriendlyEncryptionAPIBlockCreationOptionsTest {
+public class UserFriendlyEncryptionAPIBlockCreationOptionsTest {
 
     private UserFriendlyEncryptionAPI api;
     private Blockchain blockchain;
@@ -43,6 +43,10 @@ class UserFriendlyEncryptionAPIBlockCreationOptionsTest {
         blockchain.clearAndReinitialize();
         KeyPair defaultKeyPair = CryptoUtil.generateKeyPair();
         api = new UserFriendlyEncryptionAPI(blockchain, testUsername, defaultKeyPair);
+
+        // Initialize SearchSpecialistAPI
+        blockchain.initializeAdvancedSearch(testPassword);
+        blockchain.getSearchSpecialistAPI().initializeWithBlockchain(blockchain, testPassword, defaultKeyPair.getPrivate());
     }
 
     @AfterEach
@@ -273,7 +277,7 @@ class UserFriendlyEncryptionAPIBlockCreationOptionsTest {
                     .withCategory("TEST");
             
             // When & Then
-            assertThrows(RuntimeException.class, () -> {
+            assertThrows(IllegalArgumentException.class, () -> {
                 api.createBlockWithOptions("", options);
             });
         }
@@ -286,7 +290,7 @@ class UserFriendlyEncryptionAPIBlockCreationOptionsTest {
                     .withCategory("TEST");
             
             // When & Then
-            assertThrows(RuntimeException.class, () -> {
+            assertThrows(IllegalArgumentException.class, () -> {
                 api.createBlockWithOptions(null, options);
             });
         }

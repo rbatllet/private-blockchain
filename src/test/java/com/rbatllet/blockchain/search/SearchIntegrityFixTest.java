@@ -32,9 +32,9 @@ import org.slf4j.LoggerFactory;
  * searchables públicament (sense password).
  */
 @DisplayName("🔧 Search Integrity Fix Validation")
-class SearchIntegrityFix {
+class SearchIntegrityFixTest {
 
-    private static final Logger logger = LoggerFactory.getLogger(SearchIntegrityFix.class);
+    private static final Logger logger = LoggerFactory.getLogger(SearchIntegrityFixTest.class);
     
     private Blockchain blockchain;
     private UserFriendlyEncryptionAPI api;

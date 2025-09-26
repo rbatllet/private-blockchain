@@ -23,7 +23,7 @@ import static org.mockito.Mockito.*;
  * Tests smart storage tiering, compression analysis, and off-chain integrity
  */
 @DisplayName("📦 UserFriendlyEncryptionAPI Phase 3 - Smart Storage & Compression Tests")
-class UserFriendlyEncryptionAPIPhase3Test {
+public class UserFriendlyEncryptionAPIPhase3Test {
 
     @Mock
     private Blockchain mockBlockchain;

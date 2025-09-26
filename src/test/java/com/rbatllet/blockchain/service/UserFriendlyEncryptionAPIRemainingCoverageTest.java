@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Target: Improve overall coverage from 65% to 75%+
  */
 @DisplayName("🎯 UserFriendlyEncryptionAPI Remaining Coverage Tests")
-class UserFriendlyEncryptionAPIRemainingCoverageTest {
+public class UserFriendlyEncryptionAPIRemainingCoverageTest {
     
     private UserFriendlyEncryptionAPI api;
     private Blockchain realBlockchain;

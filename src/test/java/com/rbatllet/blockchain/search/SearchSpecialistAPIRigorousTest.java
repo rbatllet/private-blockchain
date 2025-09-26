@@ -37,10 +37,25 @@ public class SearchSpecialistAPIRigorousTest {
         blockchain = new Blockchain();
         api = new UserFriendlyEncryptionAPI(blockchain);
         testPassword = "RigorousTest123!";
-        
+
         // Create and set default credentials
         KeyPair userKeys = api.createUser("rigorous-test-user");
         api.setDefaultCredentials("rigorous-test-user", userKeys);
+
+        // Initialize testBlock to prevent null pointer exceptions
+        // This ensures each test has access to a test block
+        String[] keywords = {"rigorous", "test", "financial"};
+        testBlock = api.storeSearchableData("Rigorous test financial data", testPassword, keywords);
+
+        // Initialize search components
+        blockchain.initializeAdvancedSearch(testPassword);
+        searchAPI = blockchain.getSearchSpecialistAPI();
+
+        // Ensure SearchSpecialistAPI is properly initialized
+        if (!searchAPI.isReady()) {
+            KeyPair testKeys = api.createUser("search-setup-user");
+            searchAPI.initializeWithBlockchain(blockchain, testPassword, testKeys.getPrivate());
+        }
     }
     
     @Test
@@ -76,28 +91,13 @@ public class SearchSpecialistAPIRigorousTest {
     @DisplayName("Test 2: Compare Data Storage Methods")
     void testDataStorageComparison() throws Exception {
         System.out.println("\n=== TEST 2: DATA STORAGE COMPARISON ===");
-        
-        // Store test data with keywords
-        String[] keywords = {"rigorous", "test", "financial"};
-        testBlock = api.storeSearchableData("Rigorous test financial data", testPassword, keywords);
-        
-        System.out.println("📝 Stored block #" + testBlock.getBlockNumber());
+
+        // testBlock is already initialized in setUp(), just verify and display info
+        System.out.println("📝 Using existing block #" + testBlock.getBlockNumber());
         System.out.println("📝 Block data: " + testBlock.getData());
         System.out.println("📝 Is encrypted: " + testBlock.isDataEncrypted());
         System.out.println("📝 Manual keywords: " + testBlock.getManualKeywords());
         System.out.println("📝 Auto keywords: " + testBlock.getAutoKeywords());
-        System.out.println("📝 Expected keywords: " + String.join(" ", keywords));
-        
-        // Initialize search after storing data
-        blockchain.initializeAdvancedSearch(testPassword);
-        searchAPI = blockchain.getSearchSpecialistAPI();
-        
-        // CRITICAL: Initialize SearchSpecialistAPI directly with blockchain
-        if (!searchAPI.isReady()) {
-            KeyPair testKeys = api.createUser("search-storage-user");
-            System.out.println("🔑 Initializing SearchSpecialistAPI for storage test...");
-            searchAPI.initializeWithBlockchain(blockchain, testPassword, testKeys.getPrivate());
-        }
         
         System.out.println("✅ Data storage test completed");
         
@@ -123,21 +123,8 @@ public class SearchSpecialistAPIRigorousTest {
     @DisplayName("Test 3: Search Method Comparison")
     void testSearchMethodComparison() throws Exception {
         System.out.println("\n=== TEST 3: SEARCH METHOD COMPARISON ===");
-        
-        // Ensure we have test data
-        if (testBlock == null) {
-            String[] keywords = {"rigorous", "test", "financial"};
-            testBlock = api.storeSearchableData("Rigorous test financial data", testPassword, keywords);
-            blockchain.initializeAdvancedSearch(testPassword);
-            searchAPI = blockchain.getSearchSpecialistAPI();
-            
-            // CRITICAL: Initialize SearchSpecialistAPI directly with blockchain
-            if (!searchAPI.isReady()) {
-                KeyPair testKeys = api.createUser("search-comparison-user");
-                System.out.println("🔑 Initializing SearchSpecialistAPI for comparison test...");
-                searchAPI.initializeWithBlockchain(blockchain, testPassword, testKeys.getPrivate());
-            }
-        }
+
+        // testBlock and searchAPI are already initialized in setUp()
         
         String searchTerm = "financial";
         
@@ -197,44 +184,29 @@ public class SearchSpecialistAPIRigorousTest {
     void testSearchSpecialistAPIInternalState() throws Exception {
         System.out.println("\n=== TEST 4: INTERNAL STATE ANALYSIS ===");
         
-        // Ensure initialization
-        if (searchAPI == null || !searchAPI.isReady()) {
-            if (testBlock == null) {
-                String[] keywords = {"rigorous", "test", "financial"};
-                testBlock = api.storeSearchableData("Rigorous test financial data", testPassword, keywords);
-            }
-            blockchain.initializeAdvancedSearch(testPassword);
-            searchAPI = blockchain.getSearchSpecialistAPI();
-            
-            // CRITICAL: Initialize SearchSpecialistAPI directly with blockchain
-            if (!searchAPI.isReady()) {
-                KeyPair testKeys = api.createUser("search-internal-user");
-                System.out.println("🔑 Initializing SearchSpecialistAPI for internal test...");
-                searchAPI.initializeWithBlockchain(blockchain, testPassword, testKeys.getPrivate());
-            }
-        }
-        
+        // searchAPI is already initialized in setUp()
+
         // Analyze internal state
         System.out.println("🔍 SearchSpecialistAPI Internal Analysis:");
         System.out.println("   isReady(): " + searchAPI.isReady());
-        
+
         SearchStats stats = searchAPI.getStatistics();
         System.out.println("   Total blocks indexed: " + stats.getTotalBlocksIndexed());
         System.out.println("   Memory usage: " + stats.getEstimatedMemoryBytes() + " bytes");
-        
+
         // Password registry stats
         RegistryStats registryStats = searchAPI.getPasswordRegistryStats();
         System.out.println("   Password registry blocks: " + registryStats.getRegisteredBlocks());
         System.out.println("   Password registry memory: " + registryStats.getEstimatedMemoryBytes() + " bytes");
-        
+
         // Diagnostics
         String diagnostics = searchAPI.runDiagnostics();
         System.out.println("🔧 Diagnostics: " + diagnostics);
-        
+
         // Performance metrics
         String metrics = searchAPI.getPerformanceMetrics();
         System.out.println("📊 Performance metrics: " + metrics);
-        
+
         assertTrue(searchAPI.isReady(), "SearchSpecialistAPI should be ready");
         assertTrue(stats.getTotalBlocksIndexed() > 0, "Should have indexed at least one block");
     }
@@ -244,21 +216,8 @@ public class SearchSpecialistAPIRigorousTest {
     @DisplayName("Test 5: Password Registry Analysis")
     void testPasswordRegistryAnalysis() throws Exception {
         System.out.println("\n=== TEST 5: PASSWORD REGISTRY ANALYSIS ===");
-        
-        // Ensure we have test data and initialization
-        if (testBlock == null) {
-            String[] keywords = {"rigorous", "test", "financial"};
-            testBlock = api.storeSearchableData("Rigorous test financial data", testPassword, keywords);
-        }
-        blockchain.initializeAdvancedSearch(testPassword);
-        searchAPI = blockchain.getSearchSpecialistAPI();
-        
-        // CRITICAL: Initialize SearchSpecialistAPI directly with blockchain
-        if (!searchAPI.isReady()) {
-            KeyPair testKeys = api.createUser("search-registry-user");
-            System.out.println("🔑 Initializing SearchSpecialistAPI for registry test...");
-            searchAPI.initializeWithBlockchain(blockchain, testPassword, testKeys.getPrivate());
-        }
+
+        // testBlock and searchAPI are already initialized in setUp()
         
         // Check password registry
         RegistryStats registryStats = searchAPI.getPasswordRegistryStats();
@@ -296,21 +255,8 @@ public class SearchSpecialistAPIRigorousTest {
     @DisplayName("Test 6: Direct SearchFrameworkEngine Testing")
     void testDirectSearchFrameworkEngine() throws Exception {
         System.out.println("\n=== TEST 6: DIRECT SEARCH FRAMEWORK ENGINE ===");
-        
-        // Ensure we have test data
-        if (testBlock == null) {
-            String[] keywords = {"rigorous", "test", "financial"};
-            testBlock = api.storeSearchableData("Rigorous test financial data", testPassword, keywords);
-        }
-        blockchain.initializeAdvancedSearch(testPassword);
-        searchAPI = blockchain.getSearchSpecialistAPI();
-        
-        // CRITICAL: Initialize SearchSpecialistAPI directly with blockchain
-        if (!searchAPI.isReady()) {
-            KeyPair testKeys = api.createUser("search-engine-user");
-            System.out.println("🔑 Initializing SearchSpecialistAPI for engine test...");
-            searchAPI.initializeWithBlockchain(blockchain, testPassword, testKeys.getPrivate());
-        }
+
+        // testBlock and searchAPI are already initialized in setUp()
         
         // Test if we can access the underlying SearchFrameworkEngine
         try {
