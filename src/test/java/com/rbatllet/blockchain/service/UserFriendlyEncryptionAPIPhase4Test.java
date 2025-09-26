@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Tests blockchain recovery, repair, and checkpoint management operations
  */
 @DisplayName("🔧 UserFriendlyEncryptionAPI Phase 4 - Chain Recovery & Repair Tests")
-class UserFriendlyEncryptionAPIPhase4Test {
+public class UserFriendlyEncryptionAPIPhase4Test {
 
     private UserFriendlyEncryptionAPI api;
     private Blockchain realBlockchain;

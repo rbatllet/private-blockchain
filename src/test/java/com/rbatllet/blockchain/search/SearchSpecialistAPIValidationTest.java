@@ -33,6 +33,9 @@ public class SearchSpecialistAPIValidationTest {
 
     @BeforeEach
     void setUp() throws Exception {
+        SearchFrameworkEngine.clearGlobalProcessingMapForTesting();
+        com.rbatllet.blockchain.indexing.IndexingCoordinator.getInstance().reset();
+
         testBlockchain = new Blockchain();
         testPassword = "ValidationTestPassword123!";
 

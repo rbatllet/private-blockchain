@@ -468,7 +468,7 @@ mvn exec:java -Dexec.mainClass="demo.ChainRecoveryDemo"
 
 ### Run All Enhanced Tests
 ```bash
-mvn test
+mvn exec:exec
 ```
 
 ### Run Specific Enhanced Test Categories

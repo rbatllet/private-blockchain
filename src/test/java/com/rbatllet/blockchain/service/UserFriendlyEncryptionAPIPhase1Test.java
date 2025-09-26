@@ -23,7 +23,7 @@ import static org.mockito.Mockito.*;
  * Tests hierarchical key management, comprehensive validation, and health diagnosis
  */
 @DisplayName("🔑 UserFriendlyEncryptionAPI Phase 1 - Complete Tests")
-class UserFriendlyEncryptionAPIPhase1Test {
+public class UserFriendlyEncryptionAPIPhase1Test {
 
     @Mock
     private Blockchain mockBlockchain;

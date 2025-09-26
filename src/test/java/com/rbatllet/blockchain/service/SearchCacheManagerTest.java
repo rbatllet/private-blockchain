@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Tests cache operations, TTL expiration, LRU eviction, and thread safety
  */
 @DisplayName("🔍 SearchCacheManager Tests")
-class SearchCacheManagerTest {
+public class SearchCacheManagerTest {
 
     private SearchCacheManager cacheManager;
 

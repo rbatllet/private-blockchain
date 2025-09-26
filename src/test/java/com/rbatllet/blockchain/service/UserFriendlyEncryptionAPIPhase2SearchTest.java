@@ -23,7 +23,7 @@ import static org.mockito.Mockito.*;
  * Tests advanced search, exhaustive search, and search performance features
  */
 @DisplayName("🔍 UserFriendlyEncryptionAPI Phase 2 - Advanced Search Tests")
-class UserFriendlyEncryptionAPIPhase2SearchTest {
+public class UserFriendlyEncryptionAPIPhase2SearchTest {
 
     @Mock
     private Blockchain mockBlockchain;

@@ -23,7 +23,7 @@ import org.mockito.MockitoAnnotations;
  * Tests for ConfigurationService class
  */
 @DisplayName("ConfigurationService Tests")
-class ConfigurationServiceTest {
+public class ConfigurationServiceTest {
 
     @Mock
     private ConfigurationStorage mockStorage;

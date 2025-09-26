@@ -20,7 +20,7 @@ import static org.mockito.Mockito.*;
  * Tests storage tiering policies, performance optimization, and data management
  */
 @DisplayName("📦 StorageTieringManager Tests")
-class StorageTieringManagerTest {
+public class StorageTieringManagerTest {
 
     private StorageTieringManager tieringManager;
     private StorageTieringManager.TieringPolicy defaultPolicy;

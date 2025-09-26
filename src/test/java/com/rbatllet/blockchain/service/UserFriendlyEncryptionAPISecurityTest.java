@@ -21,7 +21,7 @@ import org.mockito.MockitoAnnotations;
  * Tests critical security methods including encryption, validation, and authorization
  */
 @DisplayName("🔐 UserFriendlyEncryptionAPI Security Tests")
-class UserFriendlyEncryptionAPISecurityTest {
+public class UserFriendlyEncryptionAPISecurityTest {
 
     private UserFriendlyEncryptionAPI api;
     private Blockchain realBlockchain;

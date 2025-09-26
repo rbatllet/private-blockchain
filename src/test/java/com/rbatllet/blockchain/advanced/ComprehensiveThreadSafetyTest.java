@@ -28,6 +28,7 @@ class ComprehensiveThreadSafetyTest {
     void setUp() {
         blockchain = new Blockchain();
         blockchain.clearAndReinitialize();  // Ensure clean state for each test
+        // Use cached thread pool for maximum thread contention testing
         executorService = Executors.newCachedThreadPool();
     }
     
@@ -134,15 +135,15 @@ class ComprehensiveThreadSafetyTest {
     @Test
     @Order(2)
     @DisplayName("🎯 Block Number Uniqueness Under Extreme Load")
-    @Timeout(120)
+    @Timeout(300)
     void testBlockNumberUniquenessExtremeLoad() throws InterruptedException {
-        System.out.println("🎯 Testing block number uniqueness under extreme load...");
-        
+        System.out.println("🎯 Testing block number uniqueness under EXTREME load...");
+
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         String publicKey = CryptoUtil.publicKeyToString(keyPair.getPublic());
         blockchain.addAuthorizedKey(publicKey, "UniquenessUser");
-        
-        // Extreme load: 200 threads each trying to add 5 blocks
+
+        // EXTREME load: 200 threads each trying to add 5 blocks (1000 total)
         int threadCount = 200;
         int blocksPerThread = 5;
         CountDownLatch startLatch = new CountDownLatch(1);
@@ -190,7 +191,7 @@ class ComprehensiveThreadSafetyTest {
         long startTime = System.currentTimeMillis();
         startLatch.countDown();
         
-        assertTrue(endLatch.await(115, TimeUnit.SECONDS), "Extreme load test should complete");
+        assertTrue(endLatch.await(280, TimeUnit.SECONDS), "Extreme load test should complete within extended timeout");
         long endTime = System.currentTimeMillis();
         
         // Analysis

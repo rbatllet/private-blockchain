@@ -27,7 +27,7 @@ import org.mockito.Mockito;
  * in production environments.
  */
 @DisplayName("UserFriendlyEncryptionAPI Robustness Tests")
-class UserFriendlyEncryptionAPIRobustnessTest {
+public class UserFriendlyEncryptionAPIRobustnessTest {
 
     private UserFriendlyEncryptionAPI api;
     private Blockchain blockchain;

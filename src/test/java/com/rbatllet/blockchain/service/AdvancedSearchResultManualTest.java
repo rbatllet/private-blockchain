@@ -4,7 +4,7 @@ import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
 
-public class TestAdvancedSearchResultManual {
+public class AdvancedSearchResultManualTest {
     
     @Test
     @DisplayName("Manual test for immutability verification")
