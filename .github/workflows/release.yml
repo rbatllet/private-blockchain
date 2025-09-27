@@ -41,7 +41,7 @@ jobs:
         
     - name: Run tests
       run: |
-        mvn clean test-compile exec:exec -q -B \
+        mvn clean test-compile exec:exec@run-tests -q -B \
           -Dlog4j2.configurationFile=file:src/test/resources/log4j2-ci.xml \
           -Dmaven.test.failure.ignore=false
       shell: zsh {0}    

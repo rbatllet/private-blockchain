@@ -22,6 +22,7 @@
         <jackson.version>2.19.1</jackson.version>
         <slf4j.version>2.0.17</slf4j.version>
         <junit-jupiter.version>5.13.4</junit-jupiter.version>
+        <junit-platform.version>1.13.4</junit-platform.version>
         <bouncycastle.version>1.81</bouncycastle.version>
         <hikaricp.version>7.0.2</hikaricp.version>
         <log4j.version>2.25.1</log4j.version>
@@ -130,7 +131,8 @@
         <dependency>
             <groupId>org.junit.platform</groupId>
             <artifactId>junit-platform-console-standalone</artifactId>
-            <version>1.13.4</version>
+            <version>${junit-platform.version}</version>
+            <scope>test</scope>
         </dependency>
         
         <!-- Mockito for mocking in tests -->
@@ -209,7 +211,7 @@
                 <configuration>
                     <!-- Default configuration for running all tests -->
                     <executable>java</executable>
-                    <commandlineArgs>${argLine} -cp "%classpath" org.junit.platform.console.ConsoleLauncher --scan-classpath --include-classname=".*Test.*" --details=summary</commandlineArgs>
+                    <commandlineArgs>${argLine} -cp "%classpath" org.junit.platform.console.ConsoleLauncher --scan-classpath --include-classname=".*Test.*" --details=tree</commandlineArgs>
                     <classpathScope>test</classpathScope>
                     <systemProperties>
                         <systemProperty>
@@ -218,8 +220,16 @@
                         </systemProperty>
                     </systemProperties>
                 </configuration>
+                <executions>
+                    <execution>
+                        <id>run-tests</id>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
-            
+
             <!-- JaCoCo Plugin for code coverage -->
             <plugin>
                 <groupId>org.jacoco</groupId>
