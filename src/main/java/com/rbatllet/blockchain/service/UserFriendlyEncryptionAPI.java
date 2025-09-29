@@ -5024,13 +5024,30 @@ public class UserFriendlyEncryptionAPI {
                     : rootKeys.get(0).getKeyId();
                 generatedKey = CryptoUtil.createIntermediateKey(parentKeyId);
             } else {
-                // Operational or deeper level key
+                // Operational or deeper level key - ensure intermediate key exists
                 List<CryptoUtil.KeyInfo> intermediateKeys =
                     CryptoUtil.getKeysByType(CryptoUtil.KeyType.INTERMEDIATE);
-                String parentKeyId = intermediateKeys.isEmpty()
-                    ? null
-                    : intermediateKeys.get(0).getKeyId();
-                generatedKey = CryptoUtil.createOperationalKey(parentKeyId);
+
+                if (intermediateKeys.isEmpty()) {
+                    // No intermediate key exists - create one first
+                    List<CryptoUtil.KeyInfo> rootKeys = CryptoUtil.getKeysByType(
+                        CryptoUtil.KeyType.ROOT
+                    );
+                    if (rootKeys.isEmpty()) {
+                        // No root key exists either - create a root key first
+                        CryptoUtil.KeyInfo rootKey = CryptoUtil.createRootKey();
+                        // Now create an intermediate key
+                        CryptoUtil.KeyInfo intermediateKey = CryptoUtil.createIntermediateKey(rootKey.getKeyId());
+                        generatedKey = CryptoUtil.createOperationalKey(intermediateKey.getKeyId());
+                    } else {
+                        // Root key exists, create intermediate key
+                        CryptoUtil.KeyInfo intermediateKey = CryptoUtil.createIntermediateKey(rootKeys.get(0).getKeyId());
+                        generatedKey = CryptoUtil.createOperationalKey(intermediateKey.getKeyId());
+                    }
+                } else {
+                    // Intermediate key exists, use it
+                    generatedKey = CryptoUtil.createOperationalKey(intermediateKeys.get(0).getKeyId());
+                }
             }
 
             // Calculate statistics
