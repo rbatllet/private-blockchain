@@ -243,7 +243,7 @@ public class Blockchain {
                     // The block should have been properly indexed when it was created
                     // We'll log this for debugging but the search should work through
                     // the existing password registry mechanism
-                    logger.debug(
+                    logger.info(
                         "📊 Block #{} has encrypted keywords and registered password",
                         block.getBlockNumber()
                     );
@@ -309,7 +309,7 @@ public class Blockchain {
                     tempKeyPair.getPrivate()
                 );
 
-                logger.debug(
+                logger.info(
                     "Re-indexed encrypted block #{} with specific password",
                     blockNumber
                 );
@@ -1104,16 +1104,20 @@ public class Blockchain {
                     : "")
         );
         
-        // DEBUG: Log detailed hash calculation inputs for encrypted blocks
-        logger.debug("🔧 ENCRYPTED HASH DEBUG: Block #{} hash calculation:", block.getBlockNumber());
-        logger.debug("  - blockNumber: {}", block.getBlockNumber());
-        logger.debug("  - previousHash: {}", block.getPreviousHash());
-        logger.debug("  - data: {}", block.getData() != null ? block.getData().substring(0, Math.min(50, block.getData().length())) + "..." : "null");
-        logger.debug("  - timestampSeconds: {}", timestampSeconds);
-        logger.debug("  - signerPublicKey: {}", block.getSignerPublicKey() != null ? block.getSignerPublicKey().substring(0, Math.min(20, block.getSignerPublicKey().length())) + "..." : "null");
-        logger.debug("  - Final content: {}", content.substring(0, Math.min(100, content.length())) + "...");
+        // TRACE: Log detailed hash calculation inputs for encrypted blocks (only in trace mode)
+        if (logger.isTraceEnabled()) {
+            logger.trace("🔧 ENCRYPTED HASH DEBUG: Block #{} hash calculation:", block.getBlockNumber());
+            logger.trace("  - blockNumber: {}", block.getBlockNumber());
+            logger.trace("  - previousHash: {}", block.getPreviousHash());
+            logger.trace("  - data: {}", block.getData() != null ? block.getData().substring(0, Math.min(50, block.getData().length())) + "..." : "null");
+            logger.trace("  - timestampSeconds: {}", timestampSeconds);
+            logger.trace("  - signerPublicKey: {}", block.getSignerPublicKey() != null ? block.getSignerPublicKey().substring(0, Math.min(20, block.getSignerPublicKey().length())) + "..." : "null");
+            logger.trace("  - Final content: {}", content.substring(0, Math.min(100, content.length())) + "...");
+        }
         String calculatedHash = CryptoUtil.calculateHash(content);
-        logger.debug("  - Calculated hash: {}", calculatedHash);
+        if (logger.isTraceEnabled()) {
+            logger.trace("  - Calculated hash: {}", calculatedHash);
+        }
         
         return content;
     }
@@ -1150,10 +1154,12 @@ public class Blockchain {
                         publicKeywords
                     );
                     block.setManualKeywords(publicKeywordString);
-                    logger.debug(
-                        "🔍 Stored public keywords: {}",
-                        publicKeywordString
-                    );
+                    if (logger.isDebugEnabled()) {
+                        logger.debug(
+                            "🔍 Stored public keywords: {}",
+                            publicKeywordString
+                        );
+                    }
                 }
 
                 // Store private keywords encrypted in autoKeywords field
@@ -1168,9 +1174,11 @@ public class Blockchain {
                             encryptionPassword
                         );
                     block.setAutoKeywords(encryptedPrivateKeywords);
-                    logger.debug(
-                        "🔍 Stored encrypted private keywords in autoKeywords"
-                    );
+                    if (logger.isDebugEnabled()) {
+                        logger.debug(
+                            "🔍 Stored encrypted private keywords in autoKeywords"
+                        );
+                    }
                 }
             }
 
@@ -1264,16 +1272,18 @@ public class Blockchain {
             block.getSearchableContent() != null &&
             !block.getSearchableContent().trim().isEmpty()
         ) {
-            logger.debug(
-                "📋 Keywords assigned to block #{}: {}...",
-                block.getBlockNumber(),
-                block
-                    .getSearchableContent()
-                    .substring(
-                        0,
-                        Math.min(50, block.getSearchableContent().length())
-                    )
-            );
+            if (logger.isDebugEnabled()) {
+                logger.debug(
+                    "📋 Keywords assigned to block #{}: {}...",
+                    block.getBlockNumber(),
+                    block
+                        .getSearchableContent()
+                        .substring(
+                            0,
+                            Math.min(50, block.getSearchableContent().length())
+                        )
+                );
+            }
         }
     }
 
@@ -1287,11 +1297,13 @@ public class Blockchain {
     public boolean validateBlock(Block block, Block previousBlock) {
         String threadName = Thread.currentThread().getName();
         try {
-            logger.debug(
-                "🔍 [{}] Validating block #{}",
-                threadName,
-                block.getBlockNumber()
-            );
+            if (logger.isDebugEnabled()) {
+                logger.debug(
+                    "🔍 [{}] Validating block #{}",
+                    threadName,
+                    block.getBlockNumber()
+                );
+            }
 
             // Skip validation for genesis block
             if (
@@ -1434,11 +1446,13 @@ public class Blockchain {
             new BlockValidationResult.Builder(block);
 
         try {
-            logger.debug(
-                "🔍 [{}] Detailed validation of block #{}",
-                threadName,
-                block.getBlockNumber()
-            );
+            if (logger.isDebugEnabled()) {
+                logger.debug(
+                    "🔍 [{}] Detailed validation of block #{}",
+                    threadName,
+                    block.getBlockNumber()
+                );
+            }
 
             // Skip detailed validation for genesis block
             if (
@@ -1557,8 +1571,10 @@ public class Blockchain {
                         threadName,
                         warningMessage
                     );
-                    logger.debug("🔍 Signer: {}", block.getSignerPublicKey());
-                    logger.debug("🔍 Block timestamp: {}", block.getTimestamp());
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("🔍 Signer: {}", block.getSignerPublicKey());
+                        logger.debug("🔍 Block timestamp: {}", block.getTimestamp());
+                    }
                 }
             }
 
@@ -2100,16 +2116,20 @@ public class Blockchain {
                     ? block.getSignerPublicKey()
                     : "");
         
-        // DEBUG: Log detailed hash calculation inputs
-        logger.debug("🔧 HASH DEBUG: Block #{} hash calculation:", block.getBlockNumber());
-        logger.debug("  - blockNumber: {}", block.getBlockNumber());
-        logger.debug("  - previousHash: {}", block.getPreviousHash());
-        logger.debug("  - data: {}", block.getData() != null ? block.getData().substring(0, Math.min(50, block.getData().length())) + "..." : "null");
-        logger.debug("  - timestampSeconds: {}", timestampSeconds);
-        logger.debug("  - signerPublicKey: {}", block.getSignerPublicKey() != null ? block.getSignerPublicKey().substring(0, Math.min(20, block.getSignerPublicKey().length())) + "..." : "null");
-        logger.debug("  - Final content: {}", content.substring(0, Math.min(100, content.length())) + "...");
+        // TRACE: Log detailed hash calculation inputs (only in trace mode)
+        if (logger.isTraceEnabled()) {
+            logger.trace("🔧 HASH DEBUG: Block #{} hash calculation:", block.getBlockNumber());
+            logger.trace("  - blockNumber: {}", block.getBlockNumber());
+            logger.trace("  - previousHash: {}", block.getPreviousHash());
+            logger.trace("  - data: {}", block.getData() != null ? block.getData().substring(0, Math.min(50, block.getData().length())) + "..." : "null");
+            logger.trace("  - timestampSeconds: {}", timestampSeconds);
+            logger.trace("  - signerPublicKey: {}", block.getSignerPublicKey() != null ? block.getSignerPublicKey().substring(0, Math.min(20, block.getSignerPublicKey().length())) + "..." : "null");
+            logger.trace("  - Final content: {}", content.substring(0, Math.min(100, content.length())) + "...");
+        }
         String calculatedHash = CryptoUtil.calculateHash(content);
-        logger.debug("  - Calculated hash: {}", calculatedHash);
+        if (logger.isTraceEnabled()) {
+            logger.trace("  - Calculated hash: {}", calculatedHash);
+        }
         
         return content;
     }
@@ -2271,8 +2291,10 @@ public class Blockchain {
             return false;
         }
 
-        logger.debug("✅ Block size validation passed: {} characters, {} bytes",
-            charCount, dataBytes.length);
+        if (logger.isTraceEnabled()) {
+            logger.trace("✅ Block size validation passed: {} characters, {} bytes",
+                charCount, dataBytes.length);
+        }
         return true;
     }
 
@@ -2290,7 +2312,9 @@ public class Blockchain {
 
         // Allow empty strings for system/configuration blocks
         if (data.isEmpty()) {
-            logger.debug("ℹ️ System block with empty data created");
+            if (logger.isDebugEnabled()) {
+                logger.debug("ℹ️ System block with empty data created");
+            }
             return 1; // Store on-chain
         }
 
@@ -2706,10 +2730,12 @@ public class Blockchain {
                                     );
                                     offChainFilesExported++;
 
-                                    logger.debug(
-                                        "  ✓ Exported off-chain file for block #{}",
-                                        block.getBlockNumber()
-                                    );
+                                    if (logger.isTraceEnabled()) {
+                                        logger.trace(
+                                            "  ✓ Exported off-chain file for block #{}",
+                                            block.getBlockNumber()
+                                        );
+                                    }
                                 } else {
                                     logger.warn(
                                         "  ⚠ Off-chain file missing for block #{}: {}",
@@ -3020,10 +3046,12 @@ public class Blockchain {
                                     );
                                     offChainFilesImported++;
 
-                                    logger.debug(
-                                        "  ✓ Imported off-chain file for block #{}",
-                                        block.getBlockNumber()
-                                    );
+                                    if (logger.isTraceEnabled()) {
+                                        logger.trace(
+                                            "  ✓ Imported off-chain file for block #{}",
+                                            block.getBlockNumber()
+                                        );
+                                    }
                                 } else {
                                     logger.warn(
                                         "  ⚠ Off-chain backup file not found for block #{}: {}",
@@ -3167,10 +3195,12 @@ public class Blockchain {
                                     );
                                 if (fileDeleted) {
                                     offChainFilesDeleted++;
-                                    logger.debug(
-                                        "    ✓ Deleted off-chain file: {}",
-                                        block.getOffChainData().getFilePath()
-                                    );
+                                    if (logger.isTraceEnabled()) {
+                                        logger.trace(
+                                            "    ✓ Deleted off-chain file: {}",
+                                            block.getOffChainData().getFilePath()
+                                        );
+                                    }
                                 } else {
                                     logger.warn(
                                         "    ⚠ Failed to delete off-chain file: {}",
@@ -3273,10 +3303,12 @@ public class Blockchain {
                                     );
                                 if (fileDeleted) {
                                     offChainFilesDeleted++;
-                                    logger.debug(
-                                        "  ✓ Deleted off-chain file for block #{}",
-                                        block.getBlockNumber()
-                                    );
+                                    if (logger.isTraceEnabled()) {
+                                        logger.trace(
+                                            "  ✓ Deleted off-chain file for block #{}",
+                                            block.getBlockNumber()
+                                        );
+                                    }
                                 } else {
                                     logger.warn(
                                         "  ⚠ Failed to delete off-chain file for block #{}",
@@ -3897,7 +3929,9 @@ public class Blockchain {
             File backupFile = new File(backupPath);
             if (backupFile.exists()) {
                 backupFile.delete();
-                logger.debug("🧹 Cleaned up temporary backup: {}", backupPath);
+                if (logger.isTraceEnabled()) {
+                    logger.trace("🧹 Cleaned up temporary backup: {}", backupPath);
+                }
             }
         } catch (Exception e) {
             logger.warn("Could not clean up backup file {}: {}", backupPath, e.getMessage());
@@ -4513,10 +4547,12 @@ public class Blockchain {
                         boolean deleted = file.delete();
                         if (deleted) {
                             orphanedFilesDeleted++;
-                            logger.debug(
-                                "🗝️ Deleted orphaned file: {}",
-                                file.getName()
-                            );
+                            if (logger.isTraceEnabled()) {
+                                logger.trace(
+                                    "🗝️ Deleted orphaned file: {}",
+                                    file.getName()
+                                );
+                            }
                         }
                     } catch (Exception e) {
                         logger.error(
@@ -5026,10 +5062,12 @@ public class Blockchain {
                         blocksImported++;
 
                         if (blocksImported % 100 == 0) {
-                            logger.debug(
-                                "   📦 Imported {} blocks...",
-                                blocksImported
-                            );
+                            if (logger.isDebugEnabled()) {
+                                logger.debug(
+                                    "   📦 Imported {} blocks...",
+                                    blocksImported
+                                );
+                            }
                         }
                     }
 
@@ -5376,7 +5414,9 @@ public class Blockchain {
                     // Update the block using the DAO
                     blockDAO.updateBlock(block);
                     
-                    logger.debug("✅ Successfully updated block #{} (safe fields only)", block.getBlockNumber());
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("✅ Successfully updated block #{} (safe fields only)", block.getBlockNumber());
+                    }
                     return true;
                 } catch (Exception e) {
                     logger.error("Failed to update block #{}: {}", block.getBlockNumber(), e.getMessage());
@@ -5430,27 +5470,39 @@ public class Blockchain {
         // Log which safe fields are being modified
         boolean hasModifications = false;
         if (!Objects.equals(original.getCustomMetadata(), updated.getCustomMetadata())) {
-            logger.debug("✅ Safe update: customMetadata modified");
+            if (logger.isTraceEnabled()) {
+                logger.trace("✅ Safe update: customMetadata modified");
+            }
             hasModifications = true;
         }
         if (!Objects.equals(original.getManualKeywords(), updated.getManualKeywords())) {
-            logger.debug("✅ Safe update: manualKeywords modified");
+            if (logger.isTraceEnabled()) {
+                logger.trace("✅ Safe update: manualKeywords modified");
+            }
             hasModifications = true;
         }
         if (!Objects.equals(original.getAutoKeywords(), updated.getAutoKeywords())) {
-            logger.debug("✅ Safe update: autoKeywords modified");
+            if (logger.isTraceEnabled()) {
+                logger.trace("✅ Safe update: autoKeywords modified");
+            }
             hasModifications = true;
         }
         if (!Objects.equals(original.getSearchableContent(), updated.getSearchableContent())) {
-            logger.debug("✅ Safe update: searchableContent modified");
+            if (logger.isTraceEnabled()) {
+                logger.trace("✅ Safe update: searchableContent modified");
+            }
             hasModifications = true;
         }
         if (!Objects.equals(original.getContentCategory(), updated.getContentCategory())) {
-            logger.debug("✅ Safe update: contentCategory modified");
+            if (logger.isTraceEnabled()) {
+                logger.trace("✅ Safe update: contentCategory modified");
+            }
             hasModifications = true;
         }
         if (!Objects.equals(original.getEncryptionMetadata(), updated.getEncryptionMetadata())) {
-            logger.debug("✅ Safe update: encryptionMetadata modified");
+            if (logger.isTraceEnabled()) {
+                logger.trace("✅ Safe update: encryptionMetadata modified");
+            }
             hasModifications = true;
         }
         
@@ -5458,7 +5510,9 @@ public class Blockchain {
             logger.warn("⚠️ No modifications detected in safe fields for block #{}", updated.getBlockNumber());
         }
         
-        logger.debug("✅ Safe update validation passed - only metadata fields modified");
+        if (logger.isDebugEnabled()) {
+            logger.debug("✅ Safe update validation passed - only metadata fields modified");
+        }
         return true;
     }
 
@@ -5473,7 +5527,9 @@ public class Blockchain {
         try {
             if (searchFrameworkEngine != null) {
                 searchFrameworkEngine.shutdown();
-                logger.debug("✅ SearchFrameworkEngine shutdown completed");
+                if (logger.isDebugEnabled()) {
+                    logger.debug("✅ SearchFrameworkEngine shutdown completed");
+                }
             }
         } catch (Exception e) {
             logger.warn("⚠️ Error shutting down SearchFrameworkEngine", e);
@@ -5482,7 +5538,9 @@ public class Blockchain {
         try {
             if (searchSpecialistAPI != null) {
                 searchSpecialistAPI.shutdown();
-                logger.debug("✅ SearchSpecialistAPI shutdown completed");
+                if (logger.isDebugEnabled()) {
+                    logger.debug("✅ SearchSpecialistAPI shutdown completed");
+                }
             }
         } catch (Exception e) {
             logger.warn("⚠️ Error shutting down SearchSpecialistAPI", e);
