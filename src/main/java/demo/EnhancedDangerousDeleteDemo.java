@@ -21,7 +21,11 @@ public class EnhancedDangerousDeleteDemo {
             
             Blockchain blockchain = new Blockchain();
             blockchain.clearAndReinitialize(); // Start clean
-            
+
+            // Create admin user (required for dangerous operations)
+            KeyPair admin = CryptoUtil.generateKeyPair();
+            String adminPublicKey = CryptoUtil.publicKeyToString(admin.getPublic());
+
             // Create test users
             KeyPair user1 = CryptoUtil.generateKeyPair();
             KeyPair user2 = CryptoUtil.generateKeyPair();
@@ -35,8 +39,9 @@ public class EnhancedDangerousDeleteDemo {
             System.out.println("📋 SCENARIO 1: Initial setup");
             System.out.println("=============================");
             
+            blockchain.addAuthorizedKey(adminPublicKey, "Administrator");
             blockchain.addAuthorizedKey(publicKey1, "Alice - Active User");
-            blockchain.addAuthorizedKey(publicKey2, "Bob - Inactive User");  
+            blockchain.addAuthorizedKey(publicKey2, "Bob - Inactive User");
             blockchain.addAuthorizedKey(publicKey3, "Charlie - Heavy User");
             
             // Add blocks with different signers
@@ -92,8 +97,10 @@ public class EnhancedDangerousDeleteDemo {
             System.out.println("      Orphaned blocks before: " + orphanedBefore.size());
             
             System.out.println("\n   🔥 Performing FORCED deletion of Charlie...");
+            // Create admin signature for the forced operation
+            String charlieSignature = CryptoUtil.createAdminSignature(publicKey3, true, "Security incident - compromised key", admin.getPrivate());
             boolean charlieForcedDeleted = blockchain.dangerouslyDeleteAuthorizedKey(
-                publicKey3, true, "Security incident - compromised key");
+                publicKey3, true, "Security incident - compromised key", charlieSignature, adminPublicKey);
             
             System.out.println("   ✅ Deletion result: " + (charlieForcedDeleted ? "SUCCESS" : "FAILED"));
             

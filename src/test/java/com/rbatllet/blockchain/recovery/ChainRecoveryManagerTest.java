@@ -23,12 +23,20 @@ class ChainRecoveryManagerTest {
     private ChainRecoveryManager recoveryManager;
     private KeyPair testKeyPair;
     private String testPublicKey;
+    private KeyPair adminKeyPair;
+    private String adminPublicKey;
 
     @BeforeEach
     void setUp() {
         blockchain = new Blockchain();
         blockchain.clearAndReinitialize();
         recoveryManager = new ChainRecoveryManager(blockchain);
+
+        // Setup admin
+        adminKeyPair = CryptoUtil.generateKeyPair();
+        adminPublicKey = CryptoUtil.publicKeyToString(adminKeyPair.getPublic());
+        blockchain.addAuthorizedKey(adminPublicKey, "Test Admin");
+
         testKeyPair = CryptoUtil.generateKeyPair();
         testPublicKey = CryptoUtil.publicKeyToString(testKeyPair.getPublic());
     }
@@ -103,7 +111,9 @@ class ChainRecoveryManagerTest {
             assertTrue(beforeCorruption.isStructurallyIntact());
             
             // Delete the key to create corruption
-            blockchain.dangerouslyDeleteAuthorizedKey(testPublicKey, true, "Test corruption");
+            String reason = "Test corruption";
+            String adminSignature = CryptoUtil.createAdminSignature(testPublicKey, true, reason, adminKeyPair.getPrivate());
+            blockchain.dangerouslyDeleteAuthorizedKey(testPublicKey, true, reason, adminSignature, adminPublicKey);
             
             // Verify chain is now invalid
             ChainValidationResult afterCorruption = blockchain.validateChainDetailed();
@@ -147,7 +157,9 @@ class ChainRecoveryManagerTest {
             assertTrue(beforeRollback.isStructurallyIntact());
             
             // Delete user 1's key
-            blockchain.dangerouslyDeleteAuthorizedKey(user1Key, true, "Test corruption");
+            String user1Reason = "Test corruption";
+            String user1AdminSignature = CryptoUtil.createAdminSignature(user1Key, true, user1Reason, adminKeyPair.getPrivate());
+            blockchain.dangerouslyDeleteAuthorizedKey(user1Key, true, user1Reason, user1AdminSignature, adminPublicKey);
             ChainValidationResult afterCorruption = blockchain.validateChainDetailed();
             assertTrue(afterCorruption.isStructurallyIntact());
             assertFalse(afterCorruption.isFullyCompliant());
@@ -176,7 +188,9 @@ class ChainRecoveryManagerTest {
             blockchain.addBlock("User 1 block", user1.getPrivate(), user1.getPublic());
             
             // Delete the key
-            blockchain.dangerouslyDeleteAuthorizedKey(user1Key, true, "Test corruption");
+            String deleteReason = "Test corruption";
+            String deleteAdminSignature = CryptoUtil.createAdminSignature(user1Key, true, deleteReason, adminKeyPair.getPrivate());
+            blockchain.dangerouslyDeleteAuthorizedKey(user1Key, true, deleteReason, deleteAdminSignature, adminPublicKey);
             
             // Attempt recovery
             ChainRecoveryManager.RecoveryResult result = 
@@ -224,7 +238,9 @@ class ChainRecoveryManagerTest {
             assertTrue(beforeDiagnostic.isStructurallyIntact());
             
             // Delete key to create corruption
-            blockchain.dangerouslyDeleteAuthorizedKey(testPublicKey, true, "Test corruption");
+            String corruptReason = "Test corruption";
+            String corruptAdminSignature = CryptoUtil.createAdminSignature(testPublicKey, true, corruptReason, adminKeyPair.getPrivate());
+            blockchain.dangerouslyDeleteAuthorizedKey(testPublicKey, true, corruptReason, corruptAdminSignature, adminPublicKey);
             ChainValidationResult afterDiagnostic = blockchain.validateChainDetailed();
             assertTrue(afterDiagnostic.isStructurallyIntact());
             assertFalse(afterDiagnostic.isFullyCompliant());
@@ -263,7 +279,9 @@ class ChainRecoveryManagerTest {
             // Test that it works with default config
             blockchain.addAuthorizedKey(testPublicKey, "Test User");
             blockchain.addBlock("Test block", testKeyPair.getPrivate(), testKeyPair.getPublic());
-            blockchain.dangerouslyDeleteAuthorizedKey(testPublicKey, true, "Test corruption");
+            String configCorruptReason = "Test corruption";
+            String configCorruptAdminSignature = CryptoUtil.createAdminSignature(testPublicKey, true, configCorruptReason, adminKeyPair.getPrivate());
+            blockchain.dangerouslyDeleteAuthorizedKey(testPublicKey, true, configCorruptReason, configCorruptAdminSignature, adminPublicKey);
             
             ChainRecoveryManager.RecoveryResult result = 
                 customRecoveryManager.recoverCorruptedChain(testPublicKey, "Test User");
@@ -292,7 +310,9 @@ class ChainRecoveryManagerTest {
             // Setup corruption
             blockchain.addAuthorizedKey(testPublicKey, "Test User");
             blockchain.addBlock("Test block", testKeyPair.getPrivate(), testKeyPair.getPublic());
-            blockchain.dangerouslyDeleteAuthorizedKey(testPublicKey, true, "Test corruption");
+            String multiCorruptReason = "Test corruption";
+            String multiCorruptAdminSignature = CryptoUtil.createAdminSignature(testPublicKey, true, multiCorruptReason, adminKeyPair.getPrivate());
+            blockchain.dangerouslyDeleteAuthorizedKey(testPublicKey, true, multiCorruptReason, multiCorruptAdminSignature, adminPublicKey);
             
             // First recovery attempt
             ChainRecoveryManager.RecoveryResult result1 = 
@@ -347,8 +367,13 @@ class ChainRecoveryManagerTest {
             assertTrue(beforeMultipleCorruption.isStructurallyIntact());
             
             // Delete multiple keys
-            blockchain.dangerouslyDeleteAuthorizedKey(user1Key, true, "Test corruption 1");
-            blockchain.dangerouslyDeleteAuthorizedKey(user3Key, true, "Test corruption 3");
+            String user1CorruptReason = "Test corruption 1";
+            String user1CorruptAdminSignature = CryptoUtil.createAdminSignature(user1Key, true, user1CorruptReason, adminKeyPair.getPrivate());
+            blockchain.dangerouslyDeleteAuthorizedKey(user1Key, true, user1CorruptReason, user1CorruptAdminSignature, adminPublicKey);
+
+            String user3CorruptReason = "Test corruption 3";
+            String user3CorruptAdminSignature = CryptoUtil.createAdminSignature(user3Key, true, user3CorruptReason, adminKeyPair.getPrivate());
+            blockchain.dangerouslyDeleteAuthorizedKey(user3Key, true, user3CorruptReason, user3CorruptAdminSignature, adminPublicKey);
             
             ChainValidationResult afterMultipleCorruption = blockchain.validateChainDetailed();
             assertTrue(afterMultipleCorruption.isStructurallyIntact());
@@ -375,11 +400,13 @@ class ChainRecoveryManagerTest {
         @DisplayName("Should handle recovery efficiently")
         void shouldHandleRecoveryEfficiently() {
             long startTime = System.currentTimeMillis();
-            
+
             // Setup scenario
             blockchain.addAuthorizedKey(testPublicKey, "Test User");
             blockchain.addBlock("Test block", testKeyPair.getPrivate(), testKeyPair.getPublic());
-            blockchain.dangerouslyDeleteAuthorizedKey(testPublicKey, true, "Test corruption");
+            String perfCorruptReason = "Test corruption";
+            String perfCorruptAdminSignature = CryptoUtil.createAdminSignature(testPublicKey, true, perfCorruptReason, adminKeyPair.getPrivate());
+            blockchain.dangerouslyDeleteAuthorizedKey(testPublicKey, true, perfCorruptReason, perfCorruptAdminSignature, adminPublicKey);
             
             // Perform recovery
             ChainRecoveryManager.RecoveryResult result = 
@@ -392,4 +419,5 @@ class ChainRecoveryManagerTest {
             assertTrue(duration < 5000, "Recovery should complete within 5 seconds");
         }
     }
+
 }

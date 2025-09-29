@@ -22,11 +22,19 @@ class BlockchainTest {
     private Blockchain blockchain;
     private KeyPair testKeyPair;
     private String testPublicKey;
+    private KeyPair adminKeyPair;
+    private String adminPublicKey;
 
     @BeforeEach
     void setUp() {
         blockchain = new Blockchain();
         blockchain.clearAndReinitialize();
+
+        // Setup admin
+        adminKeyPair = CryptoUtil.generateKeyPair();
+        adminPublicKey = CryptoUtil.publicKeyToString(adminKeyPair.getPublic());
+        blockchain.addAuthorizedKey(adminPublicKey, "Test Admin");
+
         testKeyPair = CryptoUtil.generateKeyPair();
         testPublicKey = CryptoUtil.publicKeyToString(testKeyPair.getPublic());
     }
@@ -239,7 +247,9 @@ class BlockchainTest {
             assertTrue(beforeCorruption.isStructurallyIntact());
             
             // Delete the key to corrupt the chain
-            blockchain.dangerouslyDeleteAuthorizedKey(testPublicKey, true, "Test corruption");
+            String corruption1Reason = "Test corruption";
+            String corruption1AdminSignature = CryptoUtil.createAdminSignature(testPublicKey, true, corruption1Reason, adminKeyPair.getPrivate());
+            blockchain.dangerouslyDeleteAuthorizedKey(testPublicKey, true, corruption1Reason, corruption1AdminSignature, adminPublicKey);
             
             ChainValidationResult afterCorruption = blockchain.validateChainDetailed();
             assertTrue(afterCorruption.isStructurallyIntact()); // Structure still intact
@@ -263,7 +273,9 @@ class BlockchainTest {
             assertTrue(beforeCorruption.isStructurallyIntact());
             
             // Create corruption
-            blockchain.dangerouslyDeleteAuthorizedKey(testPublicKey, true, "Test corruption");
+            String corruption2Reason = "Test corruption";
+            String corruption2AdminSignature = CryptoUtil.createAdminSignature(testPublicKey, true, corruption2Reason, adminKeyPair.getPrivate());
+            blockchain.dangerouslyDeleteAuthorizedKey(testPublicKey, true, corruption2Reason, corruption2AdminSignature, adminPublicKey);
             ChainValidationResult afterCorruption = blockchain.validateChainDetailed();
             assertTrue(afterCorruption.isStructurallyIntact());
             assertFalse(afterCorruption.isFullyCompliant());
@@ -290,7 +302,9 @@ class BlockchainTest {
             assertTrue(blockchain.validateChainWithRecovery());
             
             // Corrupted chain should trigger diagnostic
-            blockchain.dangerouslyDeleteAuthorizedKey(testPublicKey, true, "Test corruption");
+            String corruption3Reason = "Test corruption";
+            String corruption3AdminSignature = CryptoUtil.createAdminSignature(testPublicKey, true, corruption3Reason, adminKeyPair.getPrivate());
+            blockchain.dangerouslyDeleteAuthorizedKey(testPublicKey, true, corruption3Reason, corruption3AdminSignature, adminPublicKey);
             assertFalse(blockchain.validateChainWithRecovery());
         }
     }
@@ -340,4 +354,5 @@ class BlockchainTest {
             assertEquals("", systemBlock.getData());
         }
     }
+
 }

@@ -24,6 +24,10 @@ public class AuthorizedKeyDAO {
      * FIXED: Better handling of external transactions
      */
     public void saveAuthorizedKey(AuthorizedKey authorizedKey) {
+        if (authorizedKey == null) {
+            throw new IllegalArgumentException("AuthorizedKey cannot be null");
+        }
+
         lock.writeLock().lock();
         try {
             EntityManager em = JPAUtil.getEntityManager();
@@ -70,6 +74,10 @@ public class AuthorizedKeyDAO {
      * FIXED: Only checks currently active authorizations
      */
     public boolean isKeyAuthorized(String publicKey) {
+        if (publicKey == null || publicKey.trim().isEmpty()) {
+            throw new IllegalArgumentException("Public key cannot be null or empty");
+        }
+
         lock.readLock().lock();
         try {
             EntityManager em = JPAUtil.getEntityManager();
@@ -154,6 +162,10 @@ public class AuthorizedKeyDAO {
      * FIXED: Better handling of external transactions
      */
     public void revokeAuthorizedKey(String publicKey) {
+        if (publicKey == null || publicKey.trim().isEmpty()) {
+            throw new IllegalArgumentException("Public key cannot be null or empty");
+        }
+
         lock.writeLock().lock();
         try {
             EntityManager em = JPAUtil.getEntityManager();
@@ -218,6 +230,10 @@ public class AuthorizedKeyDAO {
      * This will delete ALL records for this public key (active and revoked)
      */
     public boolean deleteAuthorizedKey(String publicKey) {
+        if (publicKey == null || publicKey.trim().isEmpty()) {
+            throw new IllegalArgumentException("Public key cannot be null or empty");
+        }
+
         lock.writeLock().lock();
         try {
             if (JPAUtil.hasActiveTransaction()) {
@@ -294,6 +310,10 @@ public class AuthorizedKeyDAO {
      * Returns the most recent active authorization for the given owner
      */
     public AuthorizedKey getAuthorizedKeyByOwner(String ownerName) {
+        if (ownerName == null || ownerName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Owner name cannot be null or empty");
+        }
+
         lock.readLock().lock();
         try {
             EntityManager em = JPAUtil.getEntityManager();
@@ -323,6 +343,13 @@ public class AuthorizedKeyDAO {
      * FIXED: Now finds the authorization that was valid at the specific timestamp
      */
     public boolean wasKeyAuthorizedAt(String publicKey, java.time.LocalDateTime timestamp) {
+        if (publicKey == null || publicKey.trim().isEmpty()) {
+            throw new IllegalArgumentException("Public key cannot be null or empty");
+        }
+        if (timestamp == null) {
+            throw new IllegalArgumentException("Timestamp cannot be null");
+        }
+
         lock.readLock().lock();
         try {
             EntityManager em = JPAUtil.getEntityManager();

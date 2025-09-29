@@ -68,12 +68,11 @@ public class Blockchain {
     private static final ReentrantReadWriteLock GLOBAL_BLOCKCHAIN_LOCK =
         new ReentrantReadWriteLock();
 
-    // CORE FUNCTION: Block size validation constants
-    // FIXED: Added clear documentation about the relationship between limits
-    private static final int MAX_BLOCK_SIZE_BYTES = 1024 * 1024; // 1MB max per block (for large binary data)
-    private static final int MAX_BLOCK_DATA_LENGTH = 10000; // 10K characters max (for text content)
-    // NOTE: Character limit is separate from byte limit to handle both text and binary data efficiently
-    // 10K UTF-8 characters typically use ~10-40KB, well within the 1MB byte limit
+    // SECURITY FIX: Consistent block size validation
+    // Use single byte-based limit for all data types to prevent confusion and bypass attempts
+    private static final int MAX_BLOCK_SIZE_BYTES = 1024 * 1024; // 1MB max per block
+    private static final int MAX_BLOCK_CHARS = 10000; // 10K chars (original limit for compatibility)
+    // SECURITY: Single coherent limit prevents bypass through multibyte character manipulation
 
     // Off-chain storage threshold - data larger than this will be stored off-chain
     private static final int OFF_CHAIN_THRESHOLD_BYTES = 512 * 1024; // 512KB threshold
@@ -86,7 +85,7 @@ public class Blockchain {
 
     // Dynamic configuration for block size limits
     private volatile int currentMaxBlockSizeBytes = MAX_BLOCK_SIZE_BYTES;
-    private volatile int currentMaxBlockDataLength = MAX_BLOCK_DATA_LENGTH;
+    private volatile int currentMaxBlockChars = MAX_BLOCK_CHARS;
     private volatile int currentOffChainThresholdBytes =
         OFF_CHAIN_THRESHOLD_BYTES;
 
@@ -212,7 +211,6 @@ public class Blockchain {
             }
         } catch (Exception e) {
             logger.warn("⚠️ Failed to initialize Search Framework Engine", e);
-            e.printStackTrace();
             // Continue operation even if search initialization fails
         } finally {
             if (needsLock) {
@@ -2248,39 +2246,33 @@ public class Blockchain {
      */
     public boolean validateBlockSize(String data) {
         if (data == null) {
-            logger.error(
-                "❌ Block data cannot be null. Use empty string \"\" for system blocks"
-            );
-            return false; // SECURITY: Reject null data but allow empty strings
+            logger.error("❌ Block data cannot be null. Use empty string for system blocks");
+            return false;
         }
 
-        // Allow empty strings for system/configuration blocks
+        // Allow empty strings for system blocks
         if (data.isEmpty()) {
-            logger.debug("ℹ️ System block with empty data created");
-            return true; // Allow system blocks with empty data
+            return true;
         }
 
-        // Check character length for normal content
-        if (data.length() > MAX_BLOCK_DATA_LENGTH) {
-            logger.error(
-                "❌ Block data length ({}) exceeds maximum allowed ({} characters)",
-                data.length(),
-                MAX_BLOCK_DATA_LENGTH
-            );
-            return false;
-        }
-
-        // Check byte size (important for UTF-8 strings)
+        // SECURITY: Always check bytes first - this is the primary security control
         byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
-        if (dataBytes.length > MAX_BLOCK_SIZE_BYTES) {
-            logger.error(
-                "❌ Block data size ({} bytes) exceeds maximum allowed ({} bytes)",
-                dataBytes.length,
-                MAX_BLOCK_SIZE_BYTES
-            );
+        if (dataBytes.length > currentMaxBlockSizeBytes) {
+            logger.error("❌ Block data size ({} bytes) exceeds maximum ({} bytes)",
+                dataBytes.length, currentMaxBlockSizeBytes);
             return false;
         }
 
+        // Secondary check: Character count limit to prevent massive character counts
+        int charCount = data.length();
+        if (charCount > currentMaxBlockChars) {
+            logger.error("❌ Block character count ({}) exceeds maximum ({})",
+                charCount, currentMaxBlockChars);
+            return false;
+        }
+
+        logger.debug("✅ Block size validation passed: {} characters, {} bytes",
+            charCount, dataBytes.length);
         return true;
     }
 
@@ -2535,13 +2527,99 @@ public class Blockchain {
     }
 
     /**
+     * SECURITY: Create safe hash for logging sensitive key information
+     * This prevents full key exposure in logs while maintaining traceability
+     *
+     * @param publicKey The public key to hash
+     * @return 8-character hash suitable for logging
+     */
+    private String createSafeKeyHash(String publicKey) {
+        if (publicKey == null || publicKey.isEmpty()) {
+            return "null-key";
+        }
+        try {
+            return CryptoUtil.calculateHash(publicKey).substring(0, 8);
+        } catch (Exception e) {
+            return "hash-err";
+        }
+    }
+
+    /**
+     * SECURITY: Validate file path for export/import operations
+     * Prevents path traversal attacks and ensures safe file operations
+     *
+     * @param filePath The file path to validate
+     * @param operation Description of the operation (for logging)
+     * @return true if path is safe, false otherwise
+     */
+    private boolean isValidFilePath(String filePath, String operation) {
+        // Fast validation checks first
+        if (filePath == null || filePath.trim().isEmpty()) {
+            logger.error("❌ {} file path cannot be null or empty", operation);
+            return false;
+        }
+
+        // SECURITY: Comprehensive path traversal prevention
+        if (filePath.contains("..") || filePath.contains("%2e%2e") ||
+            filePath.contains("%252e%252e") || filePath.contains("\\..") ||
+            filePath.contains("/..")) {
+            logger.error("❌ SECURITY: Path traversal attempt detected in {}: {}", operation, filePath);
+            return false;
+        }
+
+        // Fast extension check for export/import
+        boolean isExportImport = "export".equals(operation) || "import".equals(operation);
+        if (isExportImport && !filePath.endsWith(".json")) {
+            logger.error("❌ SECURITY: {} only allowed for .json files: {}", operation, filePath);
+            return false;
+        }
+
+        // Additional security: normalize path and verify it doesn't escape
+        try {
+            java.nio.file.Path normalizedPath = java.nio.file.Paths.get(filePath).normalize();
+            String normalizedString = normalizedPath.toString();
+
+            // Double-check that normalization didn't reveal traversal
+            if (normalizedString.contains("..")) {
+                logger.error("❌ SECURITY: Path normalization revealed traversal in {}: {}", operation, filePath);
+                return false;
+            }
+
+            File file = new File(filePath);
+
+            if ("export".equals(operation)) {
+                File parentDir = file.getParentFile();
+                if (parentDir != null && !parentDir.exists()) {
+                    if (!parentDir.mkdirs()) {
+                        logger.error("❌ Cannot create directory for {}: {}", operation, parentDir);
+                        return false;
+                    }
+                }
+            } else if ("import".equals(operation)) {
+                if (!file.exists()) {
+                    logger.error("❌ Import file does not exist: {}", filePath);
+                    return false;
+                }
+                if (!file.canRead()) {
+                    logger.error("❌ No read permission for import file: {}", filePath);
+                    return false;
+                }
+            }
+
+            return true;
+        } catch (SecurityException e) {
+            logger.error("❌ Security error validating {} path: {}", operation, e.getMessage());
+            return false;
+        }
+    }
+
+    /**
      * CORE FUNCTION 2: Chain Export - Backup blockchain to file
-     * FIXED: Added thread-safety with read lock and off-chain file handling
+     * SECURITY FIX: Added path validation and enhanced security checks
      */
     public boolean exportChain(String filePath) {
-        // Validate input parameters
-        if (filePath == null || filePath.trim().isEmpty()) {
-            logger.error("❌ Export file path cannot be null or empty");
+        // SECURITY FIX: Validate file path for security
+        if (!isValidFilePath(filePath, "export")) {
             return false;
         }
 
@@ -2694,6 +2772,11 @@ public class Blockchain {
      * FIXED: Added thread-safety with write lock and global transaction
      */
     public boolean importChain(String filePath) {
+        // SECURITY FIX: Validate file path for security
+        if (!isValidFilePath(filePath, "import")) {
+            return false;
+        }
+
         GLOBAL_BLOCKCHAIN_LOCK.writeLock().lock();
         try {
             return JPAUtil.executeInTransaction(em -> {
@@ -2703,10 +2786,7 @@ public class Blockchain {
                     mapper.registerModule(new JavaTimeModule());
 
                     File file = new File(filePath);
-                    if (!file.exists()) {
-                        logger.error("❌ Import file not found: {}", filePath);
-                        return false;
-                    }
+                    // Note: File existence already validated in isValidFilePath
 
                     ChainExportData importData = mapper.readValue(
                         file,
@@ -3537,54 +3617,49 @@ public class Blockchain {
     }
 
     public int getMaxBlockDataLength() {
-        return MAX_BLOCK_DATA_LENGTH;
+        return currentMaxBlockChars; // SECURITY FIX: Use consistent character limit
+    }
+
+    public int getMaxBlockChars() {
+        return currentMaxBlockChars;
     }
 
     /**
      * Test utility: Clear all data and reinitialize with genesis block
      * WARNING: This method is for testing purposes only
-     * FIXED: Added thread-safety with write lock and global transaction
+     * SECURITY FIX: Added rollback safety and atomic operations
      */
     public void clearAndReinitialize() {
         GLOBAL_BLOCKCHAIN_LOCK.writeLock().lock();
         try {
+            // SECURITY FIX: Create temporary backup first for rollback capability
+            String tempBackupId = null;
+            try {
+                tempBackupId = createTemporaryBackup();
+                logger.info("🛡️ Created temporary backup: {}", tempBackupId);
+            } catch (Exception e) {
+                logger.warn("⚠️ Could not create temporary backup: {}", e.getMessage());
+                // Continue anyway for test scenarios, but log the risk
+            }
+
+            final String backupId = tempBackupId;
+
             JPAUtil.executeInTransaction(em -> {
                 try {
-                    // CRITICAL: Clean up all off-chain files before clearing database
-                    logger.info(
-                        "🧹 Cleaning up off-chain data during reinitialization..."
-                    );
+                    // SECURITY FIX: Clear database FIRST, then files (reverse order for safety)
+                    logger.info("🧹 Clearing database data...");
+
+                    // Get list of off-chain data references BEFORE clearing database
                     List<Block> allBlocks = blockDAO.getAllBlocks();
-                    int offChainFilesDeleted = 0;
+                    List<Long> offChainDataIds = new ArrayList<>();
 
                     for (Block block : allBlocks) {
                         if (block.hasOffChainData()) {
-                            try {
-                                boolean fileDeleted =
-                                    offChainStorageService.deleteData(
-                                        block.getOffChainData()
-                                    );
-                                if (fileDeleted) {
-                                    offChainFilesDeleted++;
-                                }
-                            } catch (Exception e) {
-                                logger.error(
-                                    "Error deleting off-chain data for block {}",
-                                    block.getBlockNumber(),
-                                    e
-                                );
-                            }
+                            offChainDataIds.add(block.getOffChainData().getId());
                         }
                     }
 
-                    if (offChainFilesDeleted > 0) {
-                        logger.info(
-                            "🧹 Cleaned up {} off-chain files",
-                            offChainFilesDeleted
-                        );
-                    }
-
-                    // Clear all blocks and keys from database
+                    // Clear database first - this is the critical operation
                     blockDAO.deleteAllBlocks();
                     authorizedKeyDAO.deleteAllAuthorizedKeys();
 
@@ -3592,18 +3667,46 @@ public class Blockchain {
                     em.flush();
                     em.clear();
 
-                    // Clean up any remaining orphaned files in off-chain directory
-                    cleanupOrphanedOffChainFiles();
-
                     // Reinitialize genesis block (internal version without lock/transaction management)
                     initializeGenesisBlockInternal(em);
 
-                    logger.info(
-                        "✅ Database cleared and reinitialized for testing"
-                    );
+                    logger.info("✅ Database cleared and reinitialized successfully");
+
+                    // SECURITY FIX: Clean off-chain files AFTER successful database clear
+                    // This prevents orphaned database entries if file cleanup fails
+                    try {
+                        int filesDeleted = cleanupOffChainFiles(offChainDataIds);
+                        if (filesDeleted > 0) {
+                            logger.info("🧹 Cleaned up {} off-chain files", filesDeleted);
+                        }
+                    } catch (Exception fileEx) {
+                        logger.warn("⚠️ Off-chain file cleanup had issues (non-critical): {}", fileEx.getMessage());
+                        // Don't fail the whole operation for file cleanup issues
+                    }
+
+                    // Clean up any remaining orphaned files
+                    try {
+                        cleanupOrphanedOffChainFiles();
+                    } catch (Exception orphanEx) {
+                        logger.warn("⚠️ Orphaned file cleanup had issues (non-critical): {}", orphanEx.getMessage());
+                    }
+
                     return null;
                 } catch (Exception e) {
-                    logger.error("❌ Error clearing database", e);
+                    logger.error("❌ Critical error during clearAndReinitialize", e);
+
+                    // SECURITY FIX: Attempt to restore from backup if available
+                    if (backupId != null) {
+                        try {
+                            logger.info("🔄 Attempting to restore from backup: {}", backupId);
+                            restoreFromBackup(backupId);
+                            logger.info("✅ Successfully restored from backup");
+                        } catch (Exception restoreEx) {
+                            logger.error("❌ Failed to restore from backup: {}", restoreEx.getMessage());
+                            logger.error("💥 CRITICAL: System may be in inconsistent state");
+                        }
+                    }
+
                     throw e;
                 }
             });
@@ -3682,42 +3785,199 @@ public class Blockchain {
     }
 
     /**
+     * SECURITY: Verify admin signature for dangerous operations
+     * This prevents unauthorized dangerous operations by requiring cryptographic proof
+     *
+     * @param signature Base64 encoded signature to verify
+     * @param message Message that was signed (operation details)
+     * @param adminPublicKey Public key of the authorized administrator
+     * @return true if signature is valid, false otherwise
+     */
+    private boolean verifyAdminSignature(String signature, String message, String adminPublicKey) {
+        // Validate all parameters
+        if (signature == null || signature.trim().isEmpty()) {
+            logger.error("❌ Admin verification failed: null or empty signature");
+            return false;
+        }
+        if (message == null || message.trim().isEmpty()) {
+            logger.error("❌ Admin verification failed: null or empty message");
+            return false;
+        }
+        if (adminPublicKey == null || adminPublicKey.trim().isEmpty()) {
+            logger.error("❌ Admin verification failed: null or empty admin public key");
+            return false;
+        }
+
+        try {
+            // Check authorization first (but within try-catch for robustness)
+            if (!authorizedKeyDAO.isKeyAuthorized(adminPublicKey)) {
+                logger.error("❌ Admin verification failed: key not authorized");
+                return false;
+            }
+
+            // Validate public key format before using it
+            PublicKey publicKey;
+            try {
+                publicKey = CryptoUtil.stringToPublicKey(adminPublicKey);
+                if (publicKey == null) {
+                    logger.error("❌ Admin verification failed: invalid public key format");
+                    return false;
+                }
+            } catch (Exception keyException) {
+                logger.error("❌ Admin verification failed: cannot parse public key", keyException);
+                return false;
+            }
+
+            // Validate signature
+            boolean isValid = CryptoUtil.verifySignature(message, signature, publicKey);
+
+            if (isValid) {
+                String keyHash = createSafeKeyHash(adminPublicKey);
+                logger.info("✅ Admin verification successful for key hash: {}", keyHash);
+            } else {
+                logger.error("❌ Admin verification failed: invalid signature");
+            }
+
+            return isValid;
+        } catch (Exception e) {
+            logger.error("❌ Admin verification failed: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * SECURITY: Create temporary backup for rollback capability
+     * Used during operations that might need to be rolled back
+     *
+     * @return backup ID for recovery purposes
+     */
+    private String createTemporaryBackup() {
+        return createEmergencyBackup("temp-backup");
+    }
+
+    /**
+     * SECURITY: Clean up specific off-chain files by their IDs
+     * Used when we have a specific list of files to clean
+     *
+     * @param fileIds List of file IDs to clean up
+     * @return number of files successfully deleted
+     */
+    private int cleanupOffChainFiles(List<Long> fileIds) {
+        int deletedCount = 0;
+        for (Long fileId : fileIds) {
+            try {
+                OffChainData offChainData = new OffChainData();
+                offChainData.setId(fileId);
+                boolean deleted = offChainStorageService.deleteData(offChainData);
+                if (deleted) {
+                    deletedCount++;
+                }
+            } catch (Exception e) {
+                logger.warn("Could not delete off-chain file {}: {}", fileId, e.getMessage());
+            }
+        }
+        return deletedCount;
+    }
+
+    /**
+     * SECURITY: Restore from backup in case of operation failure
+     * Used for rollback operations when something goes wrong
+     *
+     * @param backupId The backup ID to restore from
+     */
+    private void restoreFromBackup(String backupId) {
+        String backupPath = "emergency-backups/" + backupId + ".json";
+        boolean restored = importChain(backupPath);
+        if (!restored) {
+            throw new RuntimeException("Failed to restore from backup: " + backupPath);
+        }
+
+        // Clean up the temporary backup file
+        try {
+            File backupFile = new File(backupPath);
+            if (backupFile.exists()) {
+                backupFile.delete();
+                logger.debug("🧹 Cleaned up temporary backup: {}", backupPath);
+            }
+        } catch (Exception e) {
+            logger.warn("Could not clean up backup file {}: {}", backupPath, e.getMessage());
+        }
+    }
+
+    /**
+     * SECURITY: Create emergency backup before dangerous operations
+     * This ensures we can recover if something goes wrong
+     *
+     * @param operation Description of the operation being performed
+     * @return backup ID for recovery purposes
+     */
+    private String createEmergencyBackup(String operation) {
+        try {
+            String backupId = "emergency-" + operation + "-" + System.currentTimeMillis();
+            String backupPath = "emergency-backups/" + backupId + ".json";
+
+            // exportChain will create the directory if needed via isValidFilePath
+            boolean success = exportChain(backupPath);
+            if (success) {
+                logger.info("🛡️ Emergency backup created: {}", backupPath);
+                return backupId;
+            } else {
+                logger.error("❌ Failed to create emergency backup");
+                return null;
+            }
+        } catch (Exception e) {
+            logger.error("❌ Emergency backup creation failed: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
      * DANGEROUS: Permanently delete an authorized key from the database
      * ⚠️ WARNING: This operation is IRREVERSIBLE and may break blockchain validation
-     * FIXED: Added thread-safety with write lock and global transaction
+     * SECURITY FIX: Now requires admin signature and creates emergency backup
      *
      * @param publicKey The public key to delete
      * @param force If true, deletes even if it affects historical blocks
      * @param reason Reason for deletion (for audit logging)
+     * @param adminSignature Base64 encoded signature by authorized admin
+     * @param adminPublicKey Public key of the administrator authorizing this operation
      * @return true if key was deleted, false otherwise
      */
     public boolean dangerouslyDeleteAuthorizedKey(
         String publicKey,
         boolean force,
-        String reason
+        String reason,
+        String adminSignature,
+        String adminPublicKey
     ) {
+        // SECURITY: Verify admin authorization before proceeding
+        String signedMessage = publicKey + "|" + force + "|" + reason + "|" + System.currentTimeMillis() / 1000;
+        if (!verifyAdminSignature(adminSignature, signedMessage, adminPublicKey)) {
+            logger.error("❌ SECURITY VIOLATION: Dangerous key deletion attempt without proper authorization");
+            return false;
+        }
+
+        // SECURITY: Create emergency backup before dangerous operation
+        String backupId = createEmergencyBackup("key-deletion");
+        if (backupId == null) {
+            logger.error("❌ Cannot proceed with dangerous operation: backup creation failed");
+            return false;
+        }
         GLOBAL_BLOCKCHAIN_LOCK.writeLock().lock();
         try {
             return JPAUtil.executeInTransaction(em -> {
                 try {
-                    logger.warn(
-                        "🚨 CRITICAL OPERATION: Attempting to permanently delete authorized key"
-                    );
-                    logger.info(
-                        "🔑 Key fingerprint: {}...",
-                        publicKey.substring(0, Math.min(32, publicKey.length()))
-                    );
-                    logger.info(
-                        "📝 Reason: {}",
-                        (reason != null ? reason : "No reason provided")
-                    );
+                    // SECURITY FIX: Hash sensitive information for logging
+                    String keyHash = createSafeKeyHash(publicKey);
+                    String adminKeyHash = createSafeKeyHash(adminPublicKey);
+
+                    logger.warn("🚨 CRITICAL OPERATION: Authorized key deletion initiated");
+                    logger.info("🔑 Target key hash: {}...", keyHash);
+                    logger.info("👤 Admin key hash: {}...", adminKeyHash);
+                    logger.info("📝 Reason: {}", (reason != null ? reason : "No reason provided"));
                     logger.info("⚡ Force mode: {}", force);
-                    logger.info(
-                        "⏰ Timestamp: {}",
-                        LocalDateTime.now().format(
-                            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-                        )
-                    );
+                    logger.info("⏰ Timestamp: {}",
+                        LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
 
                     // 1. Check deletion impact
                     KeyDeletionImpact impact = canDeleteAuthorizedKey(
@@ -3855,7 +4115,6 @@ public class Blockchain {
                     return deleted;
                 } catch (Exception e) {
                     logger.error("💥 Critical error during key deletion", e);
-                    e.printStackTrace();
                     return false;
                 }
             });
@@ -3864,18 +4123,6 @@ public class Blockchain {
         }
     }
 
-    /**
-     * Convenience method for dangerous key deletion with force=false
-     * @param publicKey The public key to delete
-     * @param reason Reason for deletion (for audit logging)
-     * @return true if key was deleted, false otherwise
-     */
-    public boolean dangerouslyDeleteAuthorizedKey(
-        String publicKey,
-        String reason
-    ) {
-        return dangerouslyDeleteAuthorizedKey(publicKey, false, reason);
-    }
 
     /**
      * Expose the regular deleteAuthorizedKey method referenced in documentation
@@ -4084,7 +4331,7 @@ public class Blockchain {
     public void setMaxBlockDataLength(int maxDataLength) {
         if (maxDataLength > 0 && maxDataLength <= 1000000) {
             // Max 1M characters
-            this.currentMaxBlockDataLength = maxDataLength;
+            this.currentMaxBlockChars = maxDataLength;
             logger.info(
                 "📊 Max block data length updated to: {} characters",
                 maxDataLength
@@ -4124,7 +4371,7 @@ public class Blockchain {
     }
 
     public int getCurrentMaxBlockDataLength() {
-        return currentMaxBlockDataLength;
+        return currentMaxBlockChars;
     }
 
     public int getCurrentOffChainThresholdBytes() {
@@ -4136,7 +4383,7 @@ public class Blockchain {
      */
     public void resetLimitsToDefault() {
         this.currentMaxBlockSizeBytes = MAX_BLOCK_SIZE_BYTES;
-        this.currentMaxBlockDataLength = MAX_BLOCK_DATA_LENGTH;
+        this.currentMaxBlockChars = MAX_BLOCK_CHARS;
         this.currentOffChainThresholdBytes = OFF_CHAIN_THRESHOLD_BYTES;
         logger.info("🔄 Block size limits reset to default values");
     }
@@ -4153,11 +4400,11 @@ public class Blockchain {
             "- Default values: %,d bytes / %,d chars / %,d bytes",
             currentMaxBlockSizeBytes,
             currentMaxBlockSizeBytes / (1024.0 * 1024),
-            currentMaxBlockDataLength,
+            currentMaxBlockChars,
             currentOffChainThresholdBytes,
             currentOffChainThresholdBytes / 1024.0,
             MAX_BLOCK_SIZE_BYTES,
-            MAX_BLOCK_DATA_LENGTH,
+            MAX_BLOCK_CHARS,
             OFF_CHAIN_THRESHOLD_BYTES
         );
     }

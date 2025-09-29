@@ -130,7 +130,7 @@ This is a **private blockchain** for controlled environments where only authoriz
 - **Persistence**: SQLite database with JPA standard for ORM (using Hibernate as provider)
 - **Off-Chain Storage**: Encrypted file storage with automatic data tiering (AES-256-GCM)
 - **Professional Logging**: SLF4J with Logback - configurable performance modes (dev/production/test)
-- **Comprehensive Testing**: **795 JUnit 5 tests** with **72% code coverage** + integration demos + security tests
+- **Comprehensive Testing**: **828+ JUnit 5 tests** with **72% code coverage** + integration demos + security tests
 - **Production Ready**: Complete documentation and deployment guides with performance optimization
 - **Clean Architecture**: Well-structured code with DAO pattern and enterprise logging
 - **Scalable Storage**: Support for data up to 100MB per block through off-chain storage
@@ -444,7 +444,7 @@ System.out.println(integrity.getFormattedSummary()); // Rich formatted output
 
 The UserFriendlyEncryptionAPI includes comprehensive testing with:
 
-- **795 JUnit 5 Tests** across multiple test classes
+- **828+ JUnit 5 Tests** across multiple test classes
 - **72% Code Coverage** with focus on critical functionality
 - **Nested Test Organization** for improved maintainability
 - **Concurrent Testing** for thread-safety validation
@@ -541,7 +541,7 @@ blockchain.resetLimitsToDefault();
 
 ### Comprehensive Test Suite
 
-The project includes extensive testing with **795 JUnit 5 tests** achieving **72% code coverage** plus integration demos and security testing:
+The project includes extensive testing with **828+ JUnit 5 tests** achieving **72% code coverage** plus integration demos and security testing:
 
 #### Run All Tests (Recommended)
 ```zsh
@@ -552,7 +552,7 @@ The project includes extensive testing with **795 JUnit 5 tests** achieving **72
 ```
 === COMPREHENSIVE BLOCKCHAIN TEST RUNNER ===
 ✅ Compilation successful!
-🎉 JUnit 5 tests: PASSED (795 tests, 72% coverage)
+🎉 JUnit 5 tests: PASSED (828+ tests, 72% coverage)
 ✅ UserFriendlyEncryptionAPI tests: PASSED
 ✅ Security and encryption tests: PASSED
 ✅ Basic Core Functions test: PASSED
@@ -593,7 +593,7 @@ mvn clean test jacoco:report
 
 #### Test Coverage Achievements
 - **Overall Coverage**: 72% (Target reached: 75%+)
-- **Total Tests**: 795 JUnit 5 tests across all test classes
+- **Total Tests**: 828+ JUnit 5 tests across all test classes
 - **Test Classes**: 10+ dedicated test classes for comprehensive validation
 - **Critical Methods**: 100% coverage for security-critical operations
 - **Edge Cases**: Comprehensive testing of error conditions and boundary cases
@@ -1296,11 +1296,13 @@ System.out.println("Impact: " + impact);
 // 🟡 LEVEL 2: Safe Deletion (blocks dangerous operations)
 boolean safe = blockchain.deleteAuthorizedKey(publicKey);
 
-// 🟠 LEVEL 3: Dangerous with Safety (still protected by default)
-boolean dangerous = blockchain.dangerouslyDeleteAuthorizedKey(publicKey, "GDPR compliance");
+// 🟠 LEVEL 3: Secure Admin-Authorized Deletion (requires cryptographic signature)
+String adminSignature = CryptoUtil.createAdminSignature(publicKey, false, "GDPR compliance", adminPrivateKey);
+boolean dangerous = blockchain.dangerouslyDeleteAuthorizedKey(publicKey, false, "GDPR compliance", adminSignature, adminPublicKey);
 
 // 🔴 LEVEL 4: Nuclear Option (breaks validation - emergency use only)
-boolean forced = blockchain.dangerouslyDeleteAuthorizedKey(publicKey, true, "Security incident");
+String forceSignature = CryptoUtil.createAdminSignature(publicKey, true, "Security incident", adminPrivateKey);
+boolean forced = blockchain.dangerouslyDeleteAuthorizedKey(publicKey, true, "Security incident", forceSignature, adminPublicKey);
 ```
 
 ### Safe Usage Pattern
@@ -1317,7 +1319,8 @@ public void safeKeyDeletionWorkflow(String publicKey, String reason) {
     } else {
         System.out.println("⚠️ Key has " + impact.getAffectedBlocks() + " blocks");
         // Only use dangerous deletion in emergencies:
-        // blockchain.dangerouslyDeleteAuthorizedKey(publicKey, true, reason);
+        // String adminSignature = CryptoUtil.createAdminSignature(publicKey, true, reason, adminPrivateKey);
+        // blockchain.dangerouslyDeleteAuthorizedKey(publicKey, true, reason, adminSignature, adminPublicKey);
     }
 }
 ```
@@ -1464,7 +1467,7 @@ This project includes comprehensive documentation for different use cases:
 | Manage keys and security | [KEY_MANAGEMENT_GUIDE.md](docs/KEY_MANAGEMENT_GUIDE.md) |
 | Follow security best practices | [SECURITY_GUIDE.md](docs/SECURITY_GUIDE.md) |
 | Troubleshoot common issues | [TROUBLESHOOTING_GUIDE.md](docs/TROUBLESHOOTING_GUIDE.md) |
-| Run comprehensive tests (795 tests, 72% coverage) | **README.md - Testing section** |
+| Run comprehensive tests (828+ tests, 72% coverage) | **README.md - Testing section** |
 | Run tests and troubleshoot issues | [TESTING.md](docs/TESTING.md) |
 | **Test components with shared static state** | **[SHARED_STATE_TESTING_PATTERNS.md](docs/SHARED_STATE_TESTING_PATTERNS.md)** |
 | **Implement thread-safe multi-instance operations** | **[ATOMIC_PROTECTION_MULTI_INSTANCE_GUIDE.md](docs/ATOMIC_PROTECTION_MULTI_INSTANCE_GUIDE.md)** |

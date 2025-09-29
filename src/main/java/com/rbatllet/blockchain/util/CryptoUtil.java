@@ -875,18 +875,36 @@ public class CryptoUtil {
             if (password == null || password.isEmpty()) {
                 throw new IllegalArgumentException("Password cannot be null or empty");
             }
-            
+
             MessageDigest digest = MessageDigest.getInstance(HASH_ALGORITHM);
-            
+
             if (salt != null && !salt.isEmpty()) {
                 digest.update(salt.getBytes(StandardCharsets.UTF_8));
             }
-            
+
             byte[] key = digest.digest(password.getBytes(StandardCharsets.UTF_8));
             return Base64.getEncoder().encodeToString(key);
-            
+
         } catch (Exception e) {
             throw new RuntimeException("Error deriving key from password: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Create an admin signature for dangerous operations
+     * This helper method centralizes the signature creation logic used across multiple classes
+     *
+     * @param publicKey The public key being deleted
+     * @param force Whether to force the deletion
+     * @param reason The reason for the deletion
+     * @param adminPrivateKey The admin's private key for signing
+     * @return The admin signature string
+     */
+    public static String createAdminSignature(String publicKey, boolean force, String reason, PrivateKey adminPrivateKey) {
+        long timestamp = System.currentTimeMillis() / 1000;
+        // Use StringBuilder for efficient string concatenation
+        StringBuilder message = new StringBuilder(publicKey.length() + reason.length() + 32);
+        message.append(publicKey).append('|').append(force).append('|').append(reason).append('|').append(timestamp);
+        return signData(message.toString(), adminPrivateKey);
     }
 }

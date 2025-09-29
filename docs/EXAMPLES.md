@@ -875,39 +875,43 @@ public class KeyCleanupManager {
         }
     }
     
-    // DANGEROUS: Permanent key deletion for compliance scenarios
-    public boolean dangerousDeleteKey(Blockchain blockchain, String publicKey, boolean force, String reason) {
+    // SECURE DANGEROUS: Admin-authorized permanent key deletion for compliance scenarios
+    public boolean secureAdminDeleteKey(Blockchain blockchain, String publicKey, boolean force, String reason, PrivateKey adminPrivateKey, String adminPublicKey) {
         try {
-            System.out.println("⚠️ DANGEROUS KEY DELETION: Use with extreme caution");
+            System.out.println("🔐 SECURE ADMIN-AUTHORIZED KEY DELETION");
             System.out.println("🔑 Key: " + publicKey.substring(0, 32) + "...");
             System.out.println("📝 Reason: " + reason);
             System.out.println("⚡ Force mode: " + force);
-            
+            System.out.println("👤 Admin: " + adminPublicKey.substring(0, 32) + "...");
+
             // Step 1: Always analyze impact first
             Blockchain.KeyDeletionImpact impact = blockchain.canDeleteAuthorizedKey(publicKey);
             System.out.println("📊 Impact Analysis: " + impact);
-            
+
             if (!impact.keyExists()) {
                 System.out.println("❌ Key not found in database");
                 return false;
             }
-            
+
             // Step 2: Show warnings for severe impact
             if (impact.isSevereImpact()) {
                 System.out.println("🚨 SEVERE IMPACT WARNING:");
                 System.out.println("   - " + impact.getAffectedBlocks() + " historical blocks will be orphaned");
                 System.out.println("   - Blockchain validation will FAIL for these blocks");
                 System.out.println("   - This action is IRREVERSIBLE");
-                
+
                 if (!force) {
                     System.out.println("❌ Deletion blocked - use force=true to override safety");
                     return false;
                 }
             }
-            
-            // Step 3: Perform dangerous deletion
-            // Use the correct API method name and parameter order
-            boolean deleted = blockchain.dangerouslyDeleteAuthorizedKey(publicKey, force, reason);
+
+            // Step 3: Create admin signature for authorization
+            String adminSignature = CryptoUtil.createAdminSignature(publicKey, force, reason, adminPrivateKey);
+            System.out.println("🔐 Admin signature created for authorization");
+
+            // Step 4: Perform secure admin-authorized deletion
+            boolean deleted = blockchain.dangerouslyDeleteAuthorizedKey(publicKey, force, reason, adminSignature, adminPublicKey);
             
             if (deleted) {
                 System.out.println("🗑️ ✅ Key permanently deleted from database");
