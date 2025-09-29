@@ -207,12 +207,13 @@ public class BlockEncryptionIntegrationTest {
     @Test
     @Order(5)
     void testWrongPasswordFailsDecryption() {
-        // Try to decrypt with wrong password
-        assertThrows(RuntimeException.class, () -> {
-            blockDAO.getBlockWithDecryption(medicalBlockId, "WrongPassword123");
-        });
-        
-        System.out.println("✅ Wrong password correctly rejected");
+        // Try to decrypt with wrong password - should return null instead of throwing exception
+        Block result = blockDAO.getBlockWithDecryption(medicalBlockId, "WrongPassword123");
+
+        // Wrong password should return null (graceful handling of Tag mismatch)
+        assertNull(result, "Wrong password should return null instead of throwing exception");
+
+        System.out.println("✅ Wrong password correctly returns null (graceful Tag mismatch handling)");
     }
     
     @Test

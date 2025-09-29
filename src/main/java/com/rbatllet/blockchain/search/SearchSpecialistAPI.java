@@ -1725,4 +1725,12 @@ public class SearchSpecialistAPI {
     public BlockPasswordRegistry.RegistryStats getPasswordRegistryStats() {
         return passwordRegistry.getStats();
     }
+
+    /**
+     * Get direct access to the password registry for advanced operations
+     * @return BlockPasswordRegistry instance for direct manipulation
+     */
+    public BlockPasswordRegistry getPasswordRegistry() {
+        return passwordRegistry;
+    }
 }

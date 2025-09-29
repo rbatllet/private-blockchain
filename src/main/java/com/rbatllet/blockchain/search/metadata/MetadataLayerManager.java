@@ -169,7 +169,12 @@ public class MetadataLayerManager {
                                 logger.debug("🔍 Debug: invalid encryptionMetadata format, expected timestamp|salt|iv|encryptedData|dataHash (5 parts), got {} parts", parts.length);
                             }
                         } catch (Exception e) {
-                            logger.debug("🔍 Debug: decryption failed, using encrypted content: {}", e.getMessage());
+                            if (e.getMessage() != null && e.getMessage().contains("Tag mismatch")) {
+                                logger.debug("🔒 Decryption failed for block {} - wrong password provided: Tag mismatch",
+                                    blockHash.substring(0, 8));
+                            } else {
+                                logger.debug("🔍 Debug: decryption failed, using encrypted content: {}", e.getMessage());
+                            }
                             // Fall back to encrypted content
                         }
                     }
@@ -243,9 +248,14 @@ public class MetadataLayerManager {
                                     }
                                 }
                             } catch (Exception entryException) {
-                                logger.debug("🔍 failed to decrypt entry '{}': {}", 
-                                           encryptedEntry.substring(0, Math.min(20, encryptedEntry.length())), 
-                                           entryException.getMessage());
+                                if (entryException.getMessage() != null && entryException.getMessage().contains("Tag mismatch")) {
+                                    logger.debug("🔒 Cannot decrypt keyword entry '{}' - wrong password: Tag mismatch",
+                                               encryptedEntry.substring(0, Math.min(20, encryptedEntry.length())));
+                                } else {
+                                    logger.debug("🔍 failed to decrypt entry '{}': {}",
+                                               encryptedEntry.substring(0, Math.min(20, encryptedEntry.length())),
+                                               entryException.getMessage());
+                                }
                             }
                         }
                         

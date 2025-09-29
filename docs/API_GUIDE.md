@@ -2201,6 +2201,86 @@ public List<Block> searchByCategory(String category)
 **Validation Rules (Applied Automatically):**
 - Minimum 4 characters (general rule)
 - **Automatic Exceptions:** Years (2024), acronyms (API, SQL), technical terms (XML, JSON), numbers, IDs
+
+##### Multi-Department Search Initialization
+```java
+public void initializeAdvancedSearchWithMultiplePasswords(String[] passwords)
+```
+- **Parameters:** `passwords`: Array of department-specific passwords for multi-tenant scenarios
+- **Description:** Initializes the advanced search system efficiently for multi-department operations
+- **Purpose:** Optimizes search initialization to avoid redundant indexing operations that cause unnecessary Tag mismatch errors
+- **Thread-Safety:** Fully thread-safe with global read lock protection
+- **Enterprise Use Case:** Designed for scenarios where different departments use different encryption passwords
+- **Performance:** Single initialization prevents multiple re-indexing operations during multi-department data storage
+
+**Usage Examples:**
+
+**Enterprise Multi-Department Setup:**
+```java
+// Enterprise scenario with multiple departments
+Blockchain blockchain = new Blockchain();
+
+// Department-specific passwords (realistic enterprise naming)
+String[] departmentPasswords = {
+    "Medical_Dept_2024!SecureKey_" + generateRandomSuffix(),
+    "Finance_Dept_2024!SecureKey_" + generateRandomSuffix(),
+    "Legal_Dept_2024!SecureKey_" + generateRandomSuffix(),
+    "IT_Dept_2024!SecureKey_" + generateRandomSuffix()
+};
+
+// Initialize search system efficiently for all departments
+blockchain.initializeAdvancedSearchWithMultiplePasswords(departmentPasswords);
+
+// Now store department-specific encrypted data
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+
+// Medical department data
+api.storeSearchableData(
+    "Patient medical record with diagnosis details",
+    departmentPasswords[0],
+    new String[]{"patient", "medical", "diagnosis"}
+);
+
+// Finance department data
+api.storeSearchableData(
+    "Financial transaction report with account details",
+    departmentPasswords[1],
+    new String[]{"transaction", "finance", "account"}
+);
+
+// Each department can search only their own data
+var medicalResults = api.searchAndDecryptByTerms(
+    new String[]{"patient"},
+    departmentPasswords[0],
+    10
+);
+
+var financeResults = api.searchAndDecryptByTerms(
+    new String[]{"transaction"},
+    departmentPasswords[1],
+    10
+);
+```
+
+**Edge Case Handling:**
+```java
+// Graceful handling of edge cases
+String[] emptyPasswords = {};
+blockchain.initializeAdvancedSearchWithMultiplePasswords(emptyPasswords); // Safe
+
+String[] nullPasswords = null;
+blockchain.initializeAdvancedSearchWithMultiplePasswords(nullPasswords); // Safe
+
+String[] mixedPasswords = {"ValidPassword123!", null, "AnotherPassword456!"};
+blockchain.initializeAdvancedSearchWithMultiplePasswords(mixedPasswords); // Safe
+```
+
+**Benefits:**
+- ✅ **Prevents redundant indexing**: Single initialization for all departments
+- ✅ **Reduces Tag mismatch errors**: Avoids multiple initialization cycles
+- ✅ **Enterprise-ready**: Supports realistic multi-tenant password strategies
+- ✅ **Thread-safe**: Global read lock ensures concurrent safety
+- ✅ **Graceful fallback**: Handles edge cases (null/empty arrays) safely
 - **Valid Examples:** "medical", "2024", "API", "XML", "123", "ID-001"
 - **Invalid Examples:** "hi", "a", "", null, whitespace-only strings
 

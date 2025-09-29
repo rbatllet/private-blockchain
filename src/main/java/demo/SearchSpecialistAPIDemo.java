@@ -68,7 +68,7 @@ public class SearchSpecialistAPIDemo {
             demonstrateIntelligentAdaptiveSearch(searchAPI, demoPassword);
             
             // Demo 4: Performance Analytics
-            demonstratePerformanceAnalytics(searchAPI);
+            demonstratePerformanceAnalytics(searchAPI, 0.0, 0.0);  // Will calculate own metrics
             
             // Demo 5: Advanced Search Modes
             demonstrateAdvancedSearchModes(searchAPI, demoPassword);
@@ -110,33 +110,48 @@ public class SearchSpecialistAPIDemo {
         System.out.println("• Public data layer access only");
         System.out.println();
         
-        // Test different search terms with timing (exactly like the test)
+        // Test different search terms with timing and collect real metrics
         String[] searchTerms = {"financial", "healthcare", "confidential", "nonexistent"};
-        
+        double totalTimeMs = 0.0;
+        int successfulSearches = 0;
+        int totalSearches = searchTerms.length;
+
         for (String term : searchTerms) {
             long startTime = System.nanoTime();
             List<EnhancedSearchResult> results = searchAPI.searchSimple(term);
             long endTime = System.nanoTime();
             double timeMs = (endTime - startTime) / 1_000_000.0;
-            
-            System.out.printf("⚡ Fast Search: '%s' | Results: %d | Time: %.2f ms%n", 
+
+            totalTimeMs += timeMs;
+            if (!results.isEmpty()) {
+                successfulSearches++;
+            }
+
+            System.out.printf("⚡ Fast Search: '%s' | Results: %d | Time: %.2f ms%n",
                             term, results.size(), timeMs);
-            
+
             // Show first result details and evaluation
             if (!results.isEmpty()) {
                 EnhancedSearchResult firstResult = results.get(0);
-                System.out.printf("   📄 Block: %s | Relevance: %.2f%n", 
+                System.out.printf("   📄 Block: %s | Relevance: %.2f%n",
                                 firstResult.getBlockHash(), firstResult.getRelevanceScore());
             } else {
-                System.out.printf("   ❌ No results found - This indicates a problem with search configuration%n");
+                System.out.printf("   ℹ️ No results found (expected for non-existent terms)%n");
             }
         }
+
+        // Calculate real performance metrics
+        double averageTimeMs = totalTimeMs / totalSearches;
+        double successRatePercent = (successfulSearches * 100.0) / totalSearches;
         
         System.out.println();
         System.out.println("📊 Fast Public Search Summary:");
-        
+        System.out.printf("   ⚡ Average Response Time: %.1fms%n", averageTimeMs);
+        System.out.printf("   📈 Success Rate: %.1f%% (%d/%d searches found results)%n",
+                         successRatePercent, successfulSearches, totalSearches);
+
         // Check if searches are working
-        boolean hasResults = false;
+        boolean hasResults = successfulSearches > 0;
         for (String term : searchTerms) {
             List<EnhancedSearchResult> results = searchAPI.searchSimple(term);
             if (!results.isEmpty()) {
@@ -241,21 +256,43 @@ public class SearchSpecialistAPIDemo {
         System.out.println();
     }
     
-    private static void demonstratePerformanceAnalytics(SearchSpecialistAPI searchAPI) {
+    private static void demonstratePerformanceAnalytics(SearchSpecialistAPI searchAPI, double unused1, double unused2) {
         System.out.println("📈 DEMO 4: PERFORMANCE ANALYTICS");
         System.out.println("=================================");
         System.out.println("• Real-time performance metrics");
         System.out.println("• Search strategy analytics");
         System.out.println("• Performance optimization insights");
         System.out.println();
-        
-        // Simulate performance analytics
-        System.out.println("📊 Current Performance Metrics:");
-        System.out.println("   ⚡ Average Fast Search Time: 24ms");
-        System.out.println("   🔒 Average Secure Search Time: 156ms");
-        System.out.println("   🧠 Average Intelligent Search Time: 89ms");
-        System.out.println("   📈 Search Success Rate: 98.5%");
-        System.out.println("   🎯 Cache Hit Rate: 87%");
+
+        // Calculate real performance metrics by running actual tests
+        String[] testTerms = {"financial", "confidential", "nonexistent"};
+        double totalTimeMs = 0.0;
+        int successfulSearches = 0;
+        int totalSearches = testTerms.length;
+
+        System.out.println("📊 Running real-time performance analysis...");
+        for (String term : testTerms) {
+            long startTime = System.nanoTime();
+            var results = searchAPI.searchSimple(term);
+            long endTime = System.nanoTime();
+            double timeMs = (endTime - startTime) / 1_000_000.0;
+
+            totalTimeMs += timeMs;
+            if (!results.isEmpty()) {
+                successfulSearches++;
+            }
+        }
+
+        double realAverageTimeMs = totalTimeMs / totalSearches;
+        double realSuccessRatePercent = (successfulSearches * 100.0) / totalSearches;
+
+        // Real performance analytics based on actual measurements
+        System.out.println("📊 Current Performance Metrics (Real-time):");
+        System.out.printf("   ⚡ Average Fast Search Time: %.1fms (measured now)%n", realAverageTimeMs);
+        System.out.println("   🔒 Average Secure Search Time: [Not tested in this analysis]");
+        System.out.println("   🧠 Average Intelligent Search Time: [Not tested in this analysis]");
+        System.out.printf("   📈 Search Success Rate: %.1f%% (measured now)%n", realSuccessRatePercent);
+        System.out.println("   🎯 Cache Hit Rate: [Monitoring not implemented]");
         System.out.println();
         
         System.out.println("📊 Strategy Usage Analytics:");
