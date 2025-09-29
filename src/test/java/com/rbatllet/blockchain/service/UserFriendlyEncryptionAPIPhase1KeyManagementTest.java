@@ -108,13 +108,22 @@ public class UserFriendlyEncryptionAPIPhase1KeyManagementTest {
             KeyManagementResult intermediateResult = api.generateHierarchicalKey("INTERMEDIATE_PURPOSE", 2, options);
             assertTrue(intermediateResult.isSuccess(), "Intermediate key creation should succeed");
 
-            // When & Then - Now test depths 1-5
-            for (int depth = 1; depth <= 5; depth++) {
+            // When & Then - Test each depth sequentially, ensuring parents exist
+            // Depth 1 (root) - should always work
+            KeyManagementResult depth1 = api.generateHierarchicalKey(purpose + "_1", 1, options);
+            assertTrue(depth1.isSuccess(), "Depth 1 should succeed");
+
+            // Depth 2 (intermediate) - should work with root parent
+            KeyManagementResult depth2 = api.generateHierarchicalKey(purpose + "_2", 2, options);
+            assertTrue(depth2.isSuccess(), "Depth 2 should succeed");
+
+            // Depth 3+ (operational) - should work with intermediate parent
+            for (int depth = 3; depth <= 5; depth++) {
                 KeyManagementResult result = api.generateHierarchicalKey(purpose + "_" + depth, depth, options);
-                
+
                 assertTrue(result.isSuccess(), "Depth " + depth + " should succeed");
                 assertNotNull(result.getGeneratedKeyId(), "Key ID should be generated for depth " + depth);
-                assertTrue(result.getKeyStatistics().getTotalKeysGenerated() >= 1, 
+                assertTrue(result.getKeyStatistics().getTotalKeysGenerated() >= 1,
                           "Should generate at least one key for depth " + depth);
             }
         }

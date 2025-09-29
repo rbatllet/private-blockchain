@@ -24,12 +24,19 @@ class ImprovedRollbackStrategyTest {
 
     private Blockchain blockchain;
     private ChainRecoveryManager recoveryManager;
+    private KeyPair adminKeyPair;
+    private String adminPublicKey;
 
     @BeforeEach
     void setUp() {
         blockchain = new Blockchain();
         blockchain.clearAndReinitialize();
         recoveryManager = new ChainRecoveryManager(blockchain);
+
+        // Setup admin
+        adminKeyPair = CryptoUtil.generateKeyPair();
+        adminPublicKey = CryptoUtil.publicKeyToString(adminKeyPair.getPublic());
+        blockchain.addAuthorizedKey(adminPublicKey, "Test Admin");
     }
 
     @AfterEach
@@ -77,7 +84,9 @@ class ImprovedRollbackStrategyTest {
             System.out.println("Chain fully compliant: " + initialValidation.isFullyCompliant());
             
             // Create corruption
-            blockchain.dangerouslyDeleteAuthorizedKey(user1Key, true, "Test interleaved corruption");
+            String interleavedReason = "Test interleaved corruption";
+            String interleavedAdminSignature = CryptoUtil.createAdminSignature(user1Key, true, interleavedReason, adminKeyPair.getPrivate());
+            blockchain.dangerouslyDeleteAuthorizedKey(user1Key, true, interleavedReason, interleavedAdminSignature, adminPublicKey);
             var corruptedValidation = blockchain.validateChainDetailed();
             assertFalse(corruptedValidation.isFullyCompliant(), 
                 "Chain should not be fully compliant after key deletion");
@@ -166,7 +175,9 @@ class ImprovedRollbackStrategyTest {
             System.out.println("Initial chain: " + initialBlocks + " blocks");
             
             // Create corruption
-            blockchain.dangerouslyDeleteAuthorizedKey(corruptKey, true, "Test end corruption");
+            String endCorruptReason = "Test end corruption";
+            String endCorruptAdminSignature = CryptoUtil.createAdminSignature(corruptKey, true, endCorruptReason, adminKeyPair.getPrivate());
+            blockchain.dangerouslyDeleteAuthorizedKey(corruptKey, true, endCorruptReason, endCorruptAdminSignature, adminPublicKey);
             var corruptedValidation = blockchain.validateChainDetailed();
             assertFalse(corruptedValidation.isFullyCompliant(), 
                 "Chain should not be fully compliant after corruption");
@@ -225,7 +236,9 @@ class ImprovedRollbackStrategyTest {
                 "Initial chain should be valid");
             
             // Create corruption
-            blockchain.dangerouslyDeleteAuthorizedKey(userKey, true, "Security test");
+            String securityReason = "Security test";
+            String securityAdminSignature = CryptoUtil.createAdminSignature(userKey, true, securityReason, adminKeyPair.getPrivate());
+            blockchain.dangerouslyDeleteAuthorizedKey(userKey, true, securityReason, securityAdminSignature, adminPublicKey);
             var corruptedValidation = blockchain.validateChainDetailed();
             assertFalse(corruptedValidation.isFullyCompliant(), 
                 "Chain should not be fully compliant after corruption");
@@ -290,7 +303,9 @@ class ImprovedRollbackStrategyTest {
             blockchain.addBlock("Block-3", user1.getPrivate(), user1.getPublic());
             
             // Create corruption
-            blockchain.dangerouslyDeleteAuthorizedKey(user1Key, true, "Analysis test");
+            String analysisReason = "Analysis test";
+            String analysisAdminSignature = CryptoUtil.createAdminSignature(user1Key, true, analysisReason, adminKeyPair.getPrivate());
+            blockchain.dangerouslyDeleteAuthorizedKey(user1Key, true, analysisReason, analysisAdminSignature, adminPublicKey);
             
             // Capture output to verify analysis is provided
             // The improved strategy should provide detailed logging
@@ -332,9 +347,12 @@ class ImprovedRollbackStrategyTest {
             
             // Test 2: Very short chain with corruption
             blockchain.clearAndReinitialize();
+            blockchain.addAuthorizedKey(adminPublicKey, "Test Admin");
             blockchain.addAuthorizedKey(userKey, "Test User");
             blockchain.addBlock("Only Block", user.getPrivate(), user.getPublic());
-            blockchain.dangerouslyDeleteAuthorizedKey(userKey, true, "Edge case test");
+            String edgeReason = "Edge case test";
+            String edgeAdminSignature = CryptoUtil.createAdminSignature(userKey, true, edgeReason, adminKeyPair.getPrivate());
+            blockchain.dangerouslyDeleteAuthorizedKey(userKey, true, edgeReason, edgeAdminSignature, adminPublicKey);
             
             ChainRecoveryManager.RecoveryResult result2 = 
                 recoveryManager.recoverCorruptedChain(userKey, "Test User");
@@ -347,4 +365,5 @@ class ImprovedRollbackStrategyTest {
             System.out.println("✅ EDGE CASES VERIFIED: Graceful handling of unusual scenarios");
         }
     }
+
 }

@@ -15,13 +15,21 @@ import static org.junit.jupiter.api.Assertions.*;
 class DangerousDeleteAuthorizedKeyTest {
 
     private Blockchain blockchain;
+    private KeyPair adminKeyPair;
+    private String adminPublicKey;
 
     @BeforeEach
     void setUp() {
         blockchain = new Blockchain();
         // Clean up any existing data properly
         blockchain.clearAndReinitialize();
+
+        // Create admin key pair for secure operations
+        adminKeyPair = CryptoUtil.generateKeyPair();
+        adminPublicKey = CryptoUtil.publicKeyToString(adminKeyPair.getPublic());
+        blockchain.addAuthorizedKey(adminPublicKey, "Administrator");
     }
+
 
     @AfterEach
     void tearDown() {
@@ -144,9 +152,10 @@ class DangerousDeleteAuthorizedKeyTest {
         blockchain.addAuthorizedKey(publicKey, "Test User Dangerous Safe");
         blockchain.addBlock("Protected block", keyPair.getPrivate(), keyPair.getPublic());
         
-        // Should fail without force
-        boolean deleted = blockchain.dangerouslyDeleteAuthorizedKey(publicKey, "Test deletion");
-        assertFalse(deleted);
+        // Should fail without force (using new secure method)
+        String signature = CryptoUtil.createAdminSignature(publicKey, false, "Test deletion", adminKeyPair.getPrivate());
+        boolean deleted = blockchain.dangerouslyDeleteAuthorizedKey(publicKey, false, "Test deletion", signature, adminPublicKey);
+        assertFalse(deleted, "Should fail without force on key with blocks");
         
         // Verify key still exists
         assertTrue(blockchain.getAuthorizedKeys().stream()
@@ -167,9 +176,10 @@ class DangerousDeleteAuthorizedKeyTest {
         assertTrue(resultBefore.isFullyCompliant());
         assertTrue(resultBefore.isStructurallyIntact());
         
-        // Should succeed with force
-        boolean deleted = blockchain.dangerouslyDeleteAuthorizedKey(publicKey, true, "Forced test deletion");
-        assertTrue(deleted);
+        // Should succeed with force (using new secure method)
+        String signature = CryptoUtil.createAdminSignature(publicKey, true, "Forced test deletion", adminKeyPair.getPrivate());
+        boolean deleted = blockchain.dangerouslyDeleteAuthorizedKey(publicKey, true, "Forced test deletion", signature, adminPublicKey);
+        assertTrue(deleted, "Should succeed with force and valid admin signature");
         
         // Verify key is gone
         assertFalse(blockchain.getAuthorizedKeys().stream()
@@ -184,11 +194,12 @@ class DangerousDeleteAuthorizedKeyTest {
 
     @Test
     void testDangerouslyDeleteAuthorizedKey_NonExistentKey() {
-        // Test deletion of non-existent key
+        // Test deletion of non-existent key (using new secure method)
         String nonExistentKey = "non-existent-key-456";
-        
-        boolean deleted = blockchain.dangerouslyDeleteAuthorizedKey(nonExistentKey, true, "Test non-existent");
-        assertFalse(deleted);
+        String signature = CryptoUtil.createAdminSignature(nonExistentKey, true, "Test non-existent", adminKeyPair.getPrivate());
+
+        boolean deleted = blockchain.dangerouslyDeleteAuthorizedKey(nonExistentKey, true, "Test non-existent", signature, adminPublicKey);
+        assertFalse(deleted, "Should fail on non-existent key");
     }
 
     @Test
@@ -199,9 +210,10 @@ class DangerousDeleteAuthorizedKeyTest {
         
         blockchain.addAuthorizedKey(publicKey, "Test User No Blocks");
         
-        // Should succeed even without force since no blocks are affected
-        boolean deleted = blockchain.dangerouslyDeleteAuthorizedKey(publicKey, false, "Test safe dangerous deletion");
-        assertTrue(deleted);
+        // Should succeed even without force since no blocks are affected (using new secure method)
+        String signature = CryptoUtil.createAdminSignature(publicKey, false, "Test safe dangerous deletion", adminKeyPair.getPrivate());
+        boolean deleted = blockchain.dangerouslyDeleteAuthorizedKey(publicKey, false, "Test safe dangerous deletion", signature, adminPublicKey);
+        assertTrue(deleted, "Should succeed without force on key with no blocks");
         
         // Verify key is gone
         assertFalse(blockchain.getAuthorizedKeys().stream()
@@ -266,17 +278,20 @@ class DangerousDeleteAuthorizedKeyTest {
         assertTrue(afterFailedDeletion.isFullyCompliant()); // Should still be valid
         assertTrue(afterFailedDeletion.isStructurallyIntact());
         
-        // Force delete key with blocks
-        assertTrue(blockchain.dangerouslyDeleteAuthorizedKey(publicKey1, true, "Test force deletion"));
+        // Force delete key with blocks (using new secure method)
+        String signature = CryptoUtil.createAdminSignature(publicKey1, true, "Test force deletion", adminKeyPair.getPrivate());
+        assertTrue(blockchain.dangerouslyDeleteAuthorizedKey(publicKey1, true, "Test force deletion", signature, adminPublicKey));
         ChainValidationResult afterForceDeletion = blockchain.validateChainDetailed();
         assertTrue(afterForceDeletion.isStructurallyIntact()); // Structure still intact
         assertFalse(afterForceDeletion.isFullyCompliant()); // But not fully compliant
         assertTrue(afterForceDeletion.getRevokedBlocks() > 0); // Should have revoked blocks
         
-        // Verify only key 3 remains
+        // Verify only key 3 and admin remain
         List<AuthorizedKey> remainingKeys = blockchain.getAuthorizedKeys();
-        assertEquals(1, remainingKeys.size());
-        assertEquals(publicKey3, remainingKeys.get(0).getPublicKey());
+        assertEquals(2, remainingKeys.size());
+        // Should have admin and publicKey3
+        assertTrue(remainingKeys.stream().anyMatch(key -> key.getPublicKey().equals(adminPublicKey)));
+        assertTrue(remainingKeys.stream().anyMatch(key -> key.getPublicKey().equals(publicKey3)));
     }
 
     @Test

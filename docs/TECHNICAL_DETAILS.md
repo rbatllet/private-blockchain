@@ -695,11 +695,8 @@ public KeyDeletionImpact canDeleteAuthorizedKey(String publicKey)
 // Level 2: Safe deletion (blocks dangerous operations)
 public boolean deleteAuthorizedKey(String publicKey)
 
-// Level 3: Dangerous deletion with safety (default force=false)
-public boolean dangerouslyDeleteAuthorizedKey(String publicKey, String reason)
-
-// Level 4: Nuclear option (force=true, breaks validation)
-public boolean dangerouslyDeleteAuthorizedKey(String publicKey, boolean force, String reason)
+// Level 3: Secure admin-authorized deletion (requires cryptographic signature)
+public boolean dangerouslyDeleteAuthorizedKey(String publicKey, boolean force, String reason, String adminSignature, String adminPublicKey)
 ```
 
 #### Security Guarantees
@@ -710,15 +707,20 @@ public boolean dangerouslyDeleteAuthorizedKey(String publicKey, boolean force, S
 - ✅ No risk of orphaned blocks
 - ✅ Reversible (key can be re-added)
 
-**Dangerous Deletion (Level 3):**
-- ⚠️ Still protected by safety checks
-- ⚠️ Refuses deletion if blocks would be orphaned
-- ✅ Comprehensive audit logging
+**Secure Admin-Authorized Deletion (Level 3):**
+- 🔐 Requires valid administrator cryptographic signature
+- 🔐 Multi-level authorization with ECDSA signature verification
+- ✅ Comprehensive audit logging with secure key hashing
 - ✅ Impact analysis before deletion
+- ✅ Emergency backup creation for rollback safety
 
-**Forced Deletion (Level 4):**
+**When `force=false`:**
+- ⚠️ Protected by safety checks - refuses deletion if blocks would be orphaned
+- ✅ Maintains blockchain integrity
+
+**When `force=true` (Nuclear Option):**
 - 🔴 Bypasses all safety checks
-- 🔴 WILL break blockchain validation
+- 🔴 WILL break blockchain validation for affected blocks
 - 🔴 Creates orphaned blocks
 - ⚠️ Irreversible operation
 - ✅ Complete audit trail

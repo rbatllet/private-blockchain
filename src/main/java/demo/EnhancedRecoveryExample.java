@@ -38,10 +38,14 @@ public class EnhancedRecoveryExample {
             ChainRecoveryManager recoveryManager = 
                 new ChainRecoveryManager(blockchain);
             
-            // Setup test scenario
+            // Setup admin and test scenario
+            KeyPair adminKeyPair = CryptoUtil.generateKeyPair();
+            String adminPublicKey = CryptoUtil.publicKeyToString(adminKeyPair.getPublic());
+
             KeyPair userKey = CryptoUtil.generateKeyPair();
             String publicKey = CryptoUtil.publicKeyToString(userKey.getPublic());
-            
+
+            blockchain.addAuthorizedKey(adminPublicKey, "System Admin");
             blockchain.addAuthorizedKey(publicKey, "Test User");
             blockchain.addBlock("Test transaction", userKey.getPrivate(), userKey.getPublic());
             
@@ -52,7 +56,9 @@ public class EnhancedRecoveryExample {
             System.out.println("📊 Initial state: " + initialResult.getSummary());
             
             // Actually corrupt the blockchain by deleting the authorized key
-            blockchain.dangerouslyDeleteAuthorizedKey(publicKey, true, "Real corruption for recovery testing");
+            String reason = "Real corruption for recovery testing";
+            String adminSignature = CryptoUtil.createAdminSignature(publicKey, true, reason, adminKeyPair.getPrivate());
+            blockchain.dangerouslyDeleteAuthorizedKey(publicKey, true, reason, adminSignature, adminPublicKey);
             System.out.println("💥 Real corruption introduced - authorized key deleted");
             
             // Enhanced validation after corruption
@@ -112,15 +118,19 @@ public class EnhancedRecoveryExample {
                 new ChainRecoveryManager(blockchain);
             
             // Create a more complex scenario
+            KeyPair adminKeyPair = CryptoUtil.generateKeyPair();
+            String adminPublicKey = CryptoUtil.publicKeyToString(adminKeyPair.getPublic());
+
             KeyPair alice = CryptoUtil.generateKeyPair();
             KeyPair bob = CryptoUtil.generateKeyPair();
             KeyPair charlie = CryptoUtil.generateKeyPair();
-            
+
             String aliceKey = CryptoUtil.publicKeyToString(alice.getPublic());
             String bobKey = CryptoUtil.publicKeyToString(bob.getPublic());
             String charlieKey = CryptoUtil.publicKeyToString(charlie.getPublic());
-            
+
             // Setup complex blockchain
+            blockchain.addAuthorizedKey(adminPublicKey, "System Admin");
             blockchain.addAuthorizedKey(aliceKey, "Alice");
             blockchain.addAuthorizedKey(bobKey, "Bob");
             blockchain.addAuthorizedKey(charlieKey, "Charlie");
@@ -143,8 +153,14 @@ public class EnhancedRecoveryExample {
             
             // Create complex corruption (delete multiple keys)
             System.out.println("💥 Creating complex corruption...");
-            blockchain.dangerouslyDeleteAuthorizedKey(charlieKey, true, "Complex test - Charlie");
-            blockchain.dangerouslyDeleteAuthorizedKey(aliceKey, true, "Complex test - Alice");
+
+            String charlieReason = "Complex test - Charlie";
+            String charlieAdminSignature = CryptoUtil.createAdminSignature(charlieKey, true, charlieReason, adminKeyPair.getPrivate());
+            blockchain.dangerouslyDeleteAuthorizedKey(charlieKey, true, charlieReason, charlieAdminSignature, adminPublicKey);
+
+            String aliceReason = "Complex test - Alice";
+            String aliceAdminSignature = CryptoUtil.createAdminSignature(aliceKey, true, aliceReason, adminKeyPair.getPrivate());
+            blockchain.dangerouslyDeleteAuthorizedKey(aliceKey, true, aliceReason, aliceAdminSignature, adminPublicKey);
             
             // Analyze complex corruption
             ChainRecoveryManager.ChainDiagnostic corruptDiag = 
@@ -197,7 +213,12 @@ public class EnhancedRecoveryExample {
             
             // Set up real production scenario with actual users and transactions
             System.out.println("🔧 Setting up real production scenario...");
-            
+
+            // Setup admin
+            KeyPair adminKeyPair = CryptoUtil.generateKeyPair();
+            String adminPublicKey = CryptoUtil.publicKeyToString(adminKeyPair.getPublic());
+            blockchain.addAuthorizedKey(adminPublicKey, "System Admin");
+
             // Create multiple users and transactions
             for (int i = 1; i <= 5; i++) {
                 KeyPair userKey = CryptoUtil.generateKeyPair();
@@ -219,8 +240,10 @@ public class EnhancedRecoveryExample {
                     
                     // Actually delete the key (real corruption)
                     System.out.println("💥 Actually deleting production key...");
-                    boolean deleted = blockchain.dangerouslyDeleteAuthorizedKey(publicKey, true, 
-                        "Production incident: Accidental key deletion during maintenance");
+                    String prodReason = "Production incident: Accidental key deletion during maintenance";
+                    String prodAdminSignature = CryptoUtil.createAdminSignature(publicKey, true, prodReason, adminKeyPair.getPrivate());
+                    boolean deleted = blockchain.dangerouslyDeleteAuthorizedKey(publicKey, true,
+                        prodReason, prodAdminSignature, adminPublicKey);
                     
                     if (deleted) {
                         System.out.println("🚨 PRODUCTION INCIDENT: Key deletion detected!");

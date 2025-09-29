@@ -578,6 +578,38 @@ void clear()
 TermVisibilityMap copy()
 ```
 
+### Additional Blockchain Methods
+
+#### Chain Data Retrieval
+
+```java
+public List<Block> getFullChain()
+```
+- **Returns:** Complete list of all blocks in the blockchain
+- **Description:** Returns the entire blockchain as a list in sequential order (thread-safe)
+- **Performance:** O(n) where n is the number of blocks
+- **Thread Safety:** Uses read lock for concurrent access protection
+
+#### Validation and Size Control
+
+```java
+public boolean validateBlockSize(String data)
+```
+- **Parameters:** `data`: Block data to validate
+- **Returns:** `true` if data size is within limits, `false` otherwise
+- **Description:** Validates data against configured size limits before block creation
+- **Note:** Returns `false` for null data; empty strings are allowed for system blocks
+
+#### Test and Maintenance Utilities
+
+```java
+public void completeCleanupForTests()
+```
+- **Description:** Comprehensive cleanup for testing environments
+- **Purpose:** Removes all test data including off-chain files and database entries
+- **Safety:** Safe for multiple calls, designed for test isolation
+- **Warning:** Only use in test environments - not for production
+
 ### UserFriendlyEncryptionAPI Extensions
 
 New methods for granular term control:
@@ -2071,29 +2103,28 @@ public boolean deleteAuthorizedKey(String publicKey)
 - **Description:** **SAFE DELETION** - Only deletes keys that haven't signed any blocks. Will refuse to delete keys with historical blocks and suggest using dangerous deletion if absolutely necessary.
 
 ```java
-public boolean dangerouslyDeleteAuthorizedKey(String publicKey, String reason)
+public boolean dangerouslyDeleteAuthorizedKey(String publicKey, boolean force, String reason, String adminSignature, String adminPublicKey)
 ```
-- **Parameters:** 
-  - `publicKey`: The public key to delete
-  - `reason`: Reason for deletion (for audit logging)
-- **Returns:** `true` if key was deleted, `false` if deletion was blocked
-- **Description:** **DANGEROUS DELETION (Safe Mode)** - Attempts to delete key but will still refuse if it affects historical blocks unless force is used.
-
-```java
-public boolean dangerouslyDeleteAuthorizedKey(String publicKey, boolean force, String reason)
-```
-- **Parameters:** 
+- **Parameters:**
   - `publicKey`: The public key to delete permanently
   - `force`: If `true`, deletes even if it affects historical blocks
   - `reason`: Reason for deletion (for audit logging)
-- **Returns:** `true` if key was deleted, `false` if deletion failed
-- **Description:** **EXTREMELY DANGEROUS DELETION** - Can permanently remove keys even if they signed historical blocks. ⚠️ **WARNING**: Using `force=true` will break blockchain validation for affected blocks. This operation is **IRREVERSIBLE**. Only use for GDPR compliance, security incidents, or emergency situations.
+  - `adminSignature`: Cryptographic signature from authorized administrator
+  - `adminPublicKey`: Public key of the administrator authorizing the operation
+- **Returns:** `true` if key was deleted with valid authorization, `false` if deletion failed or unauthorized
+- **Description:** **🔐 SECURE DANGEROUS DELETION** - Multi-level authorization system that requires valid administrator signature. Can permanently remove keys even if they signed historical blocks when `force=true`. ⚠️ **WARNING**: Using `force=true` will break blockchain validation for affected blocks. This operation is **IRREVERSIBLE**. Only use for GDPR compliance, security incidents, or emergency situations.
+
+**🔑 Admin Signature Creation:**
+```java
+// Use the centralized helper method
+String adminSignature = CryptoUtil.createAdminSignature(publicKey, force, reason, adminPrivateKey);
+```
 
 **Key Deletion Safety Levels:**
 1. 🟢 **`canDeleteAuthorizedKey()`** - Analysis only, no deletion
 2. 🟡 **`deleteAuthorizedKey()`** - Safe deletion, blocks dangerous operations
-3. 🟠 **`dangerouslyDeleteAuthorizedKey(key, reason)`** - Dangerous but still protected
-4. 🔴 **`dangerouslyDeleteAuthorizedKey(key, true, reason)`** - Nuclear option, breaks validation
+3. 🔐 **`dangerouslyDeleteAuthorizedKey(key, false, reason, signature, adminKey)`** - Secure admin-authorized deletion
+4. 🔴 **`dangerouslyDeleteAuthorizedKey(key, true, reason, signature, adminKey)`** - Secure but nuclear option, breaks validation
 
 #### Key Deletion Impact Analysis
 
@@ -2364,6 +2395,36 @@ public static boolean verifySignature(String data, String signature, PublicKey p
   - `signature`: Base64-encoded signature to verify
   - `publicKey`: Public key for verification
 - **Returns:** `true` if signature is valid, `false` otherwise
+
+#### Admin Signature for Dangerous Operations
+```java
+public static String createAdminSignature(String publicKey, boolean force, String reason, PrivateKey adminPrivateKey)
+```
+- **Parameters:**
+  - `publicKey`: The public key being affected by the operation
+  - `force`: Whether to force the operation (e.g., dangerous deletion)
+  - `reason`: Audit reason for the operation
+  - `adminPrivateKey`: Administrator's private key for signing authorization
+- **Returns:** Base64-encoded admin signature string with timestamp
+- **Description:** **🔐 SECURITY HELPER** - Creates cryptographically secure admin signatures for dangerous operations like key deletion. Includes automatic timestamp to prevent replay attacks. The signature format is: `publicKey|force|reason|timestamp` signed with the admin's private key.
+
+**Usage Example:**
+```java
+// Generate admin signature for dangerous key deletion
+PrivateKey adminPrivateKey = ...; // Admin's private key
+String adminSignature = CryptoUtil.createAdminSignature(
+    userPublicKey,
+    true,           // force deletion
+    "GDPR compliance request",
+    adminPrivateKey
+);
+
+// Use the signature for authorized operation
+boolean deleted = blockchain.dangerouslyDeleteAuthorizedKey(
+    userPublicKey, true, "GDPR compliance request",
+    adminSignature, adminPublicKey
+);
+```
 
 ### Block Class
 
@@ -4060,7 +4121,7 @@ List<Block> analyzeContent(String data, String password)
 
 ### 🎯 Testing and Quality Assurance
 
-The UserFriendlyEncryptionAPI is thoroughly tested with **795 JUnit 5 tests** achieving **72% code coverage**:
+The UserFriendlyEncryptionAPI is thoroughly tested with **828+ JUnit 5 tests** achieving **72% code coverage**:
 
 #### Test Classes Structure
 - **UserFriendlyEncryptionAPIPhase1Test** - Core functionality (46 tests)

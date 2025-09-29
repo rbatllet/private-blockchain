@@ -20,11 +20,15 @@ public class DangerousDeleteDemo {
             Blockchain blockchain = new Blockchain();
             blockchain.clearAndReinitialize(); // Start clean
             
+            // Create admin user (required for dangerous operations)
+            KeyPair admin = CryptoUtil.generateKeyPair();
+            String adminPublicKey = CryptoUtil.publicKeyToString(admin.getPublic());
+
             // Create test users
             KeyPair user1 = CryptoUtil.generateKeyPair();
             KeyPair user2 = CryptoUtil.generateKeyPair();
             KeyPair user3 = CryptoUtil.generateKeyPair();
-            
+
             String publicKey1 = CryptoUtil.publicKeyToString(user1.getPublic());
             String publicKey2 = CryptoUtil.publicKeyToString(user2.getPublic());
             String publicKey3 = CryptoUtil.publicKeyToString(user3.getPublic());
@@ -33,8 +37,9 @@ public class DangerousDeleteDemo {
             System.out.println("📋 SCENARIO 1: Setting up blockchain with multiple users");
             System.out.println("========================================================");
             
+            blockchain.addAuthorizedKey(adminPublicKey, "Administrator");
             blockchain.addAuthorizedKey(publicKey1, "Alice - Active User");
-            blockchain.addAuthorizedKey(publicKey2, "Bob - Inactive User");  
+            blockchain.addAuthorizedKey(publicKey2, "Bob - Inactive User");
             blockchain.addAuthorizedKey(publicKey3, "Charlie - Heavy User");
             
             // Add blocks with different signers
@@ -110,7 +115,9 @@ public class DangerousDeleteDemo {
             System.out.println("===============================================");
             
             System.out.println("🎯 Attempting dangerous deletion of Alice without force...");
-            boolean aliceDangerousDeleted = blockchain.dangerouslyDeleteAuthorizedKey(publicKey1, "GDPR compliance request");
+            // Create admin signature for the operation
+            String signature = CryptoUtil.createAdminSignature(publicKey1, false, "GDPR compliance request", admin.getPrivate());
+            boolean aliceDangerousDeleted = blockchain.dangerouslyDeleteAuthorizedKey(publicKey1, false, "GDPR compliance request", signature, adminPublicKey);
             System.out.println("Result: " + (aliceDangerousDeleted ? "✅ SUCCESS" : "❌ BLOCKED (safety engaged)"));
             System.out.println();
             
@@ -128,8 +135,10 @@ public class DangerousDeleteDemo {
             System.out.println("   - Charlie's blocks: " + charlieImpact.getAffectedBlocks());
             
             System.out.println("\n🔥 Performing FORCED deletion of Charlie's key...");
+            // Create admin signature for the forced operation
+            String charlieSignature = CryptoUtil.createAdminSignature(publicKey3, true, "Security incident - compromised key", admin.getPrivate());
             boolean charlieForcedDeleted = blockchain.dangerouslyDeleteAuthorizedKey(
-                publicKey3, true, "Security incident - compromised key");
+                publicKey3, true, "Security incident - compromised key", charlieSignature, adminPublicKey);
             
             System.out.println("\n🎯 After forced deletion:");
             System.out.println("   - Deletion result: " + (charlieForcedDeleted ? "✅ SUCCESS" : "❌ FAILED"));

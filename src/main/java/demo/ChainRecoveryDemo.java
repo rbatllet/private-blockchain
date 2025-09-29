@@ -25,8 +25,8 @@ public class ChainRecoveryDemo {
     private static final DateTimeFormatter TIMESTAMP_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     
     private Blockchain blockchain;
-    private KeyPair alice, bob, charlie;
-    private String aliceKey, bobKey, charlieKey;
+    private KeyPair alice, bob, charlie, adminKeyPair;
+    private String aliceKey, bobKey, charlieKey, adminPublicKey;
     
     public static void main(String[] args) {
         ChainRecoveryDemo demo = new ChainRecoveryDemo();
@@ -72,17 +72,22 @@ public class ChainRecoveryDemo {
             blockchain = new Blockchain();
             blockchain.clearAndReinitialize();
             
+            // Generate admin key pair
+            adminKeyPair = CryptoUtil.generateKeyPair();
+            adminPublicKey = CryptoUtil.publicKeyToString(adminKeyPair.getPublic());
+
             // Generate user key pairs
             alice = CryptoUtil.generateKeyPair();
             bob = CryptoUtil.generateKeyPair();
             charlie = CryptoUtil.generateKeyPair();
-            
+
             aliceKey = CryptoUtil.publicKeyToString(alice.getPublic());
             bobKey = CryptoUtil.publicKeyToString(bob.getPublic());
             charlieKey = CryptoUtil.publicKeyToString(charlie.getPublic());
             
             System.out.println("✅ Blockchain initialized successfully");
             System.out.println("✅ User key pairs generated");
+            System.out.println("   🔑 Admin: " + getShortKey(adminPublicKey));
             System.out.println("   👤 Alice: " + getShortKey(aliceKey));
             System.out.println("   👤 Bob: " + getShortKey(bobKey));
             System.out.println("   👤 Charlie: " + getShortKey(charlieKey));
@@ -100,6 +105,9 @@ public class ChainRecoveryDemo {
         System.out.println("===================================");
         
         try {
+            // Add admin user first
+            blockchain.addAuthorizedKey(adminPublicKey, "System Admin");
+
             // Add authorized users
             blockchain.addAuthorizedKey(aliceKey, "Alice Johnson");
             blockchain.addAuthorizedKey(bobKey, "Bob Smith");
@@ -185,10 +193,14 @@ public class ChainRecoveryDemo {
             
             // Perform dangerous deletion
             System.out.println("🔥 Performing dangerous key deletion...");
+            String reason = "Demo: Testing automatic recovery system v" + DEMO_VERSION;
+            String adminSignature = CryptoUtil.createAdminSignature(charlieKey, true, reason, adminKeyPair.getPrivate());
             boolean deleted = blockchain.dangerouslyDeleteAuthorizedKey(
-                charlieKey, 
-                true, 
-                "Demo: Testing automatic recovery system v" + DEMO_VERSION
+                charlieKey,
+                true,
+                reason,
+                adminSignature,
+                adminPublicKey
             );
             
             System.out.println("📊 Deletion operation: " + (deleted ? "✅ COMPLETED" : "❌ FAILED"));
@@ -281,10 +293,14 @@ public class ChainRecoveryDemo {
             System.out.println("🎯 Target: Alice Johnson's key (multiple blocks affected)");
             
             // Delete Alice's key to create more complex corruption
+            String aliceReason = "Demo: Creating complex multi-key corruption scenario";
+            String aliceAdminSignature = CryptoUtil.createAdminSignature(aliceKey, true, aliceReason, adminKeyPair.getPrivate());
             boolean aliceDeleted = blockchain.dangerouslyDeleteAuthorizedKey(
-                aliceKey, 
-                true, 
-                "Demo: Creating complex multi-key corruption scenario"
+                aliceKey,
+                true,
+                aliceReason,
+                aliceAdminSignature,
+                adminPublicKey
             );
             
             System.out.println("📊 Alice deletion: " + (aliceDeleted ? "✅ COMPLETED" : "❌ FAILED"));
@@ -501,6 +517,7 @@ public class ChainRecoveryDemo {
         return "15-30";
     }
     
+
     /**
      * Utility method to safely get a shortened version of a public key for display
      */
