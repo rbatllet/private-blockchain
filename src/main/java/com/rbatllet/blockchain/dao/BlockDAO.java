@@ -1018,8 +1018,10 @@ public class BlockDAO {
             throw new IllegalArgumentException("Password cannot be null or empty");
         }
         
-        logger.warn("🔧 DECRYPTION DEBUG: Getting block for blockId={}", blockId);
-        
+        if (logger.isTraceEnabled()) {
+            logger.trace("🔧 DECRYPTION DEBUG: Getting block for blockId={}", blockId);
+        }
+
         lock.readLock().lock();
         try {
             EntityManager em = JPAUtil.getEntityManager();
@@ -1027,12 +1029,16 @@ public class BlockDAO {
             try {
                 block = em.find(Block.class, blockId);
                 if (block == null) {
-                    logger.warn("🔧 DECRYPTION DEBUG: No block found with ID={}", blockId);
+                    if (logger.isTraceEnabled()) {
+                        logger.trace("🔧 DECRYPTION DEBUG: No block found with ID={}", blockId);
+                    }
                     return null;
                 }
-                logger.warn("🔧 DECRYPTION DEBUG: Found block with ID={}, blockNumber={}, data='{}'", 
-                          blockId, block.getBlockNumber(), 
-                          block.getData() != null ? block.getData().substring(0, Math.min(50, block.getData().length())) + "..." : "null");
+                if (logger.isTraceEnabled()) {
+                    logger.trace("🔧 DECRYPTION DEBUG: Found block with ID={}, blockNumber={}, data='{}'",
+                              blockId, block.getBlockNumber(),
+                              block.getData() != null ? block.getData().substring(0, Math.min(50, block.getData().length())) + "..." : "null");
+                }
             } finally {
                 if (!JPAUtil.hasActiveTransaction()) {
                     em.close();
@@ -1046,7 +1052,20 @@ public class BlockDAO {
                         block.getEncryptionMetadata(), password);
                     block.setData(decryptedData);
                 } catch (Exception e) {
-                    throw new RuntimeException("Failed to decrypt block data. Invalid password or corrupted data.", e);
+                    // Check if this is a Tag mismatch error (wrong password - expected in multi-department scenarios)
+                    if (e.getCause() instanceof javax.crypto.AEADBadTagException ||
+                        (e.getMessage() != null && e.getMessage().contains("Tag mismatch"))) {
+
+                        if (logger.isTraceEnabled()) {
+                            logger.trace("🔒 Block #{} decryption failed - wrong password provided: Tag mismatch",
+                                       block.getBlockNumber());
+                        }
+                        // Return null instead of throwing exception for wrong password (expected behavior)
+                        return null;
+                    } else {
+                        // Other exceptions (corruption, etc.) should still be thrown
+                        throw new RuntimeException("Failed to decrypt block data. Data may be corrupted.", e);
+                    }
                 }
             }
             
@@ -1072,8 +1091,10 @@ public class BlockDAO {
             throw new IllegalArgumentException("Password cannot be null or empty");
         }
         
-        logger.warn("🔧 DECRYPTION DEBUG: Getting block by blockNumber={}", blockNumber);
-        
+        if (logger.isTraceEnabled()) {
+            logger.trace("🔧 DECRYPTION DEBUG: Getting block by blockNumber={}", blockNumber);
+        }
+
         lock.readLock().lock();
         try {
             EntityManager em = JPAUtil.getEntityManager();
@@ -1082,17 +1103,21 @@ public class BlockDAO {
                 TypedQuery<Block> query = em.createQuery(
                     "SELECT b FROM Block b WHERE b.blockNumber = :blockNumber", Block.class);
                 query.setParameter("blockNumber", blockNumber);
-                
+
                 List<Block> results = query.getResultList();
                 block = results.isEmpty() ? null : results.get(0);
-                
+
                 if (block == null) {
-                    logger.warn("🔧 DECRYPTION DEBUG: No block found with blockNumber={}", blockNumber);
+                    if (logger.isTraceEnabled()) {
+                        logger.trace("🔧 DECRYPTION DEBUG: No block found with blockNumber={}", blockNumber);
+                    }
                     return null;
                 }
-                logger.warn("🔧 DECRYPTION DEBUG: Found block with blockNumber={}, ID={}, data='{}'", 
-                          blockNumber, block.getId(), 
-                          block.getData() != null ? block.getData().substring(0, Math.min(50, block.getData().length())) + "..." : "null");
+                if (logger.isTraceEnabled()) {
+                    logger.trace("🔧 DECRYPTION DEBUG: Found block with blockNumber={}, ID={}, data='{}'",
+                              blockNumber, block.getId(),
+                              block.getData() != null ? block.getData().substring(0, Math.min(50, block.getData().length())) + "..." : "null");
+                }
             } finally {
                 if (!JPAUtil.hasActiveTransaction()) {
                     em.close();
@@ -1105,12 +1130,29 @@ public class BlockDAO {
                     String decryptedData = SecureBlockEncryptionService.decryptFromString(
                         block.getEncryptionMetadata(), password);
                     block.setData(decryptedData);
-                    logger.warn("🔧 DECRYPTION DEBUG: Block #{} decrypted successfully. Content: '{}'", 
-                              blockNumber, 
-                              decryptedData != null ? decryptedData.substring(0, Math.min(50, decryptedData.length())) + "..." : "null");
+
+                    if (logger.isTraceEnabled()) {
+                        logger.trace("🔧 DECRYPTION DEBUG: Block #{} decrypted successfully. Content: '{}'",
+                                  blockNumber,
+                                  decryptedData != null ? decryptedData.substring(0, Math.min(50, decryptedData.length())) + "..." : "null");
+                    }
                 } catch (Exception e) {
-                    logger.warn("🔧 DECRYPTION DEBUG: Failed to decrypt block #{}: {}", blockNumber, e.getMessage());
-                    throw new RuntimeException("Failed to decrypt block data. Invalid password or corrupted data.", e);
+                    // Check if this is a Tag mismatch error (wrong password - expected in multi-department scenarios)
+                    if (e.getCause() instanceof javax.crypto.AEADBadTagException ||
+                        (e.getMessage() != null && e.getMessage().contains("Tag mismatch"))) {
+
+                        if (logger.isTraceEnabled()) {
+                            logger.trace("🔒 Block #{} decryption failed - wrong password provided: Tag mismatch", blockNumber);
+                        }
+                        // Return null instead of throwing exception for wrong password (expected behavior)
+                        return null;
+                    } else {
+                        // Other exceptions (corruption, etc.) should still be thrown
+                        if (logger.isTraceEnabled()) {
+                            logger.trace("🔧 DECRYPTION DEBUG: Failed to decrypt block #{}: {}", blockNumber, e.getMessage());
+                        }
+                        throw new RuntimeException("Failed to decrypt block data. Data may be corrupted.", e);
+                    }
                 }
             }
             

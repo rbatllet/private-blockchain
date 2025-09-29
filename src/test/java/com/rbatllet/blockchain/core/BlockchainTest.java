@@ -310,6 +310,112 @@ class BlockchainTest {
     }
 
     @Nested
+    @DisplayName("Search Initialization")
+    class SearchInitialization {
+
+        @Test
+        @DisplayName("Should initialize advanced search with multiple passwords")
+        void shouldInitializeAdvancedSearchWithMultiplePasswords() {
+            // Setup test data
+            blockchain.addAuthorizedKey(testPublicKey, "Test User");
+
+            // Store some encrypted data first
+            String medicalPassword = "MedicalDept2024!SecureKey_abcd1234";
+            String financialPassword = "FinanceDept2024!SecureKey_efgh5678";
+            String legalPassword = "LegalDept2024!SecureKey_ijkl9012";
+
+            // Add multiple blocks with different content
+            blockchain.addBlock("Medical patient record data", testKeyPair.getPrivate(), testKeyPair.getPublic());
+            blockchain.addBlock("Financial transaction report", testKeyPair.getPrivate(), testKeyPair.getPublic());
+            blockchain.addBlock("Legal contract agreement", testKeyPair.getPrivate(), testKeyPair.getPublic());
+
+            // Test initialization with multiple passwords
+            String[] departmentPasswords = {medicalPassword, financialPassword, legalPassword};
+
+            assertDoesNotThrow(() -> {
+                blockchain.initializeAdvancedSearchWithMultiplePasswords(departmentPasswords);
+            });
+
+            // Verify blockchain state is maintained after initialization
+            assertEquals(4, blockchain.getBlockCount()); // Genesis + 3 test blocks
+            ChainValidationResult result = blockchain.validateChainDetailed();
+            assertTrue(result.isFullyCompliant());
+            assertTrue(result.isStructurallyIntact());
+        }
+
+        @Test
+        @DisplayName("Should handle empty password array gracefully")
+        void shouldHandleEmptyPasswordArrayGracefully() {
+            blockchain.addAuthorizedKey(testPublicKey, "Test User");
+            blockchain.addBlock("Test data", testKeyPair.getPrivate(), testKeyPair.getPublic());
+
+            // Empty password array should not throw
+            assertDoesNotThrow(() -> {
+                blockchain.initializeAdvancedSearchWithMultiplePasswords(new String[0]);
+            });
+
+            // Blockchain should remain valid
+            ChainValidationResult result = blockchain.validateChainDetailed();
+            assertTrue(result.isFullyCompliant());
+            assertTrue(result.isStructurallyIntact());
+        }
+
+        @Test
+        @DisplayName("Should handle null password array gracefully")
+        void shouldHandleNullPasswordArrayGracefully() {
+            blockchain.addAuthorizedKey(testPublicKey, "Test User");
+            blockchain.addBlock("Test data", testKeyPair.getPrivate(), testKeyPair.getPublic());
+
+            // Null password array should not throw
+            assertDoesNotThrow(() -> {
+                blockchain.initializeAdvancedSearchWithMultiplePasswords(null);
+            });
+
+            // Blockchain should remain valid
+            ChainValidationResult result = blockchain.validateChainDetailed();
+            assertTrue(result.isFullyCompliant());
+            assertTrue(result.isStructurallyIntact());
+        }
+
+        @Test
+        @DisplayName("Should initialize with empty blockchain")
+        void shouldInitializeWithEmptyBlockchain() {
+            // Don't add any blocks beyond genesis
+            String[] passwords = {"TestPassword123!"};
+
+            // Should handle empty blockchain gracefully
+            assertDoesNotThrow(() -> {
+                blockchain.initializeAdvancedSearchWithMultiplePasswords(passwords);
+            });
+
+            // Only genesis block should remain
+            assertEquals(1, blockchain.getBlockCount());
+            ChainValidationResult result = blockchain.validateChainDetailed();
+            assertTrue(result.isFullyCompliant());
+            assertTrue(result.isStructurallyIntact());
+        }
+
+        @Test
+        @DisplayName("Should handle passwords with null elements")
+        void shouldHandlePasswordsWithNullElements() {
+            blockchain.addAuthorizedKey(testPublicKey, "Test User");
+            blockchain.addBlock("Test data", testKeyPair.getPrivate(), testKeyPair.getPublic());
+
+            // Password array with null elements
+            String[] passwordsWithNulls = {"ValidPassword123!", null, "AnotherPassword456!"};
+
+            assertDoesNotThrow(() -> {
+                blockchain.initializeAdvancedSearchWithMultiplePasswords(passwordsWithNulls);
+            });
+
+            // Blockchain should remain valid
+            ChainValidationResult result = blockchain.validateChainDetailed();
+            assertTrue(result.isFullyCompliant());
+            assertTrue(result.isStructurallyIntact());
+        }
+    }
+
+    @Nested
     @DisplayName("Error Handling")
     class ErrorHandling {
 
