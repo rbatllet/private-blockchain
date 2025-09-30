@@ -896,9 +896,237 @@ public class BlockDAO {
             EntityManager em = JPAUtil.getEntityManager();
             try {
                 TypedQuery<Block> query = em.createQuery(
-                    "SELECT b FROM Block b WHERE b.offChainData IS NOT NULL ORDER BY b.blockNumber ASC", 
+                    "SELECT b FROM Block b WHERE b.offChainData IS NOT NULL ORDER BY b.blockNumber ASC",
                     Block.class);
                 return query.getResultList();
+            } finally {
+                if (!JPAUtil.hasActiveTransaction()) {
+                    em.close();
+                }
+            }
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    /**
+     * Search blocks by custom metadata containing a specific substring.
+     * Thread-safe with comprehensive null/empty validation.
+     *
+     * @param searchTerm The term to search for in custom metadata JSON (case-insensitive)
+     * @return List of blocks containing the search term in their custom metadata
+     * @throws IllegalArgumentException if searchTerm is null or empty
+     */
+    public List<Block> searchByCustomMetadata(String searchTerm) {
+        // RIGOROUS INPUT VALIDATION
+        if (searchTerm == null) {
+            throw new IllegalArgumentException("Search term cannot be null");
+        }
+        if (searchTerm.trim().isEmpty()) {
+            throw new IllegalArgumentException("Search term cannot be empty");
+        }
+
+        lock.readLock().lock();
+        try {
+            EntityManager em = JPAUtil.getEntityManager();
+            try {
+                // Search for term in customMetadata JSON field
+                // Using UPPER for case-insensitive search
+                TypedQuery<Block> query = em.createQuery(
+                    "SELECT b FROM Block b WHERE b.customMetadata IS NOT NULL " +
+                    "AND UPPER(b.customMetadata) LIKE UPPER(:searchTerm) " +
+                    "ORDER BY b.blockNumber ASC",
+                    Block.class
+                );
+                query.setParameter("searchTerm", "%" + searchTerm + "%");
+
+                List<Block> results = query.getResultList();
+
+                // Additional validation: ensure results are not null
+                return results != null ? results : new ArrayList<>();
+
+            } catch (Exception e) {
+                logger.error("❌ Error searching by custom metadata", e);
+                // Return empty list instead of propagating exception for graceful degradation
+                return new ArrayList<>();
+            } finally {
+                if (!JPAUtil.hasActiveTransaction()) {
+                    em.close();
+                }
+            }
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    /**
+     * Search blocks by exact match of a JSON key-value pair in custom metadata.
+     * Thread-safe with rigorous validation and JSON parsing.
+     *
+     * @param jsonKey The JSON key to search for (e.g., "department", "priority")
+     * @param jsonValue The expected value for the key (exact match)
+     * @return List of blocks where custom metadata contains the exact key-value pair
+     * @throws IllegalArgumentException if jsonKey or jsonValue is null/empty
+     */
+    public List<Block> searchByCustomMetadataKeyValue(String jsonKey, String jsonValue) {
+        // RIGOROUS INPUT VALIDATION
+        if (jsonKey == null || jsonKey.trim().isEmpty()) {
+            throw new IllegalArgumentException("JSON key cannot be null or empty");
+        }
+        if (jsonValue == null) {
+            throw new IllegalArgumentException("JSON value cannot be null (use empty string for null values)");
+        }
+
+        lock.readLock().lock();
+        try {
+            EntityManager em = JPAUtil.getEntityManager();
+            try {
+                // Get all blocks with custom metadata
+                TypedQuery<Block> query = em.createQuery(
+                    "SELECT b FROM Block b WHERE b.customMetadata IS NOT NULL " +
+                    "ORDER BY b.blockNumber ASC",
+                    Block.class
+                );
+                List<Block> allBlocks = query.getResultList();
+
+                // Filter blocks by parsing JSON (more accurate than LIKE queries)
+                List<Block> matchingBlocks = new ArrayList<>();
+
+                for (Block block : allBlocks) {
+                    if (block == null || block.getCustomMetadata() == null) {
+                        continue; // Defensive: skip null blocks
+                    }
+
+                    try {
+                        String metadata = block.getCustomMetadata();
+
+                        // Use Jackson to parse JSON safely
+                        com.fasterxml.jackson.databind.ObjectMapper mapper =
+                            new com.fasterxml.jackson.databind.ObjectMapper();
+
+                        @SuppressWarnings("unchecked")
+                        java.util.Map<String, Object> jsonMap = mapper.readValue(
+                            metadata,
+                            java.util.Map.class
+                        );
+
+                        // Check if key exists and value matches
+                        if (jsonMap.containsKey(jsonKey)) {
+                            Object actualValue = jsonMap.get(jsonKey);
+
+                            // Handle different value types
+                            if (actualValue != null && actualValue.toString().equals(jsonValue)) {
+                                matchingBlocks.add(block);
+                            } else if (actualValue == null && jsonValue.isEmpty()) {
+                                // Handle null values represented as empty string
+                                matchingBlocks.add(block);
+                            }
+                        }
+                    } catch (Exception e) {
+                        // Log but continue - don't fail entire search for one bad JSON
+                        logger.debug("⚠️ Could not parse custom metadata for block #{}: {}",
+                                   block.getBlockNumber(), e.getMessage());
+                    }
+                }
+
+                return matchingBlocks;
+
+            } catch (Exception e) {
+                logger.error("❌ Error searching by custom metadata key-value", e);
+                return new ArrayList<>();
+            } finally {
+                if (!JPAUtil.hasActiveTransaction()) {
+                    em.close();
+                }
+            }
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    /**
+     * Search blocks by multiple custom metadata criteria (AND logic).
+     * Thread-safe with comprehensive validation.
+     *
+     * @param criteria Map of JSON key-value pairs that must ALL match
+     * @return List of blocks matching all criteria
+     * @throws IllegalArgumentException if criteria is null or empty
+     */
+    public List<Block> searchByCustomMetadataMultipleCriteria(java.util.Map<String, String> criteria) {
+        // RIGOROUS INPUT VALIDATION
+        if (criteria == null) {
+            throw new IllegalArgumentException("Criteria map cannot be null");
+        }
+        if (criteria.isEmpty()) {
+            throw new IllegalArgumentException("Criteria map cannot be empty");
+        }
+
+        lock.readLock().lock();
+        try {
+            EntityManager em = JPAUtil.getEntityManager();
+            try {
+                // Get all blocks with custom metadata
+                TypedQuery<Block> query = em.createQuery(
+                    "SELECT b FROM Block b WHERE b.customMetadata IS NOT NULL " +
+                    "ORDER BY b.blockNumber ASC",
+                    Block.class
+                );
+                List<Block> allBlocks = query.getResultList();
+
+                // Filter blocks by parsing JSON and checking all criteria
+                List<Block> matchingBlocks = new ArrayList<>();
+
+                for (Block block : allBlocks) {
+                    if (block == null || block.getCustomMetadata() == null) {
+                        continue; // Defensive: skip null blocks
+                    }
+
+                    try {
+                        String metadata = block.getCustomMetadata();
+
+                        // Parse JSON
+                        com.fasterxml.jackson.databind.ObjectMapper mapper =
+                            new com.fasterxml.jackson.databind.ObjectMapper();
+
+                        @SuppressWarnings("unchecked")
+                        java.util.Map<String, Object> jsonMap = mapper.readValue(
+                            metadata,
+                            java.util.Map.class
+                        );
+
+                        // Check ALL criteria (AND logic)
+                        boolean allMatch = true;
+                        for (java.util.Map.Entry<String, String> criterion : criteria.entrySet()) {
+                            String key = criterion.getKey();
+                            String expectedValue = criterion.getValue();
+
+                            if (!jsonMap.containsKey(key)) {
+                                allMatch = false;
+                                break;
+                            }
+
+                            Object actualValue = jsonMap.get(key);
+                            if (actualValue == null || !actualValue.toString().equals(expectedValue)) {
+                                allMatch = false;
+                                break;
+                            }
+                        }
+
+                        if (allMatch) {
+                            matchingBlocks.add(block);
+                        }
+
+                    } catch (Exception e) {
+                        logger.debug("⚠️ Could not parse custom metadata for block #{}: {}",
+                                   block.getBlockNumber(), e.getMessage());
+                    }
+                }
+
+                return matchingBlocks;
+
+            } catch (Exception e) {
+                logger.error("❌ Error searching by multiple custom metadata criteria", e);
+                return new ArrayList<>();
             } finally {
                 if (!JPAUtil.hasActiveTransaction()) {
                     em.close();
