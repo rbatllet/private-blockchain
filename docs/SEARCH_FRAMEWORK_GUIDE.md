@@ -188,6 +188,99 @@ List<EnhancedSearchResult> authResults = searchAPI.searchSecure(
 
 ## 🏥 Specialized Domain Searches
 
+### Content Type Filtered Search
+
+The Search Framework Engine provides specialized methods to filter results by content type:
+
+```java
+// Search for medical-related blocks only
+SearchResult medicalResults = searchEngine.searchByContentType(
+    "patient diagnosis",  // Search query
+    "medical",            // Content type filter
+    20                    // Maximum results
+);
+
+// Search for financial transactions only
+SearchResult financialResults = searchEngine.searchByContentType(
+    "transaction payment",
+    "financial",
+    50
+);
+
+// Search for legal documents only
+SearchResult legalResults = searchEngine.searchByContentType(
+    "contract agreement",
+    "legal",
+    30
+);
+
+// Process results
+for (EnhancedSearchResult result : medicalResults.getResults()) {
+    System.out.println("Block: " + result.getBlockHash());
+    System.out.println("Relevance: " + result.getRelevanceScore());
+    System.out.println("Context: " + result.getSummary());
+}
+```
+
+**Key Features:**
+- ✅ Fast public metadata filtering
+- ✅ Automatic content type classification
+- ✅ Sub-100ms performance for most queries
+- ✅ Supports custom content types
+- ✅ No authentication required
+
+### Time Range Filtered Search
+
+Filter search results by time range for temporal analysis:
+
+```java
+// Search within current month
+String currentMonth = java.time.YearMonth.now().toString(); // e.g., "2025-09"
+SearchResult thisMonthResults = searchEngine.searchByTimeRange(
+    "medical record",     // Search query
+    currentMonth,         // Time range (YYYY-MM format)
+    50                    // Maximum results
+);
+
+// Search within specific month
+SearchResult januaryResults = searchEngine.searchByTimeRange(
+    "financial audit",
+    "2025-01",           // January 2025
+    100
+);
+
+// Search within quarter (if indexed)
+SearchResult q1Results = searchEngine.searchByTimeRange(
+    "quarterly report",
+    "2025-Q1",           // Q1 2025
+    75
+);
+
+// Analyze temporal distribution
+System.out.println("📅 Results for " + currentMonth + ":");
+System.out.println("  Total results: " + thisMonthResults.getResultCount());
+System.out.println("  Search time: " + thisMonthResults.getTotalTimeMs() + "ms");
+
+for (EnhancedSearchResult result : thisMonthResults.getResults()) {
+    PublicMetadata metadata = result.getPublicMetadata();
+    System.out.println("  - " + result.getBlockHash() +
+                       " | Keywords: " + metadata.getGeneralKeywords());
+}
+```
+
+**Key Features:**
+- ✅ Temporal filtering by month/quarter/year
+- ✅ Fast time-indexed search
+- ✅ Useful for audit trails and compliance
+- ✅ Supports custom time range formats
+- ✅ No authentication required
+
+**Supported Time Range Formats:**
+- `YYYY-MM` - Specific month (e.g., "2025-09")
+- `YYYY-QN` - Specific quarter (e.g., "2025-Q1", "2025-Q2")
+- `YYYY` - Entire year (e.g., "2025")
+- Custom formats supported by your indexing strategy
+
 ### Medical Records Search
 
 ```java
