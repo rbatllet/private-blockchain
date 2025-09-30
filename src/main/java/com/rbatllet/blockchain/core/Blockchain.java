@@ -2268,7 +2268,7 @@ public class Blockchain {
 
                         // Check if key is currently authorized
                         if (authorizedKeyDAO.isKeyAuthorized(publicKeyString)) {
-                            logger.error("❌ Key already authorized");
+                            logger.debug("ℹ️ Key already authorized (not an error - expected in concurrent operations)");
                             return false;
                         }
                     } catch (Exception e) {

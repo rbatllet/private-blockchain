@@ -38,9 +38,14 @@ public class UserFriendlyEncryptionAPIStressTest {
     @BeforeEach
     void setUp() {
         blockchain = new Blockchain();
+
+        // Clean up database before each test to ensure isolation
+        blockchain.getBlockDAO().cleanupTestData();
+        blockchain.getAuthorizedKeyDAO().cleanupTestData();
+
         api = new UserFriendlyEncryptionAPI(blockchain);
         executorService = Executors.newCachedThreadPool();
-        
+
         // Initialize SearchSpecialistAPI for stress tests that may use storeSecret
         try {
             KeyPair defaultKeyPair = CryptoUtil.generateKeyPair();
@@ -232,13 +237,16 @@ public class UserFriendlyEncryptionAPIStressTest {
         final AtomicInteger nullReads = new AtomicInteger(0);
         final AtomicInteger errors = new AtomicInteger(0);
 
-        // Set initial credentials
+        // Set initial credentials with unique username to avoid collisions in concurrent test execution
         KeyPair initialKeyPair = CryptoUtil.generateKeyPair();
-        String initialUsername = "initialUser";
+        String initialUsername = "initialUser_" + System.nanoTime();
         String publicKeyString = CryptoUtil.publicKeyToString(
             initialKeyPair.getPublic()
         );
-        blockchain.addAuthorizedKey(publicKeyString, initialUsername);
+        boolean keyAdded = blockchain.addAuthorizedKey(publicKeyString, initialUsername);
+        if (!keyAdded) {
+            throw new IllegalStateException("Failed to add initial user key - test setup failed");
+        }
         api.setDefaultCredentials(initialUsername, initialKeyPair);
 
         // Reader threads - constantly read credentials
@@ -296,7 +304,23 @@ public class UserFriendlyEncryptionAPIStressTest {
                             String pubKeyString = CryptoUtil.publicKeyToString(
                                 keyPair.getPublic()
                             );
-                            blockchain.addAuthorizedKey(pubKeyString, username);
+
+                            // Handle case where key is already authorized (can happen in concurrent stress tests)
+                            boolean writerKeyAdded = blockchain.addAuthorizedKey(pubKeyString, username);
+                            if (!writerKeyAdded) {
+                                // Key already authorized - generate unique key
+                                keyPair = CryptoUtil.generateKeyPair();
+                                pubKeyString = CryptoUtil.publicKeyToString(
+                                    keyPair.getPublic()
+                                );
+                                username = username + "_unique_" + System.nanoTime();
+                                writerKeyAdded = blockchain.addAuthorizedKey(pubKeyString, username);
+
+                                if (!writerKeyAdded) {
+                                    // Skip this iteration if still can't add key
+                                    continue;
+                                }
+                            }
 
                             // Change credentials
                             api.setDefaultCredentials(username, keyPair);
