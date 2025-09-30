@@ -240,3 +240,98 @@ SearchFrameworkEngine customEngine = new SearchFrameworkEngine(customConfig);
 ```
 
 This approach gives you **maximum flexibility** while **minimizing complexity** during development.
+
+---
+
+## 🔄 Search Result Types and Polymorphism
+
+All search result classes implement the common **`SearchResultInterface`**, enabling polymorphic usage:
+
+### Search Result Types
+
+| Class | Package | Use Case | Return Type |
+|-------|---------|----------|-------------|
+| `AdvancedSearchResult` | `com.rbatllet.blockchain.service` | Advanced search with analytics | Relevance-scored matches |
+| `SearchResults` | `com.rbatllet.blockchain.service` | Standard search operations | Block list with metrics |
+| `OffChainSearchResult` | `com.rbatllet.blockchain.search` | Off-chain file searches | File-based matches |
+
+### Common Interface Methods
+
+All search result types provide these standard methods:
+
+```java
+public interface SearchResultInterface {
+    String getSearchTerm();           // Get the search query
+    int getMatchCount();              // Total number of matches
+    boolean hasResults();             // Check if any results found
+    LocalDateTime getTimestamp();     // When search was executed
+    String getSearchSummary();        // Human-readable summary
+}
+```
+
+### Polymorphic Usage Example
+
+```java
+// Store different result types in a unified collection
+List<SearchResultInterface> allResults = new ArrayList<>();
+
+// Add results from different search operations
+AdvancedSearchResult advancedResult = performAdvancedSearch("medical");
+allResults.add(advancedResult);
+
+SearchResults standardResult = performStandardSearch("patient");
+allResults.add(standardResult);
+
+OffChainSearchResult offChainResult = performOffChainSearch("records");
+allResults.add(offChainResult);
+
+// Process all results uniformly
+for (SearchResultInterface result : allResults) {
+    System.out.println(result.getSearchSummary());
+    System.out.println("Matches: " + result.getMatchCount());
+    System.out.println("Executed at: " + result.getTimestamp());
+}
+```
+
+### Benefits of the Common Interface
+
+- **Polymorphic collections**: Store different result types together
+- **Consistent API**: Same methods across all search result types
+- **Type safety**: Compile-time checking for common operations
+- **Extensibility**: Easy to add new search result types
+- **Zero breaking changes**: All existing code continues to work
+
+### Type-Specific Features
+
+While the interface provides common functionality, each implementation offers specialized features:
+
+```java
+// AdvancedSearchResult - Advanced analytics
+AdvancedSearchResult advanced = /* ... */;
+List<SearchMatch> topMatches = advanced.getTopMatches(10);
+Map<String, List<SearchMatch>> byCategory = advanced.groupByCategory();
+double avgScore = advanced.getAverageRelevanceScore();
+
+// SearchResults - Performance metrics
+SearchResults standard = /* ... */;
+SearchMetrics metrics = standard.getMetrics();
+List<String> warnings = standard.getWarnings();
+Map<String, Object> details = standard.getSearchDetails();
+
+// OffChainSearchResult - File-level details
+OffChainSearchResult offChain = /* ... */;
+List<OffChainMatch> matches = offChain.getMatches();
+int filesSearched = offChain.getTotalFilesSearched();
+int totalInstances = offChain.getTotalMatchInstances();
+```
+
+### Design Pattern
+
+This implementation follows the **Strategy Pattern** with a common interface:
+
+- **Interface**: `SearchResultInterface` defines the contract
+- **Implementations**: Three concrete classes with specialized behavior
+- **Zero breaking changes**: All existing APIs remain unchanged
+- **Backward compatible**: Old code works without modification
+
+This design provides **flexibility without complexity**, allowing polymorphic usage while preserving type-specific functionality.

@@ -1,6 +1,7 @@
 package com.rbatllet.blockchain.service;
 
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.search.SearchResultInterface;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
@@ -12,7 +13,7 @@ import java.util.HashMap;
  * Enhanced search results container for comprehensive search operations
  * Provides detailed information about search performance and result quality
  */
-public class SearchResults {
+public class SearchResults implements SearchResultInterface {
     
     private final String query;
     private final List<Block> blocks;
@@ -31,16 +32,43 @@ public class SearchResults {
         this.warnings = new ArrayList<>();
     }
     
+    // SearchResultInterface implementation
+    @Override
+    public String getSearchTerm() {
+        return query != null ? query : "";
+    }
+
+    @Override
+    public int getMatchCount() {
+        return blocks != null ? blocks.size() : 0;
+    }
+
+    @Override
+    public boolean hasResults() {
+        return blocks != null && !blocks.isEmpty();
+    }
+
+    @Override
+    public LocalDateTime getTimestamp() {
+        return timestamp;
+    }
+
+    @Override
+    public String getSearchSummary() {
+        return String.format("🔍 Search for '%s': %d blocks found at %s",
+            getSearchTerm(),
+            getMatchCount(),
+            timestamp != null ? timestamp.toString() : "unknown time");
+    }
+
     // Getters
     public String getQuery() { return (query != null) ? query : ""; }
     public List<Block> getBlocks() { return Collections.unmodifiableList(blocks); }
     public SearchMetrics getMetrics() { return metrics; }
-    public LocalDateTime getTimestamp() { return timestamp; }
     public Map<String, Object> getSearchDetails() { return Collections.unmodifiableMap(searchDetails); }
     public List<String> getWarnings() { return Collections.unmodifiableList(warnings); }
-    
+
     public int getResultCount() { return (blocks != null) ? blocks.size() : 0; }
-    public boolean hasResults() { return (blocks != null) && !blocks.isEmpty(); }
     
     // Builder methods
     public SearchResults addDetail(String key, Object value) {
