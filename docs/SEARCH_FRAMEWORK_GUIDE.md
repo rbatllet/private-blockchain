@@ -399,6 +399,102 @@ public class MonitoringDashboard {
 }
 ```
 
+## 📊 Result Analysis Methods
+
+The `SearchResult` class provides powerful analysis methods to help you process search results efficiently:
+
+### Available Analysis Methods
+
+#### 1. **Get Top Results by Relevance**
+```java
+SearchResult result = searchEngine.searchPublicOnly("medical", 100);
+
+// Get top 10 results sorted by relevance score (highest first)
+List<EnhancedSearchResult> topResults = result.getTopResults(10);
+
+for (EnhancedSearchResult r : topResults) {
+    System.out.printf("Score: %.2f - %s%n",
+        r.getRelevanceScore(), r.getSummary());
+}
+```
+
+**Use Cases:**
+- Display most relevant results first
+- Prioritize high-quality matches
+- Implement pagination with quality filtering
+
+#### 2. **Calculate Average Relevance Score**
+```java
+SearchResult result = searchEngine.searchIntelligent("blockchain", passwords, 50);
+
+// Get average relevance score across all results
+double avgScore = result.getAverageRelevanceScore();
+
+System.out.printf("Search quality: %.2f (0.0-1.0)%n", avgScore);
+
+// Use for quality assessment
+if (avgScore < 0.3) {
+    System.out.println("⚠️ Low-quality results, consider refining search");
+}
+```
+
+**Use Cases:**
+- Assess overall search quality
+- Trigger query refinement suggestions
+- Track search performance metrics
+
+#### 3. **Group Results by Source**
+```java
+SearchResult result = searchEngine.searchHybrid("transaction", passwords, 100);
+
+// Group results by their source (PUBLIC_METADATA, ENCRYPTED_CONTENT, OFF_CHAIN_CONTENT)
+Map<SearchResultSource, List<EnhancedSearchResult>> grouped = result.groupBySource();
+
+// Process by source
+List<EnhancedSearchResult> publicMatches = grouped.get(SearchResultSource.PUBLIC_METADATA);
+List<EnhancedSearchResult> encryptedMatches = grouped.get(SearchResultSource.ENCRYPTED_CONTENT);
+List<EnhancedSearchResult> offChainMatches = grouped.get(SearchResultSource.OFF_CHAIN_CONTENT);
+
+System.out.printf("Public: %d, Encrypted: %d, Off-chain: %d%n",
+    publicMatches.size(), encryptedMatches.size(), offChainMatches.size());
+```
+
+**Use Cases:**
+- Analyze search coverage (public vs private vs off-chain)
+- Display results grouped by source type
+- Optimize search strategies based on source distribution
+
+### Complete Analysis Example
+
+```java
+// Perform comprehensive search
+SearchResult result = searchEngine.searchIntelligent("medical records", passwords, 100);
+
+// Analysis workflow
+if (result.isSuccessful()) {
+    System.out.printf("📊 Search Analysis for: '%s'%n", "medical records");
+    System.out.printf("Total results: %d%n", result.getResultCount());
+    System.out.printf("Search time: %.2f ms%n", result.getTotalTimeMs());
+    System.out.printf("Average relevance: %.2f%n", result.getAverageRelevanceScore());
+
+    // Top 5 results
+    System.out.println("\n🔝 Top 5 Results:");
+    for (EnhancedSearchResult top : result.getTopResults(5)) {
+        System.out.printf("  %.2f - %s (%s)%n",
+            top.getRelevanceScore(),
+            top.getSummary(),
+            top.getSource());
+    }
+
+    // Source distribution
+    System.out.println("\n📈 Source Distribution:");
+    Map<SearchResultSource, List<EnhancedSearchResult>> bySource = result.groupBySource();
+    bySource.forEach((source, matches) ->
+        System.out.printf("  %s: %d matches%n", source, matches.size())
+    );
+}
+```
+
 ## ✅ Best Practices
 
 ### 1. **Choose the Right Search Strategy**
