@@ -2018,6 +2018,65 @@ public class SearchFrameworkEngine {
             return results.size();
         }
 
+        /**
+         * Get top N results sorted by relevance score (highest first)
+         * @param limit Maximum number of results to return
+         * @return List of top results, empty if no results
+         */
+        public List<EnhancedSearchResult> getTopResults(int limit) {
+            if (results == null || results.isEmpty()) {
+                return Collections.emptyList();
+            }
+
+            int safeLimit = Math.max(0, limit);
+            return results.stream()
+                .filter(Objects::nonNull)
+                .sorted((a, b) -> Double.compare(b.getRelevanceScore(), a.getRelevanceScore()))
+                .limit(safeLimit)
+                .collect(java.util.stream.Collectors.toList());
+        }
+
+        /**
+         * Calculate average relevance score across all results
+         * @return Average score, or 0.0 if no results
+         */
+        public double getAverageRelevanceScore() {
+            if (results == null || results.isEmpty()) {
+                return 0.0;
+            }
+
+            return results.stream()
+                .filter(Objects::nonNull)
+                .mapToDouble(result -> {
+                    double score = result.getRelevanceScore();
+                    return (Double.isNaN(score) || Double.isInfinite(score)) ? 0.0 : score;
+                })
+                .average()
+                .orElse(0.0);
+        }
+
+        /**
+         * Group results by their source (ON_CHAIN, OFF_CHAIN, etc.)
+         * @return Map of source to list of results
+         */
+        public Map<SearchStrategyRouter.SearchResultSource, List<EnhancedSearchResult>> groupBySource() {
+            Map<SearchStrategyRouter.SearchResultSource, List<EnhancedSearchResult>> grouped = new HashMap<>();
+
+            if (results == null) {
+                return Collections.unmodifiableMap(grouped);
+            }
+
+            for (EnhancedSearchResult result : results) {
+                if (result == null || result.getSource() == null) {
+                    continue;
+                }
+
+                grouped.computeIfAbsent(result.getSource(), k -> new ArrayList<>()).add(result);
+            }
+
+            return Collections.unmodifiableMap(grouped);
+        }
+
         @Override
         public String toString() {
             return String.format(
