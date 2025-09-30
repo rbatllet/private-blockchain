@@ -226,7 +226,7 @@ public class ExhaustiveOffChainSearchTest {
         assertTrue(result.isSuccessful(), "Search should be successful");
         assertEquals(SearchLevel.EXHAUSTIVE_OFFCHAIN, result.getSearchLevel());
         assertEquals(
-            SearchStrategyRouter.SearchStrategy.EXHAUSTIVE_COMBINED,
+            SearchStrategyRouter.SearchStrategy.PARALLEL_MULTI,
             result.getStrategyUsed()
         );
         assertTrue(

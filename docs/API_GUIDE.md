@@ -3835,6 +3835,26 @@ SearchResults searchExhaustive(String query, String password)
 // Targeted search types
 SearchResults searchPublicFast(String query)
 SearchResults searchEncryptedOnly(String query, String password)
+
+// Specialized filtered searches (SearchFrameworkEngine)
+SearchResult searchByContentType(String query, String contentType, int maxResults)
+SearchResult searchByTimeRange(String query, String timeRange, int maxResults)
+```
+
+**New Specialized Search Methods:**
+
+- **`searchByContentType()`**: Filter results by content type (e.g., "medical", "financial", "legal")
+  - Fast public metadata filtering
+  - Sub-100ms performance
+  - No authentication required
+  - Example: `searchEngine.searchByContentType("diagnosis", "medical", 20)`
+
+- **`searchByTimeRange()`**: Filter results by temporal range (e.g., "2025-09", "2025-Q1")
+  - Time-indexed search
+  - Useful for audit trails and compliance
+  - Supports YYYY-MM, YYYY-QN, YYYY formats
+  - Example: `searchEngine.searchByTimeRange("transaction", "2025-01", 50)`
+
 ```
 
 #### SearchResults Class - Enhanced with Defensive Programming

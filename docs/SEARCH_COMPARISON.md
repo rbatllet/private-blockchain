@@ -19,8 +19,8 @@ The Advanced Search Engine offers 5 main search types, each optimized for differ
 **Strategy**: ENCRYPTED_CONTENT
 
 ### 4. TRUE Exhaustive Search (`searchExhaustiveOffChain()`)
-**Method**: `searchExhaustiveOffChain(query, password, privateKey, maxResults)`  
-**Strategy**: EXHAUSTIVE_COMBINED
+**Method**: `searchExhaustiveOffChain(query, password, privateKey, maxResults)`
+**Strategy**: PARALLEL_MULTI
 
 ### 5. Hybrid Search (internal)
 **Strategies**: HYBRID_CASCADE, PARALLEL_MULTI

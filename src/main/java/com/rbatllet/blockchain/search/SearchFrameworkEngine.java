@@ -727,7 +727,7 @@ public class SearchFrameworkEngine {
 
             return new SearchResult(
                 allResults,
-                SearchStrategyRouter.SearchStrategy.EXHAUSTIVE_COMBINED,
+                SearchStrategyRouter.SearchStrategy.PARALLEL_MULTI,
                 null, // QueryAnalysis not needed for this method
                 totalTimeMs,
                 SearchLevel.EXHAUSTIVE_OFFCHAIN,
@@ -741,11 +741,195 @@ public class SearchFrameworkEngine {
 
             return new SearchResult(
                 new ArrayList<>(),
-                SearchStrategyRouter.SearchStrategy.EXHAUSTIVE_COMBINED,
+                SearchStrategyRouter.SearchStrategy.PARALLEL_MULTI,
                 null, // QueryAnalysis not needed for error case
                 totalTimeMs,
                 SearchLevel.EXHAUSTIVE_OFFCHAIN,
                 "Off-chain search failed: " + e.getMessage()
+            );
+        }
+    }
+
+    /**
+     * Search blocks by content type
+     *
+     * Filters search results by specific content type (e.g., "medical", "financial").
+     * This method uses the fast index search with content type filtering.
+     *
+     * @param query Search query
+     * @param contentType Target content type to filter by
+     * @param maxResults Maximum number of results to return
+     * @return SearchResult containing filtered results
+     * @throws IllegalArgumentException if query, contentType is null/empty, or maxResults is negative
+     */
+    public SearchResult searchByContentType(String query, String contentType, int maxResults) {
+        long startTime = System.nanoTime();
+
+        // Validate parameters
+        if (query == null || query.trim().isEmpty()) {
+            throw new IllegalArgumentException("Search query cannot be null or empty");
+        }
+        if (contentType == null || contentType.trim().isEmpty()) {
+            throw new IllegalArgumentException("Content type cannot be null or empty");
+        }
+        if (maxResults < 0) {
+            throw new IllegalArgumentException("maxResults cannot be negative: " + maxResults);
+        }
+
+        try {
+            logger.debug("🔍 Starting content type search for: \"{}\" with type: \"{}\"", query, contentType);
+
+            // Use FastIndexSearch to perform content type filtered search
+            List<FastIndexSearch.FastSearchResult> fastResults =
+                strategyRouter.getFastIndexSearch().searchByContentType(query, contentType, maxResults);
+
+            // Convert to EnhancedSearchResult
+            List<EnhancedSearchResult> enhancedResults = new ArrayList<>();
+            for (FastIndexSearch.FastSearchResult result : fastResults) {
+                BlockMetadataLayers metadata = blockMetadataIndex.get(result.getBlockHash());
+                if (metadata == null) {
+                    continue;
+                }
+
+                String context = String.format("Content type: %s | Keywords: %s",
+                    contentType,
+                    metadata.getPublicLayer() != null ?
+                        metadata.getPublicLayer().getGeneralKeywords() : "N/A");
+
+                EnhancedSearchResult enhancedResult = new EnhancedSearchResult(
+                    result.getBlockHash(),
+                    result.getRelevanceScore(),
+                    SearchStrategyRouter.SearchResultSource.PUBLIC_METADATA,
+                    context,
+                    result.getSearchTimeMs(),
+                    metadata.getPublicLayer(),
+                    null, // No private metadata without password
+                    metadata.getSecurityLevel()
+                );
+
+                enhancedResults.add(enhancedResult);
+            }
+
+            long endTime = System.nanoTime();
+            double totalTimeMs = (endTime - startTime) / 1_000_000.0;
+
+            logger.info("✅ Content type search completed: {} results found in {:.2f}ms",
+                enhancedResults.size(), totalTimeMs);
+
+            return new SearchResult(
+                enhancedResults,
+                SearchStrategyRouter.SearchStrategy.FAST_PUBLIC,
+                null,
+                totalTimeMs,
+                SearchLevel.FAST_ONLY,
+                null
+            );
+
+        } catch (Exception e) {
+            long endTime = System.nanoTime();
+            double totalTimeMs = (endTime - startTime) / 1_000_000.0;
+
+            logger.error("❌ Content type search failed: {}", e.getMessage(), e);
+
+            return new SearchResult(
+                new ArrayList<>(),
+                SearchStrategyRouter.SearchStrategy.FAST_PUBLIC,
+                null,
+                totalTimeMs,
+                SearchLevel.FAST_ONLY,
+                "Content type search failed: " + e.getMessage()
+            );
+        }
+    }
+
+    /**
+     * Search blocks within a time range
+     *
+     * Filters search results by specific time range (e.g., "2024-01", "2024-Q1").
+     * This method uses the fast index search with time range filtering.
+     *
+     * @param query Search query
+     * @param timeRange Target time range to filter by
+     * @param maxResults Maximum number of results to return
+     * @return SearchResult containing time-filtered results
+     * @throws IllegalArgumentException if query, timeRange is null/empty, or maxResults is negative
+     */
+    public SearchResult searchByTimeRange(String query, String timeRange, int maxResults) {
+        long startTime = System.nanoTime();
+
+        // Validate parameters
+        if (query == null || query.trim().isEmpty()) {
+            throw new IllegalArgumentException("Search query cannot be null or empty");
+        }
+        if (timeRange == null || timeRange.trim().isEmpty()) {
+            throw new IllegalArgumentException("Time range cannot be null or empty");
+        }
+        if (maxResults < 0) {
+            throw new IllegalArgumentException("maxResults cannot be negative: " + maxResults);
+        }
+
+        try {
+            logger.debug("🔍 Starting time range search for: \"{}\" within: \"{}\"", query, timeRange);
+
+            // Use FastIndexSearch to perform time range filtered search
+            List<FastIndexSearch.FastSearchResult> fastResults =
+                strategyRouter.getFastIndexSearch().searchByTimeRange(query, timeRange, maxResults);
+
+            // Convert to EnhancedSearchResult
+            List<EnhancedSearchResult> enhancedResults = new ArrayList<>();
+            for (FastIndexSearch.FastSearchResult result : fastResults) {
+                BlockMetadataLayers metadata = blockMetadataIndex.get(result.getBlockHash());
+                if (metadata == null) {
+                    continue;
+                }
+
+                String context = String.format("Time range: %s | Keywords: %s",
+                    timeRange,
+                    metadata.getPublicLayer() != null ?
+                        metadata.getPublicLayer().getGeneralKeywords() : "N/A");
+
+                EnhancedSearchResult enhancedResult = new EnhancedSearchResult(
+                    result.getBlockHash(),
+                    result.getRelevanceScore(),
+                    SearchStrategyRouter.SearchResultSource.PUBLIC_METADATA,
+                    context,
+                    result.getSearchTimeMs(),
+                    metadata.getPublicLayer(),
+                    null, // No private metadata without password
+                    metadata.getSecurityLevel()
+                );
+
+                enhancedResults.add(enhancedResult);
+            }
+
+            long endTime = System.nanoTime();
+            double totalTimeMs = (endTime - startTime) / 1_000_000.0;
+
+            logger.info("✅ Time range search completed: {} results found in {:.2f}ms",
+                enhancedResults.size(), totalTimeMs);
+
+            return new SearchResult(
+                enhancedResults,
+                SearchStrategyRouter.SearchStrategy.FAST_PUBLIC,
+                null,
+                totalTimeMs,
+                SearchLevel.FAST_ONLY,
+                null
+            );
+
+        } catch (Exception e) {
+            long endTime = System.nanoTime();
+            double totalTimeMs = (endTime - startTime) / 1_000_000.0;
+
+            logger.error("❌ Time range search failed: {}", e.getMessage(), e);
+
+            return new SearchResult(
+                new ArrayList<>(),
+                SearchStrategyRouter.SearchStrategy.FAST_PUBLIC,
+                null,
+                totalTimeMs,
+                SearchLevel.FAST_ONLY,
+                "Time range search failed: " + e.getMessage()
             );
         }
     }
