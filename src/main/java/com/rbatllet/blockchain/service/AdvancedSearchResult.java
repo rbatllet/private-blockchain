@@ -1,6 +1,7 @@
 package com.rbatllet.blockchain.service;
 
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.search.SearchResultInterface;
 import java.time.LocalDateTime;
 import java.time.Duration;
 import java.util.*;
@@ -10,7 +11,7 @@ import java.util.Objects;
  * Advanced search result container with rich metadata and analytics
  * Provides comprehensive search results with performance metrics and insights
  */
-public class AdvancedSearchResult {
+public class AdvancedSearchResult implements SearchResultInterface {
     
     private final String searchQuery;
     private final SearchType searchType;
@@ -215,6 +216,35 @@ public class AdvancedSearchResult {
             .orElse(0.0);
     }
     
+    // SearchResultInterface implementation
+    @Override
+    public String getSearchTerm() {
+        return searchQuery != null ? searchQuery : "";
+    }
+
+    @Override
+    public int getMatchCount() {
+        return matches != null ? matches.size() : 0;
+    }
+
+    @Override
+    public boolean hasResults() {
+        return matches != null && !matches.isEmpty();
+    }
+
+    @Override
+    public LocalDateTime getTimestamp() {
+        return searchTimestamp;
+    }
+
+    @Override
+    public String getSearchSummary() {
+        return String.format("🔍 %s: %d matches found in %dms",
+            searchType != null ? searchType.getDisplayName() : "Search",
+            getMatchCount(),
+            searchDuration != null ? searchDuration.toMillis() : 0);
+    }
+
     // Getters
     public String getSearchQuery() { return searchQuery; }
     public SearchType getSearchType() { return searchType; }

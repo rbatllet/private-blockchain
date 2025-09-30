@@ -1,14 +1,17 @@
 package com.rbatllet.blockchain.search;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 /**
  * Result container for off-chain file search operations
- * 
+ *
  * Contains search results from EXHAUSTIVE_OFFCHAIN searches that
  * examine the actual content of encrypted off-chain files.
  */
-public class OffChainSearchResult {
+public class OffChainSearchResult implements SearchResultInterface {
     
     private final String searchTerm;
     private final List<OffChainMatch> matches;
@@ -22,26 +25,49 @@ public class OffChainSearchResult {
         this.searchTimestamp = System.currentTimeMillis();
     }
     
+    // SearchResultInterface implementation
+    @Override
     public String getSearchTerm() {
-        return searchTerm;
+        return searchTerm != null ? searchTerm : "";
     }
-    
+
+    @Override
+    public int getMatchCount() {
+        return matches != null ? matches.size() : 0;
+    }
+
+    @Override
+    public boolean hasResults() {
+        return matches != null && !matches.isEmpty();
+    }
+
+    @Override
+    public LocalDateTime getTimestamp() {
+        return LocalDateTime.ofInstant(
+            Instant.ofEpochMilli(searchTimestamp),
+            ZoneId.systemDefault()
+        );
+    }
+
+    @Override
+    public String getSearchSummary() {
+        return String.format("Found %d matches in %d files (searched %d total files) for term: '%s'",
+            getTotalMatchInstances(), getMatchCount(), totalFilesSearched, searchTerm);
+    }
+
+    // Original getters
     public List<OffChainMatch> getMatches() {
         return matches;
     }
-    
-    public int getMatchCount() {
-        return matches.size();
-    }
-    
+
     public int getTotalFilesSearched() {
         return totalFilesSearched;
     }
-    
+
     public long getSearchTimestamp() {
         return searchTimestamp;
     }
-    
+
     public boolean hasMatches() {
         return matches != null && !matches.isEmpty();
     }
@@ -53,14 +79,6 @@ public class OffChainSearchResult {
         return matches.stream()
                      .mapToInt(OffChainMatch::getMatchCount)
                      .sum();
-    }
-    
-    /**
-     * Get summary statistics
-     */
-    public String getSearchSummary() {
-        return String.format("Found %d matches in %d files (searched %d total files) for term: '%s'",
-                           getTotalMatchInstances(), getMatchCount(), totalFilesSearched, searchTerm);
     }
     
     @Override
