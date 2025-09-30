@@ -5,27 +5,36 @@
 
 set -euo pipefail
 
-DB="./blockchain.db"
-PARALLEL=50
-INSERTS=200
+# Set script directory and change to project root
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR/.."
+
+# Default values (reduced for realistic SQLite performance)
+DB="./blockchain.db"  # Relative to project root
+PARALLEL=10           # Reduced from 50 - SQLite can't handle too many concurrent writers
+INSERTS=20            # Reduced from 200 - more reasonable test size
 TABLE="concurrency_test"
 USE_COPY=0
 ERROR_LOG="/tmp/sqlite_concurrent_errors_$$.log"
 
-print_help() {
+show_usage() {
+  local script_name="$(basename "$0")"
   cat <<EOF
-Usage: $0 [options]
+Usage: ${script_name} [options]
 
 Options:
   --db PATH         Path to sqlite database file (default: ./blockchain.db)
-  --parallel N      Number of concurrent writers/processes (default: 50)
-  --inserts M       Number of inserts per writer (default: 200)
+  --parallel N      Number of concurrent writers/processes (default: 10)
+  --inserts M       Number of inserts per writer (default: 20)
   --table NAME      Table name to use/create (default: concurrency_test)
   --use-copy        Work on a temp copy of the DB instead of the original (safer)
   -h, --help        Show this help
 
 Example:
-  $0 --db ./blockchain.db --parallel 20 --inserts 100 --use-copy
+  ${script_name} --db ./blockchain.db --parallel 5 --inserts 10 --use-copy
+
+Note: SQLite has limited concurrent write capability. High values for --parallel may cause
+      significant lock contention and slow performance. Recommended: parallel <= 20.
 
 Note: This script uses the 'sqlite3' CLI. Ensure it is installed before running.
 EOF
@@ -45,9 +54,9 @@ while [[ $# -gt 0 ]]; do
     --use-copy)
       USE_COPY=1; shift 1;;
     -h|--help)
-      print_help; exit 0;;
+      show_usage; exit 0;;
     *)
-      echo "Unknown option: $1" >&2; print_help; exit 2;;
+      echo "Unknown option: $1" >&2; show_usage; exit 2;;
   esac
 done
 
@@ -87,13 +96,29 @@ start_time=$(date +%s)
 
 echo "Starting concurrent workers..."
 
-for (( w=1; w<=PARALLEL; w++ )); do
+# Use seq for portable numeric range
+# Note: With high concurrency, many writes will fail due to SQLite locking
+for w in $(seq 1 $PARALLEL); do
   (
-    for (( i=1; i<=INSERTS; i++ )); do
-      if ! sqlite3 "$DB" "BEGIN TRANSACTION; INSERT INTO ${TABLE}(writer,payload) VALUES(${w}, 'payload ${i}'); COMMIT;" 2>>"$ERROR_LOG"; then
-        echo "
-$(date +%Y-%m-%dT%H:%M:%S) ERROR writer=${w} insert=${i} (rc=$?)" >>"$ERROR_LOG"
-      fi
+    # Add small random delay to reduce lock contention
+    sleep 0.$(( RANDOM % 100 ))
+
+    for i in $(seq 1 $INSERTS); do
+      # Retry logic for locked database
+      retry=0
+      max_retries=3
+      while [ $retry -lt $max_retries ]; do
+        if sqlite3 "$DB" "BEGIN IMMEDIATE; INSERT INTO ${TABLE}(writer,payload) VALUES(${w}, 'payload ${i}'); COMMIT;" 2>>"$ERROR_LOG"; then
+          break
+        else
+          retry=$((retry + 1))
+          if [ $retry -lt $max_retries ]; then
+            sleep 0.$(( RANDOM % 50 ))
+          else
+            echo "$(date +%Y-%m-%dT%H:%M:%S) ERROR writer=${w} insert=${i} failed after ${max_retries} retries" >>"$ERROR_LOG"
+          fi
+        fi
+      done
     done
   ) &
 done

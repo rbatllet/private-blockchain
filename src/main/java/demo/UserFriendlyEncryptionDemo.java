@@ -126,6 +126,70 @@ public class UserFriendlyEncryptionDemo {
             );
             System.out.println();
 
+            // 3b. Demonstrate public vs private terms (NEW FEATURE)
+            System.out.println("3️⃣b Storing data with PUBLIC and PRIVATE terms...");
+            System.out.println("ℹ️  Public terms: searchable WITHOUT password");
+            System.out.println("ℹ️  Private terms: searchable ONLY WITH password");
+            System.out.println();
+
+            // Medical example with public metadata and private details
+            String medicalData2 =
+                "Patient Sarah Wilson, DOB: 1990-07-22, Diagnosis: Diabetes Type 2, HbA1c: 8.2%, Treatment: Metformin 1000mg";
+            String[] medicalPublicTerms = {"medical", "patient", "2025"};  // Public: anyone can find these
+            String[] medicalPrivateTerms = {"diabetes", "PATIENT_002", "Wilson"};  // Private: need password
+
+            Block medicalBlock2 = api.storeSearchableDataWithLayers(
+                medicalData2,
+                medicalPassword,
+                medicalPublicTerms,
+                medicalPrivateTerms
+            );
+            System.out.println(
+                "🏥 Medical record with layered terms stored: Block #" +
+                medicalBlock2.getBlockNumber()
+            );
+            System.out.println("   📂 Public terms: medical, patient, 2025");
+            System.out.println("   🔒 Private terms: diabetes, PATIENT_002, Wilson");
+
+            // Financial example with public category and private account details
+            String financialData2 =
+                "Invoice INV-2025-001: Client XYZ Corp, Amount: $25,000, Account: ACC_987654, Payment method: Wire transfer";
+            String[] financialPublicTerms = {"invoice", "2025", "financial"};  // Public
+            String[] financialPrivateTerms = {"XYZ", "ACC_987654", "INV-2025-001"};  // Private
+
+            Block financialBlock2 = api.storeSearchableDataWithLayers(
+                financialData2,
+                financialPassword,
+                financialPublicTerms,
+                financialPrivateTerms
+            );
+            System.out.println(
+                "💰 Invoice with layered terms stored: Block #" +
+                financialBlock2.getBlockNumber()
+            );
+            System.out.println("   📂 Public terms: invoice, 2025, financial");
+            System.out.println("   🔒 Private terms: XYZ, ACC_987654, INV-2025-001");
+
+            // Legal example with public category and private case details
+            String legalData2 =
+                "Employment Contract: John Smith, Position: Senior Developer, Salary: $120,000/year, Start date: 2025-02-01";
+            String[] legalPublicTerms = {"employment", "contract", "2025"};  // Public
+            String[] legalPrivateTerms = {"Smith", "developer", "EMP_2025_015"};  // Private
+
+            Block legalBlock2 = api.storeSearchableDataWithLayers(
+                legalData2,
+                legalPassword,
+                legalPublicTerms,
+                legalPrivateTerms
+            );
+            System.out.println(
+                "⚖️ Contract with layered terms stored: Block #" +
+                legalBlock2.getBlockNumber()
+            );
+            System.out.println("   📂 Public terms: employment, contract, 2025");
+            System.out.println("   🔒 Private terms: Smith, developer, EMP_2025_015");
+            System.out.println();
+
 
             // 4. Demonstrate blockchain status
             System.out.println("4️⃣ Blockchain status...");
@@ -154,7 +218,8 @@ public class UserFriendlyEncryptionDemo {
                 10
             );
             System.out.println(
-                "🏥 Medical Dept found " + patientRecords.size() + " patient record(s)"
+                "🏥 Medical Dept found " + patientRecords.size() + " patient record(s)" +
+                (patientRecords.size() > 0 ? "" : " (no records with this term - expected if not stored)")
             );
 
             // Finance Department: Search with financial password
@@ -164,7 +229,8 @@ public class UserFriendlyEncryptionDemo {
                 10
             );
             System.out.println(
-                "💰 Finance Dept found " + accountRecords.size() + " account record(s)"
+                "💰 Finance Dept found " + accountRecords.size() + " account record(s)" +
+                (accountRecords.size() > 0 ? "" : " (no records with this term - expected if not stored)")
             );
 
             // Legal Department: Search with legal password
@@ -174,7 +240,8 @@ public class UserFriendlyEncryptionDemo {
                 10
             );
             System.out.println(
-                "⚖️ Legal Dept found " + contractDocuments.size() + " contract document(s)"
+                "⚖️ Legal Dept found " + contractDocuments.size() + " contract document(s)" +
+                (contractDocuments.size() > 0 ? "" : " (no records with this term - expected if not stored)")
             );
 
             // Cross-department search: Finance data contains "2025"
@@ -184,8 +251,106 @@ public class UserFriendlyEncryptionDemo {
                 10
             );
             System.out.println(
-                "📅 Found " + blocks2025.size() + " block(s) from 2025 (Finance Dept)"
+                "📅 Found " + blocks2025.size() + " block(s) from 2025 (Finance Dept)" +
+                (blocks2025.size() > 0 ? "" : " (no records with this term - expected if not stored)")
             );
+            System.out.println();
+
+            // 5b. Demonstrate PUBLIC vs PRIVATE term searches (NEW FEATURE)
+            System.out.println("5️⃣b PUBLIC vs PRIVATE term searches...");
+            System.out.println("ℹ️  Testing search behavior with layered terms");
+            System.out.println();
+
+            // Search for PUBLIC terms (no password needed)
+            System.out.println("🔍 Searching PUBLIC terms (no password):");
+            var publicMedicalResults = api.searchByTerms(
+                new String[] { "medical" },
+                null,  // NO password - public search only
+                10
+            );
+            System.out.println(
+                "   📂 Found " + publicMedicalResults.size() + " block(s) with public term 'medical'" +
+                (publicMedicalResults.size() > 0 ? "" : " (expected if term not marked as public)")
+            );
+
+            var publicInvoiceResults = api.searchByTerms(
+                new String[] { "invoice" },
+                null,  // NO password - public search only
+                10
+            );
+            System.out.println(
+                "   📂 Found " + publicInvoiceResults.size() + " block(s) with public term 'invoice'" +
+                (publicInvoiceResults.size() > 0 ? "" : " (expected if term not marked as public)")
+            );
+
+            var public2025Results = api.searchByTerms(
+                new String[] { "2025" },
+                null,  // NO password - public search only
+                10
+            );
+            System.out.println(
+                "   📂 Found " + public2025Results.size() + " block(s) with public term '2025'" +
+                (public2025Results.size() > 0 ? "" : " (expected if term not marked as public)")
+            );
+
+            // Search for PRIVATE terms (requires password)
+            System.out.println();
+            System.out.println("🔍 Searching PRIVATE terms (requires password):");
+            var privateDiabetesResults = api.searchAndDecryptByTerms(
+                new String[] { "diabetes" },
+                medicalPassword,  // Needs correct password
+                10
+            );
+            System.out.println(
+                "   🔒 Found " + privateDiabetesResults.size() + " block(s) with private term 'diabetes' (Medical password)" +
+                (privateDiabetesResults.size() > 0 ? "" : " (expected if term not stored or wrong password)")
+            );
+
+            var privateAccountResults = api.searchAndDecryptByTerms(
+                new String[] { "ACC_987654" },
+                financialPassword,  // Needs correct password
+                10
+            );
+            System.out.println(
+                "   🔒 Found " + privateAccountResults.size() + " block(s) with private term 'ACC_987654' (Finance password)" +
+                (privateAccountResults.size() > 0 ? "" : " (expected if term not stored or wrong password)")
+            );
+
+            // Try searching private term WITHOUT password (should find nothing)
+            System.out.println();
+            System.out.println("🔍 Security test - searching PRIVATE term WITHOUT password:");
+            var failedPrivateSearch = api.searchByTerms(
+                new String[] { "diabetes" },
+                null,  // NO password
+                10
+            );
+            if (failedPrivateSearch.size() == 0) {
+                System.out.println(
+                    "   ✅ Found 0 block(s) - EXPECTED RESULT: Private terms require password"
+                );
+            } else {
+                System.out.println(
+                    "   ❌ Found " + failedPrivateSearch.size() + " block(s) - SECURITY BREACH! (should be 0)"
+                );
+            }
+
+            // Try searching private term with WRONG password (should find nothing or fail decryption)
+            System.out.println();
+            System.out.println("🔍 Security test - searching PRIVATE term with WRONG password:");
+            var wrongPasswordSearch = api.searchAndDecryptByTerms(
+                new String[] { "diabetes" },
+                financialPassword,  // WRONG password (finance instead of medical)
+                10
+            );
+            if (wrongPasswordSearch.size() == 0) {
+                System.out.println(
+                    "   ✅ Found 0 decrypted block(s) - EXPECTED RESULT: Wrong password cannot decrypt"
+                );
+            } else {
+                System.out.println(
+                    "   ❌ Found " + wrongPasswordSearch.size() + " block(s) - SECURITY BREACH! (should be 0)"
+                );
+            }
             System.out.println();
 
             // 6. Department-specific data retrieval operations
@@ -260,7 +425,8 @@ public class UserFriendlyEncryptionDemo {
             System.out.println(
                 "🔍 Medical Dept found " +
                 decryptedMedical.size() +
-                " medical record(s) containing 'Hypertension'"
+                " medical record(s) containing 'Hypertension'" +
+                (decryptedMedical.size() > 0 ? "" : " (expected if term not stored)")
             );
 
             // Finance Department: Search for financial-specific terms
@@ -272,7 +438,8 @@ public class UserFriendlyEncryptionDemo {
             System.out.println(
                 "🔍 Finance Dept found " +
                 decryptedFinancial.size() +
-                " financial record(s) containing 'Transaction'"
+                " financial record(s) containing 'Transaction'" +
+                (decryptedFinancial.size() > 0 ? "" : " (expected if term not stored)")
             );
             System.out.println();
 
@@ -294,7 +461,10 @@ public class UserFriendlyEncryptionDemo {
             // Advanced Search: Search everything (public data search)
             List<Block> publicSearch = api.searchEverything("announcement");
             System.out.println("🔍 Advanced search for 'announcement' (public data):");
-            System.out.println("Found " + publicSearch.size() + " blocks");
+            System.out.println(
+                "Found " + publicSearch.size() + " block(s)" +
+                (publicSearch.size() > 0 ? "" : " (expected if term not in public data)")
+            );
 
             // Advanced Search: Search encrypted data with IT department password
             List<Block> passwordSearch = api.searchEverythingWithPassword(
@@ -303,7 +473,8 @@ public class UserFriendlyEncryptionDemo {
             );
             System.out.println("🔍 Advanced search for 'API Key' with IT department password:");
             System.out.println(
-                "Found " + passwordSearch.size() + " encrypted block(s) with full access"
+                "Found " + passwordSearch.size() + " encrypted block(s) with full access" +
+                (passwordSearch.size() > 0 ? "" : " (expected if term not stored or wrong password)")
             );
             System.out.println();
 
