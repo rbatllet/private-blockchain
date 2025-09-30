@@ -1120,6 +1120,333 @@ public class RobustMetadataProcessor {
 
 ---
 
+## 🔍 Custom Metadata Search
+
+The blockchain provides **three powerful methods** to search blocks by their custom metadata JSON fields. These methods enable flexible querying of structured metadata without decrypting block content.
+
+### Search Methods Overview
+
+| Method | Description | Use Case |
+|--------|-------------|----------|
+| `searchByCustomMetadata()` | Substring search (case-insensitive) | Quick text-based search across all metadata |
+| `searchByCustomMetadataKeyValue()` | Exact key-value pair matching | Precise filtering by specific fields |
+| `searchByCustomMetadataMultipleCriteria()` | Multiple criteria with AND logic | Complex multi-field queries |
+
+### Method 1: Substring Search
+
+**Purpose**: Find blocks where custom metadata contains a specific substring (case-insensitive).
+
+```java
+public List<Block> searchByCustomMetadata(String searchTerm)
+```
+
+**Example: Search for all blocks related to "cardiology"**
+
+```java
+// Search across all custom metadata
+List<Block> cardiologyBlocks = api.searchByCustomMetadata("cardiology");
+
+System.out.println("Found " + cardiologyBlocks.size() + " cardiology-related blocks");
+for (Block block : cardiologyBlocks) {
+    System.out.println("Block #" + block.getBlockNumber() + ": " + block.getCustomMetadata());
+}
+```
+
+**Example: Case-insensitive search**
+
+```java
+// All these searches return the same results
+List<Block> results1 = api.searchByCustomMetadata("URGENT");
+List<Block> results2 = api.searchByCustomMetadata("urgent");
+List<Block> results3 = api.searchByCustomMetadata("Urgent");
+```
+
+**Features**:
+- ✅ Case-insensitive
+- ✅ Finds substring matches anywhere in JSON
+- ✅ Fast for simple text searches
+- ✅ Thread-safe with read locks
+- ⚠️ Less precise than key-value search
+
+---
+
+### Method 2: Key-Value Pair Search
+
+**Purpose**: Find blocks with an exact key-value pair in custom metadata JSON.
+
+```java
+public List<Block> searchByCustomMetadataKeyValue(String jsonKey, String jsonValue)
+```
+
+**Example: Find all high-priority medical records**
+
+```java
+// Find blocks where priority = "high"
+List<Block> highPriority = api.searchByCustomMetadataKeyValue("priority", "high");
+
+// Find blocks from specific department
+List<Block> medicalDept = api.searchByCustomMetadataKeyValue("department", "medical");
+
+// Find blocks with specific status
+List<Block> approved = api.searchByCustomMetadataKeyValue("status", "approved");
+```
+
+**Example: Working with different data types**
+
+```java
+// Store metadata with mixed types
+Map<String, Object> metadata = new HashMap<>();
+metadata.put("priority_level", 5);           // Integer
+metadata.put("cost", 1234.56);              // Double
+metadata.put("is_urgent", true);            // Boolean
+metadata.put("department", "finance");      // String
+
+String jsonMetadata = objectMapper.writeValueAsString(metadata);
+block.setCustomMetadata(jsonMetadata);
+blockchain.getBlockDAO().updateBlock(block);
+
+// Search using string representation of values
+List<Block> level5 = api.searchByCustomMetadataKeyValue("priority_level", "5");
+List<Block> cost = api.searchByCustomMetadataKeyValue("cost", "1234.56");
+List<Block> urgent = api.searchByCustomMetadataKeyValue("is_urgent", "true");
+```
+
+**Features**:
+- ✅ Exact matching on key-value pairs
+- ✅ Parses JSON correctly
+- ✅ Handles numeric, boolean, and string values
+- ✅ Gracefully handles malformed JSON (skips invalid blocks)
+- ✅ Case-sensitive for values
+- ⚠️ Requires exact value match (no partial matches)
+
+---
+
+### Method 3: Multiple Criteria Search (AND Logic)
+
+**Purpose**: Find blocks matching ALL specified key-value pairs (AND logic).
+
+```java
+public List<Block> searchByCustomMetadataMultipleCriteria(Map<String, String> criteria)
+```
+
+**Example: Complex medical record query**
+
+```java
+// Find high-priority medical records that need review
+Map<String, String> criteria = new HashMap<>();
+criteria.put("department", "medical");
+criteria.put("priority", "high");
+criteria.put("status", "needs_review");
+
+List<Block> matches = api.searchByCustomMetadataMultipleCriteria(criteria);
+
+System.out.println("Found " + matches.size() + " high-priority medical records needing review");
+```
+
+**Example: Financial compliance query**
+
+```java
+// Find approved contracts from Q1 2025
+Map<String, String> financialCriteria = new HashMap<>();
+financialCriteria.put("type", "contract");
+financialCriteria.put("status", "approved");
+financialCriteria.put("quarter", "Q1");
+financialCriteria.put("year", "2025");
+
+List<Block> contracts = api.searchByCustomMetadataMultipleCriteria(financialCriteria);
+```
+
+**Features**:
+- ✅ AND logic (all criteria must match)
+- ✅ Supports multiple fields simultaneously
+- ✅ Thread-safe and efficient
+- ✅ Validates all criteria before search
+- ⚠️ All criteria must match (no OR logic)
+
+---
+
+## 📝 Practical Examples
+
+### Example 1: Medical Department Dashboard
+
+```java
+// Initialize API
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+ObjectMapper mapper = new ObjectMapper();
+
+// Store patient records with rich metadata
+Map<String, Object> patientMetadata = new HashMap<>();
+patientMetadata.put("patient_id", "P12345");
+patientMetadata.put("department", "cardiology");
+patientMetadata.put("priority", "high");
+patientMetadata.put("diagnosis", "hypertension");
+patientMetadata.put("physician", "Dr. Johnson");
+patientMetadata.put("admission_date", "2025-01-15");
+patientMetadata.put("status", "active");
+
+Block patientBlock = blockchain.addBlockAndReturn(
+    "Encrypted patient data...",
+    keyPair.getPrivate(),
+    keyPair.getPublic()
+);
+patientBlock.setCustomMetadata(mapper.writeValueAsString(patientMetadata));
+blockchain.getBlockDAO().updateBlock(patientBlock);
+
+// Dashboard Query 1: All active cardiology cases
+Map<String, String> activeCases = new HashMap<>();
+activeCases.put("department", "cardiology");
+activeCases.put("status", "active");
+List<Block> activeCardiology = api.searchByCustomMetadataMultipleCriteria(activeCases);
+System.out.println("Active cardiology cases: " + activeCardiology.size());
+
+// Dashboard Query 2: All high-priority cases
+List<Block> highPriority = api.searchByCustomMetadataKeyValue("priority", "high");
+System.out.println("High priority cases: " + highPriority.size());
+
+// Dashboard Query 3: Cases for specific physician
+List<Block> drJohnsonCases = api.searchByCustomMetadataKeyValue("physician", "Dr. Johnson");
+System.out.println("Dr. Johnson's cases: " + drJohnsonCases.size());
+```
+
+### Example 2: Legal Document Management
+
+```java
+// Store legal contract with detailed metadata
+Map<String, Object> contractMetadata = new HashMap<>();
+contractMetadata.put("document_type", "contract");
+contractMetadata.put("contract_id", "CTR-2025-001");
+contractMetadata.put("party_a", "Acme Corp");
+contractMetadata.put("party_b", "XYZ Industries");
+contractMetadata.put("value", 250000.00);
+contractMetadata.put("status", "executed");
+contractMetadata.put("execution_date", "2025-01-20");
+contractMetadata.put("expiry_date", "2026-01-20");
+contractMetadata.put("category", "vendor_agreement");
+
+Block contractBlock = blockchain.addBlockAndReturn(
+    "Encrypted contract content...",
+    keyPair.getPrivate(),
+    keyPair.getPublic()
+);
+contractBlock.setCustomMetadata(mapper.writeValueAsString(contractMetadata));
+blockchain.getBlockDAO().updateBlock(contractBlock);
+
+// Query 1: Find all executed vendor agreements
+Map<String, String> executedVendorContracts = new HashMap<>();
+executedVendorContracts.put("document_type", "contract");
+executedVendorContracts.put("status", "executed");
+executedVendorContracts.put("category", "vendor_agreement");
+
+List<Block> results = api.searchByCustomMetadataMultipleCriteria(executedVendorContracts);
+
+// Query 2: Find contracts with specific party
+List<Block> acmeContracts = api.searchByCustomMetadata("Acme Corp");
+
+// Query 3: Find all contracts expiring in 2026
+List<Block> expiring2026 = api.searchByCustomMetadata("2026");
+```
+
+### Example 3: E-commerce Order Tracking
+
+```java
+// Store order with comprehensive metadata
+Map<String, Object> orderMetadata = new HashMap<>();
+orderMetadata.put("order_id", "ORD-2025-5678");
+orderMetadata.put("customer_id", "CUST-001");
+orderMetadata.put("order_date", "2025-01-25");
+orderMetadata.put("status", "shipped");
+orderMetadata.put("total_amount", 1599.99);
+orderMetadata.put("payment_method", "credit_card");
+orderMetadata.put("shipping_country", "Spain");
+orderMetadata.put("priority_shipping", true);
+
+Block orderBlock = blockchain.addBlockAndReturn(
+    "Encrypted order details...",
+    keyPair.getPrivate(),
+    keyPair.getPublic()
+);
+orderBlock.setCustomMetadata(mapper.writeValueAsString(orderMetadata));
+blockchain.getBlockDAO().updateBlock(orderBlock);
+
+// Query 1: All shipped orders
+List<Block> shippedOrders = api.searchByCustomMetadataKeyValue("status", "shipped");
+
+// Query 2: Priority shipments to Spain
+Map<String, String> prioritySpain = new HashMap<>();
+prioritySpain.put("priority_shipping", "true");
+prioritySpain.put("shipping_country", "Spain");
+List<Block> priorityOrders = api.searchByCustomMetadataMultipleCriteria(prioritySpain);
+
+// Query 3: Credit card payments
+List<Block> creditCardOrders = api.searchByCustomMetadataKeyValue("payment_method", "credit_card");
+```
+
+---
+
+## ⚠️ Important Considerations
+
+### Input Validation
+
+All search methods perform rigorous validation:
+
+```java
+// ❌ These will throw IllegalArgumentException
+api.searchByCustomMetadata(null);           // Null search term
+api.searchByCustomMetadata("");             // Empty search term
+api.searchByCustomMetadata("   ");          // Whitespace only
+
+api.searchByCustomMetadataKeyValue(null, "value");  // Null key
+api.searchByCustomMetadataKeyValue("key", null);    // Null value
+api.searchByCustomMetadataKeyValue("", "value");    // Empty key
+
+api.searchByCustomMetadataMultipleCriteria(null);           // Null criteria
+api.searchByCustomMetadataMultipleCriteria(new HashMap<>());  // Empty criteria
+```
+
+### Performance Tips
+
+1. **Use specific key-value search** when possible (more efficient than substring)
+2. **Limit criteria** in multiple criteria searches (fewer fields = faster)
+3. **Index frequently searched fields** in your metadata design
+4. **Avoid very large metadata** (keep < 10KB per block for best performance)
+
+### Thread Safety
+
+All search methods are **fully thread-safe**:
+
+```java
+// Safe to call from multiple threads simultaneously
+ExecutorService executor = Executors.newFixedThreadPool(50);
+
+for (int i = 0; i < 100; i++) {
+    executor.submit(() -> {
+        List<Block> results = api.searchByCustomMetadata("urgent");
+        // Process results...
+    });
+}
+```
+
+### Error Handling
+
+```java
+try {
+    List<Block> results = api.searchByCustomMetadata("medical");
+
+    if (results.isEmpty()) {
+        System.out.println("No matching blocks found");
+    } else {
+        System.out.println("Found " + results.size() + " matching blocks");
+    }
+} catch (IllegalArgumentException e) {
+    System.err.println("Invalid search parameters: " + e.getMessage());
+} catch (Exception e) {
+    System.err.println("Search failed: " + e.getMessage());
+    // Returns empty list on database errors (graceful degradation)
+}
+```
+
+---
+
 ## 📚 Related Documentation
 
 - [Search Framework Guide](SEARCH_FRAMEWORK_GUIDE.md)

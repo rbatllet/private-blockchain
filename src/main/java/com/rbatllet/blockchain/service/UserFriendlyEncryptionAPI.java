@@ -4084,6 +4084,138 @@ public class UserFriendlyEncryptionAPI {
         return decryptedResults;
     }
 
+    // ==================== CUSTOM METADATA SEARCH METHODS ====================
+
+    /**
+     * Search blocks by custom metadata containing a specific substring.
+     *
+     * This method performs a case-insensitive substring search in the customMetadata JSON field.
+     * Thread-safe with comprehensive validation.
+     *
+     * @param searchTerm The term to search for in custom metadata (case-insensitive)
+     * @return List of blocks containing the search term in their custom metadata
+     * @throws IllegalArgumentException if searchTerm is null or empty
+     *
+     * @example
+     * <pre>{@code
+     * // Search for all blocks with "urgent" in custom metadata
+     * List<Block> urgentBlocks = api.searchByCustomMetadata("urgent");
+     *
+     * // Search for department
+     * List<Block> cardioBlocks = api.searchByCustomMetadata("cardiology");
+     * }</pre>
+     */
+    public List<Block> searchByCustomMetadata(String searchTerm) {
+        // Input validation
+        if (searchTerm == null) {
+            throw new IllegalArgumentException("Search term cannot be null");
+        }
+        if (searchTerm.trim().isEmpty()) {
+            throw new IllegalArgumentException("Search term cannot be empty");
+        }
+
+        try {
+            return blockchain.getBlockDAO().searchByCustomMetadata(searchTerm);
+        } catch (Exception e) {
+            logger.error("❌ Error searching by custom metadata: {}", e.getMessage(), e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * Search blocks by exact match of a JSON key-value pair in custom metadata.
+     *
+     * This method parses the JSON and performs exact matching on key-value pairs.
+     * More precise than substring search. Thread-safe with rigorous validation.
+     *
+     * @param jsonKey The JSON key to search for (e.g., "department", "priority", "status")
+     * @param jsonValue The expected value for the key (exact match, case-sensitive)
+     * @return List of blocks where custom metadata contains the exact key-value pair
+     * @throws IllegalArgumentException if jsonKey is null/empty or jsonValue is null
+     *
+     * @example
+     * <pre>{@code
+     * // Find all high-priority blocks
+     * List<Block> highPriority = api.searchByCustomMetadataKeyValue("priority", "high");
+     *
+     * // Find blocks from specific department
+     * List<Block> financeDept = api.searchByCustomMetadataKeyValue("department", "finance");
+     *
+     * // Find blocks with specific status
+     * List<Block> approved = api.searchByCustomMetadataKeyValue("status", "approved");
+     * }</pre>
+     */
+    public List<Block> searchByCustomMetadataKeyValue(String jsonKey, String jsonValue) {
+        // Input validation
+        if (jsonKey == null || jsonKey.trim().isEmpty()) {
+            throw new IllegalArgumentException("JSON key cannot be null or empty");
+        }
+        if (jsonValue == null) {
+            throw new IllegalArgumentException("JSON value cannot be null (use empty string for null values)");
+        }
+
+        try {
+            return blockchain.getBlockDAO().searchByCustomMetadataKeyValue(jsonKey, jsonValue);
+        } catch (Exception e) {
+            logger.error("❌ Error searching by custom metadata key-value: {}", e.getMessage(), e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * Search blocks by multiple custom metadata criteria using AND logic.
+     *
+     * All specified key-value pairs must match for a block to be included in results.
+     * Thread-safe with comprehensive validation and error handling.
+     *
+     * @param criteria Map of JSON key-value pairs that must ALL match
+     * @return List of blocks matching all criteria
+     * @throws IllegalArgumentException if criteria is null or empty
+     *
+     * @example
+     * <pre>{@code
+     * // Find high-priority medical records that need review
+     * Map<String, String> criteria = new HashMap<>();
+     * criteria.put("priority", "high");
+     * criteria.put("department", "medical");
+     * criteria.put("status", "needs_review");
+     * List<Block> matches = api.searchByCustomMetadataMultipleCriteria(criteria);
+     *
+     * // Find approved legal contracts from Q1
+     * Map<String, String> legalCriteria = new HashMap<>();
+     * legalCriteria.put("type", "contract");
+     * legalCriteria.put("status", "approved");
+     * legalCriteria.put("quarter", "Q1");
+     * List<Block> legalMatches = api.searchByCustomMetadataMultipleCriteria(legalCriteria);
+     * }</pre>
+     */
+    public List<Block> searchByCustomMetadataMultipleCriteria(java.util.Map<String, String> criteria) {
+        // Input validation
+        if (criteria == null) {
+            throw new IllegalArgumentException("Criteria map cannot be null");
+        }
+        if (criteria.isEmpty()) {
+            throw new IllegalArgumentException("Criteria map cannot be empty");
+        }
+
+        // Validate all keys and values
+        for (java.util.Map.Entry<String, String> entry : criteria.entrySet()) {
+            if (entry.getKey() == null || entry.getKey().trim().isEmpty()) {
+                throw new IllegalArgumentException("Criteria key cannot be null or empty");
+            }
+            if (entry.getValue() == null) {
+                throw new IllegalArgumentException("Criteria value cannot be null for key: " + entry.getKey());
+            }
+        }
+
+        try {
+            return blockchain.getBlockDAO().searchByCustomMetadataMultipleCriteria(criteria);
+        } catch (Exception e) {
+            logger.error("❌ Error searching by multiple custom metadata criteria: {}", e.getMessage(), e);
+            return new ArrayList<>();
+        }
+    }
+
     // Removed category-specific storage methods with hardcoded terms - use storeSearchableData() with user-defined terms instead
 
     /**
