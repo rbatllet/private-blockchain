@@ -40,32 +40,41 @@ print_info "• Search operations with multiple threads"
 # Prepare logging directory
 mkdir -p logs
 
-# Run the actual test
+# Run the actual test (without -q to get statistics)
 print_step "COMPREHENSIVE THREAD SAFETY TEST"
-mvn test -Dtest=ComprehensiveThreadSafetyTest -q 2>&1 | tee logs/thread-safety-full.log
+mvn test -Dtest=ComprehensiveThreadSafetyTest 2>&1 | tee logs/thread-safety-full.log
 
 # Check test result
 TEST_RESULT=$?
 if [ $TEST_RESULT -eq 0 ]; then
     print_success "All thread safety tests passed!"
-    
-    # Extract test statistics
+
+    # Extract test statistics from Maven Surefire output
+    # Format: [INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0
     print_info "📊 Test Statistics:"
-    TESTS_RUN=$(grep -oE "Tests run: [0-9]+" logs/thread-safety-full.log | tail -1 | grep -oE "[0-9]+")
-    FAILURES=$(grep -oE "Failures: [0-9]+" logs/thread-safety-full.log | tail -1 | grep -oE "[0-9]+")
-    ERRORS=$(grep -oE "Errors: [0-9]+" logs/thread-safety-full.log | tail -1 | grep -oE "[0-9]+")
-    
-    print_info "• Tests run: ${TESTS_RUN:-0}"
-    print_info "• Failures: ${FAILURES:-0}"
-    print_info "• Errors: ${ERRORS:-0}"
-    
-    if [[ "${FAILURES:-0}" -eq 0 && "${ERRORS:-0}" -eq 0 ]]; then
-        print_success "All tests: PASSED"
+
+    # Extract from the Results section (more reliable)
+    STATS_LINE=$(grep -E "^\[INFO\] Tests run:" logs/thread-safety-full.log | tail -1)
+
+    if [[ -n "$STATS_LINE" ]]; then
+        TESTS_RUN=$(echo "$STATS_LINE" | grep -oE "Tests run: [0-9]+" | grep -oE "[0-9]+")
+        FAILURES=$(echo "$STATS_LINE" | grep -oE "Failures: [0-9]+" | grep -oE "[0-9]+")
+        ERRORS=$(echo "$STATS_LINE" | grep -oE "Errors: [0-9]+" | grep -oE "[0-9]+")
+
+        print_info "• Tests run: ${TESTS_RUN:-0}"
+        print_info "• Failures: ${FAILURES:-0}"
+        print_info "• Errors: ${ERRORS:-0}"
+
+        if [[ "${FAILURES:-0}" -eq 0 && "${ERRORS:-0}" -eq 0 && "${TESTS_RUN:-0}" -gt 0 ]]; then
+            print_success "All tests: PASSED"
+        fi
+    else
+        print_warning "Could not extract test statistics from log"
     fi
 else
     print_error "Thread safety tests failed!"
     print_info "Check logs/thread-safety-full.log for details"
-    
+
     # Show last few error lines
     print_info "Recent errors:"
     grep -E "ERROR|FAILED|Exception" logs/thread-safety-full.log | tail -10
