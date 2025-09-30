@@ -1,5 +1,6 @@
 package com.rbatllet.blockchain.logging;
 
+import com.rbatllet.blockchain.service.SearchMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -21,7 +22,7 @@ public class AdvancedLoggingService {
     
     // Operation tracking
     private static final Map<String, OperationContext> activeOperations = new ConcurrentHashMap<>();
-    private static final Map<String, OperationMetrics> operationMetrics = new ConcurrentHashMap<>();
+    private static final Map<String, SearchMetrics.PerformanceStats> operationMetrics = new ConcurrentHashMap<>();
     private static final AtomicLong operationCounter = new AtomicLong(0);
     
     // Performance thresholds (configurable)
@@ -256,10 +257,10 @@ public class AdvancedLoggingService {
         return operationType + "_" + operationCounter.incrementAndGet() + "_" + System.currentTimeMillis();
     }
     
-    private static void recordOperationMetrics(String operationType, long duration, boolean success, 
+    private static void recordOperationMetrics(String operationType, long duration, boolean success,
                                              int resultCount, long memoryUsed) {
-        operationMetrics.computeIfAbsent(operationType, k -> new OperationMetrics())
-                        .recordOperation(duration, success, resultCount, memoryUsed);
+        operationMetrics.computeIfAbsent(operationType, k -> new SearchMetrics.PerformanceStats())
+                        .recordOperation(duration, success, resultCount);
     }
     
     private static void checkPerformanceThresholds(OperationContext context, long duration, long memoryUsed) {
@@ -344,60 +345,5 @@ public class AdvancedLoggingService {
         public String getOperationName() { return operationName; }
         public long getStartTime() { return startTime; }
         public Map<String, String> getContext() { return Collections.unmodifiableMap(context); }
-    }
-    
-    /**
-     * Operation metrics tracking
-     */
-    private static class OperationMetrics {
-        private final AtomicLong totalOperations = new AtomicLong(0);
-        private final AtomicLong successfulOperations = new AtomicLong(0);
-        private final AtomicLong totalDuration = new AtomicLong(0);
-        private final AtomicLong totalResults = new AtomicLong(0);
-        private final AtomicLong totalMemoryUsed = new AtomicLong(0);
-        private volatile long minDuration = Long.MAX_VALUE;
-        private volatile long maxDuration = 0;
-        
-        public void recordOperation(long duration, boolean success, int resultCount, long memoryUsed) {
-            totalOperations.incrementAndGet();
-            totalDuration.addAndGet(duration);
-            totalResults.addAndGet(resultCount);
-            totalMemoryUsed.addAndGet(memoryUsed);
-            
-            if (success) {
-                successfulOperations.incrementAndGet();
-            }
-            
-            if (duration < minDuration) minDuration = duration;
-            if (duration > maxDuration) maxDuration = duration;
-        }
-        
-        public double getSuccessRate() {
-            long total = totalOperations.get();
-            return total > 0 ? (double) successfulOperations.get() / total * 100 : 0;
-        }
-        
-        public double getAverageDuration() {
-            long total = totalOperations.get();
-            return total > 0 ? (double) totalDuration.get() / total : 0;
-        }
-        
-        public double getAverageResults() {
-            long total = totalOperations.get();
-            return total > 0 ? (double) totalResults.get() / total : 0;
-        }
-        
-        public double getAverageMemoryUsed() {
-            long total = totalOperations.get();
-            return total > 0 ? (double) totalMemoryUsed.get() / total : 0;
-        }
-        
-        @Override
-        public String toString() {
-            return String.format("%d ops, %.1f%% success, %.1fms avg (%.1f-%.1fms), %.1f results avg, %.1fMB memory avg",
-                               totalOperations.get(), getSuccessRate(), getAverageDuration(),
-                               minDuration == Long.MAX_VALUE ? 0.0 : (double)minDuration, (double)maxDuration,
-                               getAverageResults(), getAverageMemoryUsed());
-        }
     }
 }

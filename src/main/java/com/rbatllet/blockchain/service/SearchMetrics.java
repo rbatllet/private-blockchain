@@ -719,6 +719,7 @@ public class SearchMetrics {
         private final AtomicLong cacheHits = new AtomicLong(0);
         private final AtomicLong totalTimeMs = new AtomicLong(0);
         private final AtomicLong totalResults = new AtomicLong(0);
+        private final AtomicLong successfulOperations = new AtomicLong(0);
         private volatile long minTimeMs = Long.MAX_VALUE;
         private volatile long maxTimeMs = 0;
 
@@ -730,12 +731,33 @@ public class SearchMetrics {
             searches.incrementAndGet();
             totalTimeMs.addAndGet(durationMs);
             totalResults.addAndGet(results);
+            successfulOperations.incrementAndGet(); // Searches are always successful if recorded
 
             if (cacheHit) {
                 cacheHits.incrementAndGet();
             }
 
             // Update min/max (simple volatile update, not atomic but acceptable for metrics)
+            if (durationMs < minTimeMs) minTimeMs = durationMs;
+            if (durationMs > maxTimeMs) maxTimeMs = durationMs;
+        }
+
+        /**
+         * Record a generic operation with success/failure tracking
+         * @param durationMs Operation duration in milliseconds
+         * @param success Whether the operation succeeded
+         * @param resultCount Number of results produced
+         */
+        public void recordOperation(long durationMs, boolean success, int resultCount) {
+            searches.incrementAndGet();
+            totalTimeMs.addAndGet(durationMs);
+            totalResults.addAndGet(resultCount);
+
+            if (success) {
+                successfulOperations.incrementAndGet();
+            }
+
+            // Update min/max
             if (durationMs < minTimeMs) minTimeMs = durationMs;
             if (durationMs > maxTimeMs) maxTimeMs = durationMs;
         }
@@ -786,6 +808,15 @@ public class SearchMetrics {
         public double getAverageResults() {
             long total = searches.get();
             return total > 0 ? (double) totalResults.get() / total : 0;
+        }
+
+        public long getSuccessfulOperations() {
+            return successfulOperations.get();
+        }
+
+        public double getSuccessRate() {
+            long total = searches.get();
+            return total > 0 ? (double) successfulOperations.get() / total * 100 : 0;
         }
 
         @Override
