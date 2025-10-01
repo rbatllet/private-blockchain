@@ -16,9 +16,15 @@
         <class>com.rbatllet.blockchain.entity.OffChainData</class>
         
         <properties>
-            <!-- Database connection settings - FIXED: Enhanced for thread-safety -->
+            <!-- Database connection settings - SQLite with WAL mode for better concurrency -->
             <property name="jakarta.persistence.jdbc.driver" value="org.sqlite.JDBC"/>
             <property name="jakarta.persistence.jdbc.url" value="jdbc:sqlite:blockchain.db?journal_mode=WAL&amp;synchronous=NORMAL&amp;cache_size=10000&amp;temp_store=memory&amp;mmap_size=268435456"/>
+
+            <!-- IMPORTANT: SQLite limitations
+                 - Single writer at a time (WAL mode helps with concurrent reads)
+                 - Connection pool sized accordingly (max 5 connections)
+                 - For production with high write concurrency, consider PostgreSQL
+            -->
             
             <!-- Hibernate specific settings -->
             <property name="hibernate.dialect" value="org.hibernate.community.dialect.SQLiteDialect"/>
@@ -29,9 +35,9 @@
             <!-- HikariCP Connection Pool Configuration -->
             <property name="hibernate.connection.provider_class" value="org.hibernate.hikaricp.internal.HikariCPConnectionProvider"/>
             
-            <!-- HikariCP specific settings - Optimized for high concurrency -->
-            <property name="hibernate.hikari.minimumIdle" value="10"/>
-            <property name="hibernate.hikari.maximumPoolSize" value="60"/>
+            <!-- HikariCP specific settings - Optimized for SQLite (single writer) -->
+            <property name="hibernate.hikari.minimumIdle" value="2"/>
+            <property name="hibernate.hikari.maximumPoolSize" value="5"/>
             <property name="hibernate.hikari.idleTimeout" value="300000"/>
             <property name="hibernate.hikari.poolName" value="BlockchainHikariCP"/>
             <property name="hibernate.hikari.maxLifetime" value="900000"/>
