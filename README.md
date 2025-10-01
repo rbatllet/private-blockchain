@@ -278,6 +278,24 @@ mvn exec:java -Dexec.mainClass="demo.EnhancedRecoveryExample"
 mvn exec:java -Dexec.mainClass="demo.QuickDemo"
 ```
 
+### 8. Database-Agnostic Configuration Demo
+```zsh
+# Run database configuration demo (SQLite, PostgreSQL, MySQL, H2)
+./scripts/run_database_config_demo.zsh
+```
+
+### 9. JPA Configuration Storage Demo
+```zsh
+# Run JPA configuration storage demo (database-agnostic)
+./scripts/run_jpa_configuration_storage_demo.zsh
+```
+
+### 10. Secure Key Storage Demo
+```zsh
+# Run secure key storage demo with AES-256-GCM encryption
+./scripts/run_secure_key_storage_demo.zsh
+```
+
 ## 💻 How It Works
 
 ### Step 1: Initialize Blockchain
@@ -1450,6 +1468,10 @@ This project includes comprehensive documentation for different use cases:
 - **[ATOMIC_PROTECTION_MULTI_INSTANCE_GUIDE.md](docs/ATOMIC_PROTECTION_MULTI_INSTANCE_GUIDE.md)** - 🆕 **Atomic protection & multi-instance coordination** - Thread-safe operations across concurrent SearchFrameworkEngine instances
 - **[COMPRESSION_ANALYSIS_RESULT_ROBUSTNESS_GUIDE.md](docs/COMPRESSION_ANALYSIS_RESULT_ROBUSTNESS_GUIDE.md)** - 🆕 **v2.0** CompressionAnalysisResult robustness enhancements with comprehensive defensive programming (18 tests, 100% pass rate)
 
+### 💾 Database & Configuration
+- **[DATABASE_AGNOSTIC.md](docs/DATABASE_AGNOSTIC.md)** - 🎯 **Database-agnostic architecture** - Switch between SQLite, PostgreSQL, MySQL, and H2 with zero code changes
+- **[CONFIGURATION_STORAGE_GUIDE.md](docs/CONFIGURATION_STORAGE_GUIDE.md)** - JPAConfigurationStorage comprehensive guide with examples
+
 ### 🚀 Quick Navigation
 
 | What you want to do | Go to |
@@ -1474,6 +1496,8 @@ This project includes comprehensive documentation for different use cases:
 | Understand technical implementation | [TECHNICAL_DETAILS.md](docs/TECHNICAL_DETAILS.md) |
 | Deploy to production | [PRODUCTION_GUIDE.md](docs/PRODUCTION_GUIDE.md) |
 | Set up encryption and security | [ENCRYPTION_GUIDE.md](docs/ENCRYPTION_GUIDE.md) |
+| **Switch databases (SQLite/PostgreSQL/MySQL/H2)** | **[DATABASE_AGNOSTIC.md](docs/DATABASE_AGNOSTIC.md)** |
+| Manage configuration storage | [CONFIGURATION_STORAGE_GUIDE.md](docs/CONFIGURATION_STORAGE_GUIDE.md) |
 
 ## 🔧 Configuration
 

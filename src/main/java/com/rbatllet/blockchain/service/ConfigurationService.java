@@ -1,7 +1,7 @@
 package com.rbatllet.blockchain.service;
 
 import com.rbatllet.blockchain.config.ConfigurationStorage;
-import com.rbatllet.blockchain.config.DatabaseConfigurationStorage;
+import com.rbatllet.blockchain.config.JPAConfigurationStorage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,7 +28,7 @@ public class ConfigurationService {
      * Private constructor for singleton pattern
      */
     private ConfigurationService() {
-        this(new DatabaseConfigurationStorage(), true);
+        this(new JPAConfigurationStorage(), true);
     }
     
     /**
