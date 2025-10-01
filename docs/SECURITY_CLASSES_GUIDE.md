@@ -96,15 +96,34 @@ These classes are available in the `com.rbatllet.blockchain.security` package.
 ## 🔒 SecureKeyStorage
 
 ### Description
-`SecureKeyStorage` provides methods to store, load, and manage private keys securely using AES-256-GCM encryption.
+`SecureKeyStorage` provides methods to store, load, and manage private keys securely using **AES-256-GCM** encryption with authenticated encryption and automatic IV generation.
+
+### Security Features
+
+- **AES-256-GCM**: Galois/Counter Mode with 256-bit keys for authenticated encryption
+- **Random IV Generation**: Each encryption uses a cryptographically secure random 96-bit IV
+- **Authentication Tag**: 128-bit authentication tag protects against tampering
+- **SHA-3-256 Key Derivation**: Password-based key derivation using SHA-3-256
+- **Memory Security**: Sensitive data cleared from memory after use
+- **Thread-Safe**: All operations are thread-safe for concurrent access
+
+### Encryption Specification
+
+| Parameter | Value | Purpose |
+|-----------|-------|---------|
+| Algorithm | AES-256-GCM | Authenticated encryption |
+| Key Size | 256 bits (32 bytes) | Maximum AES security |
+| IV Size | 96 bits (12 bytes) | GCM recommended size |
+| Auth Tag | 128 bits (16 bytes) | Data integrity protection |
+| Key Derivation | SHA-3-256 | Secure hash algorithm |
 
 ### Main Methods
 
 ```java
-// Save a private key encrypted with password
+// Save a private key encrypted with password using AES-256-GCM
 public static boolean savePrivateKey(String ownerName, PrivateKey privateKey, String password)
 
-// Load a stored private key
+// Load a stored private key (verifies authentication tag automatically)
 public static PrivateKey loadPrivateKey(String ownerName, String password)
 
 // Check if a private key exists for an owner
@@ -113,44 +132,155 @@ public static boolean hasPrivateKey(String ownerName)
 // Delete a stored private key
 public static boolean deletePrivateKey(String ownerName)
 
-// List all stored keys
-public static List<String> listStoredKeys()
+// List all stored key owners
+public static String[] listStoredKeys()
 ```
 
 ### Usage Example
 
 ```java
 import com.rbatllet.blockchain.security.SecureKeyStorage;
+import com.rbatllet.blockchain.util.CryptoUtil;
 import java.security.KeyPair;
-import java.security.KeyPairGenerator;
 import java.security.PrivateKey;
 
-// Generate a key pair for the example
-KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC");
-keyGen.initialize(new ECGenParameterSpec("secp256r1"));
-KeyPair keyPair = keyGen.generateKeyPair();
+// Generate an ECDSA key pair using secp256r1 curve
+KeyPair keyPair = CryptoUtil.generateKeyPair();
 PrivateKey privateKey = keyPair.getPrivate();
 
-// Save the private key
+// Save the private key with AES-256-GCM encryption
 String ownerName = "Alice";
-String password = "SecureP@ssw0rd";
+String password = "SecureP@ssw0rd123!";
 boolean saved = SecureKeyStorage.savePrivateKey(ownerName, privateKey, password);
+
+if (saved) {
+    System.out.println("✅ Private key saved with AES-256-GCM encryption");
+} else {
+    System.out.println("❌ Failed to save private key");
+}
 
 // Check if the key exists
 boolean exists = SecureKeyStorage.hasPrivateKey(ownerName);
+System.out.println("🔍 Key exists: " + exists);
 
-// Load the private key
+// Load the private key (authentication tag verified automatically)
 PrivateKey loadedKey = SecureKeyStorage.loadPrivateKey(ownerName, password);
 
+if (loadedKey != null) {
+    System.out.println("✅ Private key loaded and verified successfully");
+
+    // Verify key integrity
+    boolean keysMatch = java.util.Arrays.equals(
+        privateKey.getEncoded(),
+        loadedKey.getEncoded()
+    );
+    System.out.println("🔐 Key integrity verified: " + keysMatch);
+} else {
+    System.out.println("❌ Failed to load key (wrong password or corrupted data)");
+}
+
 // List all stored keys
-List<String> storedKeys = SecureKeyStorage.listStoredKeys();
+String[] storedKeys = SecureKeyStorage.listStoredKeys();
+System.out.println("📋 Stored keys (" + storedKeys.length + "):");
 for (String key : storedKeys) {
-    System.out.println("Stored key: " + key);
+    System.out.println("  - " + key);
 }
 
 // Delete the key when no longer needed
 boolean deleted = SecureKeyStorage.deletePrivateKey(ownerName);
+if (deleted) {
+    System.out.println("🧹 Key deleted successfully");
+}
 ```
+
+### Security Best Practices
+
+#### ✅ Secure Usage Patterns
+
+```java
+// Use strong passwords (recommended 16+ characters)
+String strongPassword = CryptoUtil.deriveKeyFromPassword(
+    "UserMasterPassword123!",
+    "salt-" + ownerName
+);
+
+// Save key with strong password
+SecureKeyStorage.savePrivateKey(ownerName, privateKey, strongPassword);
+
+// Always verify key was loaded successfully
+PrivateKey key = SecureKeyStorage.loadPrivateKey(ownerName, strongPassword);
+if (key == null) {
+    throw new SecurityException("Failed to load private key - authentication failed");
+}
+
+// Clear password from memory after use
+strongPassword = null;
+```
+
+#### ❌ Insecure Usage Patterns to Avoid
+
+```java
+// DON'T: Use weak passwords
+SecureKeyStorage.savePrivateKey(ownerName, privateKey, "123"); // Too weak!
+
+// DON'T: Hardcode passwords
+String password = "hardcoded"; // Security vulnerability!
+
+// DON'T: Ignore null returns
+PrivateKey key = SecureKeyStorage.loadPrivateKey(ownerName, password);
+// Always check for null before using!
+
+// DON'T: Store passwords in logs
+logger.info("Password: " + password); // Security leak!
+```
+
+### Error Handling and Security
+
+The storage system provides **fail-safe** behavior:
+
+- **Wrong Password**: Returns `null` (authentication tag verification fails)
+- **Corrupted Data**: Returns `null` (GCM authentication fails)
+- **Invalid Input**: Returns `false` or `null` (input validation fails)
+- **File Not Found**: Returns `null` (file doesn't exist)
+
+```java
+// Proper error handling with GCM authentication
+PrivateKey key = SecureKeyStorage.loadPrivateKey(ownerName, password);
+
+if (key == null) {
+    // Could be:
+    // 1. Wrong password
+    // 2. Corrupted encrypted data (failed authentication tag)
+    // 3. File not found
+    // 4. Invalid key format
+
+    logger.warn("❌ Failed to load key for owner: {}", ownerName);
+    // Do NOT log the password or detailed error
+} else {
+    logger.info("✅ Key loaded and authenticated successfully");
+}
+```
+
+### File Storage Format
+
+Keys are stored in the `private-keys/` directory with the following format:
+
+```
+private-keys/
+  ├── Alice.key          (Base64-encoded: IV + Ciphertext + Auth Tag)
+  ├── Bob.key
+  └── Charlie.key
+```
+
+**File Content Structure** (Base64-encoded):
+```
+[12-byte IV][Variable-length Ciphertext][16-byte Auth Tag]
+```
+
+The authentication tag ensures:
+- **Integrity**: Data hasn't been modified
+- **Authenticity**: Data was encrypted with the correct key
+- **Tamper Detection**: Any modification causes decryption to fail
 
 ## 🔑 PasswordUtil
 

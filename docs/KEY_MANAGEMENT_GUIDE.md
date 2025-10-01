@@ -68,25 +68,28 @@ if (result.isSuccess()) {
 
 ## 🔐 Secure Key Storage
 
-### Using SecureKeyStorage
+### Using SecureKeyStorage (AES-256-GCM)
 
 ```java
 import com.rbatllet.blockchain.security.SecureKeyStorage;
 
-// Save private key with strong protection
+// Save private key with AES-256-GCM authenticated encryption
 String username = "medical-staff";
 PrivateKey privateKey = userKeys.getPrivate();
 String protectionPassword = api.generateValidatedPassword(24, true);
 
 boolean saved = SecureKeyStorage.savePrivateKey(username, privateKey, protectionPassword);
 if (saved) {
-    System.out.println("✅ Private key saved securely");
+    System.out.println("✅ Private key saved with AES-256-GCM encryption");
+    System.out.println("🔐 Features: Random IV, 128-bit auth tag, SHA-3-256 key derivation");
 }
 
-// Load private key when needed
+// Load private key when needed (authentication tag verified automatically)
 PrivateKey loadedKey = SecureKeyStorage.loadPrivateKey(username, protectionPassword);
 if (loadedKey != null) {
-    System.out.println("✅ Private key loaded successfully");
+    System.out.println("✅ Private key loaded and authenticated successfully");
+} else {
+    System.out.println("❌ Authentication failed (wrong password or corrupted data)");
 }
 ```
 

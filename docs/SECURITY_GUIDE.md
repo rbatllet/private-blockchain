@@ -38,7 +38,7 @@ String highSecPassword = api.generateValidatedPassword(32, false);
 **Never store passwords in plain text**:
 
 ```java
-// ✅ CORRECT: Use SecureKeyStorage for keys
+// ✅ CORRECT: Use SecureKeyStorage with AES-256-GCM encryption
 SecureKeyStorage.savePrivateKey("user-id", privateKey, "userMasterPassword");
 
 // ❌ WRONG: Never store passwords in code
@@ -49,6 +49,12 @@ String password = System.getenv("BLOCKCHAIN_PASSWORD");
 if (password == null) {
     password = api.generateValidatedPassword(16, true);
 }
+
+// ✅ CORRECT: SecureKeyStorage provides authenticated encryption
+// - AES-256-GCM with 96-bit random IV
+// - 128-bit authentication tag for tamper detection
+// - SHA-3-256 password-based key derivation
+// - Automatic memory cleanup after operations
 ```
 
 ## 🔒 Data Classification and Protection
