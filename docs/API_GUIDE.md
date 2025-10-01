@@ -4342,6 +4342,10 @@ if (!health.isFullyValid()) {
 - **[ENCRYPTION_GUIDE.md](ENCRYPTION_GUIDE.md)** - Block encryption and metadata management
 - **[ENCRYPTED_EXPORT_IMPORT_GUIDE.md](ENCRYPTED_EXPORT_IMPORT_GUIDE.md)** - Encrypted backup procedures
 
+### 💾 Database & Configuration
+- **[DATABASE_AGNOSTIC.md](DATABASE_AGNOSTIC.md)** - 🎯 **Database switching guide (SQLite/PostgreSQL/MySQL/H2)**
+- **[CONFIGURATION_STORAGE_GUIDE.md](CONFIGURATION_STORAGE_GUIDE.md)** - JPAConfigurationStorage comprehensive guide
+
 ### 🛠️ Operations & Troubleshooting
 - **[TROUBLESHOOTING_GUIDE.md](TROUBLESHOOTING_GUIDE.md)** - Common issues and diagnostic tools
 - **[TESTING.md](TESTING.md)** - Comprehensive testing procedures

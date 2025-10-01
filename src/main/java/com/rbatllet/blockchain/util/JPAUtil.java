@@ -1,5 +1,6 @@
 package com.rbatllet.blockchain.util;
 
+import com.rbatllet.blockchain.config.DatabaseConfig;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.EntityTransaction;
@@ -7,17 +8,20 @@ import jakarta.persistence.Persistence;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * Thread-safe JPA Utility class with support for global transactions
- * FIXED: Added thread-safety improvements and transaction management
+ * Thread-safe JPA Utility class with support for global transactions and database-agnostic configuration
+ * Supports dynamic database selection via DatabaseConfig
  */
 public class JPAUtil {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(JPAUtil.class);
-    
+
     private static EntityManagerFactory entityManagerFactory;
+    private static DatabaseConfig currentConfig;
     private static final ReentrantLock initLock = new ReentrantLock();
     
     // Thread-local storage for EntityManager to ensure each thread has its own
@@ -26,9 +30,9 @@ public class JPAUtil {
     
     static {
         try {
-            // Create the EntityManagerFactory from persistence.xml
-            entityManagerFactory = Persistence.createEntityManagerFactory("blockchainPU");
-            
+            // Create the EntityManagerFactory with default SQLite configuration
+            initializeDefault();
+
             // Add shutdown hook to clean up ThreadLocal variables
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 cleanupThreadLocals();
@@ -38,6 +42,97 @@ public class JPAUtil {
             logger.error("Initial EntityManagerFactory creation failed", ex);
             throw new ExceptionInInitializerError(ex);
         }
+    }
+
+    /**
+     * Initialize with default SQLite configuration (backwards compatibility)
+     */
+    public static void initializeDefault() {
+        initialize(DatabaseConfig.createSQLiteConfig());
+    }
+
+    /**
+     * Initialize with specific database configuration
+     * This allows dynamic database selection at runtime
+     *
+     * @param config Database configuration
+     */
+    public static void initialize(DatabaseConfig config) {
+        initLock.lock();
+        try {
+            // Validate configuration
+            config.validate();
+
+            // Close existing factory if open
+            if (entityManagerFactory != null && entityManagerFactory.isOpen()) {
+                logger.info("Closing existing EntityManagerFactory before switching database");
+                entityManagerFactory.close();
+            }
+
+            // Store current configuration
+            currentConfig = config;
+
+            // Get persistence unit name from config
+            String persistenceUnitName = config.getPersistenceUnitName();
+
+            // Build properties to override from config
+            Map<String, Object> properties = new HashMap<>();
+
+            // Always override connection settings from config
+            properties.put("jakarta.persistence.jdbc.url", config.getDatabaseUrl());
+
+            if (config.getUsername() != null && !config.getUsername().isEmpty()) {
+                properties.put("jakarta.persistence.jdbc.user", config.getUsername());
+            }
+
+            if (config.getPassword() != null) {
+                properties.put("jakarta.persistence.jdbc.password", config.getPassword());
+            }
+
+            // Override pool settings
+            properties.put("hibernate.hikari.minimumIdle", String.valueOf(config.getPoolMinSize()));
+            properties.put("hibernate.hikari.maximumPoolSize", String.valueOf(config.getPoolMaxSize()));
+            properties.put("hibernate.hikari.connectionTimeout", String.valueOf(config.getConnectionTimeout()));
+            properties.put("hibernate.hikari.idleTimeout", String.valueOf(config.getIdleTimeout()));
+            properties.put("hibernate.hikari.maxLifetime", String.valueOf(config.getMaxLifetime()));
+
+            if (config.getPoolName() != null && !config.getPoolName().isEmpty()) {
+                properties.put("hibernate.hikari.poolName", config.getPoolName());
+            }
+
+            // Override schema management
+            properties.put("hibernate.hbm2ddl.auto", config.getHbm2ddlAuto());
+
+            // Override logging settings
+            properties.put("hibernate.show_sql", String.valueOf(config.isShowSql()));
+            properties.put("hibernate.format_sql", String.valueOf(config.isFormatSql()));
+            properties.put("hibernate.highlight_sql", String.valueOf(config.isHighlightSql()));
+
+            // Override statistics
+            properties.put("hibernate.generate_statistics", String.valueOf(config.isEnableStatistics()));
+
+            logger.info("Initializing EntityManagerFactory with persistence unit: {}", persistenceUnitName);
+            logger.debug("Database configuration:\n{}", config.getSummary());
+
+            // Create EntityManagerFactory with overridden properties
+            entityManagerFactory = Persistence.createEntityManagerFactory(persistenceUnitName, properties);
+
+            logger.info("✅ EntityManagerFactory initialized successfully for {}", config.getDatabaseType());
+
+        } catch (Exception e) {
+            logger.error("❌ Failed to initialize EntityManagerFactory: {}", e.getMessage(), e);
+            throw new RuntimeException("Database initialization failed", e);
+        } finally {
+            initLock.unlock();
+        }
+    }
+
+    /**
+     * Get current database configuration
+     * @return Current DatabaseConfig or null if not initialized with config
+     */
+    public static DatabaseConfig getCurrentConfig() {
+        return currentConfig;
     }
     
     public static EntityManagerFactory getEntityManagerFactory() {
