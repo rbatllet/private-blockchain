@@ -329,7 +329,7 @@ Once encryption context is lost, **no recovery is possible**:
 1. **Always verify export type before proceeding**:
    ```java
    // Check if chain contains encrypted blocks
-   boolean hasEncrypted = blockchain.getAllBlocks().stream()
+   boolean hasEncrypted = blockchain.processChainInBatches(...).stream()
        .anyMatch(Block::isDataEncrypted);
    
    if (hasEncrypted) {
@@ -586,7 +586,7 @@ void testUnicodeDataHandling() throws Exception {
     assertTrue(blockchain.importEncryptedChain("unicode-export.json", masterPassword));
     
     // Verify Unicode content is preserved
-    assertTrue(blockchain.getAllBlocks().stream()
+    assertTrue(blockchain.processChainInBatches(...).stream()
         .anyMatch(block -> block.getData() != null && block.getData().contains("你好世界")));
 }
 ```

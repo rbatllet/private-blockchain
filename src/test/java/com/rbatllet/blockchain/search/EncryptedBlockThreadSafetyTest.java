@@ -268,7 +268,7 @@ public class EncryptedBlockThreadSafetyTest {
         System.out.printf("  Create operations: %d (errors: %d)%n", createCount.get(), createErrors.get());
         System.out.printf("  Search operations: %d (errors: %d)%n", searchCount.get(), searchErrors.get());
         System.out.printf("  Total time: %dms%n", endTime - startTime);
-        System.out.printf("  Final blockchain size: %d blocks%n", blockchain.getAllBlocks().size());
+        System.out.printf("  Final blockchain size: %d blocks%n", blockchain.getBlockCount());
         
         // Assertions
         assertTrue(createCount.get() > 0, "Should have created some blocks");

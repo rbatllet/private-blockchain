@@ -5,11 +5,13 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.OffChainData;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.util.JPAUtil;
 import com.rbatllet.blockchain.validation.BlockValidationResult;
 
 import java.security.KeyPair;
 import java.time.LocalDateTime;
 import java.util.*;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -38,6 +40,13 @@ public class UserFriendlyEncryptionAPISecurityTest {
 
         // Initialize API with real blockchain
         realBlockchain = new Blockchain();
+
+        // Register authorized key
+        realBlockchain.addAuthorizedKey(
+            CryptoUtil.publicKeyToString(testKeyPair.getPublic()),
+            testUsername
+        );
+
         api = new UserFriendlyEncryptionAPI(
             realBlockchain,
             testUsername,
@@ -46,6 +55,16 @@ public class UserFriendlyEncryptionAPISecurityTest {
 
         // Setup test blockchain with some data
         setupTestBlockchain();
+    }
+
+    @AfterEach
+    void tearDown() {
+        // Clean up test data
+        if (realBlockchain != null) {
+            realBlockchain.getBlockDAO().completeCleanupTestData();
+            realBlockchain.getAuthorizedKeyDAO().cleanupTestData();
+        }
+        JPAUtil.closeEntityManager();
     }
 
     private void setupTestBlockchain() {

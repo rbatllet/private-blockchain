@@ -232,25 +232,8 @@ public class BlockEncryptionIntegrationTest {
         
         System.out.println("✅ Password verification working correctly");
     }
-    
-    @Test
-    @Order(7)
-    void testGetAllEncryptedBlocks() {
-        var encryptedBlocks = blockDAO.getAllEncryptedBlocks();
-        
-        assertNotNull(encryptedBlocks);
-        assertEquals(2, encryptedBlocks.size());
-        
-        // Verify both blocks are marked as encrypted and have placeholder data
-        for (Block block : encryptedBlocks) {
-            assertTrue(block.isDataEncrypted());
-            assertEquals("[ENCRYPTED]", block.getData());
-            assertNotNull(block.getEncryptionMetadata());
-        }
-        
-        System.out.println("✅ Retrieved " + encryptedBlocks.size() + " encrypted blocks");
-    }
-    
+
+
     @Test
     @Order(8)
     void testEncryptExistingBlock() {
@@ -274,7 +257,7 @@ public class BlockEncryptionIntegrationTest {
         // Now encrypt the existing block
         boolean encrypted = blockDAO.encryptExistingBlock(unencryptedBlock.getId(), testPassword);
         assertTrue(encrypted);
-        
+
         // Verify it's now encrypted
         Block encryptedBlock = blockDAO.getBlockByNumber(unencryptedBlock.getBlockNumber());
         assertTrue(encryptedBlock.isDataEncrypted());
@@ -293,7 +276,7 @@ public class BlockEncryptionIntegrationTest {
     void testDataIntegrityAndSecurity() {
         // Test that encrypted data cannot be read without proper decryption
         Block encryptedBlock = blockDAO.getBlockByNumber(1L);
-        
+
         // The raw encrypted data should not contain any plaintext
         String encryptionMetadata = encryptedBlock.getEncryptionMetadata();
         assertNotNull(encryptionMetadata);
@@ -336,7 +319,7 @@ public class BlockEncryptionIntegrationTest {
             // First get the block by number to find its ID
             Block block = blockDAO.getBlockByNumber(i);
             assertNotNull(block, "Block with number " + i + " should exist");
-            
+
             Block decrypted = blockDAO.getBlockWithDecryption(block.getId(), testPassword);
             assertNotNull(decrypted);
             assertTrue(decrypted.getData().contains("Patient #" + i));

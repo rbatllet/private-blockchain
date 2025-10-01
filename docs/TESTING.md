@@ -357,7 +357,7 @@ The project follows these testing best practices:
 
 **Test Categories:**
 - 🧹 **Test Cleanup and Maintenance** (2 tests): `completeCleanupForTests()` safety and multiple calls
-- 📊 **Chain Data Retrieval** (3 tests): `getFullChain()` functionality with thread safety (10 threads, 50 operations)
+- 📊 **Chain Data Retrieval** (3 tests): Batch processing and pagination with thread safety (10 threads, 50 operations)
 - 🔍 **Search Functionality Security** (4 tests): `searchBlocksComplete()`, malicious input handling (SQL injection, XSS, path traversal)
 - 🔐 **Authorization and Compliance** (6 tests): `getAuthorizedKeyByOwner()`, `isFullyCompliant()` validation
 - 📅 **Time-Based Operations** (3 tests): `getBlocksByTimeRange()` with null parameters and invalid ranges

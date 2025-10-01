@@ -69,8 +69,15 @@ public class UserFriendlyEncryptionAPIPhase1ValidationTest {
         mockAuthorizedKeys.add(key1);
         
         // Setup blockchain mock behavior
-        when(mockBlockchain.getAllBlocks()).thenReturn(mockBlocks);
         when(mockBlockchain.getValidChain()).thenReturn(mockBlocks);
+        when(mockBlockchain.getBlockCount()).thenReturn((long) mockBlocks.size());
+        when(mockBlockchain.getBlock(anyLong())).thenAnswer(invocation -> {
+            Long blockNumber = invocation.getArgument(0);
+            if (blockNumber >= 0 && blockNumber < mockBlocks.size()) {
+                return mockBlocks.get(blockNumber.intValue());
+            }
+            return null;
+        });
         when(mockBlockchain.getAuthorizedKeys()).thenReturn(mockAuthorizedKeys);
         when(mockBlockchain.validateSingleBlock(any(Block.class))).thenReturn(true);
         when(mockBlockchain.validateChainWithRecovery()).thenReturn(true);
@@ -246,7 +253,7 @@ public class UserFriendlyEncryptionAPIPhase1ValidationTest {
         @DisplayName("Should detect blockchain health issues")
         void shouldDetectBlockchainHealthIssues() {
             // Given - Create empty blockchain scenario
-            when(mockBlockchain.getAllBlocks()).thenReturn(new ArrayList<>());
+            when(mockBlockchain.getBlockCount()).thenReturn(0L);
             
             Map<String, Object> options = new HashMap<>();
             options.put("deepHealthCheck", true);
@@ -479,7 +486,14 @@ public class UserFriendlyEncryptionAPIPhase1ValidationTest {
                 block.setTimestamp(LocalDateTime.now().minusMinutes(i));
                 largeBlockchain.add(block);
             }
-            when(mockBlockchain.getAllBlocks()).thenReturn(largeBlockchain);
+            when(mockBlockchain.getBlockCount()).thenReturn((long) largeBlockchain.size());
+            when(mockBlockchain.getBlock(anyLong())).thenAnswer(invocation -> {
+                Long blockNumber = invocation.getArgument(0);
+                if (blockNumber >= 0 && blockNumber < largeBlockchain.size()) {
+                    return largeBlockchain.get(blockNumber.intValue());
+                }
+                return null;
+            });
 
             Map<String, Object> options = new HashMap<>();
             options.put("efficientMode", true);

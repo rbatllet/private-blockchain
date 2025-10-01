@@ -79,9 +79,9 @@ public class ExhaustiveSearchDemo {
             searchEngine.indexBlockchain(blockchain, DEMO_PASSWORD, privateKey);
             long indexEnd = System.nanoTime();
             double indexTimeMs = (indexEnd - indexStart) / 1_000_000.0;
-            
+
             System.out.printf("✅ Blockchain indexed in %.2f ms\n", indexTimeMs);
-            System.out.printf("📊 Total blocks: %d\n", blockchain.getAllBlocks().size());
+            System.out.printf("📊 Total blocks: %d\n", blockchain.getBlockCount());
             System.out.println();
             
             // Demo 3: Exhaustive search demonstrations
@@ -267,8 +267,8 @@ public class ExhaustiveSearchDemo {
             publicKey
         );
         researchBlock.setOffChainData(researchOffChain);
-        
-        System.out.printf("✅ Created %d blocks with mixed content:\n", blockchain.getAllBlocks().size());
+
+        System.out.printf("✅ Created %d blocks with mixed content:\n", blockchain.getBlockCount());
         System.out.println("   📝 Plain text on-chain: 2 blocks");
         System.out.println("   🔐 Encrypted on-chain: 2 blocks");
         System.out.println("   📁 With off-chain files: 3 blocks");

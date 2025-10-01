@@ -78,7 +78,7 @@ public class SearchFrameworkBasicTest {
         );
         System.out.println(
             "   - Actual blockchain blocks: " +
-            testBlockchain.getAllBlocks().size()
+            testBlockchain.getBlockCount()
         );
 
         // Try a simple search to verify the search engine is working

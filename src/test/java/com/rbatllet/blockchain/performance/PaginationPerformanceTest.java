@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.security.KeyPair;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -83,32 +84,30 @@ public class PaginationPerformanceTest {
         
         logger.info("✅ Block count: {}", blockCount);
     }
-    
-    @Test
-    @Timeout(value = 10, unit = TimeUnit.SECONDS)
-    void testLightweightBlockRetrieval() {
-        List<Block> lightweightBlocks = blockchain.getAllBlocksLightweight();
-        assertFalse(lightweightBlocks.isEmpty(), "Should have blocks");
-        
-        logger.info("✅ Lightweight retrieval: {} blocks", lightweightBlocks.size());
-    }
-    
+
     @Test
     @Timeout(value = 15, unit = TimeUnit.SECONDS)
     void testPerformanceComparison() {
-        // Compare getAllBlocks vs paginated
+        // Compare sequential retrieval vs paginated
         long start1 = System.currentTimeMillis();
-        List<Block> allBlocks = blockchain.getAllBlocks();
+        List<Block> allBlocks = new ArrayList<>();
+        long blockCount = blockchain.getBlockCount();
+        for (long i = 0; i < blockCount; i++) {
+            Block block = blockchain.getBlock(i);
+            if (block != null) {
+                allBlocks.add(block);
+            }
+        }
         long time1 = System.currentTimeMillis() - start1;
-        
+
         long start2 = System.currentTimeMillis();
         List<Block> paginatedBlocks = blockchain.getBlocksPaginated(0, (int) blockchain.getBlockCount());
         long time2 = System.currentTimeMillis() - start2;
-        
-        assertEquals(allBlocks.size(), paginatedBlocks.size(), 
+
+        assertEquals(allBlocks.size(), paginatedBlocks.size(),
                     "Both methods should return same number of blocks");
-        
-        logger.info("📊 getAllBlocks: {}ms, paginated: {}ms", time1, time2);
+
+        logger.info("📊 Sequential retrieval: {}ms, paginated: {}ms", time1, time2);
         logger.info("✅ Performance comparison completed");
     }
 }

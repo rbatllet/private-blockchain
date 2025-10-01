@@ -41,6 +41,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -2011,9 +2014,10 @@ public class UserFriendlyEncryptionAPI {
      * String table = api.formatBlocksSummary(searchResults);
      * System.out.println(table);
      *
-     * // Format all blocks for overview
-     * List<Block> allBlocks = blockchain.getAllBlocks();
-     * String overview = api.formatBlocksSummary(allBlocks);
+     * // Format blocks for overview using batch processing
+     * List<Block> blocks = new ArrayList<>();
+     * blockchain.processChainInBatches(batch -> blocks.addAll(batch), 1000);
+     * String overview = api.formatBlocksSummary(blocks);
      * Files.write(Paths.get("blockchain-overview.txt"), overview.getBytes());
      * }</pre>
      *
@@ -2159,32 +2163,36 @@ public class UserFriendlyEncryptionAPI {
         sb.append("🏗️ BLOCKCHAIN STATUS REPORT\n");
         sb.append("═".repeat(50)).append("\n\n");
 
-        // Basic statistics
-        List<Block> allBlocks = blockchain.getAllBlocks();
-        long totalBlocks = allBlocks.size();
-        long encryptedBlocks = allBlocks
-            .stream()
-            .mapToLong(block -> block.isDataEncrypted() ? 1 : 0)
-            .sum();
-        long unencryptedBlocks = allBlocks
-            .stream()
-            .mapToLong(block -> !block.isDataEncrypted() ? 1 : 0)
-            .sum();
+        // Basic statistics using batch processing
+        AtomicLong totalBlocks = new AtomicLong(0);
+        AtomicLong encryptedBlocks = new AtomicLong(0);
+        AtomicLong unencryptedBlocks = new AtomicLong(0);
+
+        blockchain.processChainInBatches(batch -> {
+            for (Block block : batch) {
+                totalBlocks.incrementAndGet();
+                if (block.isDataEncrypted()) {
+                    encryptedBlocks.incrementAndGet();
+                } else {
+                    unencryptedBlocks.incrementAndGet();
+                }
+            }
+        }, 1000);
 
         sb.append("📊 Block Statistics:\n");
-        sb.append("   📝 Total Blocks: ").append(totalBlocks).append("\n");
+        sb.append("   📝 Total Blocks: ").append(totalBlocks.get()).append("\n");
         sb
             .append("   🔐 Encrypted Blocks: ")
-            .append(encryptedBlocks)
+            .append(encryptedBlocks.get())
             .append("\n");
         sb
             .append("   📖 Unencrypted Blocks: ")
-            .append(unencryptedBlocks)
+            .append(unencryptedBlocks.get())
             .append("\n");
 
-        if (totalBlocks > 0) {
+        if (totalBlocks.get() > 0) {
             double encryptionPercentage =
-                ((double) encryptedBlocks / totalBlocks) * 100;
+                ((double) encryptedBlocks.get() / totalBlocks.get()) * 100;
             sb
                 .append("   📈 Encryption Rate: ")
                 .append(String.format("%.1f%%", encryptionPercentage))
@@ -2193,14 +2201,15 @@ public class UserFriendlyEncryptionAPI {
         sb.append("\n");
 
         // Recent activity (last 5 blocks)
-        if (totalBlocks > 0) {
+        if (totalBlocks.get() > 0) {
             sb.append("📋 Recent Activity (Last 5 Blocks):\n");
             sb.append("-".repeat(50)).append("\n");
 
-            List<Block> recentBlocks = allBlocks
-                .stream()
-                .skip(Math.max(0, totalBlocks - 5))
-                .collect(java.util.stream.Collectors.toList());
+            // Get the last 5 blocks using pagination
+            long blockCount = totalBlocks.get();
+            int startIndex = (int) Math.max(0, blockCount - 5);
+            int limit = (int) Math.min(5, blockCount);
+            List<Block> recentBlocks = blockchain.getBlocksPaginated(startIndex, limit);
 
             for (Block block : recentBlocks) {
                 sb.append(
@@ -2790,105 +2799,103 @@ public class UserFriendlyEncryptionAPI {
     public String generateIntegrityReport() {
         try {
             StringBuilder report = new StringBuilder();
-            List<Block> allBlocks = blockchain.getAllBlocks();
 
             report.append("🔍 COMPREHENSIVE BLOCKCHAIN INTEGRITY REPORT\n");
             report.append("═".repeat(60)).append("\n\n");
 
-            int totalBlocks = allBlocks.size();
-            int validBlocks = 0;
-            int tamperingDetected = 0;
-            int offChainIssues = 0;
-            int missingFiles = 0;
+            AtomicInteger totalBlocks = new AtomicInteger(0);
+            AtomicInteger validBlocks = new AtomicInteger(0);
+            AtomicInteger tamperingDetected = new AtomicInteger(0);
+            AtomicInteger offChainIssues = new AtomicInteger(0);
+            AtomicInteger missingFiles = new AtomicInteger(0);
+            StringBuilder detailsBuilder = new StringBuilder();
 
             report.append("📊 Analysis Summary:\n");
-            report
-                .append("   📝 Total Blocks: ")
-                .append(totalBlocks)
-                .append("\n\n");
+            report.append("   📝 Analyzing blocks...\n\n");
 
             report.append("🔍 Detailed Block Analysis:\n");
             report.append("-".repeat(40)).append("\n");
 
-            for (Block block : allBlocks) {
-                Long blockId = block.getBlockNumber();
-                boolean blockValid = blockchain.validateSingleBlock(block);
-                boolean filesExist = BlockValidationUtil.offChainFileExists(
-                    block
-                );
-                boolean noTampering =
-                    BlockValidationUtil.detectOffChainTampering(block);
-                var detailedValidation =
-                    BlockValidationUtil.validateOffChainDataDetailed(block);
+            blockchain.processChainInBatches(batch -> {
+                for (Block block : batch) {
+                    totalBlocks.incrementAndGet();
+                    Long blockId = block.getBlockNumber();
+                    boolean blockValid = blockchain.validateSingleBlock(block);
+                    boolean filesExist = BlockValidationUtil.offChainFileExists(block);
+                    boolean noTampering = BlockValidationUtil.detectOffChainTampering(block);
+                    var detailedValidation = BlockValidationUtil.validateOffChainDataDetailed(block);
 
-                report.append(String.format("Block #%d: ", blockId));
+                    detailsBuilder.append(String.format("Block #%d: ", blockId));
 
-                if (blockValid) {
-                    validBlocks++;
-                    report.append("✅ Valid");
-                } else {
-                    report.append("❌ Invalid");
-                }
-
-                if (block.hasOffChainData()) {
-                    if (!filesExist) {
-                        report.append(" | 📄 Missing Files");
-                        missingFiles++;
-                    } else if (!noTampering) {
-                        report.append(" | ⚠️ Potential Tampering");
-                        tamperingDetected++;
-                    } else if (!detailedValidation.isValid()) {
-                        report.append(" | 🔍 Off-chain Issues");
-                        offChainIssues++;
+                    if (blockValid) {
+                        validBlocks.incrementAndGet();
+                        detailsBuilder.append("✅ Valid");
                     } else {
-                        report.append(" | 📄 Off-chain OK");
+                        detailsBuilder.append("❌ Invalid");
                     }
-                }
 
-                report.append("\n");
-            }
+                    if (block.hasOffChainData()) {
+                        if (!filesExist) {
+                            detailsBuilder.append(" | 📄 Missing Files");
+                            missingFiles.incrementAndGet();
+                        } else if (!noTampering) {
+                            detailsBuilder.append(" | ⚠️ Potential Tampering");
+                            tamperingDetected.incrementAndGet();
+                        } else if (!detailedValidation.isValid()) {
+                            detailsBuilder.append(" | 🔍 Off-chain Issues");
+                            offChainIssues.incrementAndGet();
+                        } else {
+                            detailsBuilder.append(" | 📄 Off-chain OK");
+                        }
+                    }
+
+                    detailsBuilder.append("\n");
+                }
+            }, 1000);
+
+            report.append(detailsBuilder);
 
             report.append("\n📈 Integrity Statistics:\n");
             report
                 .append("   ✅ Valid Blocks: ")
-                .append(validBlocks)
+                .append(validBlocks.get())
                 .append("/")
-                .append(totalBlocks);
-            if (totalBlocks > 0) {
+                .append(totalBlocks.get());
+            if (totalBlocks.get() > 0) {
                 report.append(
                     String.format(
                         " (%.1f%%)",
-                        ((double) validBlocks / totalBlocks) * 100
+                        ((double) validBlocks.get() / totalBlocks.get()) * 100
                     )
                 );
             }
             report.append("\n");
             report
                 .append("   📄 Missing Off-chain Files: ")
-                .append(missingFiles)
+                .append(missingFiles.get())
                 .append("\n");
             report
                 .append("   ⚠️ Potential Tampering Cases: ")
-                .append(tamperingDetected)
+                .append(tamperingDetected.get())
                 .append("\n");
             report
                 .append("   🔍 Off-chain Validation Issues: ")
-                .append(offChainIssues)
+                .append(offChainIssues.get())
                 .append("\n\n");
 
             // Overall assessment
             boolean isHealthy =
-                (validBlocks == totalBlocks) &&
-                (missingFiles == 0) &&
-                (tamperingDetected == 0) &&
-                (offChainIssues == 0);
+                (validBlocks.get() == totalBlocks.get()) &&
+                (missingFiles.get() == 0) &&
+                (tamperingDetected.get() == 0) &&
+                (offChainIssues.get() == 0);
 
             report.append("🏥 Overall Blockchain Health: ");
             if (isHealthy) {
                 report.append("✅ EXCELLENT - No issues detected\n");
-            } else if (validBlocks == totalBlocks && tamperingDetected == 0) {
+            } else if (validBlocks.get() == totalBlocks.get() && tamperingDetected.get() == 0) {
                 report.append("🟡 GOOD - Minor off-chain issues\n");
-            } else if (tamperingDetected == 0) {
+            } else if (tamperingDetected.get() == 0) {
                 report.append("🟠 FAIR - Some validation issues\n");
             } else {
                 report.append(
@@ -2897,12 +2904,12 @@ public class UserFriendlyEncryptionAPI {
             }
 
             report.append("\n💡 Recommendations:\n");
-            if (missingFiles > 0) {
+            if (missingFiles.get() > 0) {
                 report.append(
                     "   • Restore missing off-chain files from backup\n"
                 );
             }
-            if (tamperingDetected > 0) {
+            if (tamperingDetected.get() > 0) {
                 report.append(
                     "   • Investigate potential tampering incidents\n"
                 );
@@ -2910,12 +2917,12 @@ public class UserFriendlyEncryptionAPI {
                     "   • Consider rolling back to last known good state\n"
                 );
             }
-            if (offChainIssues > 0) {
+            if (offChainIssues.get() > 0) {
                 report.append(
                     "   • Verify off-chain data integrity and fix metadata\n"
                 );
             }
-            if (validBlocks < totalBlocks) {
+            if (validBlocks.get() < totalBlocks.get()) {
                 report.append(
                     "   • Use recovery tools to repair corrupted blocks\n"
                 );
@@ -3317,83 +3324,79 @@ public class UserFriendlyEncryptionAPI {
     public String generateOffChainStorageReport() {
         try {
             StringBuilder report = new StringBuilder();
-            List<Block> allBlocks = blockchain.getAllBlocks();
 
             report.append("📁 OFF-CHAIN STORAGE COMPREHENSIVE REPORT\n");
             report.append("═".repeat(60)).append("\n\n");
 
-            int totalBlocks = allBlocks.size();
-            int blocksWithOffChain = 0;
-            long totalOffChainSize = 0;
-            int missingFiles = 0;
-            int corruptFiles = 0;
+            AtomicInteger totalBlocks = new AtomicInteger(0);
+            AtomicInteger blocksWithOffChain = new AtomicInteger(0);
+            AtomicLong totalOffChainSize = new AtomicLong(0);
+            AtomicInteger missingFiles = new AtomicInteger(0);
+            AtomicInteger corruptFiles = new AtomicInteger(0);
 
-            java.util.Map<String, Integer> contentTypes =
-                new java.util.HashMap<>();
-            java.util.Map<String, Long> sizeByType = new java.util.HashMap<>();
+            java.util.Map<String, Integer> contentTypes = Collections.synchronizedMap(new java.util.HashMap<>());
+            java.util.Map<String, Long> sizeByType = Collections.synchronizedMap(new java.util.HashMap<>());
 
             report.append("📊 Storage Analysis:\n");
-            report
-                .append("   📝 Total Blocks: ")
-                .append(totalBlocks)
-                .append("\n");
+            report.append("   📝 Analyzing blocks...\n");
 
-            for (Block block : allBlocks) {
-                if (block.hasOffChainData()) {
-                    blocksWithOffChain++;
-                    OffChainData offChainData = block.getOffChainData();
+            blockchain.processChainInBatches(batch -> {
+                for (Block block : batch) {
+                    totalBlocks.incrementAndGet();
+                    if (block.hasOffChainData()) {
+                        blocksWithOffChain.incrementAndGet();
+                        OffChainData offChainData = block.getOffChainData();
 
-                    // Count by content type
-                    String contentType = offChainData.getContentType();
-                    contentTypes.put(
-                        contentType,
-                        contentTypes.getOrDefault(contentType, 0) + 1
-                    );
+                        // Count by content type
+                        String contentType = offChainData.getContentType();
+                        contentTypes.put(
+                            contentType,
+                            contentTypes.getOrDefault(contentType, 0) + 1
+                        );
 
-                    // Size analysis
-                    long fileSize = offChainData.getFileSize() != null
-                        ? offChainData.getFileSize()
-                        : 0;
-                    totalOffChainSize += fileSize;
-                    sizeByType.put(
-                        contentType,
-                        sizeByType.getOrDefault(contentType, 0L) + fileSize
-                    );
+                        // Size analysis
+                        long fileSize = offChainData.getFileSize() != null
+                            ? offChainData.getFileSize()
+                            : 0;
+                        totalOffChainSize.addAndGet(fileSize);
+                        sizeByType.put(
+                            contentType,
+                            sizeByType.getOrDefault(contentType, 0L) + fileSize
+                        );
 
-                    // Check file status
-                    if (!offChainStorage.fileExists(offChainData)) {
-                        missingFiles++;
-                    } else {
-                        // Quick integrity check (we don't have password here, so basic check only)
-                        try {
-                            long actualSize = offChainStorage.getFileSize(
-                                offChainData
-                            );
-                            if (actualSize != fileSize) {
-                                corruptFiles++;
+                        // Check file status
+                        if (!offChainStorage.fileExists(offChainData)) {
+                            missingFiles.incrementAndGet();
+                        } else {
+                            // Quick integrity check (we don't have password here, so basic check only)
+                            try {
+                                long actualSize = offChainStorage.getFileSize(offChainData);
+                                if (actualSize != fileSize) {
+                                    corruptFiles.incrementAndGet();
+                                }
+                            } catch (Exception e) {
+                                corruptFiles.incrementAndGet();
                             }
-                        } catch (Exception e) {
-                            corruptFiles++;
                         }
                     }
                 }
-            }
+            }, 1000);
 
             report
                 .append("   📄 Blocks with Off-chain Data: ")
-                .append(blocksWithOffChain)
+                .append(blocksWithOffChain.get())
                 .append("\n");
             report
                 .append("   💾 Total Off-chain Storage: ")
-                .append(formatFileSize(totalOffChainSize))
+                .append(formatFileSize(totalOffChainSize.get()))
                 .append("\n");
             report
                 .append("   📄 Missing Files: ")
-                .append(missingFiles)
+                .append(missingFiles.get())
                 .append("\n");
             report
                 .append("   ⚠️ Potentially Corrupt Files: ")
-                .append(corruptFiles)
+                .append(corruptFiles.get())
                 .append("\n\n");
 
             // Content type breakdown
@@ -3417,9 +3420,9 @@ public class UserFriendlyEncryptionAPI {
 
             // Storage efficiency
             report.append("\n📈 Storage Efficiency:\n");
-            if (totalBlocks > 0) {
+            if (totalBlocks.get() > 0) {
                 double offChainPercentage =
-                    ((double) blocksWithOffChain / totalBlocks) * 100;
+                    ((double) blocksWithOffChain.get() / totalBlocks.get()) * 100;
                 report.append(
                     String.format(
                         "   📊 Off-chain Usage: %.1f%% of blocks\n",
@@ -3428,8 +3431,8 @@ public class UserFriendlyEncryptionAPI {
                 );
             }
 
-            double avgFileSize = blocksWithOffChain > 0
-                ? (double) totalOffChainSize / blocksWithOffChain
+            double avgFileSize = blocksWithOffChain.get() > 0
+                ? (double) totalOffChainSize.get() / blocksWithOffChain.get()
                 : 0;
             report.append(
                 String.format(
@@ -3440,9 +3443,9 @@ public class UserFriendlyEncryptionAPI {
 
             // Health assessment
             report.append("\n🏥 Storage Health: ");
-            if (missingFiles == 0 && corruptFiles == 0) {
+            if (missingFiles.get() == 0 && corruptFiles.get() == 0) {
                 report.append("✅ EXCELLENT - All files intact\n");
-            } else if (missingFiles == 0) {
+            } else if (missingFiles.get() == 0) {
                 report.append(
                     "🟡 GOOD - No missing files, some integrity issues\n"
                 );
@@ -3454,23 +3457,23 @@ public class UserFriendlyEncryptionAPI {
 
             // Recommendations
             report.append("\n💡 Recommendations:\n");
-            if (missingFiles > 0) {
+            if (missingFiles.get() > 0) {
                 report.append(
                     "   • Restore missing files from backup immediately\n"
                 );
             }
-            if (corruptFiles > 0) {
+            if (corruptFiles.get() > 0) {
                 report.append(
                     "   • Verify file integrity with proper passwords\n"
                 );
             }
-            if (totalOffChainSize > 1024 * 1024 * 1024) {
+            if (totalOffChainSize.get() > 1024 * 1024 * 1024) {
                 // 1GB
                 report.append(
                     "   • Consider implementing file archival strategy\n"
                 );
             }
-            if (missingFiles == 0 && corruptFiles == 0) {
+            if (missingFiles.get() == 0 && corruptFiles.get() == 0) {
                 report.append(
                     "   • Continue regular backup and monitoring procedures\n"
                 );
@@ -4254,17 +4257,17 @@ public class UserFriendlyEncryptionAPI {
      * @return List of blocks where this term is publicly searchable
      */
     private List<Block> findBlocksWithPublicTerm(String searchTerm) {
-        List<Block> publicResults = new ArrayList<>();
+        List<Block> publicResults = Collections.synchronizedList(new ArrayList<>());
 
         try {
-            // Get all blocks and check their visibility metadata
-            List<Block> allBlocks = blockchain.getAllBlocks();
-
-            for (Block block : allBlocks) {
-                if (isTermPublicInBlock(block, searchTerm.toLowerCase())) {
-                    publicResults.add(block);
+            // Check all blocks for public visibility metadata
+            blockchain.processChainInBatches(batch -> {
+                for (Block block : batch) {
+                    if (isTermPublicInBlock(block, searchTerm.toLowerCase())) {
+                        publicResults.add(block);
+                    }
                 }
-            }
+            }, 1000);
 
             logger.debug(
                 "🔍 Debug: findBlocksWithPublicTerm('{}') found {} public results",
@@ -4289,17 +4292,17 @@ public class UserFriendlyEncryptionAPI {
         String searchTerm,
         String password
     ) {
-        List<Block> privateResults = new ArrayList<>();
+        List<Block> privateResults = Collections.synchronizedList(new ArrayList<>());
 
         try {
-            // Get all blocks and check their encrypted keywords
-            List<Block> allBlocks = blockchain.getAllBlocks();
-
-            for (Block block : allBlocks) {
-                if (isTermPrivateInBlock(block, searchTerm, password)) {
-                    privateResults.add(block);
+            // Check all blocks for encrypted keywords
+            blockchain.processChainInBatches(batch -> {
+                for (Block block : batch) {
+                    if (isTermPrivateInBlock(block, searchTerm, password)) {
+                        privateResults.add(block);
+                    }
                 }
-            }
+            }, 1000);
 
             logger.debug(
                 "🔍 Debug: findBlocksWithPrivateTerm('{}') found {} private results",
@@ -7243,172 +7246,177 @@ public class UserFriendlyEncryptionAPI {
         );
 
         try {
-            List<Block> allBlocks = blockchain.getAllBlocks();
-            int blocksSearched = 0;
-            int encryptedBlocksDecrypted = 0;
-            int offChainFilesAccessed = 0;
-            long bytesProcessed = 0;
+            AtomicInteger blocksSearched = new AtomicInteger(0);
+            AtomicInteger encryptedBlocksDecrypted = new AtomicInteger(0);
+            AtomicInteger offChainFilesAccessed = new AtomicInteger(0);
+            AtomicLong bytesProcessed = new AtomicLong(0);
+            AtomicBoolean maxResultsReached = new AtomicBoolean(false);
 
             Pattern regexMatcher = regexPattern != null
                 ? Pattern.compile(regexPattern, Pattern.CASE_INSENSITIVE)
                 : null;
 
-            for (Block block : allBlocks) {
-                blocksSearched++;
-
-                // Time range filter
-                if (
-                    startDate != null &&
-                    block.getTimestamp().isBefore(startDate)
-                ) continue;
-                if (
-                    endDate != null && block.getTimestamp().isAfter(endDate)
-                ) continue;
-
-                // Category filter
-                if (
-                    !categories.isEmpty() &&
-                    !categories.contains(block.getContentCategory())
-                ) continue;
-
-                double relevanceScore = 0.0;
-                List<String> matchedTerms = new ArrayList<>();
-                Map<String, String> snippets = new HashMap<>();
-                AdvancedSearchResult.SearchMatch.MatchLocation location = null;
-
-                // Search in different locations
-                String content = block.getData();
-
-                // Handle encrypted blocks
-                if (
-                    block.isDataEncrypted() &&
-                    searchEncrypted &&
-                    password != null
-                ) {
-                    try {
-                        content =
-                            SecureBlockEncryptionService.decryptFromString(
-                                block.getEncryptionMetadata(),
-                                password
-                            );
-                        encryptedBlocksDecrypted++;
-                    } catch (Exception e) {
-                        logger.debug(
-                            "Could not decrypt block {}: {}",
-                            block.getBlockNumber(),
-                            e.getMessage()
-                        );
-                        continue;
-                    }
+            blockchain.processChainInBatches(batch -> {
+                if (maxResultsReached.get()) {
+                    return; // Skip processing if max results already reached
                 }
 
-                bytesProcessed += content != null ? content.length() : 0;
+                for (Block block : batch) {
+                    blocksSearched.incrementAndGet();
 
-                // Keyword matching
-                if (!keywords.isEmpty() && content != null) {
-                    String[] keywordArray = keywords
-                        .toLowerCase()
-                        .split("\\s+");
-                    for (String keyword : keywordArray) {
-                        if (content.toLowerCase().contains(keyword)) {
-                            matchedTerms.add(keyword);
-                            relevanceScore += 1.0;
+                    // Time range filter
+                    if (
+                        startDate != null &&
+                        block.getTimestamp().isBefore(startDate)
+                    ) continue;
+                    if (
+                        endDate != null && block.getTimestamp().isAfter(endDate)
+                    ) continue;
+
+                    // Category filter
+                    if (
+                        !categories.isEmpty() &&
+                        !categories.contains(block.getContentCategory())
+                    ) continue;
+
+                    double relevanceScore = 0.0;
+                    List<String> matchedTerms = new ArrayList<>();
+                    Map<String, String> snippets = new HashMap<>();
+                    AdvancedSearchResult.SearchMatch.MatchLocation location = null;
+
+                    // Search in different locations
+                    String content = block.getData();
+
+                    // Handle encrypted blocks
+                    if (
+                        block.isDataEncrypted() &&
+                        searchEncrypted &&
+                        password != null
+                    ) {
+                        try {
+                            content =
+                                SecureBlockEncryptionService.decryptFromString(
+                                    block.getEncryptionMetadata(),
+                                    password
+                                );
+                            encryptedBlocksDecrypted.incrementAndGet();
+                        } catch (Exception e) {
+                            logger.debug(
+                                "Could not decrypt block {}: {}",
+                                block.getBlockNumber(),
+                                e.getMessage()
+                            );
+                            continue;
+                        }
+                    }
+
+                    bytesProcessed.addAndGet(content != null ? content.length() : 0);
+
+                    // Keyword matching
+                    if (!keywords.isEmpty() && content != null) {
+                        String[] keywordArray = keywords
+                            .toLowerCase()
+                            .split("\\s+");
+                        for (String keyword : keywordArray) {
+                            if (content.toLowerCase().contains(keyword)) {
+                                matchedTerms.add(keyword);
+                                relevanceScore += 1.0;
+
+                                // Extract snippet
+                                int index = content.toLowerCase().indexOf(keyword);
+                                int start = Math.max(0, index - 50);
+                                int end = Math.min(
+                                    content.length(),
+                                    index + keyword.length() + 50
+                                );
+                                snippets.put(
+                                    keyword,
+                                    "..." + content.substring(start, end) + "..."
+                                );
+                                location =
+                                    AdvancedSearchResult.SearchMatch.MatchLocation.BLOCK_DATA;
+                            }
+                        }
+                    }
+
+                    // Regex matching
+                    if (regexMatcher != null && content != null) {
+                        Matcher matcher = regexMatcher.matcher(content);
+                        while (matcher.find()) {
+                            String match = matcher.group();
+                            matchedTerms.add("regex:" + match);
+                            relevanceScore += 2.0; // Higher score for regex matches
 
                             // Extract snippet
-                            int index = content.toLowerCase().indexOf(keyword);
-                            int start = Math.max(0, index - 50);
+                            int start = Math.max(0, matcher.start() - 50);
                             int end = Math.min(
                                 content.length(),
-                                index + keyword.length() + 50
+                                matcher.end() + 50
                             );
                             snippets.put(
-                                keyword,
+                                "regex:" + match,
                                 "..." + content.substring(start, end) + "..."
                             );
                             location =
                                 AdvancedSearchResult.SearchMatch.MatchLocation.BLOCK_DATA;
                         }
                     }
-                }
 
-                // Regex matching
-                if (regexMatcher != null && content != null) {
-                    Matcher matcher = regexMatcher.matcher(content);
-                    while (matcher.find()) {
-                        String match = matcher.group();
-                        matchedTerms.add("regex:" + match);
-                        relevanceScore += 2.0; // Higher score for regex matches
-
-                        // Extract snippet
-                        int start = Math.max(0, matcher.start() - 50);
-                        int end = Math.min(
-                            content.length(),
-                            matcher.end() + 50
-                        );
-                        snippets.put(
-                            "regex:" + match,
-                            "..." + content.substring(start, end) + "..."
-                        );
-                        location =
-                            AdvancedSearchResult.SearchMatch.MatchLocation.BLOCK_DATA;
-                    }
-                }
-
-                // Search in keywords
-                if (!keywords.isEmpty()) {
-                    String combinedKeywords = (block.getManualKeywords() +
-                        " " +
-                        block.getAutoKeywords()).toLowerCase();
-                    String[] keywordArray = keywords
-                        .toLowerCase()
-                        .split("\\s+");
-                    for (String keyword : keywordArray) {
-                        if (combinedKeywords.contains(keyword)) {
-                            matchedTerms.add("keyword:" + keyword);
-                            relevanceScore += 1.5; // Medium score for keyword matches
-                            if (location == null) {
-                                location = block
-                                        .getManualKeywords()
-                                        .toLowerCase()
-                                        .contains(keyword)
-                                    ? AdvancedSearchResult.SearchMatch.MatchLocation.MANUAL_KEYWORDS
-                                    : AdvancedSearchResult.SearchMatch.MatchLocation.AUTO_KEYWORDS;
+                    // Search in keywords
+                    if (!keywords.isEmpty()) {
+                        String manualKw = block.getManualKeywords() != null ? block.getManualKeywords() : "";
+                        String autoKw = block.getAutoKeywords() != null ? block.getAutoKeywords() : "";
+                        String combinedKeywords = (manualKw + " " + autoKw).toLowerCase();
+                        String[] keywordArray = keywords
+                            .toLowerCase()
+                            .split("\\s+");
+                        for (String keyword : keywordArray) {
+                            if (combinedKeywords.contains(keyword)) {
+                                matchedTerms.add("keyword:" + keyword);
+                                relevanceScore += 1.5; // Medium score for keyword matches
+                                if (location == null) {
+                                    location = (block.getManualKeywords() != null &&
+                                               block.getManualKeywords().toLowerCase().contains(keyword))
+                                        ? AdvancedSearchResult.SearchMatch.MatchLocation.MANUAL_KEYWORDS
+                                        : AdvancedSearchResult.SearchMatch.MatchLocation.AUTO_KEYWORDS;
+                                }
                             }
                         }
                     }
-                }
 
-                // Search in off-chain data
-                if (block.getOffChainData() != null) {
-                    offChainFilesAccessed++;
-                    // Count off-chain match (implementation delegated to off-chain search service)
-                }
+                    // Search in off-chain data
+                    if (block.getOffChainData() != null) {
+                        offChainFilesAccessed.incrementAndGet();
+                        // Count off-chain match (implementation delegated to off-chain search service)
+                    }
 
-                // Add match if relevant
-                if (relevanceScore > 0) {
-                    AdvancedSearchResult.SearchMatch match =
-                        new AdvancedSearchResult.SearchMatch(
-                            block,
-                            relevanceScore,
-                            matchedTerms,
-                            snippets,
-                            location
-                        );
-                    result.addMatch(match);
+                    // Add match if relevant
+                    if (relevanceScore > 0) {
+                        AdvancedSearchResult.SearchMatch match =
+                            new AdvancedSearchResult.SearchMatch(
+                                block,
+                                relevanceScore,
+                                matchedTerms,
+                                snippets,
+                                location
+                            );
+                        result.addMatch(match);
 
-                    if (result.getTotalMatches() >= maxResults) {
-                        break;
+                        if (result.getTotalMatches() >= maxResults) {
+                            maxResultsReached.set(true);
+                            return; // Exit batch processing
+                        }
                     }
                 }
-            }
+            }, 1000);
 
             // Set statistics
             result.withStatistics(
                 new AdvancedSearchResult.SearchStatistics()
-                    .withBlocksSearched(blocksSearched)
-                    .withEncryptedBlocks(encryptedBlocksDecrypted)
-                    .withOffChainFiles(offChainFilesAccessed)
-                    .withBytesProcessed(bytesProcessed)
+                    .withBlocksSearched(blocksSearched.get())
+                    .withEncryptedBlocks(encryptedBlocksDecrypted.get())
+                    .withOffChainFiles(offChainFilesAccessed.get())
+                    .withBytesProcessed(bytesProcessed.get())
                     .addMetric(
                         "keywordMatches",
                         (int) result
@@ -7460,6 +7468,10 @@ public class UserFriendlyEncryptionAPI {
                 startTime,
                 Instant.now()
             );
+
+            // Sort results by relevance score (descending)
+            result.sortByRelevance();
+
             logger.info(
                 "✅ Advanced search completed: {} matches in {}ms",
                 result.getTotalMatches(),
@@ -8152,33 +8164,34 @@ public class UserFriendlyEncryptionAPI {
      */
     private List<String> analyzeBlockchainForPopularTerms() {
         try {
-            Map<String, Integer> termFrequency = new HashMap<>();
-            List<Block> allBlocks = blockchain.getAllBlocks();
+            Map<String, Integer> termFrequency = Collections.synchronizedMap(new HashMap<>());
 
             // Analyze block data for common terms
-            for (Block block : allBlocks) {
-                if (block.getData() != null && !block.getData().isEmpty()) {
-                    // Extract meaningful terms from block data
-                    String[] words = block
-                        .getData()
-                        .toLowerCase()
-                        .replaceAll("[^a-zA-Z0-9\\s]", " ")
-                        .split("\\s+");
+            blockchain.processChainInBatches(batch -> {
+                for (Block block : batch) {
+                    if (block.getData() != null && !block.getData().isEmpty()) {
+                        // Extract meaningful terms from block data
+                        String[] words = block
+                            .getData()
+                            .toLowerCase()
+                            .replaceAll("[^a-zA-Z0-9\\s]", " ")
+                            .split("\\s+");
 
-                    for (String word : words) {
-                        if (word.length() > 3) {
-                            // Skip very short words
-                            termFrequency.merge(word, 1, Integer::sum);
+                        for (String word : words) {
+                            if (word.length() > 3) {
+                                // Skip very short words
+                                termFrequency.merge(word, 1, Integer::sum);
+                            }
                         }
                     }
-                }
 
-                // Also check categories if available
-                if (block.getContentCategory() != null) {
-                    String category = block.getContentCategory().toLowerCase();
-                    termFrequency.merge(category, 5, Integer::sum); // Weight categories higher
+                    // Also check categories if available
+                    if (block.getContentCategory() != null) {
+                        String category = block.getContentCategory().toLowerCase();
+                        termFrequency.merge(category, 5, Integer::sum); // Weight categories higher
+                    }
                 }
-            }
+            }, 1000);
 
             // Return top terms sorted by frequency
             return termFrequency
@@ -8347,7 +8360,12 @@ public class UserFriendlyEncryptionAPI {
         logger.info("🔄 Starting comprehensive storage tier optimization");
 
         try {
-            List<Block> allBlocks = blockchain.getAllBlocks();
+            // Collect all blocks for tiering analysis
+            List<Block> allBlocks = Collections.synchronizedList(new ArrayList<>());
+            blockchain.processChainInBatches(batch -> {
+                allBlocks.addAll(batch);
+            }, 1000);
+
             StorageTieringManager.TieringReport report =
                 tieringManager.performAutoTiering(allBlocks);
 
@@ -9895,14 +9913,16 @@ public class UserFriendlyEncryptionAPI {
                 throw new IllegalStateException("Blockchain instance is null");
             }
 
-            List<Block> allBlocks;
+            List<Block> allBlocks = Collections.synchronizedList(new ArrayList<>());
             try {
-                allBlocks = blockchain.getAllBlocks();
-                if (allBlocks == null) {
+                blockchain.processChainInBatches(batch -> {
+                    allBlocks.addAll(batch);
+                }, 1000);
+
+                if (allBlocks == null || allBlocks.isEmpty()) {
                     logger.warn(
-                        "⚠️ Blockchain returned null blocks list, using empty list"
+                        "⚠️ No blocks retrieved from blockchain, using empty list"
                     );
-                    allBlocks = new ArrayList<>();
                 }
             } catch (Exception e) {
                 logger.error("❌ Failed to retrieve blocks from blockchain", e);
@@ -10381,7 +10401,17 @@ public class UserFriendlyEncryptionAPI {
             );
 
             // Export critical blockchain data
-            List<Block> allBlocks = blockchain.getAllBlocks();
+            List<Block> allBlocks = Collections.synchronizedList(new ArrayList<>());
+            AtomicLong totalSize = new AtomicLong(0);
+
+            blockchain.processChainInBatches(batch -> {
+                allBlocks.addAll(batch);
+                for (Block block : batch) {
+                    if (block.getData() != null) {
+                        totalSize.addAndGet(block.getData().length());
+                    }
+                }
+            }, 1000);
 
             Map<String, Object> exportData = new HashMap<>();
             exportData.put("checkpoint", checkpoint);
@@ -10389,24 +10419,16 @@ public class UserFriendlyEncryptionAPI {
             exportData.put("exportDate", LocalDateTime.now());
             exportData.put("version", "1.0");
 
-            // Calculate data size
-            long totalSize = allBlocks
-                .stream()
-                .mapToLong(block ->
-                    block.getData() != null ? block.getData().length() : 0
-                )
-                .sum();
-
             result.put("success", true);
             result.put("checkpointId", checkpoint.getCheckpointId());
             result.put("blocksExported", allBlocks.size());
-            result.put("dataSizeMB", totalSize / (1024.0 * 1024.0));
+            result.put("dataSizeMB", totalSize.get() / (1024.0 * 1024.0));
             result.put("message", "Recovery data exported successfully");
 
             logger.info(
                 "✅ Recovery data exported: {} blocks, {:.2f} MB",
                 allBlocks.size(),
-                totalSize / (1024.0 * 1024.0)
+                totalSize.get() / (1024.0 * 1024.0)
             );
         } catch (Exception e) {
             logger.error("❌ Failed to export recovery data", e);
@@ -10502,42 +10524,40 @@ public class UserFriendlyEncryptionAPI {
     // Helper methods for Phase 4
 
     private List<Long> identifyCorruptedBlocks() {
-        List<Long> corruptedBlocks = new ArrayList<>();
+        List<Long> corruptedBlocks = Collections.synchronizedList(new ArrayList<>());
+        AtomicInteger totalBlocks = new AtomicInteger(0);
 
         try {
-            List<Block> allBlocks = blockchain.getAllBlocks();
+            blockchain.processChainInBatches(batch -> {
+                totalBlocks.addAndGet(batch.size());
 
-            if (allBlocks == null || allBlocks.isEmpty()) {
-                logger.debug("No blocks available for corruption analysis");
-                return corruptedBlocks;
-            }
+                // Use existing blockchain validation systems
+                for (Block block : batch) {
+                    try {
+                        // Use the blockchain's own validation logic
+                        boolean isValid = blockchain.validateSingleBlock(block);
+                        if (!isValid) {
+                            corruptedBlocks.add(block.getBlockNumber());
+                            logger.debug(
+                                "Block #{} identified as corrupted by blockchain validation",
+                                block.getBlockNumber()
+                            );
+                        }
+                    } catch (Exception e) {
+                        logger.debug(
+                            "Error validating block #{}: {}",
+                            block.getBlockNumber(),
+                            e.getMessage()
+                        );
+                        corruptedBlocks.add(block.getBlockNumber());
+                    }
+                }
+            }, 1000);
 
             logger.info(
-                "🔍 Analyzing {} blocks for corruption",
-                allBlocks.size()
+                "🔍 Analyzed {} blocks for corruption",
+                totalBlocks.get()
             );
-
-            // Use existing blockchain validation systems
-            for (Block block : allBlocks) {
-                try {
-                    // Use the blockchain's own validation logic
-                    boolean isValid = blockchain.validateSingleBlock(block);
-                    if (!isValid) {
-                        corruptedBlocks.add(block.getBlockNumber());
-                        logger.debug(
-                            "Block #{} identified as corrupted by blockchain validation",
-                            block.getBlockNumber()
-                        );
-                    }
-                } catch (Exception e) {
-                    logger.debug(
-                        "Error validating block #{}: {}",
-                        block.getBlockNumber(),
-                        e.getMessage()
-                    );
-                    corruptedBlocks.add(block.getBlockNumber());
-                }
-            }
 
             if (corruptedBlocks.isEmpty()) {
                 logger.info("✅ No corrupted blocks found");
@@ -10813,12 +10833,16 @@ public class UserFriendlyEncryptionAPI {
      */
     private boolean hasSubsequentBlocks(Block block) {
         try {
-            List<Block> allBlocks = blockchain.getAllBlocks();
             String blockHash = block.getHash();
+            AtomicBoolean hasSubsequent = new AtomicBoolean(false);
 
-            return allBlocks
-                .stream()
-                .anyMatch(b -> blockHash.equals(b.getPreviousHash()));
+            blockchain.processChainInBatches(batch -> {
+                if (batch.stream().anyMatch(b -> blockHash.equals(b.getPreviousHash()))) {
+                    hasSubsequent.set(true);
+                }
+            }, 1000);
+
+            return hasSubsequent.get();
         } catch (Exception e) {
             logger.warn(
                 "Error checking for subsequent blocks: {}",
@@ -10835,13 +10859,18 @@ public class UserFriendlyEncryptionAPI {
      */
     private int getSubsequentBlockCount(Block block) {
         try {
-            List<Block> allBlocks = blockchain.getAllBlocks();
             String blockHash = block.getHash();
+            AtomicInteger count = new AtomicInteger(0);
 
-            return (int) allBlocks
-                .stream()
-                .filter(b -> blockHash.equals(b.getPreviousHash()))
-                .count();
+            blockchain.processChainInBatches(batch -> {
+                int batchCount = (int) batch
+                    .stream()
+                    .filter(b -> blockHash.equals(b.getPreviousHash()))
+                    .count();
+                count.addAndGet(batchCount);
+            }, 1000);
+
+            return count.get();
         } catch (Exception e) {
             logger.warn("Error counting subsequent blocks: {}", e.getMessage());
             return Integer.MAX_VALUE; // Err on the side of caution
@@ -12849,47 +12878,39 @@ public class UserFriendlyEncryptionAPI {
             recipientUsername
         );
 
-        List<Block> recipientBlocks = new ArrayList<>();
-        List<Block> allBlocks = blockchain.getAllBlocks();
+        List<Block> recipientBlocks = Collections.synchronizedList(new ArrayList<>());
+        AtomicInteger processedBlocks = new AtomicInteger(0);
 
-        if (allBlocks == null || allBlocks.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        // Process in batches to avoid memory issues for large blockchains
-        int batchSize = Math.min(1000, allBlocks.size());
-        int processedBlocks = 0;
-
-        for (Block block : allBlocks) {
-            try {
-                if (block != null && isRecipientEncrypted(block)) {
-                    String blockRecipient = getRecipientUsername(block);
-                    if (recipientUsername.equals(blockRecipient)) {
-                        recipientBlocks.add(block);
+        blockchain.processChainInBatches(batch -> {
+            for (Block block : batch) {
+                try {
+                    if (block != null && isRecipientEncrypted(block)) {
+                        String blockRecipient = getRecipientUsername(block);
+                        if (recipientUsername.equals(blockRecipient)) {
+                            recipientBlocks.add(block);
+                        }
                     }
-                }
 
-                processedBlocks++;
+                    int processed = processedBlocks.incrementAndGet();
 
-                // Progress logging for large searches
-                if (processedBlocks % batchSize == 0) {
-                    logger.debug(
-                        "Recipient search progress: {}/{} blocks processed, {} matches found",
-                        processedBlocks,
-                        allBlocks.size(),
-                        recipientBlocks.size()
+                    // Progress logging for large searches
+                    if (processed % 1000 == 0) {
+                        logger.debug(
+                            "Recipient search progress: {} blocks processed, {} matches found",
+                            processed,
+                            recipientBlocks.size()
+                        );
+                    }
+                } catch (Exception e) {
+                    logger.warn(
+                        "Error processing block #{} in recipient search: {}",
+                        block != null ? block.getBlockNumber() : "unknown",
+                        e.getMessage()
                     );
+                    processedBlocks.incrementAndGet();
                 }
-            } catch (Exception e) {
-                logger.warn(
-                    "Error processing block #{} in recipient search: {}",
-                    block != null ? block.getBlockNumber() : "unknown",
-                    e.getMessage()
-                );
-                processedBlocks++;
-                continue;
             }
-        }
+        }, 1000);
 
         return recipientBlocks;
     }
@@ -13152,39 +13173,35 @@ public class UserFriendlyEncryptionAPI {
             metadataValue
         );
 
-        List<Block> matchingBlocks = new ArrayList<>();
-        List<Block> allBlocks = blockchain.getAllBlocks();
+        List<Block> matchingBlocks = Collections.synchronizedList(new ArrayList<>());
 
-        if (allBlocks == null || allBlocks.isEmpty()) {
-            return Collections.emptyList();
-        }
+        blockchain.processChainInBatches(batch -> {
+            for (Block block : batch) {
+                try {
+                    if (block == null) continue;
 
-        for (Block block : allBlocks) {
-            try {
-                if (block == null) continue;
+                    Map<String, String> metadata = getBlockMetadata(block);
+                    String value = metadata.get(metadataKey);
 
-                Map<String, String> metadata = getBlockMetadata(block);
-                String value = metadata.get(metadataKey);
-
-                if (value != null) {
-                    if (
-                        metadataValue == null ||
-                        value.equals(metadataValue) ||
-                        (metadataValue.contains("*") &&
-                            matchesWildcard(value, metadataValue))
-                    ) {
-                        matchingBlocks.add(block);
+                    if (value != null) {
+                        if (
+                            metadataValue == null ||
+                            value.equals(metadataValue) ||
+                            (metadataValue.contains("*") &&
+                                matchesWildcard(value, metadataValue))
+                        ) {
+                            matchingBlocks.add(block);
+                        }
                     }
+                } catch (Exception e) {
+                    logger.warn(
+                        "Error in linear search for block #{}: {}",
+                        block.getBlockNumber(),
+                        e.getMessage()
+                    );
                 }
-            } catch (Exception e) {
-                logger.warn(
-                    "Error in linear search for block #{}: {}",
-                    block.getBlockNumber(),
-                    e.getMessage()
-                );
-                continue;
             }
-        }
+        }, 1000);
 
         return matchingBlocks;
     }
@@ -13877,14 +13894,10 @@ public class UserFriendlyEncryptionAPI {
             );
         }
 
-        List<Block> matchingBlocks = new ArrayList<>();
-        List<Block> allBlocks = blockchain.getAllBlocks();
+        List<Block> matchingBlocks = Collections.synchronizedList(new ArrayList<>());
 
-        if (allBlocks != null) {
-            // Create defensive copy to avoid ConcurrentModificationException
-            List<Block> blocksCopy = new ArrayList<>(allBlocks);
-
-            for (Block block : blocksCopy) {
+        blockchain.processChainInBatches(batch -> {
+            for (Block block : batch) {
                 Map<String, String> metadata = getBlockMetadata(block);
                 if (!metadata.isEmpty()) {
                     // Check if any of the requested keys exist in this block's metadata
@@ -13896,7 +13909,7 @@ public class UserFriendlyEncryptionAPI {
                     }
                 }
             }
-        }
+        }, 1000);
 
         logger.info(
             "🔍 Found {} blocks containing metadata keys: {}",

@@ -94,11 +94,18 @@ public class UserFriendlyEncryptionAPIRemainingCoverageTest {
         @DisplayName("Should format blocks summary")
         void shouldFormatBlocksSummary() {
             // Given
-            List<Block> blocks = realBlockchain.getAllBlocks();
-            
+            List<Block> blocks = new ArrayList<>();
+            long blockCount = realBlockchain.getBlockCount();
+            for (long i = 0; i < blockCount; i++) {
+                Block block = realBlockchain.getBlock(i);
+                if (block != null) {
+                    blocks.add(block);
+                }
+            }
+
             // When
             String summary = api.formatBlocksSummary(blocks);
-            
+
             // Then
             assertNotNull(summary, "Summary should not be null");
             assertTrue(summary.length() > 0, "Summary should have content");
@@ -131,12 +138,12 @@ public class UserFriendlyEncryptionAPIRemainingCoverageTest {
         @DisplayName("Should format individual block display")
         void shouldFormatBlockDisplay() {
             // Given
-            List<Block> blocks = realBlockchain.getAllBlocks();
-            Block testBlock = blocks.get(0);
-            
+            Block testBlock = realBlockchain.getBlock(0L);
+            assertNotNull(testBlock, "Genesis block should exist");
+
             // When
             String display = api.formatBlockDisplay(testBlock);
-            
+
             // Then
             assertNotNull(display, "Block display should not be null");
             assertTrue(display.length() > 0, "Block display should have content");
@@ -147,11 +154,18 @@ public class UserFriendlyEncryptionAPIRemainingCoverageTest {
         void shouldFormatSearchResults() {
             // Given
             String searchTerm = "test";
-            List<Block> results = realBlockchain.getAllBlocks();
-            
+            List<Block> results = new ArrayList<>();
+            long blockCount = realBlockchain.getBlockCount();
+            for (long i = 0; i < blockCount; i++) {
+                Block block = realBlockchain.getBlock(i);
+                if (block != null) {
+                    results.add(block);
+                }
+            }
+
             // When
             String formatted = api.formatSearchResults(searchTerm, results);
-            
+
             // Then
             assertNotNull(formatted, "Formatted results should not be null");
             assertTrue(formatted.length() >= 0, "Should return some content");

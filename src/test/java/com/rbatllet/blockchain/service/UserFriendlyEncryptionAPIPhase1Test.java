@@ -71,7 +71,14 @@ public class UserFriendlyEncryptionAPIPhase1Test {
         
         // Setup blockchain mock behavior
         when(mockBlockchain.getValidChain()).thenReturn(mockBlocks);
-        when(mockBlockchain.getAllBlocks()).thenReturn(mockBlocks);
+        when(mockBlockchain.getBlockCount()).thenReturn((long) mockBlocks.size());
+        when(mockBlockchain.getBlock(anyLong())).thenAnswer(invocation -> {
+            Long blockNumber = invocation.getArgument(0);
+            if (blockNumber >= 0 && blockNumber < mockBlocks.size()) {
+                return mockBlocks.get(blockNumber.intValue());
+            }
+            return null;
+        });
         when(mockBlockchain.getAuthorizedKeys()).thenReturn(mockAuthorizedKeys);
         when(mockBlockchain.validateSingleBlock(any(Block.class))).thenReturn(true);
         when(mockBlockchain.validateChainWithRecovery()).thenReturn(true);
@@ -232,7 +239,7 @@ public class UserFriendlyEncryptionAPIPhase1Test {
         void shouldValidateEmptyBlockchainGracefully() {
             // Given - Empty blockchain
             when(mockBlockchain.getValidChain()).thenReturn(new ArrayList<>());
-            when(mockBlockchain.getAllBlocks()).thenReturn(new ArrayList<>());
+            when(mockBlockchain.getBlockCount()).thenReturn(0L);
 
             // When
             ValidationReport result = api.performComprehensiveValidation();
@@ -315,7 +322,7 @@ public class UserFriendlyEncryptionAPIPhase1Test {
         void shouldDiagnoseEmptyBlockchainHealth() {
             // Given - Empty blockchain
             when(mockBlockchain.getValidChain()).thenReturn(new ArrayList<>());
-            when(mockBlockchain.getAllBlocks()).thenReturn(new ArrayList<>());
+            when(mockBlockchain.getBlockCount()).thenReturn(0L);
 
             // When
             HealthReport result = api.performHealthDiagnosis();
@@ -323,7 +330,7 @@ public class UserFriendlyEncryptionAPIPhase1Test {
             // Then
             assertNotNull(result, "Should provide health report for empty blockchain");
             assertNotNull(result.getOverallStatus(), "Should have health status");
-            
+
             // Empty blockchain might be warning or critical
             assertTrue(result.getOverallStatus() == HealthReport.HealthStatus.WARNING ||
                       result.getOverallStatus() == HealthReport.HealthStatus.CRITICAL ||
@@ -347,7 +354,14 @@ public class UserFriendlyEncryptionAPIPhase1Test {
                 largeBlockchain.add(block);
             }
             when(mockBlockchain.getValidChain()).thenReturn(largeBlockchain);
-            when(mockBlockchain.getAllBlocks()).thenReturn(largeBlockchain);
+            when(mockBlockchain.getBlockCount()).thenReturn((long) largeBlockchain.size());
+            when(mockBlockchain.getBlock(anyLong())).thenAnswer(invocation -> {
+                Long blockNumber = invocation.getArgument(0);
+                if (blockNumber >= 0 && blockNumber < largeBlockchain.size()) {
+                    return largeBlockchain.get(blockNumber.intValue());
+                }
+                return null;
+            });
 
             // When
             HealthReport result = api.performHealthDiagnosis();

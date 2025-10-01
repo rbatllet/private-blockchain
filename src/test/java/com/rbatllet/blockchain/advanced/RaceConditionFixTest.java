@@ -9,6 +9,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
 import java.security.KeyPair;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -136,11 +138,13 @@ public class RaceConditionFixTest {
         // Verify block number sequence
         if (successfulBlocks.get() > 0) {
             // Get all blocks and verify sequential numbering
-            var allBlocks = blockchain.getAllBlocks();
+            List<Block> allBlocks = new ArrayList<>();
+            blockchain.processChainInBatches(batch -> allBlocks.addAll(batch), 1000);
+
             for (int i = 1; i < allBlocks.size(); i++) {
                 Long prevNumber = allBlocks.get(i-1).getBlockNumber();
                 Long currNumber = allBlocks.get(i).getBlockNumber();
-                assertEquals(prevNumber + 1, currNumber, 
+                assertEquals(prevNumber + 1, currNumber,
                     "Block numbers should be sequential: " + prevNumber + " -> " + currNumber);
             }
         }

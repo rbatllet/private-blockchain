@@ -8,6 +8,8 @@ import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
 import java.lang.management.ThreadMXBean;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.Map;
@@ -477,14 +479,15 @@ public class PerformanceMetricsService {
         }
         
         int effectiveBatchSize = Math.min(batchSize, MAX_BATCH_SIZE);
-        List<Block> allBlocks = blockchain.getAllBlocks();
-        
-        int endIndex = Math.min(startIndex + effectiveBatchSize, allBlocks.size());
-        if (startIndex >= allBlocks.size()) {
+
+        // Use pagination to avoid loading all blocks into memory
+        long blockCount = blockchain.getBlockCount();
+        if (startIndex >= blockCount) {
             return new ArrayList<>();
         }
-        
-        return allBlocks.subList(startIndex, endIndex);
+
+        int limit = (int) Math.min(effectiveBatchSize, blockCount - startIndex);
+        return blockchain.getBlocksPaginated(startIndex, limit);
     }
     
     public void rebuildCacheMemoryOptimized(Blockchain blockchain) {
@@ -502,36 +505,47 @@ public class PerformanceMetricsService {
             // Monitor memory usage during rebuild
             long initialMemory = getUsedMemory();
             logger.info("Starting cache rebuild with {}MB memory usage", initialMemory / (1024 * 1024));
-            
-            List<Block> allBlocks = blockchain.getAllBlocks();
-            int processedBlocks = 0;
-            
-            for (Block block : allBlocks) {
-                // Process block for cache rebuild - store block hash in performance cache
-                String blockKey = "block_" + block.getHash();
-                performanceCache.put(blockKey, block.getTimestamp());
-                processedBlocks++;
-                
-                // Check memory usage every 100 blocks
-                if (processedBlocks % 100 == 0) {
-                    // Check for shutdown request during processing
-                    synchronized (optimizationLock) {
-                        if (shutdownRequested) {
-                            logger.info("Shutdown requested during cache rebuild, stopping at block {}", processedBlocks);
-                            break;
+
+            AtomicInteger processedBlocks = new AtomicInteger(0);
+            AtomicBoolean shouldStop = new AtomicBoolean(false);
+
+            blockchain.processChainInBatches(batch -> {
+                if (shouldStop.get()) {
+                    return; // Early exit if shutdown requested
+                }
+
+                for (Block block : batch) {
+                    if (shouldStop.get()) {
+                        break;
+                    }
+
+                    // Process block for cache rebuild - store block hash in performance cache
+                    String blockKey = "block_" + block.getHash();
+                    performanceCache.put(blockKey, block.getTimestamp());
+                    int count = processedBlocks.incrementAndGet();
+
+                    // Check memory usage every 100 blocks
+                    if (count % 100 == 0) {
+                        // Check for shutdown request during processing
+                        synchronized (optimizationLock) {
+                            if (shutdownRequested) {
+                                logger.info("Shutdown requested during cache rebuild, stopping at block {}", count);
+                                shouldStop.set(true);
+                                break;
+                            }
+                        }
+
+                        long currentMemory = getUsedMemory();
+                        if (currentMemory > OPTIMIZATION_MEMORY_THRESHOLD_MB * 1024 * 1024) {
+                            System.gc(); // Suggest garbage collection
+                            logger.warn("High memory usage during cache rebuild: {}MB, suggesting GC",
+                                       currentMemory / (1024 * 1024));
                         }
                     }
-                    
-                    long currentMemory = getUsedMemory();
-                    if (currentMemory > OPTIMIZATION_MEMORY_THRESHOLD_MB * 1024 * 1024) {
-                        System.gc(); // Suggest garbage collection
-                        logger.warn("High memory usage during cache rebuild: {}MB, suggesting GC", 
-                                   currentMemory / (1024 * 1024));
-                    }
                 }
-            }
-            
-            logger.info("Cache rebuild completed. Processed {} blocks", processedBlocks);
+            }, 1000);
+
+            logger.info("Cache rebuild completed. Processed {} blocks", processedBlocks.get());
             
         } catch (Exception e) {
             logger.error("Error during memory-optimized cache rebuild", e);

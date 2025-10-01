@@ -39,7 +39,7 @@ public class SimpleExhaustiveTest {
             "Medical record with patient information", 
             privateKey, publicKey);
         System.out.println("📦 Block created: " + blockCreated);
-        System.out.println("📊 Total blocks: " + blockchain.getAllBlocks().size());
+        System.out.println("📊 Total blocks: " + blockchain.getBlockCount());
         
         // Index blockchain
         searchEngine.indexBlockchain(blockchain, password, privateKey);

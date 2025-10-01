@@ -580,15 +580,66 @@ TermVisibilityMap copy()
 
 ### Additional Blockchain Methods
 
-#### Chain Data Retrieval
+#### Pagination Methods (NEW in v2.1.0) 🆕
 
 ```java
-public List<Block> getFullChain()
+public List<Block> getBlocksPaginated(int offset, int limit)
 ```
-- **Returns:** Complete list of all blocks in the blockchain
-- **Description:** Returns the entire blockchain as a list in sequential order (thread-safe)
-- **Performance:** O(n) where n is the number of blocks
-- **Thread Safety:** Uses read lock for concurrent access protection
+- **Parameters:** `offset`: Starting position (0-based), `limit`: Maximum blocks to return
+- **Returns:** List of blocks within the specified range
+- **Description:** Retrieve blocks in paginated batches for memory-efficient processing
+- **Thread-Safety:** Uses global read lock for concurrent access
+
+```java
+public List<Block> getBlocksWithOffChainDataPaginated(int offset, int limit)
+```
+- **Parameters:** `offset`: Starting position (0-based), `limit`: Maximum blocks to return
+- **Returns:** List of blocks with off-chain data within the specified range
+- **Description:** Retrieve only blocks that have off-chain data in paginated batches
+- **Use Cases:** Off-chain storage analysis, maintenance operations, report generation
+- **Thread-Safety:** Uses global read lock for concurrent access
+- **Since:** v2.1.0
+
+```java
+public List<Block> getEncryptedBlocksPaginated(int offset, int limit)
+```
+- **Parameters:** `offset`: Starting position (0-based), `limit`: Maximum blocks to return
+- **Returns:** List of encrypted blocks within the specified range
+- **Description:** Retrieve only encrypted blocks in paginated batches
+- **Use Cases:** Security audits, re-encryption operations, compliance reporting
+- **Thread-Safety:** Uses global read lock for concurrent access
+- **Since:** v2.1.0
+
+**Example Usage:**
+```java
+Blockchain blockchain = new Blockchain();
+
+// Process all blocks with off-chain data in batches
+int batchSize = 100;
+int offset = 0;
+List<Block> batch;
+
+do {
+    batch = blockchain.getBlocksWithOffChainDataPaginated(offset, batchSize);
+    for (Block block : batch) {
+        // Process each block with off-chain data
+        analyzeOffChainStorage(block);
+    }
+    offset += batchSize;
+} while (!batch.isEmpty());
+
+// Audit all encrypted blocks
+offset = 0;
+do {
+    batch = blockchain.getEncryptedBlocksPaginated(offset, 50);
+    for (Block block : batch) {
+        performSecurityAudit(block);
+    }
+    offset += 50;
+} while (!batch.isEmpty());
+```
+
+For complete details and integration examples, see the [Filtered Pagination API Guide](FILTERED_PAGINATION_API.md).
 
 #### Validation and Size Control
 
@@ -1424,9 +1475,15 @@ public class BlockchainExample {
 ```java
 // Basic information
 long totalBlocks = blockchain.getBlockCount();
-List<Block> allBlocks = blockchain.getAllBlocks();
 Block lastBlock = blockchain.getLastBlock();
 Block specificBlock = blockchain.getBlock(blockNumber);
+
+// Batch processing (memory-efficient)
+blockchain.processChainInBatches(batch -> {
+    for (Block block : batch) {
+        // Process each block
+    }
+}, 1000);
 
 // Configuration
 int maxBytes = blockchain.getMaxBlockSizeBytes();
@@ -1540,11 +1597,6 @@ public Block getBlockByNumber(Long blockNumber) {
 // Get the last block in the chain
 public Block getLastBlock() {
     // Returns the block with the highest block number or null if chain is empty
-}
-
-// Get all blocks in the chain ordered by number
-public List<Block> getAllBlocks() {
-    // Returns all blocks in ascending order by block number
 }
 
 // Get blocks within a time range
@@ -2041,11 +2093,6 @@ public ChainValidationResult validateChainDetailed()
 public long getBlockCount()
 ```
 - **Returns:** Total number of blocks in the chain (including genesis block)
-
-```java
-public List<Block> getAllBlocks()
-```
-- **Returns:** List of all blocks in the blockchain, ordered by block number
 
 ```java
 public Block getLastBlock()
@@ -2568,18 +2615,8 @@ public LocalDateTime getRevokedAt()
 - **Key Size**: 2048 bits (default)
 
 For detailed technical specifications and production considerations, see [TECHNICAL_DETAILS.md](TECHNICAL_DETAILS.md) and [PRODUCTION_GUIDE.md](PRODUCTION_GUIDE.md).
-, 12, 31);
-List<Block> dateResults = blockchain.getBlocksByDateRange(startDate, endDate);
 
-// Advanced filtering with streams
-List<Block> filteredBlocks = blockchain.getAllBlocks().stream()
-    .filter(block -> block.getData().contains("keyword"))
-    .filter(block -> block.getTimestamp().isAfter(someDateTime))
-    .filter(block -> block.getSignerPublicKey().equals(specificPublicKey))
-    .collect(Collectors.toList());
-```
-
-### Cryptographic Utility Methods
+## Cryptographic Utility Methods
 
 #### Key Generation and Management
 ```java
@@ -2942,6 +2979,16 @@ List<Block> blocks = blockDAO.batchRetrieveBlocksByHash(hashes);
 
 For complete details on batch optimization, see the [Batch Optimization Guide](BATCH_OPTIMIZATION_GUIDE.md).
 
+### Filtered Pagination Methods (NEW in v2.1.0) 🆕
+
+For memory-efficient retrieval of specific block types (encrypted blocks, blocks with off-chain data), see the [Filtered Pagination API Guide](FILTERED_PAGINATION_API.md).
+
+**Quick Reference:**
+- `getBlocksWithOffChainDataPaginated(offset, limit)` - Retrieve blocks with off-chain data in batches
+- `getEncryptedBlocksPaginated(offset, limit)` - Retrieve encrypted blocks in batches
+
+These methods replace the removed `getAllBlocksWithOffChainData()` and `getAllEncryptedBlocks()` methods that caused memory issues with large datasets.
+
 ## �🔧 Configuration Parameters
 
 ### Size and Performance Limits
@@ -3036,13 +3083,10 @@ The following APIs are fully thread-safe and can be used concurrently:
 ⚠️  **Important**: Many APIs return immutable collections using `Collections.unmodifiableList()` and `Collections.unmodifiableMap()`. While these collections are safe to read concurrently, attempts to modify them will throw `UnsupportedOperationException`:
 
 ```java
-// Safe concurrent reads
-List<Block> blocks = blockchain.getAllBlocks(); // Returns unmodifiable list
-blocks.forEach(block -> processBlock(block)); // ✅ Safe concurrent iteration
-
-// Modification attempts will fail
-blocks.add(newBlock); // ❌ Throws UnsupportedOperationException
-blocks.clear(); // ❌ Throws UnsupportedOperationException
+// Safe concurrent reads with batch processing
+blockchain.processChainInBatches(batch -> {
+    batch.forEach(block -> processBlock(block)); // ✅ Safe concurrent iteration
+}, 1000);
 
 // Thread-safe access to validation results
 ChainValidationResult result = blockchain.validateChainDetailed();
@@ -3123,24 +3167,23 @@ CompletableFuture<Block> future2 = CompletableFuture.supplyAsync(() ->
 ```java
 // Multiple threads can read simultaneously (no blocking)
 CompletableFuture<Long> blockCount = CompletableFuture.supplyAsync(blockchain::getBlockCount);
-CompletableFuture<List<Block>> allBlocks = CompletableFuture.supplyAsync(blockchain::getAllBlocks); // Returns unmodifiable list
 CompletableFuture<ChainValidationResult> validationResult = CompletableFuture.supplyAsync(blockchain::validateChainDetailed);
 
 // All these can execute in parallel
-CompletableFuture.allOf(blockCount, allBlocks, validationResult)
+CompletableFuture.allOf(blockCount, validationResult)
     .thenRun(() -> {
         System.out.println("All reads completed");
-        
-        // Access results - collections are immutable and thread-safe
-        List<Block> blocks = allBlocks.join(); // Immutable collection
+
         ChainValidationResult result = validationResult.join();
-        
-        // Safe concurrent iteration
-        blocks.parallelStream().forEach(block -> {
-            // Thread-safe processing of each block
-            System.out.println("Processing block #" + block.getBlockNumber());
-        });
-        
+
+        // Safe concurrent batch processing
+        blockchain.processChainInBatches(batch -> {
+            batch.parallelStream().forEach(block -> {
+                // Thread-safe processing of each block
+                System.out.println("Processing block #" + block.getBlockNumber());
+            });
+        }, 1000);
+
         // Access validation results safely
         List<Block> invalidBlocks = result.getInvalidBlocks(); // Immutable collection
         List<Block> revokedBlocks = result.getRevokedBlocks(); // Immutable collection

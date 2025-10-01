@@ -4,7 +4,7 @@
 
 ### 1. Database Layer Improvements
 - ✅ **Added pagination support** to `BlockDAO.getBlocksPaginated(offset, limit)`
-- ✅ **Added lightweight block retrieval** with `getAllBlocksLightweight()` (no off-chain data)
+- ✅ **Added lightweight block retrieval** with `processChainInBatchesLightweight()` (no off-chain data)
 - ✅ **Added block count method** `getBlockCount()` for efficient counting
 - ✅ **🚀 NEW: Batch retrieval optimization** with `BlockDAO.batchRetrieveBlocks()` - Eliminates N+1 query problem
 - ✅ **Thread-safe implementations** maintained throughout
@@ -78,7 +78,7 @@ List<Block> matchingBlocks = blockchain.getBlockDAO().batchRetrieveBlocks(sorted
 ### Batch Processing Implementation
 ```java
 // Before: Load all blocks at once
-List<Block> allBlocks = blockchain.getAllBlocks();
+List<Block> allBlocks = blockchain.processChainInBatches();
 
 // After: Process in batches
 final int BATCH_SIZE = 100;
@@ -140,7 +140,7 @@ for (int offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
 ✅ Pagination test passed
 ✅ Block count: 343
 ✅ Lightweight retrieval: 353 blocks
-📊 getAllBlocks: 71ms, paginated: 43ms
+📊 processChainInBatches: 71ms, paginated: 43ms
 ✅ Performance comparison completed
 ```
 

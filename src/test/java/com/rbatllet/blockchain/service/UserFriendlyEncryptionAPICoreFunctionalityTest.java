@@ -61,12 +61,13 @@ public class UserFriendlyEncryptionAPICoreFunctionalityTest {
         @DisplayName("Should retrieve secret from block")
         void shouldRetrieveSecretFromBlock() {
             // Given - We have encrypted blocks from setup
-            List<Block> blocks = realBlockchain.getAllBlocks();
             Long blockId = null;
-            
+            long blockCount = realBlockchain.getBlockCount();
+
             // Find an encrypted block by checking if it has encrypted data
-            for (Block block : blocks) {
-                if (api.isBlockEncrypted(block.getId())) {
+            for (long i = 0; i < blockCount; i++) {
+                Block block = realBlockchain.getBlock(i);
+                if (block != null && api.isBlockEncrypted(block.getId())) {
                     blockId = block.getId();
                     break;
                 }
@@ -90,17 +91,20 @@ public class UserFriendlyEncryptionAPICoreFunctionalityTest {
         @DisplayName("Should check if block is encrypted")
         void shouldCheckIfBlockIsEncrypted() {
             // Given
-            List<Block> blocks = realBlockchain.getAllBlocks();
-            
+            long blockCount = realBlockchain.getBlockCount();
+
             // When & Then - Just verify the method executes without error
-            for (Block block : blocks) {
+            for (long i = 0; i < blockCount; i++) {
+                Block block = realBlockchain.getBlock(i);
+                if (block == null) continue;
+
                 boolean isEncrypted = api.isBlockEncrypted(block.getId());
                 // The API considers all blocks as potentially encrypted unless proven otherwise
                 // So we just verify the method executes without error and returns a boolean
                 assertTrue(isEncrypted || !isEncrypted, "Should return boolean result");
             }
-            
-            assertTrue(blocks.size() > 0, "Should have at least one block to test");
+
+            assertTrue(blockCount > 0, "Should have at least one block to test");
         }
 
         @Test

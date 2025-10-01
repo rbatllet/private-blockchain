@@ -87,11 +87,11 @@ public class AdvancedLoggingDemo {
                 "BLOCKCHAIN_VALIDATION",
                 "validate_full_chain",
                 null,
-                blockchain.getAllBlocks().size() * 1024L,
+                blockchain.getBlockCount() * 1024L,
                 () -> {
                     // Perform real blockchain validation
                     var validationResult = blockchain.validateChainDetailed();
-                    int blockCount = blockchain.getAllBlocks().size();
+                    long blockCount = blockchain.getBlockCount();
                     
                     String status = validationResult.isValid() ? "VALID" : "INVALID";
                     String details = String.format("Chain validation: %s (%d blocks) - %s", 
@@ -137,24 +137,33 @@ public class AdvancedLoggingDemo {
                 "KEYWORD_SEARCH",
                 "blockchain",
                 () -> {
-                    // Real search through blockchain blocks
-                    return blockchain.getAllBlocks().stream()
-                        .filter(block -> block.getData().contains("blockchain"))
-                        .map(block -> "Block " + block.getBlockNumber() + ": " + block.getData().substring(0, Math.min(50, block.getData().length())))
-                        .collect(java.util.stream.Collectors.toList());
+                    // Real search through blockchain blocks using batch processing
+                    java.util.List<String> results = new java.util.ArrayList<>();
+                    blockchain.processChainInBatches(batch -> {
+                        batch.stream()
+                            .filter(block -> block.getData().contains("blockchain"))
+                            .forEach(block -> results.add("Block " + block.getBlockNumber() + ": " +
+                                block.getData().substring(0, Math.min(50, block.getData().length()))));
+                    }, 1000);
+                    return results;
                 }
             );
             
             LoggingManager.logSearchOperation(
-                "KEYWORD_SEARCH", 
+                "KEYWORD_SEARCH",
                 "technology",
                 () -> {
-                    // Real keyword search through blockchain data
+                    // Real keyword search through blockchain data using batch processing
                     String[] searchTerms = {"technology", "system", "advanced", "innovation"};
-                    return blockchain.getAllBlocks().stream()
-                        .filter(block -> Arrays.stream(searchTerms).anyMatch(term -> block.getData().toLowerCase().contains(term.toLowerCase())))
-                        .map(block -> "Match in Block " + block.getBlockNumber() + ": " + block.getData().substring(0, Math.min(60, block.getData().length())))
-                        .collect(java.util.stream.Collectors.toList());
+                    java.util.List<String> results = new java.util.ArrayList<>();
+                    blockchain.processChainInBatches(batch -> {
+                        batch.stream()
+                            .filter(block -> Arrays.stream(searchTerms).anyMatch(term ->
+                                block.getData().toLowerCase().contains(term.toLowerCase())))
+                            .forEach(block -> results.add("Match in Block " + block.getBlockNumber() + ": " +
+                                block.getData().substring(0, Math.min(60, block.getData().length()))));
+                    }, 1000);
+                    return results;
                 }
             );
             
@@ -162,18 +171,22 @@ public class AdvancedLoggingDemo {
                 "ADVANCED_SEARCH",
                 "logging system",
                 () -> {
-                    // Real advanced search with multiple criteria
-                    return blockchain.getAllBlocks().stream()
-                        .filter(block -> block.getData().contains("logging") || block.getData().contains("system"))
-                        .map(block -> {
-                            String data = block.getData();
-                            int score = 0;
-                            if (data.contains("logging")) score += 50;
-                            if (data.contains("system")) score += 30;
-                            if (data.contains("advanced")) score += 20;
-                            return "Block " + block.getBlockNumber() + " (score: " + score + "): " + data.substring(0, Math.min(40, data.length()));
-                        })
-                        .collect(java.util.stream.Collectors.toList());
+                    // Real advanced search with multiple criteria using batch processing
+                    java.util.List<String> results = new java.util.ArrayList<>();
+                    blockchain.processChainInBatches(batch -> {
+                        batch.stream()
+                            .filter(block -> block.getData().contains("logging") || block.getData().contains("system"))
+                            .forEach(block -> {
+                                String data = block.getData();
+                                int score = 0;
+                                if (data.contains("logging")) score += 50;
+                                if (data.contains("system")) score += 30;
+                                if (data.contains("advanced")) score += 20;
+                                results.add("Block " + block.getBlockNumber() + " (score: " + score + "): " +
+                                    data.substring(0, Math.min(40, data.length())));
+                            });
+                    }, 1000);
+                    return results;
                 }
             );
             
@@ -399,11 +412,11 @@ public class AdvancedLoggingDemo {
                         // Create a real block and then corrupt its hash to force validation failure
                         KeyPair keyPair = CryptoUtil.generateKeyPair();
                         blockchain.addBlock("Original valid data", keyPair.getPrivate(), keyPair.getPublic());
-                        
+
                         // Get the last block and corrupt its hash
-                        List<Block> blocks = blockchain.getAllBlocks();
-                        if (!blocks.isEmpty()) {
-                            Block lastBlock = blocks.get(blocks.size() - 1);
+                        long lastBlockNum = blockchain.getBlockCount() - 1;
+                        if (lastBlockNum >= 0) {
+                            Block lastBlock = blockchain.getBlock(lastBlockNum);
                             // Try to validate with wrong previous hash
                             String originalHash = lastBlock.getHash();
                             String corruptedHash = originalHash.substring(0, 10) + "CORRUPTED" + originalHash.substring(20);

@@ -13,6 +13,7 @@ import java.io.File;
 import java.nio.file.Path;
 import java.security.KeyPair;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -285,11 +286,12 @@ class BlockchainAdditionalAdvancedFunctionsTest {
         // Export original chain
         File exportFile = tempDir.resolve("integrity_test.json").toFile();
         String exportPath = exportFile.getAbsolutePath();
-        
+
         assertTrue(blockchain.exportChain(exportPath), "Export should succeed");
 
         // Get original data for comparison
-        List<Block> originalBlocks = blockchain.getAllBlocks();
+        List<Block> originalBlocks = new ArrayList<>();
+        blockchain.processChainInBatches(batch -> originalBlocks.addAll(batch), 1000);
         Block originalLastBlock = blockchain.getLastBlock();
 
         // Import into new blockchain
@@ -297,7 +299,8 @@ class BlockchainAdditionalAdvancedFunctionsTest {
         assertTrue(importedBlockchain.importChain(exportPath), "Import should succeed");
 
         // Verify data integrity
-        List<Block> importedBlocks = importedBlockchain.getAllBlocks();
+        List<Block> importedBlocks = new ArrayList<>();
+        importedBlockchain.processChainInBatches(batch -> importedBlocks.addAll(batch), 1000);
         Block importedLastBlock = importedBlockchain.getLastBlock();
 
         assertEquals(originalBlocks.size(), importedBlocks.size(), "Block counts should match");

@@ -83,7 +83,7 @@ public class BlockchainDemo {
             
             // Show different chain views available
             System.out.println("\n🔍 Available chain views:");
-            System.out.println("   📁 Full chain: " + blockchain.getFullChain().size() + " blocks (audit trail)");
+            System.out.println("   📁 Full chain: " + blockchain.getBlockCount() + " blocks (audit trail)");
             System.out.println("   ✅ Valid chain: " + blockchain.getValidChain().size() + " blocks (operational use)");
             System.out.println("   ⚠️ Orphaned blocks: " + blockchain.getOrphanedBlocks().size() + " blocks");
             

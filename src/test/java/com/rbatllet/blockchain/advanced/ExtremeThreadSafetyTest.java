@@ -263,11 +263,13 @@ class ExtremeThreadSafetyTest {
         // If there were successful rollbacks, validate they didn't break integrity
         if (successfulRollbacks.get() > 0) {
             // Verify sequence of block numbers
-            List<Block> allBlocks = blockchain.getAllBlocks();
+            List<Block> allBlocks = new ArrayList<>();
+            blockchain.processChainInBatches(batch -> allBlocks.addAll(batch), 1000);
+
             for (int i = 1; i < allBlocks.size(); i++) {
                 Long prevNumber = allBlocks.get(i-1).getBlockNumber();
                 Long currNumber = allBlocks.get(i).getBlockNumber();
-                assertEquals(prevNumber + 1, currNumber, 
+                assertEquals(prevNumber + 1, currNumber,
                     "Block numbers must be sequential after rollbacks");
             }
         }

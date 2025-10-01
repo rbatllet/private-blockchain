@@ -115,12 +115,12 @@ public class EnhancedDangerousDeleteDemo {
             // Scenario 7: Different chain views
             System.out.println("\n🔍 SCENARIO 7: Different chain perspectives");
             System.out.println("===========================================");
-            
-            List<Block> fullChain = blockchain.getFullChain();
+
+            long fullChainSize = blockchain.getBlockCount();
             List<Block> validChain = blockchain.getValidChain();
             List<Block> orphanedBlocks = blockchain.getOrphanedBlocks();
-            
-            System.out.println("   📁 Full chain: " + fullChain.size() + " blocks");
+
+            System.out.println("   📁 Full chain: " + fullChainSize + " blocks");
             System.out.println("   ✅ Valid chain: " + validChain.size() + " blocks");
             System.out.println("   ⚠️ Orphaned blocks: " + orphanedBlocks.size() + " blocks");
             

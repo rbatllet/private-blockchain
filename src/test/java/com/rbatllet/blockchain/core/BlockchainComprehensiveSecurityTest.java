@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import java.security.KeyPair;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -106,7 +107,8 @@ class BlockchainComprehensiveSecurityTest {
             blockchain.addBlock("Block 3", authorizedKeyPair.getPrivate(), authorizedKeyPair.getPublic());
 
             // Act
-            List<Block> fullChain = blockchain.getFullChain();
+            List<Block> fullChain = new ArrayList<>();
+            blockchain.processChainInBatches(batch -> fullChain.addAll(batch), 1000);
 
             // Assert
             assertNotNull(fullChain, "Full chain should not be null");
@@ -127,7 +129,8 @@ class BlockchainComprehensiveSecurityTest {
             blockchain.clearAndReinitialize();
 
             // Act
-            List<Block> fullChain = blockchain.getFullChain();
+            List<Block> fullChain = new ArrayList<>();
+            blockchain.processChainInBatches(batch -> fullChain.addAll(batch), 1000);
 
             // Assert
             assertNotNull(fullChain, "Full chain should not be null even when empty");
@@ -149,7 +152,9 @@ class BlockchainComprehensiveSecurityTest {
             for (int i = 0; i < 50; i++) {
                 executor.submit(() -> {
                     try {
-                        List<Block> chain = blockchain.getFullChain();
+                        List<Block> chain = new ArrayList<>();
+                        blockchain.processChainInBatches(batch -> chain.addAll(batch), 1000);
+
                         if (chain == null || chain.size() < 1) {
                             synchronized (errorCount) {
                                 errorCount[0]++;

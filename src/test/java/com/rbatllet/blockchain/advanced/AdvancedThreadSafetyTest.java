@@ -332,7 +332,6 @@ public class AdvancedThreadSafetyTest {
                                 blockchain.validateChainDetailed();
                                 validationCount.incrementAndGet();
                             } else {
-                                blockchain.getAllBlocks();
                                 blockchain.getBlockCount();
                                 blockchain.getLastBlock();
                                 readOperations.incrementAndGet();
@@ -406,14 +405,12 @@ public class AdvancedThreadSafetyTest {
     
     private void validateChainConsistency(int threadId) {
         long blockCount = blockchain.getBlockCount();
-        List<Block> allBlocks = blockchain.getAllBlocks();
         Block lastBlock = blockchain.getLastBlock();
-        
-        // Verify consistency
-        assertEquals(blockCount, allBlocks.size(), "Block count should match blocks list size");
-        if (!allBlocks.isEmpty()) {
-            assertEquals(lastBlock.getBlockNumber(), allBlocks.get(allBlocks.size() - 1).getBlockNumber(),
-                "Last block should match");
+
+        // Verify consistency - get specific blocks to validate
+        if (blockCount > 0 && lastBlock != null) {
+            assertEquals(blockCount - 1, lastBlock.getBlockNumber(),
+                "Last block number should match count minus 1 (genesis is 0)");
         }
     }
     

@@ -6,6 +6,8 @@ import com.rbatllet.blockchain.util.JPAUtil;
 import org.junit.jupiter.api.*;
 
 import java.security.KeyPair;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -113,12 +115,15 @@ public class DebugBlockSequenceTest {
     private void checkBlockState(String label) {
         System.out.println("\n📋 " + label + " - Block State:");
         try {
-            var allBlocks = blockchain.getAllBlocks();
-            System.out.println("   Total blocks in chain: " + allBlocks.size());
-            
+            long totalBlocks = blockchain.getBlockCount();
+            System.out.println("   Total blocks in chain: " + totalBlocks);
+
+            List<Block> allBlocks = new ArrayList<>();
+            blockchain.processChainInBatches(batch -> allBlocks.addAll(batch), 1000);
+
             for (Block block : allBlocks) {
-                System.out.printf("   Block #%d: ID=%d, Hash=%s, Encrypted=%s%n", 
-                    block.getBlockNumber(), 
+                System.out.printf("   Block #%d: ID=%d, Hash=%s, Encrypted=%s%n",
+                    block.getBlockNumber(),
                     block.getId(),
                     block.getHash() != null ? block.getHash().substring(0, 8) + "..." : "null",
                     block.isDataEncrypted());

@@ -194,15 +194,16 @@ class BlockchainTest {
         void shouldValidateSingleBlockCorrectly() {
             blockchain.addAuthorizedKey(testPublicKey, "Test User");
             blockchain.addBlock("Test data", testKeyPair.getPrivate(), testKeyPair.getPublic());
-            
-            var blocks = blockchain.getAllBlocks();
-            assertTrue(blocks.size() >= 2);
-            
+
+            assertTrue(blockchain.getBlockCount() >= 2);
+
             // Genesis block should be valid
-            assertTrue(blockchain.validateSingleBlock(blocks.get(0)));
-            
+            Block genesisBlock = blockchain.getBlock(0L);
+            assertTrue(blockchain.validateSingleBlock(genesisBlock));
+
             // Test block should be valid
-            assertTrue(blockchain.validateSingleBlock(blocks.get(1)));
+            Block testBlock = blockchain.getBlock(1L);
+            assertTrue(blockchain.validateSingleBlock(testBlock));
         }
 
         @Test
@@ -451,12 +452,12 @@ class BlockchainTest {
             ChainValidationResult result = blockchain.validateChainDetailed();
             assertTrue(result.isFullyCompliant());
             assertTrue(result.isStructurallyIntact());
-            
+
             // Verify the block was created
-            assertEquals(2, blockchain.getAllBlocks().size()); // Genesis + system block
-            
+            assertEquals(2, blockchain.getBlockCount()); // Genesis + system block
+
             // The system block should have empty data
-            Block systemBlock = blockchain.getAllBlocks().get(1);
+            Block systemBlock = blockchain.getBlock(1L);
             assertEquals("", systemBlock.getData());
         }
     }

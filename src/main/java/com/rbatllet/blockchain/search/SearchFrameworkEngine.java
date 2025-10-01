@@ -1263,12 +1263,18 @@ public class SearchFrameworkEngine {
 
         // Execute indexing synchronously only once
         try {
-            IndexingResult result = indexFilteredBlocks(blockchain.getAllBlocks(), password, privateKey);
-            
+            // Collect all blocks using batch processing
+            List<Block> allBlocks = Collections.synchronizedList(new ArrayList<>());
+            blockchain.processChainInBatches(batch -> {
+                allBlocks.addAll(batch);
+            }, 1000);
+
+            IndexingResult result = indexFilteredBlocks(allBlocks, password, privateKey);
+
             logger.info("✅ SearchFrameworkEngine blockchain indexing completed directly");
-            
+
             return result;
-            
+
         } catch (Exception e) {
             logger.error("Failed to execute blockchain indexing", e);
             throw e;

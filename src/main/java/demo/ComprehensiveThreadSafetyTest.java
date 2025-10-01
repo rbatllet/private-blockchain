@@ -674,11 +674,13 @@ public class ComprehensiveThreadSafetyTest {
         
         // IMPROVED: Direct verification of blockchain integrity instead of tracking comparison
         // This verifies the actual thread safety of block number generation
-        List<Block> allBlocks = blockchain.getFullChain();
-        List<Long> allBlockNumbers = allBlocks.stream()
-            .map(Block::getBlockNumber)
-            .sorted()
-            .collect(Collectors.toList());
+        List<Long> allBlockNumbers = new ArrayList<>();
+        blockchain.processChainInBatches(batch -> {
+            batch.stream()
+                .map(Block::getBlockNumber)
+                .forEach(allBlockNumbers::add);
+        }, 1000);
+        allBlockNumbers.sort(Long::compareTo);
         
         // Check for duplicate block numbers (real thread safety issue)
         Set<Long> uniqueBlockNumbers = new HashSet<>(allBlockNumbers);

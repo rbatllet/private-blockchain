@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.security.KeyPair;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -92,26 +93,7 @@ public class PerformanceOptimizationTest {
         logger.info("✅ Paginated retrieval completed in {}ms", duration);
         assertTrue(duration < 5000, "Paginated retrieval should complete within 5 seconds");
     }
-    
-    @Test
-    @Timeout(value = 10, unit = TimeUnit.SECONDS)
-    void testLightweightBlockRetrieval() {
-        long startTime = System.currentTimeMillis();
-        
-        // Test lightweight retrieval (without off-chain data)
-        List<Block> lightweightBlocks = blockchain.getAllBlocksLightweight();
-        
-        long endTime = System.currentTimeMillis();
-        long duration = endTime - startTime;
-        
-        // Assertions
-        assertTrue(lightweightBlocks.size() >= 50, "Should have at least 50 blocks");
-        
-        logger.info("✅ Lightweight retrieval of {} blocks completed in {}ms", 
-                   lightweightBlocks.size(), duration);
-        assertTrue(duration < 3000, "Lightweight retrieval should complete within 3 seconds");
-    }
-    
+
     @Test
     @Timeout(value = 15, unit = TimeUnit.SECONDS)
     void testOptimizedSimilaritySearch() {
@@ -154,30 +136,37 @@ public class PerformanceOptimizationTest {
     @Test
     @Timeout(value = 20, unit = TimeUnit.SECONDS)
     void testPerformanceComparisonGetAllVsPaginated() {
-        logger.info("📊 Performance comparison: getAllBlocks vs paginated approach");
-        
-        // Test getAllBlocks performance
+        logger.info("📊 Performance comparison: sequential retrieval vs paginated approach");
+
+        // Test sequential retrieval performance
         long startTime1 = System.currentTimeMillis();
-        List<Block> allBlocks = blockchain.getAllBlocks();
+        List<Block> allBlocks = new ArrayList<>();
+        long blockCount = blockchain.getBlockCount();
+        for (long i = 0; i < blockCount; i++) {
+            Block block = blockchain.getBlock(i);
+            if (block != null) {
+                allBlocks.add(block);
+            }
+        }
         long endTime1 = System.currentTimeMillis();
         long getAllDuration = endTime1 - startTime1;
-        
+
         // Test paginated approach
         long startTime2 = System.currentTimeMillis();
         List<Block> paginatedBlocks = blockchain.getBlocksPaginated(0, allBlocks.size());
         long endTime2 = System.currentTimeMillis();
         long paginatedDuration = endTime2 - startTime2;
-        
+
         // Assertions
-        assertEquals(allBlocks.size(), paginatedBlocks.size(), 
+        assertEquals(allBlocks.size(), paginatedBlocks.size(),
                     "Both approaches should return same number of blocks");
-        
-        logger.info("📊 getAllBlocks: {}ms, paginated: {}ms", getAllDuration, paginatedDuration);
+
+        logger.info("📊 Sequential: {}ms, paginated: {}ms", getAllDuration, paginatedDuration);
         logger.info("📊 Performance difference: {}ms", Math.abs(getAllDuration - paginatedDuration));
-        
+
         // For small datasets, performance should be similar
         // This test mainly validates that pagination works correctly
-        assertTrue(getAllDuration < 10000, "getAllBlocks should complete within 10 seconds");
+        assertTrue(getAllDuration < 10000, "Sequential retrieval should complete within 10 seconds");
         assertTrue(paginatedDuration < 10000, "Paginated approach should complete within 10 seconds");
     }
     

@@ -1810,14 +1810,14 @@ for (Block block : importData.getBlocks()) {
 **clearAndReinitialize()**
 ```java
 // CRITICAL: Clean up all off-chain files before clearing database
-List<Block> allBlocks = blockDAO.getAllBlocks();
-for (Block block : allBlocks) {
-    if (block.hasOffChainData()) {
-        offChainStorageService.deleteData(block.getOffChainData());
-    }
-}
+blockchain.processChainInBatches(batch -> {
 
-// Clear database
+    batch.forEach(block -> {
+        if (block.hasOffChainData()) {
+            offChainStorageService.deleteData(block.getOffChainData());
+        }
+    });
+}, 1000);// Clear database
 blockDAO.deleteAllBlocks();
 authorizedKeyDAO.deleteAllAuthorizedKeys();
 

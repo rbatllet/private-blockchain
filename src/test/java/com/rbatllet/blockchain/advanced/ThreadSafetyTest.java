@@ -189,29 +189,28 @@ public class ThreadSafetyTest {
     
     private static void testConcurrentReadOperations(Blockchain blockchain) {
         System.out.println("\n🧪 Testing concurrent read operations...");
-        
+
         ExecutorService executor = Executors.newFixedThreadPool(THREAD_COUNT);
         CountDownLatch latch = new CountDownLatch(THREAD_COUNT);
         AtomicInteger successCount = new AtomicInteger(0);
-        
+
         for (int i = 0; i < THREAD_COUNT; i++) {
             final int threadId = i;
             executor.submit(() -> {
                 try {
                     // Perform various read operations
                     long blockCount = blockchain.getBlockCount();
-                    var allBlocks = blockchain.getAllBlocks();
                     var lastBlock = blockchain.getLastBlock();
                     var authorizedKeys = blockchain.getAuthorizedKeys();
-                    
+
                     // Validate consistency
-                    if (allBlocks.size() == blockCount && lastBlock != null && authorizedKeys != null) {
+                    if (blockCount > 0 && lastBlock != null && authorizedKeys != null) {
                         System.out.println("✅ Thread " + threadId + " read operations consistent");
                         successCount.incrementAndGet();
                     } else {
                         System.err.println("❌ Thread " + threadId + " read operations inconsistent");
                     }
-                    
+
                 } catch (Exception e) {
                     System.err.println("💥 Thread " + threadId + " read exception: " + e.getMessage());
                 } finally {

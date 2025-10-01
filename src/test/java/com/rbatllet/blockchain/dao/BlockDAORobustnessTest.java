@@ -59,54 +59,10 @@ public class BlockDAORobustnessTest {
     private void logTestContext(String method, String scenario) {
         logger.info("🧪 Test: {} - Scenario: {}", method, scenario);
     }
-    
-    // ========== getAllBlocksWithOffChainData() Tests ==========
-    
-    @Test
-    @DisplayName("getAllBlocksWithOffChainData should handle empty database")
-    void testGetAllBlocksWithOffChainDataEmpty() {
-        logTestContext("getAllBlocksWithOffChainData", "empty database");
-        
-        List<Block> result = blockDAO.getAllBlocksWithOffChainData();
-        
-        assertNotNull(result, "Result should not be null");
-        // Could be empty or contain existing data - both are valid
-        assertTrue(result.size() >= 0, "Result should be a valid list");
-        
-        logger.info("✅ Test passed: getAllBlocksWithOffChainData handles empty database");
-    }
-    
-    @Test
-    @DisplayName("getAllBlocksWithOffChainData should be thread-safe")
-    void testGetAllBlocksWithOffChainDataThreadSafety() {
-        logTestContext("getAllBlocksWithOffChainData", "thread safety");
-        
-        // Test concurrent access
-        Runnable task = () -> {
-            try {
-                List<Block> result = blockDAO.getAllBlocksWithOffChainData();
-                assertNotNull(result, "Result should not be null in concurrent access");
-            } catch (Exception e) {
-                fail("Should not throw exception in concurrent access: " + e.getMessage());
-            }
-        };
-        
-        Thread[] threads = new Thread[5];
-        for (int i = 0; i < threads.length; i++) {
-            threads[i] = new Thread(task);
-            threads[i].start();
-        }
-        
-        for (Thread thread : threads) {
-            assertDoesNotThrow(() -> thread.join(1000), 
-                "Thread should complete within timeout");
-        }
-        
-        logger.info("✅ Test passed: getAllBlocksWithOffChainData handles concurrent access");
-    }
-    
+
     // ========== buildSearchQuery(SearchLevel) Tests ==========
-    
+
+
     @Test
     @DisplayName("buildSearchQuery should handle all SearchLevel values")
     void testBuildSearchQueryAllLevels() throws Exception {
@@ -493,98 +449,194 @@ public class BlockDAORobustnessTest {
     @DisplayName("getBlocksPaginated should handle valid parameters")
     void testGetBlocksPaginatedValid() {
         logTestContext("getBlocksPaginated", "valid parameters");
-        
+
         List<Block> result = blockDAO.getBlocksPaginated(0, 10);
-        
+
         assertNotNull(result, "Result should not be null");
         assertTrue(result.size() <= 10, "Result should not exceed limit");
-        
+
         logger.info("✅ Test passed: getBlocksPaginated handles valid parameters");
     }
-    
+
+    // ========== getBlocksWithOffChainDataPaginated(int, int) Tests ==========
+
+    @Test
+    @DisplayName("getBlocksWithOffChainDataPaginated should handle negative offset")
+    void testGetBlocksWithOffChainDataPaginatedNegativeOffset() {
+        logTestContext("getBlocksWithOffChainDataPaginated", "negative offset");
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockDAO.getBlocksWithOffChainDataPaginated(-1, 10);
+        }, "Should throw IllegalArgumentException for negative offset");
+
+        logger.info("✅ Test passed: getBlocksWithOffChainDataPaginated validates negative offset");
+    }
+
+    @Test
+    @DisplayName("getBlocksWithOffChainDataPaginated should handle zero limit")
+    void testGetBlocksWithOffChainDataPaginatedZeroLimit() {
+        logTestContext("getBlocksWithOffChainDataPaginated", "zero limit");
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockDAO.getBlocksWithOffChainDataPaginated(0, 0);
+        }, "Should throw IllegalArgumentException for zero limit");
+
+        logger.info("✅ Test passed: getBlocksWithOffChainDataPaginated validates zero limit");
+    }
+
+    @Test
+    @DisplayName("getBlocksWithOffChainDataPaginated should handle negative limit")
+    void testGetBlocksWithOffChainDataPaginatedNegativeLimit() {
+        logTestContext("getBlocksWithOffChainDataPaginated", "negative limit");
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockDAO.getBlocksWithOffChainDataPaginated(0, -1);
+        }, "Should throw IllegalArgumentException for negative limit");
+
+        logger.info("✅ Test passed: getBlocksWithOffChainDataPaginated validates negative limit");
+    }
+
+    @Test
+    @DisplayName("getBlocksWithOffChainDataPaginated should handle valid parameters")
+    void testGetBlocksWithOffChainDataPaginatedValid() {
+        logTestContext("getBlocksWithOffChainDataPaginated", "valid parameters");
+
+        List<Block> result = blockDAO.getBlocksWithOffChainDataPaginated(0, 10);
+
+        assertNotNull(result, "Result should not be null");
+        assertTrue(result.size() <= 10, "Result should not exceed limit");
+
+        // All returned blocks should have off-chain data
+        for (Block block : result) {
+            assertNotNull(block.getOffChainData(), "Block should have off-chain data");
+        }
+
+        logger.info("✅ Test passed: getBlocksWithOffChainDataPaginated handles valid parameters");
+    }
+
+    @Test
+    @DisplayName("getBlocksWithOffChainDataPaginated should handle large offset")
+    void testGetBlocksWithOffChainDataPaginatedLargeOffset() {
+        logTestContext("getBlocksWithOffChainDataPaginated", "large offset beyond data");
+
+        List<Block> result = blockDAO.getBlocksWithOffChainDataPaginated(1000000, 10);
+
+        assertNotNull(result, "Result should not be null");
+        assertTrue(result.isEmpty(), "Result should be empty when offset exceeds total blocks");
+
+        logger.info("✅ Test passed: getBlocksWithOffChainDataPaginated handles large offset");
+    }
+
+    // ========== getEncryptedBlocksPaginated(int, int) Tests ==========
+
+    @Test
+    @DisplayName("getEncryptedBlocksPaginated should handle negative offset")
+    void testGetEncryptedBlocksPaginatedNegativeOffset() {
+        logTestContext("getEncryptedBlocksPaginated", "negative offset");
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockDAO.getEncryptedBlocksPaginated(-1, 10);
+        }, "Should throw IllegalArgumentException for negative offset");
+
+        logger.info("✅ Test passed: getEncryptedBlocksPaginated validates negative offset");
+    }
+
+    @Test
+    @DisplayName("getEncryptedBlocksPaginated should handle zero limit")
+    void testGetEncryptedBlocksPaginatedZeroLimit() {
+        logTestContext("getEncryptedBlocksPaginated", "zero limit");
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockDAO.getEncryptedBlocksPaginated(0, 0);
+        }, "Should throw IllegalArgumentException for zero limit");
+
+        logger.info("✅ Test passed: getEncryptedBlocksPaginated validates zero limit");
+    }
+
+    @Test
+    @DisplayName("getEncryptedBlocksPaginated should handle negative limit")
+    void testGetEncryptedBlocksPaginatedNegativeLimit() {
+        logTestContext("getEncryptedBlocksPaginated", "negative limit");
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockDAO.getEncryptedBlocksPaginated(0, -1);
+        }, "Should throw IllegalArgumentException for negative limit");
+
+        logger.info("✅ Test passed: getEncryptedBlocksPaginated validates negative limit");
+    }
+
+    @Test
+    @DisplayName("getEncryptedBlocksPaginated should handle valid parameters")
+    void testGetEncryptedBlocksPaginatedValid() {
+        logTestContext("getEncryptedBlocksPaginated", "valid parameters");
+
+        List<Block> result = blockDAO.getEncryptedBlocksPaginated(0, 10);
+
+        assertNotNull(result, "Result should not be null");
+        assertTrue(result.size() <= 10, "Result should not exceed limit");
+
+        // All returned blocks should be encrypted
+        for (Block block : result) {
+            assertTrue(block.isDataEncrypted(), "Block should be encrypted");
+        }
+
+        logger.info("✅ Test passed: getEncryptedBlocksPaginated handles valid parameters");
+    }
+
+    @Test
+    @DisplayName("getEncryptedBlocksPaginated should handle large offset")
+    void testGetEncryptedBlocksPaginatedLargeOffset() {
+        logTestContext("getEncryptedBlocksPaginated", "large offset beyond data");
+
+        List<Block> result = blockDAO.getEncryptedBlocksPaginated(1000000, 10);
+
+        assertNotNull(result, "Result should not be null");
+        assertTrue(result.isEmpty(), "Result should be empty when offset exceeds total blocks");
+
+        logger.info("✅ Test passed: getEncryptedBlocksPaginated handles large offset");
+    }
+
     // ========== getBlockByNumber(Long) Tests ==========
     
     @Test
     @DisplayName("getBlockByNumber should handle null blockNumber")
     void testGetBlockByNumberNull() {
         logTestContext("getBlockByNumber", "null blockNumber");
-        
+
         Block result = blockDAO.getBlockByNumber(null);
-        
+
         assertNull(result, "Should return null for null blockNumber");
-        
+
         logger.info("✅ Test passed: getBlockByNumber handles null blockNumber");
     }
-    
+
     @Test
     @DisplayName("getBlockByNumber should handle non-existent blockNumber")
     void testGetBlockByNumberNonExistent() {
         logTestContext("getBlockByNumber", "non-existent blockNumber");
-        
+
         Block result = blockDAO.getBlockByNumber(999999999L);
-        
+
         assertNull(result, "Should return null for non-existent blockNumber");
-        
+
         logger.info("✅ Test passed: getBlockByNumber handles non-existent blockNumber");
     }
-    
+
     @Test
     @DisplayName("getBlockByNumber should handle negative blockNumber")
     void testGetBlockByNumberNegative() {
         logTestContext("getBlockByNumber", "negative blockNumber");
-        
+
         Block result = blockDAO.getBlockByNumber(-1L);
-        
+
         assertNull(result, "Should return null for negative blockNumber");
-        
+
         logger.info("✅ Test passed: getBlockByNumber handles negative blockNumber");
     }
     
-    // ========== getAllBlocks() Tests ==========
-    
-    @Test
-    @DisplayName("getAllBlocks should return valid list")
-    void testGetAllBlocks() {
-        logTestContext("getAllBlocks", "normal execution");
-        
-        List<Block> result = blockDAO.getAllBlocks();
-        
-        assertNotNull(result, "Result should not be null");
-        // Can be empty or contain data - both are valid
-        
-        logger.info("✅ Test passed: getAllBlocks returns valid list");
-    }
-    
-    @Test
-    @DisplayName("getAllBlocks should be thread-safe")
-    void testGetAllBlocksThreadSafety() {
-        logTestContext("getAllBlocks", "thread safety");
-        
-        Runnable task = () -> {
-            try {
-                List<Block> result = blockDAO.getAllBlocks();
-                assertNotNull(result, "Result should not be null in concurrent access");
-            } catch (Exception e) {
-                fail("Should not throw exception in concurrent access: " + e.getMessage());
-            }
-        };
-        
-        Thread[] threads = new Thread[5];
-        for (int i = 0; i < threads.length; i++) {
-            threads[i] = new Thread(task);
-            threads[i].start();
-        }
-        
-        for (Thread thread : threads) {
-            assertDoesNotThrow(() -> thread.join(2000), 
-                "Thread should complete within timeout");
-        }
-        
-        logger.info("✅ Test passed: getAllBlocks handles concurrent access");
-    }
-    
     // ========== getLastBlock() Tests ==========
-    
+
+
     @Test
     @DisplayName("getLastBlock should return valid result")
     void testGetLastBlock() {

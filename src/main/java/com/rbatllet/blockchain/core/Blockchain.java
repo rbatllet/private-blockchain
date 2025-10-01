@@ -312,34 +312,35 @@ public class Blockchain {
      */
     private void reindexBlocksWithPasswords() {
         try {
-            List<Block> allBlocks = getAllBlocks();
-            int reindexedCount = 0;
+            java.util.concurrent.atomic.AtomicInteger reindexedCount = new java.util.concurrent.atomic.AtomicInteger(0);
 
             // Get all blocks that have registered passwords
             Set<String> registeredBlockHashes =
                 searchSpecialistAPI.getRegisteredBlocks();
 
-            for (Block block : allBlocks) {
-                // Check if block has encrypted keywords and is registered with a password
-                if (
-                    hasEncryptedKeywords(block) &&
-                    isBlockRegistered(block, registeredBlockHashes)
-                ) {
-                    // For security reasons, we cannot retrieve the password
-                    // The block should have been properly indexed when it was created
-                    // We'll log this for debugging but the search should work through
-                    // the existing password registry mechanism
-                    logger.info(
-                        "📊 Block #{} has encrypted keywords and registered password",
-                        block.getBlockNumber()
-                    );
-                    reindexedCount++;
+            processChainInBatches(batch -> {
+                for (Block block : batch) {
+                    // Check if block has encrypted keywords and is registered with a password
+                    if (
+                        hasEncryptedKeywords(block) &&
+                        isBlockRegistered(block, registeredBlockHashes)
+                    ) {
+                        // For security reasons, we cannot retrieve the password
+                        // The block should have been properly indexed when it was created
+                        // We'll log this for debugging but the search should work through
+                        // the existing password registry mechanism
+                        logger.info(
+                            "📊 Block #{} has encrypted keywords and registered password",
+                            block.getBlockNumber()
+                        );
+                        reindexedCount.incrementAndGet();
+                    }
                 }
-            }
+            }, 1000);
 
             logger.info(
                 "📊 Found {} blocks with encrypted keywords in password registry",
-                reindexedCount
+                reindexedCount.get()
             );
         } catch (Exception e) {
             logger.warn("⚠️ Failed to analyze blocks with passwords", e);
@@ -1995,16 +1996,21 @@ public class Blockchain {
     public ChainValidationResult validateChainDetailed() {
         GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
         try {
-            List<Block> allBlocks = blockDAO.getAllBlocks();
+            long totalBlocks = blockDAO.getBlockCount();
             List<BlockValidationResult> blockResults = new ArrayList<>();
 
-            if (allBlocks.isEmpty()) {
+            if (totalBlocks == 0) {
                 logger.error("❌ No blocks found in chain");
                 return new ChainValidationResult(blockResults);
             }
 
-            // Validate genesis block
-            Block genesisBlock = allBlocks.get(0);
+            // Validate genesis block (always fetch first)
+            Block genesisBlock = blockDAO.getBlockByNumber(0L);
+            if (genesisBlock == null) {
+                logger.error("❌ Genesis block not found");
+                return new ChainValidationResult(blockResults);
+            }
+
             BlockValidationResult.Builder genesisBuilder =
                 new BlockValidationResult.Builder(genesisBlock);
 
@@ -2033,47 +2039,49 @@ public class Blockchain {
                 );
             }
 
-            // Validate all blocks sequentially using detailed validation
-            for (int i = 1; i < allBlocks.size(); i++) {
-                Block currentBlock = allBlocks.get(i);
-                Block previousBlock = allBlocks.get(i - 1);
+            // Validate blocks in batches (memory-efficient pagination)
+            final int BATCH_SIZE = 1000;
+            Block previousBlock = genesisBlock;
+            int blocksWithOffChain = 0;
+            int validOffChainBlocks = 0;
+            long totalOffChainSize = 0;
 
-                BlockValidationResult result = validateBlockDetailed(
-                    currentBlock,
-                    previousBlock
-                );
-                blockResults.add(result);
+            for (int offset = 1; offset < totalBlocks; offset += BATCH_SIZE) {
+                int limit = (int) Math.min(BATCH_SIZE, totalBlocks - offset);
+                List<Block> batch = blockDAO.getBlocksPaginated(offset, limit);
+
+                for (Block currentBlock : batch) {
+                    BlockValidationResult result = validateBlockDetailed(
+                        currentBlock,
+                        previousBlock
+                    );
+                    blockResults.add(result);
+
+                    // Collect off-chain statistics
+                    if (currentBlock.hasOffChainData()) {
+                        blocksWithOffChain++;
+                        if (currentBlock.getOffChainData().getFileSize() != null) {
+                            totalOffChainSize += currentBlock
+                                .getOffChainData()
+                                .getFileSize();
+                        }
+                        if (result.isOffChainDataValid()) {
+                            validOffChainBlocks++;
+                        }
+                    }
+
+                    previousBlock = currentBlock;
+                }
+
+                // Log progress for large chains
+                if (totalBlocks > 10000 && offset % 10000 == 0) {
+                    logger.info("📊 Validated {}/{} blocks...", offset + batch.size(), totalBlocks);
+                }
             }
 
             ChainValidationResult chainResult = new ChainValidationResult(
                 blockResults
             );
-
-            // Generate off-chain data summary
-            int totalBlocks = allBlocks.size();
-            int blocksWithOffChain = 0;
-            int validOffChainBlocks = 0;
-            long totalOffChainSize = 0;
-
-            for (Block block : allBlocks) {
-                if (block.hasOffChainData()) {
-                    blocksWithOffChain++;
-                    if (block.getOffChainData().getFileSize() != null) {
-                        totalOffChainSize += block
-                            .getOffChainData()
-                            .getFileSize();
-                    }
-                }
-            }
-
-            for (BlockValidationResult result : blockResults) {
-                if (
-                    result.getBlock().hasOffChainData() &&
-                    result.isOffChainDataValid()
-                ) {
-                    validOffChainBlocks++;
-                }
-            }
 
             logger.info(
                 "📊 Chain validation completed: {}",
@@ -2159,12 +2167,26 @@ public class Blockchain {
     }
 
     /**
-     * ENHANCED: Get all blocks with their validation status
+     * Process the entire blockchain in memory-efficient batches.
+     * This avoids loading all blocks into memory at once.
+     *
+     * @param batchProcessor Function to process each batch of blocks
+     * @param batchSize Number of blocks to process in each batch
      */
-    public List<Block> getFullChain() {
+    public void processChainInBatches(java.util.function.Consumer<List<Block>> batchProcessor, int batchSize) {
+        if (batchSize <= 0) {
+            throw new IllegalArgumentException("Batch size must be positive");
+        }
+
         GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
         try {
-            return blockDAO.getAllBlocks();
+            long totalBlocks = blockDAO.getBlockCount();
+
+            for (int offset = 0; offset < totalBlocks; offset += batchSize) {
+                int limit = (int) Math.min(batchSize, totalBlocks - offset);
+                List<Block> batch = blockDAO.getBlocksPaginated(offset, limit);
+                batchProcessor.accept(batch);
+            }
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
         }
@@ -2609,20 +2631,33 @@ public class Blockchain {
     public boolean verifyAllOffChainIntegrity() {
         GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
         try {
-            List<Block> allBlocks = blockDAO.getAllBlocks();
+            long totalBlocks = blockDAO.getBlockCount();
             int offChainBlocks = 0;
             int integrityFailures = 0;
 
-            for (Block block : allBlocks) {
-                if (block.hasOffChainData()) {
-                    offChainBlocks++;
-                    if (!verifyOffChainIntegrity(block)) {
-                        integrityFailures++;
-                        logger.error(
-                            "❌ Integrity verification failed for block {}",
-                            block.getBlockNumber()
-                        );
+            // Process blocks in batches to avoid memory issues
+            final int BATCH_SIZE = 1000;
+            for (int offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
+                int limit = (int) Math.min(BATCH_SIZE, totalBlocks - offset);
+                List<Block> batch = blockDAO.getBlocksPaginated(offset, limit);
+
+                for (Block block : batch) {
+                    if (block.hasOffChainData()) {
+                        offChainBlocks++;
+                        if (!verifyOffChainIntegrity(block)) {
+                            integrityFailures++;
+                            logger.error(
+                                "❌ Integrity verification failed for block {}",
+                                block.getBlockNumber()
+                            );
+                        }
                     }
+                }
+
+                // Log progress for large chains
+                if (totalBlocks > 10000 && offset % 10000 == 0) {
+                    logger.info("📊 Verified {}/{} blocks for off-chain integrity...",
+                        offset + batch.size(), totalBlocks);
                 }
             }
 
@@ -2735,7 +2770,17 @@ public class Blockchain {
 
         GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
         try {
-            List<Block> allBlocks = blockDAO.getAllBlocks();
+            // Use batch processing instead of loading all blocks at once
+            final int BATCH_SIZE = 1000;
+            long totalBlocks = blockDAO.getBlockCount();
+            List<Block> allBlocks = new ArrayList<>((int) totalBlocks);
+
+            // Retrieve blocks in batches
+            for (int offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
+                List<Block> batch = blockDAO.getBlocksPaginated(offset, BATCH_SIZE);
+                allBlocks.addAll(batch);
+            }
+
             List<AuthorizedKey> allKeys =
                 authorizedKeyDAO.getAllAuthorizedKeys(); // FIXED: Export ALL keys, not just active ones
 
@@ -2752,10 +2797,13 @@ public class Blockchain {
             File exportDir = new File(filePath).getParentFile();
             File offChainBackupDir = new File(exportDir, "off-chain-backup");
 
-            // Create backup directory for off-chain files if needed
-            boolean hasOffChainData = allBlocks
-                .stream()
-                .anyMatch(Block::hasOffChainData);
+            // Check if any batch has off-chain data (process in batches)
+            boolean hasOffChainData = false;
+            for (int offset = 0; offset < totalBlocks && !hasOffChainData; offset += BATCH_SIZE) {
+                List<Block> batch = blockDAO.getBlocksPaginated(offset, BATCH_SIZE);
+                hasOffChainData = batch.stream().anyMatch(Block::hasOffChainData);
+            }
+
             if (hasOffChainData) {
                 if (!offChainBackupDir.exists()) {
                     try {
@@ -2782,6 +2830,7 @@ public class Blockchain {
                 }
 
                 // Copy off-chain files to backup directory (only if backup directory exists)
+                // Process in batches to avoid memory issues with large blockchains
                 if (offChainBackupDir.exists()) {
                     for (Block block : allBlocks) {
                         if (block.hasOffChainData()) {
@@ -2923,25 +2972,30 @@ public class Blockchain {
                     logger.info(
                         "🧹 Cleaning up existing off-chain data before import..."
                     );
-                    List<Block> existingBlocks = blockDAO.getAllBlocks();
+                    // Use batch processing instead of loading all blocks at once
+                    final int BATCH_SIZE = 1000;
+                    long totalExistingBlocks = blockDAO.getBlockCount();
                     int existingOffChainFilesDeleted = 0;
 
-                    for (Block block : existingBlocks) {
-                        if (block.hasOffChainData()) {
-                            try {
-                                boolean fileDeleted =
-                                    offChainStorageService.deleteData(
-                                        block.getOffChainData()
+                    for (int offset = 0; offset < totalExistingBlocks; offset += BATCH_SIZE) {
+                        List<Block> batch = blockDAO.getBlocksPaginated(offset, BATCH_SIZE);
+                        for (Block block : batch) {
+                            if (block.hasOffChainData()) {
+                                try {
+                                    boolean fileDeleted =
+                                        offChainStorageService.deleteData(
+                                            block.getOffChainData()
+                                        );
+                                    if (fileDeleted) {
+                                        existingOffChainFilesDeleted++;
+                                    }
+                                } catch (Exception e) {
+                                    logger.error(
+                                        "❌ Error deleting existing off-chain data for block {}",
+                                        block.getBlockNumber(),
+                                        e
                                     );
-                                if (fileDeleted) {
-                                    existingOffChainFilesDeleted++;
                                 }
-                            } catch (Exception e) {
-                                logger.error(
-                                    "❌ Error deleting existing off-chain data for block {}",
-                                    block.getBlockNumber(),
-                                    e
-                                );
                             }
                         }
                     }
@@ -3237,16 +3291,19 @@ public class Blockchain {
                     }
 
                     // Get blocks to remove (excluding genesis block)
-                    List<Block> allBlocks = blockDAO.getAllBlocks();
+                    // Use batch processing to retrieve only the last N blocks efficiently
+                    final int BATCH_SIZE = 1000;
                     List<Block> blocksToRemove = new ArrayList<>();
 
-                    // Collect last N blocks (but not genesis)
-                    for (
-                        int i = allBlocks.size() - 1;
-                        i >= 1 && blocksToRemove.size() < numberOfBlocks;
-                        i--
-                    ) {
-                        blocksToRemove.add(allBlocks.get(i));
+                    // Calculate the starting offset for the last N blocks
+                    // currentBlockCount includes genesis (block 0), so valid rollback range is blocks 1 to currentBlockCount-1
+                    long startBlockNumber = currentBlockCount - numberOfBlocks;
+
+                    // Retrieve blocks in batches starting from the offset
+                    for (long offset = startBlockNumber; offset < currentBlockCount; offset += BATCH_SIZE) {
+                        int limit = (int) Math.min(BATCH_SIZE, currentBlockCount - offset);
+                        List<Block> batch = blockDAO.getBlocksPaginated((int) offset, limit);
+                        blocksToRemove.addAll(batch);
                     }
 
                     if (blocksToRemove.size() != numberOfBlocks) {
@@ -3584,18 +3641,6 @@ public class Blockchain {
         }
     }
 
-    /**
-     * Get all blocks
-     * FIXED: Added thread-safety with read lock
-     */
-    public List<Block> getAllBlocks() {
-        GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
-        try {
-            return blockDAO.getAllBlocks();
-        } finally {
-            GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
-        }
-    }
 
     /**
      * Get blocks paginated for better performance with large blockchains
@@ -3613,13 +3658,36 @@ public class Blockchain {
     }
 
     /**
-     * Get blocks without off-chain data for lightweight operations
-     * @return list of blocks without eager loading off-chain data
+     * Get blocks with off-chain data in paginated batches
+     * Memory-efficient alternative to loading all off-chain blocks at once
+     *
+     * @param offset starting position (0-based)
+     * @param limit maximum number of blocks to return
+     * @return list of blocks with off-chain data within the specified range
+     * @since 2.1.0
      */
-    public List<Block> getAllBlocksLightweight() {
+    public List<Block> getBlocksWithOffChainDataPaginated(int offset, int limit) {
         GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
         try {
-            return blockDAO.getAllBlocksLightweight();
+            return blockDAO.getBlocksWithOffChainDataPaginated(offset, limit);
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
+        }
+    }
+
+    /**
+     * Get encrypted blocks in paginated batches
+     * Memory-efficient alternative to loading all encrypted blocks at once
+     *
+     * @param offset starting position (0-based)
+     * @param limit maximum number of blocks to return
+     * @return list of encrypted blocks within the specified range
+     * @since 2.1.0
+     */
+    public List<Block> getEncryptedBlocksPaginated(int offset, int limit) {
+        GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
+        try {
+            return blockDAO.getEncryptedBlocksPaginated(offset, limit);
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
         }
@@ -3768,12 +3836,17 @@ public class Blockchain {
                     logger.info("🧹 Clearing database data...");
 
                     // Get list of off-chain data references BEFORE clearing database
-                    List<Block> allBlocks = blockDAO.getAllBlocks();
+                    // Use batch processing instead of loading all blocks at once
+                    final int BATCH_SIZE = 1000;
+                    long totalBlocks = blockDAO.getBlockCount();
                     List<Long> offChainDataIds = new ArrayList<>();
 
-                    for (Block block : allBlocks) {
-                        if (block.hasOffChainData()) {
-                            offChainDataIds.add(block.getOffChainData().getId());
+                    for (int offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
+                        List<Block> batch = blockDAO.getBlocksPaginated(offset, BATCH_SIZE);
+                        for (Block block : batch) {
+                            if (block.hasOffChainData()) {
+                                offChainDataIds.add(block.getOffChainData().getId());
+                            }
                         }
                     }
 
@@ -4586,12 +4659,17 @@ public class Blockchain {
             }
 
             // Get all current off-chain file paths from database
-            List<Block> allBlocks = blockDAO.getAllBlocks();
+            // Use batch processing instead of loading all blocks at once
+            final int BATCH_SIZE = 1000;
+            long totalBlocks = blockDAO.getBlockCount();
             Set<String> validFilePaths = new HashSet<>();
 
-            for (Block block : allBlocks) {
-                if (block.hasOffChainData()) {
-                    validFilePaths.add(block.getOffChainData().getFilePath());
+            for (int offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
+                List<Block> batch = blockDAO.getBlocksPaginated(offset, BATCH_SIZE);
+                for (Block block : batch) {
+                    if (block.hasOffChainData()) {
+                        validFilePaths.add(block.getOffChainData().getFilePath());
+                    }
                 }
             }
 
@@ -4804,25 +4882,35 @@ public class Blockchain {
     public String getSearchStatistics() {
         GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
         try {
-            List<Block> allBlocks = blockDAO.getAllBlocks();
-            long totalBlocks = allBlocks.size();
-            long encryptedBlocks = allBlocks
-                .stream()
-                .mapToLong(block -> block.isDataEncrypted() ? 1 : 0)
-                .sum();
-            long unencryptedBlocks = totalBlocks - encryptedBlocks;
+            // Use batch processing instead of loading all blocks at once
+            final int BATCH_SIZE = 1000;
+            long totalBlocks = blockDAO.getBlockCount();
+            long encryptedBlocks = 0;
 
             // Count blocks by category
             Map<String, Long> categoryCount = new HashMap<>();
-            for (Block block : allBlocks) {
-                String category = block.getContentCategory();
-                if (category != null && !category.isEmpty()) {
-                    categoryCount.put(
-                        category,
-                        categoryCount.getOrDefault(category, 0L) + 1
-                    );
+
+            // Process blocks in batches to accumulate statistics
+            for (int offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
+                List<Block> batch = blockDAO.getBlocksPaginated(offset, BATCH_SIZE);
+                for (Block block : batch) {
+                    // Count encrypted blocks
+                    if (block.isDataEncrypted()) {
+                        encryptedBlocks++;
+                    }
+
+                    // Count by category
+                    String category = block.getContentCategory();
+                    if (category != null && !category.isEmpty()) {
+                        categoryCount.put(
+                            category,
+                            categoryCount.getOrDefault(category, 0L) + 1
+                        );
+                    }
                 }
             }
+
+            long unencryptedBlocks = totalBlocks - encryptedBlocks;
 
             StringBuilder stats = new StringBuilder();
             stats.append("📊 Blockchain Search Statistics:\n");
@@ -4893,7 +4981,17 @@ public class Blockchain {
 
         GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
         try {
-            List<Block> allBlocks = blockDAO.getAllBlocks();
+            // Use batch processing instead of loading all blocks at once
+            final int BATCH_SIZE = 1000;
+            long totalBlocks = blockDAO.getBlockCount();
+            List<Block> allBlocks = new ArrayList<>((int) totalBlocks);
+
+            // Retrieve blocks in batches
+            for (int offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
+                List<Block> batch = blockDAO.getBlocksPaginated(offset, BATCH_SIZE);
+                allBlocks.addAll(batch);
+            }
+
             List<AuthorizedKey> allKeys =
                 authorizedKeyDAO.getAllAuthorizedKeys();
 
@@ -5351,24 +5449,29 @@ public class Blockchain {
      */
     private void cleanupExistingData() {
         logger.info("🧹 Cleaning up existing off-chain data before import...");
-        List<Block> existingBlocks = blockDAO.getAllBlocks();
+        // Use batch processing instead of loading all blocks at once
+        final int BATCH_SIZE = 1000;
+        long totalBlocks = blockDAO.getBlockCount();
         int existingOffChainFilesDeleted = 0;
 
-        for (Block block : existingBlocks) {
-            if (block.hasOffChainData()) {
-                try {
-                    boolean fileDeleted = offChainStorageService.deleteData(
-                        block.getOffChainData()
-                    );
-                    if (fileDeleted) {
-                        existingOffChainFilesDeleted++;
+        for (int offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
+            List<Block> batch = blockDAO.getBlocksPaginated(offset, BATCH_SIZE);
+            for (Block block : batch) {
+                if (block.hasOffChainData()) {
+                    try {
+                        boolean fileDeleted = offChainStorageService.deleteData(
+                            block.getOffChainData()
+                        );
+                        if (fileDeleted) {
+                            existingOffChainFilesDeleted++;
+                        }
+                    } catch (Exception e) {
+                        logger.error(
+                            "Error deleting existing off-chain data for block {}",
+                            block.getBlockNumber(),
+                            e
+                        );
                     }
-                } catch (Exception e) {
-                    logger.error(
-                        "Error deleting existing off-chain data for block {}",
-                        block.getBlockNumber(),
-                        e
-                    );
                 }
             }
         }

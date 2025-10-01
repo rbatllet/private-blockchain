@@ -357,27 +357,6 @@ public class BlockDAO {
     }
     
     /**
-     * Get all blocks in the chain ordered by number
-     */
-    public List<Block> getAllBlocks() {
-        lock.readLock().lock();
-        try {
-            EntityManager em = JPAUtil.getEntityManager();
-            try {
-                TypedQuery<Block> query = em.createQuery(
-                    "SELECT b FROM Block b LEFT JOIN FETCH b.offChainData ORDER BY b.blockNumber ASC", Block.class);
-                return query.getResultList();
-            } finally {
-                if (!JPAUtil.hasActiveTransaction()) {
-                    em.close();
-                }
-            }
-        } finally {
-            lock.readLock().unlock();
-        }
-    }
-    
-    /**
      * Get blocks paginated for better performance
      * @param offset starting position
      * @param limit maximum number of blocks to return
@@ -411,29 +390,7 @@ public class BlockDAO {
             }
         });
     }
-    
-    /**
-     * Get blocks without off-chain data for lightweight operations
-     * @return list of blocks without eager loading off-chain data
-     */
-    public List<Block> getAllBlocksLightweight() {
-        lock.readLock().lock();
-        try {
-            EntityManager em = JPAUtil.getEntityManager();
-            try {
-                TypedQuery<Block> query = em.createQuery(
-                    "SELECT b FROM Block b ORDER BY b.blockNumber ASC", Block.class);
-                return query.getResultList();
-            } finally {
-                if (!JPAUtil.hasActiveTransaction()) {
-                    em.close();
-                }
-            }
-        } finally {
-            lock.readLock().unlock();
-        }
-    }
-    
+
     /**
      * Get total number of blocks in the blockchain
      * @return total block count
@@ -465,10 +422,84 @@ public class BlockDAO {
             EntityManager em = JPAUtil.getEntityManager();
             try {
                 TypedQuery<Block> query = em.createQuery(
-                    "SELECT b FROM Block b WHERE b.timestamp BETWEEN :startTime AND :endTime ORDER BY b.blockNumber ASC", 
+                    "SELECT b FROM Block b WHERE b.timestamp BETWEEN :startTime AND :endTime ORDER BY b.blockNumber ASC",
                     Block.class);
                 query.setParameter("startTime", startTime);
                 query.setParameter("endTime", endTime);
+                return query.getResultList();
+            } finally {
+                if (!JPAUtil.hasActiveTransaction()) {
+                    em.close();
+                }
+            }
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    /**
+     * Get blocks with off-chain data, paginated for memory efficiency.
+     * This method allows retrieving blocks that have off-chain data in batches.
+     *
+     * @param offset starting position (0-based)
+     * @param limit maximum number of blocks to return
+     * @return list of blocks with off-chain data within the specified range
+     * @throws IllegalArgumentException if offset is negative or limit is not positive
+     */
+    public List<Block> getBlocksWithOffChainDataPaginated(int offset, int limit) {
+        if (offset < 0) {
+            throw new IllegalArgumentException("Offset cannot be negative");
+        }
+        if (limit <= 0) {
+            throw new IllegalArgumentException("Limit must be positive");
+        }
+
+        lock.readLock().lock();
+        try {
+            EntityManager em = JPAUtil.getEntityManager();
+            try {
+                TypedQuery<Block> query = em.createQuery(
+                    "SELECT b FROM Block b WHERE b.offChainData IS NOT NULL ORDER BY b.blockNumber ASC",
+                    Block.class);
+                query.setFirstResult(offset);
+                query.setMaxResults(limit);
+                return query.getResultList();
+            } finally {
+                if (!JPAUtil.hasActiveTransaction()) {
+                    em.close();
+                }
+            }
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    /**
+     * Get encrypted blocks, paginated for memory efficiency.
+     * This method allows retrieving encrypted blocks in batches.
+     *
+     * @param offset starting position (0-based)
+     * @param limit maximum number of blocks to return
+     * @return list of encrypted blocks within the specified range
+     * @throws IllegalArgumentException if offset is negative or limit is not positive
+     */
+    public List<Block> getEncryptedBlocksPaginated(int offset, int limit) {
+        if (offset < 0) {
+            throw new IllegalArgumentException("Offset cannot be negative");
+        }
+        if (limit <= 0) {
+            throw new IllegalArgumentException("Limit must be positive");
+        }
+
+        lock.readLock().lock();
+        try {
+            EntityManager em = JPAUtil.getEntityManager();
+            try {
+                TypedQuery<Block> query = em.createQuery(
+                    "SELECT b FROM Block b WHERE b.isEncrypted = true ORDER BY b.blockNumber ASC",
+                    Block.class);
+                query.setFirstResult(offset);
+                query.setMaxResults(limit);
                 return query.getResultList();
             } finally {
                 if (!JPAUtil.hasActiveTransaction()) {
@@ -876,28 +907,6 @@ public class BlockDAO {
                     "SELECT b FROM Block b WHERE UPPER(b.contentCategory) = :category ORDER BY b.blockNumber ASC", 
                     Block.class);
                 query.setParameter("category", category.toUpperCase());
-                return query.getResultList();
-            } finally {
-                if (!JPAUtil.hasActiveTransaction()) {
-                    em.close();
-                }
-            }
-        } finally {
-            lock.readLock().unlock();
-        }
-    }
-    
-    /**
-     * Get all blocks that have off-chain data for exhaustive search
-     */
-    public List<Block> getAllBlocksWithOffChainData() {
-        lock.readLock().lock();
-        try {
-            EntityManager em = JPAUtil.getEntityManager();
-            try {
-                TypedQuery<Block> query = em.createQuery(
-                    "SELECT b FROM Block b WHERE b.offChainData IS NOT NULL ORDER BY b.blockNumber ASC",
-                    Block.class);
                 return query.getResultList();
             } finally {
                 if (!JPAUtil.hasActiveTransaction()) {
@@ -1386,29 +1395,6 @@ public class BlockDAO {
             
             return block;
             
-        } finally {
-            lock.readLock().unlock();
-        }
-    }
-    
-    /**
-     * Get all encrypted blocks (returns with encrypted data intact)
-     * Use getBlockWithDecryption() to decrypt individual blocks
-     */
-    public List<Block> getAllEncryptedBlocks() {
-        lock.readLock().lock();
-        try {
-            EntityManager em = JPAUtil.getEntityManager();
-            try {
-                TypedQuery<Block> query = em.createQuery(
-                    "SELECT b FROM Block b WHERE b.isEncrypted = true ORDER BY b.blockNumber ASC", 
-                    Block.class);
-                return query.getResultList();
-            } finally {
-                if (!JPAUtil.hasActiveTransaction()) {
-                    em.close();
-                }
-            }
         } finally {
             lock.readLock().unlock();
         }

@@ -140,10 +140,9 @@ public class GranularTermVisibilityDemo {
         
         // Verify that we have the expected number of blocks by checking the blockchain state
         try {
-            var allBlocks = blockchain.getAllBlocks();
-            int blockCount = allBlocks.size();
+            long blockCount = blockchain.getBlockCount();
             System.out.println("   Total blocks created: " + blockCount);
-            
+
             if (blockCount < 4) {
                 System.out.println("   ⚠️  Warning: Expected at least 4 blocks, got " + blockCount);
             }

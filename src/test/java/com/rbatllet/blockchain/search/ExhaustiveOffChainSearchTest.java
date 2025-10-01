@@ -192,7 +192,7 @@ public class ExhaustiveOffChainSearchTest {
 
         // We already have basic blocks from createBasicTestBlockchain()
         assertTrue(
-            blockchain.getAllBlocks().size() > 0,
+            blockchain.getBlockCount() > 0,
             "Should have test blocks"
         );
 
@@ -921,7 +921,7 @@ public class ExhaustiveOffChainSearchTest {
         );
         System.out.println(
             "   - Total blocks in blockchain: " +
-            blockchain.getAllBlocks().size()
+            blockchain.getBlockCount()
         );
 
         assertTrue(
