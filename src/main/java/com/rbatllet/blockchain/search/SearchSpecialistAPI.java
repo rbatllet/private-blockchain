@@ -195,8 +195,8 @@ public class SearchSpecialistAPI {
             this.isInitialized = true;
             
             // Debug: Log detailed information about indexing
-            logger.info("🔍 SearchSpecialistAPI indexing details - Blockchain size: {}, Indexed blocks: {}", 
-                       blockchain.getAllBlocks().size(), this.searchEngine.getSearchStats().getTotalBlocksIndexed());
+            logger.info("🔍 SearchSpecialistAPI indexing details - Blockchain size: {}, Indexed blocks: {}",
+                       blockchain.getBlockCount(), this.searchEngine.getSearchStats().getTotalBlocksIndexed());
             
             logger.info("✅ SearchSpecialistAPI created and initialized with blockchain - {} blocks indexed, config: {}", 
                        this.searchEngine.getSearchStats().getTotalBlocksIndexed(), config.getSecurityLevel());

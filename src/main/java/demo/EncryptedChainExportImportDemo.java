@@ -53,15 +53,17 @@ public class EncryptedChainExportImportDemo {
         System.out.println("4. 📦 Added large block (off-chain): " + largeBlock.getBlockNumber());
         
         // Verify we have encrypted content
-        long encryptedBlocks = blockchain.getAllBlocks().stream()
-            .mapToLong(block -> block.isDataEncrypted() ? 1L : 0L)
-            .sum();
-        long offChainBlocks = blockchain.getAllBlocks().stream()
-            .mapToLong(block -> block.hasOffChainData() ? 1L : 0L)
-            .sum();
-        
+        java.util.concurrent.atomic.AtomicLong encryptedBlocks = new java.util.concurrent.atomic.AtomicLong(0);
+        java.util.concurrent.atomic.AtomicLong offChainBlocks = new java.util.concurrent.atomic.AtomicLong(0);
+        blockchain.processChainInBatches(batch -> {
+            batch.forEach(block -> {
+                if (block.isDataEncrypted()) encryptedBlocks.incrementAndGet();
+                if (block.hasOffChainData()) offChainBlocks.incrementAndGet();
+            });
+        }, 1000);
+
         System.out.println("5. 📊 Blockchain state before export:");
-        System.out.println("   📦 Total blocks: " + blockchain.getAllBlocks().size());
+        System.out.println("   📦 Total blocks: " + blockchain.getBlockCount());
         System.out.println("   🔐 Encrypted blocks: " + encryptedBlocks);
         System.out.println("   📁 Off-chain blocks: " + offChainBlocks);
         
@@ -89,9 +91,9 @@ public class EncryptedChainExportImportDemo {
             // Clear blockchain and test import
             System.out.println("\\n7. 🧹 Clearing blockchain for import test...");
             blockchain.clearAndReinitialize();
-            
+
             // Verify blockchain is empty
-            if (blockchain.getAllBlocks().isEmpty()) {
+            if (blockchain.getBlockCount() == 0) {
                 System.out.println("   ✅ Blockchain cleared successfully");
             } else {
                 System.out.println("   ❌ Failed to clear blockchain!");
@@ -104,11 +106,11 @@ public class EncryptedChainExportImportDemo {
             
             if (importSuccess) {
                 System.out.println("   ✅ Encrypted import completed successfully");
-                
+
                 // Verify all blocks are restored
                 System.out.println("\\n9. 🔍 Verifying restored blockchain...");
-                var restoredBlocks = blockchain.getAllBlocks();
-                System.out.println("   📦 Total restored blocks: " + restoredBlocks.size());
+                long restoredBlockCount = blockchain.getBlockCount();
+                System.out.println("   📦 Total restored blocks: " + restoredBlockCount);
                 
                 // Verify regular block
                 Block restoredRegularBlock = blockchain.getBlock(regularBlock.getBlockNumber());

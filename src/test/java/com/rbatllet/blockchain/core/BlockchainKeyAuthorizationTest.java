@@ -12,6 +12,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.File;
 import java.nio.file.Path;
 import java.security.KeyPair;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -173,7 +174,9 @@ class BlockchainKeyAuthorizationTest {
                 "Chain with multiple keys and revocation should be structurally intact");
         
         // 9. Verify historical blocks are still valid
-        List<Block> allBlocks = blockchain.getAllBlocks();
+        List<Block> allBlocks = new ArrayList<>();
+        blockchain.processChainInBatches(batch -> allBlocks.addAll(batch), 1000);
+
         for (Block block : allBlocks) {
             if (block.getBlockNumber() > 0) { // Skip genesis
                 assertTrue(validateHistoricalBlock(block),
@@ -230,12 +233,15 @@ class BlockchainKeyAuthorizationTest {
                 .orElse(null);
         
         assertNotNull(aliceImportedKey, "Alice's key should be imported");
-        
+
         // 9. Get Alice's first block in imported chain
-        List<Block> aliceBlocks = importedBlockchain.getAllBlocks().stream()
+        List<Block> allImportedBlocks = new ArrayList<>();
+        importedBlockchain.processChainInBatches(batch -> allImportedBlocks.addAll(batch), 1000);
+
+        List<Block> aliceBlocks = allImportedBlocks.stream()
                 .filter(block -> alicePublicKey.equals(block.getSignerPublicKey()))
                 .toList();
-        
+
         assertFalse(aliceBlocks.isEmpty(), "Alice should have blocks in imported chain");
         Block firstAliceBlock = aliceBlocks.get(0);
         
@@ -285,22 +291,28 @@ class BlockchainKeyAuthorizationTest {
                 "Imported chain should maintain full compliance");
         assertTrue(complexImportResult.isStructurallyIntact(),
                 "Imported chain should maintain structural integrity");
-        
+
         // 7. Verify Alice's historical blocks are valid
-        List<Block> aliceBlocks = importedBlockchain.getAllBlocks().stream()
+        List<Block> allBlocksForAlice = new ArrayList<>();
+        importedBlockchain.processChainInBatches(batch -> allBlocksForAlice.addAll(batch), 1000);
+
+        List<Block> aliceBlocks = allBlocksForAlice.stream()
                 .filter(block -> alicePublicKey.equals(block.getSignerPublicKey()))
                 .toList();
-        
+
         assertEquals(1, aliceBlocks.size(), "Alice should have 1 block in imported chain");
         for (Block block : aliceBlocks) {
             assertTrue(validateHistoricalBlock(block),
                     "Alice's historical block should be valid: " + block.getData());
         }
-        
+
         // 8. Verify timestamp corrections were applied
         List<AuthorizedKey> importedKeys = importedBlockchain.getAuthorizedKeys();
+        List<Block> allBlocksForKeys = new ArrayList<>();
+        importedBlockchain.processChainInBatches(batch -> allBlocksForKeys.addAll(batch), 1000);
+
         for (AuthorizedKey key : importedKeys) {
-            Block firstBlock = findFirstBlockByKey(importedBlockchain.getAllBlocks(), key.getPublicKey());
+            Block firstBlock = findFirstBlockByKey(allBlocksForKeys, key.getPublicKey());
             if (firstBlock != null) {
                 assertTrue(key.getCreatedAt().isBefore(firstBlock.getTimestamp()),
                         "Key " + key.getOwnerName() + " should be created before its first block");
@@ -325,9 +337,12 @@ class BlockchainKeyAuthorizationTest {
         // 2. Alice creates multiple blocks
         assertTrue(blockchain.addBlock("Alice block 1", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()));
         assertTrue(blockchain.addBlock("Alice block 2", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()));
-        
+
         // 3. Store Alice's blocks for validation
-        List<Block> aliceBlocks = blockchain.getAllBlocks().stream()
+        List<Block> allChainBlocks = new ArrayList<>();
+        blockchain.processChainInBatches(batch -> allChainBlocks.addAll(batch), 1000);
+
+        List<Block> aliceBlocks = allChainBlocks.stream()
                 .filter(block -> alicePublicKey.equals(block.getSignerPublicKey()))
                 .toList();
         
@@ -462,9 +477,11 @@ class BlockchainKeyAuthorizationTest {
                 "Chain should be fully compliant after re-authorization");
         assertTrue(reAuthResult.isStructurallyIntact(),
                 "Chain should be structurally intact after re-authorization");
-        
+
         // 5. Verify all blocks individually
-        List<Block> allBlocks = blockchain.getAllBlocks();
+        List<Block> allBlocks = new ArrayList<>();
+        blockchain.processChainInBatches(batch -> allBlocks.addAll(batch), 1000);
+
         for (Block block : allBlocks) {
             if (block.getBlockNumber() > 0) { // Skip genesis
                 assertTrue(validateHistoricalBlock(block),
@@ -519,9 +536,11 @@ class BlockchainKeyAuthorizationTest {
                 "Imported chain should maintain full compliance");
         assertTrue(importedValid.isStructurallyIntact(),
                 "Imported chain should maintain structural integrity");
-        
+
         // 7. All blocks should be valid individually
-        List<Block> importedBlocks = imported.getAllBlocks();
+        List<Block> importedBlocks = new ArrayList<>();
+        imported.processChainInBatches(batch -> importedBlocks.addAll(batch), 1000);
+
         for (Block block : importedBlocks) {
             if (block.getBlockNumber() > 0) {
                 assertTrue(validateHistoricalBlock(block),

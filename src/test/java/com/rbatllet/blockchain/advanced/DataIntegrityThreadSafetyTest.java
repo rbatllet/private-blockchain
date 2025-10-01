@@ -197,17 +197,19 @@ public class DataIntegrityThreadSafetyTest {
         assertTrue(completed, "Timestamp consistency test should complete within timeout");
 
         // Analyze timestamp ordering
-        List<Block> allBlocks = blockchain.getAllBlocks();
+        List<Block> allBlocks = new ArrayList<>();
+        blockchain.processChainInBatches(batch -> allBlocks.addAll(batch), 1000);
+
         int timestampOrderingIssues = 0;
-        
+
         for (int i = 1; i < allBlocks.size(); i++) {
             LocalDateTime prevTimestamp = allBlocks.get(i-1).getTimestamp();
             LocalDateTime currTimestamp = allBlocks.get(i).getTimestamp();
-            
+
             // Timestamps should generally be non-decreasing (allowing for same timestamps)
             if (currTimestamp.isBefore(prevTimestamp.minusSeconds(1))) {
                 timestampOrderingIssues++;
-                timestampErrors.offer("Timestamp ordering issue: Block #" + allBlocks.get(i).getBlockNumber() + 
+                timestampErrors.offer("Timestamp ordering issue: Block #" + allBlocks.get(i).getBlockNumber() +
                     " has timestamp " + currTimestamp + " which is before previous block's " + prevTimestamp);
             }
         }
@@ -292,13 +294,15 @@ public class DataIntegrityThreadSafetyTest {
         blockchain.validateChainDetailed();
         
         // Verify final sequence integrity
-        List<Block> allBlocks = blockchain.getAllBlocks();
+        List<Block> allBlocks = new ArrayList<>();
+        blockchain.processChainInBatches(batch -> allBlocks.addAll(batch), 1000);
+
         int sequenceGaps = 0;
-        
+
         for (int i = 1; i < allBlocks.size(); i++) {
             Long prevNumber = allBlocks.get(i-1).getBlockNumber();
             Long currNumber = allBlocks.get(i).getBlockNumber();
-            
+
             if (!currNumber.equals(prevNumber + 1)) {
                 sequenceGaps++;
                 sequenceErrors.offer("Sequence gap: Block #" + prevNumber + " followed by block #" + currNumber);
@@ -358,23 +362,25 @@ public class DataIntegrityThreadSafetyTest {
         }
     }
     
-    private boolean verifyChainIntegrity(int threadId, ConcurrentLinkedQueue<String> errors, 
+    private boolean verifyChainIntegrity(int threadId, ConcurrentLinkedQueue<String> errors,
                                        AtomicInteger hashMismatches, AtomicInteger signatureFailures) {
         try {
-            List<Block> allBlocks = blockchain.getAllBlocks();
+            List<Block> allBlocks = new ArrayList<>();
+            blockchain.processChainInBatches(batch -> allBlocks.addAll(batch), 1000);
+
             boolean allValid = true;
-            
+
             for (int i = 1; i < allBlocks.size(); i++) {
                 Block currentBlock = allBlocks.get(i);
                 Block previousBlock = allBlocks.get(i-1);
-                
+
                 // Verify hash chain
                 if (!currentBlock.getPreviousHash().equals(previousBlock.getHash())) {
                     hashMismatches.incrementAndGet();
                     errors.offer("T" + threadId + ": Hash chain break at block #" + currentBlock.getBlockNumber());
                     allValid = false;
                 }
-                
+
                 // Verify block hash
                 String expectedHash = CryptoUtil.calculateHash(blockchain.buildBlockContent(currentBlock));
                 if (!expectedHash.equals(currentBlock.getHash())) {
@@ -383,9 +389,9 @@ public class DataIntegrityThreadSafetyTest {
                     allValid = false;
                 }
             }
-            
+
             return allValid;
-            
+
         } catch (Exception e) {
             errors.offer("T" + threadId + ": Exception during chain verification: " + e.getMessage());
             return false;

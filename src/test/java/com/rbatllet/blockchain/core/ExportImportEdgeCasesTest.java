@@ -13,6 +13,7 @@ import java.io.FileWriter;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Edge cases and error scenarios for blockchain export/import operations
@@ -76,9 +77,9 @@ public class ExportImportEdgeCasesTest {
         blockchain.clearAndReinitialize();
         blockchain.addAuthorizedKey(publicKeyString, "TestUser");
         assertTrue(blockchain.importChain("empty-export.json"));
-        
+
         // Should have at least genesis block
-        assertTrue(blockchain.getAllBlocks().size() >= 1);
+        assertTrue(blockchain.getBlockCount() >= 1);
     }
     
     @Test
@@ -141,14 +142,19 @@ public class ExportImportEdgeCasesTest {
         blockchain.clearAndReinitialize();
         blockchain.addAuthorizedKey(publicKeyString, "TestUser");
         assertTrue(blockchain.importEncryptedChain("unicode-export.json", masterPassword));
-        
+
         // Verify Unicode content is preserved
-        var blocks = blockchain.getAllBlocks();
-        boolean foundUnicode = blocks.stream()
-            .anyMatch(block -> block.getData() != null && block.getData().contains("你好世界"));
-        assertTrue(foundUnicode, "Unicode content should be preserved");
+        AtomicBoolean foundUnicode = new AtomicBoolean(false);
+        blockchain.processChainInBatches(batch -> {
+            for (Block block : batch) {
+                if (block.getData() != null && block.getData().contains("你好世界")) {
+                    foundUnicode.set(true);
+                }
+            }
+        }, 1000);
+        assertTrue(foundUnicode.get(), "Unicode content should be preserved");
     }
-    
+
     @Test
     @DisplayName("Export/import with special characters in data")
     void testSpecialCharactersHandling() throws Exception {
@@ -156,19 +162,24 @@ public class ExportImportEdgeCasesTest {
         String specialData = "Special chars: !@#$%^&*()_+-=[]{}|;':\",./<>?`~\\n\\t\\r\\\"\\\\";
         blockchain.addBlockAndReturn(specialData, privateKey, publicKey);
         blockchain.addEncryptedBlock("Encrypted: " + specialData, masterPassword, privateKey, publicKey);
-        
+
         // Export and import
         assertTrue(blockchain.exportEncryptedChain("special-chars-export.json", masterPassword));
-        
+
         blockchain.clearAndReinitialize();
         blockchain.addAuthorizedKey(publicKeyString, "TestUser");
         assertTrue(blockchain.importEncryptedChain("special-chars-export.json", masterPassword));
-        
+
         // Verify special characters are preserved
-        var blocks = blockchain.getAllBlocks();
-        boolean foundSpecialChars = blocks.stream()
-            .anyMatch(block -> block.getData() != null && block.getData().contains("!@#$%^&*"));
-        assertTrue(foundSpecialChars, "Special characters should be preserved");
+        AtomicBoolean foundSpecialChars = new AtomicBoolean(false);
+        blockchain.processChainInBatches(batch -> {
+            for (Block block : batch) {
+                if (block.getData() != null && block.getData().contains("!@#$%^&*")) {
+                    foundSpecialChars.set(true);
+                }
+            }
+        }, 1000);
+        assertTrue(foundSpecialChars.get(), "Special characters should be preserved");
     }
     
     @Test
@@ -226,14 +237,13 @@ public class ExportImportEdgeCasesTest {
         blockchain.clearAndReinitialize();
         blockchain.addAuthorizedKey(publicKeyString, "TestUser");
         boolean importResult = blockchain.importChain("missing-offchain-export.json");
-        
+
         // Import should succeed but off-chain data should be removed
         assertTrue(importResult, "Import should succeed even with missing off-chain data");
-        
+
         // Verify blocks exist but off-chain references are cleaned up
-        var blocks = blockchain.getAllBlocks();
-        assertTrue(blocks.size() > 1); // Should have imported blocks
-        
+        assertTrue(blockchain.getBlockCount() > 1); // Should have imported blocks
+
         deleteFileIfExists("missing-offchain-export.json");
     }
     
@@ -310,16 +320,15 @@ public class ExportImportEdgeCasesTest {
             // Clear and import
             blockchain.clearAndReinitialize();
             blockchain.addAuthorizedKey(publicKeyString, "TestUser");
-            assertTrue(blockchain.importEncryptedChain(exportFile, masterPassword), 
+            assertTrue(blockchain.importEncryptedChain(exportFile, masterPassword),
                 "Import cycle " + cycle + " should succeed");
-            
+
             // Verify data integrity
-            var blocks = blockchain.getAllBlocks();
-            assertTrue(blocks.size() >= 2, "Should maintain block count through cycle " + cycle);
-            
+            assertTrue(blockchain.getBlockCount() >= 2, "Should maintain block count through cycle " + cycle);
+
             // Add new data for next cycle
             blockchain.addBlockAndReturn("Cycle " + cycle + " additional data", privateKey, publicKey);
-            
+
             deleteFileIfExists(exportFile);
         }
         

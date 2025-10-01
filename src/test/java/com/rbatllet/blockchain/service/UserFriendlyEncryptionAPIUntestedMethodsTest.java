@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
@@ -95,16 +96,37 @@ class UserFriendlyEncryptionAPIUntestedMethodsTest {
     void setUp() {
         // Initialize test configuration with default settings
         testConfig = new EncryptionConfig();
-            
+
         // Create test key pair
         testKeyPair = CryptoUtil.generateKeyPair();
-        
+
         // Properly configure mocks to avoid NullPointer issues
         lenient().when(mockBlockchain.getBlockDAO()).thenReturn(mockBlockDAO);
         lenient().when(mockBlockDAO.batchRetrieveBlocks(any())).thenReturn(new ArrayList<>());
-        lenient().when(mockBlockchain.getAllBlocks()).thenReturn(new ArrayList<>());
         lenient().when(mockBlockchain.getBlockCount()).thenReturn(0L);
-        
+        lenient().when(mockBlockchain.getBlock(anyLong())).thenReturn(null);
+
+        // Mock processChainInBatches to handle batch processing
+        lenient().doAnswer(invocation -> {
+            java.util.function.Consumer<List<Block>> batchProcessor = invocation.getArgument(0);
+            int batchSize = invocation.getArgument(1);
+
+            long blockCount = mockBlockchain.getBlockCount();
+            for (long offset = 0; offset < blockCount; offset += batchSize) {
+                List<Block> batch = new ArrayList<>();
+                for (long i = offset; i < Math.min(offset + batchSize, blockCount); i++) {
+                    Block block = mockBlockchain.getBlock(i);
+                    if (block != null) {
+                        batch.add(block);
+                    }
+                }
+                if (!batch.isEmpty()) {
+                    batchProcessor.accept(batch);
+                }
+            }
+            return null;
+        }).when(mockBlockchain).processChainInBatches(any(), any(Integer.class));
+
         // Initialize the API instance with mocked dependencies for tests that need it
         api = new UserFriendlyEncryptionAPI(mockBlockchain, TEST_USERNAME, testKeyPair, testConfig);
     }
@@ -156,7 +178,13 @@ class UserFriendlyEncryptionAPIUntestedMethodsTest {
         // Setup test blocks for metadata indexing
         List<Block> testBlocks = createTestBlocksWithMetadata(5);
         when(mockBlockchain.getBlockCount()).thenReturn(5L);
-        when(mockBlockchain.getAllBlocks()).thenReturn(testBlocks);
+        when(mockBlockchain.getBlock(anyLong())).thenAnswer(invocation -> {
+            Long blockNumber = invocation.getArgument(0);
+            if (blockNumber >= 0 && blockNumber < testBlocks.size()) {
+                return testBlocks.get(blockNumber.intValue());
+            }
+            return null;
+        });
         
         // Access private method using reflection
         Method fallbackMethod = UserFriendlyEncryptionAPI.class
@@ -182,8 +210,8 @@ class UserFriendlyEncryptionAPIUntestedMethodsTest {
         
         // Test with empty blockchain
         lenient().when(mockBlockchain.getBlockCount()).thenReturn(0L);
-        lenient().when(mockBlockchain.getAllBlocks()).thenReturn(Collections.emptyList());
-        
+        lenient().when(mockBlockchain.getBlock(anyLong())).thenReturn(null);
+
         assertDoesNotThrow(() -> {
             fallbackMethod.invoke(api);
         }, "Fallback should handle empty blockchain gracefully");
@@ -216,8 +244,14 @@ class UserFriendlyEncryptionAPIUntestedMethodsTest {
         // Setup for fallback verification
         List<Block> testBlocks = createTestBlocksWithMetadata(3);
         lenient().when(mockBlockchain.getBlockCount()).thenReturn(3L);
-        lenient().when(mockBlockchain.getAllBlocks()).thenReturn(testBlocks);
-        
+        lenient().when(mockBlockchain.getBlock(anyLong())).thenAnswer(invocation -> {
+            Long blockNumber = invocation.getArgument(0);
+            if (blockNumber >= 0 && blockNumber < testBlocks.size()) {
+                return testBlocks.get(blockNumber.intValue());
+            }
+            return null;
+        });
+
         assertDoesNotThrow(() -> {
             rebuildMethod.invoke(api);
         }, "Failed coordination should trigger fallback without exceptions");
@@ -300,13 +334,27 @@ class UserFriendlyEncryptionAPIUntestedMethodsTest {
             medicalBlocks.get(1),
             createBlockWithMetadata(4L, "category", "legal", "Contract data")
         );
-        
+
         // Configure mock BEFORE calling the method (lenient to avoid unnecessary stubbing warnings)
-        lenient().when(mockBlockchain.getAllBlocks()).thenReturn(allBlocks);
-        
+        lenient().when(mockBlockchain.getBlockCount()).thenReturn((long) allBlocks.size());
+        lenient().when(mockBlockchain.getBlock(anyLong())).thenAnswer(invocation -> {
+            Long blockNumber = invocation.getArgument(0);
+            if (blockNumber >= 0 && blockNumber < allBlocks.size()) {
+                return allBlocks.get(blockNumber.intValue());
+            }
+            return null;
+        });
+
         // Also ensure the blockchain mock returns this DAO
         lenient().when(mockBlockchain.getBlockDAO()).thenReturn(mockBlockDAO);
-        lenient().when(mockBlockDAO.getAllBlocks()).thenReturn(allBlocks);
+        lenient().when(mockBlockDAO.getBlockCount()).thenReturn((long) allBlocks.size());
+        lenient().when(mockBlockDAO.getBlockByNumber(anyLong())).thenAnswer(invocation -> {
+            Long blockNumber = invocation.getArgument(0);
+            if (blockNumber >= 0 && blockNumber < allBlocks.size()) {
+                return allBlocks.get(blockNumber.intValue());
+            }
+            return null;
+        });
         
         // Test successful metadata search - API should scan all blocks
         List<Block> results = api.findBlocksByMetadata(metadataKey, metadataValue);
@@ -354,8 +402,15 @@ class UserFriendlyEncryptionAPIUntestedMethodsTest {
             createBlockWithMultipleMetadata(3L, Map.of("priority", "low", "department", "IT")),
             createBlockWithMultipleMetadata(4L, Map.of("status", "completed", "owner", "admin"))
         );
-        
-        when(mockBlockchain.getAllBlocks()).thenReturn(testBlocks);
+
+        when(mockBlockchain.getBlockCount()).thenReturn((long) testBlocks.size());
+        when(mockBlockchain.getBlock(anyLong())).thenAnswer(invocation -> {
+            Long blockNumber = invocation.getArgument(0);
+            if (blockNumber >= 0 && blockNumber < testBlocks.size()) {
+                return testBlocks.get(blockNumber.intValue());
+            }
+            return null;
+        });
         
         // Test search for multiple keys
         Set<String> searchKeys = Set.of("category", "priority");
@@ -394,7 +449,13 @@ class UserFriendlyEncryptionAPIUntestedMethodsTest {
         // Setup test blocks for indexing
         List<Block> testBlocks = createTestBlocksWithMetadata(10);
         lenient().when(mockBlockchain.getBlockCount()).thenReturn(10L);
-        lenient().when(mockBlockchain.getAllBlocks()).thenReturn(testBlocks);
+        lenient().when(mockBlockchain.getBlock(anyLong())).thenAnswer(invocation -> {
+            Long blockNumber = invocation.getArgument(0);
+            if (blockNumber >= 0 && blockNumber < testBlocks.size()) {
+                return testBlocks.get(blockNumber.intValue());
+            }
+            return null;
+        });
         
         // Access and test private updateMetadataIndex method
         Method updateMethod = UserFriendlyEncryptionAPI.class

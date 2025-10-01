@@ -188,13 +188,16 @@ public class UserFriendlyEncryptionAPITest {
         System.out.println("🔍 Debug: Search engine stats: " + blockchain.getSearchSpecialistAPI().getStatistics().getTotalBlocksIndexed() + " blocks indexed");
         
         // Debug: Check what blocks exist in the blockchain
-        List<Block> allBlocks = blockchain.getAllBlocks();
-        System.out.println("📊 Debug: Total blocks in blockchain: " + allBlocks.size());
-        for (Block block : allBlocks) {
-            System.out.println(String.format("   Block #%d: encrypted=%s, category=%s, data=%s", 
-                block.getBlockNumber(), block.isDataEncrypted(), 
-                block.getContentCategory(), 
-                block.getData() != null ? block.getData().substring(0, Math.min(50, block.getData().length())) + "..." : "null"));
+        long blockCount = blockchain.getBlockCount();
+        System.out.println("📊 Debug: Total blocks in blockchain: " + blockCount);
+        for (long i = 0; i < blockCount; i++) {
+            Block block = blockchain.getBlock(i);
+            if (block != null) {
+                System.out.println(String.format("   Block #%d: encrypted=%s, category=%s, data=%s",
+                    block.getBlockNumber(), block.isDataEncrypted(),
+                    block.getContentCategory(),
+                    block.getData() != null ? block.getData().substring(0, Math.min(50, block.getData().length())) + "..." : "null"));
+            }
         }
         
         // Debug: Check encrypted block count

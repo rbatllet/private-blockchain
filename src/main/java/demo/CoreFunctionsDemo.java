@@ -106,17 +106,19 @@ public class CoreFunctionsDemo {
             System.out.println("   SUCCESS: Block retrieved\n");
             
             // ===============================
-            // 6. CORE FUNCTION: Get All Blocks
+            // 6. CORE FUNCTION: Iterate All Blocks
             // ===============================
-            System.out.println("6. DEMONSTRATING: Get All Blocks");
-            
-            List<Block> allBlocks = blockchain.getAllBlocks();
-            System.out.println("   ✅ Retrieved " + allBlocks.size() + " blocks");
-            
-            for (Block b : allBlocks) {
-                System.out.println("     Block #" + b.getBlockNumber() + ": " + b.getData());
-            }
-            System.out.println("   SUCCESS: All blocks retrieved\n");
+            System.out.println("6. DEMONSTRATING: Iterate All Blocks");
+
+            long retrievedCount = blockchain.getBlockCount();
+            System.out.println("   ✅ Retrieved " + retrievedCount + " blocks");
+
+            blockchain.processChainInBatches(batch -> {
+                for (Block b : batch) {
+                    System.out.println("     Block #" + b.getBlockNumber() + ": " + b.getData());
+                }
+            }, 1000);
+            System.out.println("   SUCCESS: All blocks iterated\n");
             
             // ===============================
             // 7. CORE FUNCTION: Search Blocks by Content

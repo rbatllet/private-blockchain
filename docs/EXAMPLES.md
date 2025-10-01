@@ -1921,17 +1921,16 @@ public class ConcurrentBestPractices {
     public void efficientConcurrentReads(Blockchain blockchain) {
         // Multiple read operations can execute simultaneously
         CompletableFuture<Long> blockCountFuture = CompletableFuture.supplyAsync(blockchain::getBlockCount);
-        CompletableFuture<List<Block>> allBlocksFuture = CompletableFuture.supplyAsync(blockchain::getAllBlocks);
         CompletableFuture<List<AuthorizedKey>> keysFuture = CompletableFuture.supplyAsync(blockchain::getAuthorizedKeys);
         CompletableFuture<ChainValidationResult> validationFuture = CompletableFuture.supplyAsync(blockchain::validateChainDetailed);
-        
+
         // Combine results
-        CompletableFuture.allOf(blockCountFuture, allBlocksFuture, keysFuture, validationFuture)
+        CompletableFuture.allOf(blockCountFuture, keysFuture, validationFuture)
             .thenRun(() -> {
                 try {
+                    long blockCount = blockCountFuture.get();
                     System.out.println("Blockchain Status:");
-                    System.out.println("  Block count: " + blockCountFuture.get());
-                    System.out.println("  Total blocks retrieved: " + allBlocksFuture.get().size());
+                    System.out.println("  Block count: " + blockCount);
                     System.out.println("  Active keys: " + keysFuture.get().size());
                     ChainValidationResult result = validationFuture.get();
                     System.out.println("  Chain structurally intact: " + result.isStructurallyIntact());

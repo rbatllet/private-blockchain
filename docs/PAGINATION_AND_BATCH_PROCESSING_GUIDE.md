@@ -215,14 +215,7 @@ public class SearchOptions {
 
 ### Memory Usage Optimization
 
-#### Before Pagination
-```java
-// Memory usage: O(n) where n = total blocks
-// Risk: OutOfMemoryError for large blockchains
-List<Block> allBlocks = blockchain.getAllBlocks(); // Loads everything
-```
-
-#### After Pagination
+#### Efficient Pagination Pattern
 ```java
 // Memory usage: O(batch_size) - constant
 // Benefit: Predictable memory consumption
@@ -231,6 +224,11 @@ for (int offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
     processBatch(batch); // Process and release
 }
 ```
+
+**Key Benefits**:
+- Constant memory footprint regardless of blockchain size
+- Prevents OutOfMemoryError on large chains
+- Predictable resource usage for capacity planning
 
 ### Performance Metrics
 
@@ -499,20 +497,15 @@ CREATE INDEX idx_block_timestamp ON Block(timestamp);
 public void testPaginationPerformance() {
     // Create large dataset
     int totalBlocks = 10000;
-    
-    // Test full load vs paginated load
+
+    // Test paginated load
     long startTime = System.nanoTime();
-    List<Block> allBlocks = blockchain.getAllBlocks(); // Without pagination
-    long fullLoadTime = System.nanoTime() - startTime;
-    
-    startTime = System.nanoTime();
-    List<Block> paginatedBlocks = loadWithPagination(200); // With pagination
+    List<Block> paginatedBlocks = loadWithPagination(200);
     long paginatedLoadTime = System.nanoTime() - startTime;
-    
-    // Verify performance improvement
-    assertTrue(paginatedLoadTime < fullLoadTime);
-    logger.info("Performance improvement: {}%", 
-                ((double)(fullLoadTime - paginatedLoadTime) / fullLoadTime) * 100);
+
+    // Verify performance
+    logger.info("Paginated load time: {}ms",
+                paginatedLoadTime / 1_000_000);
 }
 ```
 

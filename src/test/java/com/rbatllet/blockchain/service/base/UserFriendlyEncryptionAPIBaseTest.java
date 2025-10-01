@@ -118,8 +118,8 @@ public abstract class UserFriendlyEncryptionAPIBaseTest {
      */
     protected boolean isBlockchainHealthy() {
         try {
-            List<Block> blocks = blockchain.getAllBlocks();
-            return blocks != null && !blocks.isEmpty();
+            long blockCount = blockchain.getBlockCount();
+            return blockCount > 0;
         } catch (Exception e) {
             return false;
         }
@@ -129,8 +129,8 @@ public abstract class UserFriendlyEncryptionAPIBaseTest {
      * Get total number of blocks in blockchain
      * @return Block count
      */
-    protected int getBlockCount() {
-        return blockchain.getAllBlocks().size();
+    protected long getBlockCount() {
+        return blockchain.getBlockCount();
     }
     
     /**

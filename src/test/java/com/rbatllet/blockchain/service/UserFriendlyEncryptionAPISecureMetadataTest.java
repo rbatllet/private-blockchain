@@ -253,11 +253,13 @@ public class UserFriendlyEncryptionAPISecureMetadataTest {
      */
     private List<Block> searchBlocksByCustomData(String searchTerm) {
         try {
-            // Use the blockchain's getAllBlocks() method
-            List<Block> allBlocks = blockchain.getAllBlocks();
             List<Block> matchingBlocks = new ArrayList<>();
-            
-            for (Block block : allBlocks) {
+            long blockCount = blockchain.getBlockCount();
+
+            for (long i = 0; i < blockCount; i++) {
+                Block block = blockchain.getBlock(i);
+                if (block == null) continue;
+
                 // Try to decrypt and check content (since blocks are encrypted)
                 try {
                     String decryptedData = api.retrieveSecret(block.getId(), "password123");

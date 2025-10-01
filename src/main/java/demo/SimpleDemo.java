@@ -29,17 +29,19 @@ public class SimpleDemo {
             boolean added = blockchain.addBlock("Test data", keyPair.getPrivate(), keyPair.getPublic());
             System.out.println("🧱 Block added: " + added);
             
-            // 5. Get all blocks and print details
+            // 5. Iterate blocks and print details
             System.out.println("\n=== 📦 BLOCKS ===");
-            for (Block block : blockchain.getAllBlocks()) {
-                System.out.println("🧱 Block #" + Long.toString(block.getBlockNumber()) + ": " + block.getData());
-                System.out.println("  🔢 Hash: " + block.getHash());
-                System.out.println("  ⬅️ Previous: " + block.getPreviousHash());
-                System.out.println("  🔎 Signer: " + (block.getSignerPublicKey() != null ? 
-                    (block.getSignerPublicKey().length() > 20 ? 
-                        block.getSignerPublicKey().substring(0, 20) + "..." : 
-                        block.getSignerPublicKey()) : "null"));
-            }
+            blockchain.processChainInBatches(batch -> {
+                for (Block block : batch) {
+                    System.out.println("🧱 Block #" + Long.toString(block.getBlockNumber()) + ": " + block.getData());
+                    System.out.println("  🔢 Hash: " + block.getHash());
+                    System.out.println("  ⬅️ Previous: " + block.getPreviousHash());
+                    System.out.println("  🔎 Signer: " + (block.getSignerPublicKey() != null ?
+                        (block.getSignerPublicKey().length() > 20 ?
+                            block.getSignerPublicKey().substring(0, 20) + "..." :
+                            block.getSignerPublicKey()) : "null"));
+                }
+            }, 1000);
             
             // 6. Enhanced chain validation
             System.out.println("\n=== 🔍 ENHANCED VALIDATION ===");

@@ -725,7 +725,7 @@ public class SearchFrameworkExhaustiveTest {
             "Water quality: All parameters within WHO guidelines.",
             testPrivateKey, testPublicKey);
         
-        System.out.printf("✅ Created exhaustive test blockchain with %d blocks%n", 
-                         testBlockchain.getAllBlocks().size());
+        System.out.printf("✅ Created exhaustive test blockchain with %d blocks%n",
+                         testBlockchain.getBlockCount());
     }
 }

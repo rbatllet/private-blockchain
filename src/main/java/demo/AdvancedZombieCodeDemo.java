@@ -584,15 +584,11 @@ public class AdvancedZombieCodeDemo {
 
                     📋 BLOCKCHAIN STATISTICS:
                     • Total Blocks: """ +
-                (blockchain.getAllBlocks().size()) +
+                blockchain.getBlockCount() +
                 """
 
                     • Encrypted Blocks: """ +
-                blockchain
-                    .getAllBlocks()
-                    .stream()
-                    .mapToInt(b -> b.isDataEncrypted() ? 1 : 0)
-                    .sum() +
+                countEncryptedBlocks(blockchain) +
                 """
 
                     • Search Operations: 15,420 smart searches performed
@@ -821,5 +817,19 @@ public class AdvancedZombieCodeDemo {
             System.err.println("❌ Demo failed: " + e.getMessage());
             e.printStackTrace();
         }
+    }
+
+    /**
+     * Helper method to count encrypted blocks using batch processing
+     */
+    private static long countEncryptedBlocks(Blockchain blockchain) {
+        java.util.concurrent.atomic.AtomicLong count = new java.util.concurrent.atomic.AtomicLong(0);
+        blockchain.processChainInBatches(batch -> {
+            long batchCount = batch.stream()
+                .filter(Block::isDataEncrypted)
+                .count();
+            count.addAndGet(batchCount);
+        }, 1000);
+        return count.get();
     }
 }

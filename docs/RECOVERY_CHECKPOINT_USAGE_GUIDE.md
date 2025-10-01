@@ -61,7 +61,7 @@ RecoveryCheckpoint checkpoint = new RecoveryCheckpoint(
     "Critical system backup",
     blockchain.getLastBlock().getBlockNumber(),
     blockchain.getLastBlock().getHash(),
-    blockchain.getAllBlocks().size(),
+    blockchain.getBlockCount(),
     calculateEstimatedDataSize()  // Implement your calculation
 );
 ```

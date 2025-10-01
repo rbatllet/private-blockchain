@@ -12,6 +12,8 @@ import java.io.File;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Test class for encrypted chain export/import functionality
@@ -87,20 +89,22 @@ public class EncryptedChainExportImportTest {
         blockchain.clearAndReinitialize();
         // Add authorized key again after clear
         blockchain.addAuthorizedKey(publicKeyString, "TestUser");
-        assertEquals(1, blockchain.getAllBlocks().size(), "Blockchain should only have genesis block after clear");
-        
+        assertEquals(1, blockchain.getBlockCount(), "Blockchain should only have genesis block after clear");
+
         // Import chain
         boolean importSuccess = blockchain.importEncryptedChain(exportPath, masterPassword);
         assertTrue(importSuccess, "Encrypted import should succeed");
-        
+
         // Verify blocks are restored (original 2 blocks + genesis block)
-        assertEquals(3, blockchain.getAllBlocks().size(), "Should restore all blocks plus genesis");
-        
+        assertEquals(3, blockchain.getBlockCount(), "Should restore all blocks plus genesis");
+
         // Find blocks by content characteristics since block numbers may change during import
-        var allBlocks = blockchain.getAllBlocks();
+        List<Block> allBlocks = new ArrayList<>();
+        blockchain.processChainInBatches(batch -> allBlocks.addAll(batch), 1000);
+
         Block restoredEncrypted = null;
         Block restoredRegular = null;
-        
+
         for (Block block : allBlocks) {
             if (block.isDataEncrypted()) {
                 restoredEncrypted = block;
@@ -108,11 +112,11 @@ public class EncryptedChainExportImportTest {
                 restoredRegular = block;
             }
         }
-        
+
         // Verify encrypted block
         assertNotNull(restoredEncrypted, "Encrypted block should be restored");
         assertTrue(restoredEncrypted.isDataEncrypted(), "Block should remain encrypted");
-        
+
         // Verify regular block
         assertNotNull(restoredRegular, "Regular block should be restored");
         assertFalse(restoredRegular.isDataEncrypted(), "Regular block should remain unencrypted");
@@ -138,18 +142,20 @@ public class EncryptedChainExportImportTest {
         blockchain.clearAndReinitialize();
         blockchain.addAuthorizedKey(publicKeyString, "TestUser"); // Re-add key after clear
         assertTrue(blockchain.importEncryptedChain(exportPath, masterPassword));
-        
+
         // Find the block with off-chain data since block numbers may change during import
-        var allBlocks = blockchain.getAllBlocks();
+        List<Block> allBlocks = new ArrayList<>();
+        blockchain.processChainInBatches(batch -> allBlocks.addAll(batch), 1000);
+
         Block restoredLargeBlock = null;
-        
+
         for (Block block : allBlocks) {
             if (block.hasOffChainData()) {
                 restoredLargeBlock = block;
                 break;
             }
         }
-        
+
         // Verify off-chain data is accessible
         assertNotNull(restoredLargeBlock, "Large block should be restored");
         assertTrue(restoredLargeBlock.hasOffChainData(), "Restored block should have off-chain data");
@@ -176,31 +182,31 @@ public class EncryptedChainExportImportTest {
         blockchain.clearAndReinitialize();
         boolean importSuccess = blockchain.importChain(exportPath);
         assertTrue(importSuccess, "Regular import should work");
-        
+
         // Verify block exists but may not be properly decryptable
         // Note: May have more blocks if test isolation is not perfect
-        assertTrue(blockchain.getAllBlocks().size() >= 1, "Should restore at least one block");
+        assertTrue(blockchain.getBlockCount() >= 1, "Should restore at least one block");
     }
-    
+
     @Test
     @DisplayName("Import fails with wrong master password")
     void testImportFailsWithWrongPassword() throws Exception {
         // Create encrypted data
         blockchain.addEncryptedBlock("Secret data", masterPassword, privateKey, publicKey);
-        
+
         // Export with correct password
         String exportPath = "test-encrypted-export.json";
         assertTrue(blockchain.exportEncryptedChain(exportPath, masterPassword));
-        
+
         blockchain.clearAndReinitialize();
         blockchain.addAuthorizedKey(publicKeyString, "TestUser"); // Re-add key after clear
-        
+
         // Try to import with wrong password
         boolean importSuccess = blockchain.importEncryptedChain(exportPath, "WrongPassword123!");
         assertFalse(importSuccess, "Import should fail with wrong password");
-        
+
         // Blockchain should only have genesis block after failed import
-        assertEquals(1, blockchain.getAllBlocks().size(), "Blockchain should only have genesis block after failed import");
+        assertEquals(1, blockchain.getBlockCount(), "Blockchain should only have genesis block after failed import");
     }
     
     @Test

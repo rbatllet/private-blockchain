@@ -122,11 +122,12 @@ class UserFriendlyEncryptionAPIOptimizationTest {
             createEncryptedBlocksWithRealAPI();
 
             // When: Get encrypted blocks (using existing blockchain methods)
-            List<Block> allBlocks = blockchain.getAllBlocks();
             List<Block> encryptedBlocks = new ArrayList<>();
-            
-            for (Block block : allBlocks) {
-                if (block.getIsEncrypted()) {
+            long blockCount = blockchain.getBlockCount();
+
+            for (long i = 0; i < blockCount; i++) {
+                Block block = blockchain.getBlock(i);
+                if (block != null && block.getIsEncrypted()) {
                     encryptedBlocks.add(block);
                 }
             }
@@ -189,7 +190,14 @@ class UserFriendlyEncryptionAPIOptimizationTest {
 
             // When: Retrieve all blocks
             long startTime = System.currentTimeMillis();
-            List<Block> results = blockchain.getAllBlocks();
+            List<Block> results = new ArrayList<>();
+            long blockCount = blockchain.getBlockCount();
+            for (long i = 0; i < blockCount; i++) {
+                Block block = blockchain.getBlock(i);
+                if (block != null) {
+                    results.add(block);
+                }
+            }
             long duration = System.currentTimeMillis() - startTime;
 
             // Then: Should complete in reasonable time
@@ -273,9 +281,16 @@ class UserFriendlyEncryptionAPIOptimizationTest {
             long startTime = System.currentTimeMillis();
             
             createMixedBlocks(MEDIUM_DATASET_SIZE);
-            
+
             // Verify retrieval performance
-            List<Block> allBlocks = blockchain.getAllBlocks();
+            List<Block> allBlocks = new ArrayList<>();
+            long blockCount = blockchain.getBlockCount();
+            for (long i = 0; i < blockCount; i++) {
+                Block block = blockchain.getBlock(i);
+                if (block != null) {
+                    allBlocks.add(block);
+                }
+            }
             long retrievalTime = System.currentTimeMillis() - startTime;
             
             // Assertions

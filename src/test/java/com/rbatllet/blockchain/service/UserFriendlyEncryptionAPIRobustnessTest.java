@@ -889,8 +889,7 @@ public class UserFriendlyEncryptionAPIRobustnessTest {
         @DisplayName("Error conditions should not corrupt blockchain state")
         void testErrorConditionsDoNotCorruptState() {
             // Get initial blockchain state
-            List<Block> initialBlocks = blockchain.getAllBlocks();
-            int initialSize = initialBlocks.size();
+            long initialSize = blockchain.getBlockCount();
 
             // Perform operations that might fail
             assertDoesNotThrow(() -> {
@@ -904,10 +903,10 @@ public class UserFriendlyEncryptionAPIRobustnessTest {
                 }
 
                 // Blockchain should remain consistent
-                List<Block> finalBlocks = blockchain.getAllBlocks();
+                long finalSize = blockchain.getBlockCount();
                 assertEquals(
                     initialSize,
-                    finalBlocks.size(),
+                    finalSize,
                     "Blockchain size should not change due to failed operations"
                 );
             });

@@ -226,7 +226,6 @@ public class EdgeCaseThreadSafetyTest {
         validationResult.isStructurallyIntact();
         validationResult.isFullyCompliant();
         blockchain.getBlockCount();
-        blockchain.getAllBlocks();
         blockchain.getLastBlock();
     }
     

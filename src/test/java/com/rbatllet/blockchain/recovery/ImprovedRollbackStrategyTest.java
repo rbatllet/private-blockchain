@@ -10,8 +10,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 
 import java.security.KeyPair;
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -74,7 +72,7 @@ class ImprovedRollbackStrategyTest {
             blockchain.addBlock("User1-Block2", user1.getPrivate(), user1.getPublic()); // #3 - Will corrupt
             blockchain.addBlock("User2-Block2", user2.getPrivate(), user2.getPublic()); // #4 - Should preserve ideally
             
-            int initialBlocks = blockchain.getAllBlocks().size();
+            long initialBlocks = blockchain.getBlockCount();
             var initialValidation = blockchain.validateChainDetailed();
             assertTrue(initialValidation.isStructurallyIntact() && initialValidation.isFullyCompliant(), 
                 "Initial chain should be valid");
@@ -115,15 +113,20 @@ class ImprovedRollbackStrategyTest {
             
             System.out.println("Recovery successful: " + result.isSuccess());
             System.out.println("Recovery method: " + result.getMethod());
-            System.out.println("Final chain: " + blockchain.getAllBlocks().size() + " blocks");
+            System.out.println("Final chain: " + blockchain.getBlockCount() + " blocks");
             System.out.println("Final chain structurally intact: " + recoveredValidation.isStructurallyIntact());
             System.out.println("Final chain fully compliant: " + recoveredValidation.isFullyCompliant());
             
             // Check preservation efficiency
-            int finalBlocks = blockchain.getAllBlocks().size();
-            long user2BlocksRemaining = blockchain.getAllBlocks().stream()
-                .filter(b -> b.getData().contains("User2"))
-                .count();
+            long finalBlocks = blockchain.getBlockCount();
+            long user2BlocksRemaining = 0;
+            long blockCount = blockchain.getBlockCount();
+            for (long i = 0; i < blockCount; i++) {
+                Block b = blockchain.getBlock(i);
+                if (b != null && b.getData().contains("User2")) {
+                    user2BlocksRemaining++;
+                }
+            }
             
             System.out.println("User2 blocks preserved: " + user2BlocksRemaining);
             
@@ -136,11 +139,14 @@ class ImprovedRollbackStrategyTest {
             } else {
                 System.out.println("ℹ️ Note: Conservative approach used (still safe)");
             }
-            
+
             // Verify all preserved blocks are valid
-            for (Block block : blockchain.getAllBlocks()) {
-                assertTrue(blockchain.validateSingleBlock(block), 
-                    "All preserved blocks should be valid");
+            for (long i = 0; i < blockCount; i++) {
+                Block block = blockchain.getBlock(i);
+                if (block != null) {
+                    assertTrue(blockchain.validateSingleBlock(block),
+                        "All preserved blocks should be valid");
+                }
             }
         }
 
@@ -167,7 +173,7 @@ class ImprovedRollbackStrategyTest {
             blockchain.addBlock("Valid-3", validUser.getPrivate(), validUser.getPublic());    // #3 - Should preserve
             blockchain.addBlock("Corrupt", corruptUser.getPrivate(), corruptUser.getPublic()); // #4 - Will corrupt
             
-            int initialBlocks = blockchain.getAllBlocks().size();
+            long initialBlocks = blockchain.getBlockCount();
             var initialValidation = blockchain.validateChainDetailed();
             assertTrue(initialValidation.isStructurallyIntact() && initialValidation.isFullyCompliant(), 
                 "Initial chain should be valid");
@@ -196,10 +202,10 @@ class ImprovedRollbackStrategyTest {
             
             System.out.println("Recovery successful: " + result.isSuccess());
             System.out.println("Recovery method: " + result.getMethod());
-            System.out.println("Final chain: " + blockchain.getAllBlocks().size() + " blocks");
+            System.out.println("Final chain: " + blockchain.getBlockCount() + " blocks");
             
             // For end corruption, intelligent rollback should preserve more blocks
-            int finalBlocks = blockchain.getAllBlocks().size();
+            long finalBlocks = blockchain.getBlockCount();
             
             // At minimum genesis should be preserved
             assertTrue(finalBlocks >= 1, "Should preserve at least genesis block");
@@ -211,11 +217,15 @@ class ImprovedRollbackStrategyTest {
             } else {
                 System.out.println("ℹ️ Note: Conservative rollback used (still safe)");
             }
-            
+
             // Verify all preserved blocks are valid
-            for (Block block : blockchain.getAllBlocks()) {
-                assertTrue(blockchain.validateSingleBlock(block), 
-                    "All preserved blocks should be valid");
+            long blockCountForValidation = blockchain.getBlockCount();
+            for (long i = 0; i < blockCountForValidation; i++) {
+                Block block = blockchain.getBlock(i);
+                if (block != null) {
+                    assertTrue(blockchain.validateSingleBlock(block),
+                        "All preserved blocks should be valid");
+                }
             }
         }
 
@@ -256,26 +266,31 @@ class ImprovedRollbackStrategyTest {
             assertTrue(recoveredValidation.isFullyCompliant(), "Recovered chain must be fully compliant");
             
             // Most important: verify the recovered chain is cryptographically sound
-            List<Block> finalBlocks = blockchain.getAllBlocks();
-            
+            long finalBlockCount = blockchain.getBlockCount();
+
             // Test hash chain integrity
-            for (int i = 1; i < finalBlocks.size(); i++) {
-                Block currentBlock = finalBlocks.get(i);
-                Block previousBlock = finalBlocks.get(i - 1);
-                
-                assertEquals(previousBlock.getHash(), currentBlock.getPreviousHash(),
-                    "Hash chain must be intact in recovered blockchain");
+            for (long i = 1; i < finalBlockCount; i++) {
+                Block currentBlock = blockchain.getBlock(i);
+                Block previousBlock = blockchain.getBlock(i - 1);
+
+                if (currentBlock != null && previousBlock != null) {
+                    assertEquals(previousBlock.getHash(), currentBlock.getPreviousHash(),
+                        "Hash chain must be intact in recovered blockchain");
+                }
             }
-            
+
             // Test individual block validity
-            for (Block block : finalBlocks) {
-                assertTrue(blockchain.validateSingleBlock(block),
-                    "Every block in recovered chain must be individually valid");
+            for (long i = 0; i < finalBlockCount; i++) {
+                Block block = blockchain.getBlock(i);
+                if (block != null) {
+                    assertTrue(blockchain.validateSingleBlock(block),
+                        "Every block in recovered chain must be individually valid");
+                }
             }
-            
+
             System.out.println("✅ SECURITY VERIFIED: All blocks in recovered chain are cryptographically valid");
             System.out.println("Recovery method used: " + result.getMethod());
-            System.out.println("Final blocks: " + finalBlocks.size());
+            System.out.println("Final blocks: " + finalBlockCount);
         }
     }
 

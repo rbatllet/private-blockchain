@@ -231,14 +231,17 @@ class ComprehensiveThreadSafetyTest {
             "All successful operations should be captured");
         
         // Verify blockchain integrity
-        List<Block> finalChain = blockchain.getAllBlocks();
         Set<Long> chainNumbers = new HashSet<>();
-        for (Block block : finalChain) {
-            assertFalse(chainNumbers.contains(block.getBlockNumber()), 
-                "Blockchain should contain no duplicate numbers");
-            chainNumbers.add(block.getBlockNumber());
-        }
-        
+        List<Block> finalChain = new ArrayList<>();
+        blockchain.processChainInBatches(batch -> {
+            for (Block block : batch) {
+                assertFalse(chainNumbers.contains(block.getBlockNumber()),
+                    "Blockchain should contain no duplicate numbers");
+                chainNumbers.add(block.getBlockNumber());
+                finalChain.add(block);
+            }
+        }, 1000);
+
         var validationResult = blockchain.validateChainDetailed();
         assertTrue(validationResult.isStructurallyIntact(), "Chain must be structurally intact after extreme load");
         assertTrue(validationResult.isFullyCompliant(), "Chain must be fully compliant after extreme load");

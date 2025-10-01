@@ -94,8 +94,15 @@ public class UserFriendlyEncryptionAPIPhase3Test {
         mockBlocks.add(block2);
         
         // Setup blockchain mock behavior
-        when(mockBlockchain.getAllBlocks()).thenReturn(mockBlocks);
         when(mockBlockchain.getValidChain()).thenReturn(mockBlocks);
+        when(mockBlockchain.getBlockCount()).thenReturn((long) mockBlocks.size());
+        when(mockBlockchain.getBlock(anyLong())).thenAnswer(invocation -> {
+            Long blockNumber = invocation.getArgument(0);
+            if (blockNumber >= 0 && blockNumber < mockBlocks.size()) {
+                return mockBlocks.get(blockNumber.intValue());
+            }
+            return null;
+        });
         when(mockBlockchain.getBlock(anyLong())).thenAnswer(invocation -> {
             Long blockNumber = invocation.getArgument(0);
             return mockBlocks.stream()
@@ -103,9 +110,6 @@ public class UserFriendlyEncryptionAPIPhase3Test {
                 .findFirst()
                 .orElse(null);
         });
-        
-        // Mock blockchain getBlockCount
-        when(mockBlockchain.getBlockCount()).thenReturn((long) mockBlocks.size());
     }
 
     @Nested
@@ -587,7 +591,14 @@ public class UserFriendlyEncryptionAPIPhase3Test {
                 block.setTimestamp(LocalDateTime.now().minusDays(i % 30));
                 largeBlockset.add(block);
             }
-            when(mockBlockchain.getAllBlocks()).thenReturn(largeBlockset);
+            when(mockBlockchain.getBlockCount()).thenReturn((long) largeBlockset.size());
+            when(mockBlockchain.getBlock(anyLong())).thenAnswer(invocation -> {
+                Long blockNumber = invocation.getArgument(0);
+                if (blockNumber >= 0 && blockNumber < largeBlockset.size()) {
+                    return largeBlockset.get(blockNumber.intValue());
+                }
+                return null;
+            });
 
             // When
             long startTime = System.currentTimeMillis();

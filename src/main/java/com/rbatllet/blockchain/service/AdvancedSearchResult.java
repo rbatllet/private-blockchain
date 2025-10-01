@@ -156,7 +156,20 @@ public class AdvancedSearchResult implements SearchResultInterface {
         this.suggestedRefinements.add(refinement);
         return this;
     }
-    
+
+    /**
+     * Sort matches by relevance score in descending order (highest score first)
+     * Modifies the internal matches list to ensure results are properly ordered
+     *
+     * @return this instance for method chaining
+     */
+    public AdvancedSearchResult sortByRelevance() {
+        if (matches != null && !matches.isEmpty()) {
+            matches.sort((a, b) -> Double.compare(b.getRelevanceScore(), a.getRelevanceScore()));
+        }
+        return this;
+    }
+
     // Analysis methods
     public List<SearchMatch> getTopMatches(int limit) {
         // Defensive programming: validate inputs and handle null scenarios

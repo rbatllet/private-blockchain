@@ -61,9 +61,8 @@ public class ApiAssertions {
      */
     public static void assertBlockchainHealthy(Blockchain blockchain) {
         assertNotNull(blockchain, "Blockchain should not be null");
-        List<Block> blocks = blockchain.getAllBlocks();
-        assertNotNull(blocks, "Blockchain should have blocks list");
-        assertFalse(blocks.isEmpty(), "Blockchain should contain at least one block");
+        long blockCount = blockchain.getBlockCount();
+        assertTrue(blockCount > 0, "Blockchain should contain at least one block");
     }
     
     /**

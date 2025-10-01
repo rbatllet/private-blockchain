@@ -276,23 +276,22 @@ public class BlockchainEncryptionTest {
     @Order(8)
     void testBlockchainIntegrity() {
         // Verify that adding encrypted blocks doesn't break blockchain integrity
-        
+
         // Get current chain state
-        var allBlocks = blockchain.getAllBlocks();
-        int initialCount = allBlocks.size();
-        
+        long initialCount = blockchain.getBlockCount();
+
         // Add some more blocks
         blockchain.addBlockAndReturn("Public block", authorizedKeyPair.getPrivate(), authorizedKeyPair.getPublic());
         blockchain.addEncryptedBlock("Private block", ENCRYPTION_PASSWORD, authorizedKeyPair.getPrivate(), authorizedKeyPair.getPublic());
-        
+
         // Verify chain grew
-        var newBlocks = blockchain.getAllBlocks();
-        assertEquals(initialCount + 2, newBlocks.size());
-        
+        long newCount = blockchain.getBlockCount();
+        assertEquals(initialCount + 2, newCount);
+
         // Verify chain integrity
         boolean isValid = blockchain.isStructurallyIntact();
         assertTrue(isValid, "Chain should remain valid after adding encrypted blocks");
-        
+
         System.out.println("✅ Blockchain integrity maintained with encrypted blocks");
         System.out.println("   Chain is valid: " + isValid);
     }
