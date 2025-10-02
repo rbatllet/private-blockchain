@@ -278,6 +278,8 @@ public class FinancialTransactionSystem {
 
 ### Use Case 3: Document Verification System
 
+> ⚠️ **IMPORTANT NOTE**: This `DocumentVerificationSystem` class is a **conceptual example** for illustration purposes. It does not exist in the actual project code. For real working examples, see the demo files listed at the beginning of this document, particularly `/src/main/java/demo/BlockchainDemo.java`.
+
 Track and verify document authenticity with immutable records.
 
 ```java
@@ -323,10 +325,10 @@ public class DocumentVerificationSystem {
             ChainValidationResult validationResult = blockchain.validateChainDetailed();
             if (!validationResult.isStructurallyIntact()) {
                 System.err.println("WARNING: Blockchain structure is compromised! Invalid blocks: " + 
-                                validationResult.getInvalidBlocks().size());
+                                validationResult.getInvalidBlocks());
             } else if (!validationResult.isFullyCompliant()) {
                 System.out.println("WARNING: Some blocks have authorization issues. Revoked blocks: " + 
-                                 validationResult.getRevokedBlocks().size());
+                                 validationResult.getRevokedBlocks());
             } else {
                 System.out.println("Blockchain validation: All documents are properly verified and authorized");
             }
@@ -349,6 +351,8 @@ public class DocumentVerificationSystem {
 - **Export Capability**: Easy backup and sharing with external systems
 
 ### Use Case 2: Supply Chain Management
+
+> ⚠️ **IMPORTANT NOTE**: This `SupplyChainTracker` class is a **conceptual example** for illustration purposes. It does not exist in the actual project code. For real working examples, see the demo files listed at the beginning of this document, particularly `/src/main/java/demo/BlockchainDemo.java`.
 
 Track products through the supply chain with full traceability.
 
@@ -400,11 +404,11 @@ public class SupplyChainTracker {
             ChainValidationResult validation = blockchain.validateChainDetailed();
             if (!validation.isStructurallyIntact()) {
                 System.err.println("CRITICAL: Supply chain integrity compromised! " +
-                                validation.getInvalidBlocks().size() + " invalid blocks found.");
+                                validation.getInvalidBlocks() + " invalid blocks found.");
                 // In a real application, you might want to trigger an alert or stop further processing
             } else if (!validation.isFullyCompliant()) {
                 System.out.println("WARNING: Some supply chain events have authorization issues. " +
-                                 validation.getRevokedBlocks().size() + " blocks affected.");
+                                 validation.getRevokedBlocks() + " blocks affected.");
                 // Log the issue but continue with the report
             } else {
                 System.out.println("Supply chain validation: All events are properly authorized and verified");
@@ -436,6 +440,8 @@ public class SupplyChainTracker {
 - **Multi-Stakeholder**: Different participants can add relevant information
 
 ### Use Case 3: Medical Records Management
+
+> ⚠️ **IMPORTANT NOTE**: This `MedicalRecordsSystem` class is a **conceptual example** for illustration purposes. It does not exist in the actual project code. For real working examples, see the demo files listed at the beginning of this document, particularly `/src/main/java/demo/BlockchainDemo.java`.
 
 Secure and auditable medical record system with privacy protection.
 
@@ -507,6 +513,8 @@ public class MedicalRecordsSystem {
 
 ### Use Case 4: Financial Audit Trail
 
+> ⚠️ **IMPORTANT NOTE**: This `FinancialAuditSystem` class is a **conceptual example** for illustration purposes. It does not exist in the actual project code. For real working examples, see the demo files listed at the beginning of this document, particularly `/src/main/java/demo/BlockchainDemo.java`.
+
 Create an immutable audit trail for financial transactions.
 
 ```java
@@ -576,6 +584,13 @@ public class FinancialAuditSystem {
 
 ### Daily Backup Routine
 
+> ⚠️ **MEMORY SAFETY NOTE**: The examples below use `validateChainDetailed()` which has memory limits:
+> - ⚠️ **100,000 blocks**: Warning threshold (logs warning message)
+> - ❌ **500,000 blocks**: Hard limit (throws `IllegalStateException`)  
+> - ✅ **Solution**: For blockchains with >100K blocks, use `validateChainStreaming()` instead
+>
+> See the [Memory-Safe Validation for Large Blockchains](#-memory-safe-validation-for-large-blockchains) section for streaming validation examples.
+
 ```java
 public void performDailyBackup(Blockchain blockchain) {
     try {
@@ -585,6 +600,7 @@ public void performDailyBackup(Blockchain blockchain) {
                            ".json";
         
         // Validate chain before backup
+        // Note: For blockchains with >100K blocks, use validateChainStreaming() instead
         ChainValidationResult validationResult = blockchain.validateChainDetailed();
         if (!validationResult.isStructurallyIntact()) {
             System.err.println("WARNING: Chain structural validation failed - backup may contain corrupted data");
@@ -734,6 +750,200 @@ public void processConcurrentBatchTransactions(Blockchain blockchain, List<Strin
 ```
 
 For more detailed API information and technical specifications, see [API_GUIDE.md](API_GUIDE.md) and [TECHNICAL_DETAILS.md](TECHNICAL_DETAILS.md).
+
+### 🚀 Memory-Safe Validation for Large Blockchains
+
+> ⚠️ **IMPORTANT**: `validateChainDetailed()` has memory limits:
+> - **Warning threshold**: 100,000 blocks (logs warning message)
+> - **Hard limit**: 500,000 blocks (throws `IllegalStateException`)
+> - **Recommendation**: Use `validateChainStreaming()` for blockchains with >100K blocks
+
+For very large blockchains (millions of blocks), use the streaming validation API to avoid memory issues:
+
+```java
+import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.core.Blockchain.ValidationSummary;
+import com.rbatllet.blockchain.validation.BlockValidationResult;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+
+public class LargeBlockchainValidation {
+    
+    /**
+     * Demonstrates memory-safe validation for blockchains with millions of blocks.
+     * Uses streaming validation to process the chain in batches without loading 
+     * all validation results into memory at once.
+     */
+    public void validateLargeBlockchain(Blockchain blockchain) {
+        System.out.println("🔍 Starting streaming validation for large blockchain...");
+        System.out.println("📊 Total blocks: " + blockchain.getBlockCount());
+        
+        // Track statistics across all batches
+        final AtomicInteger batchesProcessed = new AtomicInteger(0);
+        final List<Long> criticalInvalidBlocks = new ArrayList<>();
+        
+        // Validate chain in batches of 1000 blocks
+        ValidationSummary summary = blockchain.validateChainStreaming(
+            batchResults -> {
+                // This consumer is called for each batch of validation results
+                int batchNumber = batchesProcessed.incrementAndGet();
+                int invalidInBatch = 0;
+                int revokedInBatch = 0;
+                
+                // Process each validation result in the batch
+                for (BlockValidationResult result : batchResults) {
+                    if (!result.isValid()) {
+                        invalidInBatch++;
+                        long blockNumber = result.getBlock().getBlockNumber();
+                        
+                        // Store critical invalid blocks for detailed investigation
+                        if (criticalInvalidBlocks.size() < 100) {
+                            criticalInvalidBlocks.add(blockNumber);
+                        }
+                        
+                        // Log first few invalid blocks in each batch
+                        if (invalidInBatch <= 3) {
+                            System.err.println("  ❌ Invalid block #" + blockNumber + 
+                                             " - Reason: " + result.getErrorMessage());
+                        }
+                    } else if (result.isRevoked()) {
+                        revokedInBatch++;
+                    }
+                }
+                
+                // Report batch statistics
+                if (invalidInBatch > 0 || revokedInBatch > 0 || batchNumber % 10 == 0) {
+                    System.out.println("📦 Batch " + batchNumber + ": " + 
+                                     batchResults.size() + " blocks processed | " +
+                                     invalidInBatch + " invalid, " + 
+                                     revokedInBatch + " revoked");
+                }
+            },
+            1000 // Process 1000 blocks per batch
+        );
+        
+        // Print final validation summary
+        System.out.println("\n" + "=".repeat(60));
+        System.out.println("📊 VALIDATION SUMMARY");
+        System.out.println("=".repeat(60));
+        System.out.println("Total blocks validated:  " + summary.getTotalBlocks());
+        System.out.println("Valid blocks:            " + summary.getValidBlocks());
+        System.out.println("Invalid blocks:          " + summary.getInvalidBlocks());
+        System.out.println("Revoked blocks:          " + summary.getRevokedBlocks());
+        System.out.println("Overall status:          " + (summary.isValid() ? "✅ VALID" : "❌ INVALID"));
+        System.out.println("Batches processed:       " + batchesProcessed.get());
+        
+        if (!criticalInvalidBlocks.isEmpty()) {
+            System.out.println("\n⚠️  Critical invalid blocks (first 100):");
+            criticalInvalidBlocks.forEach(blockNum -> 
+                System.out.println("  - Block #" + blockNum)
+            );
+        }
+        
+        // Recommended actions based on results
+        if (!summary.isValid()) {
+            System.out.println("\n🔧 RECOMMENDED ACTIONS:");
+            if (summary.getInvalidBlocks() > 0) {
+                System.out.println("  1. Investigate structural issues in invalid blocks");
+                System.out.println("  2. Consider using recovery mechanisms if corruption detected");
+                System.out.println("  3. Check for hash chain breaks or signature failures");
+            }
+            if (summary.getRevokedBlocks() > 0) {
+                System.out.println("  1. Review revoked authorization keys");
+                System.out.println("  2. Consider if revoked blocks should be removed");
+                System.out.println("  3. Update access control policies if needed");
+            }
+        } else {
+            System.out.println("\n✅ Blockchain is fully valid and compliant!");
+        }
+    }
+    
+    /**
+     * Alternative approach: Store validation results to database instead of memory.
+     * This is useful for auditing or compliance reporting.
+     */
+    public void validateAndAuditToDatabase(Blockchain blockchain) {
+        System.out.println("🔍 Starting validation with database audit trail...");
+        
+        // Simulate database connection (replace with actual DB logic)
+        // Connection dbConnection = DriverManager.getConnection(...);
+        
+        ValidationSummary summary = blockchain.validateChainStreaming(
+            batchResults -> {
+                for (BlockValidationResult result : batchResults) {
+                    if (!result.isValid() || result.isRevoked()) {
+                        // Store to database for audit trail
+                        // storeAuditRecord(dbConnection, result);
+                        
+                        // Example: Log to file instead
+                        System.out.println("AUDIT: Block #" + result.getBlock().getBlockNumber() + 
+                                         " | Valid: " + result.isValid() + 
+                                         " | Revoked: " + result.isRevoked() +
+                                         " | Error: " + result.getErrorMessage());
+                    }
+                }
+            },
+            1000
+        );
+        
+        System.out.println("✅ Validation complete. Audit trail saved to database.");
+        System.out.println("   Total: " + summary.getTotalBlocks() + " | " +
+                         "Invalid: " + summary.getInvalidBlocks() + " | " +
+                         "Revoked: " + summary.getRevokedBlocks());
+    }
+    
+    /**
+     * Performance comparison: validateChainDetailed vs validateChainStreaming
+     */
+    public void compareValidationMethods(Blockchain blockchain) {
+        long blockCount = blockchain.getBlockCount();
+        
+        System.out.println("📊 Validation method comparison for " + blockCount + " blocks:");
+        System.out.println();
+        
+        if (blockCount < 100_000) {
+            // Safe to use validateChainDetailed for small chains
+            long startTime = System.currentTimeMillis();
+            ChainValidationResult detailedResult = blockchain.validateChainDetailed();
+            long detailedTime = System.currentTimeMillis() - startTime;
+            
+            System.out.println("validateChainDetailed():");
+            System.out.println("  Time: " + detailedTime + "ms");
+            System.out.println("  Memory: Loads all results into memory");
+            System.out.println("  Invalid blocks: " + detailedResult.getInvalidBlocks());
+            System.out.println("  ✅ Recommended for chains < 100K blocks");
+            System.out.println();
+        } else if (blockCount < 500_000) {
+            System.out.println("validateChainDetailed():");
+            System.out.println("  ⚠️  WARNING: Chain has " + blockCount + " blocks (>100K)");
+            System.out.println("  ⚠️  High memory usage expected");
+            System.out.println("  ⚠️  Consider using validateChainStreaming() instead");
+            System.out.println();
+        } else {
+            System.out.println("validateChainDetailed():");
+            System.out.println("  ❌ BLOCKED: Chain has " + blockCount + " blocks (>500K)");
+            System.out.println("  ❌ Would throw IllegalStateException");
+            System.out.println("  ✅ MUST use validateChainStreaming() for this chain");
+            System.out.println();
+        }
+        
+        // Always safe to use streaming validation
+        long startTime = System.currentTimeMillis();
+        ValidationSummary streamingSummary = blockchain.validateChainStreaming(
+            batchResults -> { /* Process batch */ },
+            1000
+        );
+        long streamingTime = System.currentTimeMillis() - startTime;
+        
+        System.out.println("validateChainStreaming():");
+        System.out.println("  Time: " + streamingTime + "ms");
+        System.out.println("  Memory: Constant (processes in batches)");
+        System.out.println("  Invalid blocks: " + streamingSummary.getInvalidBlocks());
+        System.out.println("  ✅ Recommended for all chain sizes, especially >100K blocks");
+    }
+}
+```
 
 ### Key Management Patterns
 
@@ -921,11 +1131,11 @@ public class KeyCleanupManager {
                 ChainValidationResult result = blockchain.validateChainDetailed();
                 if (!result.isStructurallyIntact()) {
                     System.err.println("❌ CRITICAL: Chain validation failed after key deletion!");
-                    System.err.println("   - Invalid blocks: " + result.getInvalidBlocks().size());
+                    System.err.println("   - Invalid blocks: " + result.getInvalidBlocks());
                     // In a real application, you might want to trigger a rollback or alert here
                 } else if (!result.isFullyCompliant()) {
                     System.out.println("⚠️ WARNING: Chain has compliance issues after deletion");
-                    System.out.println("   - Revoked blocks: " + result.getRevokedBlocks().size());
+                    System.out.println("   - Revoked blocks: " + result.getRevokedBlocks());
                 } else {
                     System.out.println("✅ Chain validation passed after key deletion");
                 }
@@ -1497,23 +1707,23 @@ public class BlockchainCLI {
             
             // Detailed issues
             if (!structurallyIntact) {
-                System.out.println("\n❌ INVALID BLOCKS DETECTED (" + result.getInvalidBlocks().size() + "):");
-                result.getInvalidBlocks().forEach(block -> 
+                System.out.println("\n❌ INVALID BLOCKS DETECTED (" + result.getInvalidBlocks() + "):");
+                result.getInvalidBlocksList().forEach(block -> 
                     System.out.println("   - Block " + block.getIndex() + 
                                     " | Hash: " + block.getHash().substring(0, 16) + "..." +
                                     " | Issue: " + block.getValidationMessage()));
             }
             
             if (!fullyCompliant) {
-                System.out.println("\n⚠️  REVOKED KEYS DETECTED (" + result.getRevokedBlocks().size() + " blocks affected):");
-                result.getRevokedBlocks().stream()
+                System.out.println("\n⚠️  REVOKED KEYS DETECTED (" + result.getRevokedBlocks() + " blocks affected):");
+                result.getOrphanedBlocks().stream()
                     .limit(5) // Show first 5 for brevity
                     .forEach(block -> 
                         System.out.println("   - Block " + block.getIndex() + 
                                         " | Signed by: " + block.getSignedBy().substring(0, 16) + "..."));
                 
-                if (result.getRevokedBlocks().size() > 5) {
-                    System.out.println("   ... and " + (result.getRevokedBlocks().size() - 5) + " more");
+                if (result.getRevokedBlocks() > 5) {
+                    System.out.println("   ... and " + (result.getRevokedBlocks() - 5) + " more");
                 }
             }
             

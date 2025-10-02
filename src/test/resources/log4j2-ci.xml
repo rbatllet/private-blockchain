@@ -63,6 +63,11 @@
             <AppenderRef ref="FileAppender"/>
         </Logger>
 
+        <!-- SearchFrameworkEngine - reduce verbosity during tests -->
+        <Logger name="com.rbatllet.blockchain.search.SearchFrameworkEngine" level="ERROR" additivity="false">
+            <AppenderRef ref="FileAppender"/>
+        </Logger>
+
         <!-- HIBERNATE LOGGERS -->
         <!-- General Hibernate logs - only warnings to console -->
         <Logger name="org.hibernate" level="ERROR" additivity="false">

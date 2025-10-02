@@ -636,62 +636,57 @@ public class SearchFrameworkEngine {
                 regularResults.getResults()
             );
 
-            // OPTIMIZED: Process blocks in batches to avoid loading all blocks at once
-            List<Block> allBlocks = new ArrayList<>();
-            List<Block> blocksWithOffChainData = new ArrayList<>();
+            // MEMORY SAFETY: Process blocks in batches WITHOUT accumulating all in memory
+            final List<EnhancedSearchResult> onChainEnhancedResults = new ArrayList<>();
+            final List<EnhancedSearchResult> offChainEnhancedResults = new ArrayList<>();
 
             if (blockchain != null) {
-                final int BATCH_SIZE = 200;
-                long totalBlocks = blockchain.getBlockCount();
+                final int BATCH_SIZE = 1000;
+                final int MAX_TOTAL_RESULTS = maxResults * 3;  // Allow some headroom for deduplication
 
-                for (
-                    int offset = 0;
-                    offset < totalBlocks;
-                    offset += BATCH_SIZE
-                ) {
-                    List<Block> batchBlocks = blockchain.getBlocksPaginated(
-                        offset,
-                        BATCH_SIZE
-                    );
-                    allBlocks.addAll(batchBlocks);
-
-                    // Collect blocks with off-chain data during the same iteration
-                    for (Block block : batchBlocks) {
-                        if (block.getOffChainData() != null) {
-                            blocksWithOffChainData.add(block);
-                        }
+                blockchain.processChainInBatches(batchBlocks -> {
+                    // Stop if we already have enough results
+                    int totalResults = onChainEnhancedResults.size() + offChainEnhancedResults.size();
+                    if (totalResults >= MAX_TOTAL_RESULTS) {
+                        return;
                     }
-                }
+
+                    // Separate blocks with off-chain data in this batch
+                    List<Block> batchWithOffChain = batchBlocks.stream()
+                        .filter(b -> b.getOffChainData() != null)
+                        .collect(java.util.stream.Collectors.toList());
+
+                    // Search on-chain content in this batch
+                    OnChainContentSearch.OnChainSearchResult batchOnChainResults =
+                        onChainContentSearch.searchOnChainContent(
+                            batchBlocks,
+                            query,
+                            password,
+                            privateKey,
+                            maxResults
+                        );
+
+                    // Search off-chain content in this batch
+                    OffChainSearchResult batchOffChainResults =
+                        offChainFileSearch.searchOffChainContent(
+                            batchWithOffChain,
+                            query,
+                            password,
+                            privateKey,
+                            maxResults
+                        );
+
+                    // Convert and accumulate results from this batch
+                    onChainEnhancedResults.addAll(
+                        convertOnChainToEnhancedResults(batchOnChainResults, password)
+                    );
+                    offChainEnhancedResults.addAll(
+                        convertOffChainToEnhancedResults(batchOffChainResults, password)
+                    );
+                }, BATCH_SIZE);
             }
 
-            // Step 3: Perform ON-CHAIN content search
-            OnChainContentSearch.OnChainSearchResult onChainResults =
-                onChainContentSearch.searchOnChainContent(
-                    allBlocks,
-                    query,
-                    password,
-                    privateKey,
-                    maxResults
-                );
-
-            OffChainSearchResult offChainResults =
-                offChainFileSearch.searchOffChainContent(
-                    blocksWithOffChainData,
-                    query,
-                    password,
-                    privateKey,
-                    maxResults
-                );
-
-            // Step 5: Convert on-chain matches to enhanced search results
-            List<EnhancedSearchResult> onChainEnhancedResults =
-                convertOnChainToEnhancedResults(onChainResults, password);
-
-            // Step 6: Convert off-chain matches to enhanced search results
-            List<EnhancedSearchResult> offChainEnhancedResults =
-                convertOffChainToEnhancedResults(offChainResults, password);
-
-            // Step 7: Merge all results (regular + on-chain + off-chain)
+            // Step 4: Merge all results (regular + on-chain + off-chain)
             allResults.addAll(onChainEnhancedResults);
             allResults.addAll(offChainEnhancedResults);
 
@@ -1263,15 +1258,23 @@ public class SearchFrameworkEngine {
 
         // Execute indexing synchronously only once
         try {
-            // Collect all blocks using batch processing
-            List<Block> allBlocks = Collections.synchronizedList(new ArrayList<>());
+            // MEMORY SAFETY: Index blocks in batches WITHOUT accumulating all in memory
+            final int[] totalProcessed = {0};
+            final int[] totalIndexed = {0};
+            final long startTime = System.nanoTime();
+
             blockchain.processChainInBatches(batch -> {
-                allBlocks.addAll(batch);
+                // Index this batch directly without accumulating
+                IndexingResult batchResult = indexFilteredBlocks(batch, password, privateKey);
+                totalProcessed[0] += batchResult.getBlocksProcessed();
+                totalIndexed[0] += batchResult.getBlocksIndexed();
             }, 1000);
 
-            IndexingResult result = indexFilteredBlocks(allBlocks, password, privateKey);
+            double durationMs = (System.nanoTime() - startTime) / 1_000_000.0;
+            IndexingResult result = new IndexingResult(totalProcessed[0], totalIndexed[0], durationMs, null);
 
-            logger.info("✅ SearchFrameworkEngine blockchain indexing completed directly");
+            logger.info("✅ SearchFrameworkEngine blockchain indexing completed: {} processed, {} indexed in {}ms",
+                totalProcessed[0], totalIndexed[0], durationMs);
 
             return result;
 

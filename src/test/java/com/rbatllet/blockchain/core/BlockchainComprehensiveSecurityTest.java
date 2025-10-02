@@ -399,52 +399,49 @@ class BlockchainComprehensiveSecurityTest {
 
         @Test
         @Order(19)
-        @DisplayName("validateBlockSize should validate based on configuration")
+        @DisplayName("validateAndDetermineStorage should validate based on configuration")
         void testValidateBlockSizeValid() {
             // Arrange: Test small data that should always be valid
             String smallData = "Small block data";
 
             // Act & Assert
-            boolean isValid = blockchain.validateBlockSize(smallData);
+            int result = blockchain.validateAndDetermineStorage(smallData);
             // The method validates against configured thresholds, so we test it works
             // Log the result for debugging purposes
-            logger.debug("Block size validation result for small data: {}", isValid);
+            logger.debug("Block size validation result for small data: {}", result);
 
-            // For small data, we expect it to be valid in most configurations
-            // We make a meaningful assertion about the validation result
-            String validationMessage = isValid ?
-                "Small data should typically pass validation" :
-                "Small data validation failed - check size configuration";
-            assertNotNull(validationMessage, "Should generate appropriate validation message");
+            // For small data, we expect it to be valid (1=on-chain or 2=off-chain, not 0=invalid)
+            assertTrue(result != 0, "Small data should pass validation");
 
-            // Use the result in a meaningful way for the test
-            assertEquals(Boolean.TRUE.getClass(), Boolean.valueOf(isValid).getClass(),
-                "Should return proper boolean type");
+            // Verify result is one of the expected values
+            assertTrue(result == 1 || result == 2,
+                "Result should be 1 (on-chain) or 2 (off-chain)");
         }
 
         @Test
         @Order(20)
-        @DisplayName("validateBlockSize should reject null data")
+        @DisplayName("validateAndDetermineStorage should reject null data")
         void testValidateBlockSizeNull() {
-            // Act & Assert - Based on the code, it returns false for null instead of throwing
-            boolean result = blockchain.validateBlockSize(null);
-            assertFalse(result, "Should reject null data by returning false");
+            // Act & Assert - Based on the code, it returns 0 (invalid) for null
+            int result = blockchain.validateAndDetermineStorage(null);
+            assertEquals(0, result, "Should reject null data by returning 0 (invalid)");
         }
 
         @Test
         @Order(21)
-        @DisplayName("validateBlockSize should handle extremely large data")
+        @DisplayName("validateAndDetermineStorage should handle extremely large data")
         void testValidateBlockSizeExtremely() {
             // Arrange: Very large data that might exceed memory or size limits
             String extremelyLargeData = "X".repeat(10 * 1024 * 1024); // 10MB
 
             // Act & Assert
             assertDoesNotThrow(() -> {
-                boolean isValid = blockchain.validateBlockSize(extremelyLargeData);
-                // Verify that the result is a boolean (the method executed successfully)
-                assertNotNull(isValid, "Validation should return a boolean result");
-                // For extremely large data, it should typically be rejected
-                assertFalse(isValid, "Extremely large data should be rejected by size validation");
+                int result = blockchain.validateAndDetermineStorage(extremelyLargeData);
+                // Verify that the result is an integer (the method executed successfully)
+                assertTrue(result >= 0, "Validation should return a valid result code");
+                // For extremely large data, it should typically be rejected (0) or sent off-chain (2)
+                assertTrue(result == 0 || result == 2,
+                    "Extremely large data should be rejected (0) or sent off-chain (2)");
             }, "Should handle extremely large data gracefully");
         }
     }

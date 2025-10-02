@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -21,9 +22,11 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Test class for the ADDITIONAL ADVANCED FUNCTIONS in Blockchain.java
  * Tests the new advanced functionality beyond basic core operations
+ * Uses resource locks to ensure tests that read configuration don't run in parallel with tests that modify it
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @DisplayName("Blockchain Additional Advanced Functions Tests")
+@ResourceLock("blockchain-config") // Prevents parallel execution with OffChainStorageTest
 class BlockchainAdditionalAdvancedFunctionsTest {
 
     private Blockchain blockchain;
@@ -41,6 +44,9 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     void setUp() {
         // Initialize blockchain and key pairs for each test
         blockchain = new Blockchain();
+        
+        blockchain.resetLimitsToDefault(); // CRITICAL: Reset FIRST, before any operations
+        
         blockchain.clearAndReinitialize(); // Ensure clean state
         
         // Generate test key pairs using the new hierarchical key system
@@ -74,7 +80,7 @@ class BlockchainAdditionalAdvancedFunctionsTest {
         blockchain.addAuthorizedKey(alicePublicKey, "Alice");
         blockchain.addAuthorizedKey(bobPublicKey, "Bob");
         blockchain.addAuthorizedKey(charliePublicKey, "Charlie");
-        
+
         // Add some test blocks
         blockchain.addBlock("Alice's first transaction", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic());
         blockchain.addBlock("Bob joins the network", bobKeyPair.getPrivate(), bobKeyPair.getPublic());
@@ -85,7 +91,7 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     void tearDown() {
         // Clean database after each test to ensure test isolation
         if (blockchain != null) {
-            blockchain.clearAndReinitialize();
+            blockchain.completeCleanupForTests();
         }
     }
 
@@ -97,9 +103,9 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @Order(1)
     @DisplayName("Test Block Size Validation - Valid Sizes")
     void testValidBlockSizes() {
-        // Test null data (should be rejected - use empty string for system blocks)
-        assertFalse(blockchain.addBlock(null, aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()),
-                "Null data should be rejected");
+        // Clear blockchain for clean size validation testing
+        blockchain.clearAndReinitialize();
+        blockchain.addAuthorizedKey(alicePublicKey, "Alice");
 
         // Test empty string
         assertTrue(blockchain.addBlock("", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()),
@@ -123,6 +129,10 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @Order(2)
     @DisplayName("Test Block Size Validation - Invalid Sizes")
     void testInvalidBlockSizes() {
+        // Clear blockchain for clean size validation testing
+        blockchain.clearAndReinitialize();
+        blockchain.addAuthorizedKey(alicePublicKey, "Alice");
+
         // Test null data (should be rejected)
         assertFalse(blockchain.addBlock(null, aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()),
                 "Null data should be rejected");

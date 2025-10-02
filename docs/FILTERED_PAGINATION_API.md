@@ -246,31 +246,12 @@ public OffChainStorageReport analyzeOffChainUsage(Blockchain blockchain) {
    - For read operations, pagination methods handle transactions automatically
    - For write operations during processing, manage transactions appropriately
 
-## Migration from Deprecated Methods
+## Best Practices for Large Datasets
 
-These methods replace the following **deprecated and removed** methods that loaded entire datasets into memory:
+When working with large blockchain datasets, always use pagination to avoid memory issues:
 
-```java
-// ❌ REMOVED - Memory inefficient
-List<Block> getAllBlocksWithOffChainData()      // Loads ALL off-chain blocks
-List<Block> getAllEncryptedBlocks()             // Loads ALL encrypted blocks
-
-// ✅ USE INSTEAD - Memory efficient pagination
-List<Block> getBlocksWithOffChainDataPaginated(offset, limit)
-List<Block> getEncryptedBlocksPaginated(offset, limit)
-```
-
-**Migration Example:**
 ```java
 Blockchain blockchain = new Blockchain();
-
-// OLD CODE (REMOVED - causes OutOfMemoryError with large datasets):
-// List<Block> allEncrypted = blockchain.getAllEncryptedBlocks();  // Method removed!
-// for (Block block : allEncrypted) {
-//     processBlock(block);
-// }
-
-// NEW CODE (Recommended - memory efficient):
 int offset = 0;
 int batchSize = 100;
 List<Block> batch;

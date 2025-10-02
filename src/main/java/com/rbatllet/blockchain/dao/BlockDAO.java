@@ -7,6 +7,7 @@ import com.rbatllet.blockchain.service.SecureBlockEncryptionService;
 import com.rbatllet.blockchain.search.SearchLevel;
 import com.rbatllet.blockchain.logging.LoggingManager;
 import com.rbatllet.blockchain.logging.OperationLoggingInterceptor;
+import com.rbatllet.blockchain.config.MemorySafetyConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import jakarta.persistence.EntityManager;
@@ -925,7 +926,7 @@ public class BlockDAO {
      * @throws IllegalArgumentException if searchTerm is empty or level is null
      */
     public List<Block> searchBlocksByContentWithLevel(String searchTerm, SearchLevel level) {
-        return searchBlocksByContentWithLevel(searchTerm, level, 10000);
+        return searchBlocksByContentWithLevel(searchTerm, level, MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS);
     }
 
     /**
@@ -1027,7 +1028,7 @@ public class BlockDAO {
      * @throws IllegalArgumentException if searchTerm is null or empty
      */
     public List<Block> searchByCustomMetadata(String searchTerm) {
-        return searchByCustomMetadataWithLimit(searchTerm, 10000);
+        return searchByCustomMetadataWithLimit(searchTerm, MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS);
     }
 
     /**
@@ -1851,11 +1852,10 @@ public class BlockDAO {
         }
 
         // MEMORY SAFETY: Validate batch size to prevent memory issues
-        final int MAX_BATCH_SIZE = 10000;
-        if (blockNumbers.size() > MAX_BATCH_SIZE) {
+        if (blockNumbers.size() > MemorySafetyConstants.MAX_BATCH_SIZE) {
             throw new IllegalArgumentException(
                 String.format("Batch size %d exceeds maximum allowed %d. Process in smaller batches to prevent memory issues.",
-                    blockNumbers.size(), MAX_BATCH_SIZE)
+                    blockNumbers.size(), MemorySafetyConstants.MAX_BATCH_SIZE)
             );
         }
 
@@ -2040,7 +2040,7 @@ public class BlockDAO {
         }
 
         // MEMORY SAFETY: Validate batch size to prevent memory issues
-        final int MAX_BATCH_SIZE = 10000;
+        final int MAX_BATCH_SIZE = MemorySafetyConstants.MAX_BATCH_SIZE;
         if (validHashes.size() > MAX_BATCH_SIZE) {
             throw new IllegalArgumentException(
                 String.format("Batch size %d exceeds maximum allowed %d. Process in smaller batches to prevent memory issues.",
