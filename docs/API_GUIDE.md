@@ -1198,9 +1198,13 @@ The system supports three different search levels through the `SearchLevel` enum
 
 ```java
 // Memory-efficient search methods (automatically limited to 10K results)
-List<Block> paymentBlocks = blockchain.searchBlocksByContent("payment");  // Max 10K results
-List<Block> medicalBlocks = blockchain.searchByCategory("MEDICAL");      // Max 10K results
-List<Block> financeBlocks = blockchain.searchByCategory("FINANCE");      // Max 10K results
+List<Block> paymentBlocks = blockchain.searchBlocksByContent("payment");        // Max 10K results
+List<Block> medicalBlocks = blockchain.searchByCategory("MEDICAL");            // Max 10K results
+List<Block> signerBlocks = blockchain.getBlocksBySignerPublicKey(publicKey);   // Max 10K results
+
+// Custom result limits (NEW!)
+List<Block> top100Medical = blockchain.searchByCategory("MEDICAL", 100);       // Top 100 results
+List<Block> top500Signer = blockchain.getBlocksBySignerPublicKey(publicKey, 500);  // Top 500 results
 
 // New hybrid search with different levels
 List<Block> fastResults = blockchain.searchBlocks("medical", SearchLevel.FAST_ONLY);
@@ -2276,13 +2280,41 @@ public List<Block> searchBlocksComplete(String searchTerm)
 
 ```java
 public List<Block> searchByCategory(String category)
+public List<Block> searchByCategory(String category, int maxResults)
 ```
-- **Parameters:** `category`: Content category to filter by (case-insensitive)
-- **Returns:** List of blocks in the specified category (limited to 10,000 results for memory efficiency)
+- **Parameters:**
+  - `category`: Content category to filter by (case-insensitive)
+  - `maxResults`: (Optional) Maximum number of results to return
+- **Returns:** List of blocks in the specified category
 - **Description:** Filters blocks by their assigned content category
 - **Example Categories:** "MEDICAL", "FINANCE", "TECHNICAL", "LEGAL"
-- **Memory-Efficient:** Automatically limited to prevent memory issues with large datasets
-- **For Custom Limits:** Use `blockDAO.searchByCategoryWithLimit(category, maxResults)`
+- **Default Limit:** 10,000 results when maxResults is not specified
+- **Custom Limits:** Specify maxResults for precise control (e.g., top 100, top 500)
+- **Example:**
+  ```java
+  List<Block> allMedical = blockchain.searchByCategory("MEDICAL");           // Max 10K
+  List<Block> top100 = blockchain.searchByCategory("MEDICAL", 100);          // Top 100 only
+  ```
+
+```java
+public List<Block> getBlocksBySignerPublicKey(String signerPublicKey)
+public List<Block> getBlocksBySignerPublicKey(String signerPublicKey, int maxResults)
+```
+- **Parameters:**
+  - `signerPublicKey`: The public key of the signer to filter by
+  - `maxResults`: (Optional) Maximum number of results to return
+- **Returns:** List of blocks signed by the specified public key
+- **Description:** Retrieves all blocks signed by a specific authorized key
+- **Default Limit:** 10,000 results when maxResults is not specified
+- **Custom Limits:** Specify maxResults for precise control (e.g., 10, 100, 500)
+- **Use Cases:** Audit trails, user activity analysis, key usage statistics
+- **⚠️ WARNING:** Setting `maxResults = 0` returns ALL results without limit, which can cause OutOfMemoryError on large chains. Always specify a reasonable limit.
+- **Example:**
+  ```java
+  List<Block> allBlocks = blockchain.getBlocksBySignerPublicKey(publicKey);       // Max 10K (safe)
+  List<Block> recent10 = blockchain.getBlocksBySignerPublicKey(publicKey, 10);    // Last 10 blocks
+  List<Block> sample500 = blockchain.getBlocksBySignerPublicKey(publicKey, 500);  // 500 blocks
+  ```
 
 ##### Search Term Validation
 

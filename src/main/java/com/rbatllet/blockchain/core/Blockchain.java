@@ -3585,13 +3585,24 @@ public class Blockchain {
 
     /**
      * Advanced Search: Search blocks by category
+     * @param category Category to search for
+     * @return List of matching blocks (max 10,000 results)
      */
     public List<Block> searchByCategory(String category) {
+        return searchByCategory(category, 10000);
+    }
+
+    /**
+     * Advanced Search: Search blocks by category with custom limit
+     * @param category Category to search for
+     * @param maxResults Maximum number of results to return
+     * @return List of matching blocks, limited by maxResults
+     * @throws IllegalArgumentException if maxResults is not positive
+     */
+    public List<Block> searchByCategory(String category, int maxResults) {
         GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
         try {
-            // Limit results to prevent memory issues
-            final int MAX_CATEGORY_RESULTS = 10000;
-            return blockDAO.searchByCategoryWithLimit(category, MAX_CATEGORY_RESULTS);
+            return blockDAO.searchByCategoryWithLimit(category, maxResults);
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
         }
@@ -3766,6 +3777,31 @@ public class Blockchain {
             // Limit results to prevent memory issues with large time ranges
             final int MAX_TIME_RANGE_RESULTS = 10000;
             return blockDAO.getBlocksByTimeRangePaginated(startTime, endTime, 0, MAX_TIME_RANGE_RESULTS);
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
+        }
+    }
+
+    /**
+     * Get blocks signed by a specific public key
+     * @param signerPublicKey The public key of the signer
+     * @return List of blocks signed by the specified key (max 10,000 results)
+     */
+    public List<Block> getBlocksBySignerPublicKey(String signerPublicKey) {
+        return getBlocksBySignerPublicKey(signerPublicKey, 10000);
+    }
+
+    /**
+     * Get blocks signed by a specific public key with custom limit
+     * @param signerPublicKey The public key of the signer
+     * @param maxResults Maximum number of results to return (WARNING: 0 = unlimited, memory unsafe!)
+     * @return List of blocks signed by the specified key, limited by maxResults
+     * @throws IllegalArgumentException if maxResults is negative
+     */
+    public List<Block> getBlocksBySignerPublicKey(String signerPublicKey, int maxResults) {
+        GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
+        try {
+            return blockDAO.getBlocksBySignerPublicKeyWithLimit(signerPublicKey, maxResults);
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
         }
