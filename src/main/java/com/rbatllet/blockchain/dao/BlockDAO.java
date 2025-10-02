@@ -916,37 +916,62 @@ public class BlockDAO {
     // =============== SEARCH FUNCTIONALITY ===============
     
     /**
-     * Search blocks by content with different search levels
+     * 🚀 MEMORY-EFFICIENT: Search blocks by content with different search levels and default limit.
+     * Thread-safe with rigorous validation.
+     *
+     * @param searchTerm The term to search for
+     * @param level The search level (FAST_ONLY, INCLUDE_DATA, EXHAUSTIVE_OFFCHAIN)
+     * @return List of matching blocks (max 10,000 results for memory safety)
+     * @throws IllegalArgumentException if searchTerm is empty or level is null
      */
     public List<Block> searchBlocksByContentWithLevel(String searchTerm, SearchLevel level) {
+        return searchBlocksByContentWithLevel(searchTerm, level, 10000);
+    }
+
+    /**
+     * 🚀 MEMORY-EFFICIENT: Search blocks by content with different search levels and custom limit.
+     * Thread-safe with rigorous validation.
+     *
+     * @param searchTerm The term to search for
+     * @param level The search level (FAST_ONLY, INCLUDE_DATA, EXHAUSTIVE_OFFCHAIN)
+     * @param maxResults Maximum number of results to return
+     * @return List of matching blocks, limited by maxResults
+     * @throws IllegalArgumentException if searchTerm is empty, level is null, or maxResults is not positive
+     */
+    public List<Block> searchBlocksByContentWithLevel(String searchTerm, SearchLevel level, int maxResults) {
         if (searchTerm == null || searchTerm.trim().isEmpty()) {
             return new ArrayList<>();
         }
-        
+
         // VULNERABILITY FIX: Validate null SearchLevel parameter
         if (level == null) {
             throw new IllegalArgumentException("SearchLevel cannot be null");
         }
-        
+
+        if (maxResults <= 0) {
+            throw new IllegalArgumentException("maxResults must be positive");
+        }
+
         lock.readLock().lock();
         try {
             String term = "%" + searchTerm.toLowerCase() + "%";
             EntityManager em = JPAUtil.getEntityManager();
-            
+
             try {
                 String queryString = buildSearchQuery(level);
                 TypedQuery<Block> query = em.createQuery(queryString, Block.class);
-                
+
                 // VULNERABILITY FIX: All queries need the :term parameter
                 query.setParameter("term", term);
-                
+                query.setMaxResults(maxResults);
+
                 List<Block> results = query.getResultList();
-                
+
                 // Sort by priority (manual keywords first)
                 return results.stream()
                     .sorted(this::compareSearchPriority)
                     .collect(java.util.stream.Collectors.toList());
-                    
+
             } finally {
                 if (!JPAUtil.hasActiveTransaction()) {
                     em.close();
@@ -994,20 +1019,36 @@ public class BlockDAO {
     }
 
     /**
-     * Search blocks by custom metadata containing a specific substring.
-     * Thread-safe with comprehensive null/empty validation.
+     * 🚀 MEMORY-EFFICIENT: Search blocks by custom metadata with default limit.
+     * Thread-safe with rigorous validation.
      *
-     * @param searchTerm The term to search for in custom metadata JSON (case-insensitive)
-     * @return List of blocks containing the search term in their custom metadata
+     * @param searchTerm The term to search for in custom metadata
+     * @return List of matching blocks (max 10,000 results for memory safety)
      * @throws IllegalArgumentException if searchTerm is null or empty
      */
     public List<Block> searchByCustomMetadata(String searchTerm) {
+        return searchByCustomMetadataWithLimit(searchTerm, 10000);
+    }
+
+    /**
+     * 🚀 MEMORY-EFFICIENT: Search blocks by custom metadata with custom result limit.
+     * Thread-safe with rigorous validation.
+     *
+     * @param searchTerm The term to search for in custom metadata
+     * @param maxResults Maximum number of results to return
+     * @return List of matching blocks, limited by maxResults
+     * @throws IllegalArgumentException if searchTerm is null/empty or maxResults is not positive
+     */
+    public List<Block> searchByCustomMetadataWithLimit(String searchTerm, int maxResults) {
         // RIGOROUS INPUT VALIDATION
         if (searchTerm == null) {
             throw new IllegalArgumentException("Search term cannot be null");
         }
         if (searchTerm.trim().isEmpty()) {
             throw new IllegalArgumentException("Search term cannot be empty");
+        }
+        if (maxResults <= 0) {
+            throw new IllegalArgumentException("maxResults must be positive");
         }
 
         lock.readLock().lock();
@@ -1023,6 +1064,7 @@ public class BlockDAO {
                     Block.class
                 );
                 query.setParameter("searchTerm", "%" + searchTerm + "%");
+                query.setMaxResults(maxResults);
 
                 List<Block> results = query.getResultList();
 
@@ -1808,6 +1850,15 @@ public class BlockDAO {
             return new ArrayList<>();
         }
 
+        // MEMORY SAFETY: Validate batch size to prevent memory issues
+        final int MAX_BATCH_SIZE = 10000;
+        if (blockNumbers.size() > MAX_BATCH_SIZE) {
+            throw new IllegalArgumentException(
+                String.format("Batch size %d exceeds maximum allowed %d. Process in smaller batches to prevent memory issues.",
+                    blockNumbers.size(), MAX_BATCH_SIZE)
+            );
+        }
+
         lock.readLock().lock();
         try {
             return LoggingManager.logBlockchainOperation(
@@ -1977,17 +2028,26 @@ public class BlockDAO {
         if (blockHashes == null || blockHashes.isEmpty()) {
             return new ArrayList<>();
         }
-        
+
         // Remove null and empty hashes
         List<String> validHashes = blockHashes.stream()
             .filter(hash -> hash != null && !hash.trim().isEmpty())
             .distinct()
             .collect(Collectors.toList());
-            
+
         if (validHashes.isEmpty()) {
             return new ArrayList<>();
         }
-        
+
+        // MEMORY SAFETY: Validate batch size to prevent memory issues
+        final int MAX_BATCH_SIZE = 10000;
+        if (validHashes.size() > MAX_BATCH_SIZE) {
+            throw new IllegalArgumentException(
+                String.format("Batch size %d exceeds maximum allowed %d. Process in smaller batches to prevent memory issues.",
+                    validHashes.size(), MAX_BATCH_SIZE)
+            );
+        }
+
         return executeBatchRetrievalByHash(validHashes);
     }
     

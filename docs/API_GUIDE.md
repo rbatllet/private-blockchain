@@ -1704,6 +1704,14 @@ Map<String, String> criteria = Map.of("department", "medical", "status", "active
 List<Block> blocks = blockDAO.searchByCustomMetadataMultipleCriteriaPaginated(criteria, offset, limit);
 // Example: Get first 500 matching blocks
 List<Block> matches = blockDAO.searchByCustomMetadataMultipleCriteriaPaginated(criteria, 0, 500);
+
+// General custom metadata search with limit
+List<Block> blocks = blockDAO.searchByCustomMetadata(searchTerm);  // Default 10K limit
+List<Block> custom = blockDAO.searchByCustomMetadataWithLimit(searchTerm, 100);  // Custom limit
+
+// Multi-level content search with limit
+List<Block> blocks = blockDAO.searchBlocksByContentWithLevel(searchTerm, SearchLevel.FAST_ONLY);  // Default 10K
+List<Block> limited = blockDAO.searchBlocksByContentWithLevel(searchTerm, SearchLevel.EXHAUSTIVE_OFFCHAIN, 500);  // Custom limit
 ```
 
 **⚠️ Important:** All non-paginated/unlimited versions of these methods have been removed to prevent memory issues with large datasets. Always use the paginated or limited versions above.
@@ -2874,10 +2882,11 @@ public List<Block> batchRetrieveBlocks(List<Long> blockNumbers)
 #### Key Features
 
 - ✅ **N+1 Query Elimination**: Replaces hundreds of individual queries with single batch query
-- ✅ **90%+ Performance Improvement**: Reduces metadata search time from 2000+ms to <200ms  
+- ✅ **90%+ Performance Improvement**: Reduces metadata search time from 2000+ms to <200ms
 - ✅ **Thread-Safe Operations**: Full concurrent access support with read/write locks
 - ✅ **Transaction Intelligence**: Reuses existing transactions or creates minimal read transactions
 - ✅ **JPA Optimization**: Uses TypedQuery with IN clause for maximum database efficiency
+- ⚠️ **Memory Safety**: Maximum 10,000 items per batch - throws `IllegalArgumentException` if exceeded
 
 #### Usage Example
 
@@ -3022,11 +3031,13 @@ For search operations that work with block hashes instead of numbers:
 /**
  * Optimized batch retrieval by block hash values
  * Perfect for search result processing and EnhancedSearchResult conversion
+ * ⚠️ Maximum 10,000 hashes per batch - throws IllegalArgumentException if exceeded
  */
 public List<Block> batchRetrieveBlocksByHash(List<String> blockHashes) {
     // Single optimized JPA query with IN clause for hashes
     // Thread-safe with read locks
     // Filters null/empty hashes automatically
+    // Validates batch size for memory safety
 }
 ```
 
