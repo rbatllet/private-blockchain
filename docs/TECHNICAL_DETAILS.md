@@ -682,9 +682,10 @@ public class BlockchainConfig {
 
 **2. BlockDAO Impact Assessment:**
 ```java
-// New methods for impact analysis
-public List<Block> getBlocksBySignerPublicKey(String signerPublicKey)
-public long countBlocksBySignerPublicKey(String signerPublicKey)
+// Methods for impact analysis with memory-efficient limits
+public List<Block> getBlocksBySignerPublicKey(String signerPublicKey)              // Max 10K (default, safe)
+public List<Block> getBlocksBySignerPublicKey(String signerPublicKey, int limit)   // Custom limit (0=unlimited, unsafe!)
+public long countBlocksBySignerPublicKey(String signerPublicKey)                   // Exact count (safe)
 ```
 
 **3. Multi-Level Deletion API:**
