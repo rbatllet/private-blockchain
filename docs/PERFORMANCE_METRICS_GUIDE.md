@@ -30,6 +30,70 @@ The Performance Metrics System provides comprehensive monitoring and analysis of
 - System-wide heap utilization tracking
 - Memory threshold alerts (Warning: 512MB, Critical: 1GB)
 
+### 🛡️ Memory Safety Constants
+
+The system includes centralized memory safety limits to prevent out-of-memory errors and ensure reliable operation even with very large blockchains:
+
+```java
+import com.rbatllet.blockchain.config.MemorySafetyConstants;
+
+// Batch operation limits
+MemorySafetyConstants.MAX_BATCH_SIZE                    // 10,000 - Maximum items for batch operations
+MemorySafetyConstants.DEFAULT_BATCH_SIZE                // 1,000 - Default batch size for streaming
+
+// Search and export limits  
+MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS        // 10,000 - Default search result limit
+MemorySafetyConstants.SAFE_EXPORT_LIMIT                 // 100,000 - Warning threshold for exports
+MemorySafetyConstants.MAX_EXPORT_LIMIT                  // 500,000 - Hard limit for exports
+
+// Validation and rollback limits
+MemorySafetyConstants.LARGE_ROLLBACK_THRESHOLD          // 100,000 - Warning threshold for rollbacks
+MemorySafetyConstants.PROGRESS_REPORT_INTERVAL          // 5,000 - Progress logging interval
+```
+
+#### Performance Impact of Memory Limits
+
+**Validation Operations:**
+- `validateChainDetailed()`:
+  - ⚠️ **100,000 blocks**: Logs warning about high memory usage
+  - ❌ **500,000 blocks**: Throws `IllegalStateException` (use streaming instead)
+  - 💡 **Recommendation**: Use `validateChainStreaming()` for chains >100K blocks
+
+- `validateChainStreaming()`:
+  - ✅ **Unlimited size**: Processes chain in batches (default: 1,000 blocks)
+  - 🚀 **Constant memory**: No memory accumulation regardless of chain size
+  - 📊 **Progress tracking**: Reports progress every 5,000 blocks
+
+**Export Operations:**
+- Small chains (<100K blocks): Use standard `exportChain()`
+- Large chains (100K-500K blocks): Warning logged, consider streaming export
+- Very large chains (>500K blocks): Must use batch processing
+
+**Search Operations:**
+- Default limit: 10,000 results (configurable)
+- Prevents memory exhaustion from large result sets
+- Use pagination for accessing more results
+
+**Best Practices:**
+```java
+// Check chain size before validation
+long blockCount = blockchain.getBlockCount();
+
+if (blockCount > MemorySafetyConstants.SAFE_EXPORT_LIMIT) {
+    // Use streaming validation for large chains
+    ValidationSummary summary = blockchain.validateChainStreaming(
+        batchResults -> {
+            // Process each batch
+            logger.info("Processed batch with {} results", batchResults.size());
+        },
+        MemorySafetyConstants.DEFAULT_BATCH_SIZE
+    );
+} else {
+    // Safe to use detailed validation for smaller chains
+    ChainValidationResult result = blockchain.validateChainDetailed();
+}
+```
+
 ### ⚡ Throughput Analysis
 - Items processed per operation tracking
 - Peak throughput identification

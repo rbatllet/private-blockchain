@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.rbatllet.blockchain.config.EncryptionConfig;
+import com.rbatllet.blockchain.config.MemorySafetyConstants;
 import com.rbatllet.blockchain.dao.AuthorizedKeyDAO;
 import com.rbatllet.blockchain.dao.BlockDAO;
 import com.rbatllet.blockchain.dto.ChainExportData;
@@ -1997,6 +1998,19 @@ public class Blockchain {
         GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
         try {
             long totalBlocks = blockDAO.getBlockCount();
+
+            // MEMORY SAFETY: Warn if validating very large chains
+            if (totalBlocks > MemorySafetyConstants.SAFE_EXPORT_LIMIT) {
+                logger.warn("⚠️  WARNING: Validating {} blocks (>100K blocks may cause memory issues)", totalBlocks);
+                logger.warn("⚠️  Consider using validateChain() for basic validation on large chains");
+                // For very large chains (>500K), refuse detailed validation
+                if (totalBlocks > MemorySafetyConstants.MAX_EXPORT_LIMIT) {
+                    logger.error("❌ Cannot perform detailed validation on {} blocks (max: 500K)", totalBlocks);
+                    logger.error("❌ Use validateChain() instead for basic validation");
+                    throw new IllegalStateException("Chain too large for detailed validation: " + totalBlocks + " blocks");
+                }
+            }
+
             List<BlockValidationResult> blockResults = new ArrayList<>();
 
             if (totalBlocks == 0) {
@@ -2131,6 +2145,128 @@ public class Blockchain {
             return new ChainValidationResult(new ArrayList<>());
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
+        }
+    }
+
+    /**
+     * MEMORY-SAFE: Stream-based validation for very large blockchains.
+     * Instead of accumulating all validation results, this method processes the chain in batches
+     * and calls a consumer for each batch result. Suitable for blockchains with millions of blocks.
+     *
+     * @param batchResultConsumer Consumer that receives validation results for each batch
+     * @param batchSize Number of blocks to validate in each batch (default: 1000)
+     * @return Summary statistics (counts only, no individual block results)
+     */
+    public ValidationSummary validateChainStreaming(
+        java.util.function.Consumer<List<BlockValidationResult>> batchResultConsumer,
+        int batchSize
+    ) {
+        if (batchSize <= 0) {
+            throw new IllegalArgumentException("Batch size must be positive");
+        }
+
+        GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
+        try {
+            long totalBlocks = blockDAO.getBlockCount();
+            final int[] validCount = {0};
+            final int[] invalidCount = {0};
+            final int[] revokedCount = {0};
+
+            if (totalBlocks == 0) {
+                logger.error("❌ No blocks found in chain");
+                return new ValidationSummary(0, 0, 0, 0);
+            }
+
+            // Validate genesis block
+            Block genesisBlock = blockDAO.getBlockByNumber(0L);
+            if (genesisBlock == null) {
+                logger.error("❌ Genesis block not found");
+                return new ValidationSummary(0, 0, 1, 0);
+            }
+
+            List<BlockValidationResult> batchResults = new ArrayList<>();
+            BlockValidationResult.Builder genesisBuilder = new BlockValidationResult.Builder(genesisBlock);
+
+            if (!genesisBlock.getBlockNumber().equals(0L) || !genesisBlock.getPreviousHash().equals(GENESIS_PREVIOUS_HASH)) {
+                batchResults.add(genesisBuilder.structurallyValid(false).cryptographicallyValid(false)
+                    .authorizationValid(false).errorMessage("Invalid genesis block").status(BlockStatus.INVALID).build());
+                invalidCount[0]++;
+            } else {
+                batchResults.add(genesisBuilder.structurallyValid(true).cryptographicallyValid(true)
+                    .authorizationValid(true).status(BlockStatus.VALID).build());
+                validCount[0]++;
+            }
+
+            // Send genesis result
+            batchResultConsumer.accept(new ArrayList<>(batchResults));
+            batchResults.clear();
+
+            // Validate remaining blocks in batches
+            Block previousBlock = genesisBlock;
+
+            for (int offset = 1; offset < totalBlocks; offset += batchSize) {
+                int limit = (int) Math.min(batchSize, totalBlocks - offset);
+                List<Block> batch = blockDAO.getBlocksPaginated(offset, limit);
+
+                for (Block currentBlock : batch) {
+                    BlockValidationResult result = validateBlockDetailed(currentBlock, previousBlock);
+                    batchResults.add(result);
+
+                    // Count statuses
+                    if (result.getStatus() == BlockStatus.VALID) validCount[0]++;
+                    else if (result.getStatus() == BlockStatus.INVALID) invalidCount[0]++;
+                    else if (result.getStatus() == BlockStatus.REVOKED) revokedCount[0]++;
+
+                    previousBlock = currentBlock;
+                }
+
+                // Send batch results to consumer
+                batchResultConsumer.accept(new ArrayList<>(batchResults));
+                batchResults.clear();
+
+                // Log progress
+                if (totalBlocks > 10000 && offset % 10000 == 0) {
+                    logger.info("📊 Validated {}/{} blocks...", offset + batch.size(), totalBlocks);
+                }
+            }
+
+            logger.info("✅ Streaming validation completed: {} total blocks", totalBlocks);
+            return new ValidationSummary(totalBlocks, validCount[0], invalidCount[0], revokedCount[0]);
+
+        } catch (Exception e) {
+            logger.error("❌ Error during streaming chain validation", e);
+            return new ValidationSummary(0, 0, 0, 0);
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
+        }
+    }
+
+    /**
+     * Summary of validation results (lightweight, no individual block details)
+     */
+    public static class ValidationSummary {
+        private final long totalBlocks;
+        private final int validBlocks;
+        private final int invalidBlocks;
+        private final int revokedBlocks;
+
+        public ValidationSummary(long totalBlocks, int validBlocks, int invalidBlocks, int revokedBlocks) {
+            this.totalBlocks = totalBlocks;
+            this.validBlocks = validBlocks;
+            this.invalidBlocks = invalidBlocks;
+            this.revokedBlocks = revokedBlocks;
+        }
+
+        public long getTotalBlocks() { return totalBlocks; }
+        public int getValidBlocks() { return validBlocks; }
+        public int getInvalidBlocks() { return invalidBlocks; }
+        public int getRevokedBlocks() { return revokedBlocks; }
+        public boolean isValid() { return invalidBlocks == 0; }
+
+        @Override
+        public String toString() {
+            return String.format("ValidationSummary{total=%d, valid=%d, invalid=%d, revoked=%d}",
+                totalBlocks, validBlocks, invalidBlocks, revokedBlocks);
         }
     }
 
@@ -2367,46 +2503,6 @@ public class Blockchain {
      * CORE FUNCTION 1: Block Size Validation
      */
     /**
-     * Valida que el tamaño del bloque no exceda el límite máximo
-     *
-     * @param data Los datos del bloque a validar
-     * @return true si el tamaño es válido, false si excede el límite
-     */
-    public boolean validateBlockSize(String data) {
-        if (data == null) {
-            logger.error("❌ Block data cannot be null. Use empty string for system blocks");
-            return false;
-        }
-
-        // Allow empty strings for system blocks
-        if (data.isEmpty()) {
-            return true;
-        }
-
-        // SECURITY: Always check bytes first - this is the primary security control
-        byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
-        if (dataBytes.length > currentMaxBlockSizeBytes) {
-            logger.error("❌ Block data size ({} bytes) exceeds maximum ({} bytes)",
-                dataBytes.length, currentMaxBlockSizeBytes);
-            return false;
-        }
-
-        // Secondary check: Character count limit to prevent massive character counts
-        int charCount = data.length();
-        if (charCount > currentMaxBlockChars) {
-            logger.error("❌ Block character count ({}) exceeds maximum ({})",
-                charCount, currentMaxBlockChars);
-            return false;
-        }
-
-        if (logger.isTraceEnabled()) {
-            logger.trace("✅ Block size validation passed: {} characters, {} bytes",
-                charCount, dataBytes.length);
-        }
-        return true;
-    }
-
-    /**
      * Enhanced block size validation that supports off-chain storage
      * Returns: 0 = invalid, 1 = store on-chain, 2 = store off-chain
      */
@@ -2426,9 +2522,31 @@ public class Blockchain {
             return 1; // Store on-chain
         }
 
+        // Check character limit first
+        int charCount = data.length();
+        if (charCount > currentMaxBlockChars) {
+            // Exceeds character limit - must go off-chain
+            logger.info(
+                "📦 Data exceeds character limit ({} > {}). Will store off-chain.",
+                charCount,
+                currentMaxBlockChars
+            );
+
+            // Validate it's not too large even for off-chain
+            byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
+            if (dataBytes.length > 100 * 1024 * 1024) {
+                logger.error(
+                    "❌ Data size ({} bytes) exceeds maximum supported size (100MB)",
+                    dataBytes.length
+                );
+                return 0; // Invalid
+            }
+            return 2; // Store off-chain
+        }
+
+        // Within character limit, check byte size
         byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
 
-        // FIXED: Simplified and correct logic based on data size only
         // If data is small enough for on-chain storage (under off-chain threshold)
         if (dataBytes.length < currentOffChainThresholdBytes) {
             return 1; // Store on-chain
@@ -2761,8 +2879,22 @@ public class Blockchain {
     /**
      * CORE FUNCTION 2: Chain Export - Backup blockchain to file
      * SECURITY FIX: Added path validation and enhanced security checks
+     * MEMORY SAFETY: Validates blockchain size before export (max 500K blocks)
      */
     public boolean exportChain(String filePath) {
+        return exportChain(filePath, true); // Default: include off-chain files
+    }
+
+    /**
+     * CORE FUNCTION 2: Chain Export - Backup blockchain to file with optional off-chain export
+     * SECURITY FIX: Added path validation and enhanced security checks
+     * MEMORY SAFETY: Validates blockchain size before export (max 500K blocks)
+     * 
+     * @param filePath Path to export the blockchain JSON
+     * @param includeOffChainFiles Whether to export off-chain files (false for temporary backups)
+     * @return true if export was successful, false otherwise
+     */
+    public boolean exportChain(String filePath, boolean includeOffChainFiles) {
         // SECURITY FIX: Validate file path for security
         if (!isValidFilePath(filePath, "export")) {
             return false;
@@ -2773,6 +2905,21 @@ public class Blockchain {
             // Use batch processing instead of loading all blocks at once
             final int BATCH_SIZE = 1000;
             long totalBlocks = blockDAO.getBlockCount();
+
+            // MEMORY SAFETY: Warn if exporting very large chains (>100K blocks)
+            final int SAFE_EXPORT_LIMIT = MemorySafetyConstants.SAFE_EXPORT_LIMIT;
+            if (totalBlocks > SAFE_EXPORT_LIMIT) {
+                logger.warn("⚠️  WARNING: Attempting to export {} blocks (>{} blocks may cause memory issues)",
+                    totalBlocks, SAFE_EXPORT_LIMIT);
+                logger.warn("⚠️  Consider exporting in smaller ranges or increase JVM heap size (-Xmx)");
+                // For very large exports (>500K), refuse to prevent OutOfMemoryError
+                if (totalBlocks > 500000) {
+                    logger.error("❌ Cannot export {} blocks at once. Maximum limit: 500K blocks", totalBlocks);
+                    logger.error("❌ Please export in smaller ranges to prevent memory exhaustion");
+                    return false;
+                }
+            }
+
             List<Block> allBlocks = new ArrayList<>((int) totalBlocks);
 
             // Retrieve blocks in batches
@@ -2792,19 +2939,21 @@ public class Blockchain {
             exportData.setVersion("1.1"); // Updated version for off-chain support
             exportData.setTotalBlocks(allBlocks.size());
 
-            // CRITICAL: Handle off-chain files during export
+            // CRITICAL: Handle off-chain files during export (only if requested)
             int offChainFilesExported = 0;
-            File exportDir = new File(filePath).getParentFile();
-            File offChainBackupDir = new File(exportDir, "off-chain-backup");
+            
+            if (includeOffChainFiles) {
+                File exportDir = new File(filePath).getParentFile();
+                File offChainBackupDir = new File(exportDir, "off-chain-backup");
 
-            // Check if any batch has off-chain data (process in batches)
-            boolean hasOffChainData = false;
-            for (int offset = 0; offset < totalBlocks && !hasOffChainData; offset += BATCH_SIZE) {
-                List<Block> batch = blockDAO.getBlocksPaginated(offset, BATCH_SIZE);
-                hasOffChainData = batch.stream().anyMatch(Block::hasOffChainData);
-            }
+                // Check if any batch has off-chain data (process in batches)
+                boolean hasOffChainData = false;
+                for (int offset = 0; offset < totalBlocks && !hasOffChainData; offset += BATCH_SIZE) {
+                    List<Block> batch = blockDAO.getBlocksPaginated(offset, BATCH_SIZE);
+                    hasOffChainData = batch.stream().anyMatch(Block::hasOffChainData);
+                }
 
-            if (hasOffChainData) {
+                if (hasOffChainData) {
                 if (!offChainBackupDir.exists()) {
                     try {
                         if (!offChainBackupDir.mkdirs()) {
@@ -2892,6 +3041,10 @@ public class Blockchain {
                         "  ⚠ Skipping off-chain file backup (backup directory not available)"
                     );
                 }
+                } // End hasOffChainData
+            } else {
+                // includeOffChainFiles = false (temporary backups)
+                logger.debug("🔹 Skipping off-chain files export (temporary backup mode)");
             }
 
             // Convert to JSON
@@ -2913,11 +3066,14 @@ public class Blockchain {
                 allKeys.size()
             );
             if (offChainFilesExported > 0) {
+                File exportDir = new File(filePath).getParentFile();
                 logger.info(
-                    "📦 Exported {} off-chain files to: {}",
+                    "📦 Exported {} off-chain files to: {}/off-chain-backup/",
                     offChainFilesExported,
-                    offChainBackupDir.getAbsolutePath()
+                    exportDir != null ? exportDir.getAbsolutePath() : "."
                 );
+            } else if (includeOffChainFiles) {
+                logger.debug("📋 No off-chain files to export");
             }
             return true;
         } catch (Exception e) {
@@ -3290,83 +3446,89 @@ public class Blockchain {
                         return false;
                     }
 
-                    // Get blocks to remove (excluding genesis block)
-                    // Use batch processing to retrieve only the last N blocks efficiently
-                    final int BATCH_SIZE = 1000;
-                    List<Block> blocksToRemove = new ArrayList<>();
-
+                    // MEMORY SAFETY: Process rollback in batches without loading all blocks
                     // Calculate the starting offset for the last N blocks
-                    // currentBlockCount includes genesis (block 0), so valid rollback range is blocks 1 to currentBlockCount-1
                     long startBlockNumber = currentBlockCount - numberOfBlocks;
 
-                    // Retrieve blocks in batches starting from the offset
-                    for (long offset = startBlockNumber; offset < currentBlockCount; offset += BATCH_SIZE) {
-                        int limit = (int) Math.min(BATCH_SIZE, currentBlockCount - offset);
-                        List<Block> batch = blockDAO.getBlocksPaginated((int) offset, limit);
-                        blocksToRemove.addAll(batch);
+                    // Validate we're not trying to rollback too many blocks at once
+                    if (numberOfBlocks > MemorySafetyConstants.LARGE_ROLLBACK_THRESHOLD) {
+                        logger.warn("⚠️  WARNING: Rolling back {} blocks (large rollback)", numberOfBlocks);
+                        logger.warn("⚠️  This may take significant time. Consider smaller incremental rollbacks.");
                     }
 
-                    if (blocksToRemove.size() != numberOfBlocks) {
+                    logger.info("🔄 Rolling back {} blocks (from #{} to #{}):",
+                        numberOfBlocks, startBlockNumber, currentBlockCount - 1);
+
+                    final int BATCH_SIZE = 1000;
+                    final int[] totalBlocksRemoved = {0};
+                    final int[] offChainFilesDeleted = {0};
+
+                    // Process rollback in batches from highest to lowest block number
+                    // This ensures proper chain consistency during rollback
+                    for (long batchEnd = currentBlockCount - 1; batchEnd >= startBlockNumber; batchEnd -= BATCH_SIZE) {
+                        long batchStart = Math.max(startBlockNumber, batchEnd - BATCH_SIZE + 1);
+                        int batchSize = (int) (batchEnd - batchStart + 1);
+
+                        logger.debug("📦 Processing rollback batch: blocks #{} to #{}", batchStart, batchEnd);
+
+                        // Retrieve batch
+                        List<Block> batch = blockDAO.getBlocksPaginated((int) batchStart, batchSize);
+
+                        // Process blocks in reverse order (highest to lowest)
+                        for (int i = batch.size() - 1; i >= 0; i--) {
+                            Block block = batch.get(i);
+
+                            String data = block.getData();
+                            String displayData = data != null
+                                ? data.substring(0, Math.min(50, data.length()))
+                                : "null";
+                            logger.debug("  - Removing Block #{}: {}", block.getBlockNumber(), displayData);
+
+                            // CRITICAL: Clean up off-chain data before deleting block
+                            if (block.hasOffChainData()) {
+                                try {
+                                    boolean fileDeleted = offChainStorageService.deleteData(
+                                        block.getOffChainData()
+                                    );
+                                    if (fileDeleted) {
+                                        offChainFilesDeleted[0]++;
+                                        if (logger.isTraceEnabled()) {
+                                            logger.trace("    ✓ Deleted off-chain file: {}",
+                                                block.getOffChainData().getFilePath());
+                                        }
+                                    } else {
+                                        logger.warn("    ⚠ Failed to delete off-chain file: {}",
+                                            block.getOffChainData().getFilePath());
+                                    }
+                                } catch (Exception e) {
+                                    logger.error("    ❌ Error deleting off-chain data for block {}",
+                                        block.getBlockNumber(), e);
+                                }
+                            }
+
+                            // Delete the block from database (cascade will delete OffChainData entity)
+                            blockDAO.deleteBlockByNumber(block.getBlockNumber());
+                            totalBlocksRemoved[0]++;
+                        }
+
+                        if (totalBlocksRemoved[0] % 5000 == 0 && totalBlocksRemoved[0] > 0) {
+                            logger.info("📊 Rollback progress: {}/{} blocks removed",
+                                totalBlocksRemoved[0], numberOfBlocks);
+                        }
+                    }
+
+                    if (totalBlocksRemoved[0] != numberOfBlocks) {
                         logger.error(
-                            "❌ Could only find {} blocks to rollback (genesis block cannot be removed)",
-                            blocksToRemove.size()
+                            "❌ Rollback incomplete: removed {} blocks but expected {} (genesis block cannot be removed)",
+                            totalBlocksRemoved[0], numberOfBlocks
                         );
                         return false;
                     }
 
-                    // Actually remove blocks and their off-chain data
-                    logger.info("🔄 Rolling back {} blocks:", numberOfBlocks);
-                    int offChainFilesDeleted = 0;
-
-                    for (Block block : blocksToRemove) {
-                        String data = block.getData();
-                        String displayData = data != null
-                            ? data.substring(0, Math.min(50, data.length()))
-                            : "null";
-                        logger.info(
-                            "  - Removing Block #{}: {}",
-                            block.getBlockNumber(),
-                            displayData
-                        );
-
-                        // CRITICAL: Clean up off-chain data before deleting block
-                        if (block.hasOffChainData()) {
-                            try {
-                                boolean fileDeleted =
-                                    offChainStorageService.deleteData(
-                                        block.getOffChainData()
-                                    );
-                                if (fileDeleted) {
-                                    offChainFilesDeleted++;
-                                    if (logger.isTraceEnabled()) {
-                                        logger.trace(
-                                            "    ✓ Deleted off-chain file: {}",
-                                            block.getOffChainData().getFilePath()
-                                        );
-                                    }
-                                } else {
-                                    logger.warn(
-                                        "    ⚠ Failed to delete off-chain file: {}",
-                                        block.getOffChainData().getFilePath()
-                                    );
-                                }
-                            } catch (Exception e) {
-                                logger.error(
-                                    "    ❌ Error deleting off-chain data for block {}",
-                                    block.getBlockNumber(),
-                                    e
-                                );
-                            }
-                        }
-
-                        // Delete the block from database (cascade will delete OffChainData entity)
-                        blockDAO.deleteBlockByNumber(block.getBlockNumber());
-                    }
-
-                    if (offChainFilesDeleted > 0) {
+                    if (offChainFilesDeleted[0] > 0) {
                         logger.info(
                             "🧹 Cleaned up {} off-chain files during rollback",
-                            offChainFilesDeleted
+                            offChainFilesDeleted[0]
                         );
                     }
 
@@ -3536,7 +3698,7 @@ public class Blockchain {
             }
 
             // Use the DAO method for better performance (limit results to prevent memory issues)
-            final int MAX_SEARCH_RESULTS = 10000; // Reasonable limit for content search
+            final int MAX_SEARCH_RESULTS = MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS; // Reasonable limit for content search
             List<Block> matchingBlocks = blockDAO.searchBlocksByContentWithLimit(
                 searchTerm,
                 MAX_SEARCH_RESULTS
@@ -3589,7 +3751,7 @@ public class Blockchain {
      * @return List of matching blocks (max 10,000 results)
      */
     public List<Block> searchByCategory(String category) {
-        return searchByCategory(category, 10000);
+        return searchByCategory(category, MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS);
     }
 
     /**
@@ -3654,7 +3816,7 @@ public class Blockchain {
             LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
 
             // Limit results to prevent memory issues with large time ranges
-            final int MAX_TIME_RANGE_RESULTS = 10000;
+            final int MAX_TIME_RANGE_RESULTS = MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS;
             return blockDAO.getBlocksByTimeRangePaginated(startDateTime, endDateTime, 0, MAX_TIME_RANGE_RESULTS);
         } catch (Exception e) {
             logger.error("❌ Error searching blocks by date range", e);
@@ -3775,7 +3937,7 @@ public class Blockchain {
             }
 
             // Limit results to prevent memory issues with large time ranges
-            final int MAX_TIME_RANGE_RESULTS = 10000;
+            final int MAX_TIME_RANGE_RESULTS = MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS;
             return blockDAO.getBlocksByTimeRangePaginated(startTime, endTime, 0, MAX_TIME_RANGE_RESULTS);
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
@@ -3788,7 +3950,7 @@ public class Blockchain {
      * @return List of blocks signed by the specified key (max 10,000 results)
      */
     public List<Block> getBlocksBySignerPublicKey(String signerPublicKey) {
-        return getBlocksBySignerPublicKey(signerPublicKey, 10000);
+        return getBlocksBySignerPublicKey(signerPublicKey, MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS);
     }
 
     /**
@@ -3888,6 +4050,14 @@ public class Blockchain {
     public void clearAndReinitialize() {
         GLOBAL_BLOCKCHAIN_LOCK.writeLock().lock();
         try {
+            // SECURITY FIX: Ensure emergency-backups directory exists
+            File emergencyBackupDir = new File("emergency-backups");
+            if (!emergencyBackupDir.exists()) {
+                if (!emergencyBackupDir.mkdirs()) {
+                    logger.warn("⚠️ Could not create emergency-backups directory");
+                }
+            }
+
             // SECURITY FIX: Create temporary backup first for rollback capability
             String tempBackupId = null;
             try {
@@ -3950,6 +4120,18 @@ public class Blockchain {
                         cleanupOrphanedOffChainFiles();
                     } catch (Exception orphanEx) {
                         logger.warn("⚠️ Orphaned file cleanup had issues (non-critical): {}", orphanEx.getMessage());
+                    }
+
+                    // CLEANUP FIX: Remove temporary backup after successful operation
+                    if (backupId != null) {
+                        try {
+                            File backupFile = new File("emergency-backups/" + backupId + ".json");
+                            if (backupFile.exists() && backupFile.delete()) {
+                                logger.info("🧹 Cleaned up temporary backup: {}", backupId);
+                            }
+                        } catch (Exception backupEx) {
+                            logger.warn("⚠️ Could not clean up temporary backup (non-critical): {}", backupEx.getMessage());
+                        }
                     }
 
                     return null;
@@ -4117,6 +4299,95 @@ public class Blockchain {
     }
 
     /**
+     * TEST UTILITY: Clean up all orphaned emergency backup files
+     * Removes all files in the emergency-backups directory
+     * Also cleans up any off-chain-backup subdirectory (from old backups)
+     * Useful for test cleanup to prevent backup accumulation
+     * 
+     * @return number of backup files deleted
+     */
+    public int cleanupEmergencyBackups() {
+        int deletedCount = 0;
+        File backupDir = new File("emergency-backups");
+        
+        if (!backupDir.exists() || !backupDir.isDirectory()) {
+            return 0;
+        }
+        
+        // Delete JSON backup files
+        File[] backupFiles = backupDir.listFiles((dir, name) -> name.endsWith(".json"));
+        if (backupFiles != null) {
+            for (File backupFile : backupFiles) {
+                try {
+                    if (backupFile.delete()) {
+                        deletedCount++;
+                        logger.debug("🧹 Deleted emergency backup: {}", backupFile.getName());
+                    }
+                } catch (Exception e) {
+                    logger.warn("⚠️ Could not delete backup file {}: {}", 
+                        backupFile.getName(), e.getMessage());
+                }
+            }
+        }
+        
+        // Clean up off-chain-backup subdirectory (from old backups created before this fix)
+        File offChainBackupDir = new File(backupDir, "off-chain-backup");
+        if (offChainBackupDir.exists() && offChainBackupDir.isDirectory()) {
+            try {
+                int offChainDeleted = deleteDirectoryRecursively(offChainBackupDir);
+                if (offChainDeleted > 0) {
+                    logger.info("🧹 Cleaned up {} orphaned off-chain backup files", offChainDeleted);
+                    deletedCount += offChainDeleted;
+                }
+            } catch (Exception e) {
+                logger.warn("⚠️ Could not clean off-chain-backup directory: {}", e.getMessage());
+            }
+        }
+        
+        if (deletedCount > 0) {
+            logger.info("🧹 Cleaned up {} emergency backup files", deletedCount);
+        }
+        
+        return deletedCount;
+    }
+
+    /**
+     * Helper method to recursively delete a directory and its contents
+     * 
+     * @param directory The directory to delete
+     * @return number of files deleted
+     */
+    private int deleteDirectoryRecursively(File directory) {
+        int deletedCount = 0;
+        
+        if (!directory.exists()) {
+            return 0;
+        }
+        
+        if (directory.isDirectory()) {
+            File[] files = directory.listFiles();
+            if (files != null) {
+                for (File file : files) {
+                    if (file.isDirectory()) {
+                        deletedCount += deleteDirectoryRecursively(file);
+                    } else {
+                        if (file.delete()) {
+                            deletedCount++;
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Delete the directory itself
+        if (directory.delete()) {
+            deletedCount++;
+        }
+        
+        return deletedCount;
+    }
+
+    /**
      * SECURITY: Clean up specific off-chain files by their IDs
      * Used when we have a specific list of files to clean
      *
@@ -4174,15 +4445,23 @@ public class Blockchain {
      * @param operation Description of the operation being performed
      * @return backup ID for recovery purposes
      */
+    /**
+     * SECURITY: Create an emergency backup for dangerous operations
+     * Used during key deletion and other risky operations
+     * Note: Does NOT export off-chain files (they remain in off-chain-data/)
+     *
+     * @param operation Description of the operation being performed
+     * @return backup ID for recovery purposes, or null if backup failed
+     */
     private String createEmergencyBackup(String operation) {
         try {
             String backupId = "emergency-" + operation + "-" + System.currentTimeMillis();
             String backupPath = "emergency-backups/" + backupId + ".json";
 
-            // exportChain will create the directory if needed via isValidFilePath
-            boolean success = exportChain(backupPath);
+            // Export only blockchain data (no off-chain files for temporary backups)
+            boolean success = exportChain(backupPath, false);
             if (success) {
-                logger.info("🛡️ Emergency backup created: {}", backupPath);
+                logger.info("🛡️ Emergency backup created: {} (database only)", backupPath);
                 return backupId;
             } else {
                 logger.error("❌ Failed to create emergency backup");
@@ -4374,6 +4653,18 @@ public class Blockchain {
                         logger.error(
                             "💡 This might indicate the key was already deleted or a database error occurred"
                         );
+                    }
+
+                    // 7. Clean up temporary backup after successful deletion
+                    if (deleted && backupId != null) {
+                        try {
+                            File backupFile = new File("emergency-backups/" + backupId + ".json");
+                            if (backupFile.exists() && backupFile.delete()) {
+                                logger.info("🧹 Cleaned up temporary backup: {}", backupId);
+                            }
+                        } catch (Exception backupEx) {
+                            logger.warn("⚠️ Could not clean up temporary backup: {}", backupEx.getMessage());
+                        }
                     }
 
                     return deleted;
@@ -5033,6 +5324,7 @@ public class Blockchain {
     /**
      * Enhanced export for encrypted chains with encryption key management
      * Exports blockchain data with encryption keys for proper restoration
+     * MEMORY SAFETY: Validates blockchain size before export (max 500K blocks)
      */
     public boolean exportEncryptedChain(
         String filePath,
@@ -5055,6 +5347,21 @@ public class Blockchain {
             // Use batch processing instead of loading all blocks at once
             final int BATCH_SIZE = 1000;
             long totalBlocks = blockDAO.getBlockCount();
+
+            // MEMORY SAFETY: Warn if exporting very large chains (>100K blocks)
+            final int SAFE_EXPORT_LIMIT = MemorySafetyConstants.SAFE_EXPORT_LIMIT;
+            if (totalBlocks > SAFE_EXPORT_LIMIT) {
+                logger.warn("⚠️  WARNING: Attempting to export {} blocks (>{} blocks may cause memory issues)",
+                    totalBlocks, SAFE_EXPORT_LIMIT);
+                logger.warn("⚠️  Consider exporting in smaller ranges or increase JVM heap size (-Xmx)");
+                // For very large exports (>500K), refuse to prevent OutOfMemoryError
+                if (totalBlocks > 500000) {
+                    logger.error("❌ Cannot export {} blocks at once. Maximum limit: 500K blocks", totalBlocks);
+                    logger.error("❌ Please export in smaller ranges to prevent memory exhaustion");
+                    return false;
+                }
+            }
+
             List<Block> allBlocks = new ArrayList<>((int) totalBlocks);
 
             // Retrieve blocks in batches
@@ -5635,8 +5942,26 @@ public class Blockchain {
      * Complete database cleanup for testing - removes ALL data including genesis block
      * WARNING: This method is intended for testing purposes only - removes ALL data
      */
+    /**
+     * Complete cleanup for test environments
+     * Cleans database tables but NOT off-chain files or emergency backups
+     * For full cleanup including files, use clearAndReinitialize()
+     */
     public void completeCleanupForTests() {
         blockDAO.completeCleanupTestData();
+        authorizedKeyDAO.cleanupTestData();
+        // Note: Does NOT clean off-chain files or emergency backups
+        // Use clearAndReinitialize() for complete cleanup including files
+    }
+
+    /**
+     * Complete cleanup for test environments including emergency backups
+     * This version also removes orphaned emergency backup files
+     * Useful for test isolation to prevent backup accumulation
+     */
+    public void completeCleanupForTestsWithBackups() {
+        completeCleanupForTests();
+        cleanupEmergencyBackups();
     }
 
     /**

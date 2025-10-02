@@ -8,6 +8,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -20,7 +21,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Test suite for off-chain storage functionality
+ * Uses resource locks to ensure tests that modify configuration don't run in parallel
  */
+@ResourceLock("blockchain-config") // Prevents parallel execution with other tests using same lock
 public class OffChainStorageTest {
     
     private Blockchain blockchain;
@@ -54,6 +57,9 @@ public class OffChainStorageTest {
     
     @AfterEach
     void cleanUp() {
+        // CRITICAL: Reset configuration to defaults to avoid contaminating other tests
+        blockchain.resetLimitsToDefault();
+        
         // Clean up off-chain data directory
         try {
             File offChainDir = new File("off-chain-data");

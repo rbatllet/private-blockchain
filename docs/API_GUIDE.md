@@ -35,11 +35,17 @@ boolean isStructurallyIntact()
 // Check if the blockchain is fully compliant (all blocks are authorized and not revoked)
 boolean isFullyCompliant()
 
-// Get the list of invalid blocks (empty if structurally intact)
-List<Block> getInvalidBlocks()
+// Get the COUNT of invalid blocks (returns int, not list)
+int getInvalidBlocks()
 
-// Get the list of revoked blocks (empty if fully compliant)
-List<Block> getRevokedBlocks()
+// Get the COUNT of revoked blocks (returns int, not list)
+int getRevokedBlocks()
+
+// Get the LIST of invalid blocks (use this to iterate over blocks)
+List<Block> getInvalidBlocksList()
+
+// Get the LIST of revoked/orphaned blocks (use this to iterate over blocks)
+List<Block> getOrphanedBlocks()
 
 // Get a summary of the validation results
 String toString()
@@ -54,10 +60,10 @@ ChainValidationResult result = blockchain.validateChainDetailed();
 // Check structural integrity first (hashes and signatures)
 if (!result.isStructurallyIntact()) {
     System.err.println("❌ CRITICAL: Blockchain structure is compromised!");
-    System.err.println("Invalid blocks: " + result.getInvalidBlocks().size());
+    System.err.println("Invalid blocks: " + result.getInvalidBlocks());
     
     // Handle invalid blocks (corrupted or tampered)
-    for (Block invalidBlock : result.getInvalidBlocks()) {
+    for (Block invalidBlock : result.getInvalidBlocksList()) {
         System.err.println(String.format(
             " - Block #%d (Hash: %s...) has invalid structure",
             invalidBlock.getBlockNumber(),
@@ -71,10 +77,10 @@ if (!result.isStructurallyIntact()) {
 } else if (!result.isFullyCompliant()) {
     // Chain is structurally sound but has authorization issues
     System.out.println("⚠️  WARNING: Some blocks have authorization issues");
-    System.out.println("Revoked blocks: " + result.getRevokedBlocks().size());
+    System.out.println("Revoked blocks: " + result.getRevokedBlocks());
     
     // Handle revoked blocks (signed by revoked keys)
-    for (Block revokedBlock : result.getRevokedBlocks()) {
+    for (Block revokedBlock : result.getOrphanedBlocks()) {
         String signer = revokedBlock.getSignerPublicKey() != null ? 
             revokedBlock.getSignerPublicKey().substring(0, 16) + "..." : "unknown";
             
@@ -86,7 +92,7 @@ if (!result.isStructurallyIntact()) {
     }
     
     // You might want to re-sign these blocks or mark them for review
-    handleRevokedBlocks(result.getRevokedBlocks());
+    handleRevokedBlocks(result.getOrphanedBlocks());
     
 } else {
     // Chain is fully valid
@@ -103,8 +109,8 @@ System.out.println("Validation timestamp: " + new Date());
 metrics.recordValidationResult(
     result.isStructurallyIntact(),
     result.isFullyCompliant(),
-    result.getInvalidBlocks().size(),
-    result.getRevokedBlocks().size()
+    result.getInvalidBlocks(),
+    result.getRevokedBlocks()
 );
 ```
 
@@ -113,20 +119,26 @@ metrics.recordValidationResult(
 1. **Valid Chain**
    - `isStructurallyIntact()`: `true`
    - `isFullyCompliant()`: `true`
-   - `getInvalidBlocks()`: Empty list
-   - `getRevokedBlocks()`: Empty list
+   - `getInvalidBlocks()`: 0
+   - `getRevokedBlocks()`: 0
+   - `getInvalidBlocksList()`: Empty list
+   - `getOrphanedBlocks()`: Empty list
 
 2. **Structurally Valid but with Revoked Keys**
    - `isStructurallyIntact()`: `true`
    - `isFullyCompliant()`: `false`
-   - `getInvalidBlocks()`: Empty list
-   - `getRevokedBlocks()`: List of blocks signed by revoked keys
+   - `getInvalidBlocks()`: 0
+   - `getRevokedBlocks()`: Count > 0
+   - `getInvalidBlocksList()`: Empty list
+   - `getOrphanedBlocks()`: List of blocks signed by revoked keys
 
 3. **Structurally Invalid**
    - `isStructurallyIntact()`: `false`
    - `isFullyCompliant()`: `false` (always false if not structurally intact)
-   - `getInvalidBlocks()`: List of blocks with invalid hashes or signatures
-   - `getRevokedBlocks()`: May include additional revoked blocks
+   - `getInvalidBlocks()`: Count > 0
+   - `getRevokedBlocks()`: May be > 0
+   - `getInvalidBlocksList()`: List of blocks with invalid hashes or signatures
+   - `getOrphanedBlocks()`: May include additional revoked blocks
 
 ### Best Practices
 
@@ -656,10 +668,86 @@ public boolean validateBlockSize(String data)
 ```java
 public void completeCleanupForTests()
 ```
-- **Description:** Comprehensive cleanup for testing environments
-- **Purpose:** Removes all test data including off-chain files and database entries
+- **Description:** Comprehensive cleanup for testing environments (database only)
+- **Purpose:** Removes ALL test data from database (blocks, block sequences, and authorized keys)
 - **Safety:** Safe for multiple calls, designed for test isolation
 - **Warning:** Only use in test environments - not for production
+- **What it cleans:**
+  - ✅ All blocks (including genesis block)
+  - ✅ Block sequence counters
+  - ✅ All authorized keys
+- **What it DOESN'T clean:**
+  - ❌ Off-chain data files
+  - ❌ Emergency backup files
+- **Note:** For full cleanup including files, use `clearAndReinitialize()` or `completeCleanupForTestsWithBackups()`
+
+```java
+public void completeCleanupForTestsWithBackups()
+```
+- **Description:** Complete cleanup including emergency backups
+- **Purpose:** Removes ALL test data from database AND emergency backup files
+- **Safety:** Safe for multiple calls, prevents backup accumulation in test suites
+- **Warning:** Only use in test environments - not for production
+- **What it cleans:**
+  - ✅ All blocks (including genesis block)
+  - ✅ Block sequence counters
+  - ✅ All authorized keys
+  - ✅ Emergency backup files
+- **Use when:** You want database cleanup AND removal of accumulated backups
+
+```java
+public int cleanupEmergencyBackups()
+```
+- **Description:** Remove all orphaned emergency backup files
+- **Returns:** Number of backup files deleted
+- **Purpose:** Cleanup emergency-backups directory from test or failed operations
+- **Safety:** Only removes files in emergency-backups/ directory
+- **Use when:** You want to manually clean accumulated backup files
+
+```java
+public void clearAndReinitialize()
+```
+- **Description:** Complete blockchain reset with emergency backup protection
+- **Purpose:** Clears ALL data and reinitializes with genesis block
+- **Safety Features:**
+  - Creates temporary backup before clearing (in `emergency-backups/` directory)
+  - **Backup contains:** Database records only (no off-chain files)
+  - **Rationale:** Off-chain files remain in `off-chain-data/` and are cleaned separately
+  - Automatic rollback if operation fails
+  - **Automatic cleanup:** Deletes temporary backup after successful completion ✨
+- **What it cleans:**
+  - ✅ All blocks (database)
+  - ✅ All authorized keys (database)
+  - ✅ Off-chain data files
+  - ✅ Temporary emergency backups (after success) 🧹
+- **Backup Lifecycle:**
+  1. Creates `emergency-backups/emergency-reinitialize-{timestamp}.json`
+  2. Performs database cleanup and reinitialization
+  3. **Automatically deletes backup if operation succeeds** (prevents accumulation)
+  4. Keeps backup only if operation fails (for recovery)
+- **Thread-Safety:** Uses global write lock for consistency
+- **Warning:** Only use in test environments or controlled resets
+
+```java
+public boolean exportChain(String filePath)
+```
+- **Description:** Export complete blockchain to JSON file (includes off-chain files)
+- **Parameters:** `filePath`: Destination path for JSON export
+- **Returns:** `true` if export successful, `false` otherwise
+- **Includes:** Blocks, authorized keys, and off-chain files (in `off-chain-backup/` subdirectory)
+- **Use when:** Full backup or migration to another system
+
+```java
+public boolean exportChain(String filePath, boolean includeOffChainFiles)
+```
+- **Description:** Export blockchain with control over off-chain file export
+- **Parameters:**
+  - `filePath`: Destination path for JSON export
+  - `includeOffChainFiles`: Whether to export off-chain files
+    - `true`: Full export (blocks + keys + off-chain files)
+    - `false`: Database-only export (for temporary backups)
+- **Returns:** `true` if export successful, `false` otherwise
+- **Use when:** You need fine control over what gets exported
 
 ### UserFriendlyEncryptionAPI Extensions
 
@@ -1714,8 +1802,6 @@ List<Block> blocks = blockDAO.searchBlocksByContentWithLevel(searchTerm, SearchL
 List<Block> limited = blockDAO.searchBlocksByContentWithLevel(searchTerm, SearchLevel.EXHAUSTIVE_OFFCHAIN, 500);  // Custom limit
 ```
 
-**⚠️ Important:** All non-paginated/unlimited versions of these methods have been removed to prevent memory issues with large datasets. Always use the paginated or limited versions above.
-
 #### Block Operations
 ```java
 // Add block
@@ -2102,6 +2188,10 @@ public ChainValidationResult validateChainDetailed()
   - Temporal consistency
 - **Performance:** O(n) where n is the number of blocks in the chain
 - **Thread Safety:** Thread-safe, can be called concurrently
+- **⚠️ Memory Safety:**
+  - Warns if chain has >100K blocks (may cause memory issues)
+  - Throws exception if chain has >500K blocks (use `validateChainStreaming()` instead)
+  - Accumulates all validation results in memory
 - **Example:**
   ```java
   // Basic validation
@@ -2114,16 +2204,14 @@ public ChainValidationResult validateChainDetailed()
       System.out.println("Blockchain is valid and fully compliant");
   }
   
-  // Advanced validation with detailed reporting
-  result = blockchain.validateChainDetailed();
-  if (!result.getInvalidBlocks().isEmpty()) {
-      System.err.println("Invalid blocks found:");
-      for (Block block : result.getInvalidBlocks()) {
-          System.err.println(" - Block " + block.getBlockNumber() + " (" + block.getHash() + ")");
-      }
-  }
-  
-  // Get a summary of validation results
+// Advanced validation with detailed reporting
+result = blockchain.validateChainDetailed();
+if (result.getInvalidBlocks() > 0) {
+    System.err.println("Invalid blocks found:");
+    for (Block block : result.getInvalidBlocksList()) {
+        System.err.println(" - Block " + block.getBlockNumber() + " (" + block.getHash() + ")");
+    }
+}  // Get a summary of validation results
   System.out.println("Validation summary: " + result.toString());
   ```
   - Returns detailed information about any issues found, including lists of invalid and revoked blocks
@@ -2135,12 +2223,61 @@ public ChainValidationResult validateChainDetailed()
       if (result.isFullyCompliant()) {
           System.out.println("All blocks are properly authorized");
       } else {
-          System.out.println("Warning: " + result.getRevokedBlocks().size() + " blocks have authorization issues");
+          System.out.println("Warning: " + result.getRevokedBlocks() + " blocks have authorization issues");
       }
   } else {
-      System.err.println("Error: " + result.getInvalidBlocks().size() + " blocks have structural issues");
+      System.err.println("Error: " + result.getInvalidBlocks() + " blocks have structural issues");
   }
   ```
+
+### 🚀 Stream-Based Validation (For Very Large Blockchains)
+
+```java
+public ValidationSummary validateChainStreaming(
+    Consumer<List<BlockValidationResult>> batchResultConsumer,
+    int batchSize
+)
+```
+- **Returns:** A `ValidationSummary` object with counts (no individual block details)
+- **Description:** Memory-safe validation for blockchains with millions of blocks. Processes the chain in batches and calls a consumer for each batch, avoiding memory accumulation.
+- **Parameters:**
+  - `batchResultConsumer`: Consumer that receives validation results for each batch
+  - `batchSize`: Number of blocks to validate in each batch (recommended: 1000)
+- **Performance:** O(n) where n is the number of blocks, but with constant memory usage
+- **Thread Safety:** Thread-safe, can be called concurrently
+- **✅ Memory Safety:** Unlimited blockchain size support - no memory accumulation
+- **Example:**
+  ```java
+  // Validate a blockchain with millions of blocks
+  List<Long> invalidBlockNumbers = new ArrayList<>();
+
+  ValidationSummary summary = blockchain.validateChainStreaming(
+      batchResults -> {
+          // Process each batch (e.g., log to file, save to DB, send alerts)
+          for (BlockValidationResult result : batchResults) {
+              if (!result.isValid()) {
+                  invalidBlockNumbers.add(result.getBlock().getBlockNumber());
+                  System.err.println("❌ Invalid block #" + result.getBlock().getBlockNumber());
+              }
+          }
+      },
+      1000 // Process 1000 blocks at a time
+  );
+
+  System.out.println("📊 Validation Summary:");
+  System.out.println("  Total blocks: " + summary.getTotalBlocks());
+  System.out.println("  Valid blocks: " + summary.getValidBlocks());
+  System.out.println("  Invalid blocks: " + summary.getInvalidBlocks());
+  System.out.println("  Revoked blocks: " + summary.getRevokedBlocks());
+  System.out.println("  Is valid: " + summary.isValid());
+  ```
+
+**ValidationSummary Methods:**
+- `getTotalBlocks()`: Total number of blocks validated
+- `getValidBlocks()`: Count of valid blocks
+- `getInvalidBlocks()`: Count of invalid blocks
+- `getRevokedBlocks()`: Count of revoked blocks
+- `isValid()`: Returns true if no invalid blocks found
 
 ```java
 public long getBlockCount()
@@ -2213,6 +2350,16 @@ public boolean dangerouslyDeleteAuthorizedKey(String publicKey, boolean force, S
   - `adminPublicKey`: Public key of the administrator authorizing the operation
 - **Returns:** `true` if key was deleted with valid authorization, `false` if deletion failed or unauthorized
 - **Description:** **🔐 SECURE DANGEROUS DELETION** - Multi-level authorization system that requires valid administrator signature. Can permanently remove keys even if they signed historical blocks when `force=true`. ⚠️ **WARNING**: Using `force=true` will break blockchain validation for affected blocks. This operation is **IRREVERSIBLE**. Only use for GDPR compliance, security incidents, or emergency situations.
+- **Safety Features:**
+  - Creates emergency backup before deletion (in `emergency-backups/` directory)
+  - **Backup contains:** Complete blockchain state (database only)
+  - Automatic rollback if operation fails
+  - **Automatic cleanup:** Deletes temporary backup after successful deletion ✨
+- **Backup Lifecycle:**
+  1. Creates `emergency-backups/emergency-key-deletion-{timestamp}.json`
+  2. Performs key deletion
+  3. **Automatically deletes backup if operation succeeds** (prevents accumulation) 🧹
+  4. Keeps backup only if operation fails (for recovery)
 
 **🔑 Admin Signature Creation:**
 ```java
@@ -2463,7 +2610,7 @@ public boolean importChain(String filename)
 - **Description:** Imports blockchain data from JSON file (replaces current chain)
 
 ```java
-public boolean rollbackBlocks(int numberOfBlocks)
+public boolean rollbackBlocks(Long numberOfBlocks)
 ```
 - **Parameters:** `numberOfBlocks`: Number of recent blocks to remove
 - **Returns:** `true` if rollback was successful
@@ -2692,6 +2839,29 @@ public LocalDateTime getRevokedAt()
 - **Block Data**: 10,000 characters maximum
 - **Block Size**: 1MB (1,048,576 bytes) maximum
 - **Hash Length**: 64 characters (SHA3-256)
+
+### Memory Safety Configuration
+
+All memory limits are centralized in `MemorySafetyConstants`:
+
+```java
+import com.rbatllet.blockchain.config.MemorySafetyConstants;
+
+// Available constants:
+MemorySafetyConstants.MAX_BATCH_SIZE                    // 10,000 - Maximum items for batch operations
+MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS        // 10,000 - Default search result limit
+MemorySafetyConstants.SAFE_EXPORT_LIMIT                 // 100,000 - Warning threshold for exports
+MemorySafetyConstants.MAX_EXPORT_LIMIT                  // 500,000 - Hard limit for exports
+MemorySafetyConstants.LARGE_ROLLBACK_THRESHOLD          // 100,000 - Warning threshold for rollbacks
+MemorySafetyConstants.DEFAULT_BATCH_SIZE                // 1,000 - Default batch size for streaming
+MemorySafetyConstants.PROGRESS_REPORT_INTERVAL          // 5,000 - Progress logging interval
+```
+
+**Memory-Safe Operations:**
+- All batch operations validate size (max 10K items)
+- All search operations have default limits (10K results)
+- Export operations validate chain size before loading
+- Use streaming methods (`validateChainStreaming`, `processChainInBatches`) for unlimited size support
 
 ### Security Configuration
 - **Hash Algorithm**: SHA3-256

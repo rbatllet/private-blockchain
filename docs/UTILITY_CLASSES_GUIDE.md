@@ -145,7 +145,7 @@ System.out.println("Summary: " + result.toString());
 
 ### FormatUtil
 
-`FormatUtil` provides comprehensive methods for formatting blockchain data for display and storage. **Enhanced with new functions migrated from BlockchainDisplayUtils**. 
+`FormatUtil` provides comprehensive methods for formatting blockchain data for display and storage.
 
 **Documentation:**
 - **[Quality Assessment](FORMATUTIL_QUALITY_ASSESSMENT.md)** - Production readiness evaluation and overall quality score
@@ -240,22 +240,6 @@ String custom = FormatUtil.formatTimestamp(timestamp, "dd/MM/yyyy HH:mm");  // "
 String text = "Very long text that needs to be truncated";
 String fixedWidthText = FormatUtil.fixedWidth(text, 20); // Truncates at word boundary when possible
 ```
-
-#### Migration from BlockchainDisplayUtils
-
-**🔄 MIGRATION COMPLETED:** All display utilities have been migrated from `BlockchainDisplayUtils` to `FormatUtil` for better code reusability and consistency.
-
-**Key Improvements:**
-- **Symmetric Hash Truncation**: Changed from asymmetric 16+20 to symmetric 16+16 for better visual consistency
-- **Consolidated Functions**: All formatting functions now in one location
-- **Enhanced Functionality**: Added 7 new utility functions for comprehensive formatting needs
-- **CLI Integration**: All CLI commands updated to use FormatUtil instead of BlockchainDisplayUtils
-
-**Files Updated in Migration:**
-- `AddBlockCommand.java` - Updated import and method calls
-- `SearchCommand.java` - Updated import and method calls  
-- `OffChainCommand.java` - Updated import and method calls
-- `EncryptCommand.java` - Updated import and method calls
 
 #### Testing Best Practices
 

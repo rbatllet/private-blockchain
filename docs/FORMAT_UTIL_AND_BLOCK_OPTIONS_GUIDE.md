@@ -13,8 +13,7 @@
    - [All Supported Options](#all-supported-options)
    - [Thread-Safe Implementation](#thread-safe-implementation)
    - [Usage Examples](#usage-examples)
-4. [Migration Details](#migration-details)
-5. [Testing Coverage](#testing-coverage)
+4. [Testing Coverage](#testing-coverage)
 
 ## Overview
 
@@ -22,8 +21,6 @@ This guide documents recent enhancements made to consolidate display utilities i
 
 ### Key Improvements
 
-- ✅ **Consolidated Display Utilities**: All formatting functions from BlockchainDisplayUtils migrated to FormatUtil
-- ✅ **Enhanced Hash Display**: Symmetric 16+16 character truncation for better readability
 - ✅ **Complete BlockCreationOptions Support**: All 8 available options now supported
 - ✅ **Thread-Safe Operations**: JPA transactions ensure concurrent safety
 - ✅ **Off-Chain Integration**: Full support for encrypted/unencrypted off-chain storage
@@ -328,48 +325,6 @@ BlockCreationOptions options2 = new BlockCreationOptions()
 
 Block result2 = api.createBlockWithOptions("Test content 2", options2);
 ```
-
-## Migration Details
-
-### From BlockchainDisplayUtils to FormatUtil
-
-#### What Was Migrated
-- All display formatting functions consolidated into FormatUtil
-- Hash truncation method improved from asymmetric (16+20) to symmetric (16+16)
-- CLI command files updated to use FormatUtil instead of BlockchainDisplayUtils
-
-#### Files Updated
-1. **Core Module**: `src/main/java/com/rbatllet/blockchain/util/format/FormatUtil.java`
-2. **CLI Commands** (4 files updated):
-   - `AddBlockCommand.java`
-   - `SearchCommand.java` 
-   - `OffChainCommand.java`
-   - `EncryptCommand.java`
-
-#### Import Changes
-```java
-// Old import (removed)
-import com.rbatllet.blockchain.cli.util.BlockchainDisplayUtils;
-
-// New import (added)
-import com.rbatllet.blockchain.util.format.FormatUtil;
-```
-
-### Enhanced createBlockWithOptions Implementation
-
-#### Previous Limitations
-- Only supported 3 of 8 available BlockCreationOptions
-- Limited thread safety
-- No off-chain storage integration
-- Missing metadata support
-
-#### Current Capabilities
-- ✅ All 8 BlockCreationOptions supported
-- ✅ Full thread safety with JPA transactions
-- ✅ Complete off-chain storage integration
-- ✅ Encrypted and unencrypted off-chain support
-- ✅ Automatic MIME type detection
-- ✅ Comprehensive error handling
 
 ## Testing Coverage
 

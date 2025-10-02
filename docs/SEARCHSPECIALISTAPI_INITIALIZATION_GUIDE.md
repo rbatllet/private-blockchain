@@ -159,7 +159,7 @@ import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.search.SearchSpecialistAPI;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.EnhancedSearchResult;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
-import com.rbatllet.blockchain.security.EncryptionConfig;
+import com.rbatllet.blockchain.config.EncryptionConfig;
 import java.security.KeyPair;
 import java.util.List;
 

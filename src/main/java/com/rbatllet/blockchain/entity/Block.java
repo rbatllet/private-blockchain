@@ -115,13 +115,34 @@ public class Block {
     
     // Search-related getters and setters
     public String getManualKeywords() { return manualKeywords; }
-    public void setManualKeywords(String manualKeywords) { this.manualKeywords = manualKeywords; }
+    public void setManualKeywords(String manualKeywords) { 
+        // Truncate to database column limit (1024 chars)
+        if (manualKeywords != null && manualKeywords.length() > 1024) {
+            this.manualKeywords = manualKeywords.substring(0, 1024);
+        } else {
+            this.manualKeywords = manualKeywords;
+        }
+    }
     
     public String getAutoKeywords() { return autoKeywords; }
-    public void setAutoKeywords(String autoKeywords) { this.autoKeywords = autoKeywords; }
+    public void setAutoKeywords(String autoKeywords) { 
+        // Truncate to database column limit (1024 chars)
+        if (autoKeywords != null && autoKeywords.length() > 1024) {
+            this.autoKeywords = autoKeywords.substring(0, 1024);
+        } else {
+            this.autoKeywords = autoKeywords;
+        }
+    }
     
     public String getSearchableContent() { return searchableContent; }
-    public void setSearchableContent(String searchableContent) { this.searchableContent = searchableContent; }
+    public void setSearchableContent(String searchableContent) { 
+        // Truncate to database column limit (2048 chars)
+        if (searchableContent != null && searchableContent.length() > 2048) {
+            this.searchableContent = searchableContent.substring(0, 2048);
+        } else {
+            this.searchableContent = searchableContent;
+        }
+    }
     
     public String getContentCategory() { return contentCategory; }
     public void setContentCategory(String contentCategory) { this.contentCategory = contentCategory; }

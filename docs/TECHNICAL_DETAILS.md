@@ -108,7 +108,17 @@ CREATE TABLE blocks (
     timestamp TEXT NOT NULL,
     hash TEXT NOT NULL,
     signature TEXT,
-    signer_public_key TEXT
+    signer_public_key TEXT,
+    off_chain_data_id INTEGER,         -- Foreign key to off_chain_data table (nullable)
+    manual_keywords TEXT,               -- User-specified keywords (max 1024 chars)
+    auto_keywords TEXT,                 -- Automatically extracted keywords (max 1024 chars)
+    searchable_content TEXT,            -- Combined keywords for search (max 2048 chars)
+    content_category TEXT,              -- Content category: MEDICAL, FINANCE, LEGAL, etc. (max 50 chars)
+    is_encrypted BOOLEAN NOT NULL DEFAULT 0,  -- Encryption flag
+    encryption_metadata TEXT,           -- Serialized encryption metadata (JSON)
+    custom_metadata TEXT,               -- Custom metadata in JSON format
+    
+    FOREIGN KEY (off_chain_data_id) REFERENCES off_chain_data(id)
 );
 
 -- Indexes for optimal performance
@@ -117,6 +127,9 @@ CREATE INDEX idx_blocks_hash ON blocks(hash);
 CREATE INDEX idx_blocks_previous_hash ON blocks(previous_hash);
 CREATE INDEX idx_blocks_timestamp ON blocks(timestamp);
 CREATE INDEX idx_blocks_signer ON blocks(signer_public_key);
+CREATE INDEX idx_blocks_offchain ON blocks(off_chain_data_id);
+CREATE INDEX idx_blocks_category ON blocks(content_category);
+CREATE INDEX idx_blocks_encrypted ON blocks(is_encrypted);
 ```
 
 #### Authorized Keys Table
@@ -168,31 +181,7 @@ CREATE INDEX idx_offchain_created ON off_chain_data(created_at);
 CREATE INDEX idx_offchain_signer ON off_chain_data(signer_public_key);
 ```
 
-#### Enhanced Blocks Table (Updated)
-```sql
--- The blocks table now includes a foreign key to off_chain_data
-CREATE TABLE blocks (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    block_number INTEGER NOT NULL UNIQUE,
-    previous_hash TEXT,
-    data TEXT,                         -- Contains actual data OR "OFF_CHAIN_REF:hash" reference
-    timestamp TEXT NOT NULL,
-    hash TEXT NOT NULL,
-    signature TEXT,
-    signer_public_key TEXT,
-    off_chain_data_id INTEGER,         -- Foreign key to off_chain_data table (nullable)
-    
-    FOREIGN KEY (off_chain_data_id) REFERENCES off_chain_data(id)
-);
-
--- Enhanced indexes include off-chain reference
-CREATE INDEX idx_blocks_number ON blocks(block_number);
-CREATE INDEX idx_blocks_hash ON blocks(hash);
-CREATE INDEX idx_blocks_previous_hash ON blocks(previous_hash);
-CREATE INDEX idx_blocks_timestamp ON blocks(timestamp);
-CREATE INDEX idx_blocks_signer ON blocks(signer_public_key);
-CREATE INDEX idx_blocks_offchain ON blocks(off_chain_data_id);
-```
+> **Note:** The `blocks` table includes a foreign key `off_chain_data_id` to reference large files stored off-chain. When a block references off-chain data, the `data` field contains `"OFF_CHAIN_REF:hash"` as a pointer.
 
 ### JPA Configuration
 
@@ -230,8 +219,8 @@ CREATE INDEX idx_blocks_offchain ON blocks(off_chain_data_id);
             <property name="hibernate.connection.provider_class" value="org.hibernate.hikaricp.internal.HikariCPConnectionProvider"/>
             
             <!-- HikariCP specific settings - Optimized for high concurrency -->
-            <property name="hibernate.hikari.minimumIdle" value="10"/>
-            <property name="hibernate.hikari.maximumPoolSize" value="60"/>
+            <property name="hibernate.hikari.minimumIdle" value="2"/>
+            <property name="hibernate.hikari.maximumPoolSize" value="5"/>
             <property name="hibernate.hikari.idleTimeout" value="300000"/>
             <property name="hibernate.hikari.poolName" value="BlockchainHikariCP"/>
             <property name="hibernate.hikari.maxLifetime" value="900000"/>
@@ -317,6 +306,34 @@ public class Block {
     
     @Column(name = "signer_public_key", columnDefinition = "TEXT")
     private String signerPublicKey;
+    
+    // Off-chain data reference (foreign key)
+    @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @JoinColumn(name = "off_chain_data_id")
+    private OffChainData offChainData;
+    
+    // Search-related fields
+    @Column(name = "manual_keywords", length = 1024)
+    private String manualKeywords;      // Keywords specified by user
+    
+    @Column(name = "auto_keywords", length = 1024) 
+    private String autoKeywords;        // Automatically extracted keywords (universal)
+    
+    @Column(name = "searchable_content", length = 2048)
+    private String searchableContent;   // Combined manual + auto keywords for search
+    
+    @Column(name = "content_category", length = 50)
+    private String contentCategory;     // Content category (e.g., "MEDICAL", "FINANCE", "LEGAL")
+    
+    // Encryption-related fields
+    @Column(name = "is_encrypted", nullable = false)
+    private Boolean isEncrypted = false;  // Flag indicating if data is encrypted
+    
+    @Column(name = "encryption_metadata", columnDefinition = "TEXT")
+    private String encryptionMetadata;    // Serialized EncryptedBlockData (when encrypted)
+    
+    @Column(name = "custom_metadata", columnDefinition = "TEXT")
+    private String customMetadata;        // Custom metadata in JSON format
     
     // Getters and setters...
 }
@@ -770,8 +787,10 @@ public boolean wasKeyAuthorizedAt(String publicKey, LocalDateTime timestamp)
  * @return ChainValidationResult containing detailed validation results, including:
  *         - isStructurallyIntact(): true if the blockchain structure is valid
  *         - isFullyCompliant(): true if all blocks are properly authorized
- *         - getInvalidBlocks(): list of blocks with structural issues
- *         - getRevokedBlocks(): list of blocks with authorization issues
+ *         - getInvalidBlocks(): count (int) of blocks with structural issues
+ *         - getInvalidBlocksList(): list of blocks with structural issues
+ *         - getRevokedBlocks(): count (int) of blocks with authorization issues
+ *         - getOrphanedBlocks(): list of blocks with authorization issues
  *         - getValidationReport(): detailed validation report
  * 
  * @see ChainValidationResult for more information on the validation results

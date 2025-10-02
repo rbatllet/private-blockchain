@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import java.security.KeyPair;
 import java.security.PrivateKey;
@@ -34,7 +35,7 @@ public class SearchSpecialistAPIValidationTest {
     @BeforeEach
     void setUp() throws Exception {
         SearchFrameworkEngine.clearGlobalProcessingMapForTesting();
-        com.rbatllet.blockchain.indexing.IndexingCoordinator.getInstance().reset();
+        IndexingCoordinator.getInstance().reset();
 
         testBlockchain = new Blockchain();
         testPassword = "ValidationTestPassword123!";

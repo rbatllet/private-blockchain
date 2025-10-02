@@ -356,7 +356,7 @@ The project follows these testing best practices:
 **Coverage**: Advanced security validation for uncovered Blockchain methods
 
 **Test Categories:**
-- 🧹 **Test Cleanup and Maintenance** (2 tests): `completeCleanupForTests()` safety and multiple calls
+- 🧹 **Test Cleanup and Maintenance** (2 tests): `completeCleanupForTests()` safety and multiple calls - removes blocks, sequences, and authorized keys (but NOT off-chain files)
 - 📊 **Chain Data Retrieval** (3 tests): Batch processing and pagination with thread safety (10 threads, 50 operations)
 - 🔍 **Search Functionality Security** (4 tests): `searchBlocksComplete()`, malicious input handling (SQL injection, XSS, path traversal)
 - 🔐 **Authorization and Compliance** (6 tests): `getAuthorizedKeyByOwner()`, `isFullyCompliant()` validation
@@ -1404,3 +1404,184 @@ Verify all run_*.zsh scripts follow best practices:
 
 **Documentation References:**
 - [SCRIPTS_DATABASE_FIX.md](SCRIPTS_DATABASE_FIX.md) - Detailed fix implementation guide
+
+---
+
+## Test Isolation Troubleshooting
+
+This section documents common test isolation problems and their solutions to prevent future occurrences.
+
+### Problem 1: Incomplete Cleanup Methods
+
+**Symptom:** Tests pass individually but fail when run in batch with errors like:
+```
+org.opentest4j.AssertionFailedError: expected: <true> but was: <false>
+```
+
+**Root Cause:** Cleanup methods (`@AfterEach`) not removing all test data, causing contamination between tests.
+
+**Example Case (October 2025):**
+- **Test:** `BlockchainAdditionalAdvancedFunctionsTest`
+- **Issue:** `completeCleanupForTests()` was only cleaning `Block` and `BlockSequence` tables
+- **Missing:** Did NOT clean `AuthorizedKey` table
+- **Result:** Keys from Test A remained in database, causing Test B to fail with duplicate key errors
+
+**Solution Applied:**
+```java
+// Blockchain.java - completeCleanupForTests()
+public void completeCleanupForTests() {
+    blockDAO.completeCleanupTestData();      // ✅ Cleans blocks & sequences
+    authorizedKeyDAO.cleanupTestData();      // ✅ ADDED: Cleans authorized keys
+    // Note: Does NOT clean off-chain files (use clearAndReinitialize() for full cleanup)
+}
+```
+
+**How to Detect:**
+1. Run single test: `mvn test -Dtest=YourTest#testMethod` → ✅ Passes
+2. Run all tests: `mvn test` → ❌ Fails
+3. Check `@AfterEach` cleanup methods
+4. Verify ALL database tables are cleaned
+
+**Prevention Checklist:**
+- [ ] Every `@AfterEach` must clean ALL tables used by the test
+- [ ] Document what each cleanup method cleans (and what it doesn't)
+- [ ] Test cleanup in batch runs, not just individually
+- [ ] Use `clearAndReinitialize()` for full cleanup when needed
+
+### Problem 2: Shared Mutable State (Configuration)
+
+**Symptom:** Tests fail randomly when run in parallel or different order with incorrect validation results.
+
+**Root Cause:** Tests modify shared configuration (e.g., `currentMaxBlockChars`) and don't restore defaults.
+
+**Example Case (October 2025):**
+- **Test:** `OffChainStorageTest.testDynamicConfiguration()`
+- **Issue:** Modified `currentMaxBlockChars`, `currentMaxBlockSizeBytes`, `currentOffChainThresholdBytes`
+- **Missing:** `@AfterEach` did NOT call `blockchain.resetLimitsToDefault()`
+- **Result:** `BlockchainAdditionalAdvancedFunctionsTest` used wrong limits and failed validation
+
+**Solution Applied:**
+```java
+// OffChainStorageTest.java
+@AfterEach
+void cleanUp() {
+    // CRITICAL: Reset configuration to defaults to avoid contaminating other tests
+    blockchain.resetLimitsToDefault();  // ✅ ADDED
+    
+    // Clean up off-chain data directory
+    // ...
+}
+```
+
+**How to Detect:**
+1. Test modifies `volatile` fields or configuration
+2. Test passes alone but fails in batch
+3. Error messages show unexpected configuration values
+4. Different test order produces different results
+
+**Prevention Checklist:**
+- [ ] If test modifies configuration, `@AfterEach` MUST restore defaults
+- [ ] Avoid modifying shared state when possible (use test-specific instances)
+- [ ] Document configuration modifications in test comments
+- [ ] Use `resetLimitsToDefault()` or equivalent reset methods
+
+### Problem 3: Incomplete Resource Cleanup
+
+**Symptom:** Resource exhaustion, file handle leaks, or "too many open files" errors in CI/CD.
+
+**Root Cause:** Tests don't clean up external resources (files, connections, threads).
+
+**Common Resources to Clean:**
+- Off-chain data files (`off-chain-data/` directory)
+- Database connections (usually automatic with `@Transactional`)
+- Temporary files created during tests
+- Search engine indexes
+- Thread pools or scheduled executors
+
+**Best Practice:**
+```java
+@AfterEach
+void cleanUp() {
+    // 1. Reset configuration
+    blockchain.resetLimitsToDefault();
+    
+    // 2. Clean database (if using completeCleanupForTests)
+    // blockchain.completeCleanupForTests(); // Only if not using @Transactional
+    
+    // 3. Clean external files
+    try {
+        File offChainDir = new File("off-chain-data");
+        if (offChainDir.exists()) {
+            deleteDirectory(offChainDir);
+        }
+    } catch (Exception e) {
+        logger.error("Cleanup error: " + e.getMessage());
+    }
+}
+```
+
+### Quick Diagnosis Guide
+
+**Test passes individually but fails in batch:**
+1. Check `@AfterEach` cleans ALL tables/state
+2. Check for shared mutable configuration
+3. Run with `mvn test -X` for detailed logs
+
+**Test fails randomly:**
+1. Check for race conditions (threading issues)
+2. Check for shared state between tests
+3. Check test execution order sensitivity
+
+**Test fails in CI but passes locally:**
+1. Check for resource leaks (connections, files)
+2. Check for environment-specific configuration
+3. Check for timing-dependent assertions
+
+### Cleanup Method Comparison
+
+| Method | Cleans Blocks | Cleans Keys | Cleans Off-Chain | Cleans Emergency Backups | Reinitializes Genesis |
+|--------|---------------|-------------|------------------|--------------------------|----------------------|
+| `completeCleanupForTests()` | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `completeCleanupForTestsWithBackups()` | ✅ | ✅ | ❌ | ✅ | ❌ |
+| `clearAndReinitialize()` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `cleanupEmergencyBackups()` | ❌ | ❌ | ❌ | ✅ | ❌ |
+
+**When to use:**
+- **`completeCleanupForTests()`**: Fast database-only cleanup for unit tests
+- **`completeCleanupForTestsWithBackups()`**: Database cleanup + remove accumulated backups
+- **`clearAndReinitialize()`**: Full cleanup for integration tests (database + files + reinit)
+- **`cleanupEmergencyBackups()`**: Manual cleanup of orphaned backup files only
+
+**Emergency Backup Behavior:**
+- **Automatic Creation:** Methods like `clearAndReinitialize()` and `dangerouslyDeleteAuthorizedKey()` create temporary backups in `emergency-backups/` before dangerous operations
+- **Backup contains:** Database records only (blocks + keys)
+- **Does NOT contain:** Off-chain files (they remain in `off-chain-data/` directory)
+- **Rationale:** Off-chain files are cleaned separately; temporary backups are lightweight and fast
+- **Automatic Cleanup:** ✨ If operation succeeds → backup is **automatically deleted** (prevents accumulation)
+- **Manual Recovery:** If operation fails → backup remains for manual recovery (use `restoreFromBackup()`)
+- **Test Suites:** Use `completeCleanupForTestsWithBackups()` to prevent backup accumulation during test runs
+- **Methods with Auto-Cleanup:**
+  - `clearAndReinitialize()` → Creates `emergency-reinitialize-{timestamp}.json`, deletes after success 🧹
+  - `dangerouslyDeleteAuthorizedKey()` → Creates `emergency-key-deletion-{timestamp}.json`, deletes after success 🧹
+
+**Off-Chain Storage:**
+- `emergency-backups/` directory should ONLY contain JSON files
+- If you see `emergency-backups/off-chain-backup/`, these are orphaned files from old backups
+- Use `cleanupEmergencyBackups()` to remove both JSON backups and orphaned off-chain subdirectories
+
+**⚠️ IMPORTANT: Test Execution Mode:**
+When tests modify shared configuration (like `OffChainStorageTest.testDynamicConfiguration()`), they can contaminate other tests running in parallel. To prevent this:
+
+```java
+@Execution(ExecutionMode.SAME_THREAD)  // Force sequential execution
+public class OffChainStorageTest {
+    // Tests that modify blockchain configuration
+}
+```
+
+This ensures tests run one after another, preventing race conditions and configuration contamination.
+
+### Documentation References
+- [API_GUIDE.md](API_GUIDE.md#test-utilities) - Complete API for test methods
+- [THREAD_SAFETY_TESTS.md](THREAD_SAFETY_TESTS.md) - Concurrency testing patterns
+- [SHARED_STATE_TESTING_PATTERNS.md](SHARED_STATE_TESTING_PATTERNS.md) - Shared state management
