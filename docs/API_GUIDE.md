@@ -1197,8 +1197,10 @@ The system supports three different search levels through the `SearchLevel` enum
 ##### Basic Search Methods
 
 ```java
-// Legacy search method (still supported)
-List<Block> paymentBlocks = blockchain.searchBlocksByContent("payment");
+// Memory-efficient search methods (automatically limited to 10K results)
+List<Block> paymentBlocks = blockchain.searchBlocksByContent("payment");  // Max 10K results
+List<Block> medicalBlocks = blockchain.searchByCategory("MEDICAL");      // Max 10K results
+List<Block> financeBlocks = blockchain.searchByCategory("FINANCE");      // Max 10K results
 
 // New hybrid search with different levels
 List<Block> fastResults = blockchain.searchBlocks("medical", SearchLevel.FAST_ONLY);
@@ -1209,9 +1211,9 @@ List<Block> exhaustiveResults = blockchain.searchBlocks("contract", SearchLevel.
 List<Block> quickSearch = blockchain.searchBlocksFast("API");           // Keywords only
 List<Block> dataSearch = blockchain.searchBlocksComplete("John Doe");   // Keywords + data + off-chain
 
-// Search by content category
-List<Block> medicalBlocks = blockchain.searchByCategory("MEDICAL");
-List<Block> financeBlocks = blockchain.searchByCategory("FINANCE");
+// For more control over result limits, use BlockDAO directly:
+List<Block> customLimit = blockchain.getBlockDAO().searchBlocksByContentWithLimit("payment", 5000);
+List<Block> categoryLimit = blockchain.getBlockDAO().searchByCategoryWithLimit("MEDICAL", 2000);
 ```
 
 ##### Adding Blocks with Keywords
@@ -1386,21 +1388,6 @@ public class SearchFrameworkDemo {
         System.out.println("\n=== SEARCH COMPLETE ===");
     }
 }
-```
-
-##### Legacy Search Methods (Still Supported)
-
-```java
-// Basic content search (case-insensitive) 
-List<Block> paymentBlocks = blockchain.searchBlocksByContent("payment");
-
-// Find block by hash
-Block block = blockchain.getBlockByHash("a1b2c3d4...");
-
-// Find blocks by date range
-LocalDate start = LocalDate.of(2024, 1, 1);
-LocalDate end = LocalDate.of(2024, 1, 31);
-List<Block> monthlyBlocks = blockchain.getBlocksByDateRange(start, end);
 ```
 
 ##### Search Thread Safety
@@ -1599,9 +1586,10 @@ public Block getLastBlock() {
     // Returns the block with the highest block number or null if chain is empty
 }
 
-// Get blocks within a time range
+// Get blocks within a time range (memory-efficient, max 10K results)
 public List<Block> getBlocksByTimeRange(LocalDateTime startTime, LocalDateTime endTime) {
-    // Returns blocks with timestamps between startTime and endTime
+    // Returns blocks with timestamps between startTime and endTime (limited to 10,000 results)
+    // For more control, use: blockDAO.getBlocksByTimeRangePaginated(start, end, offset, limit)
 }
 
 // Get the total number of blocks
@@ -1629,9 +1617,10 @@ public int deleteAllBlocks() {
     // Removes all blocks from the database
 }
 
-// Search blocks by content (case-insensitive)
+// Search blocks by content (case-insensitive, memory-efficient, max 10K results)
 public List<Block> searchBlocksByContent(String content) {
-    // Returns blocks containing the specified content (case-insensitive)
+    // Returns blocks containing the specified content (case-insensitive, limited to 10,000 results)
+    // For more control, use: blockDAO.searchBlocksByContentWithLimit(content, maxResults)
 }
 
 // Get block by hash
@@ -1663,6 +1652,58 @@ List<AuthorizedKey> activeKeys = blockchain.getAuthorizedKeys();
 List<AuthorizedKey> allKeys = blockchain.getAllAuthorizedKeys();
 ```
 
+#### Memory-Efficient BlockDAO Methods
+
+For large-scale blockchain operations, use these paginated/limited methods to prevent memory issues:
+
+```java
+// Paginated block retrieval after specific block number (useful for rollback operations)
+List<Block> blocks = blockDAO.getBlocksAfterPaginated(blockNumber, offset, limit);
+// Example: Process 1000 blocks at a time
+for (int offset = 0; ; offset += 1000) {
+    List<Block> batch = blockDAO.getBlocksAfterPaginated(100L, offset, 1000);
+    if (batch.isEmpty()) break;
+    // Process batch...
+}
+
+// Time range search with pagination
+List<Block> blocks = blockDAO.getBlocksByTimeRangePaginated(startTime, endTime, offset, limit);
+// Example: Get first 5000 blocks in time range
+List<Block> firstBatch = blockDAO.getBlocksByTimeRangePaginated(start, end, 0, 5000);
+
+// Content search with custom limit
+List<Block> blocks = blockDAO.searchBlocksByContentWithLimit(searchTerm, maxResults);
+// Example: Limit to 100 results
+List<Block> top100 = blockDAO.searchBlocksByContentWithLimit("payment", 100);
+
+// Signer-based search with limit
+List<Block> blocks = blockDAO.getBlocksBySignerPublicKeyWithLimit(publicKey, maxResults);
+// Example: Get sample of 10 blocks for impact assessment
+List<Block> sample = blockDAO.getBlocksBySignerPublicKeyWithLimit(key, 10);
+
+// Category search with custom limit
+List<Block> blocks = blockDAO.searchByCategoryWithLimit(category, maxResults);
+// Example: Get first 1000 medical records
+List<Block> medical = blockDAO.searchByCategoryWithLimit("MEDICAL", 1000);
+
+// JSON metadata search with pagination
+List<Block> blocks = blockDAO.searchByCustomMetadataKeyValuePaginated(key, value, offset, limit);
+// Example: Find all high-priority items, process in batches
+for (int offset = 0; ; offset += 1000) {
+    List<Block> batch = blockDAO.searchByCustomMetadataKeyValuePaginated("priority", "high", offset, 1000);
+    if (batch.isEmpty()) break;
+    // Process batch...
+}
+
+// Complex JSON criteria search with pagination
+Map<String, String> criteria = Map.of("department", "medical", "status", "active");
+List<Block> blocks = blockDAO.searchByCustomMetadataMultipleCriteriaPaginated(criteria, offset, limit);
+// Example: Get first 500 matching blocks
+List<Block> matches = blockDAO.searchByCustomMetadataMultipleCriteriaPaginated(criteria, 0, 500);
+```
+
+**⚠️ Important:** All non-paginated/unlimited versions of these methods have been removed to prevent memory issues with large datasets. Always use the paginated or limited versions above.
+
 #### Block Operations
 ```java
 // Add block
@@ -1690,13 +1731,13 @@ List<Block> exhaustiveResults = blockchain.searchBlocks("searchTerm", SearchLeve
 List<Block> quickSearch = blockchain.searchBlocksFast("keyword");        // Keywords only
 List<Block> completeSearch = blockchain.searchBlocksComplete("content"); // All content
 
-// Search by content category
+// Search by content category (max 10K results for memory efficiency)
 List<Block> categoryResults = blockchain.searchByCategory("MEDICAL");
 
-// Legacy search methods (still supported)
-List<Block> contentResults = blockchain.searchBlocksByContent("searchTerm");
+// Memory-efficient search methods (automatically limited)
+List<Block> contentResults = blockchain.searchBlocksByContent("searchTerm");  // Max 10K
 Block hashResult = blockchain.getBlockByHash("hashString");
-List<Block> dateResults = blockchain.getBlocksByDateRange(startDate, endDate);
+List<Block> dateResults = blockchain.getBlocksByDateRange(startDate, endDate);  // Max 10K
 
 // Add blocks with keywords and categories
 boolean success = blockchain.addBlockWithKeywords(data, manualKeywords, category, privateKey, publicKey);
@@ -2237,9 +2278,11 @@ public List<Block> searchBlocksComplete(String searchTerm)
 public List<Block> searchByCategory(String category)
 ```
 - **Parameters:** `category`: Content category to filter by (case-insensitive)
-- **Returns:** List of blocks in the specified category
+- **Returns:** List of blocks in the specified category (limited to 10,000 results for memory efficiency)
 - **Description:** Filters blocks by their assigned content category
 - **Example Categories:** "MEDICAL", "FINANCE", "TECHNICAL", "LEGAL"
+- **Memory-Efficient:** Automatically limited to prevent memory issues with large datasets
+- **For Custom Limits:** Use `blockDAO.searchByCategoryWithLimit(category, maxResults)`
 
 ##### Search Term Validation
 
@@ -2339,14 +2382,15 @@ List<Block> results = blockchain.searchBlocksFast("API");      // ✅ Valid (exc
 List<Block> results = blockchain.searchBlocksFast("hi");       // Returns empty (too short)
 ```
 
-##### Legacy Search Methods (Still Supported)
+##### Memory-Efficient Search Methods
 
 ```java
 public List<Block> searchBlocksByContent(String searchTerm)
 ```
 - **Parameters:** `searchTerm`: Text to search for (case-insensitive)
-- **Returns:** List of blocks containing the search term
-- **Description:** Legacy method - searches through all block data content
+- **Returns:** List of blocks containing the search term (limited to 10,000 results)
+- **Description:** Memory-efficient content search - automatically limited to prevent memory issues
+- **For Custom Limits:** Use `blockDAO.searchBlocksByContentWithLimit(searchTerm, maxResults)`
 
 ```java
 public Block getBlockByHash(String hash)
@@ -3657,9 +3701,10 @@ public boolean rollbackBlocks(Long numberOfBlocks) {
 
 // Roll back to specific block number with off-chain cleanup
 public boolean rollbackToBlock(Long targetBlockNumber) {
-    // ✅ NEW: Uses getBlocksAfter() to identify all affected off-chain files
+    // ✅ MEMORY-EFFICIENT: Uses paginated getBlocksAfterPaginated() in 1000-block batches
     // ✅ Deletes off-chain files before database operations
     // ✅ Atomic operation - all blocks after target are removed
+    // ✅ Scales to millions of blocks without memory issues
 }
 ```
 

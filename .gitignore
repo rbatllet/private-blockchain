@@ -86,3 +86,4 @@ replay_pid*
 *.json
 off-chain-data/
 private-keys/
+emergency-backups/

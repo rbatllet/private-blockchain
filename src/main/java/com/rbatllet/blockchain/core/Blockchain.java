@@ -3427,44 +3427,65 @@ public class Blockchain {
                         return true;
                     }
 
-                    // CRITICAL: Clean up off-chain data before bulk deletion
+                    // CRITICAL: Clean up off-chain data before bulk deletion using pagination
                     logger.info(
-                        "🧹 Cleaning up off-chain data for blocks after {}",
+                        "🧹 Cleaning up off-chain data for blocks after {} (using memory-efficient batch processing)",
                         targetBlockNumber
                     );
-                    List<Block> blocksToDelete = blockDAO.getBlocksAfter(
-                        targetBlockNumber
-                    );
-                    int offChainFilesDeleted = 0;
 
-                    for (Block block : blocksToDelete) {
-                        if (block.hasOffChainData()) {
-                            try {
-                                boolean fileDeleted =
-                                    offChainStorageService.deleteData(
-                                        block.getOffChainData()
-                                    );
-                                if (fileDeleted) {
-                                    offChainFilesDeleted++;
-                                    if (logger.isTraceEnabled()) {
-                                        logger.trace(
+                    int offChainFilesDeleted = 0;
+                    final int BATCH_SIZE = 1000;
+                    int offset = 0;
+                    boolean hasMore = true;
+
+                    while (hasMore) {
+                        List<Block> blocksToDelete = blockDAO.getBlocksAfterPaginated(
+                            targetBlockNumber,
+                            offset,
+                            BATCH_SIZE
+                        );
+
+                        if (blocksToDelete.isEmpty()) {
+                            hasMore = false;
+                            break;
+                        }
+
+                        for (Block block : blocksToDelete) {
+                            if (block.hasOffChainData()) {
+                                try {
+                                    boolean fileDeleted =
+                                        offChainStorageService.deleteData(
+                                            block.getOffChainData()
+                                        );
+                                    if (fileDeleted) {
+                                        offChainFilesDeleted++;
+                                        if (logger.isTraceEnabled()) {
+                                            logger.trace(
                                             "  ✓ Deleted off-chain file for block #{}",
                                             block.getBlockNumber()
                                         );
+                                        }
+                                    } else {
+                                        logger.warn(
+                                            "  ⚠ Failed to delete off-chain file for block #{}",
+                                            block.getBlockNumber()
+                                        );
                                     }
-                                } else {
-                                    logger.warn(
-                                        "  ⚠ Failed to delete off-chain file for block #{}",
-                                        block.getBlockNumber()
+                                } catch (Exception e) {
+                                    logger.error(
+                                        "  ❌ Error deleting off-chain data for block {}",
+                                        block.getBlockNumber(),
+                                        e
                                     );
                                 }
-                            } catch (Exception e) {
-                                logger.error(
-                                    "  ❌ Error deleting off-chain data for block {}",
-                                    block.getBlockNumber(),
-                                    e
-                                );
                             }
+                        }
+
+                        offset += BATCH_SIZE;
+
+                        // Check if we got less than a full batch (end of data)
+                        if (blocksToDelete.size() < BATCH_SIZE) {
+                            hasMore = false;
                         }
                     }
 
@@ -3514,9 +3535,11 @@ public class Blockchain {
                 return new ArrayList<>();
             }
 
-            // Use the DAO method for better performance
-            List<Block> matchingBlocks = blockDAO.searchBlocksByContent(
-                searchTerm
+            // Use the DAO method for better performance (limit results to prevent memory issues)
+            final int MAX_SEARCH_RESULTS = 10000; // Reasonable limit for content search
+            List<Block> matchingBlocks = blockDAO.searchBlocksByContentWithLimit(
+                searchTerm,
+                MAX_SEARCH_RESULTS
             );
 
             logger.info(
@@ -3566,7 +3589,9 @@ public class Blockchain {
     public List<Block> searchByCategory(String category) {
         GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
         try {
-            return blockDAO.searchByCategory(category);
+            // Limit results to prevent memory issues
+            final int MAX_CATEGORY_RESULTS = 10000;
+            return blockDAO.searchByCategoryWithLimit(category, MAX_CATEGORY_RESULTS);
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
         }
@@ -3617,7 +3642,9 @@ public class Blockchain {
             LocalDateTime startDateTime = startDate.atStartOfDay();
             LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
 
-            return blockDAO.getBlocksByTimeRange(startDateTime, endDateTime);
+            // Limit results to prevent memory issues with large time ranges
+            final int MAX_TIME_RANGE_RESULTS = 10000;
+            return blockDAO.getBlocksByTimeRangePaginated(startDateTime, endDateTime, 0, MAX_TIME_RANGE_RESULTS);
         } catch (Exception e) {
             logger.error("❌ Error searching blocks by date range", e);
             return new ArrayList<>();
@@ -3731,7 +3758,14 @@ public class Blockchain {
     ) {
         GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
         try {
-            return blockDAO.getBlocksByTimeRange(startTime, endTime);
+            // Handle null parameters gracefully (backward compatibility)
+            if (startTime == null || endTime == null) {
+                return new ArrayList<>();
+            }
+
+            // Limit results to prevent memory issues with large time ranges
+            final int MAX_TIME_RANGE_RESULTS = 10000;
+            return blockDAO.getBlocksByTimeRangePaginated(startTime, endTime, 0, MAX_TIME_RANGE_RESULTS);
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
         }
@@ -4208,10 +4242,11 @@ public class Blockchain {
                             impact.getAffectedBlocks()
                         );
 
-                        // Show sample of affected blocks
+                        // Show sample of affected blocks (limit to sample size for display)
+                        final int SAMPLE_SIZE = 5;
                         List<Block> affectedBlocks =
-                            blockDAO.getBlocksBySignerPublicKey(publicKey);
-                        int sampleSize = Math.min(5, affectedBlocks.size());
+                            blockDAO.getBlocksBySignerPublicKeyWithLimit(publicKey, SAMPLE_SIZE);
+                        int sampleSize = Math.min(SAMPLE_SIZE, affectedBlocks.size());
                         for (int i = 0; i < sampleSize; i++) {
                             Block block = affectedBlocks.get(i);
                             String data = block.getData();
