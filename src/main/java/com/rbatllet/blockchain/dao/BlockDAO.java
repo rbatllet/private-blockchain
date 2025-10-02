@@ -414,9 +414,26 @@ public class BlockDAO {
     }
     
     /**
-     * Get blocks within a time range
+     * 🚀 MEMORY-EFFICIENT: Get blocks within a time range with pagination.
+     *
+     * @param startTime Start of time range
+     * @param endTime End of time range
+     * @param offset Starting position (0-based)
+     * @param limit Maximum number of blocks to return
+     * @return List of blocks within the time range, limited by pagination
+     * @throws IllegalArgumentException if parameters are invalid
      */
-    public List<Block> getBlocksByTimeRange(LocalDateTime startTime, LocalDateTime endTime) {
+    public List<Block> getBlocksByTimeRangePaginated(LocalDateTime startTime, LocalDateTime endTime, int offset, int limit) {
+        if (startTime == null || endTime == null) {
+            throw new IllegalArgumentException("Start time and end time cannot be null");
+        }
+        if (offset < 0) {
+            throw new IllegalArgumentException("Offset cannot be negative");
+        }
+        if (limit <= 0) {
+            throw new IllegalArgumentException("Limit must be positive");
+        }
+
         lock.readLock().lock();
         try {
             EntityManager em = JPAUtil.getEntityManager();
@@ -426,6 +443,8 @@ public class BlockDAO {
                     Block.class);
                 query.setParameter("startTime", startTime);
                 query.setParameter("endTime", endTime);
+                query.setFirstResult(offset);
+                query.setMaxResults(limit);
                 return query.getResultList();
             } finally {
                 if (!JPAUtil.hasActiveTransaction()) {
@@ -601,18 +620,35 @@ public class BlockDAO {
     }
     
     /**
-     * Get all blocks signed by a specific public key
-     * Used for impact assessment before key deletion
+     * 🚀 MEMORY-EFFICIENT: Get blocks signed by a specific public key with result limit.
+     * Useful for impact assessment before key deletion.
+     *
+     * @param signerPublicKey The public key of the signer
+     * @param maxResults Maximum number of results to return (use 0 for sample display, larger for full analysis)
+     * @return List of blocks signed by the specified key, limited by maxResults
+     * @throws IllegalArgumentException if maxResults is negative
      */
-    public List<Block> getBlocksBySignerPublicKey(String signerPublicKey) {
+    public List<Block> getBlocksBySignerPublicKeyWithLimit(String signerPublicKey, int maxResults) {
+        if (signerPublicKey == null || signerPublicKey.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
+        if (maxResults < 0) {
+            throw new IllegalArgumentException("maxResults cannot be negative");
+        }
+
         lock.readLock().lock();
         try {
             EntityManager em = JPAUtil.getEntityManager();
             try {
                 TypedQuery<Block> query = em.createQuery(
-                    "SELECT b FROM Block b WHERE b.signerPublicKey = :signerPublicKey ORDER BY b.blockNumber ASC", 
+                    "SELECT b FROM Block b WHERE b.signerPublicKey = :signerPublicKey ORDER BY b.blockNumber ASC",
                     Block.class);
                 query.setParameter("signerPublicKey", signerPublicKey);
+
+                if (maxResults > 0) {
+                    query.setMaxResults(maxResults);
+                }
+
                 return query.getResultList();
             } finally {
                 if (!JPAUtil.hasActiveTransaction()) {
@@ -649,17 +685,38 @@ public class BlockDAO {
     }
     
     /**
-     * Get all blocks after a specific block number (for off-chain cleanup before deletion)
+     * 🚀 MEMORY-EFFICIENT: Get blocks after a specific block number with pagination.
+     * Useful for rollback operations and off-chain cleanup on large datasets.
+     *
+     * @param blockNumber The block number threshold
+     * @param offset Starting position (0-based)
+     * @param limit Maximum number of blocks to return
+     * @return List of blocks after the specified block number within the pagination range
+     * @throws IllegalArgumentException if offset is negative or limit is not positive
      */
-    public List<Block> getBlocksAfter(Long blockNumber) {
+    public List<Block> getBlocksAfterPaginated(Long blockNumber, int offset, int limit) {
+        if (blockNumber == null) {
+            throw new IllegalArgumentException("Block number cannot be null");
+        }
+        if (offset < 0) {
+            throw new IllegalArgumentException("Offset cannot be negative");
+        }
+        if (limit <= 0) {
+            throw new IllegalArgumentException("Limit must be positive");
+        }
+
         lock.readLock().lock();
         try {
             EntityManager em = JPAUtil.getEntityManager();
             try {
-                List<Block> blocks = em.createQuery("SELECT b FROM Block b LEFT JOIN FETCH b.offChainData WHERE b.blockNumber > :blockNumber ORDER BY b.blockNumber ASC", Block.class)
-                        .setParameter("blockNumber", blockNumber)
-                        .getResultList();
-                return blocks;
+                TypedQuery<Block> query = em.createQuery(
+                    "SELECT b FROM Block b LEFT JOIN FETCH b.offChainData WHERE b.blockNumber > :blockNumber ORDER BY b.blockNumber ASC",
+                    Block.class);
+                query.setParameter("blockNumber", blockNumber);
+                query.setFirstResult(offset);
+                query.setMaxResults(limit);
+
+                return query.getResultList();
             } finally {
                 if (!JPAUtil.hasActiveTransaction()) {
                     em.close();
@@ -742,21 +799,30 @@ public class BlockDAO {
     }
     
     /**
-     * Search blocks by content (case-insensitive)
+     * 🚀 MEMORY-EFFICIENT: Search blocks by content with result limit (case-insensitive).
+     *
+     * @param content The content to search for
+     * @param maxResults Maximum number of results to return
+     * @return List of matching blocks, limited by maxResults
+     * @throws IllegalArgumentException if maxResults is not positive
      */
-    public List<Block> searchBlocksByContent(String content) {
+    public List<Block> searchBlocksByContentWithLimit(String content, int maxResults) {
         if (content == null || content.trim().isEmpty()) {
             return new ArrayList<>();
         }
-        
+        if (maxResults <= 0) {
+            throw new IllegalArgumentException("maxResults must be positive");
+        }
+
         lock.readLock().lock();
         try {
             EntityManager em = JPAUtil.getEntityManager();
             try {
                 TypedQuery<Block> query = em.createQuery(
-                    "SELECT b FROM Block b WHERE LOWER(b.data) LIKE :content ORDER BY b.blockNumber ASC", 
+                    "SELECT b FROM Block b WHERE LOWER(b.data) LIKE :content ORDER BY b.blockNumber ASC",
                     Block.class);
                 query.setParameter("content", "%" + content.toLowerCase() + "%");
+                query.setMaxResults(maxResults);
                 return query.getResultList();
             } finally {
                 if (!JPAUtil.hasActiveTransaction()) {
@@ -892,21 +958,30 @@ public class BlockDAO {
     }
     
     /**
-     * Search blocks by category
+     * 🚀 MEMORY-EFFICIENT: Search blocks by category with result limit.
+     *
+     * @param category The category to search for
+     * @param maxResults Maximum number of results to return
+     * @return List of matching blocks, limited by maxResults
+     * @throws IllegalArgumentException if maxResults is not positive
      */
-    public List<Block> searchByCategory(String category) {
+    public List<Block> searchByCategoryWithLimit(String category, int maxResults) {
         if (category == null || category.trim().isEmpty()) {
             return new ArrayList<>();
         }
-        
+        if (maxResults <= 0) {
+            throw new IllegalArgumentException("maxResults must be positive");
+        }
+
         lock.readLock().lock();
         try {
             EntityManager em = JPAUtil.getEntityManager();
             try {
                 TypedQuery<Block> query = em.createQuery(
-                    "SELECT b FROM Block b WHERE UPPER(b.contentCategory) = :category ORDER BY b.blockNumber ASC", 
+                    "SELECT b FROM Block b WHERE UPPER(b.contentCategory) = :category ORDER BY b.blockNumber ASC",
                     Block.class);
                 query.setParameter("category", category.toUpperCase());
+                query.setMaxResults(maxResults);
                 return query.getResultList();
             } finally {
                 if (!JPAUtil.hasActiveTransaction()) {
@@ -969,15 +1044,20 @@ public class BlockDAO {
     }
 
     /**
-     * Search blocks by exact match of a JSON key-value pair in custom metadata.
+     * 🚀 MEMORY-EFFICIENT: Search blocks by exact match of a JSON key-value pair in custom metadata with pagination.
      * Thread-safe with rigorous validation and JSON parsing.
+     *
+     * <p>This method processes blocks in batches to avoid loading all blocks into memory,
+     * making it suitable for large blockchain datasets.</p>
      *
      * @param jsonKey The JSON key to search for (e.g., "department", "priority")
      * @param jsonValue The expected value for the key (exact match)
+     * @param offset Starting position (0-based)
+     * @param limit Maximum number of results to return
      * @return List of blocks where custom metadata contains the exact key-value pair
-     * @throws IllegalArgumentException if jsonKey or jsonValue is null/empty
+     * @throws IllegalArgumentException if jsonKey or jsonValue is null/empty, or if offset/limit are invalid
      */
-    public List<Block> searchByCustomMetadataKeyValue(String jsonKey, String jsonValue) {
+    public List<Block> searchByCustomMetadataKeyValuePaginated(String jsonKey, String jsonValue, int offset, int limit) {
         // RIGOROUS INPUT VALIDATION
         if (jsonKey == null || jsonKey.trim().isEmpty()) {
             throw new IllegalArgumentException("JSON key cannot be null or empty");
@@ -985,63 +1065,110 @@ public class BlockDAO {
         if (jsonValue == null) {
             throw new IllegalArgumentException("JSON value cannot be null (use empty string for null values)");
         }
+        if (offset < 0) {
+            throw new IllegalArgumentException("Offset cannot be negative");
+        }
+        if (limit <= 0) {
+            throw new IllegalArgumentException("Limit must be positive");
+        }
 
         lock.readLock().lock();
         try {
             EntityManager em = JPAUtil.getEntityManager();
             try {
-                // Get all blocks with custom metadata
-                TypedQuery<Block> query = em.createQuery(
-                    "SELECT b FROM Block b WHERE b.customMetadata IS NOT NULL " +
-                    "ORDER BY b.blockNumber ASC",
-                    Block.class
-                );
-                List<Block> allBlocks = query.getResultList();
-
-                // Filter blocks by parsing JSON (more accurate than LIKE queries)
                 List<Block> matchingBlocks = new ArrayList<>();
+                int currentOffset = 0;
+                int foundCount = 0;
+                int skippedCount = 0;
+                final int BATCH_SIZE = 1000;
 
-                for (Block block : allBlocks) {
-                    if (block == null || block.getCustomMetadata() == null) {
-                        continue; // Defensive: skip null blocks
+                // Process blocks in batches until we have enough results
+                while (foundCount < limit) {
+                    TypedQuery<Block> query = em.createQuery(
+                        "SELECT b FROM Block b WHERE b.customMetadata IS NOT NULL " +
+                        "ORDER BY b.blockNumber ASC",
+                        Block.class
+                    );
+                    query.setFirstResult(currentOffset);
+                    query.setMaxResults(BATCH_SIZE);
+
+                    List<Block> batch = query.getResultList();
+
+                    if (batch.isEmpty()) {
+                        break; // No more blocks to process
                     }
 
-                    try {
-                        String metadata = block.getCustomMetadata();
-
-                        // Use Jackson to parse JSON safely
-                        com.fasterxml.jackson.databind.ObjectMapper mapper =
-                            new com.fasterxml.jackson.databind.ObjectMapper();
-
-                        @SuppressWarnings("unchecked")
-                        java.util.Map<String, Object> jsonMap = mapper.readValue(
-                            metadata,
-                            java.util.Map.class
-                        );
-
-                        // Check if key exists and value matches
-                        if (jsonMap.containsKey(jsonKey)) {
-                            Object actualValue = jsonMap.get(jsonKey);
-
-                            // Handle different value types
-                            if (actualValue != null && actualValue.toString().equals(jsonValue)) {
-                                matchingBlocks.add(block);
-                            } else if (actualValue == null && jsonValue.isEmpty()) {
-                                // Handle null values represented as empty string
-                                matchingBlocks.add(block);
-                            }
+                    // Process this batch
+                    for (Block block : batch) {
+                        if (block == null || block.getCustomMetadata() == null) {
+                            continue;
                         }
-                    } catch (Exception e) {
-                        // Log but continue - don't fail entire search for one bad JSON
-                        logger.debug("⚠️ Could not parse custom metadata for block #{}: {}",
-                                   block.getBlockNumber(), e.getMessage());
+
+                        try {
+                            String metadata = block.getCustomMetadata();
+
+                            // Use Jackson to parse JSON safely
+                            com.fasterxml.jackson.databind.ObjectMapper mapper =
+                                new com.fasterxml.jackson.databind.ObjectMapper();
+
+                            @SuppressWarnings("unchecked")
+                            java.util.Map<String, Object> jsonMap = mapper.readValue(
+                                metadata,
+                                java.util.Map.class
+                            );
+
+                            // Check if key exists and value matches
+                            if (jsonMap.containsKey(jsonKey)) {
+                                Object actualValue = jsonMap.get(jsonKey);
+
+                                // Handle different value types
+                                if (actualValue != null && actualValue.toString().equals(jsonValue)) {
+                                    // This is a match - check if we should include it
+                                    if (skippedCount >= offset) {
+                                        matchingBlocks.add(block);
+                                        foundCount++;
+
+                                        if (foundCount >= limit) {
+                                            break; // We have enough results
+                                        }
+                                    } else {
+                                        skippedCount++;
+                                    }
+                                } else if (actualValue == null && jsonValue.isEmpty()) {
+                                    // Handle null values represented as empty string
+                                    if (skippedCount >= offset) {
+                                        matchingBlocks.add(block);
+                                        foundCount++;
+
+                                        if (foundCount >= limit) {
+                                            break;
+                                        }
+                                    } else {
+                                        skippedCount++;
+                                    }
+                                }
+                            }
+                        } catch (Exception e) {
+                            // Log but continue - don't fail entire search for one bad JSON
+                            logger.debug("⚠️ Could not parse custom metadata for block #{}: {}",
+                                       block.getBlockNumber(), e.getMessage());
+                        }
+                    }
+
+                    currentOffset += BATCH_SIZE;
+
+                    // Break if we got less than a full batch (end of data)
+                    if (batch.size() < BATCH_SIZE) {
+                        break;
                     }
                 }
 
+                logger.debug("✅ Found {} matching blocks (offset: {}, limit: {})",
+                           matchingBlocks.size(), offset, limit);
                 return matchingBlocks;
 
             } catch (Exception e) {
-                logger.error("❌ Error searching by custom metadata key-value", e);
+                logger.error("❌ Error searching by custom metadata key-value paginated", e);
                 return new ArrayList<>();
             } finally {
                 if (!JPAUtil.hasActiveTransaction()) {
@@ -1054,14 +1181,20 @@ public class BlockDAO {
     }
 
     /**
-     * Search blocks by multiple custom metadata criteria (AND logic).
+     * 🚀 MEMORY-EFFICIENT: Search blocks by multiple custom metadata criteria (AND logic) with pagination.
      * Thread-safe with comprehensive validation.
      *
+     * <p>This method processes blocks in batches to avoid loading all blocks into memory,
+     * making it suitable for large blockchain datasets.</p>
+     *
      * @param criteria Map of JSON key-value pairs that must ALL match
+     * @param offset Starting position (0-based)
+     * @param limit Maximum number of results to return
      * @return List of blocks matching all criteria
-     * @throws IllegalArgumentException if criteria is null or empty
+     * @throws IllegalArgumentException if criteria is null/empty or if offset/limit are invalid
      */
-    public List<Block> searchByCustomMetadataMultipleCriteria(java.util.Map<String, String> criteria) {
+    public List<Block> searchByCustomMetadataMultipleCriteriaPaginated(
+            java.util.Map<String, String> criteria, int offset, int limit) {
         // RIGOROUS INPUT VALIDATION
         if (criteria == null) {
             throw new IllegalArgumentException("Criteria map cannot be null");
@@ -1069,72 +1202,110 @@ public class BlockDAO {
         if (criteria.isEmpty()) {
             throw new IllegalArgumentException("Criteria map cannot be empty");
         }
+        if (offset < 0) {
+            throw new IllegalArgumentException("Offset cannot be negative");
+        }
+        if (limit <= 0) {
+            throw new IllegalArgumentException("Limit must be positive");
+        }
 
         lock.readLock().lock();
         try {
             EntityManager em = JPAUtil.getEntityManager();
             try {
-                // Get all blocks with custom metadata
-                TypedQuery<Block> query = em.createQuery(
-                    "SELECT b FROM Block b WHERE b.customMetadata IS NOT NULL " +
-                    "ORDER BY b.blockNumber ASC",
-                    Block.class
-                );
-                List<Block> allBlocks = query.getResultList();
-
-                // Filter blocks by parsing JSON and checking all criteria
                 List<Block> matchingBlocks = new ArrayList<>();
+                int currentOffset = 0;
+                int foundCount = 0;
+                int skippedCount = 0;
+                final int BATCH_SIZE = 1000;
 
-                for (Block block : allBlocks) {
-                    if (block == null || block.getCustomMetadata() == null) {
-                        continue; // Defensive: skip null blocks
+                // Process blocks in batches until we have enough results
+                while (foundCount < limit) {
+                    TypedQuery<Block> query = em.createQuery(
+                        "SELECT b FROM Block b WHERE b.customMetadata IS NOT NULL " +
+                        "ORDER BY b.blockNumber ASC",
+                        Block.class
+                    );
+                    query.setFirstResult(currentOffset);
+                    query.setMaxResults(BATCH_SIZE);
+
+                    List<Block> batch = query.getResultList();
+
+                    if (batch.isEmpty()) {
+                        break; // No more blocks to process
                     }
 
-                    try {
-                        String metadata = block.getCustomMetadata();
-
-                        // Parse JSON
-                        com.fasterxml.jackson.databind.ObjectMapper mapper =
-                            new com.fasterxml.jackson.databind.ObjectMapper();
-
-                        @SuppressWarnings("unchecked")
-                        java.util.Map<String, Object> jsonMap = mapper.readValue(
-                            metadata,
-                            java.util.Map.class
-                        );
-
-                        // Check ALL criteria (AND logic)
-                        boolean allMatch = true;
-                        for (java.util.Map.Entry<String, String> criterion : criteria.entrySet()) {
-                            String key = criterion.getKey();
-                            String expectedValue = criterion.getValue();
-
-                            if (!jsonMap.containsKey(key)) {
-                                allMatch = false;
-                                break;
-                            }
-
-                            Object actualValue = jsonMap.get(key);
-                            if (actualValue == null || !actualValue.toString().equals(expectedValue)) {
-                                allMatch = false;
-                                break;
-                            }
+                    // Process this batch
+                    for (Block block : batch) {
+                        if (block == null || block.getCustomMetadata() == null) {
+                            continue;
                         }
 
-                        if (allMatch) {
-                            matchingBlocks.add(block);
-                        }
+                        try {
+                            String metadata = block.getCustomMetadata();
 
-                    } catch (Exception e) {
-                        logger.debug("⚠️ Could not parse custom metadata for block #{}: {}",
-                                   block.getBlockNumber(), e.getMessage());
+                            // Parse JSON
+                            com.fasterxml.jackson.databind.ObjectMapper mapper =
+                                new com.fasterxml.jackson.databind.ObjectMapper();
+
+                            @SuppressWarnings("unchecked")
+                            java.util.Map<String, Object> jsonMap = mapper.readValue(
+                                metadata,
+                                java.util.Map.class
+                            );
+
+                            // Check ALL criteria (AND logic)
+                            boolean allMatch = true;
+                            for (java.util.Map.Entry<String, String> criterion : criteria.entrySet()) {
+                                String key = criterion.getKey();
+                                String expectedValue = criterion.getValue();
+
+                                if (!jsonMap.containsKey(key)) {
+                                    allMatch = false;
+                                    break;
+                                }
+
+                                Object actualValue = jsonMap.get(key);
+                                if (actualValue == null || !actualValue.toString().equals(expectedValue)) {
+                                    allMatch = false;
+                                    break;
+                                }
+                            }
+
+                            if (allMatch) {
+                                // This is a match - check if we should include it
+                                if (skippedCount >= offset) {
+                                    matchingBlocks.add(block);
+                                    foundCount++;
+
+                                    if (foundCount >= limit) {
+                                        break; // We have enough results
+                                    }
+                                } else {
+                                    skippedCount++;
+                                }
+                            }
+
+                        } catch (Exception e) {
+                            logger.debug("⚠️ Could not parse custom metadata for block #{}: {}",
+                                       block.getBlockNumber(), e.getMessage());
+                        }
+                    }
+
+                    currentOffset += BATCH_SIZE;
+
+                    // Break if we got less than a full batch (end of data)
+                    if (batch.size() < BATCH_SIZE) {
+                        break;
                     }
                 }
 
+                logger.debug("✅ Found {} matching blocks (offset: {}, limit: {})",
+                           matchingBlocks.size(), offset, limit);
                 return matchingBlocks;
 
             } catch (Exception e) {
-                logger.error("❌ Error searching by multiple custom metadata criteria", e);
+                logger.error("❌ Error searching by multiple custom metadata criteria paginated", e);
                 return new ArrayList<>();
             } finally {
                 if (!JPAUtil.hasActiveTransaction()) {

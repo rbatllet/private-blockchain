@@ -4158,7 +4158,9 @@ public class UserFriendlyEncryptionAPI {
         }
 
         try {
-            return blockchain.getBlockDAO().searchByCustomMetadataKeyValue(jsonKey, jsonValue);
+            // Use memory-efficient paginated search with reasonable limit
+            final int MAX_RESULTS = 10000;
+            return blockchain.getBlockDAO().searchByCustomMetadataKeyValuePaginated(jsonKey, jsonValue, 0, MAX_RESULTS);
         } catch (Exception e) {
             logger.error("❌ Error searching by custom metadata key-value: {}", e.getMessage(), e);
             return new ArrayList<>();
@@ -4212,7 +4214,9 @@ public class UserFriendlyEncryptionAPI {
         }
 
         try {
-            return blockchain.getBlockDAO().searchByCustomMetadataMultipleCriteria(criteria);
+            // Use memory-efficient paginated search with reasonable limit
+            final int MAX_RESULTS = 10000;
+            return blockchain.getBlockDAO().searchByCustomMetadataMultipleCriteriaPaginated(criteria, 0, MAX_RESULTS);
         } catch (Exception e) {
             logger.error("❌ Error searching by multiple custom metadata criteria: {}", e.getMessage(), e);
             return new ArrayList<>();

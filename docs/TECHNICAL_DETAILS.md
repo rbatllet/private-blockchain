@@ -1744,13 +1744,33 @@ for (Block block : blocksToDelete) {
 
 **rollbackToBlock(targetBlockNumber)**
 ```java
-// Clean up off-chain data for blocks after target
-List<Block> blocksToDelete = blockDAO.getBlocksAfter(targetBlockNumber);
-for (Block block : blocksToDelete) {
-    if (block.hasOffChainData()) {
-        offChainStorageService.deleteData(block.getOffChainData());
+// Clean up off-chain data for blocks after target using memory-efficient batch processing
+final int BATCH_SIZE = 1000;
+int offset = 0;
+boolean hasMore = true;
+
+while (hasMore) {
+    List<Block> blocksToDelete = blockDAO.getBlocksAfterPaginated(
+        targetBlockNumber, offset, BATCH_SIZE
+    );
+
+    if (blocksToDelete.isEmpty()) {
+        hasMore = false;
+        break;
+    }
+
+    for (Block block : blocksToDelete) {
+        if (block.hasOffChainData()) {
+            offChainStorageService.deleteData(block.getOffChainData());
+        }
+    }
+
+    offset += BATCH_SIZE;
+    if (blocksToDelete.size() < BATCH_SIZE) {
+        hasMore = false;
     }
 }
+
 int deletedCount = blockDAO.deleteBlocksAfter(targetBlockNumber);
 ```
 

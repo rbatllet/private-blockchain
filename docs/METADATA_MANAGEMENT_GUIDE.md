@@ -1128,9 +1128,11 @@ The blockchain provides **three powerful methods** to search blocks by their cus
 
 | Method | Description | Use Case |
 |--------|-------------|----------|
-| `searchByCustomMetadata()` | Substring search (case-insensitive) | Quick text-based search across all metadata |
-| `searchByCustomMetadataKeyValue()` | Exact key-value pair matching | Precise filtering by specific fields |
-| `searchByCustomMetadataMultipleCriteria()` | Multiple criteria with AND logic | Complex multi-field queries |
+| `searchByCustomMetadata()` | Substring search (case-insensitive) | Quick text-based search across all metadata (max 10K results) |
+| `searchByCustomMetadataKeyValue()` | Exact key-value pair matching | Precise filtering by specific fields (max 10K results) |
+| `searchByCustomMetadataMultipleCriteria()` | Multiple criteria with AND logic | Complex multi-field queries (max 10K results) |
+
+**Note**: All methods are memory-efficient and automatically limited to 10,000 results. For larger datasets, use the paginated versions in BlockDAO (`searchByCustomMetadataKeyValuePaginated()`, `searchByCustomMetadataMultipleCriteriaPaginated()`).
 
 ### Method 1: Substring Search
 
@@ -1217,7 +1219,9 @@ List<Block> urgent = api.searchByCustomMetadataKeyValue("is_urgent", "true");
 - ✅ Handles numeric, boolean, and string values
 - ✅ Gracefully handles malformed JSON (skips invalid blocks)
 - ✅ Case-sensitive for values
+- ✅ **Memory-Efficient**: Automatically limited to 10,000 results
 - ⚠️ Requires exact value match (no partial matches)
+- 💡 **For large datasets**: Use `blockDAO.searchByCustomMetadataKeyValuePaginated(key, value, offset, limit)` for custom pagination
 
 ---
 
@@ -1238,9 +1242,13 @@ criteria.put("department", "medical");
 criteria.put("priority", "high");
 criteria.put("status", "needs_review");
 
-List<Block> matches = api.searchByCustomMetadataMultipleCriteria(criteria);
+List<Block> matches = api.searchByCustomMetadataMultipleCriteria(criteria);  // Max 10K results
 
 System.out.println("Found " + matches.size() + " high-priority medical records needing review");
+
+// For large datasets with more than 10K results, use pagination:
+// List<Block> batch = blockchain.getBlockDAO()
+//     .searchByCustomMetadataMultipleCriteriaPaginated(criteria, offset, limit);
 ```
 
 **Example: Financial compliance query**
