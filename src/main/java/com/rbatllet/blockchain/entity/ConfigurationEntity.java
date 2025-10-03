@@ -84,6 +84,13 @@ public class ConfigurationEntity {
     }
 
     public void setConfigKey(String configKey) {
+        // Validate database column limit (255 chars)
+        if (configKey != null && configKey.length() > 255) {
+            throw new IllegalArgumentException(
+                "configKey exceeds maximum length of 255 characters (got: " +
+                configKey.length() + "). Please use shorter configuration keys."
+            );
+        }
         this.configKey = configKey;
     }
 
@@ -92,6 +99,13 @@ public class ConfigurationEntity {
     }
 
     public void setConfigType(String configType) {
+        // Validate database column limit (50 chars)
+        if (configType != null && configType.length() > 50) {
+            throw new IllegalArgumentException(
+                "configType exceeds maximum length of 50 characters (got: " +
+                configType.length() + "). Please use standard type names."
+            );
+        }
         this.configType = configType;
     }
 

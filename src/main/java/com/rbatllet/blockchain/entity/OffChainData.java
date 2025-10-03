@@ -116,8 +116,15 @@ public class OffChainData {
     public String getContentType() {
         return contentType;
     }
-    
+
     public void setContentType(String contentType) {
+        // Validate database column limit (100 chars)
+        if (contentType != null && contentType.length() > 100) {
+            throw new IllegalArgumentException(
+                "contentType exceeds maximum length of 100 characters (got: " +
+                contentType.length() + "). Please use standard MIME types."
+            );
+        }
         this.contentType = contentType;
     }
     

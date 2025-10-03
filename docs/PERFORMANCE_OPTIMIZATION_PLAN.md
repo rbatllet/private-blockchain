@@ -7,10 +7,11 @@ This guide covers performance optimization strategies for the Private Blockchain
 ## 🚀 Core Performance Features
 
 ### 1. Pagination Support
-- **Method**: `getBlocksPaginated(int offset, int limit)`
+- **Method**: `getBlocksPaginated(long offset, int limit)`
 - **Purpose**: Retrieve blocks in manageable chunks
 - **Benefit**: Constant memory usage regardless of blockchain size
 - **Default Batch Size**: 1000 blocks
+- **Note**: Offset is `long` to prevent integer overflow with large blockchains (>2.1B blocks)
 
 ### 2. Streaming API
 - **Method**: `processChainInBatches(Consumer<List<Block>>, int batchSize)`
@@ -48,7 +49,8 @@ blockchain.processChainInBatches(batch -> {
 ```java
 // Manual control over pagination
 long totalBlocks = blockchain.getBlockCount();
-for (int offset = 0; offset < totalBlocks; offset += 1000) {
+// ⚠️ Use long offset to prevent overflow with large blockchains
+for (long offset = 0; offset < totalBlocks; offset += 1000) {
     List<Block> batch = blockchain.getBlocksPaginated(offset, 1000);
 
     for (Block block : batch) {

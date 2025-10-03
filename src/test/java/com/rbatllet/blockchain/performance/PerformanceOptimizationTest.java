@@ -189,7 +189,7 @@ public class PerformanceOptimizationTest {
         long totalBlocks = blockchain.getBlockCount();
         int processedBlocks = 0;
         
-        for (int offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
+        for (long offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
             List<Block> batch = blockchain.getBlocksPaginated(offset, BATCH_SIZE);
             processedBlocks += batch.size();
             

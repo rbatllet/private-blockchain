@@ -33,11 +33,11 @@ The Pagination and Batch Processing system provides efficient memory management 
 ```java
 /**
  * Get blocks with pagination support
- * @param offset Starting position (0-based)
+ * @param offset Starting position (0-based) - long type to prevent overflow
  * @param limit Maximum number of blocks to return
  * @return List of blocks within the specified range
  */
-public List<Block> getBlocksPaginated(int offset, int limit) {
+public List<Block> getBlocksPaginated(long offset, int limit) {
     // Parameter validation
     if (offset < 0) {
         throw new IllegalArgumentException("Offset must be non-negative");
@@ -45,11 +45,19 @@ public List<Block> getBlocksPaginated(int offset, int limit) {
     if (limit <= 0) {
         throw new IllegalArgumentException("Limit must be positive");
     }
-    
+
+    // Safe cast validation (setFirstResult only accepts int)
+    if (offset > Integer.MAX_VALUE) {
+        throw new IllegalArgumentException(
+            "Offset " + offset + " exceeds maximum pagination offset (" +
+            Integer.MAX_VALUE + "). Use smaller batch sizes."
+        );
+    }
+
     lock.readLock().lock();
     try {
         return em.createQuery("SELECT b FROM Block b ORDER BY b.blockNumber ASC", Block.class)
-                .setFirstResult(offset)
+                .setFirstResult((int) offset)  // Safe cast after validation
                 .setMaxResults(limit)
                 .getResultList();
     } finally {
@@ -61,14 +69,14 @@ public List<Block> getBlocksPaginated(int offset, int limit) {
 #### Usage Examples
 ```java
 // Get first 100 blocks
-List<Block> firstPage = blockDAO.getBlocksPaginated(0, 100);
+List<Block> firstPage = blockDAO.getBlocksPaginated(0L, 100);
 
 // Get next 100 blocks
-List<Block> secondPage = blockDAO.getBlocksPaginated(100, 100);
+List<Block> secondPage = blockDAO.getBlocksPaginated(100L, 100);
 
 // Process all blocks in batches
 int batchSize = 200;
-int offset = 0;
+long offset = 0;  // ⚠️ Use long to prevent overflow with large blockchains
 List<Block> batch;
 
 do {
@@ -88,20 +96,21 @@ do {
 public List<Block> searchAllBlocks() {
     List<Block> allBlocks = new ArrayList<>();
     final int BATCH_SIZE = 200;
-    int totalBlocks = blockchain.getBlockCount();
-    
+    long totalBlocks = blockchain.getBlockCount();  // ⚠️ Use long for block count
+
     // Process in batches to manage memory
-    for (int offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
+    // ⚠️ Use long offset to prevent overflow with large blockchains
+    for (long offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
         List<Block> batchBlocks = blockchain.getBlocksPaginated(offset, BATCH_SIZE);
         allBlocks.addAll(batchBlocks);
-        
+
         // Optional: memory pressure check
         if (shouldPauseForMemory()) {
             System.gc(); // Suggest garbage collection
             Thread.sleep(100); // Brief pause
         }
     }
-    
+
     return allBlocks;
 }
 ```
@@ -114,18 +123,18 @@ public List<Block> searchAllBlocks() {
 public List<Block> searchSimilar(String criteria, SearchOptions options) {
     int batchSize = options.getBatchSize().orElse(100);
     List<Block> results = new ArrayList<>();
-    int offset = 0;
-    
+    long offset = 0;  // ⚠️ Use long to prevent overflow with large blockchains
+
     while (true) {
         List<Block> batch = blockchain.getBlocksPaginated(offset, batchSize);
         if (batch.isEmpty()) break;
-        
+
         // Process batch for similarity
         List<Block> batchResults = processSimilarityBatch(batch, criteria);
         results.addAll(batchResults);
-        
+
         offset += batchSize;
-        
+
         // Check memory and performance constraints
         if (results.size() >= options.getMaxResults().orElse(1000)) {
             break;
@@ -219,7 +228,8 @@ public class SearchOptions {
 ```java
 // Memory usage: O(batch_size) - constant
 // Benefit: Predictable memory consumption
-for (int offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
+long totalBlocks = blockchain.getBlockCount();  // ⚠️ Use long for block count
+for (long offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {  // ⚠️ Use long offset
     List<Block> batch = blockchain.getBlocksPaginated(offset, BATCH_SIZE);
     processBatch(batch); // Process and release
 }
@@ -262,29 +272,29 @@ public class PaginatedBlockchainSearch {
             .withMaxResults(1000)
             .withTimeout(30000)
             .memoryAware(true);
-        
-        int offset = 0;
+
+        long offset = 0;  // ⚠️ Use long to prevent overflow with large blockchains
         int batchSize = options.getBatchSize().orElse(200);
-        
+
         while (results.size() < options.getMaxResults().orElse(Integer.MAX_VALUE)) {
             List<Block> batch = blockchain.getBlocksPaginated(offset, batchSize);
             if (batch.isEmpty()) break;
-            
+
             // Filter batch based on criteria
             List<Block> filteredBatch = batch.stream()
                 .filter(block -> matchesCriteria(block, criteria))
                 .collect(Collectors.toList());
-            
+
             results.addAll(filteredBatch);
             offset += batchSize;
-            
+
             // Memory pressure check
             if (options.isMemoryAware() && isMemoryPressure()) {
                 batchSize = Math.max(25, batchSize / 2); // Reduce batch size
                 System.gc(); // Suggest cleanup
             }
         }
-        
+
         return results;
     }
 }
@@ -298,12 +308,13 @@ public class EncryptedSearchWithBatching {
     public List<Block> searchEncryptedContent(String searchTerm) {
         List<Block> results = new ArrayList<>();
         final int ENCRYPTION_BATCH_SIZE = 50; // Smaller for crypto operations
-        
-        int totalBlocks = blockchain.getBlockCount();
-        
-        for (int offset = 0; offset < totalBlocks; offset += ENCRYPTION_BATCH_SIZE) {
+
+        long totalBlocks = blockchain.getBlockCount();  // ⚠️ Use long for block count
+
+        // ⚠️ Use long offset to prevent overflow with large blockchains
+        for (long offset = 0; offset < totalBlocks; offset += ENCRYPTION_BATCH_SIZE) {
             List<Block> batch = blockchain.getBlocksPaginated(offset, ENCRYPTION_BATCH_SIZE);
-            
+
             // Process encryption in smaller batches due to CPU intensity
             for (Block block : batch) {
                 try {
@@ -334,18 +345,18 @@ public class StreamProcessingExample {
     
     public void processBlocksAsStream(Consumer<Block> processor) {
         final int STREAM_BATCH_SIZE = 100;
-        int offset = 0;
-        
+        long offset = 0;  // ⚠️ Use long to prevent overflow with large blockchains
+
         while (true) {
             List<Block> batch = blockchain.getBlocksPaginated(offset, STREAM_BATCH_SIZE);
             if (batch.isEmpty()) break;
-            
+
             // Process batch as stream
             batch.parallelStream()
                 .forEach(processor);
-            
+
             offset += STREAM_BATCH_SIZE;
-            
+
             // Memory management
             if (offset % (STREAM_BATCH_SIZE * 10) == 0) {
                 System.gc(); // Periodic cleanup
@@ -377,8 +388,8 @@ public class MemoryAwarePagination {
         }
         
         List<Block> results = new ArrayList<>();
-        int offset = 0;
-        
+        long offset = 0;  // ⚠️ Use long to prevent overflow with large blockchains
+
         while (results.size() < requestedSize) {
             // Check memory before each batch
             if (memoryService.isMemoryPressure()) {

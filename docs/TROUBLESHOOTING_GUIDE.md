@@ -607,7 +607,7 @@ public void streamLargeSearch(String query, String password, Consumer<Block> pro
     criteria.put("maxResults", 1000);
     
     // Process results in chunks to avoid loading everything into memory
-    int offset = 0;
+    long offset = 0;
     int batchSize = 50;
     
     while (true) {

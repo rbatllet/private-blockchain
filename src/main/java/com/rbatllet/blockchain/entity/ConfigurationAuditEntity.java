@@ -34,7 +34,7 @@ public class ConfigurationAuditEntity {
     @Column(name = "changed_at", nullable = false)
     private LocalDateTime changedAt;
 
-    @Column(name = "change_reason", length = 255)
+    @Column(name = "change_reason", length = 500)
     private String changeReason;
 
     /**
@@ -81,6 +81,13 @@ public class ConfigurationAuditEntity {
     }
 
     public void setConfigKey(String configKey) {
+        // Validate database column limit (255 chars)
+        if (configKey != null && configKey.length() > 255) {
+            throw new IllegalArgumentException(
+                "configKey exceeds maximum length of 255 characters (got: " +
+                configKey.length() + ")."
+            );
+        }
         this.configKey = configKey;
     }
 
@@ -89,6 +96,13 @@ public class ConfigurationAuditEntity {
     }
 
     public void setConfigType(String configType) {
+        // Validate database column limit (50 chars)
+        if (configType != null && configType.length() > 50) {
+            throw new IllegalArgumentException(
+                "configType exceeds maximum length of 50 characters (got: " +
+                configType.length() + ")."
+            );
+        }
         this.configType = configType;
     }
 
@@ -113,6 +127,13 @@ public class ConfigurationAuditEntity {
     }
 
     public void setOperation(String operation) {
+        // Validate database column limit (20 chars)
+        if (operation != null && operation.length() > 20) {
+            throw new IllegalArgumentException(
+                "operation exceeds maximum length of 20 characters (got: " +
+                operation.length() + ")."
+            );
+        }
         this.operation = operation;
     }
 
@@ -129,6 +150,13 @@ public class ConfigurationAuditEntity {
     }
 
     public void setChangeReason(String changeReason) {
+        // Validate database column limit (500 chars)
+        if (changeReason != null && changeReason.length() > 500) {
+            throw new IllegalArgumentException(
+                "changeReason exceeds maximum length of 500 characters (got: " +
+                changeReason.length() + "). Please provide a concise reason."
+            );
+        }
         this.changeReason = changeReason;
     }
 

@@ -1766,7 +1766,7 @@ for (Block block : blocksToDelete) {
 ```java
 // Clean up off-chain data for blocks after target using memory-efficient batch processing
 final int BATCH_SIZE = 1000;
-int offset = 0;
+long offset = 0;
 boolean hasMore = true;
 
 while (hasMore) {
