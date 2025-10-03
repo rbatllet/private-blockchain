@@ -55,7 +55,16 @@ public class AuthorizedKey {
     public void setPublicKey(String publicKey) { this.publicKey = publicKey; }
 
     public String getOwnerName() { return ownerName; }
-    public void setOwnerName(String ownerName) { this.ownerName = ownerName; }
+    public void setOwnerName(String ownerName) {
+        // Validate database column limit (100 chars)
+        if (ownerName != null && ownerName.length() > 100) {
+            throw new IllegalArgumentException(
+                "ownerName exceeds maximum length of 100 characters (got: " +
+                ownerName.length() + "). Please use shorter owner names."
+            );
+        }
+        this.ownerName = ownerName;
+    }
 
     public boolean isActive() { return isActive; }
     public void setActive(boolean active) { isActive = active; }

@@ -1297,10 +1297,27 @@ public class Blockchain {
                     existingAutoKeywords != null &&
                     !existingAutoKeywords.trim().isEmpty()
                 ) {
-                    block.setAutoKeywords(
-                        existingAutoKeywords + " " + encryptedAutoKeywords
-                    );
+                    String combined = existingAutoKeywords + " " + encryptedAutoKeywords;
+                    // Validate combined length before setting (database limit: 1024 chars)
+                    if (combined.length() > 1024) {
+                        throw new IllegalArgumentException(
+                            "Combined encrypted keywords exceed database limit of 1024 characters (got: " +
+                            combined.length() + " characters). " +
+                            "The content generates too many keywords when encrypted. " +
+                            "Please reduce content size or use fewer manual keywords."
+                        );
+                    }
+                    block.setAutoKeywords(combined);
                 } else {
+                    // Validate encrypted keywords length before setting
+                    if (encryptedAutoKeywords.length() > 1024) {
+                        throw new IllegalArgumentException(
+                            "Encrypted keywords exceed database limit of 1024 characters (got: " +
+                            encryptedAutoKeywords.length() + " characters). " +
+                            "The content is too large for encrypted keyword extraction. " +
+                            "Please reduce content size."
+                        );
+                    }
                     block.setAutoKeywords(encryptedAutoKeywords);
                 }
             }
@@ -1350,6 +1367,18 @@ public class Blockchain {
             10
         );
         String autoKeywords = String.join(" ", suggestedTerms);
+        
+        // Validate autoKeywords length BEFORE setting (database limit: 1024 chars)
+        if (autoKeywords.length() > 1024) {
+            throw new IllegalArgumentException(
+                "Automatically generated keywords exceed database limit of 1024 characters (got: " +
+                autoKeywords.length() + " characters). " +
+                "The content is too large for automatic keyword extraction. " +
+                "Please either: (1) reduce content size, (2) use manual keywords instead, " +
+                "or (3) disable automatic keyword generation."
+            );
+        }
+        
         block.setAutoKeywords(autoKeywords);
 
         // 4. Combine everything to searchableContent
@@ -2060,7 +2089,7 @@ public class Blockchain {
             int validOffChainBlocks = 0;
             long totalOffChainSize = 0;
 
-            for (int offset = 1; offset < totalBlocks; offset += BATCH_SIZE) {
+            for (long offset = 1; offset < totalBlocks; offset += BATCH_SIZE) {
                 int limit = (int) Math.min(BATCH_SIZE, totalBlocks - offset);
                 List<Block> batch = blockDAO.getBlocksPaginated(offset, limit);
 
@@ -2204,7 +2233,7 @@ public class Blockchain {
             // Validate remaining blocks in batches
             Block previousBlock = genesisBlock;
 
-            for (int offset = 1; offset < totalBlocks; offset += batchSize) {
+            for (long offset = 1; offset < totalBlocks; offset += batchSize) {
                 int limit = (int) Math.min(batchSize, totalBlocks - offset);
                 List<Block> batch = blockDAO.getBlocksPaginated(offset, limit);
 
@@ -2318,7 +2347,7 @@ public class Blockchain {
         try {
             long totalBlocks = blockDAO.getBlockCount();
 
-            for (int offset = 0; offset < totalBlocks; offset += batchSize) {
+            for (long offset = 0; offset < totalBlocks; offset += batchSize) {
                 int limit = (int) Math.min(batchSize, totalBlocks - offset);
                 List<Block> batch = blockDAO.getBlocksPaginated(offset, limit);
                 batchProcessor.accept(batch);
@@ -2641,6 +2670,7 @@ public class Blockchain {
 
     /**
      * Simple search term extraction without hardcoded suggestions
+     * Limits both number of terms AND individual word length to prevent overflow
      */
     private Set<String> extractSimpleSearchTerms(String content, int maxTerms) {
         if (content == null || content.trim().isEmpty()) {
@@ -2653,9 +2683,21 @@ public class Blockchain {
             .split("\\s+");
 
         Set<String> terms = new HashSet<>();
+        final int MAX_WORD_LENGTH = 50; // Prevent single huge words from causing overflow
+        
         for (String word : words) {
             if (word.length() > 2 && terms.size() < maxTerms) {
-                terms.add(word);
+                // Limit individual word length to prevent overflow
+                // If word is too long, skip it entirely (it's not a useful search term anyway)
+                if (word.length() <= MAX_WORD_LENGTH) {
+                    terms.add(word);
+                } else {
+                    // Silently skip overly long "words" (likely garbage data like "aaaaaaa...")
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("⚠️  Skipping overly long word ({} chars) during keyword extraction", 
+                                   word.length());
+                    }
+                }
             }
         }
 
@@ -2755,7 +2797,7 @@ public class Blockchain {
 
             // Process blocks in batches to avoid memory issues
             final int BATCH_SIZE = 1000;
-            for (int offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
+            for (long offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
                 int limit = (int) Math.min(BATCH_SIZE, totalBlocks - offset);
                 List<Block> batch = blockDAO.getBlocksPaginated(offset, limit);
 
@@ -2923,7 +2965,7 @@ public class Blockchain {
             List<Block> allBlocks = new ArrayList<>((int) totalBlocks);
 
             // Retrieve blocks in batches
-            for (int offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
+            for (long offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
                 List<Block> batch = blockDAO.getBlocksPaginated(offset, BATCH_SIZE);
                 allBlocks.addAll(batch);
             }
@@ -2948,7 +2990,7 @@ public class Blockchain {
 
                 // Check if any batch has off-chain data (process in batches)
                 boolean hasOffChainData = false;
-                for (int offset = 0; offset < totalBlocks && !hasOffChainData; offset += BATCH_SIZE) {
+                for (long offset = 0; offset < totalBlocks && !hasOffChainData; offset += BATCH_SIZE) {
                     List<Block> batch = blockDAO.getBlocksPaginated(offset, BATCH_SIZE);
                     hasOffChainData = batch.stream().anyMatch(Block::hasOffChainData);
                 }
@@ -3133,7 +3175,7 @@ public class Blockchain {
                     long totalExistingBlocks = blockDAO.getBlockCount();
                     int existingOffChainFilesDeleted = 0;
 
-                    for (int offset = 0; offset < totalExistingBlocks; offset += BATCH_SIZE) {
+                    for (long offset = 0; offset < totalExistingBlocks; offset += BATCH_SIZE) {
                         List<Block> batch = blockDAO.getBlocksPaginated(offset, BATCH_SIZE);
                         for (Block block : batch) {
                             if (block.hasOffChainData()) {
@@ -3597,7 +3639,7 @@ public class Blockchain {
 
                     int offChainFilesDeleted = 0;
                     final int BATCH_SIZE = 1000;
-                    int offset = 0;
+                    long offset = 0;
                     boolean hasMore = true;
 
                     while (hasMore) {
@@ -3844,11 +3886,11 @@ public class Blockchain {
 
     /**
      * Get blocks paginated for better performance with large blockchains
-     * @param offset starting position
+     * @param offset starting position (long type to prevent overflow with large blockchains)
      * @param limit maximum number of blocks to return
      * @return list of blocks within the specified range
      */
-    public List<Block> getBlocksPaginated(int offset, int limit) {
+    public List<Block> getBlocksPaginated(long offset, int limit) {
         GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
         try {
             return blockDAO.getBlocksPaginated(offset, limit);
@@ -3861,12 +3903,12 @@ public class Blockchain {
      * Get blocks with off-chain data in paginated batches
      * Memory-efficient alternative to loading all off-chain blocks at once
      *
-     * @param offset starting position (0-based)
+     * @param offset starting position (0-based, long type to prevent overflow)
      * @param limit maximum number of blocks to return
      * @return list of blocks with off-chain data within the specified range
      * @since 2.1.0
      */
-    public List<Block> getBlocksWithOffChainDataPaginated(int offset, int limit) {
+    public List<Block> getBlocksWithOffChainDataPaginated(long offset, int limit) {
         GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
         try {
             return blockDAO.getBlocksWithOffChainDataPaginated(offset, limit);
@@ -3879,12 +3921,12 @@ public class Blockchain {
      * Get encrypted blocks in paginated batches
      * Memory-efficient alternative to loading all encrypted blocks at once
      *
-     * @param offset starting position (0-based)
+     * @param offset starting position (0-based, long type to prevent overflow)
      * @param limit maximum number of blocks to return
      * @return list of encrypted blocks within the specified range
      * @since 2.1.0
      */
-    public List<Block> getEncryptedBlocksPaginated(int offset, int limit) {
+    public List<Block> getEncryptedBlocksPaginated(long offset, int limit) {
         GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();
         try {
             return blockDAO.getEncryptedBlocksPaginated(offset, limit);
@@ -4081,7 +4123,7 @@ public class Blockchain {
                     long totalBlocks = blockDAO.getBlockCount();
                     List<Long> offChainDataIds = new ArrayList<>();
 
-                    for (int offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
+                    for (long offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
                         List<Block> batch = blockDAO.getBlocksPaginated(offset, BATCH_SIZE);
                         for (Block block : batch) {
                             if (block.hasOffChainData()) {
@@ -5026,11 +5068,16 @@ public class Blockchain {
             long totalBlocks = blockDAO.getBlockCount();
             Set<String> validFilePaths = new HashSet<>();
 
-            for (int offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
+            for (long offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
                 List<Block> batch = blockDAO.getBlocksPaginated(offset, BATCH_SIZE);
                 for (Block block : batch) {
                     if (block.hasOffChainData()) {
                         validFilePaths.add(block.getOffChainData().getFilePath());
+
+                        // Memory safety: Warn if collecting too many paths
+                        if (validFilePaths.size() > MemorySafetyConstants.SAFE_EXPORT_LIMIT) {
+                            logger.warn("⚠️  Cleanup tracking {} off-chain files (may cause memory issues)", validFilePaths.size());
+                        }
                     }
                 }
             }
@@ -5253,7 +5300,7 @@ public class Blockchain {
             Map<String, Long> categoryCount = new HashMap<>();
 
             // Process blocks in batches to accumulate statistics
-            for (int offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
+            for (long offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
                 List<Block> batch = blockDAO.getBlocksPaginated(offset, BATCH_SIZE);
                 for (Block block : batch) {
                     // Count encrypted blocks
@@ -5365,7 +5412,7 @@ public class Blockchain {
             List<Block> allBlocks = new ArrayList<>((int) totalBlocks);
 
             // Retrieve blocks in batches
-            for (int offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
+            for (long offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
                 List<Block> batch = blockDAO.getBlocksPaginated(offset, BATCH_SIZE);
                 allBlocks.addAll(batch);
             }
@@ -5832,7 +5879,7 @@ public class Blockchain {
         long totalBlocks = blockDAO.getBlockCount();
         int existingOffChainFilesDeleted = 0;
 
-        for (int offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
+        for (long offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
             List<Block> batch = blockDAO.getBlocksPaginated(offset, BATCH_SIZE);
             for (Block block : batch) {
                 if (block.hasOffChainData()) {

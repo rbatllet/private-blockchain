@@ -850,6 +850,7 @@ public class UserFriendlyEncryptionAPI {
 
     /**
      * Simple search term extraction without hardcoded suggestions
+     * Limits both number of terms AND individual word length to prevent overflow
      */
     private Set<String> extractSimpleSearchTerms(String content, int maxTerms) {
         if (content == null || content.trim().isEmpty()) {
@@ -862,9 +863,21 @@ public class UserFriendlyEncryptionAPI {
             .split("\\s+");
 
         Set<String> terms = new HashSet<>();
+        final int MAX_WORD_LENGTH = 50; // Prevent single huge words from causing overflow
+        
         for (String word : words) {
             if (word.length() > 2 && terms.size() < maxTerms) {
-                terms.add(word);
+                // Limit individual word length to prevent overflow
+                // If word is too long, skip it entirely (it's not a useful search term anyway)
+                if (word.length() <= MAX_WORD_LENGTH) {
+                    terms.add(word);
+                } else {
+                    // Silently skip overly long "words" (likely garbage data like "aaaaaaa...")
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("⚠️  Skipping overly long word ({} chars) during keyword extraction", 
+                                   word.length());
+                    }
+                }
             }
         }
 
@@ -974,7 +987,7 @@ public class UserFriendlyEncryptionAPI {
         final int BATCH_SIZE = 100;
         long totalBlocks = blockchain.getBlockCount();
 
-        for (int offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
+        for (long offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
             List<Block> batchBlocks = blockchain.getBlocksPaginated(
                 offset,
                 BATCH_SIZE

@@ -222,7 +222,15 @@ public class BlockDAO {
                     // FIXED: Correct atomic increment logic
                     Long blockNumberToUse = sequence.getNextValue(); // This is the number we'll use for the current block
                     logger.debug("🔍 [{}] Found existing sequence, using block number: {}", threadName, blockNumberToUse);
-                    
+
+                    // Check for overflow before incrementing
+                    if (blockNumberToUse == Long.MAX_VALUE) {
+                        throw new IllegalStateException(
+                            "Block number has reached maximum value (Long.MAX_VALUE). " +
+                            "Blockchain is full - cannot add more blocks."
+                        );
+                    }
+
                     // Increment the sequence for the next block
                     sequence.setNextValue(blockNumberToUse + 1);
                     em.merge(sequence);
@@ -363,7 +371,7 @@ public class BlockDAO {
      * @param limit maximum number of blocks to return
      * @return list of blocks within the specified range
      */
-    public List<Block> getBlocksPaginated(int offset, int limit) {
+    public List<Block> getBlocksPaginated(long offset, int limit) {
         if (offset < 0) {
             throw new IllegalArgumentException("Offset cannot be negative");
         }
@@ -378,7 +386,15 @@ public class BlockDAO {
                 try {
                     TypedQuery<Block> query = em.createQuery(
                         "SELECT b FROM Block b LEFT JOIN FETCH b.offChainData ORDER BY b.blockNumber ASC", Block.class);
-                    query.setFirstResult(offset);
+
+                    // Safe cast: setFirstResult only accepts int, but we validate range
+                    if (offset > Integer.MAX_VALUE) {
+                        throw new IllegalArgumentException(
+                            "Offset " + offset + " exceeds maximum pagination offset (" +
+                            Integer.MAX_VALUE + "). Use smaller batch sizes."
+                        );
+                    }
+                    query.setFirstResult((int) offset);
                     query.setMaxResults(limit);
                     return query.getResultList();
                 } finally {
@@ -424,7 +440,7 @@ public class BlockDAO {
      * @return List of blocks within the time range, limited by pagination
      * @throws IllegalArgumentException if parameters are invalid
      */
-    public List<Block> getBlocksByTimeRangePaginated(LocalDateTime startTime, LocalDateTime endTime, int offset, int limit) {
+    public List<Block> getBlocksByTimeRangePaginated(LocalDateTime startTime, LocalDateTime endTime, long offset, int limit) {
         if (startTime == null || endTime == null) {
             throw new IllegalArgumentException("Start time and end time cannot be null");
         }
@@ -439,12 +455,18 @@ public class BlockDAO {
         try {
             EntityManager em = JPAUtil.getEntityManager();
             try {
+                // Safe cast: offset validated to be non-negative, JPA only accepts int
+                if (offset > Integer.MAX_VALUE) {
+                    throw new IllegalArgumentException("Offset too large: " + offset + " (max: " + Integer.MAX_VALUE + ")");
+                }
+                int safeOffset = (int) offset;
+                
                 TypedQuery<Block> query = em.createQuery(
                     "SELECT b FROM Block b WHERE b.timestamp BETWEEN :startTime AND :endTime ORDER BY b.blockNumber ASC",
                     Block.class);
                 query.setParameter("startTime", startTime);
                 query.setParameter("endTime", endTime);
-                query.setFirstResult(offset);
+                query.setFirstResult(safeOffset);
                 query.setMaxResults(limit);
                 return query.getResultList();
             } finally {
@@ -461,17 +483,25 @@ public class BlockDAO {
      * Get blocks with off-chain data, paginated for memory efficiency.
      * This method allows retrieving blocks that have off-chain data in batches.
      *
-     * @param offset starting position (0-based)
+     * @param offset starting position (0-based, long type to prevent overflow)
      * @param limit maximum number of blocks to return
      * @return list of blocks with off-chain data within the specified range
      * @throws IllegalArgumentException if offset is negative or limit is not positive
      */
-    public List<Block> getBlocksWithOffChainDataPaginated(int offset, int limit) {
+    public List<Block> getBlocksWithOffChainDataPaginated(long offset, int limit) {
         if (offset < 0) {
             throw new IllegalArgumentException("Offset cannot be negative");
         }
         if (limit <= 0) {
             throw new IllegalArgumentException("Limit must be positive");
+        }
+
+        // Safe cast validation (setFirstResult only accepts int)
+        if (offset > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException(
+                "Offset " + offset + " exceeds maximum pagination offset (" +
+                Integer.MAX_VALUE + "). Use smaller batch sizes."
+            );
         }
 
         lock.readLock().lock();
@@ -481,7 +511,7 @@ public class BlockDAO {
                 TypedQuery<Block> query = em.createQuery(
                     "SELECT b FROM Block b WHERE b.offChainData IS NOT NULL ORDER BY b.blockNumber ASC",
                     Block.class);
-                query.setFirstResult(offset);
+                query.setFirstResult((int) offset);  // Safe cast after validation
                 query.setMaxResults(limit);
                 return query.getResultList();
             } finally {
@@ -498,17 +528,25 @@ public class BlockDAO {
      * Get encrypted blocks, paginated for memory efficiency.
      * This method allows retrieving encrypted blocks in batches.
      *
-     * @param offset starting position (0-based)
+     * @param offset starting position (0-based, long type to prevent overflow)
      * @param limit maximum number of blocks to return
      * @return list of encrypted blocks within the specified range
      * @throws IllegalArgumentException if offset is negative or limit is not positive
      */
-    public List<Block> getEncryptedBlocksPaginated(int offset, int limit) {
+    public List<Block> getEncryptedBlocksPaginated(long offset, int limit) {
         if (offset < 0) {
             throw new IllegalArgumentException("Offset cannot be negative");
         }
         if (limit <= 0) {
             throw new IllegalArgumentException("Limit must be positive");
+        }
+
+        // Safe cast validation (setFirstResult only accepts int)
+        if (offset > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException(
+                "Offset " + offset + " exceeds maximum pagination offset (" +
+                Integer.MAX_VALUE + "). Use smaller batch sizes."
+            );
         }
 
         lock.readLock().lock();
@@ -518,7 +556,7 @@ public class BlockDAO {
                 TypedQuery<Block> query = em.createQuery(
                     "SELECT b FROM Block b WHERE b.isEncrypted = true ORDER BY b.blockNumber ASC",
                     Block.class);
-                query.setFirstResult(offset);
+                query.setFirstResult((int) offset);  // Safe cast after validation
                 query.setMaxResults(limit);
                 return query.getResultList();
             } finally {
@@ -695,7 +733,7 @@ public class BlockDAO {
      * @return List of blocks after the specified block number within the pagination range
      * @throws IllegalArgumentException if offset is negative or limit is not positive
      */
-    public List<Block> getBlocksAfterPaginated(Long blockNumber, int offset, int limit) {
+    public List<Block> getBlocksAfterPaginated(Long blockNumber, long offset, int limit) {
         if (blockNumber == null) {
             throw new IllegalArgumentException("Block number cannot be null");
         }
@@ -710,11 +748,17 @@ public class BlockDAO {
         try {
             EntityManager em = JPAUtil.getEntityManager();
             try {
+                // Safe cast: offset validated to be non-negative, JPA only accepts int
+                if (offset > Integer.MAX_VALUE) {
+                    throw new IllegalArgumentException("Offset too large: " + offset + " (max: " + Integer.MAX_VALUE + ")");
+                }
+                int safeOffset = (int) offset;
+                
                 TypedQuery<Block> query = em.createQuery(
                     "SELECT b FROM Block b LEFT JOIN FETCH b.offChainData WHERE b.blockNumber > :blockNumber ORDER BY b.blockNumber ASC",
                     Block.class);
                 query.setParameter("blockNumber", blockNumber);
-                query.setFirstResult(offset);
+                query.setFirstResult(safeOffset);
                 query.setMaxResults(limit);
 
                 return query.getResultList();
@@ -1100,7 +1144,7 @@ public class BlockDAO {
      * @return List of blocks where custom metadata contains the exact key-value pair
      * @throws IllegalArgumentException if jsonKey or jsonValue is null/empty, or if offset/limit are invalid
      */
-    public List<Block> searchByCustomMetadataKeyValuePaginated(String jsonKey, String jsonValue, int offset, int limit) {
+    public List<Block> searchByCustomMetadataKeyValuePaginated(String jsonKey, String jsonValue, long offset, int limit) {
         // RIGOROUS INPUT VALIDATION
         if (jsonKey == null || jsonKey.trim().isEmpty()) {
             throw new IllegalArgumentException("JSON key cannot be null or empty");
@@ -1237,7 +1281,7 @@ public class BlockDAO {
      * @throws IllegalArgumentException if criteria is null/empty or if offset/limit are invalid
      */
     public List<Block> searchByCustomMetadataMultipleCriteriaPaginated(
-            java.util.Map<String, String> criteria, int offset, int limit) {
+            java.util.Map<String, String> criteria, long offset, int limit) {
         // RIGOROUS INPUT VALIDATION
         if (criteria == null) {
             throw new IllegalArgumentException("Criteria map cannot be null");

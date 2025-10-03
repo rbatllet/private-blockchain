@@ -24,7 +24,7 @@ List<Block> blocks = blockDAO.getBlocksWithOffChainDataPaginated(offset, limit);
  * Retrieve blocks with off-chain data in paginated batches
  * Memory-efficient alternative to loading all off-chain blocks at once
  */
-public List<Block> getBlocksWithOffChainDataPaginated(int offset, int limit)
+public List<Block> getBlocksWithOffChainDataPaginated(long offset, int limit)
 ```
 
 **Use Cases:**
@@ -39,7 +39,7 @@ Blockchain blockchain = new Blockchain();
 
 // Process all blocks with off-chain data in batches of 100
 int batchSize = 100;
-int offset = 0;
+long offset = 0;  // ⚠️ Use long to prevent overflow with large blockchains
 List<Block> batch;
 
 do {
@@ -77,7 +77,7 @@ List<Block> blocks = blockDAO.getEncryptedBlocksPaginated(offset, limit);
  * Retrieve encrypted blocks in paginated batches
  * Memory-efficient alternative to loading all encrypted blocks at once
  */
-public List<Block> getEncryptedBlocksPaginated(int offset, int limit)
+public List<Block> getEncryptedBlocksPaginated(long offset, int limit)
 ```
 
 **Use Cases:**
@@ -92,7 +92,7 @@ Blockchain blockchain = new Blockchain();
 
 // Audit all encrypted blocks in batches of 50
 int batchSize = 50;
-int offset = 0;
+long offset = 0;  // ⚠️ Use long to prevent overflow with large blockchains
 int totalEncrypted = 0;
 List<Block> batch;
 
@@ -143,7 +143,7 @@ System.out.println("Total encrypted blocks: " + totalEncrypted);
  */
 public void reencryptAllBlocks(Blockchain blockchain, String oldPassword, String newPassword) {
     int batchSize = 100;
-    int offset = 0;
+    long offset = 0;  // ⚠️ Use long to prevent overflow with large blockchains
     int processedCount = 0;
     List<Block> batch;
 
@@ -190,7 +190,7 @@ public void reencryptAllBlocks(Blockchain blockchain, String oldPassword, String
  */
 public OffChainStorageReport analyzeOffChainUsage(Blockchain blockchain) {
     int batchSize = 200;
-    int offset = 0;
+    long offset = 0;  // ⚠️ Use long to prevent overflow with large blockchains
     long totalSize = 0;
     int fileCount = 0;
     Map<String, Integer> fileTypeDistribution = new HashMap<>();
@@ -252,7 +252,7 @@ When working with large blockchain datasets, always use pagination to avoid memo
 
 ```java
 Blockchain blockchain = new Blockchain();
-int offset = 0;
+long offset = 0;  // ⚠️ Use long to prevent overflow with large blockchains
 int batchSize = 100;
 List<Block> batch;
 

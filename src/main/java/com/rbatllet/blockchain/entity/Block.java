@@ -91,7 +91,16 @@ public class Block {
     public void setBlockNumber(Long blockNumber) { this.blockNumber = blockNumber; }
 
     public String getPreviousHash() { return previousHash; }
-    public void setPreviousHash(String previousHash) { this.previousHash = previousHash; }
+    public void setPreviousHash(String previousHash) {
+        // Validate database column limit (64 chars for SHA-256 hex)
+        if (previousHash != null && previousHash.length() > 64) {
+            throw new IllegalArgumentException(
+                "previousHash exceeds maximum length of 64 characters (got: " +
+                previousHash.length() + "). Expected SHA-256 hex format."
+            );
+        }
+        this.previousHash = previousHash;
+    }
 
     public String getData() { return data; }
     public void setData(String data) { this.data = data; }
@@ -100,7 +109,16 @@ public class Block {
     public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
 
     public String getHash() { return hash; }
-    public void setHash(String hash) { this.hash = hash; }
+    public void setHash(String hash) {
+        // Validate database column limit (64 chars for SHA-256 hex)
+        if (hash != null && hash.length() > 64) {
+            throw new IllegalArgumentException(
+                "hash exceeds maximum length of 64 characters (got: " +
+                hash.length() + "). Expected SHA-256 hex format."
+            );
+        }
+        this.hash = hash;
+    }
 
     public String getSignature() { return signature; }
     public void setSignature(String signature) { this.signature = signature; }
@@ -115,37 +133,52 @@ public class Block {
     
     // Search-related getters and setters
     public String getManualKeywords() { return manualKeywords; }
-    public void setManualKeywords(String manualKeywords) { 
-        // Truncate to database column limit (1024 chars)
+    public void setManualKeywords(String manualKeywords) {
+        // Validate database column limit (1024 chars)
         if (manualKeywords != null && manualKeywords.length() > 1024) {
-            this.manualKeywords = manualKeywords.substring(0, 1024);
-        } else {
-            this.manualKeywords = manualKeywords;
+            throw new IllegalArgumentException(
+                "manualKeywords exceeds maximum length of 1024 characters (got: " +
+                manualKeywords.length() + "). Please provide fewer or shorter keywords."
+            );
         }
+        this.manualKeywords = manualKeywords;
     }
     
     public String getAutoKeywords() { return autoKeywords; }
-    public void setAutoKeywords(String autoKeywords) { 
-        // Truncate to database column limit (1024 chars)
+    public void setAutoKeywords(String autoKeywords) {
+        // Validate database column limit (1024 chars)
         if (autoKeywords != null && autoKeywords.length() > 1024) {
-            this.autoKeywords = autoKeywords.substring(0, 1024);
-        } else {
-            this.autoKeywords = autoKeywords;
+            throw new IllegalArgumentException(
+                "autoKeywords exceeds maximum length of 1024 characters (got: " +
+                autoKeywords.length() + "). Automatic keyword generation produced too much content."
+            );
         }
+        this.autoKeywords = autoKeywords;
     }
     
     public String getSearchableContent() { return searchableContent; }
-    public void setSearchableContent(String searchableContent) { 
-        // Truncate to database column limit (2048 chars)
+    public void setSearchableContent(String searchableContent) {
+        // Validate database column limit (2048 chars)
         if (searchableContent != null && searchableContent.length() > 2048) {
-            this.searchableContent = searchableContent.substring(0, 2048);
-        } else {
-            this.searchableContent = searchableContent;
+            throw new IllegalArgumentException(
+                "searchableContent exceeds maximum length of 2048 characters (got: " +
+                searchableContent.length() + "). Please reduce content size or use off-chain storage."
+            );
         }
+        this.searchableContent = searchableContent;
     }
     
     public String getContentCategory() { return contentCategory; }
-    public void setContentCategory(String contentCategory) { this.contentCategory = contentCategory; }
+    public void setContentCategory(String contentCategory) {
+        // Validate database column limit (50 chars)
+        if (contentCategory != null && contentCategory.length() > 50) {
+            throw new IllegalArgumentException(
+                "contentCategory exceeds maximum length of 50 characters (got: " +
+                contentCategory.length() + "). Please use shorter category names."
+            );
+        }
+        this.contentCategory = contentCategory;
+    }
     
     // Encryption-related getters and setters
     public Boolean getIsEncrypted() { return isEncrypted; }
@@ -176,7 +209,16 @@ public class Block {
         if (autoKeywords != null && !autoKeywords.trim().isEmpty()) {
             allKeywords.add(autoKeywords.toLowerCase());
         }
-        this.searchableContent = String.join(" ", allKeywords);
+        String combined = String.join(" ", allKeywords);
+
+        // Validate combined length before setting
+        if (combined.length() > 2048) {
+            throw new IllegalStateException(
+                "Combined searchable content exceeds 2048 character limit (got: " +
+                combined.length() + "). Reduce manual or auto keywords."
+            );
+        }
+        this.searchableContent = combined;
     }
 
     @Override

@@ -595,17 +595,18 @@ TermVisibilityMap copy()
 #### Pagination Methods (NEW in v2.1.0) 🆕
 
 ```java
-public List<Block> getBlocksPaginated(int offset, int limit)
+public List<Block> getBlocksPaginated(long offset, int limit)
 ```
-- **Parameters:** `offset`: Starting position (0-based), `limit`: Maximum blocks to return
+- **Parameters:** `offset`: Starting position (0-based, `long` type for >2.1B blocks), `limit`: Maximum blocks to return
 - **Returns:** List of blocks within the specified range
 - **Description:** Retrieve blocks in paginated batches for memory-efficient processing
 - **Thread-Safety:** Uses global read lock for concurrent access
+- **Note:** Offset is `long` to prevent integer overflow with large blockchains (>2.1B blocks)
 
 ```java
-public List<Block> getBlocksWithOffChainDataPaginated(int offset, int limit)
+public List<Block> getBlocksWithOffChainDataPaginated(long offset, int limit)
 ```
-- **Parameters:** `offset`: Starting position (0-based), `limit`: Maximum blocks to return
+- **Parameters:** `offset`: Starting position (0-based, `long` type), `limit`: Maximum blocks to return
 - **Returns:** List of blocks with off-chain data within the specified range
 - **Description:** Retrieve only blocks that have off-chain data in paginated batches
 - **Use Cases:** Off-chain storage analysis, maintenance operations, report generation
@@ -613,9 +614,9 @@ public List<Block> getBlocksWithOffChainDataPaginated(int offset, int limit)
 - **Since:** v2.1.0
 
 ```java
-public List<Block> getEncryptedBlocksPaginated(int offset, int limit)
+public List<Block> getEncryptedBlocksPaginated(long offset, int limit)
 ```
-- **Parameters:** `offset`: Starting position (0-based), `limit`: Maximum blocks to return
+- **Parameters:** `offset`: Starting position (0-based, `long` type), `limit`: Maximum blocks to return
 - **Returns:** List of encrypted blocks within the specified range
 - **Description:** Retrieve only encrypted blocks in paginated batches
 - **Use Cases:** Security audits, re-encryption operations, compliance reporting
@@ -628,7 +629,7 @@ Blockchain blockchain = new Blockchain();
 
 // Process all blocks with off-chain data in batches
 int batchSize = 100;
-int offset = 0;
+long offset = 0;  // ⚠️ Use long to prevent overflow with large blockchains
 List<Block> batch;
 
 do {
@@ -1752,7 +1753,7 @@ For large-scale blockchain operations, use these paginated/limited methods to pr
 // Paginated block retrieval after specific block number (useful for rollback operations)
 List<Block> blocks = blockDAO.getBlocksAfterPaginated(blockNumber, offset, limit);
 // Example: Process 1000 blocks at a time
-for (int offset = 0; ; offset += 1000) {
+for (long offset = 0; ; offset += 1000) {  // ⚠️ Use long to prevent overflow
     List<Block> batch = blockDAO.getBlocksAfterPaginated(100L, offset, 1000);
     if (batch.isEmpty()) break;
     // Process batch...
@@ -1781,7 +1782,7 @@ List<Block> medical = blockDAO.searchByCategoryWithLimit("MEDICAL", 1000);
 // JSON metadata search with pagination
 List<Block> blocks = blockDAO.searchByCustomMetadataKeyValuePaginated(key, value, offset, limit);
 // Example: Find all high-priority items, process in batches
-for (int offset = 0; ; offset += 1000) {
+for (long offset = 0; ; offset += 1000) {  // ⚠️ Use long to prevent overflow
     List<Block> batch = blockDAO.searchByCustomMetadataKeyValuePaginated("priority", "high", offset, 1000);
     if (batch.isEmpty()) break;
     // Process batch...

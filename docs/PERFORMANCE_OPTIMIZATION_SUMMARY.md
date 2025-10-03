@@ -83,7 +83,8 @@ List<Block> allBlocks = blockchain.processChainInBatches();
 // After: Process in batches
 final int BATCH_SIZE = 100;
 long totalBlocks = blockchain.getBlockCount();
-for (int offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
+// ⚠️ Use long offset to prevent overflow with large blockchains
+for (long offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
     List<Block> batchBlocks = blockchain.getBlocksPaginated(offset, BATCH_SIZE);
     // Process batch...
 }
@@ -93,7 +94,9 @@ for (int offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
 ```java
 // Optimized exhaustive search with batch processing
 final int BATCH_SIZE = 200;
-for (int offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
+long totalBlocks = blockchain.getBlockCount();
+// ⚠️ Use long offset to prevent overflow with large blockchains
+for (long offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
     List<Block> batchBlocks = blockchain.getBlocksPaginated(offset, BATCH_SIZE);
     // Filter blocks with off-chain data during same iteration
     for (Block block : batchBlocks) {
