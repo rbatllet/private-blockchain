@@ -343,6 +343,14 @@ public class StorageTieringManager {
             
             // Estimate compressed size for cold/archive tiers
             if (tier == StorageTier.COLD || tier == StorageTier.ARCHIVE) {
+                // Validate before multiplication to prevent overflow
+                if (info.dataSize > Long.MAX_VALUE / 2) {
+                    throw new IllegalStateException(
+                        "Data size too large for compression calculation: " + info.dataSize + " bytes. " +
+                        "Maximum supported size for compression statistics: " + (Long.MAX_VALUE / 2) + " bytes " +
+                        "(approximately 4.6 exabytes). Consider splitting the data or reviewing storage strategy."
+                    );
+                }
                 compressedSize += (long)(info.dataSize * 0.4); // Assume 60% compression
             } else {
                 compressedSize += info.dataSize;

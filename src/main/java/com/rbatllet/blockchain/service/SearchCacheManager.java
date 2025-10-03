@@ -296,6 +296,15 @@ public class SearchCacheManager {
 
         // Pre-populate cache with common search results
         for (String term : commonSearchTerms) {
+            // Validate term length to prevent overflow in size calculation
+            if (term.length() > 1_000_000) {
+                throw new IllegalArgumentException(
+                    "Search term too long for cache warming: " + term.length() + " characters. " +
+                    "Maximum supported length: 1,000,000 characters. " +
+                    "Consider splitting very long search terms or reviewing search strategy."
+                );
+            }
+            
             String cacheKey = generateCacheKey(
                 "KEYWORD",
                 term,
