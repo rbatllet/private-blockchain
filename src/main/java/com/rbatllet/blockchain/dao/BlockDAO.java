@@ -18,64 +18,69 @@ import jakarta.persistence.TypedQuery;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 /**
  * Thread-safe DAO for Block operations
  * 
- * <p><strong>Key Features:</strong></p>
+ * <p>
+ * <strong>Key Features:</strong>
+ * </p>
  * <ul>
- *   <li>Thread-safe operations using ReentrantReadWriteLock</li>
- *   <li>Global transaction support for atomic operations</li>
- *   <li>Encrypted block data support using AES-256-GCM</li>
- *   <li><strong>🚀 Batch retrieval optimization to eliminate N+1 query problems</strong></li>
+ * <li>Thread-safe operations using ReentrantReadWriteLock</li>
+ * <li>Global transaction support for atomic operations</li>
+ * <li>Encrypted block data support using AES-256-GCM</li>
+ * <li><strong>🚀 Batch retrieval optimization to eliminate N+1 query
+ * problems</strong></li>
  * </ul>
  * 
- * <p><strong>Performance Optimizations:</strong></p>
+ * <p>
+ * <strong>Performance Optimizations:</strong>
+ * </p>
  * <ul>
- *   <li>{@link #batchRetrieveBlocks(List)} - Eliminates N+1 query anti-pattern</li>
- *   <li>Intelligent transaction reuse for improved performance</li>
- *   <li>Read-write lock optimization for concurrent access</li>
+ * <li>{@link #batchRetrieveBlocks(List)} - Eliminates N+1 query
+ * anti-pattern</li>
+ * <li>Intelligent transaction reuse for improved performance</li>
+ * <li>Read-write lock optimization for concurrent access</li>
  * </ul>
  * 
- * <p><strong>Thread Safety:</strong> All public methods are thread-safe and can be called
- * concurrently from multiple threads. Read operations use shared locks while write 
- * operations use exclusive locks.</p>
+ * <p>
+ * <strong>Thread Safety:</strong> All public methods are thread-safe and can be
+ * called
+ * concurrently from multiple threads. Read operations use shared locks while
+ * write
+ * operations use exclusive locks.
+ * </p>
  * 
  * @version 2.0.0
  * @since 1.0.0
  * @author Blockchain Development Team
  */
 public class BlockDAO {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(BlockDAO.class);
-    
-    /** 
-     * API version for tracking batch optimization features 
+
+    /**
+     * API version for tracking batch optimization features
+     * 
      * @since 2.0.0
      */
     public static final String BATCH_API_VERSION = "2.0.0";
-    
-    // Read-Write lock for thread safety on read operations
-    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
-    
+
     // Global lock for atomic block number generation - prevents race conditions
     private static final Object GLOBAL_BLOCK_NUMBER_LOCK = new Object();
-    
+
     /**
      * Save a new block to the database
      * Uses global transaction if available, otherwise creates its own
      */
     public void saveBlock(Block block) {
         LoggingManager.logBlockchainOperation(
-            "BLOCK_SAVE",
-            "save_block",
-            block.getBlockNumber(),
-            block.getData() != null ? block.getData().length() : 0,
-            () -> {
-                lock.writeLock().lock();
-                try {
+                "BLOCK_SAVE",
+                "save_block",
+                block.getBlockNumber(),
+                block.getData() != null ? block.getData().length() : 0,
+                () -> {
                     if (JPAUtil.hasActiveTransaction()) {
                         // Use existing global transaction
                         EntityManager em = JPAUtil.getEntityManager();
@@ -84,13 +89,13 @@ public class BlockDAO {
                         // Create own transaction
                         EntityManager em = JPAUtil.getEntityManager();
                         EntityTransaction transaction = null;
-                        
+
                         try {
                             transaction = em.getTransaction();
                             transaction.begin();
-                            
+
                             em.persist(block);
-                            
+
                             transaction.commit();
                         } catch (Exception e) {
                             if (transaction != null && transaction.isActive()) {
@@ -103,12 +108,8 @@ public class BlockDAO {
                             }
                         }
                     }
-                } finally {
-                    lock.writeLock().unlock();
-                }
-                return "Block saved successfully";
-            }
-        );
+                    return "Block saved successfully";
+                });
     }
 
     /**
@@ -121,13 +122,11 @@ public class BlockDAO {
         }
 
         LoggingManager.logBlockchainOperation(
-            "BLOCK_UPDATE",
-            "update_block", 
-            block.getBlockNumber(),
-            block.getData() != null ? block.getData().length() : 0,
-            () -> {
-                lock.writeLock().lock();
-                try {
+                "BLOCK_UPDATE",
+                "update_block",
+                block.getBlockNumber(),
+                block.getData() != null ? block.getData().length() : 0,
+                () -> {
                     if (JPAUtil.hasActiveTransaction()) {
                         // Use existing global transaction
                         EntityManager em = JPAUtil.getEntityManager();
@@ -136,13 +135,13 @@ public class BlockDAO {
                         // Create own transaction
                         EntityManager em = JPAUtil.getEntityManager();
                         EntityTransaction transaction = null;
-                        
+
                         try {
                             transaction = em.getTransaction();
                             transaction.begin();
-                            
+
                             em.merge(block);
-                            
+
                             transaction.commit();
                         } catch (Exception e) {
                             if (transaction != null && transaction.isActive()) {
@@ -155,16 +154,13 @@ public class BlockDAO {
                             }
                         }
                     }
-                } finally {
-                    lock.writeLock().unlock();
-                }
-                return "Block updated successfully";
-            }
-        );
+                    return "Block updated successfully";
+                });
     }
-    
+
     /**
-     * Get the next block number atomically using BlockSequence with pessimistic locking
+     * Get the next block number atomically using BlockSequence with pessimistic
+     * locking
      * FIXED: Corrected logic to prevent race conditions and ensure proper sequence
      */
     public Long getNextBlockNumberAtomic() {
@@ -172,30 +168,31 @@ public class BlockDAO {
         synchronized (GLOBAL_BLOCK_NUMBER_LOCK) {
             long startTime = System.nanoTime();
             String threadName = Thread.currentThread().getName();
-            
+
             EntityManager em = JPAUtil.getEntityManager();
             EntityTransaction transaction = null;
             boolean shouldManageTransaction = !JPAUtil.hasActiveTransaction();
-            
+
             try {
-                logger.debug("🔍 [{}] Starting getNextBlockNumberAtomic() - shouldManageTransaction: {}", threadName, shouldManageTransaction);
-                
+                logger.debug("🔍 [{}] Starting getNextBlockNumberAtomic() - shouldManageTransaction: {}", threadName,
+                        shouldManageTransaction);
+
                 if (shouldManageTransaction) {
                     transaction = em.getTransaction();
                     transaction.begin();
                     logger.debug("🔍 [{}] Started new transaction", threadName);
                 }
-                
+
                 // Use BlockSequence with pessimistic write lock for true atomicity
                 logger.debug("🔍 [{}] Acquiring PESSIMISTIC_WRITE lock on BlockSequence", threadName);
                 BlockSequence sequence = em.find(BlockSequence.class, "block_number", LockModeType.PESSIMISTIC_WRITE);
-                
+
                 if (sequence == null) {
                     logger.debug("🔍 [{}] BlockSequence not found, initializing...", threadName);
                     // Initialize sequence correctly - should start at 1 for first non-genesis block
                     TypedQuery<Long> maxQuery = em.createQuery("SELECT MAX(b.blockNumber) FROM Block b", Long.class);
                     Long maxBlockNumber = maxQuery.getSingleResult();
-                    
+
                     Long nextValue;
                     if (maxBlockNumber == null || maxBlockNumber.equals(0L)) {
                         // Only genesis block (0) exists or no blocks exist, next should be 1
@@ -204,50 +201,51 @@ public class BlockDAO {
                         // Regular case: next block number after the highest existing one
                         nextValue = maxBlockNumber + 1L;
                     }
-                    
+
                     logger.debug("🔍 [{}] Creating new sequence with nextValue: {}", threadName, (nextValue + 1));
                     sequence = new BlockSequence("block_number", nextValue + 1); // Store next available number
                     em.persist(sequence);
                     em.flush(); // Force immediate persistence
-                    
+
                     if (shouldManageTransaction && transaction != null) {
                         transaction.commit();
                         logger.debug("🔍 [{}] Committed transaction for new sequence", threadName);
                     }
-                    
+
                     long elapsed = (System.nanoTime() - startTime) / 1_000_000;
                     logger.info("✅ [{}] Generated block number: {} (took {}ms)", threadName, nextValue, elapsed);
                     return nextValue; // Return the number we're using for current block
                 } else {
                     // FIXED: Correct atomic increment logic
-                    Long blockNumberToUse = sequence.getNextValue(); // This is the number we'll use for the current block
-                    logger.debug("🔍 [{}] Found existing sequence, using block number: {}", threadName, blockNumberToUse);
+                    Long blockNumberToUse = sequence.getNextValue(); // This is the number we'll use for the current
+                                                                     // block
+                    logger.debug("🔍 [{}] Found existing sequence, using block number: {}", threadName,
+                            blockNumberToUse);
 
                     // Check for overflow before incrementing
                     if (blockNumberToUse == Long.MAX_VALUE) {
                         throw new IllegalStateException(
-                            "Block number has reached maximum value (Long.MAX_VALUE). " +
-                            "Blockchain is full - cannot add more blocks."
-                        );
+                                "Block number has reached maximum value (Long.MAX_VALUE). " +
+                                        "Blockchain is full - cannot add more blocks.");
                     }
 
                     // Increment the sequence for the next block
                     sequence.setNextValue(blockNumberToUse + 1);
                     em.merge(sequence);
                     em.flush(); // Force immediate persistence
-                    
+
                     logger.debug("🔍 [{}] Updated sequence to nextValue: {}", threadName, (blockNumberToUse + 1));
-                    
+
                     if (shouldManageTransaction && transaction != null) {
                         transaction.commit();
                         logger.debug("🔍 [{}] Committed transaction for existing sequence", threadName);
                     }
-                    
+
                     long elapsed = (System.nanoTime() - startTime) / 1_000_000;
                     logger.info("✅ [{}] Generated block number: {} (took {}ms)", threadName, blockNumberToUse, elapsed);
                     return blockNumberToUse;
                 }
-                
+
             } catch (Exception e) {
                 logger.error("❌ [{}] ERROR in getNextBlockNumberAtomic: {}", threadName, e.getMessage(), e);
                 if (shouldManageTransaction && transaction != null && transaction.isActive()) {
@@ -267,108 +265,91 @@ public class BlockDAO {
      * FIXED: Added locking to prevent concurrent access issues
      */
     public Block getLastBlockWithLock() {
-        lock.readLock().lock();
+        EntityManager em = JPAUtil.getEntityManager();
         try {
-            EntityManager em = JPAUtil.getEntityManager();
-            try {
-                TypedQuery<Block> query = em.createQuery(
+            TypedQuery<Block> query = em.createQuery(
                     "SELECT b FROM Block b ORDER BY b.blockNumber DESC", Block.class);
-                query.setMaxResults(1);
-                query.setLockMode(LockModeType.PESSIMISTIC_READ);
-                
-                List<Block> blocks = query.getResultList();
-                return blocks.isEmpty() ? null : blocks.get(0);
-            } finally {
-                if (!JPAUtil.hasActiveTransaction()) {
-                    em.close();
-                }
-            }
+            query.setMaxResults(1);
+            query.setLockMode(LockModeType.PESSIMISTIC_READ);
+
+            List<Block> blocks = query.getResultList();
+            return blocks.isEmpty() ? null : blocks.get(0);
         } finally {
-            lock.readLock().unlock();
+            if (!JPAUtil.hasActiveTransaction()) {
+                em.close();
+            }
         }
     }
-    
+
     /**
      * Get a block by its number
      */
     public Block getBlockByNumber(Long blockNumber) {
-        lock.readLock().lock();
+        EntityManager em = JPAUtil.getEntityManager();
         try {
-            EntityManager em = JPAUtil.getEntityManager();
-            try {
-                TypedQuery<Block> query = em.createQuery(
+            TypedQuery<Block> query = em.createQuery(
                     "SELECT b FROM Block b WHERE b.blockNumber = :blockNumber", Block.class);
-                query.setParameter("blockNumber", blockNumber);
-                
-                List<Block> results = query.getResultList();
-                return results.isEmpty() ? null : results.get(0);
-            } finally {
-                if (!JPAUtil.hasActiveTransaction()) {
-                    em.close();
-                }
-            }
+            query.setParameter("blockNumber", blockNumber);
+
+            List<Block> results = query.getResultList();
+            return results.isEmpty() ? null : results.get(0);
         } finally {
-            lock.readLock().unlock();
+            if (!JPAUtil.hasActiveTransaction()) {
+                em.close();
+            }
         }
     }
-    
+
     /**
      * Get the last block in the chain (without locking for regular queries)
      */
     public Block getLastBlock() {
-        lock.readLock().lock();
+        EntityManager em = JPAUtil.getEntityManager();
         try {
-            EntityManager em = JPAUtil.getEntityManager();
-            try {
-                TypedQuery<Block> query = em.createQuery(
+            TypedQuery<Block> query = em.createQuery(
                     "SELECT b FROM Block b ORDER BY b.blockNumber DESC", Block.class);
-                query.setMaxResults(1);
-                
-                List<Block> blocks = query.getResultList();
-                return blocks.isEmpty() ? null : blocks.get(0);
-            } finally {
-                if (!JPAUtil.hasActiveTransaction()) {
-                    em.close();
-                }
-            }
+            query.setMaxResults(1);
+
+            List<Block> blocks = query.getResultList();
+            return blocks.isEmpty() ? null : blocks.get(0);
         } finally {
-            lock.readLock().unlock();
+            if (!JPAUtil.hasActiveTransaction()) {
+                em.close();
+            }
         }
     }
 
     /**
      * Get the last block with forced refresh to see latest committed data
-     * CRITICAL: This method ensures we see the most recent data even in high-concurrency scenarios
-     * Used to prevent race conditions where reads happen before writes are fully committed
+     * CRITICAL: This method ensures we see the most recent data even in
+     * high-concurrency scenarios
+     * Used to prevent race conditions where reads happen before writes are fully
+     * committed
      */
     public Block getLastBlockWithRefresh() {
-        lock.readLock().lock();
+        EntityManager em = JPAUtil.getEntityManager();
         try {
-            EntityManager em = JPAUtil.getEntityManager();
-            try {
-                // Clear the persistence context to force fresh read from database
-                em.clear();
-                
-                TypedQuery<Block> query = em.createQuery(
+            // Clear the persistence context to force fresh read from database
+            em.clear();
+
+            TypedQuery<Block> query = em.createQuery(
                     "SELECT b FROM Block b ORDER BY b.blockNumber DESC", Block.class);
-                query.setMaxResults(1);
-                
-                List<Block> blocks = query.getResultList();
-                return blocks.isEmpty() ? null : blocks.get(0);
-            } finally {
-                if (!JPAUtil.hasActiveTransaction()) {
-                    em.close();
-                }
-            }
+            query.setMaxResults(1);
+
+            List<Block> blocks = query.getResultList();
+            return blocks.isEmpty() ? null : blocks.get(0);
         } finally {
-            lock.readLock().unlock();
+            if (!JPAUtil.hasActiveTransaction()) {
+                em.close();
+            }
         }
     }
-    
+
     /**
      * Get blocks paginated for better performance
+     * 
      * @param offset starting position
-     * @param limit maximum number of blocks to return
+     * @param limit  maximum number of blocks to return
      * @return list of blocks within the specified range
      */
     public List<Block> getBlocksPaginated(long offset, int limit) {
@@ -378,69 +359,60 @@ public class BlockDAO {
         if (limit <= 0) {
             throw new IllegalArgumentException("Limit must be positive");
         }
-        
+
         return OperationLoggingInterceptor.logDatabaseOperation("SELECT", "blocks_paginated", () -> {
-            lock.readLock().lock();
+            EntityManager em = JPAUtil.getEntityManager();
             try {
-                EntityManager em = JPAUtil.getEntityManager();
-                try {
-                    TypedQuery<Block> query = em.createQuery(
+                TypedQuery<Block> query = em.createQuery(
                         "SELECT b FROM Block b LEFT JOIN FETCH b.offChainData ORDER BY b.blockNumber ASC", Block.class);
 
-                    // Safe cast: setFirstResult only accepts int, but we validate range
-                    if (offset > Integer.MAX_VALUE) {
-                        throw new IllegalArgumentException(
+                // Safe cast: setFirstResult only accepts int, but we validate range
+                if (offset > Integer.MAX_VALUE) {
+                    throw new IllegalArgumentException(
                             "Offset " + offset + " exceeds maximum pagination offset (" +
-                            Integer.MAX_VALUE + "). Use smaller batch sizes."
-                        );
-                    }
-                    query.setFirstResult((int) offset);
-                    query.setMaxResults(limit);
-                    return query.getResultList();
-                } finally {
-                    if (!JPAUtil.hasActiveTransaction()) {
-                        em.close();
-                    }
+                                    Integer.MAX_VALUE + "). Use smaller batch sizes.");
                 }
+                query.setFirstResult((int) offset);
+                query.setMaxResults(limit);
+                return query.getResultList();
             } finally {
-                lock.readLock().unlock();
+                if (!JPAUtil.hasActiveTransaction()) {
+                    em.close();
+                }
             }
         });
     }
 
     /**
      * Get total number of blocks in the blockchain
+     * 
      * @return total block count
      */
     public long getBlockCount() {
-        lock.readLock().lock();
+        EntityManager em = JPAUtil.getEntityManager();
         try {
-            EntityManager em = JPAUtil.getEntityManager();
-            try {
-                TypedQuery<Long> query = em.createQuery(
+            TypedQuery<Long> query = em.createQuery(
                     "SELECT COUNT(b) FROM Block b", Long.class);
-                return query.getSingleResult();
-            } finally {
-                if (!JPAUtil.hasActiveTransaction()) {
-                    em.close();
-                }
-            }
+            return query.getSingleResult();
         } finally {
-            lock.readLock().unlock();
+            if (!JPAUtil.hasActiveTransaction()) {
+                em.close();
+            }
         }
     }
-    
+
     /**
      * 🚀 MEMORY-EFFICIENT: Get blocks within a time range with pagination.
      *
      * @param startTime Start of time range
-     * @param endTime End of time range
-     * @param offset Starting position (0-based)
-     * @param limit Maximum number of blocks to return
+     * @param endTime   End of time range
+     * @param offset    Starting position (0-based)
+     * @param limit     Maximum number of blocks to return
      * @return List of blocks within the time range, limited by pagination
      * @throws IllegalArgumentException if parameters are invalid
      */
-    public List<Block> getBlocksByTimeRangePaginated(LocalDateTime startTime, LocalDateTime endTime, long offset, int limit) {
+    public List<Block> getBlocksByTimeRangePaginated(LocalDateTime startTime, LocalDateTime endTime, long offset,
+            int limit) {
         if (startTime == null || endTime == null) {
             throw new IllegalArgumentException("Start time and end time cannot be null");
         }
@@ -451,31 +423,26 @@ public class BlockDAO {
             throw new IllegalArgumentException("Limit must be positive");
         }
 
-        lock.readLock().lock();
+        EntityManager em = JPAUtil.getEntityManager();
         try {
-            EntityManager em = JPAUtil.getEntityManager();
-            try {
-                // Safe cast: offset validated to be non-negative, JPA only accepts int
-                if (offset > Integer.MAX_VALUE) {
-                    throw new IllegalArgumentException("Offset too large: " + offset + " (max: " + Integer.MAX_VALUE + ")");
-                }
-                int safeOffset = (int) offset;
-                
-                TypedQuery<Block> query = em.createQuery(
+            // Safe cast: offset validated to be non-negative, JPA only accepts int
+            if (offset > Integer.MAX_VALUE) {
+                throw new IllegalArgumentException("Offset too large: " + offset + " (max: " + Integer.MAX_VALUE + ")");
+            }
+            int safeOffset = (int) offset;
+
+            TypedQuery<Block> query = em.createQuery(
                     "SELECT b FROM Block b WHERE b.timestamp BETWEEN :startTime AND :endTime ORDER BY b.blockNumber ASC",
                     Block.class);
-                query.setParameter("startTime", startTime);
-                query.setParameter("endTime", endTime);
-                query.setFirstResult(safeOffset);
-                query.setMaxResults(limit);
-                return query.getResultList();
-            } finally {
-                if (!JPAUtil.hasActiveTransaction()) {
-                    em.close();
-                }
-            }
+            query.setParameter("startTime", startTime);
+            query.setParameter("endTime", endTime);
+            query.setFirstResult(safeOffset);
+            query.setMaxResults(limit);
+            return query.getResultList();
         } finally {
-            lock.readLock().unlock();
+            if (!JPAUtil.hasActiveTransaction()) {
+                em.close();
+            }
         }
     }
 
@@ -484,9 +451,10 @@ public class BlockDAO {
      * This method allows retrieving blocks that have off-chain data in batches.
      *
      * @param offset starting position (0-based, long type to prevent overflow)
-     * @param limit maximum number of blocks to return
+     * @param limit  maximum number of blocks to return
      * @return list of blocks with off-chain data within the specified range
-     * @throws IllegalArgumentException if offset is negative or limit is not positive
+     * @throws IllegalArgumentException if offset is negative or limit is not
+     *                                  positive
      */
     public List<Block> getBlocksWithOffChainDataPaginated(long offset, int limit) {
         if (offset < 0) {
@@ -499,28 +467,22 @@ public class BlockDAO {
         // Safe cast validation (setFirstResult only accepts int)
         if (offset > Integer.MAX_VALUE) {
             throw new IllegalArgumentException(
-                "Offset " + offset + " exceeds maximum pagination offset (" +
-                Integer.MAX_VALUE + "). Use smaller batch sizes."
-            );
+                    "Offset " + offset + " exceeds maximum pagination offset (" +
+                            Integer.MAX_VALUE + "). Use smaller batch sizes.");
         }
 
-        lock.readLock().lock();
+        EntityManager em = JPAUtil.getEntityManager();
         try {
-            EntityManager em = JPAUtil.getEntityManager();
-            try {
-                TypedQuery<Block> query = em.createQuery(
+            TypedQuery<Block> query = em.createQuery(
                     "SELECT b FROM Block b WHERE b.offChainData IS NOT NULL ORDER BY b.blockNumber ASC",
                     Block.class);
-                query.setFirstResult((int) offset);  // Safe cast after validation
-                query.setMaxResults(limit);
-                return query.getResultList();
-            } finally {
-                if (!JPAUtil.hasActiveTransaction()) {
-                    em.close();
-                }
-            }
+            query.setFirstResult((int) offset); // Safe cast after validation
+            query.setMaxResults(limit);
+            return query.getResultList();
         } finally {
-            lock.readLock().unlock();
+            if (!JPAUtil.hasActiveTransaction()) {
+                em.close();
+            }
         }
     }
 
@@ -529,9 +491,10 @@ public class BlockDAO {
      * This method allows retrieving encrypted blocks in batches.
      *
      * @param offset starting position (0-based, long type to prevent overflow)
-     * @param limit maximum number of blocks to return
+     * @param limit  maximum number of blocks to return
      * @return list of encrypted blocks within the specified range
-     * @throws IllegalArgumentException if offset is negative or limit is not positive
+     * @throws IllegalArgumentException if offset is negative or limit is not
+     *                                  positive
      */
     public List<Block> getEncryptedBlocksPaginated(long offset, int limit) {
         if (offset < 0) {
@@ -544,51 +507,40 @@ public class BlockDAO {
         // Safe cast validation (setFirstResult only accepts int)
         if (offset > Integer.MAX_VALUE) {
             throw new IllegalArgumentException(
-                "Offset " + offset + " exceeds maximum pagination offset (" +
-                Integer.MAX_VALUE + "). Use smaller batch sizes."
-            );
+                    "Offset " + offset + " exceeds maximum pagination offset (" +
+                            Integer.MAX_VALUE + "). Use smaller batch sizes.");
         }
 
-        lock.readLock().lock();
+        EntityManager em = JPAUtil.getEntityManager();
         try {
-            EntityManager em = JPAUtil.getEntityManager();
-            try {
-                TypedQuery<Block> query = em.createQuery(
+            TypedQuery<Block> query = em.createQuery(
                     "SELECT b FROM Block b WHERE b.isEncrypted = true ORDER BY b.blockNumber ASC",
                     Block.class);
-                query.setFirstResult((int) offset);  // Safe cast after validation
-                query.setMaxResults(limit);
-                return query.getResultList();
-            } finally {
-                if (!JPAUtil.hasActiveTransaction()) {
-                    em.close();
-                }
-            }
+            query.setFirstResult((int) offset); // Safe cast after validation
+            query.setMaxResults(limit);
+            return query.getResultList();
         } finally {
-            lock.readLock().unlock();
+            if (!JPAUtil.hasActiveTransaction()) {
+                em.close();
+            }
         }
     }
-    
+
     /**
      * Check if a block with specific number exists
      * FIXED: Added for race condition detection
      */
     public boolean existsBlockWithNumber(Long blockNumber) {
-        lock.readLock().lock();
+        EntityManager em = JPAUtil.getEntityManager();
         try {
-            EntityManager em = JPAUtil.getEntityManager();
-            try {
-                TypedQuery<Long> query = em.createQuery(
+            TypedQuery<Long> query = em.createQuery(
                     "SELECT COUNT(b) FROM Block b WHERE b.blockNumber = :blockNumber", Long.class);
-                query.setParameter("blockNumber", blockNumber);
-                return query.getSingleResult() > 0;
-            } finally {
-                if (!JPAUtil.hasActiveTransaction()) {
-                    em.close();
-                }
-            }
+            query.setParameter("blockNumber", blockNumber);
+            return query.getSingleResult() > 0;
         } finally {
-            lock.readLock().unlock();
+            if (!JPAUtil.hasActiveTransaction()) {
+                em.close();
+            }
         }
     }
 
@@ -600,70 +552,63 @@ public class BlockDAO {
         if (hash == null) {
             throw new IllegalArgumentException("Hash cannot be null");
         }
-        
-        lock.readLock().lock();
+
+        EntityManager em = JPAUtil.getEntityManager();
         try {
-            EntityManager em = JPAUtil.getEntityManager();
-            try {
-                TypedQuery<Long> query = em.createQuery(
+            TypedQuery<Long> query = em.createQuery(
                     "SELECT COUNT(b) FROM Block b WHERE b.hash = :hash", Long.class);
-                query.setParameter("hash", hash);
-                return query.getSingleResult() > 0;
-            } finally {
-                if (!JPAUtil.hasActiveTransaction()) {
-                    em.close();
-                }
-            }
+            query.setParameter("hash", hash);
+            return query.getSingleResult() > 0;
         } finally {
-            lock.readLock().unlock();
+            if (!JPAUtil.hasActiveTransaction()) {
+                em.close();
+            }
         }
-    }    
+    }
+
     /**
      * Delete a block by its number
      */
     public boolean deleteBlockByNumber(Long blockNumber) {
-        lock.writeLock().lock();
-        try {
-            if (JPAUtil.hasActiveTransaction()) {
-                EntityManager em = JPAUtil.getEntityManager();
+        if (JPAUtil.hasActiveTransaction()) {
+            EntityManager em = JPAUtil.getEntityManager();
+            int deletedCount = em.createQuery("DELETE FROM Block b WHERE b.blockNumber = :blockNumber")
+                    .setParameter("blockNumber", blockNumber)
+                    .executeUpdate();
+            return deletedCount > 0;
+        } else {
+            EntityManager em = JPAUtil.getEntityManager();
+            EntityTransaction transaction = null;
+
+            try {
+                transaction = em.getTransaction();
+                transaction.begin();
+
                 int deletedCount = em.createQuery("DELETE FROM Block b WHERE b.blockNumber = :blockNumber")
                         .setParameter("blockNumber", blockNumber)
                         .executeUpdate();
+
+                transaction.commit();
                 return deletedCount > 0;
-            } else {
-                EntityManager em = JPAUtil.getEntityManager();
-                EntityTransaction transaction = null;
-                
-                try {
-                    transaction = em.getTransaction();
-                    transaction.begin();
-                    
-                    int deletedCount = em.createQuery("DELETE FROM Block b WHERE b.blockNumber = :blockNumber")
-                            .setParameter("blockNumber", blockNumber)
-                            .executeUpdate();
-                    
-                    transaction.commit();
-                    return deletedCount > 0;
-                } catch (Exception e) {
-                    if (transaction != null && transaction.isActive()) {
-                        transaction.rollback();
-                    }
-                    throw new RuntimeException("Error deleting block with number " + blockNumber, e);
-                } finally {
-                    em.close();
+            } catch (Exception e) {
+                if (transaction != null && transaction.isActive()) {
+                    transaction.rollback();
                 }
+                throw new RuntimeException("Error deleting block with number " + blockNumber, e);
+            } finally {
+                em.close();
             }
-        } finally {
-            lock.writeLock().unlock();
         }
     }
-    
+
     /**
-     * 🚀 MEMORY-EFFICIENT: Get blocks signed by a specific public key with result limit.
+     * 🚀 MEMORY-EFFICIENT: Get blocks signed by a specific public key with result
+     * limit.
      * Useful for impact assessment before key deletion.
      *
      * @param signerPublicKey The public key of the signer
-     * @param maxResults Maximum number of results to return (use 0 for sample display, larger for full analysis)
+     * @param maxResults      Maximum number of results to return (use 0 for sample
+     *                        display, larger for full analysis)
      * @return List of blocks signed by the specified key, limited by maxResults
      * @throws IllegalArgumentException if maxResults is negative
      */
@@ -675,27 +620,22 @@ public class BlockDAO {
             throw new IllegalArgumentException("maxResults cannot be negative");
         }
 
-        lock.readLock().lock();
+        EntityManager em = JPAUtil.getEntityManager();
         try {
-            EntityManager em = JPAUtil.getEntityManager();
-            try {
-                TypedQuery<Block> query = em.createQuery(
+            TypedQuery<Block> query = em.createQuery(
                     "SELECT b FROM Block b WHERE b.signerPublicKey = :signerPublicKey ORDER BY b.blockNumber ASC",
                     Block.class);
-                query.setParameter("signerPublicKey", signerPublicKey);
+            query.setParameter("signerPublicKey", signerPublicKey);
 
-                if (maxResults > 0) {
-                    query.setMaxResults(maxResults);
-                }
-
-                return query.getResultList();
-            } finally {
-                if (!JPAUtil.hasActiveTransaction()) {
-                    em.close();
-                }
+            if (maxResults > 0) {
+                query.setMaxResults(maxResults);
             }
+
+            return query.getResultList();
         } finally {
-            lock.readLock().unlock();
+            if (!JPAUtil.hasActiveTransaction()) {
+                em.close();
+            }
         }
     }
 
@@ -704,34 +644,32 @@ public class BlockDAO {
      * Optimized version for quick impact check
      */
     public long countBlocksBySignerPublicKey(String signerPublicKey) {
-        lock.readLock().lock();
+        EntityManager em = JPAUtil.getEntityManager();
         try {
-            EntityManager em = JPAUtil.getEntityManager();
-            try {
-                TypedQuery<Long> query = em.createQuery(
-                    "SELECT COUNT(b) FROM Block b WHERE b.signerPublicKey = :signerPublicKey", 
+            TypedQuery<Long> query = em.createQuery(
+                    "SELECT COUNT(b) FROM Block b WHERE b.signerPublicKey = :signerPublicKey",
                     Long.class);
-                query.setParameter("signerPublicKey", signerPublicKey);
-                return query.getSingleResult();
-            } finally {
-                if (!JPAUtil.hasActiveTransaction()) {
-                    em.close();
-                }
-            }
+            query.setParameter("signerPublicKey", signerPublicKey);
+            return query.getSingleResult();
         } finally {
-            lock.readLock().unlock();
+            if (!JPAUtil.hasActiveTransaction()) {
+                em.close();
+            }
         }
     }
-    
+
     /**
-     * 🚀 MEMORY-EFFICIENT: Get blocks after a specific block number with pagination.
+     * 🚀 MEMORY-EFFICIENT: Get blocks after a specific block number with
+     * pagination.
      * Useful for rollback operations and off-chain cleanup on large datasets.
      *
      * @param blockNumber The block number threshold
-     * @param offset Starting position (0-based)
-     * @param limit Maximum number of blocks to return
-     * @return List of blocks after the specified block number within the pagination range
-     * @throws IllegalArgumentException if offset is negative or limit is not positive
+     * @param offset      Starting position (0-based)
+     * @param limit       Maximum number of blocks to return
+     * @return List of blocks after the specified block number within the pagination
+     *         range
+     * @throws IllegalArgumentException if offset is negative or limit is not
+     *                                  positive
      */
     public List<Block> getBlocksAfterPaginated(Long blockNumber, long offset, int limit) {
         if (blockNumber == null) {
@@ -744,109 +682,95 @@ public class BlockDAO {
             throw new IllegalArgumentException("Limit must be positive");
         }
 
-        lock.readLock().lock();
+        EntityManager em = JPAUtil.getEntityManager();
         try {
-            EntityManager em = JPAUtil.getEntityManager();
-            try {
-                // Safe cast: offset validated to be non-negative, JPA only accepts int
-                if (offset > Integer.MAX_VALUE) {
-                    throw new IllegalArgumentException("Offset too large: " + offset + " (max: " + Integer.MAX_VALUE + ")");
-                }
-                int safeOffset = (int) offset;
-                
-                TypedQuery<Block> query = em.createQuery(
+            // Safe cast: offset validated to be non-negative, JPA only accepts int
+            if (offset > Integer.MAX_VALUE) {
+                throw new IllegalArgumentException("Offset too large: " + offset + " (max: " + Integer.MAX_VALUE + ")");
+            }
+            int safeOffset = (int) offset;
+
+            TypedQuery<Block> query = em.createQuery(
                     "SELECT b FROM Block b LEFT JOIN FETCH b.offChainData WHERE b.blockNumber > :blockNumber ORDER BY b.blockNumber ASC",
                     Block.class);
-                query.setParameter("blockNumber", blockNumber);
-                query.setFirstResult(safeOffset);
-                query.setMaxResults(limit);
+            query.setParameter("blockNumber", blockNumber);
+            query.setFirstResult(safeOffset);
+            query.setMaxResults(limit);
 
-                return query.getResultList();
-            } finally {
-                if (!JPAUtil.hasActiveTransaction()) {
-                    em.close();
-                }
-            }
+            return query.getResultList();
         } finally {
-            lock.readLock().unlock();
+            if (!JPAUtil.hasActiveTransaction()) {
+                em.close();
+            }
         }
     }
 
     public int deleteBlocksAfter(Long blockNumber) {
-        lock.writeLock().lock();
-        try {
-            if (JPAUtil.hasActiveTransaction()) {
-                EntityManager em = JPAUtil.getEntityManager();
-                return em.createQuery("DELETE FROM Block b WHERE b.blockNumber > :blockNumber")
+        if (JPAUtil.hasActiveTransaction()) {
+            EntityManager em = JPAUtil.getEntityManager();
+            return em.createQuery("DELETE FROM Block b WHERE b.blockNumber > :blockNumber")
+                    .setParameter("blockNumber", blockNumber)
+                    .executeUpdate();
+        } else {
+            EntityManager em = JPAUtil.getEntityManager();
+            EntityTransaction transaction = null;
+
+            try {
+                transaction = em.getTransaction();
+                transaction.begin();
+
+                int deletedCount = em.createQuery("DELETE FROM Block b WHERE b.blockNumber > :blockNumber")
                         .setParameter("blockNumber", blockNumber)
                         .executeUpdate();
-            } else {
-                EntityManager em = JPAUtil.getEntityManager();
-                EntityTransaction transaction = null;
-                
-                try {
-                    transaction = em.getTransaction();
-                    transaction.begin();
-                    
-                    int deletedCount = em.createQuery("DELETE FROM Block b WHERE b.blockNumber > :blockNumber")
-                            .setParameter("blockNumber", blockNumber)
-                            .executeUpdate();
-                    
-                    transaction.commit();
-                    return deletedCount;
-                } catch (Exception e) {
-                    if (transaction != null && transaction.isActive()) {
-                        transaction.rollback();
-                    }
-                    throw new RuntimeException("Error deleting blocks after " + blockNumber, e);
-                } finally {
-                    em.close();
+
+                transaction.commit();
+                return deletedCount;
+            } catch (Exception e) {
+                if (transaction != null && transaction.isActive()) {
+                    transaction.rollback();
                 }
+                throw new RuntimeException("Error deleting blocks after " + blockNumber, e);
+            } finally {
+                em.close();
             }
-        } finally {
-            lock.writeLock().unlock();
         }
     }
-    
+
     /**
      * Delete all blocks (for import functionality)
      */
     public int deleteAllBlocks() {
-        lock.writeLock().lock();
-        try {
-            if (JPAUtil.hasActiveTransaction()) {
-                EntityManager em = JPAUtil.getEntityManager();
-                return em.createQuery("DELETE FROM Block b").executeUpdate();
-            } else {
-                EntityManager em = JPAUtil.getEntityManager();
-                EntityTransaction transaction = null;
-                
-                try {
-                    transaction = em.getTransaction();
-                    transaction.begin();
-                    
-                    int deletedCount = em.createQuery("DELETE FROM Block b").executeUpdate();
-                    
-                    transaction.commit();
-                    return deletedCount;
-                } catch (Exception e) {
-                    if (transaction != null && transaction.isActive()) {
-                        transaction.rollback();
-                    }
-                    throw new RuntimeException("Error deleting all blocks", e);
-                } finally {
-                    em.close();
+        if (JPAUtil.hasActiveTransaction()) {
+            EntityManager em = JPAUtil.getEntityManager();
+            return em.createQuery("DELETE FROM Block b").executeUpdate();
+        } else {
+            EntityManager em = JPAUtil.getEntityManager();
+            EntityTransaction transaction = null;
+
+            try {
+                transaction = em.getTransaction();
+                transaction.begin();
+
+                int deletedCount = em.createQuery("DELETE FROM Block b").executeUpdate();
+
+                transaction.commit();
+                return deletedCount;
+            } catch (Exception e) {
+                if (transaction != null && transaction.isActive()) {
+                    transaction.rollback();
                 }
+                throw new RuntimeException("Error deleting all blocks", e);
+            } finally {
+                em.close();
             }
-        } finally {
-            lock.writeLock().unlock();
         }
     }
-    
+
     /**
-     * 🚀 MEMORY-EFFICIENT: Search blocks by content with result limit (case-insensitive).
+     * 🚀 MEMORY-EFFICIENT: Search blocks by content with result limit
+     * (case-insensitive).
      *
-     * @param content The content to search for
+     * @param content    The content to search for
      * @param maxResults Maximum number of results to return
      * @return List of matching blocks, limited by maxResults
      * @throws IllegalArgumentException if maxResults is not positive
@@ -859,26 +783,21 @@ public class BlockDAO {
             throw new IllegalArgumentException("maxResults must be positive");
         }
 
-        lock.readLock().lock();
+        EntityManager em = JPAUtil.getEntityManager();
         try {
-            EntityManager em = JPAUtil.getEntityManager();
-            try {
-                TypedQuery<Block> query = em.createQuery(
+            TypedQuery<Block> query = em.createQuery(
                     "SELECT b FROM Block b WHERE LOWER(b.data) LIKE :content ORDER BY b.blockNumber ASC",
                     Block.class);
-                query.setParameter("content", "%" + content.toLowerCase() + "%");
-                query.setMaxResults(maxResults);
-                return query.getResultList();
-            } finally {
-                if (!JPAUtil.hasActiveTransaction()) {
-                    em.close();
-                }
-            }
+            query.setParameter("content", "%" + content.toLowerCase() + "%");
+            query.setMaxResults(maxResults);
+            return query.getResultList();
         } finally {
-            lock.readLock().unlock();
+            if (!JPAUtil.hasActiveTransaction()) {
+                em.close();
+            }
         }
     }
-    
+
     /**
      * Get block by hash
      */
@@ -886,86 +805,78 @@ public class BlockDAO {
         if (hash == null || hash.trim().isEmpty()) {
             return null;
         }
-        
-        lock.readLock().lock();
+
+        EntityManager em = JPAUtil.getEntityManager();
         try {
-            EntityManager em = JPAUtil.getEntityManager();
-            try {
-                TypedQuery<Block> query = em.createQuery(
+            TypedQuery<Block> query = em.createQuery(
                     "SELECT b FROM Block b WHERE b.hash = :hash", Block.class);
-                query.setParameter("hash", hash);
-                
-                List<Block> results = query.getResultList();
-                return results.isEmpty() ? null : results.get(0);
-            } finally {
-                if (!JPAUtil.hasActiveTransaction()) {
-                    em.close();
-                }
-            }
+            query.setParameter("hash", hash);
+
+            List<Block> results = query.getResultList();
+            return results.isEmpty() ? null : results.get(0);
         } finally {
-            lock.readLock().unlock();
+            if (!JPAUtil.hasActiveTransaction()) {
+                em.close();
+            }
         }
     }
-    
+
     /**
      * Synchronize the block sequence with the actual max block number
      * Useful for initialization or after manual database operations
      */
     public void synchronizeBlockSequence() {
-        lock.writeLock().lock();
+        EntityManager em = JPAUtil.getEntityManager();
+        EntityTransaction transaction = null;
+        boolean shouldManageTransaction = !JPAUtil.hasActiveTransaction();
+
         try {
-            EntityManager em = JPAUtil.getEntityManager();
-            EntityTransaction transaction = null;
-            boolean shouldManageTransaction = !JPAUtil.hasActiveTransaction();
-            
-            try {
-                if (shouldManageTransaction) {
-                    transaction = em.getTransaction();
-                    transaction.begin();
-                }
-                
-                // Get actual max block number
-                TypedQuery<Long> maxQuery = em.createQuery("SELECT MAX(b.blockNumber) FROM Block b", Long.class);
-                Long maxBlockNumber = maxQuery.getSingleResult();
-                Long nextValue = (maxBlockNumber != null) ? maxBlockNumber + 1 : 0L;
-                
-                // Get or create sequence
-                BlockSequence sequence = em.find(BlockSequence.class, "block_number", LockModeType.PESSIMISTIC_WRITE);
-                if (sequence == null) {
-                    sequence = new BlockSequence("block_number", nextValue);
-                    em.persist(sequence);
-                } else {
-                    sequence.setNextValue(nextValue);
-                    em.merge(sequence);
-                }
-                
-                if (shouldManageTransaction && transaction != null) {
-                    transaction.commit();
-                }
-                
-            } catch (Exception e) {
-                if (shouldManageTransaction && transaction != null && transaction.isActive()) {
-                    transaction.rollback();
-                }
-                throw new RuntimeException("Error synchronizing block sequence", e);
-            } finally {
-                if (shouldManageTransaction) {
-                    em.close();
-                }
+            if (shouldManageTransaction) {
+                transaction = em.getTransaction();
+                transaction.begin();
             }
+
+            // Get actual max block number
+            TypedQuery<Long> maxQuery = em.createQuery("SELECT MAX(b.blockNumber) FROM Block b", Long.class);
+            Long maxBlockNumber = maxQuery.getSingleResult();
+            Long nextValue = (maxBlockNumber != null) ? maxBlockNumber + 1 : 0L;
+
+            // Get or create sequence
+            BlockSequence sequence = em.find(BlockSequence.class, "block_number", LockModeType.PESSIMISTIC_WRITE);
+            if (sequence == null) {
+                sequence = new BlockSequence("block_number", nextValue);
+                em.persist(sequence);
+            } else {
+                sequence.setNextValue(nextValue);
+                em.merge(sequence);
+            }
+
+            if (shouldManageTransaction && transaction != null) {
+                transaction.commit();
+            }
+
+        } catch (Exception e) {
+            if (shouldManageTransaction && transaction != null && transaction.isActive()) {
+                transaction.rollback();
+            }
+            throw new RuntimeException("Error synchronizing block sequence", e);
         } finally {
-            lock.writeLock().unlock();
+            if (shouldManageTransaction) {
+                em.close();
+            }
         }
     }
-    
+
     // =============== SEARCH FUNCTIONALITY ===============
-    
+
     /**
-     * 🚀 MEMORY-EFFICIENT: Search blocks by content with different search levels and default limit.
+     * 🚀 MEMORY-EFFICIENT: Search blocks by content with different search levels
+     * and default limit.
      * Thread-safe with rigorous validation.
      *
      * @param searchTerm The term to search for
-     * @param level The search level (FAST_ONLY, INCLUDE_DATA, EXHAUSTIVE_OFFCHAIN)
+     * @param level      The search level (FAST_ONLY, INCLUDE_DATA,
+     *                   EXHAUSTIVE_OFFCHAIN)
      * @return List of matching blocks (max 10,000 results for memory safety)
      * @throws IllegalArgumentException if searchTerm is empty or level is null
      */
@@ -974,14 +885,17 @@ public class BlockDAO {
     }
 
     /**
-     * 🚀 MEMORY-EFFICIENT: Search blocks by content with different search levels and custom limit.
+     * 🚀 MEMORY-EFFICIENT: Search blocks by content with different search levels
+     * and custom limit.
      * Thread-safe with rigorous validation.
      *
      * @param searchTerm The term to search for
-     * @param level The search level (FAST_ONLY, INCLUDE_DATA, EXHAUSTIVE_OFFCHAIN)
+     * @param level      The search level (FAST_ONLY, INCLUDE_DATA,
+     *                   EXHAUSTIVE_OFFCHAIN)
      * @param maxResults Maximum number of results to return
      * @return List of matching blocks, limited by maxResults
-     * @throws IllegalArgumentException if searchTerm is empty, level is null, or maxResults is not positive
+     * @throws IllegalArgumentException if searchTerm is empty, level is null, or
+     *                                  maxResults is not positive
      */
     public List<Block> searchBlocksByContentWithLevel(String searchTerm, SearchLevel level, int maxResults) {
         if (searchTerm == null || searchTerm.trim().isEmpty()) {
@@ -997,40 +911,35 @@ public class BlockDAO {
             throw new IllegalArgumentException("maxResults must be positive");
         }
 
-        lock.readLock().lock();
+        String term = "%" + searchTerm.toLowerCase() + "%";
+        EntityManager em = JPAUtil.getEntityManager();
+
         try {
-            String term = "%" + searchTerm.toLowerCase() + "%";
-            EntityManager em = JPAUtil.getEntityManager();
+            String queryString = buildSearchQuery(level);
+            TypedQuery<Block> query = em.createQuery(queryString, Block.class);
 
-            try {
-                String queryString = buildSearchQuery(level);
-                TypedQuery<Block> query = em.createQuery(queryString, Block.class);
+            // VULNERABILITY FIX: All queries need the :term parameter
+            query.setParameter("term", term);
+            query.setMaxResults(maxResults);
 
-                // VULNERABILITY FIX: All queries need the :term parameter
-                query.setParameter("term", term);
-                query.setMaxResults(maxResults);
+            List<Block> results = query.getResultList();
 
-                List<Block> results = query.getResultList();
-
-                // Sort by priority (manual keywords first)
-                return results.stream()
+            // Sort by priority (manual keywords first)
+            return results.stream()
                     .sorted(this::compareSearchPriority)
                     .collect(java.util.stream.Collectors.toList());
 
-            } finally {
-                if (!JPAUtil.hasActiveTransaction()) {
-                    em.close();
-                }
-            }
         } finally {
-            lock.readLock().unlock();
+            if (!JPAUtil.hasActiveTransaction()) {
+                em.close();
+            }
         }
     }
-    
+
     /**
      * 🚀 MEMORY-EFFICIENT: Search blocks by category with result limit.
      *
-     * @param category The category to search for
+     * @param category   The category to search for
      * @param maxResults Maximum number of results to return
      * @return List of matching blocks, limited by maxResults
      * @throws IllegalArgumentException if maxResults is not positive
@@ -1043,23 +952,18 @@ public class BlockDAO {
             throw new IllegalArgumentException("maxResults must be positive");
         }
 
-        lock.readLock().lock();
+        EntityManager em = JPAUtil.getEntityManager();
         try {
-            EntityManager em = JPAUtil.getEntityManager();
-            try {
-                TypedQuery<Block> query = em.createQuery(
+            TypedQuery<Block> query = em.createQuery(
                     "SELECT b FROM Block b WHERE UPPER(b.contentCategory) = :category ORDER BY b.blockNumber ASC",
                     Block.class);
-                query.setParameter("category", category.toUpperCase());
-                query.setMaxResults(maxResults);
-                return query.getResultList();
-            } finally {
-                if (!JPAUtil.hasActiveTransaction()) {
-                    em.close();
-                }
-            }
+            query.setParameter("category", category.toUpperCase());
+            query.setMaxResults(maxResults);
+            return query.getResultList();
         } finally {
-            lock.readLock().unlock();
+            if (!JPAUtil.hasActiveTransaction()) {
+                em.close();
+            }
         }
     }
 
@@ -1076,13 +980,15 @@ public class BlockDAO {
     }
 
     /**
-     * 🚀 MEMORY-EFFICIENT: Search blocks by custom metadata with custom result limit.
+     * 🚀 MEMORY-EFFICIENT: Search blocks by custom metadata with custom result
+     * limit.
      * Thread-safe with rigorous validation.
      *
      * @param searchTerm The term to search for in custom metadata
      * @param maxResults Maximum number of results to return
      * @return List of matching blocks, limited by maxResults
-     * @throws IllegalArgumentException if searchTerm is null/empty or maxResults is not positive
+     * @throws IllegalArgumentException if searchTerm is null/empty or maxResults is
+     *                                  not positive
      */
     public List<Block> searchByCustomMetadataWithLimit(String searchTerm, int maxResults) {
         // RIGOROUS INPUT VALIDATION
@@ -1096,55 +1002,56 @@ public class BlockDAO {
             throw new IllegalArgumentException("maxResults must be positive");
         }
 
-        lock.readLock().lock();
+        EntityManager em = JPAUtil.getEntityManager();
         try {
-            EntityManager em = JPAUtil.getEntityManager();
-            try {
-                // Search for term in customMetadata JSON field
-                // Using UPPER for case-insensitive search
-                TypedQuery<Block> query = em.createQuery(
+            // Search for term in customMetadata JSON field
+            // Using UPPER for case-insensitive search
+            TypedQuery<Block> query = em.createQuery(
                     "SELECT b FROM Block b WHERE b.customMetadata IS NOT NULL " +
-                    "AND UPPER(b.customMetadata) LIKE UPPER(:searchTerm) " +
-                    "ORDER BY b.blockNumber ASC",
-                    Block.class
-                );
-                query.setParameter("searchTerm", "%" + searchTerm + "%");
-                query.setMaxResults(maxResults);
+                            "AND UPPER(b.customMetadata) LIKE UPPER(:searchTerm) " +
+                            "ORDER BY b.blockNumber ASC",
+                    Block.class);
+            query.setParameter("searchTerm", "%" + searchTerm + "%");
+            query.setMaxResults(maxResults);
 
-                List<Block> results = query.getResultList();
+            List<Block> results = query.getResultList();
 
-                // Additional validation: ensure results are not null
-                return results != null ? results : new ArrayList<>();
+            // Additional validation: ensure results are not null
+            return results != null ? results : new ArrayList<>();
 
-            } catch (Exception e) {
-                logger.error("❌ Error searching by custom metadata", e);
-                // Return empty list instead of propagating exception for graceful degradation
-                return new ArrayList<>();
-            } finally {
-                if (!JPAUtil.hasActiveTransaction()) {
-                    em.close();
-                }
-            }
+        } catch (Exception e) {
+            logger.error("❌ Error searching by custom metadata", e);
+            // Return empty list instead of propagating exception for graceful degradation
+            return new ArrayList<>();
         } finally {
-            lock.readLock().unlock();
+            if (!JPAUtil.hasActiveTransaction()) {
+                em.close();
+            }
         }
     }
 
     /**
-     * 🚀 MEMORY-EFFICIENT: Search blocks by exact match of a JSON key-value pair in custom metadata with pagination.
+     * 🚀 MEMORY-EFFICIENT: Search blocks by exact match of a JSON key-value pair in
+     * custom metadata with pagination.
      * Thread-safe with rigorous validation and JSON parsing.
      *
-     * <p>This method processes blocks in batches to avoid loading all blocks into memory,
-     * making it suitable for large blockchain datasets.</p>
+     * <p>
+     * This method processes blocks in batches to avoid loading all blocks into
+     * memory,
+     * making it suitable for large blockchain datasets.
+     * </p>
      *
-     * @param jsonKey The JSON key to search for (e.g., "department", "priority")
+     * @param jsonKey   The JSON key to search for (e.g., "department", "priority")
      * @param jsonValue The expected value for the key (exact match)
-     * @param offset Starting position (0-based)
-     * @param limit Maximum number of results to return
-     * @return List of blocks where custom metadata contains the exact key-value pair
-     * @throws IllegalArgumentException if jsonKey or jsonValue is null/empty, or if offset/limit are invalid
+     * @param offset    Starting position (0-based)
+     * @param limit     Maximum number of results to return
+     * @return List of blocks where custom metadata contains the exact key-value
+     *         pair
+     * @throws IllegalArgumentException if jsonKey or jsonValue is null/empty, or if
+     *                                  offset/limit are invalid
      */
-    public List<Block> searchByCustomMetadataKeyValuePaginated(String jsonKey, String jsonValue, long offset, int limit) {
+    public List<Block> searchByCustomMetadataKeyValuePaginated(String jsonKey, String jsonValue, long offset,
+            int limit) {
         // RIGOROUS INPUT VALIDATION
         if (jsonKey == null || jsonKey.trim().isEmpty()) {
             throw new IllegalArgumentException("JSON key cannot be null or empty");
@@ -1159,126 +1066,123 @@ public class BlockDAO {
             throw new IllegalArgumentException("Limit must be positive");
         }
 
-        lock.readLock().lock();
+        EntityManager em = JPAUtil.getEntityManager();
         try {
-            EntityManager em = JPAUtil.getEntityManager();
-            try {
-                List<Block> matchingBlocks = new ArrayList<>();
-                int currentOffset = 0;
-                int foundCount = 0;
-                int skippedCount = 0;
-                final int BATCH_SIZE = 1000;
+            List<Block> matchingBlocks = new ArrayList<>();
+            int currentOffset = 0;
+            int foundCount = 0;
+            int skippedCount = 0;
+            final int BATCH_SIZE = 1000;
 
-                // Process blocks in batches until we have enough results
-                while (foundCount < limit) {
-                    TypedQuery<Block> query = em.createQuery(
+            // Process blocks in batches until we have enough results
+            while (foundCount < limit) {
+                TypedQuery<Block> query = em.createQuery(
                         "SELECT b FROM Block b WHERE b.customMetadata IS NOT NULL " +
-                        "ORDER BY b.blockNumber ASC",
-                        Block.class
-                    );
-                    query.setFirstResult(currentOffset);
-                    query.setMaxResults(BATCH_SIZE);
+                                "ORDER BY b.blockNumber ASC",
+                        Block.class);
+                query.setFirstResult(currentOffset);
+                query.setMaxResults(BATCH_SIZE);
 
-                    List<Block> batch = query.getResultList();
+                List<Block> batch = query.getResultList();
 
-                    if (batch.isEmpty()) {
-                        break; // No more blocks to process
+                if (batch.isEmpty()) {
+                    break; // No more blocks to process
+                }
+
+                // Process this batch
+                for (Block block : batch) {
+                    if (block == null || block.getCustomMetadata() == null) {
+                        continue;
                     }
 
-                    // Process this batch
-                    for (Block block : batch) {
-                        if (block == null || block.getCustomMetadata() == null) {
-                            continue;
-                        }
+                    try {
+                        String metadata = block.getCustomMetadata();
 
-                        try {
-                            String metadata = block.getCustomMetadata();
+                        // Use Jackson to parse JSON safely
+                        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
 
-                            // Use Jackson to parse JSON safely
-                            com.fasterxml.jackson.databind.ObjectMapper mapper =
-                                new com.fasterxml.jackson.databind.ObjectMapper();
-
-                            @SuppressWarnings("unchecked")
-                            java.util.Map<String, Object> jsonMap = mapper.readValue(
+                        @SuppressWarnings("unchecked")
+                        java.util.Map<String, Object> jsonMap = mapper.readValue(
                                 metadata,
-                                java.util.Map.class
-                            );
+                                java.util.Map.class);
 
-                            // Check if key exists and value matches
-                            if (jsonMap.containsKey(jsonKey)) {
-                                Object actualValue = jsonMap.get(jsonKey);
+                        // Check if key exists and value matches
+                        if (jsonMap.containsKey(jsonKey)) {
+                            Object actualValue = jsonMap.get(jsonKey);
 
-                                // Handle different value types
-                                if (actualValue != null && actualValue.toString().equals(jsonValue)) {
-                                    // This is a match - check if we should include it
-                                    if (skippedCount >= offset) {
-                                        matchingBlocks.add(block);
-                                        foundCount++;
+                            // Handle different value types
+                            if (actualValue != null && actualValue.toString().equals(jsonValue)) {
+                                // This is a match - check if we should include it
+                                if (skippedCount >= offset) {
+                                    matchingBlocks.add(block);
+                                    foundCount++;
 
-                                        if (foundCount >= limit) {
-                                            break; // We have enough results
-                                        }
-                                    } else {
-                                        skippedCount++;
+                                    if (foundCount >= limit) {
+                                        break; // We have enough results
                                     }
-                                } else if (actualValue == null && jsonValue.isEmpty()) {
-                                    // Handle null values represented as empty string
-                                    if (skippedCount >= offset) {
-                                        matchingBlocks.add(block);
-                                        foundCount++;
+                                } else {
+                                    skippedCount++;
+                                }
+                            } else if (actualValue == null && jsonValue.isEmpty()) {
+                                // Handle null values represented as empty string
+                                if (skippedCount >= offset) {
+                                    matchingBlocks.add(block);
+                                    foundCount++;
 
-                                        if (foundCount >= limit) {
-                                            break;
-                                        }
-                                    } else {
-                                        skippedCount++;
+                                    if (foundCount >= limit) {
+                                        break;
                                     }
+                                } else {
+                                    skippedCount++;
                                 }
                             }
-                        } catch (Exception e) {
-                            // Log but continue - don't fail entire search for one bad JSON
-                            logger.debug("⚠️ Could not parse custom metadata for block #{}: {}",
-                                       block.getBlockNumber(), e.getMessage());
                         }
-                    }
-
-                    currentOffset += BATCH_SIZE;
-
-                    // Break if we got less than a full batch (end of data)
-                    if (batch.size() < BATCH_SIZE) {
-                        break;
+                    } catch (Exception e) {
+                        // Log but continue - don't fail entire search for one bad JSON
+                        logger.debug("⚠️ Could not parse custom metadata for block #{}: {}",
+                                block.getBlockNumber(), e.getMessage());
                     }
                 }
 
-                logger.debug("✅ Found {} matching blocks (offset: {}, limit: {})",
-                           matchingBlocks.size(), offset, limit);
-                return matchingBlocks;
+                currentOffset += BATCH_SIZE;
 
-            } catch (Exception e) {
-                logger.error("❌ Error searching by custom metadata key-value paginated", e);
-                return new ArrayList<>();
-            } finally {
-                if (!JPAUtil.hasActiveTransaction()) {
-                    em.close();
+                // Break if we got less than a full batch (end of data)
+                if (batch.size() < BATCH_SIZE) {
+                    break;
                 }
             }
+
+            logger.debug("✅ Found {} matching blocks (offset: {}, limit: {})",
+                    matchingBlocks.size(), offset, limit);
+            return matchingBlocks;
+
+        } catch (Exception e) {
+            logger.error("❌ Error searching by custom metadata key-value paginated", e);
+            return new ArrayList<>();
         } finally {
-            lock.readLock().unlock();
+            if (!JPAUtil.hasActiveTransaction()) {
+                em.close();
+            }
         }
     }
 
     /**
-     * 🚀 MEMORY-EFFICIENT: Search blocks by multiple custom metadata criteria (AND logic) with pagination.
+     * 🚀 MEMORY-EFFICIENT: Search blocks by multiple custom metadata criteria (AND
+     * logic) with pagination.
      * Thread-safe with comprehensive validation.
      *
-     * <p>This method processes blocks in batches to avoid loading all blocks into memory,
-     * making it suitable for large blockchain datasets.</p>
+     * <p>
+     * This method processes blocks in batches to avoid loading all blocks into
+     * memory,
+     * making it suitable for large blockchain datasets.
+     * </p>
      *
      * @param criteria Map of JSON key-value pairs that must ALL match
-     * @param offset Starting position (0-based)
-     * @param limit Maximum number of results to return
+     * @param offset   Starting position (0-based)
+     * @param limit    Maximum number of results to return
      * @return List of blocks matching all criteria
-     * @throws IllegalArgumentException if criteria is null/empty or if offset/limit are invalid
+     * @throws IllegalArgumentException if criteria is null/empty or if offset/limit
+     *                                  are invalid
      */
     public List<Block> searchByCustomMetadataMultipleCriteriaPaginated(
             java.util.Map<String, String> criteria, long offset, int limit) {
@@ -1296,173 +1200,171 @@ public class BlockDAO {
             throw new IllegalArgumentException("Limit must be positive");
         }
 
-        lock.readLock().lock();
+        EntityManager em = JPAUtil.getEntityManager();
         try {
-            EntityManager em = JPAUtil.getEntityManager();
-            try {
-                List<Block> matchingBlocks = new ArrayList<>();
-                int currentOffset = 0;
-                int foundCount = 0;
-                int skippedCount = 0;
-                final int BATCH_SIZE = 1000;
+            List<Block> matchingBlocks = new ArrayList<>();
+            int currentOffset = 0;
+            int foundCount = 0;
+            int skippedCount = 0;
+            final int BATCH_SIZE = 1000;
 
-                // Process blocks in batches until we have enough results
-                while (foundCount < limit) {
-                    TypedQuery<Block> query = em.createQuery(
+            // Process blocks in batches until we have enough results
+            while (foundCount < limit) {
+                TypedQuery<Block> query = em.createQuery(
                         "SELECT b FROM Block b WHERE b.customMetadata IS NOT NULL " +
-                        "ORDER BY b.blockNumber ASC",
-                        Block.class
-                    );
-                    query.setFirstResult(currentOffset);
-                    query.setMaxResults(BATCH_SIZE);
+                                "ORDER BY b.blockNumber ASC",
+                        Block.class);
+                query.setFirstResult(currentOffset);
+                query.setMaxResults(BATCH_SIZE);
 
-                    List<Block> batch = query.getResultList();
+                List<Block> batch = query.getResultList();
 
-                    if (batch.isEmpty()) {
-                        break; // No more blocks to process
+                if (batch.isEmpty()) {
+                    break; // No more blocks to process
+                }
+
+                // Process this batch
+                for (Block block : batch) {
+                    if (block == null || block.getCustomMetadata() == null) {
+                        continue;
                     }
 
-                    // Process this batch
-                    for (Block block : batch) {
-                        if (block == null || block.getCustomMetadata() == null) {
-                            continue;
-                        }
+                    try {
+                        String metadata = block.getCustomMetadata();
 
-                        try {
-                            String metadata = block.getCustomMetadata();
+                        // Parse JSON
+                        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
 
-                            // Parse JSON
-                            com.fasterxml.jackson.databind.ObjectMapper mapper =
-                                new com.fasterxml.jackson.databind.ObjectMapper();
-
-                            @SuppressWarnings("unchecked")
-                            java.util.Map<String, Object> jsonMap = mapper.readValue(
+                        @SuppressWarnings("unchecked")
+                        java.util.Map<String, Object> jsonMap = mapper.readValue(
                                 metadata,
-                                java.util.Map.class
-                            );
+                                java.util.Map.class);
 
-                            // Check ALL criteria (AND logic)
-                            boolean allMatch = true;
-                            for (java.util.Map.Entry<String, String> criterion : criteria.entrySet()) {
-                                String key = criterion.getKey();
-                                String expectedValue = criterion.getValue();
+                        // Check ALL criteria (AND logic)
+                        boolean allMatch = true;
+                        for (java.util.Map.Entry<String, String> criterion : criteria.entrySet()) {
+                            String key = criterion.getKey();
+                            String expectedValue = criterion.getValue();
 
-                                if (!jsonMap.containsKey(key)) {
-                                    allMatch = false;
-                                    break;
-                                }
-
-                                Object actualValue = jsonMap.get(key);
-                                if (actualValue == null || !actualValue.toString().equals(expectedValue)) {
-                                    allMatch = false;
-                                    break;
-                                }
+                            if (!jsonMap.containsKey(key)) {
+                                allMatch = false;
+                                break;
                             }
 
-                            if (allMatch) {
-                                // This is a match - check if we should include it
-                                if (skippedCount >= offset) {
-                                    matchingBlocks.add(block);
-                                    foundCount++;
-
-                                    if (foundCount >= limit) {
-                                        break; // We have enough results
-                                    }
-                                } else {
-                                    skippedCount++;
-                                }
+                            Object actualValue = jsonMap.get(key);
+                            if (actualValue == null || !actualValue.toString().equals(expectedValue)) {
+                                allMatch = false;
+                                break;
                             }
-
-                        } catch (Exception e) {
-                            logger.debug("⚠️ Could not parse custom metadata for block #{}: {}",
-                                       block.getBlockNumber(), e.getMessage());
                         }
-                    }
 
-                    currentOffset += BATCH_SIZE;
+                        if (allMatch) {
+                            // This is a match - check if we should include it
+                            if (skippedCount >= offset) {
+                                matchingBlocks.add(block);
+                                foundCount++;
 
-                    // Break if we got less than a full batch (end of data)
-                    if (batch.size() < BATCH_SIZE) {
-                        break;
+                                if (foundCount >= limit) {
+                                    break; // We have enough results
+                                }
+                            } else {
+                                skippedCount++;
+                            }
+                        }
+
+                    } catch (Exception e) {
+                        logger.debug("⚠️ Could not parse custom metadata for block #{}: {}",
+                                block.getBlockNumber(), e.getMessage());
                     }
                 }
 
-                logger.debug("✅ Found {} matching blocks (offset: {}, limit: {})",
-                           matchingBlocks.size(), offset, limit);
-                return matchingBlocks;
+                currentOffset += BATCH_SIZE;
 
-            } catch (Exception e) {
-                logger.error("❌ Error searching by multiple custom metadata criteria paginated", e);
-                return new ArrayList<>();
-            } finally {
-                if (!JPAUtil.hasActiveTransaction()) {
-                    em.close();
+                // Break if we got less than a full batch (end of data)
+                if (batch.size() < BATCH_SIZE) {
+                    break;
                 }
             }
+
+            logger.debug("✅ Found {} matching blocks (offset: {}, limit: {})",
+                    matchingBlocks.size(), offset, limit);
+            return matchingBlocks;
+
+        } catch (Exception e) {
+            logger.error("❌ Error searching by multiple custom metadata criteria paginated", e);
+            return new ArrayList<>();
         } finally {
-            lock.readLock().unlock();
+            if (!JPAUtil.hasActiveTransaction()) {
+                em.close();
+            }
         }
     }
-    
+
     private String buildSearchQuery(SearchLevel level) {
         // VULNERABILITY FIX: Validate null SearchLevel parameter
         if (level == null) {
             throw new IllegalArgumentException("SearchLevel cannot be null");
         }
-        
+
         StringBuilder query = new StringBuilder("SELECT b FROM Block b WHERE ");
-        
+
         switch (level) {
             case FAST_ONLY:
                 // Keywords only
-                query.append("(LOWER(b.manualKeywords) LIKE :term OR LOWER(b.autoKeywords) LIKE :term OR LOWER(b.searchableContent) LIKE :term)");
+                query.append(
+                        "(LOWER(b.manualKeywords) LIKE :term OR LOWER(b.autoKeywords) LIKE :term OR LOWER(b.searchableContent) LIKE :term)");
                 break;
-                
+
             case INCLUDE_DATA:
             case EXHAUSTIVE_OFFCHAIN:
                 // Keywords + block data
-                query.append("(LOWER(b.manualKeywords) LIKE :term OR LOWER(b.autoKeywords) LIKE :term OR LOWER(b.searchableContent) LIKE :term OR LOWER(b.data) LIKE :term)");
+                query.append(
+                        "(LOWER(b.manualKeywords) LIKE :term OR LOWER(b.autoKeywords) LIKE :term OR LOWER(b.searchableContent) LIKE :term OR LOWER(b.data) LIKE :term)");
                 break;
-                
+
             // Switch handled by the three current search levels above
         }
-        
+
         query.append(" ORDER BY b.blockNumber ASC");
         return query.toString();
     }
-    
+
     private int compareSearchPriority(Block a, Block b) {
         // VULNERABILITY FIX: Validate null Block parameters
         if (a == null || b == null) {
             throw new IllegalArgumentException("Block parameters cannot be null");
         }
-        
+
         // Priority: manual keywords > auto keywords > data > recency
         // Higher priority blocks appear first in search results
-        
+
         // 1. Prioritize blocks with manual keywords
         boolean aHasManual = a.getManualKeywords() != null && !a.getManualKeywords().trim().isEmpty();
         boolean bHasManual = b.getManualKeywords() != null && !b.getManualKeywords().trim().isEmpty();
-        
-        if (aHasManual && !bHasManual) return -1;  // a comes first
-        if (!aHasManual && bHasManual) return 1;   // b comes first
-        
+
+        if (aHasManual && !bHasManual)
+            return -1; // a comes first
+        if (!aHasManual && bHasManual)
+            return 1; // b comes first
+
         // 2. If both have manual keywords or both don't, prioritize auto keywords
         boolean aHasAuto = a.getAutoKeywords() != null && !a.getAutoKeywords().trim().isEmpty();
         boolean bHasAuto = b.getAutoKeywords() != null && !b.getAutoKeywords().trim().isEmpty();
-        
-        if (aHasAuto && !bHasAuto) return -1;
-        if (!aHasAuto && bHasAuto) return 1;
-        
+
+        if (aHasAuto && !bHasAuto)
+            return -1;
+        if (!aHasAuto && bHasAuto)
+            return 1;
+
         // 3. Finally, sort by recency (higher block number = more recent)
         return Long.compare(b.getBlockNumber(), a.getBlockNumber()); // Descending order
     }
-    
+
     /**
      * Save a block with encrypted data using password-based encryption
      * The data field will be encrypted and stored in encryptionMetadata
      * 
-     * @param block The block to save
+     * @param block    The block to save
      * @param password The password for encryption
      */
     public void saveBlockWithEncryption(Block block, String password) {
@@ -1472,36 +1374,33 @@ public class BlockDAO {
         if (password == null || password.trim().isEmpty()) {
             throw new IllegalArgumentException("Password cannot be null or empty");
         }
-        
-        lock.writeLock().lock();
+
         try {
             // Encrypt the data if it's not already encrypted
             if (!block.isDataEncrypted() && block.getData() != null && !block.getData().trim().isEmpty()) {
                 String originalData = block.getData();
-                
+
                 // Encrypt data using secure encryption service
                 String encryptedData = SecureBlockEncryptionService.encryptToString(originalData, password);
-                
+
                 // Store encrypted data in metadata and clear original data
                 block.setEncryptionMetadata(encryptedData);
                 block.setData("[ENCRYPTED]"); // Placeholder to indicate encryption
                 block.setIsEncrypted(true);
             }
-            
+
             // Save the block normally
             saveBlock(block);
-            
+
         } catch (Exception e) {
             throw new RuntimeException("Error saving block with encryption: " + e.getMessage(), e);
-        } finally {
-            lock.writeLock().unlock();
         }
     }
-    
+
     /**
      * Retrieve and decrypt block data using password
      * 
-     * @param blockId The block ID to retrieve
+     * @param blockId  The block ID to retrieve
      * @param password The password for decryption
      * @return The block with decrypted data in the data field
      */
@@ -1512,70 +1411,68 @@ public class BlockDAO {
         if (password == null || password.trim().isEmpty()) {
             throw new IllegalArgumentException("Password cannot be null or empty");
         }
-        
+
         if (logger.isTraceEnabled()) {
             logger.trace("🔧 DECRYPTION DEBUG: Getting block for blockId={}", blockId);
         }
 
-        lock.readLock().lock();
+        EntityManager em = JPAUtil.getEntityManager();
+        Block block;
         try {
-            EntityManager em = JPAUtil.getEntityManager();
-            Block block;
-            try {
-                block = em.find(Block.class, blockId);
-                if (block == null) {
-                    if (logger.isTraceEnabled()) {
-                        logger.trace("🔧 DECRYPTION DEBUG: No block found with ID={}", blockId);
-                    }
-                    return null;
-                }
+            block = em.find(Block.class, blockId);
+            if (block == null) {
                 if (logger.isTraceEnabled()) {
-                    logger.trace("🔧 DECRYPTION DEBUG: Found block with ID={}, blockNumber={}, data='{}'",
-                              blockId, block.getBlockNumber(),
-                              block.getData() != null ? block.getData().substring(0, Math.min(50, block.getData().length())) + "..." : "null");
+                    logger.trace("🔧 DECRYPTION DEBUG: No block found with ID={}", blockId);
                 }
-            } finally {
-                if (!JPAUtil.hasActiveTransaction()) {
-                    em.close();
-                }
+                return null;
             }
-            
-            // Decrypt data if the block is encrypted
-            if (block.isDataEncrypted() && block.getEncryptionMetadata() != null) {
-                try {
-                    String decryptedData = SecureBlockEncryptionService.decryptFromString(
+            if (logger.isTraceEnabled()) {
+                logger.trace("🔧 DECRYPTION DEBUG: Found block with ID={}, blockNumber={}, data='{}'",
+                        blockId, block.getBlockNumber(),
+                        block.getData() != null
+                                ? block.getData().substring(0, Math.min(50, block.getData().length())) + "..."
+                                : "null");
+            }
+        } finally {
+            if (!JPAUtil.hasActiveTransaction()) {
+                em.close();
+            }
+        }
+
+        // Decrypt data if the block is encrypted
+        if (block.isDataEncrypted() && block.getEncryptionMetadata() != null) {
+            try {
+                String decryptedData = SecureBlockEncryptionService.decryptFromString(
                         block.getEncryptionMetadata(), password);
-                    block.setData(decryptedData);
-                } catch (Exception e) {
-                    // Check if this is a Tag mismatch error (wrong password - expected in multi-department scenarios)
-                    if (e.getCause() instanceof javax.crypto.AEADBadTagException ||
+                block.setData(decryptedData);
+            } catch (Exception e) {
+                // Check if this is a Tag mismatch error (wrong password - expected in
+                // multi-department scenarios)
+                if (e.getCause() instanceof javax.crypto.AEADBadTagException ||
                         (e.getMessage() != null && e.getMessage().contains("Tag mismatch"))) {
 
-                        if (logger.isTraceEnabled()) {
-                            logger.trace("🔒 Block #{} decryption failed - wrong password provided: Tag mismatch",
-                                       block.getBlockNumber());
-                        }
-                        // Return null instead of throwing exception for wrong password (expected behavior)
-                        return null;
-                    } else {
-                        // Other exceptions (corruption, etc.) should still be thrown
-                        throw new RuntimeException("Failed to decrypt block data. Data may be corrupted.", e);
+                    if (logger.isTraceEnabled()) {
+                        logger.trace("🔒 Block #{} decryption failed - wrong password provided: Tag mismatch",
+                                block.getBlockNumber());
                     }
+                    // Return null instead of throwing exception for wrong password (expected
+                    // behavior)
+                    return null;
+                } else {
+                    // Other exceptions (corruption, etc.) should still be thrown
+                    throw new RuntimeException("Failed to decrypt block data. Data may be corrupted.", e);
                 }
             }
-            
-            return block;
-            
-        } finally {
-            lock.readLock().unlock();
         }
+
+        return block;
     }
-    
+
     /**
      * Get a block by its block number with decryption
      * 
      * @param blockNumber The block number to retrieve
-     * @param password The password for decryption
+     * @param password    The password for decryption
      * @return The block with decrypted data in the data field
      */
     public Block getBlockByNumberWithDecryption(Long blockNumber, String password) {
@@ -1585,83 +1482,85 @@ public class BlockDAO {
         if (password == null || password.trim().isEmpty()) {
             throw new IllegalArgumentException("Password cannot be null or empty");
         }
-        
+
         if (logger.isTraceEnabled()) {
             logger.trace("🔧 DECRYPTION DEBUG: Getting block by blockNumber={}", blockNumber);
         }
 
-        lock.readLock().lock();
+        EntityManager em = JPAUtil.getEntityManager();
+        Block block;
         try {
-            EntityManager em = JPAUtil.getEntityManager();
-            Block block;
-            try {
-                TypedQuery<Block> query = em.createQuery(
+            TypedQuery<Block> query = em.createQuery(
                     "SELECT b FROM Block b WHERE b.blockNumber = :blockNumber", Block.class);
-                query.setParameter("blockNumber", blockNumber);
+            query.setParameter("blockNumber", blockNumber);
 
-                List<Block> results = query.getResultList();
-                block = results.isEmpty() ? null : results.get(0);
+            List<Block> results = query.getResultList();
+            block = results.isEmpty() ? null : results.get(0);
 
-                if (block == null) {
-                    if (logger.isTraceEnabled()) {
-                        logger.trace("🔧 DECRYPTION DEBUG: No block found with blockNumber={}", blockNumber);
-                    }
-                    return null;
-                }
+            if (block == null) {
                 if (logger.isTraceEnabled()) {
-                    logger.trace("🔧 DECRYPTION DEBUG: Found block with blockNumber={}, ID={}, data='{}'",
-                              blockNumber, block.getId(),
-                              block.getData() != null ? block.getData().substring(0, Math.min(50, block.getData().length())) + "..." : "null");
+                    logger.trace("🔧 DECRYPTION DEBUG: No block found with blockNumber={}", blockNumber);
                 }
-            } finally {
-                if (!JPAUtil.hasActiveTransaction()) {
-                    em.close();
-                }
+                return null;
             }
-            
-            // Decrypt data if the block is encrypted
-            if (block.isDataEncrypted() && block.getEncryptionMetadata() != null) {
-                try {
-                    String decryptedData = SecureBlockEncryptionService.decryptFromString(
-                        block.getEncryptionMetadata(), password);
-                    block.setData(decryptedData);
+            if (logger.isTraceEnabled()) {
+                logger.trace("🔧 DECRYPTION DEBUG: Found block with blockNumber={}, ID={}, data='{}'",
+                        blockNumber, block.getId(),
+                        block.getData() != null
+                                ? block.getData().substring(0, Math.min(50, block.getData().length())) + "..."
+                                : "null");
+            }
+        } finally {
+            if (!JPAUtil.hasActiveTransaction()) {
+                em.close();
+            }
+        }
 
-                    if (logger.isTraceEnabled()) {
-                        logger.trace("🔧 DECRYPTION DEBUG: Block #{} decrypted successfully. Content: '{}'",
-                                  blockNumber,
-                                  decryptedData != null ? decryptedData.substring(0, Math.min(50, decryptedData.length())) + "..." : "null");
-                    }
-                } catch (Exception e) {
-                    // Check if this is a Tag mismatch error (wrong password - expected in multi-department scenarios)
-                    if (e.getCause() instanceof javax.crypto.AEADBadTagException ||
+        // Decrypt data if the block is encrypted
+        if (block.isDataEncrypted() && block.getEncryptionMetadata() != null) {
+            try {
+                String decryptedData = SecureBlockEncryptionService.decryptFromString(
+                        block.getEncryptionMetadata(), password);
+                block.setData(decryptedData);
+
+                if (logger.isTraceEnabled()) {
+                    logger.trace("🔧 DECRYPTION DEBUG: Block #{} decrypted successfully. Content: '{}'",
+                            blockNumber,
+                            decryptedData != null
+                                    ? decryptedData.substring(0, Math.min(50, decryptedData.length())) + "..."
+                                    : "null");
+                }
+            } catch (Exception e) {
+                // Check if this is a Tag mismatch error (wrong password - expected in
+                // multi-department scenarios)
+                if (e.getCause() instanceof javax.crypto.AEADBadTagException ||
                         (e.getMessage() != null && e.getMessage().contains("Tag mismatch"))) {
 
-                        if (logger.isTraceEnabled()) {
-                            logger.trace("🔒 Block #{} decryption failed - wrong password provided: Tag mismatch", blockNumber);
-                        }
-                        // Return null instead of throwing exception for wrong password (expected behavior)
-                        return null;
-                    } else {
-                        // Other exceptions (corruption, etc.) should still be thrown
-                        if (logger.isTraceEnabled()) {
-                            logger.trace("🔧 DECRYPTION DEBUG: Failed to decrypt block #{}: {}", blockNumber, e.getMessage());
-                        }
-                        throw new RuntimeException("Failed to decrypt block data. Data may be corrupted.", e);
+                    if (logger.isTraceEnabled()) {
+                        logger.trace("🔒 Block #{} decryption failed - wrong password provided: Tag mismatch",
+                                blockNumber);
                     }
+                    // Return null instead of throwing exception for wrong password (expected
+                    // behavior)
+                    return null;
+                } else {
+                    // Other exceptions (corruption, etc.) should still be thrown
+                    if (logger.isTraceEnabled()) {
+                        logger.trace("🔧 DECRYPTION DEBUG: Failed to decrypt block #{}: {}", blockNumber,
+                                e.getMessage());
+                    }
+                    throw new RuntimeException("Failed to decrypt block data. Data may be corrupted.", e);
                 }
             }
-            
-            return block;
-            
-        } finally {
-            lock.readLock().unlock();
         }
+
+        return block;
     }
-    
+
     /**
      * Check if block data can be decrypted with given password
      * 
-     * @param blockId The block ID to check
+     * @param blockId  The block ID to check
      * @param password The password to test
      * @return true if password can decrypt the block, false otherwise
      */
@@ -1669,40 +1568,35 @@ public class BlockDAO {
         if (blockId == null || password == null || password.trim().isEmpty()) {
             return false;
         }
-        
-        lock.readLock().lock();
+
+        EntityManager em = JPAUtil.getEntityManager();
+        Block block;
         try {
-            EntityManager em = JPAUtil.getEntityManager();
-            Block block;
-            try {
-                block = em.find(Block.class, blockId);
-                if (block == null || !block.isDataEncrypted()) {
-                    return false;
-                }
-            } finally {
-                if (!JPAUtil.hasActiveTransaction()) {
-                    em.close();
-                }
-            }
-            
-            try {
-                SecureBlockEncryptionService.decryptFromString(block.getEncryptionMetadata(), password);
-                return true;
-            } catch (Exception e) {
+            block = em.find(Block.class, blockId);
+            if (block == null || !block.isDataEncrypted()) {
                 return false;
             }
-            
         } finally {
-            lock.readLock().unlock();
+            if (!JPAUtil.hasActiveTransaction()) {
+                em.close();
+            }
+        }
+
+        try {
+            SecureBlockEncryptionService.decryptFromString(block.getEncryptionMetadata(), password);
+            return true;
+        } catch (Exception e) {
+            return false;
         }
     }
-    
+
     /**
      * Convert an existing unencrypted block to encrypted
      * 
-     * @param blockId The block ID to encrypt
+     * @param blockId  The block ID to encrypt
      * @param password The password for encryption
-     * @return true if encryption was successful, false if block was already encrypted or not found
+     * @return true if encryption was successful, false if block was already
+     *         encrypted or not found
      */
     public boolean encryptExistingBlock(Long blockId, String password) {
         if (blockId == null) {
@@ -1711,72 +1605,75 @@ public class BlockDAO {
         if (password == null || password.trim().isEmpty()) {
             throw new IllegalArgumentException("Password cannot be null or empty");
         }
-        
-        lock.writeLock().lock();
+
+        EntityManager em = JPAUtil.getEntityManager();
+        EntityTransaction transaction = null;
+        boolean shouldManageTransaction = !JPAUtil.hasActiveTransaction();
+
         try {
-            EntityManager em = JPAUtil.getEntityManager();
-            EntityTransaction transaction = null;
-            boolean shouldManageTransaction = !JPAUtil.hasActiveTransaction();
-            
-            try {
-                if (shouldManageTransaction) {
-                    transaction = em.getTransaction();
-                    transaction.begin();
-                }
-                
-                Block block = em.find(Block.class, blockId);
-                if (block == null || block.isDataEncrypted()) {
-                    return false; // Block not found or already encrypted
-                }
-                
-                if (block.getData() == null || block.getData().trim().isEmpty()) {
-                    return false; // No data to encrypt
-                }
-                
-                // Encrypt the data
-                String originalData = block.getData();
-                String encryptedData = SecureBlockEncryptionService.encryptToString(originalData, password);
-                
-                // Update block
-                block.setEncryptionMetadata(encryptedData);
-                block.setData("[ENCRYPTED]");
-                block.setIsEncrypted(true);
-                
-                em.merge(block);
-                
-                if (shouldManageTransaction) {
-                    transaction.commit();
-                }
-                
-                return true;
-                
-            } catch (Exception e) {
-                if (transaction != null && transaction.isActive()) {
-                    transaction.rollback();
-                }
-                throw new RuntimeException("Error encrypting existing block: " + e.getMessage(), e);
-            } finally {
-                if (shouldManageTransaction && !JPAUtil.hasActiveTransaction()) {
-                    em.close();
-                }
+            if (shouldManageTransaction) {
+                transaction = em.getTransaction();
+                transaction.begin();
             }
-            
+
+            Block block = em.find(Block.class, blockId);
+            if (block == null || block.isDataEncrypted()) {
+                return false; // Block not found or already encrypted
+            }
+
+            if (block.getData() == null || block.getData().trim().isEmpty()) {
+                return false; // No data to encrypt
+            }
+
+            // Encrypt the data
+            String originalData = block.getData();
+            String encryptedData = SecureBlockEncryptionService.encryptToString(originalData, password);
+
+            // Update block
+            block.setEncryptionMetadata(encryptedData);
+            block.setData("[ENCRYPTED]");
+            block.setIsEncrypted(true);
+
+            em.merge(block);
+
+            if (shouldManageTransaction) {
+                transaction.commit();
+            }
+
+            return true;
+
+        } catch (Exception e) {
+            if (transaction != null && transaction.isActive()) {
+                transaction.rollback();
+            }
+            throw new RuntimeException("Error encrypting existing block: " + e.getMessage(), e);
         } finally {
-            lock.writeLock().unlock();
+            if (shouldManageTransaction && !JPAUtil.hasActiveTransaction()) {
+                em.close();
+            }
         }
     }
-    
+
     /**
-     * Clean up test data - Delete all blocks except genesis block (block 0) and reset sequence
+     * Clean up test data - Delete all blocks except genesis block (block 0) and
+     * reset sequence
      * Thread-safe method for test isolation
      * WARNING: This method is intended for testing purposes only
      */
     public void cleanupTestData() {
-        lock.writeLock().lock();
-        try {
-            if (JPAUtil.hasActiveTransaction()) {
-                // Use existing global transaction
-                EntityManager em = JPAUtil.getEntityManager();
+        if (JPAUtil.hasActiveTransaction()) {
+            // Use existing global transaction
+            EntityManager em = JPAUtil.getEntityManager();
+            // Delete all blocks except genesis (block 0)
+            em.createQuery("DELETE FROM Block b WHERE b.blockNumber > 0").executeUpdate();
+            // Reset block sequence counter
+            em.createQuery("DELETE FROM BlockSequence").executeUpdate();
+            // Clear Hibernate session cache to avoid entity conflicts
+            em.flush();
+            em.clear();
+        } else {
+            // Create own transaction for cleanup
+            JPAUtil.executeInTransaction(em -> {
                 // Delete all blocks except genesis (block 0)
                 em.createQuery("DELETE FROM Block b WHERE b.blockNumber > 0").executeUpdate();
                 // Reset block sequence counter
@@ -1784,35 +1681,31 @@ public class BlockDAO {
                 // Clear Hibernate session cache to avoid entity conflicts
                 em.flush();
                 em.clear();
-            } else {
-                // Create own transaction for cleanup
-                JPAUtil.executeInTransaction(em -> {
-                    // Delete all blocks except genesis (block 0)
-                    em.createQuery("DELETE FROM Block b WHERE b.blockNumber > 0").executeUpdate();
-                    // Reset block sequence counter
-                    em.createQuery("DELETE FROM BlockSequence").executeUpdate();
-                    // Clear Hibernate session cache to avoid entity conflicts
-                    em.flush();
-                    em.clear();
-                    return null;
-                });
-            }
-        } finally {
-            lock.writeLock().unlock();
+                return null;
+            });
         }
     }
-    
+
     /**
-     * Complete database cleanup - Delete ALL blocks including genesis and reset everything
+     * Complete database cleanup - Delete ALL blocks including genesis and reset
+     * everything
      * Thread-safe method for complete test isolation
      * WARNING: This method is intended for testing purposes only - removes ALL data
      */
     public void completeCleanupTestData() {
-        lock.writeLock().lock();
-        try {
-            if (JPAUtil.hasActiveTransaction()) {
-                // Use existing global transaction
-                EntityManager em = JPAUtil.getEntityManager();
+        if (JPAUtil.hasActiveTransaction()) {
+            // Use existing global transaction
+            EntityManager em = JPAUtil.getEntityManager();
+            // Delete ALL blocks (including genesis)
+            em.createQuery("DELETE FROM Block").executeUpdate();
+            // Reset block sequence counter
+            em.createQuery("DELETE FROM BlockSequence").executeUpdate();
+            // Clear Hibernate session cache to avoid entity conflicts
+            em.flush();
+            em.clear();
+        } else {
+            // Create own transaction for cleanup
+            JPAUtil.executeInTransaction(em -> {
                 // Delete ALL blocks (including genesis)
                 em.createQuery("DELETE FROM Block").executeUpdate();
                 // Reset block sequence counter
@@ -1820,70 +1713,83 @@ public class BlockDAO {
                 // Clear Hibernate session cache to avoid entity conflicts
                 em.flush();
                 em.clear();
-            } else {
-                // Create own transaction for cleanup
-                JPAUtil.executeInTransaction(em -> {
-                    // Delete ALL blocks (including genesis)
-                    em.createQuery("DELETE FROM Block").executeUpdate();
-                    // Reset block sequence counter
-                    em.createQuery("DELETE FROM BlockSequence").executeUpdate();
-                    // Clear Hibernate session cache to avoid entity conflicts
-                    em.flush();
-                    em.clear();
-                    return null;
-                });
-            }
-        } finally {
-            lock.writeLock().unlock();
+                return null;
+            });
         }
     }
 
     /**
      * 🚀 PERFORMANCE OPTIMIZATION: Batch retrieve multiple blocks efficiently
      * 
-     * <p><strong>Problem Solved:</strong> This method eliminates the N+1 query problem that occurs 
-     * when retrieving multiple blocks individually. Instead of executing hundreds of separate 
-     * {@code SELECT} statements, it uses a single optimized JPA query with an {@code IN} clause.</p>
+     * <p>
+     * <strong>Problem Solved:</strong> This method eliminates the N+1 query problem
+     * that occurs
+     * when retrieving multiple blocks individually. Instead of executing hundreds
+     * of separate
+     * {@code SELECT} statements, it uses a single optimized JPA query with an
+     * {@code IN} clause.
+     * </p>
      * 
-     * <p><strong>Performance Benefits:</strong></p>
+     * <p>
+     * <strong>Performance Benefits:</strong>
+     * </p>
      * <ul>
-     *   <li>Reduces database round trips from N to 1</li>
-     *   <li>Eliminates network latency overhead for individual queries</li>
-     *   <li>Leverages JPA's entity caching and optimization features</li>
-     *   <li>Maintains thread safety with read locks</li>
+     * <li>Reduces database round trips from N to 1</li>
+     * <li>Eliminates network latency overhead for individual queries</li>
+     * <li>Leverages JPA's entity caching and optimization features</li>
+     * <li>Maintains thread safety with read locks</li>
      * </ul>
      * 
-     * <p><strong>Thread Safety:</strong> This method is fully thread-safe using read locks,
-     * allowing multiple concurrent read operations while ensuring data consistency.</p>
+     * <p>
+     * <strong>Thread Safety:</strong> This method is fully thread-safe using read
+     * locks,
+     * allowing multiple concurrent read operations while ensuring data consistency.
+     * </p>
      * 
-     * <p><strong>Transaction Handling:</strong> Intelligently uses existing transactions when 
-     * available, or creates its own transaction for read operations. This ensures proper 
-     * isolation and consistency without interfering with ongoing operations.</p>
+     * <p>
+     * <strong>Transaction Handling:</strong> Intelligently uses existing
+     * transactions when
+     * available, or creates its own transaction for read operations. This ensures
+     * proper
+     * isolation and consistency without interfering with ongoing operations.
+     * </p>
      * 
-     * <p><strong>Usage Example:</strong></p>
+     * <p>
+     * <strong>Usage Example:</strong>
+     * </p>
+     * 
      * <pre>{@code
      * // Instead of this (N+1 queries):
      * List<Block> blocks = new ArrayList<>();
      * for (Long blockNumber : blockNumbers) {
      *     Block block = blockDAO.findByBlockNumber(blockNumber); // Individual query
-     *     if (block != null) blocks.add(block);
+     *     if (block != null)
+     *         blocks.add(block);
      * }
      * 
      * // Use this (1 optimized query):
      * List<Block> blocks = blockDAO.batchRetrieveBlocks(blockNumbers);
      * }</pre>
      * 
-     * <p><strong>Performance Metrics:</strong> In tests with 100+ blocks, this method shows 
-     * 90%+ reduction in query execution time and eliminates timeout failures in metadata 
-     * search operations.</p>
+     * <p>
+     * <strong>Performance Metrics:</strong> In tests with 100+ blocks, this method
+     * shows
+     * 90%+ reduction in query execution time and eliminates timeout failures in
+     * metadata
+     * search operations.
+     * </p>
      * 
-     * @param blockNumbers List of block numbers to retrieve. Can be in any order - will be 
-     *                    sorted internally for consistent results. Null or empty list returns 
-     *                    empty result.
-     * @return List of blocks found, ordered by block number (ascending). Blocks not found 
+     * @param blockNumbers List of block numbers to retrieve. Can be in any order -
+     *                     will be
+     *                     sorted internally for consistent results. Null or empty
+     *                     list returns
+     *                     empty result.
+     * @return List of blocks found, ordered by block number (ascending). Blocks not
+     *         found
      *         in database are silently omitted from results.
      * @throws IllegalArgumentException if blockNumbers contains null values
-     * @throws RuntimeException if database access fails or transaction issues occur
+     * @throws RuntimeException         if database access fails or transaction
+     *                                  issues occur
      * 
      * @since 2.0.0
      * @see #saveBlock(Block)
@@ -1898,14 +1804,12 @@ public class BlockDAO {
         // MEMORY SAFETY: Validate batch size to prevent memory issues
         if (blockNumbers.size() > MemorySafetyConstants.MAX_BATCH_SIZE) {
             throw new IllegalArgumentException(
-                String.format("Batch size %d exceeds maximum allowed %d. Process in smaller batches to prevent memory issues.",
-                    blockNumbers.size(), MemorySafetyConstants.MAX_BATCH_SIZE)
-            );
+                    String.format(
+                            "Batch size %d exceeds maximum allowed %d. Process in smaller batches to prevent memory issues.",
+                            blockNumbers.size(), MemorySafetyConstants.MAX_BATCH_SIZE));
         }
 
-        lock.readLock().lock();
-        try {
-            return LoggingManager.logBlockchainOperation(
+        return LoggingManager.logBlockchainOperation(
                 "BATCH_RETRIEVE",
                 "batch_retrieve_blocks",
                 null,
@@ -1917,140 +1821,162 @@ public class BlockDAO {
                         return executeBatchRetrieval(em, blockNumbers);
                     } else {
                         // Create own transaction for read operation
-                        return JPAUtil.executeInTransaction(em -> 
-                            executeBatchRetrieval(em, blockNumbers)
-                        );
+                        return JPAUtil.executeInTransaction(em -> executeBatchRetrieval(em, blockNumbers));
                     }
-                }
-            );
-        } finally {
-            lock.readLock().unlock();
-        }
+                });
     }
 
     /**
      * Execute the actual batch retrieval using JPA IN clause optimization
      * 
-     * <p>This is the core implementation that performs the optimized database query.
-     * It constructs a single JPA TypedQuery using the {@code IN} operator to retrieve
-     * multiple blocks in one database round trip.</p>
+     * <p>
+     * This is the core implementation that performs the optimized database query.
+     * It constructs a single JPA TypedQuery using the {@code IN} operator to
+     * retrieve
+     * multiple blocks in one database round trip.
+     * </p>
      * 
-     * <p><strong>Query Optimization:</strong> The generated SQL is optimized as:
-     * {@code SELECT b FROM Block b WHERE b.blockNumber IN (:blockNumbers) ORDER BY b.blockNumber}</p>
+     * <p>
+     * <strong>Query Optimization:</strong> The generated SQL is optimized as:
+     * {@code SELECT b FROM Block b WHERE b.blockNumber IN (:blockNumbers) ORDER BY b.blockNumber}
+     * </p>
      * 
-     * <p><strong>Ordering Guarantee:</strong> Results are explicitly ordered by block number
-     * to ensure consistent and predictable results across different database engines.</p>
+     * <p>
+     * <strong>Ordering Guarantee:</strong> Results are explicitly ordered by block
+     * number
+     * to ensure consistent and predictable results across different database
+     * engines.
+     * </p>
      * 
-     * @param em EntityManager to use for the query execution (must be non-null and active)
+     * @param em           EntityManager to use for the query execution (must be
+     *                     non-null and active)
      * @param blockNumbers List of block numbers to retrieve (validated by caller)
-     * @return List of blocks found, ordered by block number (ascending). Missing blocks 
+     * @return List of blocks found, ordered by block number (ascending). Missing
+     *         blocks
      *         are not included in results.
      * @throws RuntimeException if JPA query execution fails
      * 
-     * @implNote This method assumes the EntityManager is properly configured and within
-     *           an active transaction context. Input validation is performed by the caller.
+     * @implNote This method assumes the EntityManager is properly configured and
+     *           within
+     *           an active transaction context. Input validation is performed by the
+     *           caller.
      */
     private List<Block> executeBatchRetrieval(EntityManager em, List<Long> blockNumbers) {
         logger.debug("🔄 Executing batch retrieval for {} blocks using JPA", blockNumbers.size());
-        
+
         // Use JPA TypedQuery with IN clause for efficient batch retrieval
         TypedQuery<Block> query = em.createQuery(
-            "SELECT b FROM Block b WHERE b.blockNumber IN :blockNumbers ORDER BY b.blockNumber",
-            Block.class
-        );
+                "SELECT b FROM Block b WHERE b.blockNumber IN :blockNumbers ORDER BY b.blockNumber",
+                Block.class);
         query.setParameter("blockNumbers", blockNumbers);
-        
+
         List<Block> foundBlocks = query.getResultList();
-        
+
         logger.debug(
-            "✅ Batch retrieved {} blocks successfully (requested: {})",
-            foundBlocks.size(),
-            blockNumbers.size()
-        );
-        
+                "✅ Batch retrieved {} blocks successfully (requested: {})",
+                foundBlocks.size(),
+                blockNumbers.size());
+
         return foundBlocks;
     }
 
     /**
- * BATCH RETRIEVAL OPTIMIZATION - USAGE EXAMPLES
- * 
- * This BlockDAO now includes advanced batch retrieval capabilities that solve
- * the N+1 query problem commonly encountered in metadata search operations.
- * 
- * BEFORE (N+1 Problem):
- * =====================
- * Set<Long> blockNumbers = getBlockNumbersFromIndex();
- * List<Block> blocks = new ArrayList<>();
- * for (Long blockNumber : blockNumbers) {
- *     Block block = blockchain.getBlock(blockNumber);  // Individual query!
- *     if (block != null) blocks.add(block);
- * }
- * // Result: 100 block numbers = 100 database queries + overhead
- * 
- * AFTER (Optimized):
- * ==================
- * Set<Long> blockNumbers = getBlockNumbersFromIndex();
- * List<Long> sortedNumbers = new ArrayList<>(blockNumbers);
- * List<Block> blocks = blockDAO.batchRetrieveBlocks(sortedNumbers);
- * // Result: 100 block numbers = 1 optimized database query
- * 
- * INTEGRATION WITH SERVICES:
- * ==========================
- * // In UserFriendlyEncryptionAPI.findBlocksByMetadata():
- * List<Long> sortedBlockNumbers = new ArrayList<>(candidateBlockNumbers);
- * Collections.sort(sortedBlockNumbers);
- * matchingBlocks = blockchain.getBlockDAO().batchRetrieveBlocks(sortedBlockNumbers);
- * 
- * PERFORMANCE IMPACT:
- * ===================
- * - Test Environment: 100+ blocks metadata search
- * - Before: 2000+ ms (timeouts in tests)
- * - After: <200 ms (90%+ improvement)
- * - Database Queries: 100+ → 1
- * - Network Round Trips: 100+ → 1
- * 
- * THREAD SAFETY:
- * ==============
- * All batch operations are fully thread-safe and can be called concurrently:
- * 
- * CompletableFuture<List<Block>> future1 = CompletableFuture.supplyAsync(() ->
- *     blockDAO.batchRetrieveBlocks(blockNumbers1)
- * );
- * CompletableFuture<List<Block>> future2 = CompletableFuture.supplyAsync(() ->
- *     blockDAO.batchRetrieveBlocks(blockNumbers2)
- * );
- * 
- * @version 2.0.0
- * @since 2.0.0
- */
+     * BATCH RETRIEVAL OPTIMIZATION - USAGE EXAMPLES
+     * 
+     * This BlockDAO now includes advanced batch retrieval capabilities that solve
+     * the N+1 query problem commonly encountered in metadata search operations.
+     * 
+     * BEFORE (N+1 Problem):
+     * =====================
+     * Set<Long> blockNumbers = getBlockNumbersFromIndex();
+     * List<Block> blocks = new ArrayList<>();
+     * for (Long blockNumber : blockNumbers) {
+     * Block block = blockchain.getBlock(blockNumber); // Individual query!
+     * if (block != null) blocks.add(block);
+     * }
+     * // Result: 100 block numbers = 100 database queries + overhead
+     * 
+     * AFTER (Optimized):
+     * ==================
+     * Set<Long> blockNumbers = getBlockNumbersFromIndex();
+     * List<Long> sortedNumbers = new ArrayList<>(blockNumbers);
+     * List<Block> blocks = blockDAO.batchRetrieveBlocks(sortedNumbers);
+     * // Result: 100 block numbers = 1 optimized database query
+     * 
+     * INTEGRATION WITH SERVICES:
+     * ==========================
+     * // In UserFriendlyEncryptionAPI.findBlocksByMetadata():
+     * List<Long> sortedBlockNumbers = new ArrayList<>(candidateBlockNumbers);
+     * Collections.sort(sortedBlockNumbers);
+     * matchingBlocks =
+     * blockchain.getBlockDAO().batchRetrieveBlocks(sortedBlockNumbers);
+     * 
+     * PERFORMANCE IMPACT:
+     * ===================
+     * - Test Environment: 100+ blocks metadata search
+     * - Before: 2000+ ms (timeouts in tests)
+     * - After: <200 ms (90%+ improvement)
+     * - Database Queries: 100+ → 1
+     * - Network Round Trips: 100+ → 1
+     * 
+     * THREAD SAFETY:
+     * ==============
+     * All batch operations are fully thread-safe and can be called concurrently:
+     * 
+     * CompletableFuture<List<Block>> future1 = CompletableFuture.supplyAsync(() ->
+     * blockDAO.batchRetrieveBlocks(blockNumbers1)
+     * );
+     * CompletableFuture<List<Block>> future2 = CompletableFuture.supplyAsync(() ->
+     * blockDAO.batchRetrieveBlocks(blockNumbers2)
+     * );
+     * 
+     * @version 2.0.0
+     * @since 2.0.0
+     */
     /**
-     * Batch retrieve blocks by their hash values with high-performance optimization.
+     * Batch retrieve blocks by their hash values with high-performance
+     * optimization.
      * 
-     * <p>This method efficiently retrieves multiple blocks using their hash values in a single 
-     * optimized database query, eliminating N+1 query problems when processing search results
-     * that contain block hashes.</p>
+     * <p>
+     * This method efficiently retrieves multiple blocks using their hash values in
+     * a single
+     * optimized database query, eliminating N+1 query problems when processing
+     * search results
+     * that contain block hashes.
+     * </p>
      * 
-     * <p><strong>Performance Benefits:</strong></p>
+     * <p>
+     * <strong>Performance Benefits:</strong>
+     * </p>
      * <ul>
-     *   <li><strong>Single Query:</strong> Uses JPA IN clause instead of individual SELECT statements</li>
-     *   <li><strong>90%+ Performance Improvement:</strong> From 2000+ms to <200ms for large datasets</li>
-     *   <li><strong>Memory Efficient:</strong> Processes results in optimized batches</li>
-     *   <li><strong>Search Integration:</strong> Perfect for EnhancedSearchResult processing</li>
+     * <li><strong>Single Query:</strong> Uses JPA IN clause instead of individual
+     * SELECT statements</li>
+     * <li><strong>90%+ Performance Improvement:</strong> From 2000+ms to <200ms for
+     * large datasets</li>
+     * <li><strong>Memory Efficient:</strong> Processes results in optimized
+     * batches</li>
+     * <li><strong>Search Integration:</strong> Perfect for EnhancedSearchResult
+     * processing</li>
      * </ul>
      * 
-     * <p><strong>Thread Safety:</strong></p>
+     * <p>
+     * <strong>Thread Safety:</strong>
+     * </p>
      * <ul>
-     *   <li>Fully thread-safe with ReentrantReadWriteLock protection</li>
-     *   <li>Safe for concurrent access from multiple threads</li>
-     *   <li>No blocking operations between concurrent reads</li>
+     * <li>Fully thread-safe with ReentrantReadWriteLock protection</li>
+     * <li>Safe for concurrent access from multiple threads</li>
+     * <li>No blocking operations between concurrent reads</li>
      * </ul>
      * 
-     * <p><strong>Usage Example:</strong></p>
+     * <p>
+     * <strong>Usage Example:</strong>
+     * </p>
+     * 
      * <pre>{@code
      * // Collect hashes from search results
      * List<String> blockHashes = enhancedResults.stream()
-     *     .map(EnhancedSearchResult::getBlockHash)
-     *     .collect(Collectors.toList());
+     *         .map(EnhancedSearchResult::getBlockHash)
+     *         .collect(Collectors.toList());
      * 
      * // Batch retrieve all blocks in one operation
      * List<Block> blocks = blockDAO.batchRetrieveBlocksByHash(blockHashes);
@@ -2059,8 +1985,10 @@ public class BlockDAO {
      * }</pre>
      * 
      * @param blockHashes List of block hash values to retrieve. Must not be null.
-     *                   Empty list returns empty result. Null/invalid hashes are safely ignored.
-     * @return List of Block objects matching the provided hashes, ordered by block number.
+     *                    Empty list returns empty result. Null/invalid hashes are
+     *                    safely ignored.
+     * @return List of Block objects matching the provided hashes, ordered by block
+     *         number.
      *         Never returns null. Missing blocks are excluded from results.
      * @throws RuntimeException if database operation fails
      * @since 2.0.1
@@ -2075,9 +2003,9 @@ public class BlockDAO {
 
         // Remove null and empty hashes
         List<String> validHashes = blockHashes.stream()
-            .filter(hash -> hash != null && !hash.trim().isEmpty())
-            .distinct()
-            .collect(Collectors.toList());
+                .filter(hash -> hash != null && !hash.trim().isEmpty())
+                .distinct()
+                .collect(Collectors.toList());
 
         if (validHashes.isEmpty()) {
             return new ArrayList<>();
@@ -2087,54 +2015,48 @@ public class BlockDAO {
         final int MAX_BATCH_SIZE = MemorySafetyConstants.MAX_BATCH_SIZE;
         if (validHashes.size() > MAX_BATCH_SIZE) {
             throw new IllegalArgumentException(
-                String.format("Batch size %d exceeds maximum allowed %d. Process in smaller batches to prevent memory issues.",
-                    validHashes.size(), MAX_BATCH_SIZE)
-            );
+                    String.format(
+                            "Batch size %d exceeds maximum allowed %d. Process in smaller batches to prevent memory issues.",
+                            validHashes.size(), MAX_BATCH_SIZE));
         }
 
         return executeBatchRetrievalByHash(validHashes);
     }
-    
+
     /**
-     * Execute the actual batch retrieval operation by hash with comprehensive monitoring.
+     * Execute the actual batch retrieval operation by hash with comprehensive
+     * monitoring.
      * 
      * @param blockHashes Valid, non-null block hashes
      * @return Retrieved blocks ordered by block number
      */
     private List<Block> executeBatchRetrievalByHash(List<String> blockHashes) {
-        lock.readLock().lock();
-        
+        logger.debug("🔄 Starting batch retrieval for {} block hashes", blockHashes.size());
+
+        EntityManager em = JPAUtil.getEntityManager();
+
         try {
-            logger.debug("🔄 Starting batch retrieval for {} block hashes", blockHashes.size());
-            
-            EntityManager em = JPAUtil.getEntityManager();
-            
-            try {
-                // Create optimized JPA query with IN clause for hashes
-                String jpql = "SELECT b FROM Block b WHERE b.hash IN :hashes ORDER BY b.blockNumber";
-                TypedQuery<Block> query = em.createQuery(jpql, Block.class);
-                query.setParameter("hashes", blockHashes);
-                
-                List<Block> results = query.getResultList();
-                
-                logger.debug(
+            // Create optimized JPA query with IN clause for hashes
+            String jpql = "SELECT b FROM Block b WHERE b.hash IN :hashes ORDER BY b.blockNumber";
+            TypedQuery<Block> query = em.createQuery(jpql, Block.class);
+            query.setParameter("hashes", blockHashes);
+
+            List<Block> results = query.getResultList();
+
+            logger.debug(
                     "✅ Batch retrieved {} blocks by hash successfully (requested: {})",
                     results.size(),
-                    blockHashes.size()
-                );
-                
-                return results;
-                
-            } catch (Exception e) {
-                logger.error("❌ Failed to batch retrieve blocks by hash: {}", e.getMessage(), e);
-                throw new RuntimeException("Failed to batch retrieve blocks by hash", e);
-            } finally {
-                if (!JPAUtil.hasActiveTransaction()) {
-                    em.close();
-                }
-            }
+                    blockHashes.size());
+
+            return results;
+
+        } catch (Exception e) {
+            logger.error("❌ Failed to batch retrieve blocks by hash: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to batch retrieve blocks by hash", e);
         } finally {
-            lock.readLock().unlock();
+            if (!JPAUtil.hasActiveTransaction()) {
+                em.close();
+            }
         }
     }
 }

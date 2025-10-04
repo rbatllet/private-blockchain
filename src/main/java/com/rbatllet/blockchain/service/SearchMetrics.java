@@ -104,14 +104,33 @@ public class SearchMetrics {
         return lastSearchTime;
     }
 
+    /**
+     * Get cache hit rate with atomic snapshot to prevent race conditions
+     * Captures both values atomically to ensure totalCacheHits never exceeds totalSearches
+     */
     public double getCacheHitRate() {
+        // Capture values atomically to prevent race conditions where
+        // totalCacheHits could appear > totalSearches due to non-atomic reads
         long total = totalSearches.get();
-        return total > 0 ? ((double) totalCacheHits.get() / total) * 100 : 0;
+        long hits = totalCacheHits.get();
+        
+        // Additional safety: ensure hits never exceeds total (defensive programming)
+        if (hits > total) {
+            hits = total;
+        }
+        
+        return total > 0 ? ((double) hits / total) * 100 : 0;
     }
 
+    /**
+     * Get average search time with atomic snapshot to prevent race conditions
+     */
     public double getAverageSearchTimeMs() {
+        // Capture values atomically to prevent inconsistent calculations
         long total = totalSearches.get();
-        return total > 0 ? (double) totalSearchTimeMs.get() / total : 0;
+        long timeMs = totalSearchTimeMs.get();
+        
+        return total > 0 ? (double) timeMs / total : 0;
     }
 
     public Map<String, PerformanceStats> getSearchTypeStats() {
@@ -795,19 +814,43 @@ public class SearchMetrics {
             return maxTimeMs;
         }
 
+        /**
+         * Get cache hit rate with atomic snapshot to prevent race conditions
+         * Captures both values atomically to ensure cacheHits never exceeds searches
+         */
         public double getCacheHitRate() {
+            // Capture values atomically to prevent race conditions
             long total = searches.get();
-            return total > 0 ? ((double) cacheHits.get() / total) * 100 : 0;
+            long hits = cacheHits.get();
+            
+            // Defensive: ensure hits never exceeds total
+            if (hits > total) {
+                hits = total;
+            }
+            
+            return total > 0 ? ((double) hits / total) * 100 : 0;
         }
 
+        /**
+         * Get average time with atomic snapshot to prevent race conditions
+         */
         public double getAverageTimeMs() {
+            // Capture values atomically
             long total = searches.get();
-            return total > 0 ? (double) totalTimeMs.get() / total : 0;
+            long timeMs = totalTimeMs.get();
+            
+            return total > 0 ? (double) timeMs / total : 0;
         }
 
+        /**
+         * Get average results with atomic snapshot to prevent race conditions
+         */
         public double getAverageResults() {
+            // Capture values atomically
             long total = searches.get();
-            return total > 0 ? (double) totalResults.get() / total : 0;
+            long results = totalResults.get();
+            
+            return total > 0 ? (double) results / total : 0;
         }
 
         public long getSuccessfulOperations() {

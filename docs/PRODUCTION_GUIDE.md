@@ -1212,7 +1212,7 @@ fi
 
 ---
 
-For comprehensive examples and use cases, see [EXAMPLES.md](EXAMPLES.md) and [API_GUIDE.md](API_GUIDE.md).
+For comprehensive examples and use cases, see [EXAMPLES.md](getting-started/EXAMPLES.md) and [API_GUIDE.md](reference/API_GUIDE.md).
 
 ### Advanced Security Best Practices
 
@@ -1337,4 +1337,4 @@ For comprehensive examples and use cases, see [EXAMPLES.md](EXAMPLES.md) and [AP
 - **Cloud-Native Deployment**: Design for cloud-native scalability patterns
 
 For operational procedures and day-to-day management, see the monitoring and maintenance sections above.
-For development and testing information, see [TESTING.md](TESTING.md) and [API_GUIDE.md](API_GUIDE.md).
+For development and testing information, see [TESTING.md](testing/TESTING.md) and [API_GUIDE.md](reference/API_GUIDE.md).

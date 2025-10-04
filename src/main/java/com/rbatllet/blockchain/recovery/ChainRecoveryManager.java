@@ -14,7 +14,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+// REMOVED: ReentrantReadWriteLock - caused deadlock issue #4
 import java.util.stream.Collectors;
 
 /**
@@ -30,14 +30,22 @@ public class ChainRecoveryManager {
     // FIXED: Thread-safe set for tracking corruption keys
     private final Set<String> keysInvolvedInCorruption = Collections.synchronizedSet(new HashSet<>());
     
-    // FIXED: Lock for thread-safe operations on complex methods
-    private final ReentrantReadWriteLock recoveryLock = new ReentrantReadWriteLock();
+    // Flag to indicate if we're being called from within a lock context
+    private final boolean calledWithinLock;
+    
+    // REMOVED: recoveryLock - Blockchain already has GLOBAL_BLOCKCHAIN_LOCK protection
+    // Adding a second lock layer caused deadlocks (issue #4)
     
     public ChainRecoveryManager(Blockchain blockchain) {
+        this(blockchain, false);
+    }
+    
+    public ChainRecoveryManager(Blockchain blockchain, boolean calledWithinLock) {
         if (blockchain == null) {
             throw new IllegalArgumentException("Blockchain cannot be null");
         }
         this.blockchain = blockchain;
+        this.calledWithinLock = calledWithinLock;
     }
     
     /**
@@ -47,8 +55,9 @@ public class ChainRecoveryManager {
      * @return RecoveryResult with success status and details
      */
     public RecoveryResult recoverCorruptedChain(String deletedPublicKey, String ownerName) {
-        recoveryLock.writeLock().lock();
-        try {
+        // REMOVED: recoveryLock - causes deadlock with GLOBAL_BLOCKCHAIN_LOCK (issue #4)
+        // Blockchain methods already protected by GLOBAL_BLOCKCHAIN_LOCK
+        
         // Validate input parameters
         if (deletedPublicKey == null || deletedPublicKey.trim().isEmpty()) {
             return new RecoveryResult(false, "VALIDATION_ERROR", 
@@ -60,8 +69,10 @@ public class ChainRecoveryManager {
         }
         
         // Check if key still exists (shouldn't recover existing keys)
-        boolean keyExists = blockchain.getAuthorizedKeys().stream()
-                .anyMatch(key -> key.getPublicKey().equals(deletedPublicKey));
+        boolean keyExists = (calledWithinLock 
+            ? blockchain.getAuthorizedKeysWithoutLock()
+            : blockchain.getAuthorizedKeys()
+        ).stream().anyMatch(key -> key.getPublicKey().equals(deletedPublicKey));
         
         if (keyExists) {
             return new RecoveryResult(false, "VALIDATION_ERROR", 
@@ -69,7 +80,9 @@ public class ChainRecoveryManager {
         }
         
         // SECURITY: Check if the chain is actually corrupted
-        var chainValidation = blockchain.validateChainDetailed();
+        var chainValidation = calledWithinLock 
+            ? blockchain.validateChainDetailedWithoutLock()
+            : blockchain.validateChainDetailed();
         boolean chainIsValid = chainValidation.isStructurallyIntact() && chainValidation.isFullyCompliant();
         
         // If chain is invalid, identify ALL missing keys that signed blocks
@@ -88,7 +101,10 @@ public class ChainRecoveryManager {
                 for (Block block : batch) {
                     if (deletedPublicKey.equals(block.getSignerPublicKey())) {
                         // Verify this specific block is invalid due to missing key
-                        if (!blockchain.validateSingleBlock(block)) {
+                        boolean isValid = calledWithinLock 
+                            ? blockchain.validateSingleBlockWithoutLock(block)
+                            : blockchain.validateSingleBlock(block);
+                        if (!isValid) {
                             keySignedCorruptedBlocks.set(true);
                             // Track this key as involved in corruption
                             keysInvolvedInCorruption.add(deletedPublicKey);
@@ -161,9 +177,6 @@ public class ChainRecoveryManager {
         // All strategies failed
         return new RecoveryResult(false, "FAILED", 
             "All recovery strategies failed. Manual intervention required.");
-        } finally {
-            recoveryLock.writeLock().unlock();
-        }
     }
     
     /**
@@ -177,7 +190,9 @@ public class ChainRecoveryManager {
             String recoveryOwnerName = ownerName + " (RECOVERED-" + 
                 java.time.LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmm")) + ")";
             
-            boolean reauthorized = blockchain.addAuthorizedKey(deletedPublicKey, recoveryOwnerName);
+            boolean reauthorized = calledWithinLock 
+                ? blockchain.addAuthorizedKeyWithoutLock(deletedPublicKey, recoveryOwnerName, null)
+                : blockchain.addAuthorizedKey(deletedPublicKey, recoveryOwnerName);
             
             if (!reauthorized) {
                 return new RecoveryResult(false, "RE_AUTHORIZATION", 
@@ -185,14 +200,20 @@ public class ChainRecoveryManager {
             }
             
             // Verify chain is now valid
-            var reauthorizationValidation = blockchain.validateChainDetailed();
+            var reauthorizationValidation = calledWithinLock 
+                ? blockchain.validateChainDetailedWithoutLock()
+                : blockchain.validateChainDetailed();
             if (reauthorizationValidation.isStructurallyIntact() && reauthorizationValidation.isFullyCompliant()) {
                 logger.info("✅ Chain recovered by re-authorization!");
                 return new RecoveryResult(true, "RE_AUTHORIZATION", 
                     "Chain successfully recovered by re-authorizing key as: " + recoveryOwnerName);
             } else {
                 // Re-authorization didn't help, remove the key again
-                blockchain.revokeAuthorizedKey(deletedPublicKey);
+                if (calledWithinLock) {
+                    blockchain.revokeAuthorizedKeyWithoutLock(deletedPublicKey);
+                } else {
+                    blockchain.revokeAuthorizedKey(deletedPublicKey);
+                }
                 return new RecoveryResult(false, "RE_AUTHORIZATION", 
                     "Re-authorization completed but chain still invalid");
             }
@@ -219,7 +240,10 @@ public class ChainRecoveryManager {
                     totalBlocks.incrementAndGet();
                     if (deletedPublicKey.equals(block.getSignerPublicKey())) {
                         // Verify this block is actually corrupted
-                        if (!blockchain.validateSingleBlock(block)) {
+                        boolean isValid = calledWithinLock 
+                            ? blockchain.validateSingleBlockWithoutLock(block)
+                            : blockchain.validateSingleBlock(block);
+                        if (!isValid) {
                             corruptedBlockNumbers.add(block.getBlockNumber());
                         }
                     }
@@ -240,10 +264,14 @@ public class ChainRecoveryManager {
             logger.info("🎯 Rolling back to block #{}", rollbackTarget);
             
             // Perform rollback
-            boolean rollbackSuccess = blockchain.rollbackToBlock(rollbackTarget);
+            boolean rollbackSuccess = calledWithinLock 
+                ? blockchain.rollbackToBlockWithoutLock(rollbackTarget)
+                : blockchain.rollbackToBlock(rollbackTarget);
 
             if (rollbackSuccess) {
-                var rollbackValidation = blockchain.validateChainDetailed();
+                var rollbackValidation = calledWithinLock 
+                    ? blockchain.validateChainDetailedWithoutLock()
+                    : blockchain.validateChainDetailed();
                 if (rollbackValidation.isStructurallyIntact() && rollbackValidation.isFullyCompliant()) {
                     return new RecoveryResult(true, "ROLLBACK",
                         "Chain recovered by rolling back to block #" + rollbackTarget +
@@ -269,7 +297,10 @@ public class ChainRecoveryManager {
      * This helps track multi-user corruption scenarios
      */
     private void identifyAllMissingKeys() {
-        Set<String> authorizedKeys = blockchain.getAuthorizedKeys().stream()
+        Set<String> authorizedKeys = (calledWithinLock 
+            ? blockchain.getAuthorizedKeysWithoutLock()
+            : blockchain.getAuthorizedKeys()
+        ).stream()
                 .map(key -> key.getPublicKey())
                 .collect(Collectors.toSet());
 
@@ -366,7 +397,10 @@ public class ChainRecoveryManager {
                     }
 
                     // SECURITY CHECK 1: Block must be independently valid
-                    if (!blockchain.validateSingleBlock(block)) {
+                    boolean isValid = calledWithinLock 
+                        ? blockchain.validateSingleBlockWithoutLock(block)
+                        : blockchain.validateSingleBlock(block);
+                    if (!isValid) {
                         logger.warn("⚠️ Block #{} failed independent validation", block.getBlockNumber());
                         foundCorruption.set(true);
                         break;
@@ -475,13 +509,18 @@ public class ChainRecoveryManager {
                         logger.warn("⚠️ Stopping at corrupted block #{}", block.getBlockNumber());
                         foundCorruption.set(true);
                         break;
-                    } else if (blockchain.validateSingleBlock(block)) {
-                        validBlocks.add(block);
-                        lastValidBlockNumber.set(block.getBlockNumber());
                     } else {
-                        logger.warn("⚠️ Stopping at invalid block #{}", block.getBlockNumber());
-                        foundCorruption.set(true);
-                        break;
+                        boolean isValid = calledWithinLock 
+                            ? blockchain.validateSingleBlockWithoutLock(block)
+                            : blockchain.validateSingleBlock(block);
+                        if (isValid) {
+                            validBlocks.add(block);
+                            lastValidBlockNumber.set(block.getBlockNumber());
+                        } else {
+                            logger.warn("⚠️ Stopping at invalid block #{}", block.getBlockNumber());
+                            foundCorruption.set(true);
+                            break;
+                        }
                     }
                 }
             }, 1000);
@@ -518,35 +557,33 @@ public class ChainRecoveryManager {
      * Diagnostic method to analyze chain corruption
      */
     public ChainDiagnostic diagnoseCorruption() {
-        recoveryLock.readLock().lock();
-        try {
-            List<Block> corruptedBlocks = Collections.synchronizedList(new ArrayList<>());
-            List<Block> validBlocks = Collections.synchronizedList(new ArrayList<>());
-            AtomicLong totalBlocks = new AtomicLong(0);
+        // REMOVED: recoveryLock - causes deadlock with GLOBAL_BLOCKCHAIN_LOCK
+        // Blockchain methods already protected by GLOBAL_BLOCKCHAIN_LOCK
+        
+        List<Block> corruptedBlocks = Collections.synchronizedList(new ArrayList<>());
+        List<Block> validBlocks = Collections.synchronizedList(new ArrayList<>());
+        AtomicLong totalBlocks = new AtomicLong(0);
 
-            blockchain.processChainInBatches(batch -> {
-                for (Block block : batch) {
-                    totalBlocks.incrementAndGet();
-                    if (blockchain.validateSingleBlock(block)) {
-                        validBlocks.add(block);
-                    } else {
-                        corruptedBlocks.add(block);
-                    }
+        blockchain.processChainInBatches(batch -> {
+            for (Block block : batch) {
+                totalBlocks.incrementAndGet();
+                boolean isValid = calledWithinLock 
+                    ? blockchain.validateSingleBlockWithoutLock(block)
+                    : blockchain.validateSingleBlock(block);
+                if (isValid) {
+                    validBlocks.add(block);
+                } else {
+                    corruptedBlocks.add(block);
                 }
-            }, 1000);
+            }
+        }, 1000);
 
-            return new ChainDiagnostic(
-                (int) totalBlocks.get(),
-                validBlocks.size(),
-                corruptedBlocks.size(),
-                corruptedBlocks
-            );
-
-        } catch (Exception e) {
-            return new ChainDiagnostic(0, 0, -1, new ArrayList<>());
-        } finally {
-            recoveryLock.readLock().unlock();
-        }
+        return new ChainDiagnostic(
+            (int) totalBlocks.get(),
+            validBlocks.size(),
+            corruptedBlocks.size(),
+            corruptedBlocks
+        );
     }
     
     /**
