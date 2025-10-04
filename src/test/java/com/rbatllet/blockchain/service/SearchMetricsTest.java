@@ -238,29 +238,38 @@ public class SearchMetricsTest {
             assertTrue(completionLatch.await(25, TimeUnit.SECONDS), 
                       "Concurrent reads and writes should complete within timeout");
             
-            // Validate results with tolerance for concurrency issues
+            // Validate results - NO TOLERANCE! We want to detect real issues
             int expectedWrites = NUM_WRITER_THREADS * OPERATIONS_PER_THREAD;
             int expectedReads = NUM_READER_THREADS * OPERATIONS_PER_THREAD;
             int actualWrites = writeOperations.get();
             int actualReads = readOperations.get();
             
-            // Allow some tolerance (95%) for concurrent test instability in high-load environments
-            int minExpectedWrites = (int) (expectedWrites * 0.95);
-            int minExpectedReads = (int) (expectedReads * 0.95);
+            // Log detailed results for debugging
+            logger.info("📊 Expected: {} writes, {} reads", expectedWrites, expectedReads);
+            logger.info("📊 Actual: {} writes, {} reads", actualWrites, actualReads);
+            logger.info("📊 Errors: {}", errors.get());
             
-            assertTrue(actualWrites >= minExpectedWrites, 
-                String.format("Write operations should complete (expected: %d, actual: %d, minimum: %d)", 
-                             expectedWrites, actualWrites, minExpectedWrites));
-            assertTrue(actualReads >= minExpectedReads,
-                String.format("Read operations should complete (expected: %d, actual: %d, minimum: %d)", 
-                             expectedReads, actualReads, minExpectedReads));
+            // If operations didn't complete, log which threads might have failed
+            if (actualReads < expectedReads || actualWrites < expectedWrites) {
+                logger.error("❌ INCOMPLETE OPERATIONS DETECTED!");
+                logger.error("   Missing writes: {}", expectedWrites - actualWrites);
+                logger.error("   Missing reads: {}", expectedReads - actualReads);
+                logger.error("   Errors caught: {}", errors.get());
+            }
+            
+            assertEquals(expectedWrites, actualWrites, 
+                String.format("All write operations must complete (expected: %d, actual: %d)", 
+                             expectedWrites, actualWrites));
+            assertEquals(expectedReads, actualReads,
+                String.format("All read operations must complete (expected: %d, actual: %d)", 
+                             expectedReads, actualReads));
             assertEquals(0, errors.get(), "No errors should occur during concurrent operations");
             
-            // Recorded searches should match actual writes (with tolerance)
+            // Recorded searches should match actual writes exactly
             long totalSearches = metrics.getTotalSearches();
-            assertTrue(totalSearches >= minExpectedWrites, 
-                String.format("Recorded searches should match writes (expected: %d, actual: %d, minimum: %d)", 
-                             expectedWrites, totalSearches, minExpectedWrites));
+            assertEquals(expectedWrites, totalSearches, 
+                String.format("Recorded searches must match writes exactly (expected: %d, actual: %d)", 
+                             expectedWrites, totalSearches));
             
             logger.info("📊 Final results: {} writes, {} reads completed successfully",
                        writeOperations.get(), readOperations.get());

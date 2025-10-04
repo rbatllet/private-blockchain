@@ -14,7 +14,7 @@ source "${SCRIPT_DIR}/lib/common_functions.zsh"
 # Change to project root directory
 cd "$SCRIPT_DIR/.."
 
-# Icons (matching CLAUDE.md style) - kept for compatibility
+# Icons - kept for compatibility
 SUCCESS="✅"
 ERROR="❌"
 INFO="ℹ️"

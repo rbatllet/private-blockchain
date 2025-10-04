@@ -1434,70 +1434,81 @@ public class BlockchainExample {
 
 ## 📚 Documentation
 
-This project includes comprehensive documentation for different use cases:
+This project includes 64+ comprehensive documentation files organized into **10 thematic subdirectories**:
 
-### 📖 User Guides
-- **[GETTING_STARTED.md](docs/GETTING_STARTED.md)** - Quick start guide with essential examples and security practices
-- **[EXAMPLES.md](docs/EXAMPLES.md)** - Real-world use cases and workflow patterns
-- **[API_GUIDE.md](docs/API_GUIDE.md)** - Complete API reference and core functions + **UserFriendlyEncryptionAPI** comprehensive guide
-- **[SEARCH_APIS_COMPARISON.md](docs/SEARCH_APIS_COMPARISON.md)** - 🎯 **Which search API to use? Complete comparison and recommendations**
-- **[USER_FRIENDLY_SEARCH_GUIDE.md](docs/USER_FRIENDLY_SEARCH_GUIDE.md)** - UserFriendlyEncryptionAPI search functionality guide
-- **[SEARCH_FRAMEWORK_GUIDE.md](docs/SEARCH_FRAMEWORK_GUIDE.md)** - Search Framework Engine comprehensive guide
-- **[METADATA_MANAGEMENT_GUIDE.md](docs/METADATA_MANAGEMENT_GUIDE.md)** - ✨ **NEW** Dynamic block metadata management without modifying encrypted content
-- **[EXHAUSTIVE_SEARCH_GUIDE.md](docs/EXHAUSTIVE_SEARCH_GUIDE.md)** - TRUE exhaustive search across on-chain and off-chain content 🔍
-- **[SEARCH_COMPARISON.md](docs/SEARCH_COMPARISON.md)** - Complete comparison of all 5 search types with performance benchmarks 📊
-- **[TESTING.md](docs/TESTING.md)** - Comprehensive testing guide and troubleshooting
-- **[SECURITY_CLASSES_GUIDE.md](docs/SECURITY_CLASSES_GUIDE.md)** - Security classes usage guide (migrated from CLI)
-- **[UTILITY_CLASSES_GUIDE.md](docs/UTILITY_CLASSES_GUIDE.md)** - Utility classes usage guide (migrated from CLI)
-- **[LOGGING.md](docs/LOGGING.md)** - 📊 **Professional logging system with SLF4J** - Configuration modes, performance optimization, and structured logging
+### 📂 Documentation Structure
 
-### 🔐 Security & Encryption
-- **[SECURITY_GUIDE.md](docs/SECURITY_GUIDE.md)** - Security best practices and guidelines for production environments
-- **[KEY_MANAGEMENT_GUIDE.md](docs/KEY_MANAGEMENT_GUIDE.md)** - Hierarchical key management with rotation and recovery
-- **[ENCRYPTION_GUIDE.md](docs/ENCRYPTION_GUIDE.md)** - Block encryption and metadata layer management
-- **[ENCRYPTED_EXPORT_IMPORT_GUIDE.md](docs/ENCRYPTED_EXPORT_IMPORT_GUIDE.md)** - Encrypted chain export/import procedures
-- **[ENHANCED_VALIDATION_GUIDE.md](docs/ENHANCED_VALIDATION_GUIDE.md)** - Advanced chain validation techniques
-- **[OFFCHAIN_INTEGRITY_REPORT_ROBUSTNESS_IMPROVEMENTS.md](docs/OFFCHAIN_INTEGRITY_REPORT_ROBUSTNESS_IMPROVEMENTS.md)** - 🆕 **v2.0** Thread-safe integrity reporting with comprehensive validation and robustness improvements
+| Category | Location | Files | Description |
+|----------|----------|-------|-------------|
+| **🚀 Getting Started** | [getting-started/](docs/getting-started/) | 3 | Quick start, examples, troubleshooting |
+| **🔍 Search** | [search/](docs/search/) | 9 | All search APIs and implementations |
+| **🔐 Security** | [security/](docs/security/) | 6 | Encryption, key management, security |
+| **🧪 Testing** | [testing/](docs/testing/) | 5 | Thread-safety, testing patterns, standards |
+| **📚 Reference** | [reference/](docs/reference/) | 4 | API reference (192 KB), technical details |
+| **🗄️ Database** | [database/](docs/database/) | 3 | SQLite/PostgreSQL/MySQL/H2 configuration |
+| **📊 Data Management** | [data-management/](docs/data-management/) | 6 | Pagination, batching, metadata |
+| **🔧 Recovery** | [recovery/](docs/recovery/) | 4 | Validation, checkpoints, integrity |
+| **📈 Monitoring** | [monitoring/](docs/monitoring/) | 4 | Performance metrics, logging |
+| **📊 Reports** | [reports/](docs/reports/) | 18 | Technical audits and analysis |
 
-### 🏢 Technical & Production
-- **[TROUBLESHOOTING_GUIDE.md](docs/TROUBLESHOOTING_GUIDE.md)** - Common issues and solutions with diagnostic tools
-- **[TECHNICAL_DETAILS.md](docs/TECHNICAL_DETAILS.md)** - Database schema, security model, architecture
-- **[PRODUCTION_GUIDE.md](docs/PRODUCTION_GUIDE.md)** - Production deployment and operational guidelines
-- **[THREAD_SAFETY_TESTS.md](docs/THREAD_SAFETY_TESTS.md)** - Thread safety testing guide and validation
-- **[SHARED_STATE_TESTING_PATTERNS.md](docs/SHARED_STATE_TESTING_PATTERNS.md)** - 🆕 **Shared state testing patterns** - Testing components with static/singleton shared state
-- **[ATOMIC_PROTECTION_MULTI_INSTANCE_GUIDE.md](docs/ATOMIC_PROTECTION_MULTI_INSTANCE_GUIDE.md)** - 🆕 **Atomic protection & multi-instance coordination** - Thread-safe operations across concurrent SearchFrameworkEngine instances
-- **[COMPRESSION_ANALYSIS_RESULT_ROBUSTNESS_GUIDE.md](docs/COMPRESSION_ANALYSIS_RESULT_ROBUSTNESS_GUIDE.md)** - 🆕 **v2.0** CompressionAnalysisResult robustness enhancements with comprehensive defensive programming (18 tests, 100% pass rate)
+### 🎯 Quick Start Paths
 
-### 💾 Database & Configuration
-- **[DATABASE_AGNOSTIC.md](docs/DATABASE_AGNOSTIC.md)** - 🎯 **Database-agnostic architecture** - Switch between SQLite, PostgreSQL, MySQL, and H2 with zero code changes
-- **[CONFIGURATION_STORAGE_GUIDE.md](docs/CONFIGURATION_STORAGE_GUIDE.md)** - JPAConfigurationStorage comprehensive guide with examples
+#### New Developers - Start Here
+1. **[Getting Started](docs/getting-started/GETTING_STARTED.md)** - Quick start guide
+2. **[Examples](docs/getting-started/EXAMPLES.md)** - Real-world use cases
+3. **[API Reference](docs/reference/API_GUIDE.md)** - Complete API (192 KB)
+
+#### Search Implementation
+1. **[Search APIs Comparison](docs/search/SEARCH_APIS_COMPARISON.md)** - Which search API to use?
+2. **[Search Framework Guide](docs/search/SEARCH_FRAMEWORK_GUIDE.md)** - Professional search
+3. **[User-Friendly Search](docs/search/USER_FRIENDLY_SEARCH_GUIDE.md)** - Simplified search API
+
+#### Security & Encryption
+1. **[Security Guide](docs/security/SECURITY_GUIDE.md)** - Best practices
+2. **[Key Management](docs/security/KEY_MANAGEMENT_GUIDE.md)** - Hierarchical keys
+3. **[Encryption Guide](docs/security/ENCRYPTION_GUIDE.md)** - Block encryption
+
+#### Database Configuration
+1. **[Database-Agnostic](docs/database/DATABASE_AGNOSTIC.md)** - Switch databases (SQLite/PostgreSQL/MySQL/H2)
+2. **[Configuration Storage](docs/database/CONFIGURATION_STORAGE_GUIDE.md)** - JPAConfigurationStorage guide
+3. **[Field Limits](docs/database/DATABASE_FIELD_LIMITS.md)** - Size limits and overflow protection
+
+#### Technical Audits & Reports
+1. **[StampedLock Audit](docs/reports/STAMPEDLOCK_AUDIT_REPORT.md)** - Lock migration audit (✅ Approved)
+2. **[AtomicReference Audit](docs/reports/ATOMIC_REFERENCE_AUDIT_REPORT.md)** - Atomicity audit (✅ No issues)
+3. **[All Reports Index](docs/reports/README.md)** - 18 reports categorized
+
+### 📖 Complete Documentation Index
+
+**See [DOCUMENTATION_ORGANIZATION.md](docs/DOCUMENTATION_ORGANIZATION.md)** for complete navigation guide and organization details.
 
 ### 🚀 Quick Navigation
 
 | What you want to do | Go to |
 |---------------------|-------|
-| **Get started quickly with examples** | [GETTING_STARTED.md](docs/GETTING_STARTED.md) |
-| **Choose the right search API** | [SEARCH_APIS_COMPARISON.md](docs/SEARCH_APIS_COMPARISON.md) |
+| **Get started quickly with examples** | [Getting Started](docs/getting-started/GETTING_STARTED.md) |
+| **Choose the right search API** | [Search APIs Comparison](docs/search/SEARCH_APIS_COMPARISON.md) |
 | **Use the simplified encryption API** | **README.md - User-Friendly Encryption API section** |
-| **Update block metadata dynamically** | **[METADATA_MANAGEMENT_GUIDE.md](docs/METADATA_MANAGEMENT_GUIDE.md)** |
-| See real-world examples and use cases | [EXAMPLES.md](docs/EXAMPLES.md) |
-| Learn the complete API and core functions | [API_GUIDE.md](docs/API_GUIDE.md) |
-| Implement UserFriendlyAPI search functionality | [USER_FRIENDLY_SEARCH_GUIDE.md](docs/USER_FRIENDLY_SEARCH_GUIDE.md) |
-| Use Search Framework Engine | [SEARCH_FRAMEWORK_GUIDE.md](docs/SEARCH_FRAMEWORK_GUIDE.md) |
-| **Implement robust integrity reporting** | **[OFFCHAIN_INTEGRITY_REPORT_ROBUSTNESS_IMPROVEMENTS.md](docs/OFFCHAIN_INTEGRITY_REPORT_ROBUSTNESS_IMPROVEMENTS.md)** |
-| **Quick start with integrity reports** | **[OFFCHAIN_INTEGRITY_REPORT_QUICK_START.md](docs/OFFCHAIN_INTEGRITY_REPORT_QUICK_START.md)** |
-| Manage keys and security | [KEY_MANAGEMENT_GUIDE.md](docs/KEY_MANAGEMENT_GUIDE.md) |
-| Follow security best practices | [SECURITY_GUIDE.md](docs/SECURITY_GUIDE.md) |
-| Troubleshoot common issues | [TROUBLESHOOTING_GUIDE.md](docs/TROUBLESHOOTING_GUIDE.md) |
+| **Update block metadata dynamically** | [Metadata Management](docs/data-management/METADATA_MANAGEMENT_GUIDE.md) |
+| See real-world examples and use cases | [Examples](docs/getting-started/EXAMPLES.md) |
+| Learn the complete API and core functions | [API Guide](docs/reference/API_GUIDE.md) |
+| Implement UserFriendlyAPI search functionality | [User-Friendly Search](docs/search/USER_FRIENDLY_SEARCH_GUIDE.md) |
+| Use Search Framework Engine | [Search Framework](docs/search/SEARCH_FRAMEWORK_GUIDE.md) |
+| **Implement robust integrity reporting** | [Off-Chain Integrity Guide](docs/recovery/OFFCHAIN_INTEGRITY_REPORT_GUIDE.md) |
+| **Quick start with integrity reports** | [Integrity Quick Start](docs/recovery/OFFCHAIN_INTEGRITY_REPORT_QUICK_START.md) |
+| **Review technical audits and analysis** | [Reports Index](docs/reports/README.md) |
+| Manage keys and security | [Key Management](docs/security/KEY_MANAGEMENT_GUIDE.md) |
+| Follow security best practices | [Security Guide](docs/security/SECURITY_GUIDE.md) |
+| Troubleshoot common issues | [Troubleshooting](docs/getting-started/TROUBLESHOOTING_GUIDE.md) |
 | Run comprehensive tests (828+ tests, 72% coverage) | **README.md - Testing section** |
-| Run tests and troubleshoot issues | [TESTING.md](docs/TESTING.md) |
-| **Test components with shared static state** | **[SHARED_STATE_TESTING_PATTERNS.md](docs/SHARED_STATE_TESTING_PATTERNS.md)** |
-| **Implement thread-safe multi-instance operations** | **[ATOMIC_PROTECTION_MULTI_INSTANCE_GUIDE.md](docs/ATOMIC_PROTECTION_MULTI_INSTANCE_GUIDE.md)** |
-| Understand technical implementation | [TECHNICAL_DETAILS.md](docs/TECHNICAL_DETAILS.md) |
-| Deploy to production | [PRODUCTION_GUIDE.md](docs/PRODUCTION_GUIDE.md) |
-| Set up encryption and security | [ENCRYPTION_GUIDE.md](docs/ENCRYPTION_GUIDE.md) |
-| **Switch databases (SQLite/PostgreSQL/MySQL/H2)** | **[DATABASE_AGNOSTIC.md](docs/DATABASE_AGNOSTIC.md)** |
-| Manage configuration storage | [CONFIGURATION_STORAGE_GUIDE.md](docs/CONFIGURATION_STORAGE_GUIDE.md) |
+| Run tests and troubleshoot issues | [Testing Guide](docs/testing/TESTING.md) |
+| **Test components with shared static state** | [Shared State Testing](docs/testing/SHARED_STATE_TESTING_PATTERNS.md) |
+| **Implement thread-safe multi-instance operations** | [Atomic Protection](docs/testing/ATOMIC_PROTECTION_MULTI_INSTANCE_GUIDE.md) |
+| Understand technical implementation | [Technical Details](docs/reference/TECHNICAL_DETAILS.md) |
+| Deploy to production | [Production Guide](docs/PRODUCTION_GUIDE.md) |
+| Set up encryption and security | [Encryption Guide](docs/security/ENCRYPTION_GUIDE.md) |
+| **Switch databases (SQLite/PostgreSQL/MySQL/H2)** | [Database-Agnostic](docs/database/DATABASE_AGNOSTIC.md) |
+| Manage configuration storage | [Configuration Storage](docs/database/CONFIGURATION_STORAGE_GUIDE.md) |
 
 ## 🔧 Configuration
 

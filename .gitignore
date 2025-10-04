@@ -83,6 +83,7 @@ replay_pid*
 *.keystore
 
 # Other files
+CLAUDE.md
 *.json
 off-chain-data/
 private-keys/

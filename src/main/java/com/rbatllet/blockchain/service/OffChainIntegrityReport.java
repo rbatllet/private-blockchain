@@ -6,7 +6,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.locks.StampedLock;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -488,9 +488,7 @@ public class OffChainIntegrityReport {
     private final Map<String, List<String>> issuesByCategory;
     private final List<String> recommendations;
     private volatile IntegrityStatus overallStatus;
-    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(
-        true
-    ); // Fair lock
+    private final StampedLock lock = new StampedLock(); // StampedLock (no fair mode)
 
     /**
      * Creates a new OffChainIntegrityReport with validation.
@@ -542,7 +540,7 @@ public class OffChainIntegrityReport {
     public void addCheckResult(IntegrityCheckResult result) {
         Objects.requireNonNull(result, "Check result cannot be null");
 
-        lock.writeLock().lock();
+        long stamp = lock.writeLock();
         try {
             if (checkResults.size() >= MAX_CHECK_RESULTS) {
                 throw new IllegalStateException(
@@ -597,7 +595,7 @@ public class OffChainIntegrityReport {
                 checkResults.size()
             );
         } finally {
-            lock.writeLock().unlock();
+            lock.unlockWrite(stamp);
         }
     }
 
@@ -625,7 +623,7 @@ public class OffChainIntegrityReport {
      * This method is thread-safe and can be called concurrently.
      */
     public void generateRecommendations() {
-        lock.writeLock().lock();
+        long stamp = lock.writeLock();
         try {
             recommendations.clear();
 
@@ -772,7 +770,7 @@ public class OffChainIntegrityReport {
                 "❌ Error generating recommendations - contact system administrator"
             );
         } finally {
-            lock.writeLock().unlock();
+            lock.unlockWrite(stamp);
         }
     }
 
@@ -780,14 +778,14 @@ public class OffChainIntegrityReport {
      * Returns all failed checks (non-healthy status) in a thread-safe manner.
      */
     public List<IntegrityCheckResult> getFailedChecks() {
-        lock.readLock().lock();
+        long stamp = lock.readLock();
         try {
             return checkResults
                 .stream()
                 .filter(result -> result.getStatus() != IntegrityStatus.HEALTHY)
                 .collect(Collectors.toList());
         } finally {
-            lock.readLock().unlock();
+            lock.unlockRead(stamp);
         }
     }
 
@@ -795,7 +793,7 @@ public class OffChainIntegrityReport {
      * Groups check results by status in a thread-safe manner.
      */
     public Map<IntegrityStatus, List<IntegrityCheckResult>> groupByStatus() {
-        lock.readLock().lock();
+        long stamp = lock.readLock();
         try {
             Map<IntegrityStatus, List<IntegrityCheckResult>> grouped =
                 new EnumMap<>(IntegrityStatus.class);
@@ -806,7 +804,7 @@ public class OffChainIntegrityReport {
             }
             return grouped;
         } finally {
-            lock.readLock().unlock();
+            lock.unlockRead(stamp);
         }
     }
 
@@ -822,7 +820,7 @@ public class OffChainIntegrityReport {
      * @return true if the report is in a valid state
      */
     public boolean validateInternalState() {
-        lock.readLock().lock();
+        long stamp = lock.readLock();
         try {
             // Check that statistics match actual data
             Map<IntegrityStatus, Long> actualCounts = checkResults
@@ -905,7 +903,7 @@ public class OffChainIntegrityReport {
 
             return isValid;
         } finally {
-            lock.readLock().unlock();
+            lock.unlockRead(stamp);
         }
     }
 
@@ -927,7 +925,7 @@ public class OffChainIntegrityReport {
     }
 
     public Map<String, List<String>> getIssuesByCategory() {
-        lock.readLock().lock();
+        long stamp = lock.readLock();
         try {
             Map<String, List<String>> copy = new HashMap<>();
             issuesByCategory.forEach((key, value) ->
@@ -938,7 +936,7 @@ public class OffChainIntegrityReport {
             );
             return Collections.unmodifiableMap(copy);
         } finally {
-            lock.readLock().unlock();
+            lock.unlockRead(stamp);
         }
     }
 
@@ -954,13 +952,13 @@ public class OffChainIntegrityReport {
      * Generates a comprehensive formatted summary with error handling.
      */
     public String getFormattedSummary() {
-        lock.readLock().lock();
+        long stamp = lock.readLock();
         try {
             // Ensure recommendations are up to date
             if (recommendations.isEmpty() && statistics.getTotalChecks() > 0) {
-                lock.readLock().unlock();
+                lock.unlockRead(stamp);
                 generateRecommendations();
-                lock.readLock().lock();
+                stamp = lock.readLock(); // Reacquire lock
             }
 
             StringBuilder sb = new StringBuilder();
@@ -1091,7 +1089,7 @@ public class OffChainIntegrityReport {
                 e.getMessage()
             );
         } finally {
-            lock.readLock().unlock();
+            lock.unlockRead(stamp);
         }
     }
 

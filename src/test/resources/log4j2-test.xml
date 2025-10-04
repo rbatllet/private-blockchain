@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration status="WARN">
     <Properties>
-        <!-- Custom pattern for tests -->
-        <Property name="PATTERN">%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n</Property>
+        <!-- Custom pattern for tests - WITH CALLER INFO FOR DEBUGGING DEADLOCKS -->
+        <Property name="PATTERN">%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} [%C{1}.%M:%L] - %msg%n</Property>
     </Properties>
 
     <Appenders>
@@ -51,6 +51,12 @@
     </Appenders>
 
     <Loggers>
+        <!-- DEADLOCK DEBUGGING: Enable DEBUG logging for LockTracer -->
+        <Logger name="com.rbatllet.blockchain.util.LockTracer" level="DEBUG" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="FileAppender"/>
+        </Logger>
+        
         <!-- Application logs -->
         <Logger name="com.rbatllet.blockchain" level="INFO" additivity="false">
             <AppenderRef ref="Console"/>

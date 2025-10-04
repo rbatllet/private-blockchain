@@ -94,11 +94,17 @@ public class UserFriendlyEncryptionAPI {
         new AtomicReference<>(0L);
     private final Object encryptedIndexLock = new Object();
 
+    // Thread-safety: Lock for protecting credentials (username + keyPair must be atomic together)
+    private final Object credentialsLock = new Object();
+
     /**
      * Thread-safe getter for default key pair
+     * CRITICAL: Must be synchronized with getDefaultUsername() and setDefaultCredentials()
      */
     private KeyPair getDefaultKeyPair() {
-        return defaultKeyPair.get();
+        synchronized (credentialsLock) {
+            return defaultKeyPair.get();
+        }
     }
 
     /**
@@ -1509,8 +1515,14 @@ public class UserFriendlyEncryptionAPI {
             throw new IllegalArgumentException("KeyPair cannot be null");
         }
 
-        this.defaultUsername.set(username);
-        this.defaultKeyPair.set(keyPair);
+        // CRITICAL FIX: Username and KeyPair must be set atomically together
+        // Without synchronization, concurrent threads can cause mismatches:
+        // Thread A sets username="A", Thread B sets username="B" and keyPair="B", Thread A sets keyPair="A"
+        // Result: username="B" but keyPair="A" (MISMATCH!)
+        synchronized (credentialsLock) {
+            this.defaultUsername.set(username);
+            this.defaultKeyPair.set(keyPair);
+        }
 
         // Auto-register the user if not already registered
         try {
@@ -1945,10 +1957,13 @@ public class UserFriendlyEncryptionAPI {
 
     /**
      * Get the default username (thread-safe)
+     * CRITICAL: Must be synchronized with getDefaultKeyPair() and setDefaultCredentials()
      * @return The default username, or null if not set
      */
     public String getDefaultUsername() {
-        return defaultUsername.get();
+        synchronized (credentialsLock) {
+            return defaultUsername.get();
+        }
     }
 
     /**
