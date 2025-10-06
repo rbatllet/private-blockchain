@@ -27,9 +27,8 @@
                  - Connection pool sized accordingly (max 5 connections)
                  - For production with high write concurrency, consider PostgreSQL
             -->
-            
+
             <!-- Hibernate specific settings -->
-            <property name="hibernate.dialect" value="org.hibernate.community.dialect.SQLiteDialect"/>
             <property name="hibernate.hbm2ddl.auto" value="update"/>
             <property name="hibernate.show_sql" value="false"/>
             <property name="hibernate.format_sql" value="false"/>
@@ -85,7 +84,6 @@
             <property name="jakarta.persistence.jdbc.password" value=""/>
 
             <!-- Hibernate specific settings -->
-            <property name="hibernate.dialect" value="org.hibernate.dialect.PostgreSQLDialect"/>
             <property name="hibernate.hbm2ddl.auto" value="update"/>
             <property name="hibernate.show_sql" value="false"/>
             <property name="hibernate.format_sql" value="false"/>
@@ -141,7 +139,6 @@
             <property name="jakarta.persistence.jdbc.password" value=""/>
 
             <!-- Hibernate specific settings -->
-            <property name="hibernate.dialect" value="org.hibernate.dialect.MySQLDialect"/>
             <property name="hibernate.hbm2ddl.auto" value="update"/>
             <property name="hibernate.show_sql" value="false"/>
             <property name="hibernate.format_sql" value="false"/>
@@ -197,7 +194,6 @@
             <property name="jakarta.persistence.jdbc.password" value=""/>
 
             <!-- Hibernate specific settings -->
-            <property name="hibernate.dialect" value="org.hibernate.dialect.H2Dialect"/>
             <property name="hibernate.hbm2ddl.auto" value="create-drop"/>
             <property name="hibernate.show_sql" value="false"/>
             <property name="hibernate.format_sql" value="false"/>
@@ -244,7 +240,6 @@
             <property name="jakarta.persistence.jdbc.url" value="jdbc:sqlite:blockchain.db?journal_mode=WAL&amp;synchronous=NORMAL&amp;cache_size=10000&amp;temp_store=memory&amp;mmap_size=268435456"/>
 
             <!-- Hibernate specific settings -->
-            <property name="hibernate.dialect" value="org.hibernate.community.dialect.SQLiteDialect"/>
             <property name="hibernate.hbm2ddl.auto" value="update"/>
             <property name="hibernate.show_sql" value="false"/>
             <property name="hibernate.format_sql" value="false"/>
