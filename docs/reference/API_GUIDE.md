@@ -323,7 +323,9 @@ Block result = api.createBlockWithOptions("Secret message for recipient", option
 // - Block encrypted using recipient's public key
 // - Only recipient can decrypt with their private key
 // - Thread-safe public key cryptography via BlockDataEncryptionService
-// - Data marked with "RECIPIENT_ENCRYPTED:recipient-user:" prefix
+// - Recipient info stored in encryptionMetadata field as JSON
+// - Format: {"type":"RECIPIENT_ENCRYPTED","recipient":"username"}
+// - Encrypted data remains in immutable 'data' field (protected by JPA)
 ```
 
 #### Custom Metadata Support
@@ -1887,7 +1889,7 @@ public boolean updateBlock(Block block)
 - **Returns:** `true` if block was updated successfully, `false` otherwise
 - **Description:** Updates an existing block in the database with strict security validation to preserve blockchain integrity.
 - **🔒 SECURITY CONSTRAINTS:** Only allows modification of metadata fields that don't affect block hash:
-  - ✅ **Allowed Fields:** `customMetadata`, `manualKeywords`, `autoKeywords`, `searchableContent`, `contentCategory`, `encryptionMetadata`
+  - ✅ **Allowed Fields:** `customMetadata`, `encryptionMetadata`, `manualKeywords`, `autoKeywords`, `searchableContent`, `contentCategory`, `isEncrypted`, `offChainData`
   - ❌ **Forbidden Fields:** `data`, `hash`, `timestamp`, `previousHash`, `signerPublicKey`, `signature`, `blockNumber`
 - **Thread-Safety:** Fully thread-safe, uses global blockchain lock with validation against hash-breaking modifications
 - **Validation:** Automatically validates that only safe fields are modified before committing changes
@@ -4038,6 +4040,21 @@ public void clearAndReinitialize() {
     // ✅ Runs orphaned file cleanup after database operations
     // ✅ Thread-safe with global write lock
     // ⚠️ WARNING: Destroys all blockchain data - use only for testing
+}
+
+// Close all database connections (JPAUtil utility method)
+public static void JPAUtil.closeAllConnections() {
+    // ✅ Closes all thread-local EntityManagers
+    // ✅ Forces cleanup of all ThreadLocal variables
+    // ✅ Shuts down and reinitializes EntityManagerFactory (closes HikariCP pool)
+    // ✅ Preserves current database configuration after reinitialization
+    // ⚠️ DESTRUCTIVE: Closes ALL database connections in the connection pool
+    // 🎯 USE CASE: Required for SQLite VACUUM operations in WAL mode
+    // 📊 DATABASE-AGNOSTIC: Only affects SQLite VACUUM (other databases don't need this)
+    //
+    // Example: SQLite VACUUM requires exclusive lock (incompatible with WAL open connections)
+    // JPAUtil.closeAllConnections();  // Close pool before VACUUM
+    // em.createNativeQuery("VACUUM").executeUpdate();  // Now can acquire exclusive lock
 }
 ```
 

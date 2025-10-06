@@ -55,7 +55,7 @@ import java.util.stream.Collectors;
  * All access must go through Blockchain's public API.
  * </p>
  *
- * @version 2.1.0
+ * @version 1.0.5
  * @since 1.0.0
  * @author Blockchain Development Team
  */
@@ -66,7 +66,7 @@ class BlockRepository {
     /**
      * API version for tracking batch optimization features
      * 
-     * @since 2.0.0
+     * @since 1.0.5
      */
     public static final String BATCH_API_VERSION = "2.0.0";
 
@@ -1796,7 +1796,7 @@ class BlockRepository {
      * @throws RuntimeException         if database access fails or transaction
      *                                  issues occur
      * 
-     * @since 2.0.0
+     * @since 1.0.5
      * @see #saveBlock(Block)
      * @see #findByBlockNumber(Long)
      * @author Performance Optimization Team
@@ -1934,8 +1934,8 @@ class BlockRepository {
      * blockchain.batchRetrieveBlocks(blockNumbers2)
      * );
      * 
-     * @version 2.0.0
-     * @since 2.0.0
+     * @version 1.0.5
+     * @since 1.0.5
      */
     /**
      * Batch retrieve blocks by their hash values with high-performance
@@ -1995,7 +1995,7 @@ class BlockRepository {
      *         number.
      *         Never returns null. Missing blocks are excluded from results.
      * @throws RuntimeException if database operation fails
-     * @since 2.0.1
+     * @since 1.0.5
      * @see #batchRetrieveBlocks(List) for batch retrieval by block numbers
      * @see com.rbatllet.blockchain.search.SearchFrameworkEngine.EnhancedSearchResult
      * @author Performance Optimization Team

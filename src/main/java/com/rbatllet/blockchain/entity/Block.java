@@ -4,6 +4,60 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
+/**
+ * Block entity representing a single block in the blockchain.
+ * 
+ * <h2>🔒 SECURITY: Blockchain Integrity Protection (2-Layer Defense)</h2>
+ * <p>This class implements a robust protection system to prevent modification
+ * of hash-critical fields that would compromise blockchain integrity.</p>
+ * 
+ * <h3>⚠️ IMMUTABLE Fields (Hash-Critical) - Protected by 2 Layers:</h3>
+ * 
+ * <h4>Layer 1: Database Level Protection (JPA)</h4>
+ * <p>All hash-critical fields are marked {@code @Column(updatable=false)}:</p>
+ * <ul>
+ *   <li><b>data</b> - Block content (part of hash calculation)</li>
+ *   <li><b>blockNumber</b> - Block position in chain</li>
+ *   <li><b>previousHash</b> - Link to previous block</li>
+ *   <li><b>timestamp</b> - Block creation time</li>
+ *   <li><b>hash</b> - Block's cryptographic hash</li>
+ *   <li><b>signature</b> - Cryptographic signature</li>
+ *   <li><b>signerPublicKey</b> - Signer identity</li>
+ * </ul>
+ * <p><b>JPA will silently ignore any UPDATE statements</b> for these fields,
+ * providing the final enforcement layer at the database level.</p>
+ * 
+ * <h4>Layer 2: API Level Validation + Logging</h4>
+ * <p>{@link com.rbatllet.blockchain.core.Blockchain#updateBlock(Block)} provides:</p>
+ * <ul>
+ *   <li><b>Validation:</b> Rejects update requests if immutable fields are modified</li>
+ *   <li><b>Logging:</b> Logs {@code logger.error()} for EACH attempted modification</li>
+ *   <li><b>Clear Feedback:</b> Returns {@code false} to indicate rejection</li>
+ *   <li><b>Safe Updates:</b> Only copies mutable fields to existing block</li>
+ * </ul>
+ * <p><b>All modification attempts are logged</b> for security auditing.</p>
+ * 
+ * <h3>✅ MUTABLE Fields (Safe for updates):</h3>
+ * <p>These fields can be safely modified without affecting blockchain integrity:</p>
+ * <ul>
+ *   <li><b>customMetadata</b> - User-defined JSON metadata</li>
+ *   <li><b>encryptionMetadata</b> - Encryption/recipient metadata</li>
+ *   <li><b>manualKeywords</b> - User-specified search keywords</li>
+ *   <li><b>autoKeywords</b> - Auto-extracted keywords</li>
+ *   <li><b>searchableContent</b> - Combined searchable text</li>
+ *   <li><b>contentCategory</b> - Content classification</li>
+ *   <li><b>isEncrypted</b> - Encryption flag</li>
+ *   <li><b>offChainData</b> - Off-chain data reference</li>
+ * </ul>
+ * 
+ * <h3>Safe Update API:</h3>
+ * <p>Use {@code Blockchain.updateBlock()} to safely update mutable fields.</p>
+ * <p>The method will log and reject any attempts to modify immutable fields.</p>
+ * 
+ * @author rbatllet
+ * @since 1.0.0
+ * @see com.rbatllet.blockchain.core.Blockchain#updateBlock(Block)
+ */
 @Entity
 @Table(name = "blocks")
 public class Block {
@@ -12,32 +66,36 @@ public class Block {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(name = "block_number", unique = true, nullable = false)
+    // ========== IMMUTABLE FIELDS (Hash-Critical) - updatable=false ==========
+    
+    @Column(name = "block_number", unique = true, nullable = false, updatable = false)
     private Long blockNumber;
     
-    @Column(name = "previous_hash", length = 64)
+    @Column(name = "previous_hash", length = 64, updatable = false)
     private String previousHash;
     
-    @Column(name = "data", columnDefinition = "TEXT")
+    @Column(name = "data", columnDefinition = "TEXT", updatable = false)
     private String data;
     
-    @Column(name = "timestamp", nullable = false)
+    @Column(name = "timestamp", nullable = false, updatable = false)
     private LocalDateTime timestamp;
     
-    @Column(name = "hash", length = 64, nullable = false)
+    @Column(name = "hash", length = 64, nullable = false, updatable = false)
     private String hash;
     
-    @Column(name = "signature", columnDefinition = "TEXT")
+    @Column(name = "signature", columnDefinition = "TEXT", updatable = false)
     private String signature;
     
-    @Column(name = "signer_public_key", columnDefinition = "TEXT")
+    @Column(name = "signer_public_key", columnDefinition = "TEXT", updatable = false)
     private String signerPublicKey;
+    
+    // ========== MUTABLE FIELDS (Safe to update) ==========
     
     @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @JoinColumn(name = "off_chain_data_id")
     private OffChainData offChainData;
     
-    // Search-related fields
+    // Search-related fields (safe to update)
     @Column(name = "manual_keywords", length = 1024)
     private String manualKeywords;      // Keywords specified by user
     
@@ -50,13 +108,14 @@ public class Block {
     @Column(name = "content_category", length = 50)
     private String contentCategory;     // "MEDICAL", "FINANCE", "LEGAL", etc.
     
-    // Encryption-related fields
+    // Encryption-related fields (safe to update)
     @Column(name = "is_encrypted", nullable = false)
     private Boolean isEncrypted = false;  // Flag to indicate if data is encrypted
     
     @Column(name = "encryption_metadata", columnDefinition = "TEXT")
     private String encryptionMetadata;    // Serialized EncryptedBlockData (when encrypted)
     
+    // Custom metadata (safe to update)
     @Column(name = "custom_metadata", columnDefinition = "TEXT")
     private String customMetadata;        // Custom metadata in JSON format
 

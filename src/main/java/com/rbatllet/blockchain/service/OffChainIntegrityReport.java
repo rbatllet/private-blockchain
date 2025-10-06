@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory;
  * All public methods validate their inputs and handle edge cases gracefully.
  *
  * @author rbatllet
- * @version 2.0
+ * @version 1.0.5
  */
 public class OffChainIntegrityReport {
 

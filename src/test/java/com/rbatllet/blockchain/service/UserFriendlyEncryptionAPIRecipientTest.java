@@ -61,8 +61,12 @@ class UserFriendlyEncryptionAPIRecipientTest {
         assertNotNull(encryptedBlock, "Encrypted block should be created");
         assertTrue(encryptedBlock.getIsEncrypted(), "Block should be marked as encrypted");
         assertNotNull(encryptedBlock.getData(), "Block should have encrypted data");
-        assertTrue(encryptedBlock.getData().startsWith("RECIPIENT_ENCRYPTED:" + recipientUsername + ":"), 
-            "Block should contain recipient encryption marker");
+        // Verify recipient encryption marker is in encryptionMetadata (not in data field)
+        assertNotNull(encryptedBlock.getEncryptionMetadata(), "Block should have encryption metadata");
+        assertTrue(encryptedBlock.getEncryptionMetadata().contains("RECIPIENT_ENCRYPTED"), 
+            "Block should contain recipient encryption marker in metadata");
+        assertTrue(encryptedBlock.getEncryptionMetadata().contains("\"recipient\":\"" + recipientUsername + "\""), 
+            "Block metadata should contain recipient username");
         assertEquals("SECRET", encryptedBlock.getContentCategory(), "Category should be set correctly");
     }
 
@@ -151,9 +155,10 @@ class UserFriendlyEncryptionAPIRecipientTest {
         assertNotNull(encryptedBlock, "Password-encrypted block should be created");
         assertTrue(encryptedBlock.getIsEncrypted(), "Block should be marked as encrypted");
         assertNotNull(encryptedBlock.getData(), "Block should have encrypted data");
-        // Password encrypted blocks don't have the recipient prefix
-        assertFalse(encryptedBlock.getData().startsWith("RECIPIENT_ENCRYPTED:"), 
-            "Password-encrypted blocks should not have recipient prefix");
+        // Password encrypted blocks don't have the recipient marker in metadata
+        String metadata = encryptedBlock.getEncryptionMetadata();
+        assertTrue(metadata == null || !metadata.contains("RECIPIENT_ENCRYPTED"), 
+            "Password-encrypted blocks should not have recipient marker in metadata");
     }
 
     @Test

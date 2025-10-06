@@ -3,11 +3,11 @@ package com.rbatllet.blockchain.service;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
-import org.mockito.MockitoAnnotations;
 
 import java.security.KeyPair;
 import java.util.List;
@@ -23,18 +23,27 @@ public class UserFriendlyEncryptionAPICoreFunctionalityTest {
 
     private UserFriendlyEncryptionAPI api;
     private Blockchain realBlockchain;
+    private KeyPair defaultKeyPair;
     private String testUsername = "coreuser";
     private String testPassword = "CorePassword123!";
+    
+    // Store the blocks created in setup to avoid finding old test data
+    private Block testEncryptedBlock1;
+    private Block testEncryptedBlock2;
 
     @BeforeEach
     void setUp() throws Exception {
-        MockitoAnnotations.openMocks(this);
-        
-        // Create real blockchain for integration
+        // Create real blockchain (no mocks)
         realBlockchain = new Blockchain();
+        realBlockchain.clearAndReinitialize(); // Clean DB before each test
         
         // Create API with default credentials
-        KeyPair defaultKeyPair = CryptoUtil.generateKeyPair();
+        defaultKeyPair = CryptoUtil.generateKeyPair();
+        
+        // Add authorized key for test user
+        String publicKeyString = CryptoUtil.publicKeyToString(defaultKeyPair.getPublic());
+        realBlockchain.addAuthorizedKey(publicKeyString, testUsername);
+        
         api = new UserFriendlyEncryptionAPI(realBlockchain, testUsername, defaultKeyPair);
         
         // Initialize SearchSpecialistAPI before storing encrypted data
@@ -45,12 +54,20 @@ public class UserFriendlyEncryptionAPICoreFunctionalityTest {
             System.err.println("⚠️ Warning: SearchSpecialistAPI initialization failed: " + e.getMessage());
         }
         
-        // Add some test data - encrypted and unencrypted blocks
-        api.storeSecret("Secret document content", testPassword);
-        api.storeSecret("Config data", testPassword);
+        // CRITICAL: Store block references to use directly (avoid contamination from previous test runs)
+        testEncryptedBlock1 = api.storeSecret("Secret document content", testPassword);
+        testEncryptedBlock2 = api.storeSecret("Config data", testPassword);
         
         // Add unencrypted public data for testing
         realBlockchain.addBlock("Public information for testing", defaultKeyPair.getPrivate(), defaultKeyPair.getPublic());
+    }
+    
+    @AfterEach
+    void tearDown() {
+        // Clean database after each test to ensure test isolation
+        if (realBlockchain != null) {
+            realBlockchain.clearAndReinitialize();
+        }
     }
 
     @Nested
@@ -60,51 +77,32 @@ public class UserFriendlyEncryptionAPICoreFunctionalityTest {
         @Test
         @DisplayName("Should retrieve secret from block")
         void shouldRetrieveSecretFromBlock() {
-                        // Given - Find first encrypted block
-            Long blockNumber = null;
-            long blockCount = realBlockchain.getBlockCount();
-
-            // Find an encrypted block by checking if it has encrypted data
-            for (long i = 0; i < blockCount; i++) {
-                Block block = realBlockchain.getBlock(i);
-                if (block != null && api.isBlockEncrypted(block.getBlockNumber())) {
-                    blockNumber = block.getBlockNumber();
-                    break;
-                }
-            }
+            // Given - Use the blocks we just created in @BeforeEach
+            assertNotNull(testEncryptedBlock1, "Setup should have created encrypted block 1");
+            Long blockNumber = testEncryptedBlock1.getBlockNumber();
             
-            if (blockNumber != null) {
-                // When
-                String retrievedSecret = api.retrieveSecret(blockNumber, testPassword);
-                
-                // Then
-                assertNotNull(retrievedSecret, "Should retrieve secret content");
-            } else {
-                // If no encrypted blocks found, just test that method doesn't crash
-                assertDoesNotThrow(() -> {
-                    api.retrieveSecret(1L, testPassword);
-                }, "Should handle non-encrypted blocks gracefully");
-            }
+            // When - Retrieve the secret with correct password
+            String retrievedSecret = api.retrieveSecret(blockNumber, testPassword);
+            
+            // Then - Should successfully decrypt and return original content
+            assertNotNull(retrievedSecret, "Should retrieve secret content from password-encrypted block");
+            assertEquals("Secret document content", retrievedSecret, "Retrieved secret should match original content");
         }
 
         @Test
         @DisplayName("Should check if block is encrypted")
         void shouldCheckIfBlockIsEncrypted() {
-            // Given
-            long blockCount = realBlockchain.getBlockCount();
-
-            // When & Then - Just verify the method executes without error
-            for (long i = 0; i < blockCount; i++) {
-                Block block = realBlockchain.getBlock(i);
-                if (block == null) continue;
-
-                boolean isEncrypted = api.isBlockEncrypted(block.getBlockNumber());
-                // The API considers all blocks as potentially encrypted unless proven otherwise
-                // So we just verify the method executes without error and returns a boolean
-                assertTrue(isEncrypted || !isEncrypted, "Should return boolean result");
-            }
-
-            assertTrue(blockCount > 0, "Should have at least one block to test");
+            // Given - Use blocks created in @BeforeEach
+            assertNotNull(testEncryptedBlock1, "Setup should have created encrypted block 1");
+            assertNotNull(testEncryptedBlock2, "Setup should have created encrypted block 2");
+            
+            // When - Check if blocks are encrypted
+            boolean block1Encrypted = api.isBlockEncrypted(testEncryptedBlock1.getBlockNumber());
+            boolean block2Encrypted = api.isBlockEncrypted(testEncryptedBlock2.getBlockNumber());
+            
+            // Then - Both should be encrypted
+            assertTrue(block1Encrypted, "Block 1 should be encrypted");
+            assertTrue(block2Encrypted, "Block 2 should be encrypted");
         }
 
         @Test

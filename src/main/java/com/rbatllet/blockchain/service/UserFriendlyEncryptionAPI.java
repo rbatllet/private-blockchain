@@ -1052,7 +1052,7 @@ public class UserFriendlyEncryptionAPI {
      * @return a list of blocks containing matching content from both public and encrypted sources
      * @throws IllegalArgumentException if query or password is null, or query is empty
      * @see SearchSpecialistAPI#searchSecure(String, String, int)
-     * @since 1.1
+     * @since 1.0.5
      */
     public List<Block> searchSecure(String query, String password) {
         if (query == null || query.trim().isEmpty()) {
@@ -1115,7 +1115,7 @@ public class UserFriendlyEncryptionAPI {
      *
      * @return a formatted string containing comprehensive search analytics
      * @see SearchSpecialistAPI#getPerformanceMetrics()
-     * @since 1.1
+     * @since 1.0.5
      */
 
     /**
@@ -1126,7 +1126,7 @@ public class UserFriendlyEncryptionAPI {
      *
      * @return a detailed diagnostic report with system status and recommendations
      * @see SearchSpecialistAPI#runDiagnostics()
-     * @since 1.1
+     * @since 1.0.5
      */
 
     /**
@@ -1328,7 +1328,7 @@ public class UserFriendlyEncryptionAPI {
      * @see Block#setContentCategory(String)
      * @see Block#setManualKeywords(String)
      * @see Block#setSearchableContent(String)
-     * @since 1.1
+     * @since 1.0.5
      */
     public boolean updateBlockMetadata(Block block) {
         if (block == null) {
@@ -11856,21 +11856,22 @@ public class UserFriendlyEncryptionAPI {
                         logger.info("✅ Encrypted blocks batch retrieval completed: {} blocks", matchingBlocks.size());
                         
                     } catch (Exception batchEx) {
-                        logger.error("❌ Batch optimization failed for encrypted blocks, falling back", batchEx);
+                        logger.error("❌ Batch optimization failed for encrypted blocks, falling back to chunked retrieval", batchEx);
                         
-                        // Fallback to individual queries
-                        for (Long blockNumber : encryptedBlocksCache) {
+                        // OPTIMIZED FALLBACK: Use batch processing even in fallback (chunks of 100)
+                        final int FALLBACK_BATCH_SIZE = 100;
+                        List<Long> blockNumbersList = new ArrayList<>(encryptedBlocksCache);
+                        
+                        for (int i = 0; i < blockNumbersList.size(); i += FALLBACK_BATCH_SIZE) {
+                            int endIdx = Math.min(i + FALLBACK_BATCH_SIZE, blockNumbersList.size());
+                            List<Long> chunk = blockNumbersList.subList(i, endIdx);
+                            
                             try {
-                                Block block = blockchain.getBlock(blockNumber);
-                                if (block != null) {
-                                    matchingBlocks.add(block);
-                                }
-                            } catch (Exception e) {
-                                logger.warn(
-                                    "Error retrieving encrypted block #{}: {}",
-                                    blockNumber,
-                                    e.getMessage()
-                                );
+                                List<Block> chunkBlocks = blockchain.batchRetrieveBlocks(chunk);
+                                matchingBlocks.addAll(chunkBlocks);
+                            } catch (Exception chunkEx) {
+                                logger.warn("Error retrieving chunk of encrypted blocks (indices {}-{}): {}", 
+                                    i, endIdx - 1, chunkEx.getMessage());
                             }
                         }
                     }
@@ -12582,7 +12583,8 @@ public class UserFriendlyEncryptionAPI {
             );
 
             if (encryptedBlock != null) {
-                // Mark block as encrypted and set recipient info (thread-safe)
+                // Mark block as encrypted and set recipient info using encryptionMetadata (thread-safe)
+                // SECURITY: Cannot modify 'data' field (immutable), use encryptionMetadata instead
                 final Block updatedBlock = JPAUtil.executeInTransaction(em -> {
                     Block managedBlock = em.find(
                         Block.class,
@@ -12590,15 +12592,10 @@ public class UserFriendlyEncryptionAPI {
                     );
                     if (managedBlock != null) {
                         managedBlock.setIsEncrypted(true);
-                        // Store recipient username in a custom metadata field or extend Block entity
-                        // For now, we'll use a prefix in content to indicate recipient encryption
-                        String originalData = managedBlock.getData();
-                        managedBlock.setData(
-                            "RECIPIENT_ENCRYPTED:" +
-                            recipientUsername +
-                            ":" +
-                            originalData
-                        );
+                        // Store recipient username in encryptionMetadata (mutable field)
+                        String recipientMetadata = "{\"type\":\"RECIPIENT_ENCRYPTED\",\"recipient\":\"" + 
+                                                   recipientUsername + "\"}";
+                        managedBlock.setEncryptionMetadata(recipientMetadata);
                         em.merge(managedBlock);
                         em.flush(); // Ensure changes are persisted
                         em.refresh(managedBlock); // Refresh to get updated state
@@ -12645,26 +12642,28 @@ public class UserFriendlyEncryptionAPI {
             throw new IllegalArgumentException("Block is not encrypted");
         }
 
-        // Check if this is a recipient-encrypted block
-        String blockData = block.getData();
-        if (!blockData.startsWith("RECIPIENT_ENCRYPTED:")) {
+        // Check if this is a recipient-encrypted block by reading encryptionMetadata
+        String encryptionMetadata = block.getEncryptionMetadata();
+        if (encryptionMetadata == null || !encryptionMetadata.contains("RECIPIENT_ENCRYPTED")) {
             throw new IllegalArgumentException(
                 "Block is not recipient-encrypted"
             );
         }
 
         try {
-            // Extract the serialized encrypted data
-            // Format: RECIPIENT_ENCRYPTED:recipientUsername:serializedEncryptedData
-            String[] parts = blockData.split(":", 3);
-            if (parts.length != 3) {
-                throw new IllegalArgumentException(
-                    "Invalid recipient-encrypted block format"
-                );
+            // Extract recipient username from encryptionMetadata
+            // Format: {"type":"RECIPIENT_ENCRYPTED","recipient":"username"}
+            String recipientUsername = null;
+            if (encryptionMetadata.contains("\"recipient\":\"")) {
+                int startIdx = encryptionMetadata.indexOf("\"recipient\":\"") + 13;
+                int endIdx = encryptionMetadata.indexOf("\"", startIdx);
+                if (endIdx > startIdx) {
+                    recipientUsername = encryptionMetadata.substring(startIdx, endIdx);
+                }
             }
-
-            String recipientUsername = parts[1];
-            String serializedEncryptedData = parts[2];
+            
+            // The actual encrypted data is in the 'data' field (without prefix)
+            String serializedEncryptedData = block.getData();
 
             // Deserialize the encrypted data
             BlockDataEncryptionService.EncryptedBlockData encryptedData =
@@ -12703,9 +12702,10 @@ public class UserFriendlyEncryptionAPI {
         if (block == null || !block.getIsEncrypted()) {
             return false;
         }
+        String encryptionMetadata = block.getEncryptionMetadata();
         return (
-            block.getData() != null &&
-            block.getData().startsWith("RECIPIENT_ENCRYPTED:")
+            encryptionMetadata != null &&
+            encryptionMetadata.contains("RECIPIENT_ENCRYPTED")
         );
     }
 
@@ -12720,9 +12720,15 @@ public class UserFriendlyEncryptionAPI {
             return null;
         }
 
-        String[] parts = block.getData().split(":", 3);
-        if (parts.length >= 2) {
-            return parts[1];
+        // Extract recipient from encryptionMetadata JSON
+        // Format: {"type":"RECIPIENT_ENCRYPTED","recipient":"username"}
+        String encryptionMetadata = block.getEncryptionMetadata();
+        if (encryptionMetadata != null && encryptionMetadata.contains("\"recipient\":\"")) {
+            int startIdx = encryptionMetadata.indexOf("\"recipient\":\"") + 13;
+            int endIdx = encryptionMetadata.indexOf("\"", startIdx);
+            if (endIdx > startIdx) {
+                return encryptionMetadata.substring(startIdx, endIdx);
+            }
         }
         return null;
     }
@@ -12793,22 +12799,22 @@ public class UserFriendlyEncryptionAPI {
                     logger.info("✅ Recipient blocks batch retrieval completed: {} blocks for '{}'", recipientBlocks.size(), trimmedUsername);
                     
                 } catch (Exception batchEx) {
-                    logger.error("❌ Batch optimization failed for recipient blocks, falling back", batchEx);
+                    logger.error("❌ Batch optimization failed for recipient blocks, falling back to chunked retrieval", batchEx);
                     
-                    // Fallback to individual queries
-                    for (Long blockNumber : blockNumbers) {
+                    // OPTIMIZED FALLBACK: Use batch processing even in fallback (chunks of 100)
+                    final int FALLBACK_BATCH_SIZE = 100;
+                    List<Long> blockNumbersList = new ArrayList<>(blockNumbers);
+                    
+                    for (int i = 0; i < blockNumbersList.size(); i += FALLBACK_BATCH_SIZE) {
+                        int endIdx = Math.min(i + FALLBACK_BATCH_SIZE, blockNumbersList.size());
+                        List<Long> chunk = blockNumbersList.subList(i, endIdx);
+                        
                         try {
-                            Block block = blockchain.getBlock(blockNumber);
-                            if (block != null) {
-                                recipientBlocks.add(block);
-                            }
-                        } catch (Exception e) {
-                            logger.warn(
-                                "Error retrieving indexed block #{} for recipient '{}': {}",
-                                blockNumber,
-                                trimmedUsername,
-                                e.getMessage()
-                            );
+                            List<Block> chunkBlocks = blockchain.batchRetrieveBlocks(chunk);
+                            recipientBlocks.addAll(chunkBlocks);
+                        } catch (Exception chunkEx) {
+                            logger.warn("Error retrieving chunk of recipient blocks for '{}' (indices {}-{}): {}", 
+                                trimmedUsername, i, endIdx - 1, chunkEx.getMessage());
                         }
                     }
                 }
@@ -13091,23 +13097,24 @@ public class UserFriendlyEncryptionAPI {
                         
                     } catch (Exception e) {
                         logger.warn(
-                            "Batch retrieval failed, falling back to individual queries: {}",
+                            "Batch retrieval failed, falling back to chunked retrieval: {}",
                             e.getMessage()
                         );
                         
-                        // Fallback to individual queries if batch fails
-                        for (Long blockNumber : candidateBlockNumbers) {
+                        // OPTIMIZED FALLBACK: Use batch processing even in fallback (chunks of 100)
+                        final int FALLBACK_BATCH_SIZE = 100;
+                        List<Long> blockNumbersList = new ArrayList<>(candidateBlockNumbers);
+                        
+                        for (int i = 0; i < blockNumbersList.size(); i += FALLBACK_BATCH_SIZE) {
+                            int endIdx = Math.min(i + FALLBACK_BATCH_SIZE, blockNumbersList.size());
+                            List<Long> chunk = blockNumbersList.subList(i, endIdx);
+                            
                             try {
-                                Block block = blockchain.getBlock(blockNumber);
-                                if (block != null) {
-                                    matchingBlocks.add(block);
-                                }
-                            } catch (Exception individualError) {
-                                logger.warn(
-                                    "Error retrieving block #{}: {}",
-                                    blockNumber,
-                                    individualError.getMessage()
-                                );
+                                List<Block> chunkBlocks = blockchain.batchRetrieveBlocks(chunk);
+                                matchingBlocks.addAll(chunkBlocks);
+                            } catch (Exception chunkEx) {
+                                logger.warn("Error retrieving chunk of blocks (indices {}-{}): {}", 
+                                    i, endIdx - 1, chunkEx.getMessage());
                             }
                         }
                     }
@@ -13458,23 +13465,28 @@ public class UserFriendlyEncryptionAPI {
                 .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
                 
         } catch (Exception e) {
-            logger.warn("❌ Batch retrieval failed in parallel search, using fallback: {}", e.getMessage());
+            logger.warn("❌ Batch retrieval failed in parallel search, using chunked fallback: {}", e.getMessage());
             
-            // Fallback: parallel individual queries (original implementation)
-            return blockNumbers
+            // OPTIMIZED FALLBACK: Use batch processing in chunks instead of individual queries
+            final int FALLBACK_BATCH_SIZE = 100;
+            List<Long> blockNumbersList = new ArrayList<>(blockNumbers);
+            List<Block> allBlocks = new ArrayList<>();
+            
+            for (int i = 0; i < blockNumbersList.size(); i += FALLBACK_BATCH_SIZE) {
+                int endIdx = Math.min(i + FALLBACK_BATCH_SIZE, blockNumbersList.size());
+                List<Long> chunk = blockNumbersList.subList(i, endIdx);
+                
+                try {
+                    List<Block> chunkBlocks = blockchain.batchRetrieveBlocks(chunk);
+                    allBlocks.addAll(chunkBlocks);
+                } catch (Exception chunkEx) {
+                    logger.warn("Error retrieving chunk for parallel search (indices {}-{}): {}", 
+                        i, endIdx - 1, chunkEx.getMessage());
+                }
+            }
+            
+            return allBlocks
                 .parallelStream()
-                .map(blockNumber -> {
-                    try {
-                        return blockchain.getBlock(blockNumber);
-                    } catch (Exception ex) {
-                        logger.warn(
-                            "Error retrieving block #{} in parallel search fallback: {}",
-                            blockNumber,
-                            ex.getMessage()
-                        );
-                        return null;
-                    }
-                })
                 .filter(Objects::nonNull)
                 .filter(block -> matchesSearchTerm(block, searchTerm))
                 .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
@@ -13505,21 +13517,26 @@ public class UserFriendlyEncryptionAPI {
             logger.info("✅ Sequential search batch optimization completed: {} matching blocks", matchingBlocks.size());
             
         } catch (Exception batchEx) {
-            logger.error("❌ Batch optimization failed for sequential search, falling back", batchEx);
+            logger.error("❌ Batch optimization failed for sequential search, falling back to chunked retrieval", batchEx);
             
-            // Fallback to individual queries
-            for (Long blockNumber : blockNumbers) {
+            // OPTIMIZED FALLBACK: Use batch processing even in fallback (chunks of 100)
+            final int FALLBACK_BATCH_SIZE = 100;
+            List<Long> blockNumbersList = new ArrayList<>(blockNumbers);
+            
+            for (int i = 0; i < blockNumbersList.size(); i += FALLBACK_BATCH_SIZE) {
+                int endIdx = Math.min(i + FALLBACK_BATCH_SIZE, blockNumbersList.size());
+                List<Long> chunk = blockNumbersList.subList(i, endIdx);
+                
                 try {
-                    Block block = blockchain.getBlock(blockNumber);
-                    if (block != null && matchesSearchTerm(block, searchTerm)) {
-                        matchingBlocks.add(block);
+                    List<Block> chunkBlocks = blockchain.batchRetrieveBlocks(chunk);
+                    for (Block block : chunkBlocks) {
+                        if (block != null && matchesSearchTerm(block, searchTerm)) {
+                            matchingBlocks.add(block);
+                        }
                     }
-                } catch (Exception e) {
-                    logger.warn(
-                        "Error retrieving block #{} in sequential search: {}",
-                        blockNumber,
-                        e.getMessage()
-                    );
+                } catch (Exception chunkEx) {
+                    logger.warn("Error retrieving chunk of blocks for sequential search (indices {}-{}): {}", 
+                        i, endIdx - 1, chunkEx.getMessage());
                 }
             }
         }

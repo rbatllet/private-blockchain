@@ -17,7 +17,7 @@ import java.util.List;
  * in Blockchain.java. AuthorizedKeyDAO is only called from within Blockchain's lock scope,
  * never directly by external code.</p>
  *
- * @version 2.1.0
+ * @version 1.0.5
  */
 public class AuthorizedKeyDAO {
     

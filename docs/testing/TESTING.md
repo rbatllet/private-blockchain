@@ -341,6 +341,94 @@ The project follows these testing best practices:
 - Tests are readable and maintainable
 - Test names clearly describe what is being tested
 
+### 5. Database Lifecycle Management
+
+**⚠️ CRITICAL: Proper JPAUtil Lifecycle Management**
+
+Following existing test patterns, tests MUST manage JPAUtil properly:
+
+#### ✅ CORRECT Pattern (Used by All Maintenance Tests)
+
+```java
+@DisplayName("Example Test Class")
+class ExampleTest {
+
+    @BeforeAll
+    static void initializeDatabase() {
+        // Initialize JPAUtil with default configuration (respects environment variables)
+        JPAUtil.initializeDefault();
+    }
+
+    @AfterEach
+    void tearDown() {
+        // Close EntityManager for current thread (NOT shutdown!)
+        JPAUtil.closeEntityManager();
+    }
+
+    // For Nested tests that intentionally shutdown JPAUtil
+    @Nested
+    @DisplayName("Error Handling Tests")
+    class ErrorHandlingTests {
+
+        @AfterEach
+        void reinitializeJPAUtil() {
+            // Reinitialize JPAUtil after tests that intentionally shut it down
+            JPAUtil.initializeDefault();
+        }
+
+        @Test
+        void testDatabaseErrors() {
+            JPAUtil.shutdown();  // Intentional shutdown for error testing
+            // Test error handling...
+        }
+    }
+}
+```
+
+#### ❌ INCORRECT Patterns
+
+```java
+// ❌ BAD: Calling shutdown() in @AfterEach
+@AfterEach
+void tearDown() {
+    JPAUtil.shutdown();  // WRONG! Closes EntityManagerFactory globally!
+}
+
+// ❌ BAD: Not initializing JPAUtil at all
+// Tests may fail if EntityManagerFactory not initialized
+
+// ❌ BAD: Initializing in @BeforeEach instead of @BeforeAll
+@BeforeEach
+void setUp() {
+    JPAUtil.initializeDefault();  // WRONG! Should be @BeforeAll
+}
+```
+
+#### Key Principles
+
+1. **@BeforeAll (static)**: Initialize JPAUtil once per test class
+   - Respects environment variables for database configuration
+   - Creates EntityManagerFactory with default or configured database
+
+2. **@AfterEach (instance)**: Clean up thread-local EntityManager
+   - Closes EntityManager for current thread only
+   - Does NOT close EntityManagerFactory
+   - Allows subsequent tests to reuse the factory
+
+3. **Nested Test Classes**: Reinitialize after intentional shutdowns
+   - Use `@AfterEach` in nested classes that call `JPAUtil.shutdown()`
+   - Call `JPAUtil.initializeDefault()` to restore factory
+
+4. **Database-Agnostic**: Tests work with SQLite, PostgreSQL, MySQL, H2
+   - `JPAUtil.initializeDefault()` checks environment variables
+   - Falls back to SQLite if no env vars configured
+
+#### Why This Matters
+
+- ❌ **EntityManagerFactory is closed**: If you call `shutdown()` in `@AfterEach`, ALL subsequent tests fail with "EntityManagerFactory is closed"
+- ✅ **EntityManager is thread-local**: Each test gets its own EntityManager, properly cleaned up after each test
+- ✅ **EntityManagerFactory is shared**: All tests in the class reuse the same factory, avoiding expensive recreations
+
 ## 📝 Test Suites Description
 
 ### 1. JUnit 5 Test Suites
@@ -364,12 +452,12 @@ The project follows these testing best practices:
 - 🔒 **Encryption and Security Validation** (3 tests): `validateBlockSize()` with null data and extremely large inputs (10MB)
 - 🛡️ **Block Registration Security** (3 tests): Private method testing through public APIs and unauthorized key validation
 - 🔒 **Block Input Validation Security** (5 tests): `validateBlockInput()` through `addBlock()` testing (null data, keys, mismatched pairs)
-- 🔄 **Block Update Security** (4 tests): `updateBlock()`, `validateSafeUpdate()` critical field modification prevention
+- 🔄 **Block Update Security** (4 tests): `updateBlock()` with JPA-level immutable field protection (`updatable=false`)
 
 **Key Security Features Tested:**
 - **Thread Safety**: Concurrent operations with ExecutorService (10 threads, 50 operations)
 - **Malicious Input Defense**: SQL injection, XSS, path traversal, null bytes, oversized strings
-- **Authorization Controls**: Unauthorized key rejection, safe update validation
+- **Authorization Controls**: Unauthorized key rejection, JPA-enforced immutable field protection
 - **Input Validation**: Comprehensive null-safety, empty parameter handling
 - **Edge Case Handling**: Invalid time ranges, non-existent blocks, extremely large data
 - **Private Method Coverage**: Testing through public API behavior patterns

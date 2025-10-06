@@ -1434,7 +1434,7 @@ public class BlockchainExample {
 
 ## 📚 Documentation
 
-This project includes 64+ comprehensive documentation files organized into **10 thematic subdirectories**:
+This project includes 65+ comprehensive documentation files organized into **11 thematic subdirectories**:
 
 ### 📂 Documentation Structure
 
@@ -1449,6 +1449,7 @@ This project includes 64+ comprehensive documentation files organized into **10 
 | **📊 Data Management** | [data-management/](docs/data-management/) | 6 | Pagination, batching, metadata |
 | **🔧 Recovery** | [recovery/](docs/recovery/) | 4 | Validation, checkpoints, integrity |
 | **📈 Monitoring** | [monitoring/](docs/monitoring/) | 4 | Performance metrics, logging |
+| **🔧 Maintenance** | [maintenance/](docs/maintenance/) | 1 | Database VACUUM, size monitoring, cleanup |
 | **📊 Reports** | [reports/](docs/reports/) | 18 | Technical audits and analysis |
 
 ### 🎯 Quick Start Paths
@@ -1472,6 +1473,10 @@ This project includes 64+ comprehensive documentation files organized into **10 
 1. **[Database-Agnostic](docs/database/DATABASE_AGNOSTIC.md)** - Switch databases (SQLite/PostgreSQL/MySQL/H2)
 2. **[Configuration Storage](docs/database/CONFIGURATION_STORAGE_GUIDE.md)** - JPAConfigurationStorage guide
 3. **[Field Limits](docs/database/DATABASE_FIELD_LIMITS.md)** - Size limits and overflow protection
+
+#### Database Maintenance
+1. **[Maintenance Guide](docs/maintenance/DATABASE_MAINTENANCE_GUIDE.md)** - Automated VACUUM, size monitoring, file cleanup
+2. **[Production Deployment](docs/PRODUCTION_GUIDE.md)** - Production best practices
 
 #### Technical Audits & Reports
 1. **[StampedLock Audit](docs/reports/STAMPEDLOCK_AUDIT_REPORT.md)** - Lock migration audit (✅ Approved)
@@ -1509,6 +1514,7 @@ This project includes 64+ comprehensive documentation files organized into **10 
 | Set up encryption and security | [Encryption Guide](docs/security/ENCRYPTION_GUIDE.md) |
 | **Switch databases (SQLite/PostgreSQL/MySQL/H2)** | [Database-Agnostic](docs/database/DATABASE_AGNOSTIC.md) |
 | Manage configuration storage | [Configuration Storage](docs/database/CONFIGURATION_STORAGE_GUIDE.md) |
+| **Configure automated database maintenance** | [Maintenance Guide](docs/maintenance/DATABASE_MAINTENANCE_GUIDE.md) |
 
 ## 🔧 Configuration
 
@@ -1676,11 +1682,23 @@ mvn clean compile test-compile
    - Cross-chain interoperability
    - Privacy-preserving transactions
 
-### Known Issues
+### Scalability & Performance
 
-- [ ] Performance degradation with very large blockchains (>1M blocks)
-- [ ] Limited support for concurrent modifications in high-load scenarios
-- [ ] Database size growth management for long-running nodes
+**Current Implementation Supports:**
+
+✅ **Unlimited blockchain size** - Memory-safe batch processing with constant O(1000) memory footprint
+✅ **High-concurrency reads** - StampedLock with optimistic reads (~50% performance improvement)
+✅ **Production-grade databases** - PostgreSQL/MySQL support with 10-60 concurrent connections
+✅ **Streaming validation** - `validateChainStreaming()` processes unlimited blocks without memory limits
+✅ **Batch operations** - Up to 10K blocks per batch with automatic memory safety checks
+
+See [Performance Optimization Plan](docs/reports/PERFORMANCE_OPTIMIZATION_PLAN.md) for detailed benchmarks.
+
+### Known Limitations
+
+- [ ] **SQLite single-writer limitation**: For high-concurrency workloads, use PostgreSQL or MySQL instead (see [Database Configuration Guide](docs/database/DATABASE_AGNOSTIC.md))
+- [x] **~~No automatic database compaction~~**: ✅ **RESOLVED** - Automated maintenance system now available with VACUUM/OPTIMIZE, size monitoring, and file cleanup (see [Maintenance Guide](docs/maintenance/DATABASE_MAINTENANCE_GUIDE.md))
+- [ ] **Large exports require memory**: Exporting entire blockchains >500K blocks may require increased heap size (use range exports or streaming validation instead)
 
 ### Contribution Guidelines
 
