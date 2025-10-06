@@ -63,7 +63,7 @@ class NumericOverflowTest {
     @Test
     @DisplayName("Block sequence increment should check overflow")
     void testSequenceIncrementOverflow() {
-        // Simulate what happens in BlockDAO.getNextBlockNumberAtomic()
+        // Simulate what happens in BlockRepository.getNextBlockNumberAtomic()
         long currentValue = Long.MAX_VALUE - 1;
 
         // This is what the current code does:
@@ -77,11 +77,11 @@ class NumericOverflowTest {
         currentValue = Long.MAX_VALUE;
         // nextValue = currentValue + 1; // This would overflow!
 
-        // The BlockDAO now checks before incrementing and should throw exception
-        // This test demonstrates the overflow scenario that BlockDAO protects against
+        // The BlockRepository now checks before incrementing and should throw exception
+        // This test demonstrates the overflow scenario that BlockRepository protects against
         assertTrue(currentValue == Long.MAX_VALUE, "Block number at maximum");
 
-        // If we were to increment (which BlockDAO prevents):
+        // If we were to increment (which BlockRepository prevents):
         // This would silently overflow to Long.MIN_VALUE
         long wouldOverflow = currentValue + 1;
         assertEquals(Long.MIN_VALUE, wouldOverflow, "Demonstrates overflow without protection");

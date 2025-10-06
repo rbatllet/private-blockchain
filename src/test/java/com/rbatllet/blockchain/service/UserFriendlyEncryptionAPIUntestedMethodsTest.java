@@ -40,7 +40,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.core.Blockchain;
-import com.rbatllet.blockchain.dao.BlockDAO;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.entity.OffChainData;
 import com.rbatllet.blockchain.indexing.IndexingCoordinator;
@@ -75,23 +74,20 @@ class UserFriendlyEncryptionAPIUntestedMethodsTest {
     private Blockchain mockBlockchain;
     
     @Mock
-    private BlockDAO mockBlockDAO;
-    
-    @Mock
     private SearchSpecialistAPI mockSearchAPI;
-    
+
     @Mock
     private IndexingCoordinator mockIndexingCoordinator;
-    
+
     private UserFriendlyEncryptionAPI api;
     private KeyPair testKeyPair;
     private EncryptionConfig testConfig;
-    
+
     // Test data constants
     private static final String TEST_USERNAME = "testUser";
     private static final String TEST_PASSWORD = "testPassword123";
 
-    
+
         @BeforeEach
     void setUp() {
         // Initialize test configuration with default settings
@@ -101,8 +97,7 @@ class UserFriendlyEncryptionAPIUntestedMethodsTest {
         testKeyPair = CryptoUtil.generateKeyPair();
 
         // Properly configure mocks to avoid NullPointer issues
-        lenient().when(mockBlockchain.getBlockDAO()).thenReturn(mockBlockDAO);
-        lenient().when(mockBlockDAO.batchRetrieveBlocks(any())).thenReturn(new ArrayList<>());
+        lenient().when(mockBlockchain.batchRetrieveBlocks(any())).thenReturn(new ArrayList<>());
         lenient().when(mockBlockchain.getBlockCount()).thenReturn(0L);
         lenient().when(mockBlockchain.getBlock(anyLong())).thenReturn(null);
 
@@ -345,17 +340,16 @@ class UserFriendlyEncryptionAPIUntestedMethodsTest {
             return null;
         });
 
-        // Also ensure the blockchain mock returns this DAO
-        lenient().when(mockBlockchain.getBlockDAO()).thenReturn(mockBlockDAO);
-        lenient().when(mockBlockDAO.getBlockCount()).thenReturn((long) allBlocks.size());
-        lenient().when(mockBlockDAO.getBlockByNumber(anyLong())).thenAnswer(invocation -> {
+        // Mock blockchain methods (BlockRepository now package-private)
+        lenient().when(mockBlockchain.getBlockCount()).thenReturn((long) allBlocks.size());
+        lenient().when(mockBlockchain.getBlock(anyLong())).thenAnswer(invocation -> {
             Long blockNumber = invocation.getArgument(0);
             if (blockNumber >= 0 && blockNumber < allBlocks.size()) {
                 return allBlocks.get(blockNumber.intValue());
             }
             return null;
         });
-        
+
         // Test successful metadata search - API should scan all blocks
         List<Block> results = api.findBlocksByMetadata(metadataKey, metadataValue);
         
@@ -491,7 +485,7 @@ class UserFriendlyEncryptionAPIUntestedMethodsTest {
         // Simulate adding new blocks - using lenient to avoid unnecessary stubbing errors
         lenient().when(mockBlockchain.getBlockCount()).thenReturn(15L);
         List<Block> newBlocks = createTestBlocksWithMetadata(5);
-        lenient().when(mockBlockDAO.batchRetrieveBlocks(any())).thenReturn(newBlocks);
+        lenient().when(mockBlockchain.batchRetrieveBlocks(any())).thenReturn(newBlocks);
         
         assertDoesNotThrow(() -> {
             updateMethod.invoke(api);

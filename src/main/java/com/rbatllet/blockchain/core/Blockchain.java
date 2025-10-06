@@ -6,7 +6,6 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.config.MemorySafetyConstants;
 import com.rbatllet.blockchain.dao.AuthorizedKeyDAO;
-import com.rbatllet.blockchain.dao.BlockDAO;
 import com.rbatllet.blockchain.dto.ChainExportData;
 import com.rbatllet.blockchain.dto.EncryptionExportData;
 import com.rbatllet.blockchain.entity.AuthorizedKey;
@@ -62,7 +61,7 @@ public class Blockchain {
         Blockchain.class
     );
 
-    private final BlockDAO blockDAO;
+    private final BlockRepository blockRepository;
     private final AuthorizedKeyDAO authorizedKeyDAO;
     private static final String GENESIS_PREVIOUS_HASH = "0";
 
@@ -94,7 +93,7 @@ public class Blockchain {
         OFF_CHAIN_THRESHOLD_BYTES;
 
     public Blockchain() {
-        this.blockDAO = new BlockDAO();
+        this.blockRepository = new BlockRepository();
         this.authorizedKeyDAO = new AuthorizedKeyDAO();
 
         // Initialize Search Framework Engine with high security configuration
@@ -132,7 +131,7 @@ public class Blockchain {
      * Used when already inside a transaction (e.g., during clearAndReinitialize)
      */
     private void initializeGenesisBlockInternal(EntityManager em) {
-        if (blockDAO.getBlockCount() == 0) {
+        if (blockRepository.getBlockCount() == 0) {
             LocalDateTime genesisTime = LocalDateTime.now();
 
             Block genesisBlock = new Block();
@@ -148,10 +147,10 @@ public class Blockchain {
             genesisBlock.setSignature("GENESIS");
             genesisBlock.setSignerPublicKey("GENESIS");
 
-            blockDAO.saveBlock(genesisBlock);
+            blockRepository.saveBlock(genesisBlock);
 
             // CRITICAL: Synchronize the block sequence after creating genesis block
-            blockDAO.synchronizeBlockSequence();
+            blockRepository.synchronizeBlockSequence();
 
             logger.info("✅ Genesis block created successfully!");
         }
@@ -224,7 +223,7 @@ public class Blockchain {
         // Define the initialization logic as a lambda
         Runnable initLogic = () -> {
             // Only initialize if there are blocks to index
-            if (blockDAO.getBlockCount() > 0) {
+            if (blockRepository.getBlockCount() > 0) {
                 KeyPair tempKeyPair = CryptoUtil.generateKeyPair();
 
                 // Initialize with first password to avoid null error
@@ -240,7 +239,7 @@ public class Blockchain {
 
                 logger.info(
                     "📊 Search Framework Engine initialized efficiently with {} blocks for {} department passwords",
-                    blockDAO.getBlockCount(),
+                    blockRepository.getBlockCount(),
                     passwords != null ? passwords.length : 0
                 );
 
@@ -291,7 +290,7 @@ public class Blockchain {
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
         try {
             // Only initialize if there are blocks to index
-            if (blockDAO.getBlockCount() > 0) {
+            if (blockRepository.getBlockCount() > 0) {
                 KeyPair tempKeyPair = CryptoUtil.generateKeyPair();
 
                 // Initialize with provided password (or null for public-only indexing)
@@ -309,7 +308,7 @@ public class Blockchain {
 
                 logger.info(
                     "📊 Search Framework Engine initialized with {} blocks",
-                    blockDAO.getBlockCount()
+                    blockRepository.getBlockCount()
                 );
                 logger.info(
                     "📊 Password registry stats: {}",
@@ -403,7 +402,7 @@ public class Blockchain {
     public void reindexBlockWithPassword(Long blockNumber, String password) {
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
         try {
-            Block block = blockDAO.getBlockByNumber(blockNumber);
+            Block block = blockRepository.getBlockByNumber(blockNumber);
             if (block != null && block.isDataEncrypted()) {
                 // Generate a temporary key pair for indexing
                 KeyPair tempKeyPair = CryptoUtil.generateKeyPair();
@@ -438,7 +437,7 @@ public class Blockchain {
         List<Block> blocks = new ArrayList<>();
         for (EnhancedSearchResult result : enhancedResults) {
             try {
-                Block block = blockDAO.getBlockByHash(result.getBlockHash());
+                Block block = blockRepository.getBlockByHash(result.getBlockHash());
                 if (block != null) {
                     blocks.add(block);
                 }
@@ -475,6 +474,14 @@ public class Blockchain {
      * ENHANCED: Add a new block with keywords and category
      * THREAD-SAFE: Enhanced version with search functionality
      * DEADLOCK FIX: Moved indexBlockchain() call OUTSIDE writeLock scope to prevent deadlock
+     * 
+     * @param data The data to store in the block (cannot be null or empty)
+     * @param manualKeywords Optional keywords for search indexing
+     * @param category Optional category for classification
+     * @param signerPrivateKey Private key for signing (cannot be null)
+     * @param signerPublicKey Public key for verification (cannot be null)
+     * @return The created block, or null if creation failed
+     * @throws IllegalArgumentException if data is null or empty, or if signerPrivateKey or signerPublicKey is null
      */
     public Block addBlockWithKeywords(
         String data,
@@ -483,22 +490,26 @@ public class Blockchain {
         PrivateKey signerPrivateKey,
         PublicKey signerPublicKey
     ) {
+        // CRITICAL: Validate input parameters BEFORE transaction to allow exceptions to propagate
+        if (data == null) {
+            throw new IllegalArgumentException("Block data cannot be null");
+        }
+        if (data.trim().isEmpty()) {
+            throw new IllegalArgumentException("Block data cannot be empty");
+        }
+        if (signerPrivateKey == null) {
+            throw new IllegalArgumentException("Signer private key cannot be null");
+        }
+        if (signerPublicKey == null) {
+            throw new IllegalArgumentException("Signer public key cannot be null");
+        }
+        
         // Step 1: Create and save block inside writeLock
         Block savedBlock = null;
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.writeLock();
         try {
             savedBlock = JPAUtil.executeInTransaction(em -> {
                 try {
-                    // 0. Validate input parameters (but allow null data)
-                    if (signerPrivateKey == null) {
-                        logger.error("❌ Signer private key cannot be null");
-                        return null;
-                    }
-                    if (signerPublicKey == null) {
-                        logger.error("❌ Signer public key cannot be null");
-                        return null;
-                    }
-
                     // 1. CORE: Validate block size and determine storage strategy
                     int storageDecision = validateAndDetermineStorage(data);
                     if (storageDecision == 0) {
@@ -524,10 +535,10 @@ public class Blockchain {
                     }
 
                     // 3. Get the next block number atomically to prevent race conditions
-                    Long nextBlockNumber = blockDAO.getNextBlockNumberAtomic();
+                    Long nextBlockNumber = blockRepository.getNextBlockNumberAtomic();
 
                     // 4. Get the last block for previous hash
-                    Block lastBlock = blockDAO.getLastBlockWithLock();
+                    Block lastBlock = blockRepository.getLastBlockWithLock();
                     if (lastBlock == null && nextBlockNumber != 0L) {
                         logger.error(
                             "❌ Inconsistent state: no genesis block but number is {}",
@@ -608,7 +619,7 @@ public class Blockchain {
                     }
 
                     // 10. Final check: verify this block number doesn't exist
-                    if (blockDAO.existsBlockWithNumber(nextBlockNumber)) {
+                    if (blockRepository.existsBlockWithNumber(nextBlockNumber)) {
                         logger.error(
                             "🚨 CRITICAL: Race condition detected! Block number {} already exists",
                             nextBlockNumber
@@ -625,7 +636,7 @@ public class Blockchain {
                     );
 
                     // 12. Save the block
-                    blockDAO.saveBlock(newBlock);
+                    blockRepository.saveBlock(newBlock);
 
                     // CRITICAL: Force flush to ensure immediate visibility
                     if (JPAUtil.hasActiveTransaction()) {
@@ -791,8 +802,8 @@ public class Blockchain {
                     }
 
                     // 5. Get last block and generate next block number atomically
-                    Block lastBlock = blockDAO.getLastBlockWithLock();
-                    Long nextBlockNumber = blockDAO.getNextBlockNumberAtomic();
+                    Block lastBlock = blockRepository.getLastBlockWithLock();
+                    Long nextBlockNumber = blockRepository.getNextBlockNumberAtomic();
 
                     // 6. Handle off-chain storage if needed (for encrypted data)
                     OffChainData offChainData = null;
@@ -833,7 +844,10 @@ public class Blockchain {
                             ? lastBlock.getHash()
                             : GENESIS_PREVIOUS_HASH
                     );
-                    newBlock.setData("[ENCRYPTED]"); // Placeholder for display
+                    // CRITICAL: Store original data unchanged to maintain hash integrity
+                    // The block hash is calculated using the original data
+                    // Encrypted content is stored separately in encryptionMetadata
+                    newBlock.setData(data); // Original unencrypted data for hash calculation
                     newBlock.setEncryptionMetadata(blockData); // Store encrypted data here
                     newBlock.setIsEncrypted(true); // Mark as encrypted
                     newBlock.setTimestamp(blockTimestamp);
@@ -871,7 +885,7 @@ public class Blockchain {
                     );
 
                     // 12. Save the encrypted block
-                    blockDAO.saveBlock(newBlock);
+                    blockRepository.saveBlock(newBlock);
 
                     // Force flush for immediate visibility
                     if (JPAUtil.hasActiveTransaction()) {
@@ -1011,7 +1025,7 @@ public class Blockchain {
                     }
 
                     // 4. Get blockchain info
-                    Block lastBlock = blockDAO.getLastBlock();
+                    Block lastBlock = blockRepository.getLastBlock();
                     Long newBlockNumber = (lastBlock != null)
                         ? lastBlock.getBlockNumber() + 1
                         : 1L;
@@ -1085,7 +1099,7 @@ public class Blockchain {
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.unlockWrite(stamp);
         }
-        
+
         // Step 2: Index block AFTER releasing writeLock to prevent deadlock
         // CRITICAL FIX: Search indexing requires reading blocks from DAO, which would
         // attempt to acquire readLock. Cannot acquire readLock while holding writeLock.
@@ -1150,7 +1164,7 @@ public class Blockchain {
 
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
         try {
-            Block block = blockDAO.getBlockWithDecryption(
+            Block block = blockRepository.getBlockWithDecryption(
                 blockId,
                 decryptionPassword
             );
@@ -1189,7 +1203,7 @@ public class Blockchain {
 
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
         try {
-            Block block = blockDAO.getBlockByNumberWithDecryption(
+            Block block = blockRepository.getBlockByNumberWithDecryption(
                 blockNumber,
                 decryptionPassword
             );
@@ -1211,7 +1225,7 @@ public class Blockchain {
     public boolean isBlockEncrypted(Long blockNumber) {
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
         try {
-            Block block = blockDAO.getBlockByNumber(blockNumber);
+            Block block = blockRepository.getBlockByNumber(blockNumber);
             return block != null && block.isDataEncrypted();
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
@@ -1230,7 +1244,7 @@ public class Blockchain {
         String content = (
             block.getBlockNumber() +
             (block.getPreviousHash() != null ? block.getPreviousHash() : "") +
-            (block.getData() != null ? block.getData() : "[ENCRYPTED]") + // Use actual data for corruption detection
+            (block.getData() != null ? block.getData() : "") + // Use actual data for hash calculation
             timestampSeconds +
             (block.getSignerPublicKey() != null
                     ? block.getSignerPublicKey()
@@ -2063,7 +2077,7 @@ public class Blockchain {
             }
 
             // Find the previous block for validation
-            Block previousBlock = blockDAO.getBlockByNumber(
+            Block previousBlock = blockRepository.getBlockByNumber(
                 block.getBlockNumber() - 1L
             );
             if (previousBlock == null) {
@@ -2114,7 +2128,7 @@ public class Blockchain {
      */
     private ChainValidationResult validateChainDetailedInternal() {
         try {
-            long totalBlocks = blockDAO.getBlockCount();
+            long totalBlocks = blockRepository.getBlockCount();
 
             // MEMORY SAFETY: Warn if validating very large chains
             if (totalBlocks > MemorySafetyConstants.SAFE_EXPORT_LIMIT) {
@@ -2136,7 +2150,7 @@ public class Blockchain {
             }
 
             // Validate genesis block (always fetch first)
-            Block genesisBlock = blockDAO.getBlockByNumber(0L);
+            Block genesisBlock = blockRepository.getBlockByNumber(0L);
             if (genesisBlock == null) {
                 logger.error("❌ Genesis block not found");
                 return new ChainValidationResult(blockResults);
@@ -2179,7 +2193,7 @@ public class Blockchain {
 
             for (long offset = 1; offset < totalBlocks; offset += BATCH_SIZE) {
                 int limit = (int) Math.min(BATCH_SIZE, totalBlocks - offset);
-                List<Block> batch = blockDAO.getBlocksPaginated(offset, limit);
+                List<Block> batch = blockRepository.getBlocksPaginated(offset, limit);
 
                 for (Block currentBlock : batch) {
                     BlockValidationResult result = validateBlockDetailed(
@@ -2295,7 +2309,7 @@ public class Blockchain {
 
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
         try {
-            long totalBlocks = blockDAO.getBlockCount();
+            long totalBlocks = blockRepository.getBlockCount();
             final int[] validCount = {0};
             final int[] invalidCount = {0};
             final int[] revokedCount = {0};
@@ -2306,7 +2320,7 @@ public class Blockchain {
             }
 
             // Validate genesis block
-            Block genesisBlock = blockDAO.getBlockByNumber(0L);
+            Block genesisBlock = blockRepository.getBlockByNumber(0L);
             if (genesisBlock == null) {
                 logger.error("❌ Genesis block not found");
                 return new ValidationSummary(0, 0, 1, 0);
@@ -2334,7 +2348,7 @@ public class Blockchain {
 
             for (long offset = 1; offset < totalBlocks; offset += batchSize) {
                 int limit = (int) Math.min(batchSize, totalBlocks - offset);
-                List<Block> batch = blockDAO.getBlocksPaginated(offset, limit);
+                List<Block> batch = blockRepository.getBlocksPaginated(offset, limit);
 
                 for (Block currentBlock : batch) {
                     BlockValidationResult result = validateBlockDetailed(currentBlock, previousBlock);
@@ -2441,7 +2455,7 @@ public class Blockchain {
      * 
      * SOLUTION: Remove lock from this method. Let the lambda's methods manage their own locks.
      * The lambda is responsible for thread-safety of its own operations.
-     * blockDAO.getBlocksPaginated() is already thread-safe.
+     * blockRepository.getBlocksPaginated() is already thread-safe.
      *
      * @param batchProcessor Function to process each batch of blocks
      * @param batchSize Number of blocks to process in each batch
@@ -2453,11 +2467,11 @@ public class Blockchain {
 
         // NO LOCK: Lambda may call methods with readLock (e.g., validateSingleBlock)
         // StampedLock is NOT reentrant - acquiring readLock while holding readLock = DEADLOCK
-        long totalBlocks = blockDAO.getBlockCount();
+        long totalBlocks = blockRepository.getBlockCount();
 
         for (long offset = 0; offset < totalBlocks; offset += batchSize) {
             int limit = (int) Math.min(batchSize, totalBlocks - offset);
-            List<Block> batch = blockDAO.getBlocksPaginated(offset, limit);
+            List<Block> batch = blockRepository.getBlocksPaginated(offset, limit);
             batchProcessor.accept(batch);
         }
     }
@@ -2938,7 +2952,7 @@ public class Blockchain {
     public boolean verifyAllOffChainIntegrity() {
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
         try {
-            long totalBlocks = blockDAO.getBlockCount();
+            long totalBlocks = blockRepository.getBlockCount();
             int offChainBlocks = 0;
             int integrityFailures = 0;
 
@@ -2946,7 +2960,7 @@ public class Blockchain {
             final int BATCH_SIZE = 1000;
             for (long offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
                 int limit = (int) Math.min(BATCH_SIZE, totalBlocks - offset);
-                List<Block> batch = blockDAO.getBlocksPaginated(offset, limit);
+                List<Block> batch = blockRepository.getBlocksPaginated(offset, limit);
 
                 for (Block block : batch) {
                     if (block.hasOffChainData()) {
@@ -3109,7 +3123,7 @@ public class Blockchain {
         try {
             // Use batch processing instead of loading all blocks at once
             final int BATCH_SIZE = 1000;
-            long totalBlocks = blockDAO.getBlockCount();
+            long totalBlocks = blockRepository.getBlockCount();
 
             // MEMORY SAFETY: Warn if exporting very large chains (>100K blocks)
             final int SAFE_EXPORT_LIMIT = MemorySafetyConstants.SAFE_EXPORT_LIMIT;
@@ -3129,7 +3143,7 @@ public class Blockchain {
 
             // Retrieve blocks in batches
             for (long offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
-                List<Block> batch = blockDAO.getBlocksPaginated(offset, BATCH_SIZE);
+                List<Block> batch = blockRepository.getBlocksPaginated(offset, BATCH_SIZE);
                 allBlocks.addAll(batch);
             }
 
@@ -3154,7 +3168,7 @@ public class Blockchain {
                 // Check if any batch has off-chain data (process in batches)
                 boolean hasOffChainData = false;
                 for (long offset = 0; offset < totalBlocks && !hasOffChainData; offset += BATCH_SIZE) {
-                    List<Block> batch = blockDAO.getBlocksPaginated(offset, BATCH_SIZE);
+                    List<Block> batch = blockRepository.getBlocksPaginated(offset, BATCH_SIZE);
                     hasOffChainData = batch.stream().anyMatch(Block::hasOffChainData);
                 }
 
@@ -3335,11 +3349,11 @@ public class Blockchain {
                     );
                     // Use batch processing instead of loading all blocks at once
                     final int BATCH_SIZE = 1000;
-                    long totalExistingBlocks = blockDAO.getBlockCount();
+                    long totalExistingBlocks = blockRepository.getBlockCount();
                     int existingOffChainFilesDeleted = 0;
 
                     for (long offset = 0; offset < totalExistingBlocks; offset += BATCH_SIZE) {
-                        List<Block> batch = blockDAO.getBlocksPaginated(offset, BATCH_SIZE);
+                        List<Block> batch = blockRepository.getBlocksPaginated(offset, BATCH_SIZE);
                         for (Block block : batch) {
                             if (block.hasOffChainData()) {
                                 try {
@@ -3369,7 +3383,7 @@ public class Blockchain {
                     }
 
                     // Clear existing blocks and keys
-                    blockDAO.deleteAllBlocks();
+                    blockRepository.deleteAllBlocks();
                     authorizedKeyDAO.deleteAllAuthorizedKeys();
 
                     // CRITICAL: Clear Hibernate session cache to avoid entity conflicts
@@ -3573,7 +3587,7 @@ public class Blockchain {
                             }
                         }
 
-                        blockDAO.saveBlock(block);
+                        blockRepository.saveBlock(block);
                     }
 
                     logger.info(
@@ -3650,7 +3664,7 @@ public class Blockchain {
                         return false;
                     }
 
-                    long currentBlockCount = blockDAO.getBlockCount();
+                    long currentBlockCount = blockRepository.getBlockCount();
                     if (numberOfBlocks >= currentBlockCount) {
                         logger.error(
                             "❌ Cannot rollback {} blocks. Only {} blocks exist (including genesis)",
@@ -3686,7 +3700,7 @@ public class Blockchain {
                         logger.debug("📦 Processing rollback batch: blocks #{} to #{}", batchStart, batchEnd);
 
                         // Retrieve batch
-                        List<Block> batch = blockDAO.getBlocksPaginated((int) batchStart, batchSize);
+                        List<Block> batch = blockRepository.getBlocksPaginated((int) batchStart, batchSize);
 
                         // Process blocks in reverse order (highest to lowest)
                         for (int i = batch.size() - 1; i >= 0; i--) {
@@ -3721,7 +3735,7 @@ public class Blockchain {
                             }
 
                             // Delete the block from database (cascade will delete OffChainData entity)
-                            blockDAO.deleteBlockByNumber(block.getBlockNumber());
+                            blockRepository.deleteBlockByNumber(block.getBlockNumber());
                             totalBlocksRemoved[0]++;
                         }
 
@@ -3747,12 +3761,12 @@ public class Blockchain {
                     }
 
                     // CRITICAL: Synchronize block sequence after rollback
-                    blockDAO.synchronizeBlockSequence();
+                    blockRepository.synchronizeBlockSequence();
 
                     logger.info("✅ Rollback completed successfully");
                     logger.info(
                         "Chain now has {} blocks",
-                        blockDAO.getBlockCount()
+                        blockRepository.getBlockCount()
                     );
 
                     return true;
@@ -3769,8 +3783,17 @@ public class Blockchain {
     /**
      * CORE FUNCTION 4b: Rollback to specific block number
      * FIXED: Added thread-safety with write lock and global transaction
+     * 
+     * @param targetBlockNumber The block number to rollback to
+     * @return true if rollback was successful, false otherwise
+     * @throws IllegalArgumentException if targetBlockNumber is null or negative
      */
     public boolean rollbackToBlock(Long targetBlockNumber) {
+        // Validate before acquiring lock
+        if (targetBlockNumber == null || targetBlockNumber < 0L) {
+            throw new IllegalArgumentException("Target block number cannot be null or negative");
+        }
+        
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.writeLock();
         try {
             return rollbackToBlockInternal(targetBlockNumber);
@@ -3793,7 +3816,7 @@ public class Blockchain {
                     return false;
                 }
 
-                long currentBlockCount = blockDAO.getBlockCount();
+                long currentBlockCount = blockRepository.getBlockCount();
                 if (targetBlockNumber >= currentBlockCount) {
                     logger.error(
                         "❌ Target block {} does not exist. Current max block: {}",
@@ -3826,7 +3849,7 @@ public class Blockchain {
                 boolean hasMore = true;
 
                 while (hasMore) {
-                    List<Block> blocksToDelete = blockDAO.getBlocksAfterPaginated(
+                    List<Block> blocksToDelete = blockRepository.getBlocksAfterPaginated(
                         targetBlockNumber,
                         offset,
                         BATCH_SIZE
@@ -3877,12 +3900,12 @@ public class Blockchain {
                 }
 
                 // Now use the deleteBlocksAfter method for database cleanup
-                int deletedCount = blockDAO.deleteBlocksAfter(
+                int deletedCount = blockRepository.deleteBlocksAfter(
                     targetBlockNumber
                 );
 
                 // CRITICAL: Synchronize block sequence after rollback
-                blockDAO.synchronizeBlockSequence();
+                blockRepository.synchronizeBlockSequence();
 
                 logger.info(
                     "✅ Rollback to block {} completed successfully",
@@ -3897,7 +3920,7 @@ public class Blockchain {
                 }
                 logger.info(
                     "Chain now has {} blocks",
-                    blockDAO.getBlockCount()
+                    blockRepository.getBlockCount()
                 );
 
                 return deletedCount > 0 || blocksToRemove == 0;
@@ -3920,17 +3943,22 @@ public class Blockchain {
     /**
      * CORE FUNCTION 5: Advanced Search - Search blocks by content
      * FIXED: Added thread-safety with read lock
+     * 
+     * @param searchTerm The content to search for
+     * @return List of matching blocks (max 10,000 results)
+     * @throws IllegalArgumentException if searchTerm is null or empty
      */
     public List<Block> searchBlocksByContent(String searchTerm) {
+        // Validate parameters first before acquiring lock
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            throw new IllegalArgumentException("Search term cannot be null or empty");
+        }
+        
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
         try {
-            if (searchTerm == null || searchTerm.trim().isEmpty()) {
-                return new ArrayList<>();
-            }
-
             // Use the DAO method for better performance (limit results to prevent memory issues)
             final int MAX_SEARCH_RESULTS = MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS; // Reasonable limit for content search
-            List<Block> matchingBlocks = blockDAO.searchBlocksByContentWithLimit(
+            List<Block> matchingBlocks = blockRepository.searchBlocksByContentWithLimit(
                 searchTerm,
                 MAX_SEARCH_RESULTS
             );
@@ -3980,8 +4008,12 @@ public class Blockchain {
      * Advanced Search: Search blocks by category
      * @param category Category to search for
      * @return List of matching blocks (max 10,000 results)
+     * @throws IllegalArgumentException if category is null or empty
      */
     public List<Block> searchByCategory(String category) {
+        if (category == null || category.trim().isEmpty()) {
+            throw new IllegalArgumentException("Category cannot be null or empty");
+        }
         return searchByCategory(category, MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS);
     }
 
@@ -3995,7 +4027,66 @@ public class Blockchain {
     public List<Block> searchByCategory(String category, int maxResults) {
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
         try {
-            return blockDAO.searchByCategoryWithLimit(category, maxResults);
+            return blockRepository.searchByCategoryWithLimit(category, maxResults);
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
+        }
+    }
+
+    /**
+     * Search blocks by custom metadata (general search, default limit)
+     *
+     * @param searchTerm Search term to find in custom metadata JSON
+     * @return List of blocks matching the search term (max 10,000)
+     * @since 2.1.0
+     */
+    public List<Block> searchByCustomMetadata(String searchTerm) {
+        long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
+        try {
+            return blockRepository.searchByCustomMetadata(searchTerm);
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
+        }
+    }
+
+    /**
+     * Search blocks by custom metadata key-value pair (paginated)
+     *
+     * @param jsonKey The JSON key to search for
+     * @param jsonValue The JSON value to match
+     * @param offset Starting position
+     * @param limit Maximum results
+     * @return List of blocks matching the key-value pair
+     * @throws IllegalArgumentException if offset exceeds Integer.MAX_VALUE
+     * @since 2.1.0
+     */
+    public List<Block> searchByCustomMetadataKeyValuePaginated(String jsonKey, String jsonValue, long offset, int limit) {
+        // Validate offset doesn't exceed Integer.MAX_VALUE
+        if (offset > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("Offset exceeds maximum value: " + Integer.MAX_VALUE);
+        }
+        
+        long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
+        try {
+            return blockRepository.searchByCustomMetadataKeyValuePaginated(jsonKey, jsonValue, offset, limit);
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
+        }
+    }
+
+    /**
+     * Search blocks by multiple custom metadata criteria (paginated)
+     *
+     * @param criteria Map of key-value pairs to match (AND logic)
+     * @param offset Starting position
+     * @param limit Maximum results
+     * @return List of blocks matching all criteria
+     * @since 2.1.0
+     */
+    public List<Block> searchByCustomMetadataMultipleCriteriaPaginated(Map<String, String> criteria, long offset, int limit) {
+        long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
+        try {
+            return blockRepository.searchByCustomMetadataMultipleCriteriaPaginated(criteria, offset, limit);
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
         }
@@ -4013,7 +4104,7 @@ public class Blockchain {
             }
 
             // Use the DAO method for better performance
-            Block block = blockDAO.getBlockByHash(hash);
+            Block block = blockRepository.getBlockByHash(hash);
 
             if (block == null) {
                 logger.debug("❌ No block found with hash: {}", hash);
@@ -4048,7 +4139,7 @@ public class Blockchain {
 
             // Limit results to prevent memory issues with large time ranges
             final int MAX_TIME_RANGE_RESULTS = MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS;
-            return blockDAO.getBlocksByTimeRangePaginated(startDateTime, endDateTime, 0, MAX_TIME_RANGE_RESULTS);
+            return blockRepository.getBlocksByTimeRangePaginated(startDateTime, endDateTime, 0, MAX_TIME_RANGE_RESULTS);
         } catch (Exception e) {
             logger.error("❌ Error searching blocks by date range", e);
             return new ArrayList<>();
@@ -4070,12 +4161,12 @@ public class Blockchain {
         
         if (GLOBAL_BLOCKCHAIN_LOCK.validate(stamp)) {
             // Optimistic read succeeded - execute without lock
-            block = blockDAO.getBlockByNumber(blockNumber);
+            block = blockRepository.getBlockByNumber(blockNumber);
         } else {
             // Validation failed (write occurred) - retry with read lock
             stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
             try {
-                block = blockDAO.getBlockByNumber(blockNumber);
+                block = blockRepository.getBlockByNumber(blockNumber);
             } finally {
                 GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
             }
@@ -4094,7 +4185,55 @@ public class Blockchain {
     public List<Block> getBlocksPaginated(long offset, int limit) {
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
         try {
-            return blockDAO.getBlocksPaginated(offset, limit);
+            return blockRepository.getBlocksPaginated(offset, limit);
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
+        }
+    }
+
+    /**
+     * Batch retrieve blocks by their hash values (thread-safe)
+     *
+     * <p>Optimized method to retrieve multiple blocks by hash in a single query.
+     * Eliminates N+1 query problem when fetching blocks from search results.</p>
+     *
+     * @param blockHashes List of block hash values to retrieve
+     * @return List of blocks matching the provided hashes
+     * @throws IllegalArgumentException if blockHashes is null
+     * @since 2.1.0
+     */
+    public List<Block> batchRetrieveBlocksByHash(List<String> blockHashes) {
+        if (blockHashes == null) {
+            throw new IllegalArgumentException("Block hashes list cannot be null");
+        }
+        
+        long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
+        try {
+            return blockRepository.batchRetrieveBlocksByHash(blockHashes);
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
+        }
+    }
+
+    /**
+     * Batch retrieve blocks by their block numbers (thread-safe)
+     *
+     * <p>Optimized method to retrieve multiple blocks by block number in a single query.
+     * Eliminates N+1 query problem when fetching multiple specific blocks.</p>
+     *
+     * @param blockNumbers List of block numbers to retrieve (cannot be null)
+     * @return List of blocks matching the provided block numbers
+     * @throws IllegalArgumentException if blockNumbers is null or batch size exceeds MAX_BATCH_SIZE (10,000)
+     * @since 2.1.0
+     */
+    public List<Block> batchRetrieveBlocks(List<Long> blockNumbers) {
+        if (blockNumbers == null) {
+            throw new IllegalArgumentException("Block numbers list cannot be null");
+        }
+        
+        long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
+        try {
+            return blockRepository.batchRetrieveBlocks(blockNumbers);
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
         }
@@ -4112,7 +4251,7 @@ public class Blockchain {
     public List<Block> getBlocksWithOffChainDataPaginated(long offset, int limit) {
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
         try {
-            return blockDAO.getBlocksWithOffChainDataPaginated(offset, limit);
+            return blockRepository.getBlocksWithOffChainDataPaginated(offset, limit);
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
         }
@@ -4130,7 +4269,7 @@ public class Blockchain {
     public List<Block> getEncryptedBlocksPaginated(long offset, int limit) {
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
         try {
-            return blockDAO.getEncryptedBlocksPaginated(offset, limit);
+            return blockRepository.getEncryptedBlocksPaginated(offset, limit);
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
         }
@@ -4149,12 +4288,12 @@ public class Blockchain {
         
         if (GLOBAL_BLOCKCHAIN_LOCK.validate(stamp)) {
             // Optimistic read succeeded - execute without lock
-            lastBlock = blockDAO.getLastBlockWithRefresh();
+            lastBlock = blockRepository.getLastBlockWithRefresh();
         } else {
             // Validation failed (write occurred) - retry with read lock
             stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
             try {
-                lastBlock = blockDAO.getLastBlockWithRefresh();
+                lastBlock = blockRepository.getLastBlockWithRefresh();
             } finally {
                 GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
             }
@@ -4174,12 +4313,12 @@ public class Blockchain {
         
         if (GLOBAL_BLOCKCHAIN_LOCK.validate(stamp)) {
             // Optimistic read succeeded - execute without lock
-            count = blockDAO.getBlockCount();
+            count = blockRepository.getBlockCount();
         } else {
             // Validation failed (write occurred) - retry with read lock
             stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
             try {
-                count = blockDAO.getBlockCount();
+                count = blockRepository.getBlockCount();
             } finally {
                 GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
             }
@@ -4191,21 +4330,29 @@ public class Blockchain {
     /**
      * Get blocks by time range
      * FIXED: Added thread-safety with read lock
+     * 
+     * @param startTime The start of the time range
+     * @param endTime The end of the time range
+     * @return List of blocks within the time range (max 10,000 results)
+     * @throws IllegalArgumentException if startTime or endTime is null, or if startTime is after endTime
      */
     public List<Block> getBlocksByTimeRange(
         LocalDateTime startTime,
         LocalDateTime endTime
     ) {
+        // Validate parameters first
+        if (startTime == null || endTime == null) {
+            throw new IllegalArgumentException("Start time and end time cannot be null");
+        }
+        if (startTime.isAfter(endTime)) {
+            throw new IllegalArgumentException("Start time cannot be after end time");
+        }
+        
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
         try {
-            // Handle null parameters gracefully (backward compatibility)
-            if (startTime == null || endTime == null) {
-                return new ArrayList<>();
-            }
-
             // Limit results to prevent memory issues with large time ranges
             final int MAX_TIME_RANGE_RESULTS = MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS;
-            return blockDAO.getBlocksByTimeRangePaginated(startTime, endTime, 0, MAX_TIME_RANGE_RESULTS);
+            return blockRepository.getBlocksByTimeRangePaginated(startTime, endTime, 0, MAX_TIME_RANGE_RESULTS);
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
         }
@@ -4215,8 +4362,12 @@ public class Blockchain {
      * Get blocks signed by a specific public key
      * @param signerPublicKey The public key of the signer
      * @return List of blocks signed by the specified key (max 10,000 results)
+     * @throws IllegalArgumentException if signerPublicKey is null or empty
      */
     public List<Block> getBlocksBySignerPublicKey(String signerPublicKey) {
+        if (signerPublicKey == null || signerPublicKey.trim().isEmpty()) {
+            throw new IllegalArgumentException("Signer public key cannot be null or empty");
+        }
         return getBlocksBySignerPublicKey(signerPublicKey, MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS);
     }
 
@@ -4230,7 +4381,7 @@ public class Blockchain {
     public List<Block> getBlocksBySignerPublicKey(String signerPublicKey, int maxResults) {
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
         try {
-            return blockDAO.getBlocksBySignerPublicKeyWithLimit(signerPublicKey, maxResults);
+            return blockRepository.getBlocksBySignerPublicKeyWithLimit(signerPublicKey, maxResults);
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
         }
@@ -4345,10 +4496,10 @@ public class Blockchain {
         try {
             final int BATCH_SIZE = 1000;
             // CRITICAL: Call these BEFORE acquiring writeLock to avoid deadlock
-            long totalBlocks = blockDAO.getBlockCount();
+            long totalBlocks = blockRepository.getBlockCount();
             
             for (long offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
-                List<Block> batch = blockDAO.getBlocksPaginated(offset, BATCH_SIZE);
+                List<Block> batch = blockRepository.getBlocksPaginated(offset, BATCH_SIZE);
                 for (Block block : batch) {
                     if (block.hasOffChainData()) {
                         offChainDataIds.add(block.getOffChainData().getId());
@@ -4387,7 +4538,7 @@ public class Blockchain {
             JPAUtil.executeInTransaction(em -> {
                 try {
                     // Clear database first - this is the critical operation
-                    blockDAO.deleteAllBlocks();
+                    blockRepository.deleteAllBlocks();
                     authorizedKeyDAO.deleteAllAuthorizedKeys();
 
                     // CRITICAL: Clear Hibernate session cache to avoid entity conflicts
@@ -4466,7 +4617,7 @@ public class Blockchain {
                     .anyMatch(key -> key.getPublicKey().equals(publicKey));
 
                 if (keyExistedBefore) {
-                    long affectedBlocks = blockDAO.countBlocksBySignerPublicKey(
+                    long affectedBlocks = blockRepository.countBlocksBySignerPublicKey(
                         publicKey
                     );
                     return new KeyDeletionImpact(
@@ -4486,7 +4637,7 @@ public class Blockchain {
             }
 
             // Count affected blocks for active key
-            long affectedBlocks = blockDAO.countBlocksBySignerPublicKey(
+            long affectedBlocks = blockRepository.countBlocksBySignerPublicKey(
                 publicKey
             );
 
@@ -4845,7 +4996,7 @@ public class Blockchain {
                         // Show sample of affected blocks (limit to sample size for display)
                         final int SAMPLE_SIZE = 5;
                         List<Block> affectedBlocks =
-                            blockDAO.getBlocksBySignerPublicKeyWithLimit(publicKey, SAMPLE_SIZE);
+                            blockRepository.getBlocksBySignerPublicKeyWithLimit(publicKey, SAMPLE_SIZE);
                         int sampleSize = Math.min(SAMPLE_SIZE, affectedBlocks.size());
                         for (int i = 0; i < sampleSize; i++) {
                             Block block = affectedBlocks.get(i);
@@ -5312,11 +5463,11 @@ public class Blockchain {
             // Get all current off-chain file paths from database
             // Use batch processing instead of loading all blocks at once
             final int BATCH_SIZE = 1000;
-            long totalBlocks = blockDAO.getBlockCount();
+            long totalBlocks = blockRepository.getBlockCount();
             Set<String> validFilePaths = new HashSet<>();
 
             for (long offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
-                List<Block> batch = blockDAO.getBlocksPaginated(offset, BATCH_SIZE);
+                List<Block> batch = blockRepository.getBlocksPaginated(offset, BATCH_SIZE);
                 for (Block block : batch) {
                     if (block.hasOffChainData()) {
                         validFilePaths.add(block.getOffChainData().getFilePath());
@@ -5415,7 +5566,7 @@ public class Blockchain {
             List<Block> encryptedBlocks = new ArrayList<>();
             for (EnhancedSearchResult result : results) {
                 try {
-                    Block block = blockDAO.getBlockByHash(
+                    Block block = blockRepository.getBlockByHash(
                         result.getBlockHash()
                     );
                     if (block != null && block.isDataEncrypted()) {
@@ -5540,7 +5691,7 @@ public class Blockchain {
         try {
             // Use batch processing instead of loading all blocks at once
             final int BATCH_SIZE = 1000;
-            long totalBlocks = blockDAO.getBlockCount();
+            long totalBlocks = blockRepository.getBlockCount();
             long encryptedBlocks = 0;
 
             // Count blocks by category
@@ -5548,7 +5699,7 @@ public class Blockchain {
 
             // Process blocks in batches to accumulate statistics
             for (long offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
-                List<Block> batch = blockDAO.getBlocksPaginated(offset, BATCH_SIZE);
+                List<Block> batch = blockRepository.getBlocksPaginated(offset, BATCH_SIZE);
                 for (Block block : batch) {
                     // Count encrypted blocks
                     if (block.isDataEncrypted()) {
@@ -5640,7 +5791,7 @@ public class Blockchain {
         try {
             // Use batch processing instead of loading all blocks at once
             final int BATCH_SIZE = 1000;
-            long totalBlocks = blockDAO.getBlockCount();
+            long totalBlocks = blockRepository.getBlockCount();
 
             // MEMORY SAFETY: Warn if exporting very large chains (>100K blocks)
             final int SAFE_EXPORT_LIMIT = MemorySafetyConstants.SAFE_EXPORT_LIMIT;
@@ -5660,7 +5811,7 @@ public class Blockchain {
 
             // Retrieve blocks in batches
             for (long offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
-                List<Block> batch = blockDAO.getBlocksPaginated(offset, BATCH_SIZE);
+                List<Block> batch = blockRepository.getBlocksPaginated(offset, BATCH_SIZE);
                 allBlocks.addAll(batch);
             }
 
@@ -5831,7 +5982,7 @@ public class Blockchain {
                     cleanupExistingData();
 
                     // Clear existing blocks and keys
-                    blockDAO.deleteAllBlocks();
+                    blockRepository.deleteAllBlocks();
                     authorizedKeyDAO.deleteAllAuthorizedKeys();
 
                     // Force flush and clear session to avoid conflicts
@@ -5895,7 +6046,7 @@ public class Blockchain {
                         // The block hashes and previous hash references should remain as they were exported
                         // This preserves the original chain integrity and off-chain password generation
 
-                        blockDAO.saveBlock(newBlock);
+                        blockRepository.saveBlock(newBlock);
 
                         // Handle off-chain password restoration if needed
                         if (
@@ -6123,11 +6274,11 @@ public class Blockchain {
         logger.info("🧹 Cleaning up existing off-chain data before import...");
         // Use batch processing instead of loading all blocks at once
         final int BATCH_SIZE = 1000;
-        long totalBlocks = blockDAO.getBlockCount();
+        long totalBlocks = blockRepository.getBlockCount();
         int existingOffChainFilesDeleted = 0;
 
         for (long offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
-            List<Block> batch = blockDAO.getBlocksPaginated(offset, BATCH_SIZE);
+            List<Block> batch = blockRepository.getBlocksPaginated(offset, BATCH_SIZE);
             for (Block block : batch) {
                 if (block.hasOffChainData()) {
                     try {
@@ -6219,13 +6370,6 @@ public class Blockchain {
     }
 
     /**
-     * Get BlockDAO for direct database operations (primarily for testing)
-     */
-    public BlockDAO getBlockDAO() {
-        return blockDAO;
-    }
-
-    /**
      * Get AuthorizedKeyDAO for direct database operations (primarily for testing)
      */
     public AuthorizedKeyDAO getAuthorizedKeyDAO() {
@@ -6242,7 +6386,7 @@ public class Blockchain {
      * For full cleanup including files, use clearAndReinitialize()
      */
     public void completeCleanupForTests() {
-        blockDAO.completeCleanupTestData();
+        blockRepository.completeCleanupTestData();
         authorizedKeyDAO.cleanupTestData();
         // Note: Does NOT clean off-chain files or emergency backups
         // Use clearAndReinitialize() for complete cleanup including files
@@ -6277,7 +6421,7 @@ public class Blockchain {
             return JPAUtil.executeInTransaction(em -> {
                 try {
                     // Verify the block exists before updating
-                    Block existingBlock = blockDAO.getBlockByNumber(block.getBlockNumber());
+                    Block existingBlock = blockRepository.getBlockByNumber(block.getBlockNumber());
                     if (existingBlock == null) {
                         logger.warn("Block #{} does not exist, cannot update", block.getBlockNumber());
                         return false;
@@ -6291,7 +6435,7 @@ public class Blockchain {
                     }
 
                     // Update the block using the DAO
-                    blockDAO.updateBlock(block);
+                    blockRepository.updateBlock(block);
                     
                     if (logger.isDebugEnabled()) {
                         logger.debug("✅ Successfully updated block #{} (safe fields only)", block.getBlockNumber());
@@ -6302,6 +6446,23 @@ public class Blockchain {
                     return false;
                 }
             });
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.unlockWrite(stamp);
+        }
+    }
+
+    /**
+     * Encrypt an existing unencrypted block with password (thread-safe)
+     *
+     * @param blockId The ID of the block to encrypt
+     * @param password The password for encryption
+     * @return true if encryption was successful, false if block was already encrypted or not found
+     * @since 2.1.0
+     */
+    public boolean encryptExistingBlock(Long blockId, String password) {
+        long stamp = GLOBAL_BLOCKCHAIN_LOCK.writeLock();
+        try {
+            return blockRepository.encryptExistingBlock(blockId, password);
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.unlockWrite(stamp);
         }

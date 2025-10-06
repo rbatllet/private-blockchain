@@ -261,25 +261,6 @@ public class SearchSpecialistAPI {
         }
     }
     
-    /**
-     * Legacy constructor for backward compatibility.
-     * Creates a new SearchFrameworkEngine instance.
-     * 
-     * @param internal marker to indicate internal construction
-     * @deprecated Use SearchSpecialistAPI(boolean, SearchFrameworkEngine) instead
-     */
-    @Deprecated
-    public SearchSpecialistAPI(boolean internal) {
-        this.searchEngine = new SearchFrameworkEngine();
-        this.passwordRegistry = new BlockPasswordRegistry();
-        this.encryptionConfig = EncryptionConfig.createHighSecurityConfig();
-        this.isDirectlyInstantiated = false; // Created internally by blockchain
-        
-        if (internal) {
-            logger.debug("✅ SearchSpecialistAPI created internally by blockchain (legacy constructor)");
-        }
-    }
-    
     
     // ===== SIMPLE SEARCH METHODS =====
     

@@ -202,7 +202,7 @@ public boolean validateBlock(Block block, String publicKey) {
 
 **Verification**: The security fix was verified through comprehensive testing:
 - `UserFriendlyEncryptionAPIBlockCorruptionTest` now properly detects corrupted encrypted blocks
-- Tampered encryption markers (e.g., `[ENCRYPTED]` → `[FNCRYPTFD]`) are correctly identified
+- Data field corruption is correctly identified through hash validation
 - Validation properly fails when encrypted block content is corrupted
 
 ## 🗂️ OffChainFileSearch Security Patterns
@@ -572,7 +572,8 @@ public class ProductionSecurityConfig {
 ```
 
 ### Security Checklist
-Before deploying to production:
+
+Production deployment checklist:
 
 - [ ] All passwords use `generateValidatedPassword()`
 - [ ] No hardcoded passwords or keys in code

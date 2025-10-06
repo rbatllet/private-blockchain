@@ -134,19 +134,19 @@ public class ApiAssertions {
         }
     }
     
-    /**
+        /**
      * Assert that encryption and decryption work correctly
-     * @param api API instance
-     * @param originalData Original data to encrypt
+     * @param api UserFriendlyEncryptionAPI instance
+     * @param originalData Original data to test
      * @param password Password for encryption
      */
     public static void assertEncryptionDecryption(UserFriendlyEncryptionAPI api, String originalData, String password) {
-        // Store encrypted data
         Block block = api.storeSecret(originalData, password);
         assertBlockCreated(block);
         
-        // Verify data can be retrieved
-        String retrievedData = api.retrieveSecret(block.getId(), password);
+        // CRITICAL FIX: Use block.getBlockNumber() not block.getId()
+        // retrieveSecret expects BLOCK NUMBER (position in chain), not DATABASE ID
+        String retrievedData = api.retrieveSecret(block.getBlockNumber(), password);
         assertNotNull(retrievedData, "Should be able to retrieve encrypted data");
         assertEquals(originalData, retrievedData, "Retrieved data should match original");
     }

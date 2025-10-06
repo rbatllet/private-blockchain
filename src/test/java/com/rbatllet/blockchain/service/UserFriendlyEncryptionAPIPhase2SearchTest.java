@@ -52,7 +52,7 @@ public class UserFriendlyEncryptionAPIPhase2SearchTest {
     void tearDown() {
         // Clean up test data
         if (blockchain != null) {
-            blockchain.getBlockDAO().completeCleanupTestData();
+            blockchain.clearAndReinitialize();
             blockchain.getAuthorizedKeyDAO().cleanupTestData();
         }
         JPAUtil.closeEntityManager();
@@ -70,7 +70,7 @@ public class UserFriendlyEncryptionAPIPhase2SearchTest {
         );
         Block block1 = blockchain.getLastBlock();
         block1.setContentCategory("documentation");
-        blockchain.getBlockDAO().updateBlock(block1);
+        blockchain.updateBlock(block1);
 
         // Block 2: Medium-high relevance - contains "blockchain" multiple times
         blockchain.addBlock(
@@ -81,9 +81,9 @@ public class UserFriendlyEncryptionAPIPhase2SearchTest {
         );
         Block block2 = blockchain.getLastBlock();
         block2.setContentCategory("security");
-        blockchain.getBlockDAO().updateBlock(block2);
+        blockchain.updateBlock(block2);
         // Encrypt the block with password
-        blockchain.getBlockDAO().encryptExistingBlock(block2.getId(), testPassword);
+        blockchain.encryptExistingBlock(block2.getId(), testPassword);
 
         // Block 3: Low relevance - contains only one keyword
         blockchain.addBlock(
@@ -94,7 +94,7 @@ public class UserFriendlyEncryptionAPIPhase2SearchTest {
         );
         Block block3 = blockchain.getLastBlock();
         block3.setContentCategory("contacts");
-        blockchain.getBlockDAO().updateBlock(block3);
+        blockchain.updateBlock(block3);
 
         // Block 4: Medium relevance - contains "blockchain" once
         blockchain.addBlock(
@@ -105,7 +105,7 @@ public class UserFriendlyEncryptionAPIPhase2SearchTest {
         );
         Block block4 = blockchain.getLastBlock();
         block4.setContentCategory("technical");
-        blockchain.getBlockDAO().updateBlock(block4);
+        blockchain.updateBlock(block4);
     }
 
     @Nested

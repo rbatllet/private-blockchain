@@ -230,7 +230,7 @@ All `Long` fields use Java's 64-bit signed integer with range: `-9,223,372,036,8
 
 ### Block Number Overflow Protection
 
-**BlockDAO.java** now includes overflow protection at line 227:
+**BlockRepository.java** now includes overflow protection at line 227:
 
 ```java
 // Before incrementing block number
@@ -270,13 +270,13 @@ for (long offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
 }
 ```
 
-2. **Updated BlockDAO.getBlocksPaginated() signature:**
+2. **Updated BlockRepository.getBlocksPaginated() signature:**
 ```java
 // Changed from: public List<Block> getBlocksPaginated(int offset, int limit)
 // Changed to:   public List<Block> getBlocksPaginated(long offset, int limit)
 ```
 
-3. **Added safe cast validation in BlockDAO.java (lines 391-396):**
+3. **Added safe cast validation in BlockRepository.java (lines 391-396):**
 ```java
 // Safe cast: setFirstResult only accepts int, but we validate range
 if (offset > Integer.MAX_VALUE) {
@@ -439,7 +439,7 @@ block.getTimestamp().plusNanos(index * 1000)  // ✅ Safe
 - ✅ Added Long overflow protection for block numbers
 - ✅ **CRITICAL FIX:** Fixed Integer overflow in 11 pagination loops
 - ✅ Changed `int offset` to `long offset` in all batch processing
-- ✅ Updated `BlockDAO.getBlocksPaginated()` signature
+- ✅ Updated `BlockRepository.getBlocksPaginated()` signature
 - ✅ Added safe cast validation with error messages
 
 ### Collection Overflow Prevention

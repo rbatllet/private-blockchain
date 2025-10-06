@@ -364,10 +364,11 @@ void testValidationMissesSubtleCorruption() {
     // Create encrypted block with valid data
     Block encryptedBlock = api.storeSecret("sensitive data", "password123!");
     
-    // Simulate corruption (change E→F in encryption marker)
-    String corruptContent = block.getContent().replace("[ENCRYPTED]", "[FNCRYPTFD]");
+    // Simulate corruption (modify data field directly)
+    String originalData = block.getData();
+    block.setData(originalData.replace('e', 'x')); // Corrupt original data
     
-    // ✅ PASS: Validation properly detects corruption
+    // ✅ PASS: Validation properly detects corruption via hash mismatch
     assertFalse(blockchain.validateBlock(block, publicKey));
 }
 ```

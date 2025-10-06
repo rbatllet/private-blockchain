@@ -262,7 +262,7 @@ public class UserFriendlyEncryptionAPISecureMetadataTest {
 
                 // Try to decrypt and check content (since blocks are encrypted)
                 try {
-                    String decryptedData = api.retrieveSecret(block.getId(), "password123");
+                    String decryptedData = api.retrieveSecret(block.getBlockNumber(), "password123");
                     if (decryptedData != null && decryptedData.toLowerCase().contains(searchTerm.toLowerCase())) {
                         matchingBlocks.add(block);
                     }

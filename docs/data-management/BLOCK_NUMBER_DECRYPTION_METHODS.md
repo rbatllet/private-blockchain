@@ -19,11 +19,11 @@ New methods were created that consistently use **block numbers** throughout the 
 
 ## New Methods Architecture
 
-### 1. BlockDAO.getBlockByNumberWithDecryption()
+### 1. BlockRepository.getBlockByNumberWithDecryption()
 
 **Purpose**: Database access layer method that queries by block number instead of database ID.
 
-**Location**: `src/main/java/com/rbatllet/blockchain/dao/BlockDAO.java`
+**Location**: `src/main/java/com/rbatllet/blockchain/dao/BlockRepository.java`
 
 **Method Signature**:
 ```java
@@ -39,8 +39,8 @@ public String getBlockByNumberWithDecryption(Long blockNumber, String password)
 **Usage Example**:
 ```java
 // Direct DAO usage (not recommended for user code)
-BlockDAO blockDAO = blockchain.getBlockDAO();
-String content = blockDAO.getBlockByNumberWithDecryption(1L, "password123");
+BlockRepository blockRepository = blockchain;
+String content = blockchain.getBlockByNumberWithDecryption(1L, "password123");
 ```
 
 ### 2. Blockchain.getDecryptedBlockDataByNumber()
@@ -56,7 +56,7 @@ public String getDecryptedBlockDataByNumber(Long blockNumber, String password)
 
 **Implementation Details**:
 - Acts as interface layer between API and DAO
-- Delegates to `BlockDAO.getBlockByNumberWithDecryption()`
+- Delegates to `BlockRepository.getBlockByNumberWithDecryption()`
 - Provides consistent error handling and logging
 - Maintains architectural separation of concerns
 
@@ -75,13 +75,13 @@ String decryptedData = blockchain.getDecryptedBlockDataByNumber(1L, "password123
 
 **Method Signature**:
 ```java
-public String retrieveSecret(Long blockId, String password)
+public String retrieveSecret(Long blockNumber, String password)
 ```
 
 **Implementation Details**:
 - Now calls `blockchain.getDecryptedBlockDataByNumber()` instead of `getDecryptedBlockData()`
 - Provides comprehensive debug logging for user troubleshooting
-- Maintains backward compatibility - still accepts block numbers as `blockId`
+- Uses consistent block number parameter naming throughout
 - Enhanced error handling with detailed logging
 
 **Usage Example**:
@@ -92,8 +92,8 @@ UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, "user"
 // Store encrypted data
 Block block = api.storeSecret("Sensitive medical data", "password123");
 
-// Retrieve using block ID
-String decrypted = api.retrieveSecret(block.getId(), "password123");
+// Retrieve using block number
+String decrypted = api.retrieveSecret(block.getBlockNumber(), "password123");
 System.out.println("Retrieved: " + decrypted);
 ```
 
@@ -112,7 +112,7 @@ Block medicalBlock = api.storeSecret(patientData, "medicalPassword123");
 System.out.println("Medical record stored in block #" + medicalBlock.getBlockNumber());
 
 // Later retrieve the record
-String retrievedRecord = api.retrieveSecret(medicalBlock.getId(), "medicalPassword123");
+String retrievedRecord = api.retrieveSecret(medicalBlock.getBlockNumber(), "medicalPassword123");
 if (retrievedRecord != null) {
     System.out.println("Retrieved medical record: " + retrievedRecord);
 } else {
@@ -137,7 +137,7 @@ Block txBlock = api.storeDataWithIdentifier(
 // Find and decrypt transaction by identifier
 List<Block> transactions = api.findRecordsByIdentifier("transaction:TX-2025-001");
 for (Block block : transactions) {
-    String txData = api.retrieveSecret(block.getId(), "financeKey456");
+    String txData = api.retrieveSecret(block.getBlockNumber(), "financeKey456");
     System.out.println("Transaction: " + txData);
 }
 ```
@@ -154,7 +154,7 @@ System.out.println("Found " + encryptedBlocks.size() + " encrypted blocks");
 
 // Decrypt each found block
 for (Block block : encryptedBlocks) {
-    String decryptedContent = api.retrieveSecret(block.getId(), "medicalPassword");
+    String decryptedContent = api.retrieveSecret(block.getBlockNumber(), "medicalPassword");
     if (decryptedContent != null) {
         System.out.println("Block #" + block.getBlockNumber() + ": " + decryptedContent);
     }
@@ -164,7 +164,7 @@ for (Block block : encryptedBlocks) {
 ## Architecture Benefits
 
 ### 1. Clear Separation of Concerns
-- **Database Layer**: `BlockDAO.getBlockByNumberWithDecryption()` handles database queries
+- **Database Layer**: `BlockRepository.getBlockByNumberWithDecryption()` handles database queries
 - **Business Logic**: `Blockchain.getDecryptedBlockDataByNumber()` provides clean interface
 - **User API**: `UserFriendlyEncryptionAPI.retrieveSecret()` offers intuitive access
 
@@ -185,10 +185,10 @@ for (Block block : encryptedBlocks) {
 
 ## Debug Logging Features
 
-### BlockDAO Layer Logging
+### BlockRepository Layer Logging
 ```
 🔧 DECRYPTION DEBUG: Getting block by blockNumber=1
-🔧 DECRYPTION DEBUG: Found block with blockNumber=1, ID=2, data='[ENCRYPTED]...'
+🔧 DECRYPTION DEBUG: Found block with blockNumber=1, ID=2, data='Test data 0...'
 🔧 DECRYPTION DEBUG: Block #1 decrypted successfully. Content: 'Test data 0 category:medical...'
 ```
 

@@ -1430,7 +1430,7 @@ org.opentest4j.AssertionFailedError: expected: <true> but was: <false>
 ```java
 // Blockchain.java - completeCleanupForTests()
 public void completeCleanupForTests() {
-    blockDAO.completeCleanupTestData();      // ✅ Cleans blocks & sequences
+    blockchain.completeCleanupTestData();      // ✅ Cleans blocks & sequences
     authorizedKeyDAO.cleanupTestData();      // ✅ ADDED: Cleans authorized keys
     // Note: Does NOT clean off-chain files (use clearAndReinitialize() for full cleanup)
 }

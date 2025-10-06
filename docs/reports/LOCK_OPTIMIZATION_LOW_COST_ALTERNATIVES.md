@@ -51,7 +51,7 @@ private static final ReentrantReadWriteLock GLOBAL_BLOCKCHAIN_LOCK = new Reentra
 public Block getBlock(long blockNumber) {
     GLOBAL_BLOCKCHAIN_LOCK.readLock().lock();  // Cache invalidation!
     try {
-        return blockDAO.getBlockByNumber(blockNumber);
+        return blockchain.getBlockByNumber(blockNumber);
     } finally {
         GLOBAL_BLOCKCHAIN_LOCK.readLock().unlock();
     }
@@ -65,13 +65,13 @@ private static final StampedLock GLOBAL_BLOCKCHAIN_LOCK = new StampedLock();
 // Read operation - optimistic (lock-free!)
 public Block getBlock(long blockNumber) {
     long stamp = GLOBAL_BLOCKCHAIN_LOCK.tryOptimisticRead();  // No lock!
-    Block block = blockDAO.getBlockByNumber(blockNumber);
+    Block block = blockchain.getBlockByNumber(blockNumber);
 
     if (!GLOBAL_BLOCKCHAIN_LOCK.validate(stamp)) {
         // Validation failed (write occurred) - retry with read lock
         stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
         try {
-            block = blockDAO.getBlockByNumber(blockNumber);
+            block = blockchain.getBlockByNumber(blockNumber);
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
         }
@@ -226,7 +226,7 @@ public Block addBlockWithKeywords(...) {
     GLOBAL_BLOCKCHAIN_LOCK.writeLock().lock();
     try {
         // Get next block number
-        Long nextBlockNumber = blockDAO.getNextBlockNumberAtomic();
+        Long nextBlockNumber = blockchain.getNextBlockNumberAtomic();
 
         // Create and save block
         Block newBlock = new Block();
@@ -235,7 +235,7 @@ public Block addBlockWithKeywords(...) {
         newBlock.setSignature(signature);
         // ... set other fields ...
 
-        blockDAO.saveBlock(newBlock);
+        blockchain.saveBlock(newBlock);
 
         return newBlock;
     } finally {
@@ -305,12 +305,12 @@ public Block getBlock(long blockNumber) {
     int stripe = getStripeIndex(blockNumber);
     long stamp = READ_LOCKS[stripe].tryOptimisticRead();
 
-    Block block = blockDAO.getBlockByNumber(blockNumber);
+    Block block = blockchain.getBlockByNumber(blockNumber);
 
     if (!READ_LOCKS[stripe].validate(stamp)) {
         stamp = READ_LOCKS[stripe].readLock();
         try {
-            block = blockDAO.getBlockByNumber(blockNumber);
+            block = blockchain.getBlockByNumber(blockNumber);
         } finally {
             READ_LOCKS[stripe].unlockRead(stamp);
         }

@@ -40,7 +40,7 @@ public class UserFriendlyEncryptionAPIStressTest {
         blockchain = new Blockchain();
 
         // Clean up database before each test to ensure isolation
-        blockchain.getBlockDAO().cleanupTestData();
+        // BlockRepository now package-private - use clearAndReinitialize();
         blockchain.getAuthorizedKeyDAO().cleanupTestData();
 
         api = new UserFriendlyEncryptionAPI(blockchain);

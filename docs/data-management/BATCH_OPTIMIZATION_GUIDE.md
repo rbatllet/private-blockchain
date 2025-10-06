@@ -37,9 +37,9 @@ for (Long blockNumber : candidateBlockNumbers) {
 
 ## ✅ Solution Implementation
 
-### BlockDAO Batch Retrieval
+### BlockRepository Batch Retrieval
 
-The `BlockDAO.batchRetrieveBlocks()` method replaces N individual queries with a single optimized JPA query:
+The `BlockRepository.batchRetrieveBlocks()` method replaces N individual queries with a single optimized JPA query:
 
 ```java
 /**
@@ -65,7 +65,7 @@ List<Long> sortedBlockNumbers = new ArrayList<>(candidateBlockNumbers);
 Collections.sort(sortedBlockNumbers);
 
 // Single batch query replaces hundreds of individual queries!
-List<Block> matchingBlocks = blockchain.getBlockDAO()
+List<Block> matchingBlocks = blockchain
     .batchRetrieveBlocks(sortedBlockNumbers);
 ```
 
@@ -84,13 +84,12 @@ List<Block> matchingBlocks = blockchain.getBlockDAO()
 
 ```bash
 # UserFriendlyEncryptionAPIOptimizationTest Results
-✅ shouldHandleWildcardSearches: PASS (was failing due to timeouts)
-✅ shouldFilterBySearchTermEfficiently: PASS (was failing due to timeouts)  
-✅ shouldUseEncryptedBlocksCacheForFastRetrieval: PASS (now <200ms vs 2000+ms)
+✅ shouldHandleWildcardSearches: PASS
+✅ shouldFilterBySearchTermEfficiently: PASS
+✅ shouldUseEncryptedBlocksCacheForFastRetrieval: PASS (typically <200ms)
 
 # Overall Test Performance
-Before: Tests run: 17, Failures: 3, Errors: 5 (8 failing tests)
-After:  Tests run: 17, Failures: 0, Errors: 0 (all tests pass)
+Tests run: 17, Failures: 0, Errors: 0 (all tests pass)
 ```
 
 ## 🏗️ Architecture Benefits
@@ -125,7 +124,7 @@ public List<Block> batchRetrieveBlocks(List<Long> blockNumbers) {
 
 ```java
 logger.debug(
-    "🚀 Batch loading {} blocks to avoid N+1 queries using BlockDAO",
+    "🚀 Batch loading {} blocks to avoid N+1 queries using BlockRepository",
     sortedBlockNumbers.size()
 );
 ```
@@ -142,7 +141,7 @@ if (!candidateBlockNumbers.isEmpty()) {
         Collections.sort(sortedBlockNumbers);
         
         // Use proper DAO layer for batch retrieval
-        matchingBlocks = blockchain.getBlockDAO()
+        matchingBlocks = blockchain
             .batchRetrieveBlocks(sortedBlockNumbers);
     } catch (Exception e) {
         // Fallback to individual queries if needed
@@ -198,7 +197,7 @@ void testBatchRetrievalPerformance() {
     List<Long> blockNumbers = Arrays.asList(1L, 2L, 3L, 4L, 5L);
     
     long startTime = System.currentTimeMillis();
-    List<Block> results = blockDAO.batchRetrieveBlocks(blockNumbers);
+    List<Block> results = blockchain.batchRetrieveBlocks(blockNumbers);
     long duration = System.currentTimeMillis() - startTime;
     
     assertThat(results).hasSize(5);
@@ -254,7 +253,7 @@ for (Long blockNumber : blockNumbers) {
 // NEW - Use batch retrieval:
 List<Long> sortedNumbers = new ArrayList<>(blockNumbers);
 Collections.sort(sortedNumbers);
-List<Block> results = blockDAO.batchRetrieveBlocks(sortedNumbers);
+List<Block> results = blockchain.batchRetrieveBlocks(sortedNumbers);
 ```
 
 ### Hash-Based Batch Retrieval (NEW in v2.0.1)
@@ -273,7 +272,7 @@ for (EnhancedSearchResult result : searchResults) {
 List<String> hashes = searchResults.stream()
     .map(EnhancedSearchResult::getBlockHash)
     .collect(Collectors.toList());
-List<Block> blocks = blockDAO.batchRetrieveBlocksByHash(hashes);
+List<Block> blocks = blockchain.batchRetrieveBlocksByHash(hashes);
 ```
 
 **Perfect for:**

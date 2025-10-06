@@ -270,14 +270,6 @@ SearchSpecialistAPI(boolean internal, SearchFrameworkEngine searchEngine)
 - **Performance:** Reuses existing SearchFrameworkEngine instance
 - **Purpose:** Framework optimization, not for public use
 
-#### 6. Legacy Internal Constructor (DEPRECATED)
-```java
-@Deprecated
-SearchSpecialistAPI(boolean internal)
-```
-- **Status:** Deprecated, creates new SearchFrameworkEngine
-- **Replacement:** Use constructor with SearchFrameworkEngine parameter
-
 ## 🎯 Key Takeaways
 
 ### Recommended Patterns (Ranked by Performance)

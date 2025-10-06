@@ -2,13 +2,14 @@
 
 This directory contains comprehensive security, encryption, and key management documentation for the Private Blockchain.
 
-## 📚 Documents in This Directory (6 files)
+## 📚 Documents in This Directory (7 files)
 
 ### 🎯 Essential Guides
 | Document | Description | Recommended For |
 |----------|-------------|-----------------|
 | **[SECURITY_GUIDE.md](SECURITY_GUIDE.md)** | Security best practices and guidelines | **START HERE** - All developers |
 | **[ENCRYPTION_GUIDE.md](ENCRYPTION_GUIDE.md)** | Block encryption and metadata layer management | Encryption basics |
+| **[RETROACTIVE_ENCRYPTION_ARCHITECTURE.md](RETROACTIVE_ENCRYPTION_ARCHITECTURE.md)** | Retroactive encryption architecture and hash integrity | Advanced encryption |
 | **[KEY_MANAGEMENT_GUIDE.md](KEY_MANAGEMENT_GUIDE.md)** | Hierarchical key management with rotation | Key lifecycle |
 
 ### 🔧 Configuration & Integration
@@ -27,12 +28,18 @@ This directory contains comprehensive security, encryption, and key management d
 ### For New Developers
 1. **[SECURITY_GUIDE.md](SECURITY_GUIDE.md)** - Understand security fundamentals
 2. **[ENCRYPTION_GUIDE.md](ENCRYPTION_GUIDE.md)** - Learn encryption basics
-3. **[KEY_MANAGEMENT_GUIDE.md](KEY_MANAGEMENT_GUIDE.md)** - Master key management
+3. **[RETROACTIVE_ENCRYPTION_ARCHITECTURE.md](RETROACTIVE_ENCRYPTION_ARCHITECTURE.md)** - Understand retroactive encryption
+4. **[KEY_MANAGEMENT_GUIDE.md](KEY_MANAGEMENT_GUIDE.md)** - Master key management
 
 ### For Production Deployment
 1. **[SECURITY_GUIDE.md](SECURITY_GUIDE.md)** - Review all best practices
 2. **[KEY_MANAGEMENT_GUIDE.md](KEY_MANAGEMENT_GUIDE.md)** - Implement key rotation
 3. **[ENCRYPTED_EXPORT_IMPORT_GUIDE.md](ENCRYPTED_EXPORT_IMPORT_GUIDE.md)** - Backup procedures
+
+### For Compliance Requirements (GDPR, HIPAA)
+1. **[RETROACTIVE_ENCRYPTION_ARCHITECTURE.md](RETROACTIVE_ENCRYPTION_ARCHITECTURE.md)** - Right to be forgotten implementation
+2. **[ENCRYPTION_GUIDE.md](ENCRYPTION_GUIDE.md)** - Data protection mechanisms
+3. **[KEY_MANAGEMENT_GUIDE.md](KEY_MANAGEMENT_GUIDE.md)** - Key lifecycle for compliance
 
 ## 🔐 Security Architecture
 
@@ -71,6 +78,17 @@ Root Key (Master)
 EncryptionService encryption = new EncryptionService();
 String encrypted = encryption.encryptData("sensitive data", "password");
 blockchain.addBlock(encrypted, privateKey, publicKey);
+```
+
+### Retroactively Encrypt Existing Block
+```java
+// See: RETROACTIVE_ENCRYPTION_ARCHITECTURE.md
+// Encrypt block AFTER creation while maintaining hash integrity
+boolean success = blockchain.encryptExistingBlock(blockNumber, "secure-password");
+
+// Original data preserved in 'data' field for hash validation
+// Encrypted data stored in 'encryptionMetadata' field
+// Access requires correct password
 ```
 
 ### Manage Keys

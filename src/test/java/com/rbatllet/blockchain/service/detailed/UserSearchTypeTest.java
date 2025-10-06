@@ -38,7 +38,8 @@ public class UserSearchTypeTest {
     void setUp() throws Exception {
         // Clean database and initialize
         blockchain = new Blockchain();
-        blockchain.getBlockDAO().cleanupTestData();
+        blockchain.clearAndReinitialize(); // CRITICAL: Clear all data from previous tests
+        // BlockRepository now package-private - use clearAndReinitialize();
         blockchain.getAuthorizedKeyDAO().cleanupTestData();
 
         api = new UserFriendlyEncryptionAPI(blockchain);

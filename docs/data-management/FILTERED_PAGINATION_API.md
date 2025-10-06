@@ -2,7 +2,7 @@
 
 **Version 2.1.0** introduces specialized pagination methods for filtering specific block types, enabling memory-efficient retrieval of encrypted blocks and blocks with off-chain data.
 
-These methods are available in both **`BlockDAO`** (low-level DAO layer) and **`Blockchain`** (high-level API with global locking).
+These methods are available in both **`BlockRepository`** (low-level DAO layer) and **`Blockchain`** (high-level API with global locking).
 
 ## Available Methods
 
@@ -14,8 +14,8 @@ Blockchain blockchain = new Blockchain();
 List<Block> blocks = blockchain.getBlocksWithOffChainDataPaginated(offset, limit);
 
 // Low-level DAO (Direct database access)
-BlockDAO blockDAO = new BlockDAO();
-List<Block> blocks = blockDAO.getBlocksWithOffChainDataPaginated(offset, limit);
+BlockRepository blockRepository = // BlockRepository is package-private - use Blockchain API;
+List<Block> blocks = blockchain.getBlocksWithOffChainDataPaginated(offset, limit);
 ```
 
 **Method Signature:**
@@ -67,8 +67,8 @@ Blockchain blockchain = new Blockchain();
 List<Block> blocks = blockchain.getEncryptedBlocksPaginated(offset, limit);
 
 // Low-level DAO (Direct database access)
-BlockDAO blockDAO = new BlockDAO();
-List<Block> blocks = blockDAO.getEncryptedBlocksPaginated(offset, limit);
+BlockRepository blockRepository = // BlockRepository is package-private - use Blockchain API;
+List<Block> blocks = blockchain.getEncryptedBlocksPaginated(offset, limit);
 ```
 
 **Method Signature:**
@@ -156,12 +156,12 @@ public void reencryptAllBlocks(Blockchain blockchain, String oldPassword, String
         for (Block block : batch) {
             try {
                 // Decrypt with old password (using DAO for encryption operations)
-                Block decrypted = blockchain.getBlockDAO().getBlockWithDecryption(
+                Block decrypted = blockchain.getBlockWithDecryption(
                     block.getId(), oldPassword);
 
                 if (decrypted != null) {
                     // Re-encrypt with new password
-                    blockchain.getBlockDAO().saveBlockWithEncryption(decrypted, newPassword);
+                    blockchain.saveBlockWithEncryption(decrypted, newPassword);
                     processedCount++;
 
                     if (processedCount % 50 == 0) {

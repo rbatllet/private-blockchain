@@ -209,10 +209,10 @@ public class SearchFrameworkDemo {
                     try {
                         content = api.retrieveSecret(block.getId(), password);
                         if (content == null) {
-                            content = "[ENCRYPTED - Decryption returned null]";
+                            content = "[ERROR: Decryption returned null]";
                         }
                     } catch (Exception e) {
-                        content = "[ENCRYPTED]";
+                        content = "[ERROR: Decryption failed - " + e.getMessage() + "]";
                     }
                 }
                 

@@ -1,4 +1,4 @@
-package com.rbatllet.blockchain.dao;
+package com.rbatllet.blockchain.core;
 
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.entity.BlockSequence;
@@ -21,19 +21,25 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Thread-safe DAO for Block operations
- * 
+ * Package-private Repository for Block persistence operations
+ *
+ * <p>
+ * <strong>⚠️ INTERNAL USE ONLY:</strong> This class must ONLY be accessed through
+ * {@link Blockchain} to ensure proper thread-safety via GLOBAL_BLOCKCHAIN_LOCK.
+ * Direct instantiation or usage bypasses critical synchronization mechanisms.
+ * </p>
+ *
  * <p>
  * <strong>Key Features:</strong>
  * </p>
  * <ul>
- * <li>Thread-safe operations using ReentrantReadWriteLock</li>
+ * <li>Database operations for Block entities using JPA/Hibernate</li>
  * <li>Global transaction support for atomic operations</li>
  * <li>Encrypted block data support using AES-256-GCM</li>
  * <li><strong>🚀 Batch retrieval optimization to eliminate N+1 query
  * problems</strong></li>
  * </ul>
- * 
+ *
  * <p>
  * <strong>Performance Optimizations:</strong>
  * </p>
@@ -41,24 +47,21 @@ import java.util.stream.Collectors;
  * <li>{@link #batchRetrieveBlocks(List)} - Eliminates N+1 query
  * anti-pattern</li>
  * <li>Intelligent transaction reuse for improved performance</li>
- * <li>Read-write lock optimization for concurrent access</li>
  * </ul>
- * 
+ *
  * <p>
- * <strong>Thread Safety:</strong> All public methods are thread-safe and can be
- * called
- * concurrently from multiple threads. Read operations use shared locks while
- * write
- * operations use exclusive locks.
+ * <strong>Thread Safety:</strong> This class is NOT thread-safe by itself.
+ * Thread-safety is provided by {@link Blockchain} using GLOBAL_BLOCKCHAIN_LOCK (StampedLock).
+ * All access must go through Blockchain's public API.
  * </p>
- * 
- * @version 2.0.0
+ *
+ * @version 2.1.0
  * @since 1.0.0
  * @author Blockchain Development Team
  */
-public class BlockDAO {
+class BlockRepository {
 
-    private static final Logger logger = LoggerFactory.getLogger(BlockDAO.class);
+    private static final Logger logger = LoggerFactory.getLogger(BlockRepository.class);
 
     /**
      * API version for tracking batch optimization features
@@ -1383,9 +1386,9 @@ public class BlockDAO {
                 // Encrypt data using secure encryption service
                 String encryptedData = SecureBlockEncryptionService.encryptToString(originalData, password);
 
-                // Store encrypted data in metadata and clear original data
+                // Store encrypted data in metadata
+                // CRITICAL: Do NOT modify block.data to maintain hash integrity
                 block.setEncryptionMetadata(encryptedData);
-                block.setData("[ENCRYPTED]"); // Placeholder to indicate encryption
                 block.setIsEncrypted(true);
             }
 
@@ -1600,10 +1603,10 @@ public class BlockDAO {
      */
     public boolean encryptExistingBlock(Long blockId, String password) {
         if (blockId == null) {
-            throw new IllegalArgumentException("Block ID cannot be null");
+            return false; // Return false instead of throwing exception
         }
         if (password == null || password.trim().isEmpty()) {
-            throw new IllegalArgumentException("Password cannot be null or empty");
+            return false; // Return false instead of throwing exception
         }
 
         EntityManager em = JPAUtil.getEntityManager();
@@ -1629,9 +1632,11 @@ public class BlockDAO {
             String originalData = block.getData();
             String encryptedData = SecureBlockEncryptionService.encryptToString(originalData, password);
 
-            // Update block
+            // Update block with encryption metadata
+            // CRITICAL: Do NOT modify block.data field to maintain hash integrity
+            // The hash was calculated with originalData, so changing data would break chain validation
+            // Store encrypted data in encryptionMetadata field instead
             block.setEncryptionMetadata(encryptedData);
-            block.setData("[ENCRYPTED]");
             block.setIsEncrypted(true);
 
             em.merge(block);
@@ -1762,13 +1767,13 @@ public class BlockDAO {
      * // Instead of this (N+1 queries):
      * List<Block> blocks = new ArrayList<>();
      * for (Long blockNumber : blockNumbers) {
-     *     Block block = blockDAO.findByBlockNumber(blockNumber); // Individual query
+     *     Block block = blockRepository.findByBlockNumber(blockNumber); // Individual query
      *     if (block != null)
      *         blocks.add(block);
      * }
-     * 
+     *
      * // Use this (1 optimized query):
-     * List<Block> blocks = blockDAO.batchRetrieveBlocks(blockNumbers);
+     * List<Block> blocks = blockchain.batchRetrieveBlocks(blockNumbers);
      * }</pre>
      * 
      * <p>
@@ -1882,8 +1887,8 @@ public class BlockDAO {
 
     /**
      * BATCH RETRIEVAL OPTIMIZATION - USAGE EXAMPLES
-     * 
-     * This BlockDAO now includes advanced batch retrieval capabilities that solve
+     *
+     * This BlockRepository now includes advanced batch retrieval capabilities that solve
      * the N+1 query problem commonly encountered in metadata search operations.
      * 
      * BEFORE (N+1 Problem):
@@ -1900,16 +1905,15 @@ public class BlockDAO {
      * ==================
      * Set<Long> blockNumbers = getBlockNumbersFromIndex();
      * List<Long> sortedNumbers = new ArrayList<>(blockNumbers);
-     * List<Block> blocks = blockDAO.batchRetrieveBlocks(sortedNumbers);
+     * List<Block> blocks = blockchain.batchRetrieveBlocks(sortedNumbers);
      * // Result: 100 block numbers = 1 optimized database query
-     * 
+     *
      * INTEGRATION WITH SERVICES:
      * ==========================
      * // In UserFriendlyEncryptionAPI.findBlocksByMetadata():
      * List<Long> sortedBlockNumbers = new ArrayList<>(candidateBlockNumbers);
      * Collections.sort(sortedBlockNumbers);
-     * matchingBlocks =
-     * blockchain.getBlockDAO().batchRetrieveBlocks(sortedBlockNumbers);
+     * matchingBlocks = blockchain.batchRetrieveBlocks(sortedBlockNumbers);
      * 
      * PERFORMANCE IMPACT:
      * ===================
@@ -1922,12 +1926,12 @@ public class BlockDAO {
      * THREAD SAFETY:
      * ==============
      * All batch operations are fully thread-safe and can be called concurrently:
-     * 
+     *
      * CompletableFuture<List<Block>> future1 = CompletableFuture.supplyAsync(() ->
-     * blockDAO.batchRetrieveBlocks(blockNumbers1)
+     * blockchain.batchRetrieveBlocks(blockNumbers1)
      * );
      * CompletableFuture<List<Block>> future2 = CompletableFuture.supplyAsync(() ->
-     * blockDAO.batchRetrieveBlocks(blockNumbers2)
+     * blockchain.batchRetrieveBlocks(blockNumbers2)
      * );
      * 
      * @version 2.0.0
@@ -1977,10 +1981,10 @@ public class BlockDAO {
      * List<String> blockHashes = enhancedResults.stream()
      *         .map(EnhancedSearchResult::getBlockHash)
      *         .collect(Collectors.toList());
-     * 
+     *
      * // Batch retrieve all blocks in one operation
-     * List<Block> blocks = blockDAO.batchRetrieveBlocksByHash(blockHashes);
-     * 
+     * List<Block> blocks = blockchain.batchRetrieveBlocksByHash(blockHashes);
+     *
      * // Result: 50 search results = 1 database query instead of 50
      * }</pre>
      * 

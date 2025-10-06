@@ -33,8 +33,7 @@ public class CustomMetadataSearchTest {
     @BeforeEach
     void setUp() throws Exception {
         blockchain = new Blockchain();
-        blockchain.getBlockDAO().cleanupTestData();
-        blockchain.getAuthorizedKeyDAO().cleanupTestData();
+        blockchain.clearAndReinitialize();
 
         keyPair = CryptoUtil.generateKeyPair();
         api = new UserFriendlyEncryptionAPI(blockchain, "test_user", keyPair);
@@ -101,7 +100,7 @@ public class CustomMetadataSearchTest {
 
         Block block1 = blockchain.addBlockAndReturn("Medical data 1", keyPair.getPrivate(), keyPair.getPublic());
         block1.setCustomMetadata(jsonMetadata1);
-        blockchain.getBlockDAO().updateBlock(block1);
+        blockchain.updateBlock(block1);
 
         // Create second block
         Map<String, Object> metadata2 = new HashMap<>();
@@ -112,7 +111,7 @@ public class CustomMetadataSearchTest {
 
         Block block2 = blockchain.addBlockAndReturn("Finance data 1", keyPair.getPrivate(), keyPair.getPublic());
         block2.setCustomMetadata(jsonMetadata2);
-        blockchain.getBlockDAO().updateBlock(block2);
+        blockchain.updateBlock(block2);
 
         // Search for "medical" - should find block1
         List<Block> medicalResults = api.searchByCustomMetadata("medical");
@@ -144,7 +143,7 @@ public class CustomMetadataSearchTest {
 
         Block block = blockchain.addBlockAndReturn("Test data", keyPair.getPrivate(), keyPair.getPublic());
         block.setCustomMetadata(jsonMetadata);
-        blockchain.getBlockDAO().updateBlock(block);
+        blockchain.updateBlock(block);
 
         // Test different case variations
         List<Block> results1 = api.searchByCustomMetadata("finance");
@@ -172,7 +171,7 @@ public class CustomMetadataSearchTest {
 
         Block block1 = blockchain.addBlockAndReturn("Medical case 1", keyPair.getPrivate(), keyPair.getPublic());
         block1.setCustomMetadata(jsonMapper.writeValueAsString(metadata1));
-        blockchain.getBlockDAO().updateBlock(block1);
+        blockchain.updateBlock(block1);
 
         Map<String, Object> metadata2 = new HashMap<>();
         metadata2.put("department", "medical");
@@ -181,7 +180,7 @@ public class CustomMetadataSearchTest {
 
         Block block2 = blockchain.addBlockAndReturn("Medical case 2", keyPair.getPrivate(), keyPair.getPublic());
         block2.setCustomMetadata(jsonMapper.writeValueAsString(metadata2));
-        blockchain.getBlockDAO().updateBlock(block2);
+        blockchain.updateBlock(block2);
 
         Map<String, Object> metadata3 = new HashMap<>();
         metadata3.put("department", "finance");
@@ -189,7 +188,7 @@ public class CustomMetadataSearchTest {
 
         Block block3 = blockchain.addBlockAndReturn("Finance case", keyPair.getPrivate(), keyPair.getPublic());
         block3.setCustomMetadata(jsonMapper.writeValueAsString(metadata3));
-        blockchain.getBlockDAO().updateBlock(block3);
+        blockchain.updateBlock(block3);
 
         // Search for high priority - should find block1 and block3
         List<Block> highPriority = api.searchByCustomMetadataKeyValue("priority", "high");
@@ -220,7 +219,7 @@ public class CustomMetadataSearchTest {
 
         Block block1 = blockchain.addBlockAndReturn("Case 1", keyPair.getPrivate(), keyPair.getPublic());
         block1.setCustomMetadata(jsonMapper.writeValueAsString(metadata1));
-        blockchain.getBlockDAO().updateBlock(block1);
+        blockchain.updateBlock(block1);
 
         Map<String, Object> metadata2 = new HashMap<>();
         metadata2.put("department", "medical");
@@ -229,7 +228,7 @@ public class CustomMetadataSearchTest {
 
         Block block2 = blockchain.addBlockAndReturn("Case 2", keyPair.getPrivate(), keyPair.getPublic());
         block2.setCustomMetadata(jsonMapper.writeValueAsString(metadata2));
-        blockchain.getBlockDAO().updateBlock(block2);
+        blockchain.updateBlock(block2);
 
         Map<String, Object> metadata3 = new HashMap<>();
         metadata3.put("department", "medical");
@@ -238,7 +237,7 @@ public class CustomMetadataSearchTest {
 
         Block block3 = blockchain.addBlockAndReturn("Case 3", keyPair.getPrivate(), keyPair.getPublic());
         block3.setCustomMetadata(jsonMapper.writeValueAsString(metadata3));
-        blockchain.getBlockDAO().updateBlock(block3);
+        blockchain.updateBlock(block3);
 
         // Search for medical + high priority + approved (should find only block1)
         Map<String, String> criteria1 = new HashMap<>();
@@ -277,12 +276,12 @@ public class CustomMetadataSearchTest {
 
         Block validBlock = blockchain.addBlockAndReturn("Valid data", keyPair.getPrivate(), keyPair.getPublic());
         validBlock.setCustomMetadata(jsonMapper.writeValueAsString(validMetadata));
-        blockchain.getBlockDAO().updateBlock(validBlock);
+        blockchain.updateBlock(validBlock);
 
         // Manually create a block with malformed JSON
         Block malformedBlock = blockchain.addBlockAndReturn("Malformed data", keyPair.getPrivate(), keyPair.getPublic());
         malformedBlock.setCustomMetadata("{invalid json: malformed");
-        blockchain.getBlockDAO().updateBlock(malformedBlock);
+        blockchain.updateBlock(malformedBlock);
 
         // Search should gracefully handle malformed JSON and return valid blocks
         List<Block> results = api.searchByCustomMetadataKeyValue("department", "medical");
@@ -302,7 +301,7 @@ public class CustomMetadataSearchTest {
 
         Block block = blockchain.addBlockAndReturn("Special chars data", keyPair.getPrivate(), keyPair.getPublic());
         block.setCustomMetadata(jsonMapper.writeValueAsString(metadata));
-        blockchain.getBlockDAO().updateBlock(block);
+        blockchain.updateBlock(block);
 
         // Test unicode characters
         List<Block> results1 = api.searchByCustomMetadata("José");
@@ -361,7 +360,7 @@ public class CustomMetadataSearchTest {
 
             Block block = blockchain.addBlockAndReturn("Data " + i, keyPair.getPrivate(), keyPair.getPublic());
             block.setCustomMetadata(jsonMapper.writeValueAsString(metadata));
-            blockchain.getBlockDAO().updateBlock(block);
+            blockchain.updateBlock(block);
         }
 
         // Launch 50 concurrent searches
@@ -421,7 +420,7 @@ public class CustomMetadataSearchTest {
 
         Block block = blockchain.addBlockAndReturn("Data with nulls", keyPair.getPrivate(), keyPair.getPublic());
         block.setCustomMetadata(jsonMapper.writeValueAsString(metadata));
-        blockchain.getBlockDAO().updateBlock(block);
+        blockchain.updateBlock(block);
 
         // Search for department should work
         List<Block> results1 = api.searchByCustomMetadataKeyValue("department", "medical");
@@ -447,7 +446,7 @@ public class CustomMetadataSearchTest {
 
         Block block = blockchain.addBlockAndReturn("Test data", keyPair.getPrivate(), keyPair.getPublic());
         block.setCustomMetadata(jsonMapper.writeValueAsString(metadata));
-        blockchain.getBlockDAO().updateBlock(block);
+        blockchain.updateBlock(block);
 
         // Even if query returns null (which shouldn't happen in normal JPA),
         // our code should return empty list, not null
@@ -492,7 +491,7 @@ public class CustomMetadataSearchTest {
 
         Block block = blockchain.addBlockAndReturn("Complex JSON", keyPair.getPrivate(), keyPair.getPublic());
         block.setCustomMetadata(complexJson);
-        blockchain.getBlockDAO().updateBlock(block);
+        blockchain.updateBlock(block);
 
         // Substring search should find nested values
         List<Block> results1 = api.searchByCustomMetadata("urgent");
@@ -519,7 +518,7 @@ public class CustomMetadataSearchTest {
 
         Block block = blockchain.addBlockAndReturn("Large metadata", keyPair.getPrivate(), keyPair.getPublic());
         block.setCustomMetadata(jsonMapper.writeValueAsString(largeMetadata));
-        blockchain.getBlockDAO().updateBlock(block);
+        blockchain.updateBlock(block);
 
         // Should still find the target field efficiently
         List<Block> results = api.searchByCustomMetadataKeyValue("target_field", "find_me");
@@ -541,7 +540,7 @@ public class CustomMetadataSearchTest {
 
         Block block = blockchain.addBlockAndReturn("Whitespace data", keyPair.getPrivate(), keyPair.getPublic());
         block.setCustomMetadata(jsonMapper.writeValueAsString(metadata));
-        blockchain.getBlockDAO().updateBlock(block);
+        blockchain.updateBlock(block);
 
         // Search for whitespace value (exact match)
         List<Block> results1 = api.searchByCustomMetadataKeyValue("department", "   ");
@@ -569,7 +568,7 @@ public class CustomMetadataSearchTest {
 
         Block block = blockchain.addBlockAndReturn("Numeric data", keyPair.getPrivate(), keyPair.getPublic());
         block.setCustomMetadata(jsonMapper.writeValueAsString(metadata));
-        blockchain.getBlockDAO().updateBlock(block);
+        blockchain.updateBlock(block);
 
         // Search for numeric values as strings
         List<Block> results1 = api.searchByCustomMetadataKeyValue("priority_level", "5");
@@ -610,7 +609,7 @@ public class CustomMetadataSearchTest {
 
         Block block1 = blockchain.addBlockAndReturn("Medical record 1", keyPair.getPrivate(), keyPair.getPublic());
         block1.setCustomMetadata(jsonMapper.writeValueAsString(record1));
-        blockchain.getBlockDAO().updateBlock(block1);
+        blockchain.updateBlock(block1);
 
         Map<String, Object> record2 = new HashMap<>();
         record2.put("patient_id", "P67890");
@@ -623,7 +622,7 @@ public class CustomMetadataSearchTest {
 
         Block block2 = blockchain.addBlockAndReturn("Medical record 2", keyPair.getPrivate(), keyPair.getPublic());
         block2.setCustomMetadata(jsonMapper.writeValueAsString(record2));
-        blockchain.getBlockDAO().updateBlock(block2);
+        blockchain.updateBlock(block2);
 
         Map<String, Object> record3 = new HashMap<>();
         record3.put("patient_id", "P11111");
@@ -636,7 +635,7 @@ public class CustomMetadataSearchTest {
 
         Block block3 = blockchain.addBlockAndReturn("Medical record 3", keyPair.getPrivate(), keyPair.getPublic());
         block3.setCustomMetadata(jsonMapper.writeValueAsString(record3));
-        blockchain.getBlockDAO().updateBlock(block3);
+        blockchain.updateBlock(block3);
 
         // Query 1: Find all active cardiology cases
         Map<String, String> cardiologyActive = new HashMap<>();

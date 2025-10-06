@@ -6,6 +6,8 @@ Comprehensive guide to the Private Blockchain API, core functions, off-chain sto
 
 > **NEW FEATURE**: This blockchain now includes automatic off-chain storage for large data (>512KB) with AES-256-GCM encryption, integrity verification, and configurable size thresholds. All off-chain operations are handled transparently by the API.
 
+> **⚠️ ARCHITECTURE NOTE**: `BlockRepository` is a **package-private** internal class located in `com.rbatllet.blockchain.core`. It is **NOT** accessible outside the `core` package. All database operations **MUST** go through the public `Blockchain` API, which provides thread-safe access via `GLOBAL_BLOCKCHAIN_LOCK`. Direct instantiation of `BlockRepository` is prevented by the compiler to ensure thread-safety and proper synchronization.
+
 ## 📋 Table of Contents
 
 - [Core Functions Usage](#-core-functions-usage)
@@ -15,7 +17,7 @@ Comprehensive guide to the Private Blockchain API, core functions, off-chain sto
 - [Granular Term Visibility API](#-granular-term-visibility-api)
 - [Off-Chain Storage API](#-off-chain-storage-api)
 - [EncryptionConfig Integration](#-encryptionconfig-integration)
-- [BlockDAO Performance Optimizations](#-blockdao-performance-optimizations)
+- [BlockRepository Performance Optimizations](#-blockrepository-performance-optimizations)
 - [Configuration](#-configuration)
 - [Configuration Parameters](#-configuration-parameters)
 - [Thread Safety](#-thread-safety-and-concurrent-usage)
@@ -1304,9 +1306,9 @@ List<Block> exhaustiveResults = blockchain.searchBlocks("contract", SearchLevel.
 List<Block> quickSearch = blockchain.searchBlocksFast("API");           // Keywords only
 List<Block> dataSearch = blockchain.searchBlocksComplete("John Doe");   // Keywords + data + off-chain
 
-// For more control over result limits, use BlockDAO directly:
-List<Block> customLimit = blockchain.getBlockDAO().searchBlocksByContentWithLimit("payment", 5000);
-List<Block> categoryLimit = blockchain.getBlockDAO().searchByCategoryWithLimit("MEDICAL", 2000);
+// For more control over result limits, use BlockRepository directly:
+List<Block> customLimit = blockchain.searchBlocksByContentWithLimit("payment", 5000);
+List<Block> categoryLimit = blockchain.searchByCategoryWithLimit("MEDICAL", 2000);
 ```
 
 ##### Adding Blocks with Keywords
@@ -1630,7 +1632,7 @@ public int deleteAllAuthorizedKeys() {
 }
 ```
 
-#### BlockDAO Methods
+#### BlockRepository Methods
 ```java
 // Get the next block number atomically (thread-safe)
 public Long getNextBlockNumberAtomic() {
@@ -1682,7 +1684,7 @@ public Block getLastBlock() {
 // Get blocks within a time range (memory-efficient, max 10K results)
 public List<Block> getBlocksByTimeRange(LocalDateTime startTime, LocalDateTime endTime) {
     // Returns blocks with timestamps between startTime and endTime (limited to 10,000 results)
-    // For more control, use: blockDAO.getBlocksByTimeRangePaginated(start, end, offset, limit)
+    // For more control, use: blockchain.getBlocksByTimeRangePaginated(start, end, offset, limit)
 }
 
 // Get the total number of blocks
@@ -1713,7 +1715,7 @@ public int deleteAllBlocks() {
 // Search blocks by content (case-insensitive, memory-efficient, max 10K results)
 public List<Block> searchBlocksByContent(String content) {
     // Returns blocks containing the specified content (case-insensitive, limited to 10,000 results)
-    // For more control, use: blockDAO.searchBlocksByContentWithLimit(content, maxResults)
+    // For more control, use: blockchain.searchBlocksByContentWithLimit(content, maxResults)
 }
 
 // Get block by hash
@@ -1745,62 +1747,62 @@ List<AuthorizedKey> activeKeys = blockchain.getAuthorizedKeys();
 List<AuthorizedKey> allKeys = blockchain.getAllAuthorizedKeys();
 ```
 
-#### Memory-Efficient BlockDAO Methods
+#### Memory-Efficient BlockRepository Methods
 
 For large-scale blockchain operations, use these paginated/limited methods to prevent memory issues:
 
 ```java
 // Paginated block retrieval after specific block number (useful for rollback operations)
-List<Block> blocks = blockDAO.getBlocksAfterPaginated(blockNumber, offset, limit);
+List<Block> blocks = blockchain.getBlocksAfterPaginated(blockNumber, offset, limit);
 // Example: Process 1000 blocks at a time
 for (long offset = 0; ; offset += 1000) {  // ⚠️ Use long to prevent overflow
-    List<Block> batch = blockDAO.getBlocksAfterPaginated(100L, offset, 1000);
+    List<Block> batch = blockchain.getBlocksAfterPaginated(100L, offset, 1000);
     if (batch.isEmpty()) break;
     // Process batch...
 }
 
 // Time range search with pagination
-List<Block> blocks = blockDAO.getBlocksByTimeRangePaginated(startTime, endTime, offset, limit);
+List<Block> blocks = blockchain.getBlocksByTimeRangePaginated(startTime, endTime, offset, limit);
 // Example: Get first 5000 blocks in time range
-List<Block> firstBatch = blockDAO.getBlocksByTimeRangePaginated(start, end, 0, 5000);
+List<Block> firstBatch = blockchain.getBlocksByTimeRangePaginated(start, end, 0, 5000);
 
 // Content search with custom limit
-List<Block> blocks = blockDAO.searchBlocksByContentWithLimit(searchTerm, maxResults);
+List<Block> blocks = blockchain.searchBlocksByContentWithLimit(searchTerm, maxResults);
 // Example: Limit to 100 results
-List<Block> top100 = blockDAO.searchBlocksByContentWithLimit("payment", 100);
+List<Block> top100 = blockchain.searchBlocksByContentWithLimit("payment", 100);
 
 // Signer-based search with limit
-List<Block> blocks = blockDAO.getBlocksBySignerPublicKeyWithLimit(publicKey, maxResults);
+List<Block> blocks = blockchain.getBlocksBySignerPublicKeyWithLimit(publicKey, maxResults);
 // Example: Get sample of 10 blocks for impact assessment
-List<Block> sample = blockDAO.getBlocksBySignerPublicKeyWithLimit(key, 10);
+List<Block> sample = blockchain.getBlocksBySignerPublicKeyWithLimit(key, 10);
 
 // Category search with custom limit
-List<Block> blocks = blockDAO.searchByCategoryWithLimit(category, maxResults);
+List<Block> blocks = blockchain.searchByCategoryWithLimit(category, maxResults);
 // Example: Get first 1000 medical records
-List<Block> medical = blockDAO.searchByCategoryWithLimit("MEDICAL", 1000);
+List<Block> medical = blockchain.searchByCategoryWithLimit("MEDICAL", 1000);
 
 // JSON metadata search with pagination
-List<Block> blocks = blockDAO.searchByCustomMetadataKeyValuePaginated(key, value, offset, limit);
+List<Block> blocks = blockchain.searchByCustomMetadataKeyValuePaginated(key, value, offset, limit);
 // Example: Find all high-priority items, process in batches
 for (long offset = 0; ; offset += 1000) {  // ⚠️ Use long to prevent overflow
-    List<Block> batch = blockDAO.searchByCustomMetadataKeyValuePaginated("priority", "high", offset, 1000);
+    List<Block> batch = blockchain.searchByCustomMetadataKeyValuePaginated("priority", "high", offset, 1000);
     if (batch.isEmpty()) break;
     // Process batch...
 }
 
 // Complex JSON criteria search with pagination
 Map<String, String> criteria = Map.of("department", "medical", "status", "active");
-List<Block> blocks = blockDAO.searchByCustomMetadataMultipleCriteriaPaginated(criteria, offset, limit);
+List<Block> blocks = blockchain.searchByCustomMetadataMultipleCriteriaPaginated(criteria, offset, limit);
 // Example: Get first 500 matching blocks
-List<Block> matches = blockDAO.searchByCustomMetadataMultipleCriteriaPaginated(criteria, 0, 500);
+List<Block> matches = blockchain.searchByCustomMetadataMultipleCriteriaPaginated(criteria, 0, 500);
 
 // General custom metadata search with limit
-List<Block> blocks = blockDAO.searchByCustomMetadata(searchTerm);  // Default 10K limit
-List<Block> custom = blockDAO.searchByCustomMetadataWithLimit(searchTerm, 100);  // Custom limit
+List<Block> blocks = blockchain.searchByCustomMetadata(searchTerm);  // Default 10K limit
+List<Block> custom = blockchain.searchByCustomMetadataWithLimit(searchTerm, 100);  // Custom limit
 
 // Multi-level content search with limit
-List<Block> blocks = blockDAO.searchBlocksByContentWithLevel(searchTerm, SearchLevel.FAST_ONLY);  // Default 10K
-List<Block> limited = blockDAO.searchBlocksByContentWithLevel(searchTerm, SearchLevel.EXHAUSTIVE_OFFCHAIN, 500);  // Custom limit
+List<Block> blocks = blockchain.searchBlocksByContentWithLevel(searchTerm, SearchLevel.FAST_ONLY);  // Default 10K
+List<Block> limited = blockchain.searchBlocksByContentWithLevel(searchTerm, SearchLevel.EXHAUSTIVE_OFFCHAIN, 500);  // Custom limit
 ```
 
 #### Block Operations
@@ -2578,7 +2580,7 @@ public List<Block> searchBlocksByContent(String searchTerm)
 - **Parameters:** `searchTerm`: Text to search for (case-insensitive)
 - **Returns:** List of blocks containing the search term (limited to 10,000 results)
 - **Description:** Memory-efficient content search - automatically limited to prevent memory issues
-- **For Custom Limits:** Use `blockDAO.searchBlocksByContentWithLimit(searchTerm, maxResults)`
+- **For Custom Limits:** Use `blockchain.searchBlocksByContentWithLimit(searchTerm, maxResults)`
 
 ```java
 public Block getBlockByHash(String hash)
@@ -3034,11 +3036,11 @@ if (config.getPbkdf2Iterations() < 100000) {
 
 For complete details on EncryptionConfig usage, see the [EncryptionConfig Integration Guide](../security/ENCRYPTION_CONFIG_INTEGRATION_GUIDE.md).
 
-## � BlockDAO Performance Optimizations
+## � BlockRepository Performance Optimizations
 
 ### Batch Retrieval API
 
-**Version 2.0.0** introduces advanced batch retrieval capabilities in `BlockDAO` that eliminate the N+1 query problem and provide massive performance improvements.
+**Version 2.0.0** introduces advanced batch retrieval capabilities in `BlockRepository` that eliminate the N+1 query problem and provide massive performance improvements.
 
 #### Core Method
 
@@ -3075,7 +3077,7 @@ for (Long blockNumber : blockNumbers) {
 Set<Long> blockNumbers = getBlockNumbersFromMetadataIndex();
 List<Long> sortedNumbers = new ArrayList<>(blockNumbers);
 Collections.sort(sortedNumbers);
-List<Block> blocks = blockchain.getBlockDAO().batchRetrieveBlocks(sortedNumbers);
+List<Block> blocks = blockchain.batchRetrieveBlocks(sortedNumbers);
 // Result: 100 blocks = 1 optimized database query
 ```
 
@@ -3092,7 +3094,7 @@ if (!candidateBlockNumbers.isEmpty()) {
                     sortedBlockNumbers.size());
         
         // Use proper DAO layer for batch retrieval
-        matchingBlocks = blockchain.getBlockDAO()
+        matchingBlocks = blockchain
             .batchRetrieveBlocks(sortedBlockNumbers);
             
     } catch (Exception e) {
@@ -3191,7 +3193,7 @@ for (Long blockNumber : blockNumbers) {
 // NEW PATTERN - Use this:
 List<Long> sortedNumbers = new ArrayList<>(blockNumbers);
 Collections.sort(sortedNumbers);
-List<Block> results = blockDAO.batchRetrieveBlocks(sortedNumbers);
+List<Block> results = blockchain.batchRetrieveBlocks(sortedNumbers);
 ```
 
 #### Hash-Based Batch Retrieval (NEW in v2.0.1) 🆕
@@ -3226,7 +3228,7 @@ List<String> hashes = searchResults.stream()
     .map(EnhancedSearchResult::getBlockHash)
     .filter(hash -> hash != null && !hash.isEmpty())
     .collect(Collectors.toList());
-List<Block> blocks = blockDAO.batchRetrieveBlocksByHash(hashes);
+List<Block> blocks = blockchain.batchRetrieveBlocksByHash(hashes);
 ```
 
 **Perfect for:**
@@ -4175,11 +4177,11 @@ Block storeWithSmartTiering(String data, String password, Map<String, Object> me
 #### Data Retrieval Methods
 ```java
 // Retrieve and decrypt data
-String retrieveSecret(Long blockId, String password)
-String retrieveEncryptedData(Long blockId, String password)
+String retrieveSecret(Long blockNumber, String password)
+String retrieveEncryptedData(Long blockNumber, String password)
 
 // Check encryption status
-boolean isBlockEncrypted(Long blockId)
+boolean isBlockEncrypted(Long blockNumber)
 boolean hasEncryptedData()
 
 // Find encrypted blocks
@@ -4474,8 +4476,8 @@ HealthReport performHealthDiagnosis()
 HealthReport generateHealthReport(Map<String, Object> options)
 
 // Data integrity checking
-boolean detectDataTampering(Long blockId)
-boolean offChainFilesExist(Long blockId)
+boolean detectDataTampering(Long blockNumber)
+boolean offChainFilesExist(Long blockNumber)
 boolean validateGenesisBlock()
 boolean wasKeyAuthorizedAt(String username, LocalDateTime timestamp)
 String generateIntegrityReport()

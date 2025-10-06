@@ -35,7 +35,7 @@ Through extensive debugging with comprehensive logging, we identified:
 ### New Architecture: Block Number-Based Decryption Chain
 
 #### 1. Database Layer Enhancement
-**File**: `src/main/java/com/rbatllet/blockchain/dao/BlockDAO.java`
+**File**: `src/main/java/com/rbatllet/blockchain/dao/BlockRepository.java`
 
 ```java
 /**
@@ -65,7 +65,7 @@ public String getBlockByNumberWithDecryption(Long blockNumber, String password) 
  */
 public String getDecryptedBlockDataByNumber(Long blockNumber, String password) {
     // Delegates to DAO's block number-based method
-    return blockDAO.getBlockByNumberWithDecryption(blockNumber, password);
+    return blockchain.getBlockByNumberWithDecryption(blockNumber, password);
 }
 ```
 
@@ -81,14 +81,14 @@ public String getDecryptedBlockDataByNumber(Long blockNumber, String password) {
 /**
  * Updated user-facing method now uses block number consistently
  */
-public String retrieveSecret(Long blockId, String password) {
-    logger.debug("🔓 DEBUG: retrieveSecret called for block #{}", blockId);
+public String retrieveSecret(Long blockNumber, String password) {
+    logger.debug("🔓 DEBUG: retrieveSecret called for block #{}", blockNumber);
     
     // NEW: Uses block number-based decryption method
-    String decryptedData = blockchain.getDecryptedBlockDataByNumber(blockId, password);
+    String decryptedData = blockchain.getDecryptedBlockDataByNumber(blockNumber, password);
     
     logger.info("🔓 DEBUG: Block #{} decrypted successfully. Content: '{}'", 
-               blockId, decryptedData != null && decryptedData.length() > 100 
+               blockNumber, decryptedData != null && decryptedData.length() > 100 
                    ? decryptedData.substring(0, 100) + "..." 
                    : decryptedData);
     return decryptedData;
@@ -112,7 +112,7 @@ public String retrieveSecret(Long blockId, String password) {
 ### Debug Log Verification
 ```
 🔧 DECRYPTION DEBUG: Getting block by blockNumber=1
-🔧 DECRYPTION DEBUG: Found block with blockNumber=1, ID=2, data='[ENCRYPTED]...'  
+🔧 DECRYPTION DEBUG: Found block with blockNumber=1, ID=2, data='Test data 0...'  
 🔧 DECRYPTION DEBUG: Block #1 decrypted successfully. Content: 'Test data 0 category:medical...'
 🔓 DEBUG: Block #1 decrypted successfully. Content: 'Test data 0 category:medical status:active priority:high index:0'
 ```
@@ -131,7 +131,7 @@ API Layer (UserFriendlyEncryptionAPI)
     ↓ calls getDecryptedBlockDataByNumber()
 Business Layer (Blockchain)  
     ↓ calls getBlockByNumberWithDecryption()
-Data Layer (BlockDAO)
+Data Layer (BlockRepository)
     ↓ queries by blockNumber field
 ```
 
@@ -168,10 +168,10 @@ Data Layer (BlockDAO)
 ```java
 // Robust error handling at each layer
 try {
-    String decryptedData = blockchain.getDecryptedBlockDataByNumber(blockId, password);
+    String decryptedData = blockchain.getDecryptedBlockDataByNumber(blockNumber, password);
     return decryptedData;
 } catch (Exception e) {
-    logger.error("🔓 ERROR: Failed to decrypt block #{}: {}", blockId, e.getMessage());
+    logger.error("🔓 ERROR: Failed to decrypt block #{}: {}", blockNumber, e.getMessage());
     return null;
 }
 ```
@@ -181,7 +181,7 @@ try {
 // Multi-level logging for debugging
 logger.warn("🔧 DECRYPTION DEBUG: Getting block by blockNumber={}", blockNumber);
 logger.warn("🔧 DECRYPTION DEBUG: Found block with blockNumber={}, ID={}", blockNumber, id);
-logger.info("🔓 DEBUG: Block #{} decrypted successfully. Content: '{}'", blockId, preview);
+logger.info("🔓 DEBUG: Block #{} decrypted successfully. Content: '{}'", blockNumber, preview);
 ```
 
 ## Testing Strategy Enhancements

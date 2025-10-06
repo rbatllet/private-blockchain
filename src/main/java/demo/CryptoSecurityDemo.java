@@ -1,7 +1,6 @@
 package demo;
 
-import com.rbatllet.blockchain.dao.AuthorizedKeyDAO;
-import com.rbatllet.blockchain.dao.BlockDAO;
+import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.CryptoUtil.KeyInfo;
 import com.rbatllet.blockchain.util.CryptoUtil.KeyType;
@@ -44,17 +43,11 @@ public class CryptoSecurityDemo {
      */
     private static void resetDatabaseState() {
         try {
-            // Clean up the database using DAOs
-            AuthorizedKeyDAO keyDAO = new AuthorizedKeyDAO();
-            int deletedCount = keyDAO.deleteAllAuthorizedKeys();
-            
-            BlockDAO blockDAO = new BlockDAO();
-            int deletedBlocks = blockDAO.deleteAllBlocks();
-            
-            // Note: We do NOT shutdown the EntityManagerFactory here
-            // as that would prevent other tests from using the database
-            
-            System.out.println("🗑️ Reset database state: removed " + deletedCount + " keys and " + deletedBlocks + " blocks");
+            // Clean up the database using Blockchain API
+            Blockchain blockchain = new Blockchain();
+            blockchain.clearAndReinitialize();
+
+            System.out.println("🗑️ Reset database state completed");
         } catch (Exception e) {
             System.out.println("❌ Error resetting database state: " + e.getMessage());
         }

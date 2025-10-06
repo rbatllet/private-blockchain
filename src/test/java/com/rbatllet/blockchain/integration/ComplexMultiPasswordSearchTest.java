@@ -49,7 +49,8 @@ public class ComplexMultiPasswordSearchTest {
     void setUp() throws Exception {
         // Initialize fresh blockchain
         blockchain = new Blockchain();
-        blockchain.getBlockDAO().cleanupTestData();
+        blockchain.clearAndReinitialize(); // CRITICAL: Clear all data from previous tests
+        // BlockRepository now package-private - use clearAndReinitialize();
         blockchain.getAuthorizedKeyDAO().cleanupTestData();
 
         // Department passwords - intentionally similar to test edge cases

@@ -274,9 +274,10 @@ class UserFriendlyEncryptionAPIBlockCorruptionTest {
         );
         assertNotNull(testBlock, "Test block should be created");
 
-        // Introduce subtle corruption - change one character in data
+        // Introduce subtle corruption - change one character in the original data
+        // This will break the hash since data field is part of hash calculation
         String originalData = testBlock.getData();
-        String corruptedData = originalData.replace('E', 'F'); // Change E to F in [ENCRYPTED]
+        String corruptedData = originalData.replace('B', 'X'); // Change first 'B' to 'X'
         testBlock.setData(corruptedData);
 
         // Test the isBlockCorrupted method
