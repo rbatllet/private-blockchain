@@ -45,10 +45,83 @@ public class JPAUtil {
     }
 
     /**
-     * Initialize with default SQLite configuration (backwards compatibility)
+     * Initialize with default configuration
+     * Checks environment variables first with robust validation, falls back to SQLite if not properly configured
      */
     public static void initializeDefault() {
-        initialize(DatabaseConfig.createSQLiteConfig());
+        if (isEnvironmentConfigurationComplete()) {
+            logger.info("Environment variables detected for database configuration");
+            initialize(DatabaseConfig.createProductionConfigFromEnv());
+        } else {
+            logger.debug("No complete environment configuration found, using default SQLite");
+            initialize(DatabaseConfig.createSQLiteConfig());
+        }
+    }
+
+    /**
+     * Robust validation of environment variables for database configuration
+     * Ensures all required variables are present and valid based on DB_TYPE
+     *
+     * @return true if environment configuration is complete and valid
+     */
+    private static boolean isEnvironmentConfigurationComplete() {
+        String dbType = System.getenv("DB_TYPE");
+
+        // If DB_TYPE is not set or is explicitly "sqlite", no additional validation needed
+        if (dbType == null || dbType.trim().isEmpty() || dbType.equalsIgnoreCase("sqlite")) {
+            return false;
+        }
+
+        // For PostgreSQL and MySQL, validate all required connection parameters
+        if (dbType.equalsIgnoreCase("postgresql") || dbType.equalsIgnoreCase("mysql")) {
+            String host = System.getenv("DB_HOST");
+            String dbName = System.getenv("DB_NAME");
+            String user = System.getenv("DB_USER");
+            String password = System.getenv("DB_PASSWORD");
+
+            // All fields must be present and non-empty (password can be empty but must be set)
+            if (host == null || host.trim().isEmpty()) {
+                logger.warn("DB_TYPE={} but DB_HOST is not set or empty", dbType);
+                return false;
+            }
+
+            if (dbName == null || dbName.trim().isEmpty()) {
+                logger.warn("DB_TYPE={} but DB_NAME is not set or empty", dbType);
+                return false;
+            }
+
+            if (user == null || user.trim().isEmpty()) {
+                logger.warn("DB_TYPE={} but DB_USER is not set or empty", dbType);
+                return false;
+            }
+
+            if (password == null) {
+                logger.warn("DB_TYPE={} but DB_PASSWORD is not set (empty password is allowed but variable must exist)", dbType);
+                return false;
+            }
+
+            // Optional: Validate DB_PORT if provided
+            String port = System.getenv("DB_PORT");
+            if (port != null && !port.trim().isEmpty()) {
+                try {
+                    int portNum = Integer.parseInt(port.trim());
+                    if (portNum < 1 || portNum > 65535) {
+                        logger.warn("DB_PORT={} is not a valid port number (1-65535)", port);
+                        return false;
+                    }
+                } catch (NumberFormatException e) {
+                    logger.warn("DB_PORT={} is not a valid integer", port);
+                    return false;
+                }
+            }
+
+            logger.info("Complete environment configuration found for {}", dbType);
+            return true;
+        }
+
+        // Unknown DB_TYPE
+        logger.warn("Unknown DB_TYPE={}, falling back to SQLite", dbType);
+        return false;
     }
 
     /**
