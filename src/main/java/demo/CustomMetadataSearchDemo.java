@@ -73,7 +73,7 @@ public class CustomMetadataSearchDemo {
 
         Block block1 = blockchain.addBlockAndReturn("Medical data 1", keyPair.getPrivate(), keyPair.getPublic());
         block1.setCustomMetadata(jsonMapper.writeValueAsString(metadata1));
-        blockchain.getBlockDAO().updateBlock(block1);
+        blockchain.updateBlock(block1);
         System.out.println("✅ Stored cardiology block #" + block1.getBlockNumber());
 
         Map<String, Object> metadata2 = new HashMap<>();
@@ -83,7 +83,7 @@ public class CustomMetadataSearchDemo {
 
         Block block2 = blockchain.addBlockAndReturn("Medical data 2", keyPair.getPrivate(), keyPair.getPublic());
         block2.setCustomMetadata(jsonMapper.writeValueAsString(metadata2));
-        blockchain.getBlockDAO().updateBlock(block2);
+        blockchain.updateBlock(block2);
         System.out.println("✅ Stored neurology block #" + block2.getBlockNumber());
 
         // Search by substring
@@ -119,7 +119,7 @@ public class CustomMetadataSearchDemo {
 
         Block block1 = blockchain.addBlockAndReturn("Contract 1", keyPair.getPrivate(), keyPair.getPublic());
         block1.setCustomMetadata(jsonMapper.writeValueAsString(metadata1));
-        blockchain.getBlockDAO().updateBlock(block1);
+        blockchain.updateBlock(block1);
         System.out.println("✅ Stored approved contract #" + block1.getBlockNumber() + " ($50,000)");
 
         Map<String, Object> metadata2 = new HashMap<>();
@@ -129,7 +129,7 @@ public class CustomMetadataSearchDemo {
 
         Block block2 = blockchain.addBlockAndReturn("Contract 2", keyPair.getPrivate(), keyPair.getPublic());
         block2.setCustomMetadata(jsonMapper.writeValueAsString(metadata2));
-        blockchain.getBlockDAO().updateBlock(block2);
+        blockchain.updateBlock(block2);
         System.out.println("✅ Stored pending contract #" + block2.getBlockNumber() + " ($75,000)");
 
         Map<String, Object> metadata3 = new HashMap<>();
@@ -139,7 +139,7 @@ public class CustomMetadataSearchDemo {
 
         Block block3 = blockchain.addBlockAndReturn("Invoice 1", keyPair.getPrivate(), keyPair.getPublic());
         block3.setCustomMetadata(jsonMapper.writeValueAsString(metadata3));
-        blockchain.getBlockDAO().updateBlock(block3);
+        blockchain.updateBlock(block3);
         System.out.println("✅ Stored approved invoice #" + block3.getBlockNumber() + " ($25,000)");
 
         // Search by exact key-value pairs
@@ -176,7 +176,7 @@ public class CustomMetadataSearchDemo {
 
         Block block1 = blockchain.addBlockAndReturn("Case 1", keyPair.getPrivate(), keyPair.getPublic());
         block1.setCustomMetadata(jsonMapper.writeValueAsString(metadata1));
-        blockchain.getBlockDAO().updateBlock(block1);
+        blockchain.updateBlock(block1);
         System.out.println("✅ Case 1: medical + high + active + Dr. Johnson");
 
         Map<String, Object> metadata2 = new HashMap<>();
@@ -187,7 +187,7 @@ public class CustomMetadataSearchDemo {
 
         Block block2 = blockchain.addBlockAndReturn("Case 2", keyPair.getPrivate(), keyPair.getPublic());
         block2.setCustomMetadata(jsonMapper.writeValueAsString(metadata2));
-        blockchain.getBlockDAO().updateBlock(block2);
+        blockchain.updateBlock(block2);
         System.out.println("✅ Case 2: medical + high + pending + Dr. Smith");
 
         Map<String, Object> metadata3 = new HashMap<>();
@@ -198,7 +198,7 @@ public class CustomMetadataSearchDemo {
 
         Block block3 = blockchain.addBlockAndReturn("Case 3", keyPair.getPrivate(), keyPair.getPublic());
         block3.setCustomMetadata(jsonMapper.writeValueAsString(metadata3));
-        blockchain.getBlockDAO().updateBlock(block3);
+        blockchain.updateBlock(block3);
         System.out.println("✅ Case 3: medical + low + active + Dr. Lee");
 
         // Query 1: Medical + High priority + Active
@@ -253,7 +253,7 @@ public class CustomMetadataSearchDemo {
 
         Block block1 = blockchain.addBlockAndReturn("Patient record 1", keyPair.getPrivate(), keyPair.getPublic());
         block1.setCustomMetadata(jsonMapper.writeValueAsString(patient1));
-        blockchain.getBlockDAO().updateBlock(block1);
+        blockchain.updateBlock(block1);
         System.out.println("✅ Patient P12345: Cardiology - Urgent - Hypertension");
 
         Map<String, Object> patient2 = new HashMap<>();
@@ -267,7 +267,7 @@ public class CustomMetadataSearchDemo {
 
         Block block2 = blockchain.addBlockAndReturn("Patient record 2", keyPair.getPrivate(), keyPair.getPublic());
         block2.setCustomMetadata(jsonMapper.writeValueAsString(patient2));
-        blockchain.getBlockDAO().updateBlock(block2);
+        blockchain.updateBlock(block2);
         System.out.println("✅ Patient P67890: Cardiology - High - Arrhythmia");
 
         Map<String, Object> patient3 = new HashMap<>();
@@ -281,7 +281,7 @@ public class CustomMetadataSearchDemo {
 
         Block block3 = blockchain.addBlockAndReturn("Patient record 3", keyPair.getPrivate(), keyPair.getPublic());
         block3.setCustomMetadata(jsonMapper.writeValueAsString(patient3));
-        blockchain.getBlockDAO().updateBlock(block3);
+        blockchain.updateBlock(block3);
         System.out.println("✅ Patient P11111: Neurology - Routine - Migraine (completed)");
 
         // Dashboard queries
@@ -330,7 +330,7 @@ public class CustomMetadataSearchDemo {
 
         Block block1 = blockchain.addBlockAndReturn("Contract 1", keyPair.getPrivate(), keyPair.getPublic());
         block1.setCustomMetadata(jsonMapper.writeValueAsString(contract1));
-        blockchain.getBlockDAO().updateBlock(block1);
+        blockchain.updateBlock(block1);
         System.out.println("✅ Contract CTR-2025-001: $250k vendor agreement (executed)");
 
         // Legal queries
@@ -366,7 +366,7 @@ public class CustomMetadataSearchDemo {
 
         Block block1 = blockchain.addBlockAndReturn("Order 1", keyPair.getPrivate(), keyPair.getPublic());
         block1.setCustomMetadata(jsonMapper.writeValueAsString(order1));
-        blockchain.getBlockDAO().updateBlock(block1);
+        blockchain.updateBlock(block1);
         System.out.println("✅ Order ORD-2025-5678: $1,599.99 - Shipped to Spain (Priority)");
 
         Map<String, Object> order2 = new HashMap<>();
@@ -380,7 +380,7 @@ public class CustomMetadataSearchDemo {
 
         Block block2 = blockchain.addBlockAndReturn("Order 2", keyPair.getPrivate(), keyPair.getPublic());
         block2.setCustomMetadata(jsonMapper.writeValueAsString(order2));
-        blockchain.getBlockDAO().updateBlock(block2);
+        blockchain.updateBlock(block2);
         System.out.println("✅ Order ORD-2025-5679: $899.50 - Processing to France (Standard)");
 
         // E-commerce queries

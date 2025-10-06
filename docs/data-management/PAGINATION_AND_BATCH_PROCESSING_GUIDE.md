@@ -8,7 +8,7 @@ The Pagination and Batch Processing system provides efficient memory management 
 
 ### Core Components
 
-#### BlockDAO Pagination
+#### BlockRepository Pagination
 - **JPA-based pagination** with offset and limit parameters
 - **Thread-safe implementation** with read locks
 - **Parameter validation** for reliable operation
@@ -29,7 +29,7 @@ The Pagination and Batch Processing system provides efficient memory management 
 
 ### 📊 Database Pagination
 
-#### BlockDAO Implementation
+#### BlockRepository Implementation
 ```java
 /**
  * Get blocks with pagination support
@@ -69,10 +69,10 @@ public List<Block> getBlocksPaginated(long offset, int limit) {
 #### Usage Examples
 ```java
 // Get first 100 blocks
-List<Block> firstPage = blockDAO.getBlocksPaginated(0L, 100);
+List<Block> firstPage = blockchain.getBlocksPaginated(0L, 100);
 
 // Get next 100 blocks
-List<Block> secondPage = blockDAO.getBlocksPaginated(100L, 100);
+List<Block> secondPage = blockchain.getBlocksPaginated(100L, 100);
 
 // Process all blocks in batches
 int batchSize = 200;
@@ -80,7 +80,7 @@ long offset = 0;  // ⚠️ Use long to prevent overflow with large blockchains
 List<Block> batch;
 
 do {
-    batch = blockDAO.getBlocksPaginated(offset, batchSize);
+    batch = blockchain.getBlocksPaginated(offset, batchSize);
     processBatch(batch);
     offset += batchSize;
 } while (batch.size() == batchSize);

@@ -79,15 +79,11 @@ public class EncryptedBlockValidator {
             errorMessage = "Encryption metadata is missing or empty";
         }
         
-        // 2. Validate that data field shows "[ENCRYPTED]" placeholder
-        if (!block.getData().equals("[ENCRYPTED]")) {
-            formatCorrect = false;
-            if (errorMessage == null) {
-                errorMessage = "Data field should show '[ENCRYPTED]' for encrypted blocks";
-            } else {
-                errorMessage += "; Data field format incorrect";
-            }
-        }
+        // 2. CRITICAL: Data field must remain UNCHANGED for hash integrity
+        // Retroactive encryption stores encrypted data in encryptionMetadata, NOT in data field
+        // Changing 'data' would break the blockchain hash chain
+        // The 'data' field contains the ORIGINAL unencrypted data (required for hash validation)
+        // while 'encryptionMetadata' contains the encrypted version
         
         // 3. Validate encryption metadata format (should be valid Base64 or encrypted format)
         if (metadataValid && block.getEncryptionMetadata() != null) {

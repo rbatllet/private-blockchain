@@ -15,8 +15,10 @@ SearchSpecialistAPI api = new SearchSpecialistAPI(blockchain, password, privateK
 ```
 
 ### ⚡ Implemented Solution
+
+Intelligent reuse of existing engine:
+
 ```java
-// AFTER: Intelligent reuse of existing engine
 SearchSpecialistAPI api = new SearchSpecialistAPI(blockchain, password, privateKey);
 // ✅ Internal behavior: Directly reuses already indexed SearchFrameworkEngine
 // ✅ Execution time: < 5 seconds even for large blockchains
@@ -187,16 +189,7 @@ public void testOptimizedConstructorPerformance() {
 
 ## ⚠️ Notes for Future Development
 
-### 1. **Gradual Deprecation**
-Consider deprecating the empty constructor in future versions:
-```java
-@Deprecated
-public SearchSpecialistAPI() {
-    logger.warn("⚠️ Empty constructor deprecated. Use SearchSpecialistAPI(blockchain, password, privateKey)");
-}
-```
-
-### 2. **Logging Improvements**
+### 1. **Logging Improvements**
 Add more performance details:
 ```java
 logger.info("⚡ SearchSpecialistAPI optimized initialization completed in {}ms", duration);

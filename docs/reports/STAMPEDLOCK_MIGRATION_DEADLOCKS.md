@@ -86,7 +86,7 @@ public void processChainInBatches(Consumer<List<Block>> processor, int batchSize
 }
 ```
 
-**Solution**: Removed lock from `processChainInBatches()` - let lambda's methods manage their own locks. `blockDAO.getBlocksPaginated()` is already thread-safe.
+**Solution**: Removed lock from `processChainInBatches()` - let lambda's methods manage their own locks. `blockchain.getBlocksPaginated()` is already thread-safe.
 
 **Status**: ✅ Fixed
 
@@ -415,12 +415,7 @@ Even with `AtomicLong` and `AtomicReference`, multiple reads without capturing v
 
 ## Testing Results
 
-### Before Fixes
-- ❌ DEADLOCK #6-13: Tests hung indefinitely
-- ❌ UserFriendlyEncryptionAPI: 10/1000 success (1%)
-- ❌ SearchMetrics: 420/450 reads (93%)
-
-### After Fixes
+All deadlocks fixed and tests passing:
 - ✅ All 13 deadlocks: Fixed
 - ✅ UserFriendlyEncryptionAPI: 1000/1000 success (100%)
 - ✅ SearchMetrics: 450/450 reads, 300/300 writes (100%)

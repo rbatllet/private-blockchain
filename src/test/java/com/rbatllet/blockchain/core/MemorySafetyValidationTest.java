@@ -2,8 +2,6 @@ package com.rbatllet.blockchain.core;
 
 import com.rbatllet.blockchain.config.DatabaseConfig;
 import com.rbatllet.blockchain.config.MemorySafetyConstants;
-import com.rbatllet.blockchain.dao.BlockDAO;
-import com.rbatllet.blockchain.search.SearchLevel;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.JPAUtil;
 import com.rbatllet.blockchain.validation.ChainValidationResult;
@@ -22,6 +20,8 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Tests for memory safety validations in blockchain operations
  * Verifies that proper limits and warnings are enforced
+ *
+ * Uses only Blockchain public API for thread-safety
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class MemorySafetyValidationTest {
@@ -29,7 +29,6 @@ public class MemorySafetyValidationTest {
     private static final Logger logger = LoggerFactory.getLogger(MemorySafetyValidationTest.class);
 
     private Blockchain blockchain;
-    private BlockDAO blockDAO;
     private KeyPair keyPair;
     private PrivateKey privateKey;
     private PublicKey publicKey;
@@ -44,7 +43,6 @@ public class MemorySafetyValidationTest {
     @BeforeEach
     void setUp() throws Exception {
         blockchain = new Blockchain();
-        blockDAO = blockchain.getBlockDAO();
 
         keyPair = CryptoUtil.generateKeyPair();
         privateKey = keyPair.getPrivate();
@@ -67,7 +65,7 @@ public class MemorySafetyValidationTest {
 
     @Test
     @Order(1)
-    @DisplayName("📊 BlockDAO.batchRetrieveBlocks - enforce MAX_BATCH_SIZE limit")
+    @DisplayName("📊 Blockchain.batchRetrieveBlocks - enforce MAX_BATCH_SIZE limit")
     void testBatchRetrieveBlocksLimit() {
         logger.info("🧪 Testing batchRetrieveBlocks MAX_BATCH_SIZE enforcement...");
 
@@ -80,7 +78,7 @@ public class MemorySafetyValidationTest {
         // Should throw IllegalArgumentException
         IllegalArgumentException exception = assertThrows(
             IllegalArgumentException.class,
-            () -> blockDAO.batchRetrieveBlocks(tooManyBlockNumbers),
+            () -> blockchain.batchRetrieveBlocks(tooManyBlockNumbers),
             "Should throw exception when batch size exceeds MAX_BATCH_SIZE"
         );
 
@@ -94,7 +92,7 @@ public class MemorySafetyValidationTest {
 
     @Test
     @Order(2)
-    @DisplayName("📊 BlockDAO.batchRetrieveBlocks - allow valid batch size")
+    @DisplayName("📊 Blockchain.batchRetrieveBlocks - allow valid batch size")
     void testBatchRetrieveBlocksValidSize() {
         logger.info("🧪 Testing batchRetrieveBlocks with valid batch size...");
 
@@ -111,7 +109,7 @@ public class MemorySafetyValidationTest {
 
         // Should succeed
         assertDoesNotThrow(() -> {
-            List<?> results = blockDAO.batchRetrieveBlocks(validBlockNumbers);
+            List<?> results = blockchain.batchRetrieveBlocks(validBlockNumbers);
             assertEquals(100, results.size(), "Should retrieve all requested blocks");
         }, "Should not throw exception for valid batch size");
 
@@ -209,46 +207,60 @@ public class MemorySafetyValidationTest {
 
     @Test
     @Order(7)
-    @DisplayName("📊 BlockDAO search methods - use correct limits")
-    void testBlockDAOSearchLimits() {
-        logger.info("🧪 Testing BlockDAO search methods use correct limits...");
+    @DisplayName("📊 Blockchain.batchRetrieveBlocksByHash - enforce MAX_BATCH_SIZE limit")
+    void testBatchRetrieveBlocksByHashLimit() {
+        logger.info("🧪 Testing batchRetrieveBlocksByHash MAX_BATCH_SIZE enforcement...");
 
-        // Add test blocks
-        for (int i = 0; i < 50; i++) {
-            blockchain.addBlock("Search test " + i, privateKey, publicKey);
+        // Create list exceeding MAX_BATCH_SIZE
+        List<String> tooManyHashes = new ArrayList<>();
+        for (long i = 0; i < MemorySafetyConstants.MAX_BATCH_SIZE + 1; i++) {
+            tooManyHashes.add("hash" + i);
         }
 
-        // Test searchBlocksByContentWithLevel (default limit)
-        List<?> searchResults = blockDAO.searchBlocksByContentWithLevel(
-            "Search",
-            SearchLevel.FAST_ONLY
+        // Should throw IllegalArgumentException
+        IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> blockchain.batchRetrieveBlocksByHash(tooManyHashes),
+            "Should throw exception when batch size exceeds MAX_BATCH_SIZE"
         );
 
-        assertNotNull(searchResults);
-        assertTrue(searchResults.size() <= MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS,
-            "Search results should respect DEFAULT_MAX_SEARCH_RESULTS");
+        assertTrue(exception.getMessage().contains("exceeds maximum"),
+            "Exception message should mention exceeding maximum");
 
-        logger.info("✅ BlockDAO search methods use correct limits");
+        logger.info("✅ batchRetrieveBlocksByHash correctly enforces MAX_BATCH_SIZE limit");
     }
 
     @Test
     @Order(8)
-    @DisplayName("📊 Verify processChainInBatches uses DEFAULT_BATCH_SIZE")
+    @DisplayName("📊 Verify processChainInBatches uses DEFAULT_BATCH_SIZE with 2500 blocks")
     void testProcessChainInBatchesDefaultSize() {
-        logger.info("🧪 Testing processChainInBatches batch size...");
+        logger.info("🧪 Testing processChainInBatches batch size with 2500 blocks...");
 
-        // Add blocks
+        // Add 2500 blocks (rigorous test)
         for (int i = 0; i < 2500; i++) {
             blockchain.addBlock("Batch test " + i, privateKey, publicKey);
+
+            if (i % 500 == 0) {
+                logger.info("   Added {} blocks...", i);
+            }
         }
 
+        logger.info("✅ All 2500 blocks added successfully");
+
         final List<Integer> batchSizes = new ArrayList<>();
+        final int[] totalBlocks = {0};
 
         // Process with default batch size
         blockchain.processChainInBatches(
-            batch -> batchSizes.add(batch.size()),
+            batch -> {
+                batchSizes.add(batch.size());
+                totalBlocks[0] += batch.size();
+            },
             MemorySafetyConstants.DEFAULT_BATCH_SIZE
         );
+
+        // Verify total blocks processed
+        assertEquals(2501, totalBlocks[0], "Should process all 2501 blocks (including genesis)");
 
         // Most batches should be DEFAULT_BATCH_SIZE (except possibly the last one)
         for (int i = 0; i < batchSizes.size() - 1; i++) {
@@ -256,6 +268,65 @@ public class MemorySafetyValidationTest {
                 "Batch " + i + " should be DEFAULT_BATCH_SIZE");
         }
 
-        logger.info("✅ processChainInBatches uses correct DEFAULT_BATCH_SIZE");
+        // Last batch should be <= DEFAULT_BATCH_SIZE
+        int lastBatchSize = batchSizes.get(batchSizes.size() - 1);
+        assertTrue(lastBatchSize <= MemorySafetyConstants.DEFAULT_BATCH_SIZE,
+            "Last batch should be <= DEFAULT_BATCH_SIZE");
+
+        logger.info("✅ processChainInBatches correctly uses DEFAULT_BATCH_SIZE");
+        logger.info("   Total batches: {}", batchSizes.size());
+        logger.info("   Last batch size: {}", lastBatchSize);
+    }
+
+    @Test
+    @Order(9)
+    @DisplayName("📊 Blockchain.searchByCustomMetadata - default 10K limit")
+    void testSearchByCustomMetadataDefaultLimit() {
+        logger.info("🧪 Testing searchByCustomMetadata default 10K limit...");
+
+        // Add blocks with custom metadata
+        for (int i = 0; i < 100; i++) {
+            blockchain.addBlock("Test metadata:value" + i, privateKey, publicKey);
+        }
+
+        // Search with default limit
+        List<?> results = blockchain.searchByCustomMetadata("metadata");
+
+        assertNotNull(results);
+        assertTrue(results.size() <= MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS,
+            "Results should be limited to 10K");
+
+        logger.info("✅ searchByCustomMetadata correctly applies default 10K limit");
+    }
+
+    @Test
+    @Order(10)
+    @DisplayName("📊 Blockchain.getBlocksBySignerPublicKey - configurable limits")
+    void testGetBlocksBySignerPublicKeyLimits() {
+        logger.info("🧪 Testing getBlocksBySignerPublicKey with custom limits...");
+
+        String publicKeyString = CryptoUtil.publicKeyToString(publicKey);
+
+        // Add blocks
+        for (int i = 0; i < 150; i++) {
+            blockchain.addBlock("Test data " + i, privateKey, publicKey);
+        }
+
+        // Test with custom limit of 50
+        List<?> limitedResults = blockchain.getBlocksBySignerPublicKey(publicKeyString, 50);
+
+        assertNotNull(limitedResults);
+        assertTrue(limitedResults.size() <= 50, "Results should respect custom limit of 50");
+
+        // Test with default limit
+        List<?> defaultResults = blockchain.getBlocksBySignerPublicKey(publicKeyString);
+
+        assertNotNull(defaultResults);
+        assertTrue(defaultResults.size() <= MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS,
+            "Default results should be limited to 10K");
+
+        logger.info("✅ getBlocksBySignerPublicKey respects configurable limits");
+        logger.info("   Custom limit (50): {} results", limitedResults.size());
+        logger.info("   Default limit (10K): {} results", defaultResults.size());
     }
 }

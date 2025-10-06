@@ -87,7 +87,7 @@ When initially migrating to StampedLock, **13 deadlocks** were introduced due to
 **Total Deadlocks Resolved**: 13
 
 **Category 1: DAO Lock Elimination** (2 deadlocks)
-- **BlockDAO**: Had own `ReentrantReadWriteLock` → removed (72 locks eliminated)
+- **BlockRepository**: Had own `ReentrantReadWriteLock` → removed (72 locks eliminated)
 - **AuthorizedKeyDAO**: Had own `ReentrantReadWriteLock` → removed (10 locks eliminated)
 - **Reason**: DAOs only called from `Blockchain.java` which already holds `GLOBAL_BLOCKCHAIN_LOCK`
 - **Verdict**: ✅ **Correct solution - eliminates redundant nested locking**
@@ -187,12 +187,12 @@ public Block getBlock(Long blockNumber) {
 
     if (GLOBAL_BLOCKCHAIN_LOCK.validate(stamp)) {
         // Optimistic read succeeded - execute without lock
-        block = blockDAO.getBlockByNumber(blockNumber);
+        block = blockchain.getBlockByNumber(blockNumber);
     } else {
         // Validation failed (write occurred) - retry with read lock
         stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
         try {
-            block = blockDAO.getBlockByNumber(blockNumber);
+            block = blockchain.getBlockByNumber(blockNumber);
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
         }
@@ -209,7 +209,7 @@ public Block getBlock(Long blockNumber) {
 public List<Block> getBlocksPaginated(long offset, int limit) {
     long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
     try {
-        return blockDAO.getBlocksPaginated(offset, limit);
+        return blockchain.getBlocksPaginated(offset, limit);
     } finally {
         GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
     }
@@ -392,7 +392,7 @@ public List<AuthorizedKey> getAuthorizedKeysWithoutLock() {
 | **Files using StampedLock** | 4 (Blockchain.java, LockTracer.java, AuthorizedKeyDAO.java, OffChainIntegrityReport.java) |
 | **Methods with optimistic reads** | 5 (getBlock, getBlockCount, getLastBlock, initializeAdvancedSearch x2) |
 | **Deadlocks fixed** | 13 |
-| **Lock eliminations** | 82 (72 BlockDAO + 10 AuthorizedKeyDAO) |
+| **Lock eliminations** | 82 (72 BlockRepository + 10 AuthorizedKeyDAO) |
 | **Dual-mode pattern methods** | 6 (validateSingleBlock, validateChainDetailed, getAuthorizedKeys, addAuthorizedKey, revokeAuthorizedKey, rollbackToBlock) |
 | **Total tests passing** | 828+ |
 | **Test success rate** | 100% (PerformanceOptimizationTest: 5/5) |

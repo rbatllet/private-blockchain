@@ -445,7 +445,7 @@ public class MedicalRecordsSearch {
         
         System.out.println("🏥 Medical Records for Patient " + patientId + ":");
         for (Block record : results.getBlocks()) {
-            String data = api.retrieveSecret(record.getId(), medicalPassword);
+            String data = api.retrieveSecret(record.getBlockNumber(), medicalPassword);
             System.out.println("📋 " + record.getTimestamp() + ": " + data.substring(0, 100) + "...");
         }
     }
@@ -488,7 +488,7 @@ public class FinancialSearch {
         
         double totalAmount = 0;
         for (Block transaction : results.getBlocks()) {
-            String data = api.retrieveSecret(transaction.getId(), financialPassword);
+            String data = api.retrieveSecret(transaction.getBlockNumber(), financialPassword);
             double amount = extractTransactionAmount(data);
             totalAmount += amount;
             

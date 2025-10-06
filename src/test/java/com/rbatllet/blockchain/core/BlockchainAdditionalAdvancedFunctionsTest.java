@@ -107,9 +107,10 @@ class BlockchainAdditionalAdvancedFunctionsTest {
         blockchain.clearAndReinitialize();
         blockchain.addAuthorizedKey(alicePublicKey, "Alice");
 
-        // Test empty string
-        assertTrue(blockchain.addBlock("", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()),
-                "Empty string should be accepted");
+        // Test empty string - UPDATED: Should be rejected (matching BlockchainRobustnessTest standard)
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.addBlock("", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic());
+        }, "Empty string should throw exception");
 
         // Test normal size data
         String normalData = "This is a normal transaction with reasonable data length";
@@ -133,9 +134,10 @@ class BlockchainAdditionalAdvancedFunctionsTest {
         blockchain.clearAndReinitialize();
         blockchain.addAuthorizedKey(alicePublicKey, "Alice");
 
-        // Test null data (should be rejected)
-        assertFalse(blockchain.addBlock(null, aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()),
-                "Null data should be rejected");
+        // Test null data - UPDATED: Should throw exception (matching Robustness standard)
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.addBlock(null, aliceKeyPair.getPrivate(), aliceKeyPair.getPublic());
+        }, "Null data should throw exception");
 
         // Test data exceeding character limit
         StringBuilder tooLongData = new StringBuilder();
@@ -388,8 +390,10 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @Order(14)
     @DisplayName("Test Rollback to Block Edge Cases")
     void testRollbackToBlockEdgeCases() {
-        // Test rollback to negative block number
-        assertFalse(blockchain.rollbackToBlock(-1L), "Rollback to negative block should fail");
+        // Test rollback to negative block number - should throw exception (strict validation)
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.rollbackToBlock(-1L);
+        }, "Rollback to negative block should throw exception");
 
         // Test rollback to non-existent block
         long maxBlock = blockchain.getBlockCount() - 1;
@@ -430,13 +434,15 @@ class BlockchainAdditionalAdvancedFunctionsTest {
         List<Block> noResults = blockchain.searchBlocksByContent("nonexistent");
         assertEquals(0, noResults.size(), "Should find no blocks with non-existent content");
 
-        // Test empty search term
-        List<Block> emptyResults = blockchain.searchBlocksByContent("");
-        assertEquals(0, emptyResults.size(), "Empty search should return no results");
+        // Test empty search term - should throw exception (strict validation)
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.searchBlocksByContent("");
+        }, "Empty search should throw exception");
 
-        // Test null search term
-        List<Block> nullResults = blockchain.searchBlocksByContent(null);
-        assertEquals(0, nullResults.size(), "Null search should return no results");
+        // Test null search term - should throw exception (strict validation)
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.searchBlocksByContent(null);
+        }, "Null search should throw exception");
     }
 
     @Test
@@ -597,21 +603,29 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @Order(21)
     @DisplayName("Test Additional Advanced Functions Error Handling")
     void testAdditionalAdvancedFunctionsErrorHandling() {
-        // This test verifies that additional advanced functions handle errors gracefully
-        // without throwing exceptions
+        // This test verifies that additional advanced functions validate parameters strictly
+        // and throw appropriate exceptions for invalid inputs
         
+        // Test rollbackToBlock with negative value - should throw
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.rollbackToBlock(-1L);
+        }, "rollbackToBlock should throw exception for negative block number");
+        
+        // Test searchBlocksByContent with null - should throw
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.searchBlocksByContent(null);
+        }, "searchBlocksByContent should throw exception for null search term");
+        
+        // These methods should handle null gracefully (return null or empty)
         assertDoesNotThrow(() -> {
-            // Test all functions with various invalid inputs
             blockchain.exportChain("");
             blockchain.exportChain(null);
             blockchain.importChain("");
             blockchain.importChain(null);
             blockchain.rollbackBlocks(-1L);
-            blockchain.rollbackToBlock(-1L);
-            blockchain.searchBlocksByContent(null);
             blockchain.getBlockByHash(null);
             blockchain.getBlocksByDateRange(null, null);
-        }, "Additional advanced functions should handle errors gracefully without throwing exceptions");
+        }, "Some methods should handle errors gracefully without throwing exceptions");
     }
 
     @Test

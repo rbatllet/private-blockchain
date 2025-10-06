@@ -65,7 +65,7 @@ This is a **private blockchain** for controlled environments where only authoriz
   - **File Storage**: storeDataWithOffChainFile() for file-based off-chain storage
 
 ### 🚀 Performance Optimizations (v2.0.0)
-- **Batch Retrieval System**: Eliminates N+1 query problems with `BlockDAO.batchRetrieveBlocks()`
+- **Batch Retrieval System**: Eliminates N+1 query problems with `blockchain.batchRetrieveBlocks()`
   - **90%+ Performance Improvement**: Metadata search operations now complete in <200ms vs previous 2000+ms
   - **Query Optimization**: Replaces hundreds of individual SELECT statements with single batch IN clause
   - **Thread-Safe Operations**: Full concurrent access with intelligent transaction management
@@ -910,9 +910,9 @@ privateBlockchain/
 ```
 src/main/java/com/rbatllet/blockchain/
 ├── core/
-│   └── Blockchain.java                           # Main blockchain logic
+│   ├── Blockchain.java                           # Main blockchain logic (public API)
+│   └── BlockRepository.java                     # Package-private repository for block persistence (internal use only)
 ├── dao/
-│   ├── BlockDAO.java                            # Database operations for blocks with thread-safe block number generation
 │   └── AuthorizedKeyDAO.java                    # Database operations for keys
 ├── entity/
 │   ├── Block.java                               # Block data model

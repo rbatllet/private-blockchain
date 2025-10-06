@@ -363,17 +363,18 @@ class BlockchainComprehensiveSecurityTest {
         @Order(17)
         @DisplayName("getBlocksByTimeRange should handle null parameters")
         void testGetBlocksByTimeRangeNullParams() {
-            // Act & Assert
-            assertDoesNotThrow(() -> {
-                List<Block> results1 = blockchain.getBlocksByTimeRange(null, LocalDateTime.now());
-                List<Block> results2 = blockchain.getBlocksByTimeRange(LocalDateTime.now(), null);
-                List<Block> results3 = blockchain.getBlocksByTimeRange(null, null);
-
-                // All should return non-null results (empty or all blocks)
-                assertNotNull(results1, "Should handle null start time");
-                assertNotNull(results2, "Should handle null end time");
-                assertNotNull(results3, "Should handle null parameters");
-            }, "Should handle null parameters gracefully");
+            // Act & Assert - Should throw exceptions for null parameters (strict validation)
+            assertThrows(IllegalArgumentException.class, () -> {
+                blockchain.getBlocksByTimeRange(null, LocalDateTime.now());
+            }, "Should throw exception for null start time");
+            
+            assertThrows(IllegalArgumentException.class, () -> {
+                blockchain.getBlocksByTimeRange(LocalDateTime.now(), null);
+            }, "Should throw exception for null end time");
+            
+            assertThrows(IllegalArgumentException.class, () -> {
+                blockchain.getBlocksByTimeRange(null, null);
+            }, "Should throw exception for null parameters");
         }
 
         @Test
@@ -384,12 +385,10 @@ class BlockchainComprehensiveSecurityTest {
             LocalDateTime endTime = LocalDateTime.now().minus(1, ChronoUnit.HOURS);
             LocalDateTime startTime = LocalDateTime.now();
 
-            // Act
-            List<Block> results = blockchain.getBlocksByTimeRange(startTime, endTime);
-
-            // Assert
-            assertNotNull(results, "Should return non-null result");
-            assertEquals(0, results.size(), "Should return empty list for invalid range");
+            // Act & Assert: UPDATED to match Robustness test standard - strict validation
+            assertThrows(IllegalArgumentException.class, () -> {
+                blockchain.getBlocksByTimeRange(startTime, endTime);
+            }, "Should throw exception for invalid range (start > end)");
         }
     }
 
@@ -517,9 +516,10 @@ class BlockchainComprehensiveSecurityTest {
             // Arrange: Add authorized key
             blockchain.addAuthorizedKey(authorizedPublicKey, "TestUser");
 
-            // Act & Assert: Null data should be rejected
-            assertFalse(blockchain.addBlock(null, authorizedKeyPair.getPrivate(), authorizedKeyPair.getPublic()),
-                "Should reject null data");
+            // Act & Assert: UPDATED - Null data should throw exception (matching Robustness standard)
+            assertThrows(IllegalArgumentException.class, () -> {
+                blockchain.addBlock(null, authorizedKeyPair.getPrivate(), authorizedKeyPair.getPublic());
+            }, "Should throw exception for null data");
         }
 
         @Test
@@ -529,9 +529,10 @@ class BlockchainComprehensiveSecurityTest {
             // Arrange: Add authorized key
             blockchain.addAuthorizedKey(authorizedPublicKey, "TestUser");
 
-            // Act & Assert: Null private key should be rejected
-            assertFalse(blockchain.addBlock("Test data", null, authorizedKeyPair.getPublic()),
-                "Should reject null private key");
+            // Act & Assert: UPDATED - Null private key should throw exception
+            assertThrows(IllegalArgumentException.class, () -> {
+                blockchain.addBlock("Test data", null, authorizedKeyPair.getPublic());
+            }, "Should throw exception for null private key");
         }
 
         @Test
@@ -541,9 +542,10 @@ class BlockchainComprehensiveSecurityTest {
             // Arrange: Add authorized key
             blockchain.addAuthorizedKey(authorizedPublicKey, "TestUser");
 
-            // Act & Assert: Null public key should be rejected
-            assertFalse(blockchain.addBlock("Test data", authorizedKeyPair.getPrivate(), null),
-                "Should reject null public key");
+            // Act & Assert: UPDATED - Null public key should throw exception
+            assertThrows(IllegalArgumentException.class, () -> {
+                blockchain.addBlock("Test data", authorizedKeyPair.getPrivate(), null);
+            }, "Should throw exception for null public key");
         }
 
         @Test
@@ -566,13 +568,18 @@ class BlockchainComprehensiveSecurityTest {
             // Arrange: Add authorized key
             blockchain.addAuthorizedKey(authorizedPublicKey, "TestUser");
 
-            // Act & Assert: Test null inputs
-            assertNull(blockchain.addBlockAndReturn(null, authorizedKeyPair.getPrivate(), authorizedKeyPair.getPublic()),
-                "Should return null for invalid inputs");
-            assertNull(blockchain.addBlockAndReturn("Test data", null, authorizedKeyPair.getPublic()),
-                "Should return null for null private key");
-            assertNull(blockchain.addBlockAndReturn("Test data", authorizedKeyPair.getPrivate(), null),
-                "Should return null for null public key");
+            // Act & Assert: UPDATED - Should throw exceptions (matching Robustness standard)
+            assertThrows(IllegalArgumentException.class, () -> {
+                blockchain.addBlockAndReturn(null, authorizedKeyPair.getPrivate(), authorizedKeyPair.getPublic());
+            }, "Should throw exception for null data");
+            
+            assertThrows(IllegalArgumentException.class, () -> {
+                blockchain.addBlockAndReturn("Test data", null, authorizedKeyPair.getPublic());
+            }, "Should throw exception for null private key");
+            
+            assertThrows(IllegalArgumentException.class, () -> {
+                blockchain.addBlockAndReturn("Test data", authorizedKeyPair.getPrivate(), null);
+            }, "Should throw exception for null public key");
         }
     }
 

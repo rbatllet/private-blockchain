@@ -28,7 +28,7 @@ public class GranularTermVisibilityIntegrationTest {
     void setUp() throws Exception {
         // Clean database before each test to ensure isolation - using thread-safe DAO method
         blockchain = new Blockchain();
-        blockchain.getBlockDAO().cleanupTestData();
+        // BlockRepository now package-private - use clearAndReinitialize();
         blockchain.getAuthorizedKeyDAO().cleanupTestData();
         
         // Initialize test components

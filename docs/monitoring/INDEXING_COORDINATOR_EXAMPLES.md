@@ -64,7 +64,7 @@ public class BasicBlockchainApp {
 
 ### ⚠️ Important Setup Requirements
 
-Before using IndexingCoordinator with UserFriendlyEncryptionAPI methods, you must register the appropriate indexers:
+You must register the appropriate indexers before using IndexingCoordinator with UserFriendlyEncryptionAPI methods:
 
 ```java
 public void setupStandardIndexers() {

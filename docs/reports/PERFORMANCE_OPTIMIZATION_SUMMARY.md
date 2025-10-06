@@ -3,10 +3,10 @@
 ## 📊 Completed Optimizations
 
 ### 1. Database Layer Improvements
-- ✅ **Added pagination support** to `BlockDAO.getBlocksPaginated(offset, limit)`
+- ✅ **Added pagination support** to `BlockRepository.getBlocksPaginated(offset, limit)`
 - ✅ **Added lightweight block retrieval** with `processChainInBatchesLightweight()` (no off-chain data)
 - ✅ **Added block count method** `getBlockCount()` for efficient counting
-- ✅ **🚀 NEW: Batch retrieval optimization** with `BlockDAO.batchRetrieveBlocks()` - Eliminates N+1 query problem
+- ✅ **🚀 NEW: Batch retrieval optimization** with `BlockRepository.batchRetrieveBlocks()` - Eliminates N+1 query problem
 - ✅ **Thread-safe implementations** maintained throughout
 
 ### 2. Blockchain Layer Enhancements
@@ -20,7 +20,7 @@
 - ✅ **Reduced memory footprint** by avoiding full blockchain loading
 
 ### 4. N+1 Query Problem Resolution (v2.0.0)
-- ✅ **🚀 Critical Fix: Batch Retrieval Implementation** - Added `BlockDAO.batchRetrieveBlocks()` method
+- ✅ **🚀 Critical Fix: Batch Retrieval Implementation** - Added `BlockRepository.batchRetrieveBlocks()` method
 - ✅ **Eliminated metadata search timeouts** - Replaced hundreds of individual queries with single batch query
 - ✅ **90%+ performance improvement** in `findBlocksByMetadata()` operations
 - ✅ **JPA optimization** - Uses TypedQuery with IN clause for maximum efficiency
@@ -45,42 +45,35 @@
 ## 🔧 Technical Details
 
 ### Database Query Optimization
+
+Uses pagination with configurable limits:
+
 ```java
-// Before: Always loads ALL blocks
 TypedQuery<Block> query = em.createQuery(
     "SELECT b FROM Block b LEFT JOIN FETCH b.offChainData ORDER BY b.blockNumber ASC", 
     Block.class);
-
-// After: Paginated with configurable limits
 query.setFirstResult(offset);
 query.setMaxResults(limit);
 ```
 
 ### Batch Retrieval Optimization (N+1 Problem Fix)
-```java
-// BEFORE: N+1 Query Anti-Pattern (SLOW!)
-Set<Long> blockNumbers = getBlockNumbersFromMetadataIndex();
-List<Block> matchingBlocks = new ArrayList<>();
-for (Long blockNumber : blockNumbers) {
-    Block block = blockchain.getBlock(blockNumber);  // Individual query per block!
-    if (block != null) matchingBlocks.add(block);
-}
-// Result: 100 blocks = 100+ individual database queries
 
-// AFTER: Optimized Batch Retrieval (FAST!)
+Optimized batch retrieval approach:
+
+```java
+// Efficient batch retrieval
 Set<Long> blockNumbers = getBlockNumbersFromMetadataIndex();
 List<Long> sortedNumbers = new ArrayList<>(blockNumbers);
 Collections.sort(sortedNumbers);
-List<Block> matchingBlocks = blockchain.getBlockDAO().batchRetrieveBlocks(sortedNumbers);
+List<Block> matchingBlocks = blockchain.batchRetrieveBlocks(sortedNumbers);
 // Result: 100 blocks = 1 optimized IN clause query
 ```
 
 ### Batch Processing Implementation
-```java
-// Before: Load all blocks at once
-List<Block> allBlocks = blockchain.processChainInBatches();
 
-// After: Process in batches
+Process blockchain in configurable batches:
+
+```java
 final int BATCH_SIZE = 100;
 long totalBlocks = blockchain.getBlockCount();
 // ⚠️ Use long offset to prevent overflow with large blockchains

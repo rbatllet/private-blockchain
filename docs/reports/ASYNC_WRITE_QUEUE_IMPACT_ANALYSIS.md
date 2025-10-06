@@ -33,7 +33,7 @@ Found **17 methods** in `Blockchain.java` that acquire write locks:
 
 1. **`addBlockWithKeywords()`** - Line 467
    - Most critical method: 200+ lines of logic
-   - Dependencies: BlockDAO, OffChainStorage, SearchFramework
+   - Dependencies: BlockRepository, OffChainStorage, SearchFramework
    - Called by: 557+ locations across codebase
    - **Impact**: 🔴 CRITICAL
 
@@ -135,7 +135,7 @@ Found **17 methods** in `Blockchain.java` that acquire write locks:
 | **SearchFrameworkEngine.java** | 1,200 | 80 lines | +40 | 🟡 Medium | 8-12h |
 | **SearchSpecialistAPI.java** | 800 | 50 lines | +25 | 🟡 Medium | 5-8h |
 | **ChainRecoveryManager.java** | 450 | 30 lines | +15 | 🟢 Low | 8-12h |
-| **BlockDAO.java** | 1,487 | 0 lines | 0 | ✅ None | 0h |
+| **BlockRepository.java** | 1,487 | 0 lines | 0 | ✅ None | 0h |
 | **AuthorizedKeyDAO.java** | 450 | 0 lines | 0 | ✅ None | 0h |
 | **OffChainStorageService.java** | 550 | 0 lines | 0 | ✅ None | 0h |
 | 7 other utility classes | ~2,000 | ~215 lines | +110 | 🟡 Medium | 20-30h |

@@ -25,7 +25,7 @@ The project includes the following main classes:
 - `com.rbatllet.blockchain.entity.Block` - JPA entity for blocks with off-chain data references
 - `com.rbatllet.blockchain.entity.AuthorizedKey` - JPA entity for authorized keys
 - `com.rbatllet.blockchain.entity.OffChainData` - JPA entity for off-chain storage metadata
-- `com.rbatllet.blockchain.dao.BlockDAO` - DAO for block operations
+- `com.rbatllet.blockchain.core.BlockRepository` - DAO for block operations
 - `com.rbatllet.blockchain.dao.AuthorizedKeyDAO` - DAO for authorized key operations
 - `com.rbatllet.blockchain.service.OffChainStorageService` - Service for encrypted off-chain storage
 - `com.rbatllet.blockchain.recovery.ChainRecoveryManager` - Chain recovery implementation
@@ -73,7 +73,7 @@ graph TD
 - **Storage Management**: Automatic data tiering between on-chain and off-chain storage
 
 #### 2. Data Access Layer
-- **BlockDAO**: Database operations for block entities using JPA
+- **BlockRepository**: Database operations for block entities using JPA
 - **AuthorizedKeyDAO**: Management of authorized cryptographic keys with JPA
 - **OffChainData Entity**: JPA entity for off-chain storage metadata
 - **JPA Integration**: Entity mapping and transaction management with JPA standard
@@ -697,7 +697,7 @@ public class BlockchainConfig {
 }
 ```
 
-**2. BlockDAO Impact Assessment:**
+**2. BlockRepository Impact Assessment:**
 ```java
 // Methods for impact analysis with memory-efficient limits
 public List<Block> getBlocksBySignerPublicKey(String signerPublicKey)              // Max 10K (default, safe)
@@ -1316,14 +1316,9 @@ private Map<String, Object> extractValidationInfo(Block block, ContentAnalysis a
 All getters now return immutable collections preventing external modification:
 
 ```java
-// ✅ Before: Returned mutable Set - THREAD SAFETY VIOLATION
+// Returns immutable Set for thread safety
 public Set<String> getAllKeywords() {
-    return allKeywords; // ❌ DANGEROUS - external modification possible
-}
-
-// ✅ After: Returns immutable Set - THREAD SAFE
-public Set<String> getAllKeywords() {
-    return Collections.unmodifiableSet(allKeywords); // ✅ SAFE
+    return Collections.unmodifiableSet(allKeywords);
 }
 
 // Applied to ALL collection getters:
@@ -1758,7 +1753,7 @@ for (Block block : blocksToDelete) {
             System.out.println("✓ Deleted off-chain file: " + block.getOffChainData().getFilePath());
         }
     }
-    blockDAO.deleteBlockByNumber(block.getBlockNumber());
+    blockchain.deleteBlockByNumber(block.getBlockNumber());
 }
 ```
 
@@ -1770,7 +1765,7 @@ long offset = 0;
 boolean hasMore = true;
 
 while (hasMore) {
-    List<Block> blocksToDelete = blockDAO.getBlocksAfterPaginated(
+    List<Block> blocksToDelete = blockchain.getBlocksAfterPaginated(
         targetBlockNumber, offset, BATCH_SIZE
     );
 
@@ -1791,7 +1786,7 @@ while (hasMore) {
     }
 }
 
-int deletedCount = blockDAO.deleteBlocksAfter(targetBlockNumber);
+int deletedCount = blockchain.deleteBlocksAfter(targetBlockNumber);
 ```
 
 ##### 2. Chain Export/Import Operations
@@ -1858,7 +1853,7 @@ blockchain.processChainInBatches(batch -> {
         }
     });
 }, 1000);// Clear database
-blockDAO.deleteAllBlocks();
+blockchain.deleteAllBlocks();
 authorizedKeyDAO.deleteAllAuthorizedKeys();
 
 // Clean up any remaining orphaned files

@@ -64,13 +64,13 @@ This directory contains comprehensive testing guides, thread-safety standards, a
 ```java
 // See: THREAD_SAFETY_STANDARDS.md
 long stamp = GLOBAL_BLOCKCHAIN_LOCK.tryOptimisticRead();
-Block block = blockDAO.getBlockByNumber(blockNumber);
+Block block = blockchain.getBlockByNumber(blockNumber);
 
 if (!GLOBAL_BLOCKCHAIN_LOCK.validate(stamp)) {
     // Retry with read lock
     stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
     try {
-        block = blockDAO.getBlockByNumber(blockNumber);
+        block = blockchain.getBlockByNumber(blockNumber);
     } finally {
         GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
     }
@@ -81,7 +81,7 @@ if (!GLOBAL_BLOCKCHAIN_LOCK.validate(stamp)) {
 ```java
 long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
 try {
-    return blockDAO.someReadOperation();
+    return blockchain.someReadOperation();
 } finally {
     GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
 }
@@ -91,7 +91,7 @@ try {
 ```java
 long stamp = GLOBAL_BLOCKCHAIN_LOCK.writeLock();
 try {
-    blockDAO.someWriteOperation();
+    blockchain.someWriteOperation();
 } finally {
     GLOBAL_BLOCKCHAIN_LOCK.unlockWrite(stamp);
 }

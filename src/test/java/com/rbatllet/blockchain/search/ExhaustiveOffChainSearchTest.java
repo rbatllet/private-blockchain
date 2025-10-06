@@ -1022,7 +1022,7 @@ public class ExhaustiveOffChainSearchTest {
 
         // Clean up blockchain
         if (blockchain != null) {
-            blockchain.getBlockDAO().cleanupTestData();
+            // BlockRepository now package-private - use clearAndReinitialize();
         }
     }
 

@@ -58,8 +58,8 @@ public class ChainValidationResult {
     public String getSummary() { return summary; }
     
     /**
-     * Legacy compatibility: returns true if chain is structurally intact
-     * This provides structural integrity validation for compatibility
+     * Legacy compatibility: returns true if chain is structurally intact.
+     * This provides structural integrity validation for compatibility.
      */
     public boolean isValid() {
         return structuralIntegrity;

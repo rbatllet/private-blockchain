@@ -79,7 +79,8 @@ public void tearDown() throws Exception {
 ## Best Practices
 
 ### 1. Identify Shared State Dependencies
-Before writing tests for components with cross-instance coordination:
+
+When writing tests for components with cross-instance coordination:
 - Map all static variables and singleton dependencies
 - Document state sharing mechanisms
 - Identify potential contamination points

@@ -36,9 +36,8 @@ public class BlockSequenceThreadSafetyTest {
     
     @BeforeEach
     void cleanDatabase() {
-        // Clean database before each test to ensure isolation - using thread-safe DAO method
-        blockchain.getBlockDAO().cleanupTestData();
-        blockchain.getAuthorizedKeyDAO().cleanupTestData();
+        // Clean database before each test to ensure isolation
+        blockchain.clearAndReinitialize();
         
         // Re-add authorized key after cleanup for test to work
         blockchain.addAuthorizedKey(

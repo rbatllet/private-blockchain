@@ -223,11 +223,17 @@ public class Block {
 
     @Override
     public String toString() {
+        // For encrypted blocks, show a preview of the original data (for debugging/logging)
+        // The data field is never null and contains the original unencrypted data
+        String dataPreview = data != null 
+            ? (data.length() > 50 ? data.substring(0, 50) + "..." : data)
+            : "null";
+            
         return "Block{" +
                 "id=" + id +
                 ", blockNumber=" + blockNumber +
                 ", previousHash='" + previousHash + '\'' +
-                ", data='" + (isDataEncrypted() ? "[ENCRYPTED]" : data) + '\'' +
+                ", data='" + dataPreview + '\'' +
                 ", timestamp=" + timestamp +
                 ", hash='" + hash + '\'' +
                 ", signature='" + (signature != null ? signature.substring(0, Math.min(20, signature.length())) + "..." : "null") + '\'' +

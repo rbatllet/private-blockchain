@@ -421,16 +421,22 @@ class BlockchainTest {
     class ErrorHandling {
 
         @Test
-        @DisplayName("Should handle null parameters gracefully")
-        void shouldHandleNullParametersGracefully() {
-            assertFalse(blockchain.addAuthorizedKey(null, "Test User"));
-            assertFalse(blockchain.addAuthorizedKey(testPublicKey, null));
-            assertFalse(blockchain.revokeAuthorizedKey(null));
-            
+        @DisplayName("Should reject null parameters with exceptions")
+        void shouldRejectNullParametersWithExceptions() {
+            // UPDATED: Matching BlockchainRobustnessTest strict validation standard
             blockchain.addAuthorizedKey(testPublicKey, "Test User");
-            assertFalse(blockchain.addBlock(null, testKeyPair.getPrivate(), testKeyPair.getPublic()));
-            assertFalse(blockchain.addBlock("Test", null, testKeyPair.getPublic()));
-            assertFalse(blockchain.addBlock("Test", testKeyPair.getPrivate(), null));
+            
+            assertThrows(IllegalArgumentException.class, () -> {
+                blockchain.addBlock(null, testKeyPair.getPrivate(), testKeyPair.getPublic());
+            }, "Null data should throw exception");
+            
+            assertThrows(IllegalArgumentException.class, () -> {
+                blockchain.addBlock("Test", null, testKeyPair.getPublic());
+            }, "Null private key should throw exception");
+            
+            assertThrows(IllegalArgumentException.class, () -> {
+                blockchain.addBlock("Test", testKeyPair.getPrivate(), null);
+            }, "Null public key should throw exception");
         }
 
         @Test
@@ -442,23 +448,19 @@ class BlockchainTest {
         }
         
         @Test
-        @DisplayName("Should allow empty data for system blocks")
-        void shouldAllowEmptyDataForSystemBlocks() {
+        @DisplayName("Should reject empty data")
+        void shouldRejectEmptyData() {
             // Add a test user
             blockchain.addAuthorizedKey(testPublicKey, "Test User");
             
-            // Empty data should be allowed (for system blocks)
-            assertTrue(blockchain.addBlock("", testKeyPair.getPrivate(), testKeyPair.getPublic()));
-            ChainValidationResult result = blockchain.validateChainDetailed();
-            assertTrue(result.isFullyCompliant());
-            assertTrue(result.isStructurallyIntact());
+            // Empty data should be rejected (no legitimate use case for empty blocks)
+            // UPDATED: Matching BlockchainRobustnessTest strict validation standard
+            assertThrows(IllegalArgumentException.class, () -> {
+                blockchain.addBlock("", testKeyPair.getPrivate(), testKeyPair.getPublic());
+            }, "Empty data should throw exception");
 
-            // Verify the block was created
-            assertEquals(2, blockchain.getBlockCount()); // Genesis + system block
-
-            // The system block should have empty data
-            Block systemBlock = blockchain.getBlock(1L);
-            assertEquals("", systemBlock.getData());
+            // Verify no block was created (only Genesis exists)
+            assertEquals(1, blockchain.getBlockCount(), "Should only have Genesis block");
         }
     }
 

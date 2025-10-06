@@ -401,19 +401,19 @@ public class UserFriendlyEncryptionAPI {
      * }
      * }</pre>
      *
-     * @param blockId The unique ID (block number) of the block to check.
-     *                Must correspond to an existing block in the blockchain.
+     * @param blockNumber The block number (sequential position) of the block to check.
+     *                    Must correspond to an existing block in the blockchain.
      * @return {@code true} if the block contains encrypted data that requires a password
      *         to decrypt, {@code false} if the block contains plain-text data or if
      *         the block doesn't exist
-     * @throws IllegalArgumentException if blockId is null
+     * @throws IllegalArgumentException if blockNumber is null
      * @see #retrieveSecret(Long, String)
      * @see #storeSecret(String, String)
      * @see #findEncryptedData(String)
      * @since 1.0
      */
-    public boolean isBlockEncrypted(Long blockId) {
-        return blockchain.isBlockEncrypted(blockId);
+    public boolean isBlockEncrypted(Long blockNumber) {
+        return blockchain.isBlockEncrypted(blockNumber);
     }
 
     // ===== SIMPLE SEARCH OPERATIONS =====
@@ -502,7 +502,7 @@ public class UserFriendlyEncryptionAPI {
         }
         
         // Single optimized database query instead of N+1 individual queries
-        List<Block> allBlocks = blockchain.getBlockDAO().batchRetrieveBlocksByHash(blockHashes);
+        List<Block> allBlocks = blockchain.batchRetrieveBlocksByHash(blockHashes);
         logger.warn("🔧 DEBUG: Retrieved {} blocks from database", allBlocks.size());
         for (int i = 0; i < allBlocks.size(); i++) {
             Block block = allBlocks.get(i);
@@ -741,7 +741,7 @@ public class UserFriendlyEncryptionAPI {
         }
         
         // Single optimized database query instead of N+1 individual queries
-        List<Block> blocks = blockchain.getBlockDAO().batchRetrieveBlocksByHash(blockHashes);
+        List<Block> blocks = blockchain.batchRetrieveBlocksByHash(blockHashes);
         
         logger.info(
             "✅ Found {} blocks from {} search results using batch optimization", 
@@ -1084,7 +1084,7 @@ public class UserFriendlyEncryptionAPI {
             }
             
             // Single optimized database query instead of N+1 individual queries
-            List<Block> blocks = blockchain.getBlockDAO().batchRetrieveBlocksByHash(blockHashes);
+            List<Block> blocks = blockchain.batchRetrieveBlocksByHash(blockHashes);
             
             logger.info(
                 "✅ Found {} blocks from {} secure search results using batch optimization", 
@@ -2848,13 +2848,13 @@ public class UserFriendlyEncryptionAPI {
             blockchain.processChainInBatches(batch -> {
                 for (Block block : batch) {
                     totalBlocks.incrementAndGet();
-                    Long blockId = block.getBlockNumber();
+                    Long blockNumber = block.getBlockNumber();
                     boolean blockValid = blockchain.validateSingleBlock(block);
                     boolean filesExist = BlockValidationUtil.offChainFileExists(block);
                     boolean noTampering = BlockValidationUtil.detectOffChainTampering(block);
                     var detailedValidation = BlockValidationUtil.validateOffChainDataDetailed(block);
 
-                    detailsBuilder.append(String.format("Block #%d: ", blockId));
+                    detailsBuilder.append(String.format("Block #%d: ", blockNumber));
 
                     if (blockValid) {
                         validBlocks.incrementAndGet();
@@ -3611,7 +3611,7 @@ public class UserFriendlyEncryptionAPI {
             }
             
             // Single optimized database query instead of N+1 individual queries
-            List<Block> blocks = blockchain.getBlockDAO().batchRetrieveBlocksByHash(blockHashes);
+            List<Block> blocks = blockchain.batchRetrieveBlocksByHash(blockHashes);
             
             logger.info(
                 "✅ Found {} blocks from {} adaptive decryption results using batch optimization", 
@@ -3661,7 +3661,7 @@ public class UserFriendlyEncryptionAPI {
         }
         
         // Single optimized database query instead of N+1 individual queries
-        List<Block> blocks = blockchain.getBlockDAO().batchRetrieveBlocksByHash(blockHashes);
+        List<Block> blocks = blockchain.batchRetrieveBlocksByHash(blockHashes);
         
         logger.info(
             "✅ Converted {} enhanced results to {} blocks using batch optimization", 
@@ -4147,7 +4147,7 @@ public class UserFriendlyEncryptionAPI {
         }
 
         try {
-            return blockchain.getBlockDAO().searchByCustomMetadata(searchTerm);
+            return blockchain.searchByCustomMetadata(searchTerm);
         } catch (Exception e) {
             logger.error("❌ Error searching by custom metadata: {}", e.getMessage(), e);
             return new ArrayList<>();
@@ -4189,7 +4189,7 @@ public class UserFriendlyEncryptionAPI {
         try {
             // Use memory-efficient paginated search with reasonable limit
             final int MAX_RESULTS = MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS;
-            return blockchain.getBlockDAO().searchByCustomMetadataKeyValuePaginated(jsonKey, jsonValue, 0, MAX_RESULTS);
+            return blockchain.searchByCustomMetadataKeyValuePaginated(jsonKey, jsonValue, 0, MAX_RESULTS);
         } catch (Exception e) {
             logger.error("❌ Error searching by custom metadata key-value: {}", e.getMessage(), e);
             return new ArrayList<>();
@@ -4245,7 +4245,7 @@ public class UserFriendlyEncryptionAPI {
         try {
             // Use memory-efficient paginated search with reasonable limit
             final int MAX_RESULTS = MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS;
-            return blockchain.getBlockDAO().searchByCustomMetadataMultipleCriteriaPaginated(criteria, 0, MAX_RESULTS);
+            return blockchain.searchByCustomMetadataMultipleCriteriaPaginated(criteria, 0, MAX_RESULTS);
         } catch (Exception e) {
             logger.error("❌ Error searching by multiple custom metadata criteria: {}", e.getMessage(), e);
             return new ArrayList<>();
@@ -9737,7 +9737,7 @@ public class UserFriendlyEncryptionAPI {
                 // Retrieve batch
                 Map<Long, Block> blockMap = new HashMap<>();
                 try {
-                    List<Block> retrievedBlocks = blockchain.getBlockDAO().batchRetrieveBlocks(batchBlockNumbers);
+                    List<Block> retrievedBlocks = blockchain.batchRetrieveBlocks(batchBlockNumbers);
                     for (Block block : retrievedBlocks) {
                         if (block != null) {
                             blockMap.put(block.getBlockNumber(), block);
@@ -11845,7 +11845,7 @@ public class UserFriendlyEncryptionAPI {
                     try {
                         List<Long> cachedBlockNumbers = new ArrayList<>(encryptedBlocksCache);
                         logger.info("📦 Batch retrieving {} encrypted blocks from cache", cachedBlockNumbers.size());
-                        List<Block> cachedBlocks = blockchain.getBlockDAO().batchRetrieveBlocks(cachedBlockNumbers);
+                        List<Block> cachedBlocks = blockchain.batchRetrieveBlocks(cachedBlockNumbers);
                         
                         for (Block block : cachedBlocks) {
                             if (block != null) {
@@ -12782,7 +12782,7 @@ public class UserFriendlyEncryptionAPI {
                 try {
                     List<Long> blockNumbersList = new ArrayList<>(blockNumbers);
                     logger.info("📦 Batch retrieving {} recipient blocks for '{}'", blockNumbersList.size(), trimmedUsername);
-                    List<Block> retrievedBlocks = blockchain.getBlockDAO().batchRetrieveBlocks(blockNumbersList);
+                    List<Block> retrievedBlocks = blockchain.batchRetrieveBlocks(blockNumbersList);
                     
                     for (Block block : retrievedBlocks) {
                         if (block != null) {
@@ -13082,12 +13082,12 @@ public class UserFriendlyEncryptionAPI {
                         }
 
                         logger.debug(
-                            "🚀 Batch loading {} blocks to avoid N+1 queries using BlockDAO",
+                            "🚀 Batch loading {} blocks to avoid N+1 queries using BlockRepository",
                             sortedBlockNumbers.size()
                         );
 
-                        // Use proper DAO layer for batch retrieval
-                        matchingBlocks = blockchain.getBlockDAO().batchRetrieveBlocks(sortedBlockNumbers);
+                        // Use proper repository layer for batch retrieval
+                        matchingBlocks = blockchain.batchRetrieveBlocks(sortedBlockNumbers);
                         
                     } catch (Exception e) {
                         logger.warn(
@@ -13242,7 +13242,7 @@ public class UserFriendlyEncryptionAPI {
                     logger.info("📦 Batch retrieving {} new blocks for metadata indexing", newBlockNumbers.size());
                     
                     try {
-                        List<Block> newBlocks = blockchain.getBlockDAO().batchRetrieveBlocks(newBlockNumbers);
+                        List<Block> newBlocks = blockchain.batchRetrieveBlocks(newBlockNumbers);
                         for (Block block : newBlocks) {
                             if (block != null) {
                                 indexBlockMetadata(block);
@@ -13386,7 +13386,7 @@ public class UserFriendlyEncryptionAPI {
                     logger.info("📦 Batch retrieving {} new blocks for encrypted cache", newBlockNumbers.size());
                     
                     try {
-                        List<Block> newBlocks = blockchain.getBlockDAO().batchRetrieveBlocks(newBlockNumbers);
+                        List<Block> newBlocks = blockchain.batchRetrieveBlocks(newBlockNumbers);
                         for (Block block : newBlocks) {
                             if (
                                 block != null &&
@@ -13448,7 +13448,7 @@ public class UserFriendlyEncryptionAPI {
         try {
             List<Long> blockNumbersList = new ArrayList<>(blockNumbers);
             logger.info("📦 Batch retrieving {} blocks for parallel search", blockNumbersList.size());
-            List<Block> retrievedBlocks = blockchain.getBlockDAO().batchRetrieveBlocks(blockNumbersList);
+            List<Block> retrievedBlocks = blockchain.batchRetrieveBlocks(blockNumbersList);
             
             // Process the retrieved blocks in parallel for term matching
             return retrievedBlocks
@@ -13494,7 +13494,7 @@ public class UserFriendlyEncryptionAPI {
         try {
             List<Long> blockNumbersList = new ArrayList<>(blockNumbers);
             logger.info("📦 Batch retrieving {} blocks for sequential search", blockNumbersList.size());
-            List<Block> retrievedBlocks = blockchain.getBlockDAO().batchRetrieveBlocks(blockNumbersList);
+            List<Block> retrievedBlocks = blockchain.batchRetrieveBlocks(blockNumbersList);
             
             for (Block block : retrievedBlocks) {
                 if (block != null && matchesSearchTerm(block, searchTerm)) {
@@ -13720,7 +13720,7 @@ public class UserFriendlyEncryptionAPI {
                     logger.info("📦 Batch retrieving {} new blocks for recipient indexing", newBlockNumbers.size());
                     
                     try {
-                        List<Block> newBlocks = blockchain.getBlockDAO().batchRetrieveBlocks(newBlockNumbers);
+                        List<Block> newBlocks = blockchain.batchRetrieveBlocks(newBlockNumbers);
                         for (Block block : newBlocks) {
                             try {
                                 if (block != null && isRecipientEncrypted(block)) {
@@ -14007,32 +14007,51 @@ public class UserFriendlyEncryptionAPI {
 
     /**
      * Retrieve and decrypt secret data from a specific block
-     * @param blockId the block ID to retrieve from
-     * @param password the password for decryption
-     * @return decrypted data or null if failed
+     * 
+     * <p><strong>Parameter Validation Strategy:</strong></p>
+     * <ul>
+     *   <li><strong>null blockNumber:</strong> Throws IllegalArgumentException (programming error)</li>
+     *   <li><strong>null password:</strong> Throws IllegalArgumentException (programming error)</li>
+     *   <li><strong>empty password:</strong> Throws IllegalArgumentException (programming error)</li>
+     *   <li><strong>wrong password:</strong> Returns null (user error - decryption fails)</li>
+     * </ul>
+     * 
+     * @param blockNumber the block NUMBER (not database ID) to retrieve from
+     * @param password the password for decryption (cannot be null or empty)
+     * @return decrypted data, or null if decryption fails (wrong password, block not found, etc.)
+     * @throws IllegalArgumentException if blockNumber is null, or password is null/empty (programming errors)
      */
-    public String retrieveSecret(Long blockId, String password) {
-        logger.debug("🔓 DEBUG: retrieveSecret called for block #{}", blockId);
+    public String retrieveSecret(Long blockNumber, String password) {
+        logger.debug("🔓 DEBUG: retrieveSecret called for block number #{}", blockNumber);
         
-        if (blockId == null) {
-            throw new IllegalArgumentException("Block ID cannot be null");
+        // VALIDATION 1: null blockNumber → Exception (programming error)
+        if (blockNumber == null) {
+            throw new IllegalArgumentException("Block number cannot be null");
         }
-        if (password == null || password.trim().isEmpty()) {
-            throw new IllegalArgumentException("Password cannot be null or empty");
+        
+        // VALIDATION 2: null password → Exception (programming error)
+        if (password == null) {
+            throw new IllegalArgumentException("Password cannot be null");
+        }
+        
+        // VALIDATION 3: empty password → Exception (programming error)
+        if (password.trim().isEmpty()) {
+            throw new IllegalArgumentException("Password cannot be empty");
         }
         
         try {
-            // Use block ID (not block number) for decryption
-            String decryptedData = blockchain.getDecryptedBlockData(blockId, password);
-            logger.info("🔓 DEBUG: Block ID #{} decrypted successfully. Content: '{}'", 
-                       blockId, 
+            // CRITICAL FIX: Use getDecryptedBlockDataByNumber() for block NUMBERS (not IDs)
+            // Tests pass block.getBlockNumber(), not block.getId()
+            String decryptedData = blockchain.getDecryptedBlockDataByNumber(blockNumber, password);
+            logger.info("🔓 DEBUG: Block number #{} decrypted successfully. Content: '{}'", 
+                       blockNumber, 
                        decryptedData != null && decryptedData.length() > 100 
                            ? decryptedData.substring(0, 100) + "..." 
                            : decryptedData);
             return decryptedData;
         } catch (Exception e) {
-            logger.error("🔓 ERROR: Failed to decrypt block #{}: {}", blockId, e.getMessage());
-            return null;
+            logger.error("🔓 ERROR: Failed to decrypt block number #{}: {}", blockNumber, e.getMessage());
+            return null; // Wrong password or other decryption errors
         }
     }
 
@@ -14150,12 +14169,12 @@ public class UserFriendlyEncryptionAPI {
 
     /**
      * Check if off-chain files exist for a specific block
-     * @param blockId the block ID to check
+     * @param blockNumber the block number to check
      * @return true if off-chain files exist
      */
-    public boolean offChainFilesExist(Long blockId) {
+    public boolean offChainFilesExist(Long blockNumber) {
         try {
-            Block block = blockchain.getBlock(blockId);
+            Block block = blockchain.getBlock(blockNumber);
             if (block == null || !block.hasOffChainData()) {
                 return false;
             }
@@ -14164,7 +14183,7 @@ public class UserFriendlyEncryptionAPI {
             );
         } catch (Exception e) {
             logger.error(
-                "Error checking off-chain files for block " + blockId,
+                "Error checking off-chain files for block " + blockNumber,
                 e
             );
             return false;
@@ -14200,17 +14219,17 @@ public class UserFriendlyEncryptionAPI {
     }
 
     /**
-     * Perform a quick integrity check on a specific block by ID
-     * @param blockId the ID of the block to check (null safe)
+     * Perform a quick integrity check on a specific block by number
+     * @param blockNumber the block number to check (null safe)
      * @return true if the block passes integrity check, false otherwise
      */
-    public boolean performQuickIntegrityCheck(Long blockId) {
-        if (blockId == null) {
-            return false; // Null blockId fails integrity check
+    public boolean performQuickIntegrityCheck(Long blockNumber) {
+        if (blockNumber == null) {
+            return false; // Null blockNumber fails integrity check
         }
         
         try {
-            Block block = blockchain.getBlock(blockId);
+            Block block = blockchain.getBlock(blockNumber);
             if (block == null) {
                 return false; // Non-existent block fails integrity check
             }
@@ -14226,7 +14245,7 @@ public class UserFriendlyEncryptionAPI {
             return result.isValid();
             
         } catch (Exception e) {
-            logger.error("Error performing quick integrity check for block " + blockId, e);
+            logger.error("Error performing quick integrity check for block " + blockNumber, e);
             return false; // Consider failed if we can't validate
         }
     }

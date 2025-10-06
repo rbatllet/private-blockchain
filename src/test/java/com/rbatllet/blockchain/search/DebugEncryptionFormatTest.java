@@ -32,7 +32,7 @@ public class DebugEncryptionFormatTest {
     @BeforeEach
     void cleanDatabase() {
         // Clean database before each test to ensure isolation - using thread-safe DAO method
-        blockchain.getBlockDAO().cleanupTestData();
+        // BlockRepository now package-private - use clearAndReinitialize();
         blockchain.getAuthorizedKeyDAO().cleanupTestData();
         
         // Re-add authorized key after cleanup for test to work

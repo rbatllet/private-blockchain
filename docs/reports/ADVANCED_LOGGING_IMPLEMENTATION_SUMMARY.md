@@ -242,7 +242,7 @@ AdvancedLoggingService.logSecurityEvent(
 ### Implementation Metrics
 - **Classes Created**: 4 (AdvancedLoggingService, LoggingManager, OperationLoggingInterceptor, @OperationLogger)
 - **Test Coverage**: 22 comprehensive test scenarios
-- **Integration Points**: 3 (BlockDAO, SearchMetrics, MemoryManagement)
+- **Integration Points**: 3 (BlockRepository, SearchMetrics, MemoryManagement)
 - **Performance Overhead**: <1ms per operation
 
 ### System Capabilities

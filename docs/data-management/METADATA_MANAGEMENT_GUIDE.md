@@ -1132,7 +1132,7 @@ The blockchain provides **three powerful methods** to search blocks by their cus
 | `searchByCustomMetadataKeyValue()` | Exact key-value pair matching | Precise filtering by specific fields (max 10K results) |
 | `searchByCustomMetadataMultipleCriteria()` | Multiple criteria with AND logic | Complex multi-field queries (max 10K results) |
 
-**Note**: All methods are memory-efficient and automatically limited to 10,000 results. For larger datasets, use the paginated versions in BlockDAO (`searchByCustomMetadataKeyValuePaginated()`, `searchByCustomMetadataMultipleCriteriaPaginated()`).
+**Note**: All methods are memory-efficient and automatically limited to 10,000 results. For larger datasets, use the paginated versions in BlockRepository (`searchByCustomMetadataKeyValuePaginated()`, `searchByCustomMetadataMultipleCriteriaPaginated()`).
 
 ### Method 1: Substring Search
 
@@ -1205,7 +1205,7 @@ metadata.put("department", "finance");      // String
 
 String jsonMetadata = objectMapper.writeValueAsString(metadata);
 block.setCustomMetadata(jsonMetadata);
-blockchain.getBlockDAO().updateBlock(block);
+blockchain.updateBlock(block);
 
 // Search using string representation of values
 List<Block> level5 = api.searchByCustomMetadataKeyValue("priority_level", "5");
@@ -1221,7 +1221,7 @@ List<Block> urgent = api.searchByCustomMetadataKeyValue("is_urgent", "true");
 - ✅ Case-sensitive for values
 - ✅ **Memory-Efficient**: Automatically limited to 10,000 results
 - ⚠️ Requires exact value match (no partial matches)
-- 💡 **For large datasets**: Use `blockDAO.searchByCustomMetadataKeyValuePaginated(key, value, offset, limit)` for custom pagination
+- 💡 **For large datasets**: Use `blockchain.searchByCustomMetadataKeyValuePaginated(key, value, offset, limit)` for custom pagination
 
 ---
 
@@ -1247,7 +1247,7 @@ List<Block> matches = api.searchByCustomMetadataMultipleCriteria(criteria);  // 
 System.out.println("Found " + matches.size() + " high-priority medical records needing review");
 
 // For large datasets with more than 10K results, use pagination:
-// List<Block> batch = blockchain.getBlockDAO()
+// List<Block> batch = blockchain
 //     .searchByCustomMetadataMultipleCriteriaPaginated(criteria, offset, limit);
 ```
 
@@ -1298,7 +1298,7 @@ Block patientBlock = blockchain.addBlockAndReturn(
     keyPair.getPublic()
 );
 patientBlock.setCustomMetadata(mapper.writeValueAsString(patientMetadata));
-blockchain.getBlockDAO().updateBlock(patientBlock);
+blockchain.updateBlock(patientBlock);
 
 // Dashboard Query 1: All active cardiology cases
 Map<String, String> activeCases = new HashMap<>();
@@ -1337,7 +1337,7 @@ Block contractBlock = blockchain.addBlockAndReturn(
     keyPair.getPublic()
 );
 contractBlock.setCustomMetadata(mapper.writeValueAsString(contractMetadata));
-blockchain.getBlockDAO().updateBlock(contractBlock);
+blockchain.updateBlock(contractBlock);
 
 // Query 1: Find all executed vendor agreements
 Map<String, String> executedVendorContracts = new HashMap<>();
@@ -1374,7 +1374,7 @@ Block orderBlock = blockchain.addBlockAndReturn(
     keyPair.getPublic()
 );
 orderBlock.setCustomMetadata(mapper.writeValueAsString(orderMetadata));
-blockchain.getBlockDAO().updateBlock(orderBlock);
+blockchain.updateBlock(orderBlock);
 
 // Query 1: All shipped orders
 List<Block> shippedOrders = api.searchByCustomMetadataKeyValue("status", "shipped");
