@@ -358,7 +358,15 @@ public class PerformanceMetricsService {
     }
     
     // Helper methods
-    private void createPerformanceAlert(String type, String message, AlertSeverity severity) {
+    /**
+     * Creates a performance alert with specified type, message, and severity.
+     * Made public to allow external monitoring components to create alerts.
+     *
+     * @param type Alert type identifier
+     * @param message Alert message
+     * @param severity Alert severity level
+     */
+    public void createPerformanceAlert(String type, String message, AlertSeverity severity) {
         PerformanceAlert alert = new PerformanceAlert(type, message, severity);
         
         // Use CopyOnWriteArrayList to avoid locking
@@ -706,7 +714,11 @@ public class PerformanceMetricsService {
         LocalDateTime getTimestamp() { return timestamp; }
     }
     
-    private enum AlertSeverity {
+    /**
+     * Alert severity levels for performance alerts.
+     * Made public to allow external monitoring components to create alerts.
+     */
+    public enum AlertSeverity {
         INFO, WARNING, CRITICAL
     }
 }

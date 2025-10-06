@@ -361,7 +361,77 @@ public class JPAUtil {
         cleanupThreadLocals();
         logger.info("🧹 Forced cleanup of all ThreadLocal variables completed");
     }
-    
+
+    /**
+     * Closes all active database connections from the connection pool.
+     *
+     * <p>This method is specifically designed for operations like SQLite VACUUM that require
+     * exclusive database access. It closes all EntityManagers and forces the underlying
+     * connection pool (HikariCP) to close all its connections.
+     *
+     * <p><strong>⚠️ Warning:</strong> This is a destructive operation that will close
+     * ALL database connections. Use only when necessary (e.g., before VACUUM operations).
+     *
+     * <p><strong>Implementation:</strong>
+     * <ol>
+     *   <li>Closes all thread-local EntityManagers</li>
+     *   <li>Forces cleanup of ThreadLocal variables</li>
+     *   <li>Shuts down and reinitializes the EntityManagerFactory (which closes the pool)</li>
+     * </ol>
+     *
+     * <p><strong>Usage example:</strong>
+     * <pre>{@code
+     * // Before SQLite VACUUM operation
+     * JPAUtil.closeAllConnections();
+     *
+     * // Now VACUUM can acquire exclusive lock
+     * EntityManager em = JPAUtil.getEntityManager();
+     * em.createNativeQuery("VACUUM").executeUpdate();
+     * em.close();
+     * }</pre>
+     *
+     * @since 1.0.5
+     * @see #closeEntityManager()
+     * @see #forceCleanupAllThreadLocals()
+     */
+    public static void closeAllConnections() {
+        initLock.lock();
+        try {
+            logger.info("🔌 Closing all database connections...");
+
+            // Step 1: Close current thread's EntityManager
+            closeEntityManager();
+
+            // Step 2: Force cleanup of all ThreadLocal variables
+            forceCleanupAllThreadLocals();
+
+            // Step 3: Close and reinitialize EntityManagerFactory
+            // This forces HikariCP to close all pooled connections
+            if (entityManagerFactory != null && entityManagerFactory.isOpen()) {
+                DatabaseConfig savedConfig = currentConfig;
+
+                // Close the factory (closes the connection pool)
+                entityManagerFactory.close();
+                logger.info("  └─ EntityManagerFactory closed");
+
+                // Reinitialize with same configuration
+                if (savedConfig != null) {
+                    initialize(savedConfig);
+                    logger.info("  └─ EntityManagerFactory reinitialized");
+                } else {
+                    // Fallback to default if no config was set
+                    logger.warn("  └─ No configuration found, using default");
+                    initializeDefault();
+                }
+            }
+
+            logger.info("✅ All database connections closed and pool reinitialized");
+
+        } finally {
+            initLock.unlock();
+        }
+    }
+
     public static void shutdown() {
         initLock.lock();
         try {

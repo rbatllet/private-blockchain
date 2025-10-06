@@ -36,7 +36,7 @@ import com.rbatllet.blockchain.util.CryptoUtil;
  * - Synchronized BouncyCastle provider initialization
  * - Stateless design with no mutable shared state
  * 
- * @version 2.1
+ * @version 1.0.5
  */
 public class ECKeyDerivation {
     

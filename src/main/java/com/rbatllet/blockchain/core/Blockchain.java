@@ -4038,7 +4038,7 @@ public class Blockchain {
      *
      * @param searchTerm Search term to find in custom metadata JSON
      * @return List of blocks matching the search term (max 10,000)
-     * @since 2.1.0
+     * @since 1.0.5
      */
     public List<Block> searchByCustomMetadata(String searchTerm) {
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
@@ -4058,7 +4058,7 @@ public class Blockchain {
      * @param limit Maximum results
      * @return List of blocks matching the key-value pair
      * @throws IllegalArgumentException if offset exceeds Integer.MAX_VALUE
-     * @since 2.1.0
+     * @since 1.0.5
      */
     public List<Block> searchByCustomMetadataKeyValuePaginated(String jsonKey, String jsonValue, long offset, int limit) {
         // Validate offset doesn't exceed Integer.MAX_VALUE
@@ -4081,7 +4081,7 @@ public class Blockchain {
      * @param offset Starting position
      * @param limit Maximum results
      * @return List of blocks matching all criteria
-     * @since 2.1.0
+     * @since 1.0.5
      */
     public List<Block> searchByCustomMetadataMultipleCriteriaPaginated(Map<String, String> criteria, long offset, int limit) {
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
@@ -4200,7 +4200,7 @@ public class Blockchain {
      * @param blockHashes List of block hash values to retrieve
      * @return List of blocks matching the provided hashes
      * @throws IllegalArgumentException if blockHashes is null
-     * @since 2.1.0
+     * @since 1.0.5
      */
     public List<Block> batchRetrieveBlocksByHash(List<String> blockHashes) {
         if (blockHashes == null) {
@@ -4224,7 +4224,7 @@ public class Blockchain {
      * @param blockNumbers List of block numbers to retrieve (cannot be null)
      * @return List of blocks matching the provided block numbers
      * @throws IllegalArgumentException if blockNumbers is null or batch size exceeds MAX_BATCH_SIZE (10,000)
-     * @since 2.1.0
+     * @since 1.0.5
      */
     public List<Block> batchRetrieveBlocks(List<Long> blockNumbers) {
         if (blockNumbers == null) {
@@ -4246,7 +4246,7 @@ public class Blockchain {
      * @param offset starting position (0-based, long type to prevent overflow)
      * @param limit maximum number of blocks to return
      * @return list of blocks with off-chain data within the specified range
-     * @since 2.1.0
+     * @since 1.0.5
      */
     public List<Block> getBlocksWithOffChainDataPaginated(long offset, int limit) {
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
@@ -4264,7 +4264,7 @@ public class Blockchain {
      * @param offset starting position (0-based, long type to prevent overflow)
      * @param limit maximum number of blocks to return
      * @return list of encrypted blocks within the specified range
-     * @since 2.1.0
+     * @since 1.0.5
      */
     public List<Block> getEncryptedBlocksPaginated(long offset, int limit) {
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
@@ -6404,11 +6404,44 @@ public class Blockchain {
 
     /**
      * Update an existing block in the blockchain
-     * SECURITY: Only allows modification of metadata fields that don't affect block hash
-     * THREAD-SAFE: Uses write lock for safe concurrent access
      * 
-     * @param block The block to update with modified fields
-     * @return true if the update was successful, false otherwise
+     * <h3>🔒 SECURITY: 2-Layer Immutability Protection</h3>
+     * <p>This method implements blockchain integrity protection by:</p>
+     * <ol>
+     *   <li><b>Validation:</b> Checks all 7 immutable fields before update</li>
+     *   <li><b>Logging:</b> Logs {@code logger.error()} for each attempted modification</li>
+     *   <li><b>Rejection:</b> Returns {@code false} if any immutable field is modified</li>
+     *   <li><b>Safe Copy:</b> Only copies mutable fields to existing block</li>
+     * </ol>
+     * 
+     * <h4>❌ IMMUTABLE Fields (Cannot be modified):</h4>
+     * <ul>
+     *   <li>{@code data} - Block content (hash-critical)</li>
+     *   <li>{@code blockNumber} - Block position</li>
+     *   <li>{@code previousHash} - Chain link (hash-critical)</li>
+     *   <li>{@code timestamp} - Creation time (hash-critical)</li>
+     *   <li>{@code hash} - Cryptographic hash</li>
+     *   <li>{@code signature} - Digital signature</li>
+     *   <li>{@code signerPublicKey} - Signer identity</li>
+     * </ul>
+     * 
+     * <h4>✅ MUTABLE Fields (Safe to update):</h4>
+     * <ul>
+     *   <li>{@code customMetadata} - User-defined JSON metadata</li>
+     *   <li>{@code encryptionMetadata} - Encryption/recipient metadata</li>
+     *   <li>{@code manualKeywords} - User-specified keywords</li>
+     *   <li>{@code autoKeywords} - Auto-extracted keywords</li>
+     *   <li>{@code searchableContent} - Combined searchable text</li>
+     *   <li>{@code contentCategory} - Content classification</li>
+     *   <li>{@code isEncrypted} - Encryption flag</li>
+     *   <li>{@code offChainData} - Off-chain data reference</li>
+     * </ul>
+     * 
+     * <h4>🔐 Thread Safety:</h4>
+     * <p>Uses {@code GLOBAL_BLOCKCHAIN_LOCK.writeLock()} for safe concurrent access.</p>
+     * 
+     * @param block The block to update with modified mutable fields
+     * @return {@code true} if update successful, {@code false} if block not found or immutable fields modified
      */
     public boolean updateBlock(Block block) {
         if (block == null || block.getBlockNumber() == null) {
@@ -6427,15 +6460,122 @@ public class Blockchain {
                         return false;
                     }
 
-                    // SECURITY VALIDATION: Verify that only safe fields are being modified
-                    if (!validateSafeUpdate(existingBlock, block)) {
-                        logger.error("❌ SECURITY VIOLATION: Attempted to modify hash-critical fields in block #{}", 
-                                    block.getBlockNumber());
+                    // SECURITY: Detect attempts to modify immutable (hash-critical) fields
+                    // These fields are protected by JPA @Column(updatable=false), but we reject
+                    // the update request to provide clear feedback to the caller
+                    if (!Objects.equals(existingBlock.getData(), block.getData())) {
+                        logger.error("❌ Cannot modify 'data' field - it's immutable (hash-critical)");
+                        return false;
+                    }
+                    if (!Objects.equals(existingBlock.getBlockNumber(), block.getBlockNumber())) {
+                        logger.error("❌ Cannot modify 'blockNumber' field - it's immutable");
+                        return false;
+                    }
+                    if (!Objects.equals(existingBlock.getPreviousHash(), block.getPreviousHash())) {
+                        logger.error("❌ Cannot modify 'previousHash' field - it's immutable (hash-critical)");
+                        return false;
+                    }
+                    // Compare timestamps with millisecond precision (ignore nanosecond differences from DB rounding)
+                    if (existingBlock.getTimestamp() != null && block.getTimestamp() != null) {
+                        long existingMillis = existingBlock.getTimestamp().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+                        long blockMillis = block.getTimestamp().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+                        if (existingMillis != blockMillis) {
+                            logger.error("❌ Cannot modify 'timestamp' field - it's immutable (hash-critical)");
+                            return false;
+                        }
+                    } else if (!Objects.equals(existingBlock.getTimestamp(), block.getTimestamp())) {
+                        logger.error("❌ Cannot modify 'timestamp' field - it's immutable (one is null)");
+                        return false;
+                    }
+                    if (!Objects.equals(existingBlock.getHash(), block.getHash())) {
+                        logger.error("❌ Cannot modify 'hash' field - it's immutable (blockchain integrity)");
+                        return false;
+                    }
+                    if (!Objects.equals(existingBlock.getSignature(), block.getSignature())) {
+                        logger.error("❌ Cannot modify 'signature' field - it's immutable (cryptographic integrity)");
+                        return false;
+                    }
+                    if (!Objects.equals(existingBlock.getSignerPublicKey(), block.getSignerPublicKey())) {
+                        logger.error("❌ Cannot modify 'signerPublicKey' field - it's immutable (identity integrity)");
                         return false;
                     }
 
-                    // Update the block using the DAO
-                    blockRepository.updateBlock(block);
+                    // SECURITY: Copy only safe fields (fields that don't affect the hash)
+                    // This prevents modifying hash-critical fields while allowing metadata updates
+                    boolean hasChanges = false;
+                    
+                    if (!Objects.equals(existingBlock.getCustomMetadata(), block.getCustomMetadata())) {
+                        existingBlock.setCustomMetadata(block.getCustomMetadata());
+                        hasChanges = true;
+                        if (logger.isTraceEnabled()) {
+                            logger.trace("✅ Safe update: customMetadata modified");
+                        }
+                    }
+                    
+                    if (!Objects.equals(existingBlock.getEncryptionMetadata(), block.getEncryptionMetadata())) {
+                        existingBlock.setEncryptionMetadata(block.getEncryptionMetadata());
+                        hasChanges = true;
+                        if (logger.isTraceEnabled()) {
+                            logger.trace("✅ Safe update: encryptionMetadata modified");
+                        }
+                    }
+                    
+                    if (!Objects.equals(existingBlock.getManualKeywords(), block.getManualKeywords())) {
+                        existingBlock.setManualKeywords(block.getManualKeywords());
+                        hasChanges = true;
+                        if (logger.isTraceEnabled()) {
+                            logger.trace("✅ Safe update: manualKeywords modified");
+                        }
+                    }
+                    
+                    if (!Objects.equals(existingBlock.getAutoKeywords(), block.getAutoKeywords())) {
+                        existingBlock.setAutoKeywords(block.getAutoKeywords());
+                        hasChanges = true;
+                        if (logger.isTraceEnabled()) {
+                            logger.trace("✅ Safe update: autoKeywords modified");
+                        }
+                    }
+                    
+                    if (!Objects.equals(existingBlock.getSearchableContent(), block.getSearchableContent())) {
+                        existingBlock.setSearchableContent(block.getSearchableContent());
+                        hasChanges = true;
+                        if (logger.isTraceEnabled()) {
+                            logger.trace("✅ Safe update: searchableContent modified");
+                        }
+                    }
+                    
+                    if (!Objects.equals(existingBlock.getContentCategory(), block.getContentCategory())) {
+                        existingBlock.setContentCategory(block.getContentCategory());
+                        hasChanges = true;
+                        if (logger.isTraceEnabled()) {
+                            logger.trace("✅ Safe update: contentCategory modified");
+                        }
+                    }
+                    
+                    if (!Objects.equals(existingBlock.getIsEncrypted(), block.getIsEncrypted())) {
+                        existingBlock.setIsEncrypted(block.getIsEncrypted());
+                        hasChanges = true;
+                        if (logger.isTraceEnabled()) {
+                            logger.trace("✅ Safe update: isEncrypted modified");
+                        }
+                    }
+                    
+                    if (!Objects.equals(existingBlock.getOffChainData(), block.getOffChainData())) {
+                        existingBlock.setOffChainData(block.getOffChainData());
+                        hasChanges = true;
+                        if (logger.isTraceEnabled()) {
+                            logger.trace("✅ Safe update: offChainData modified");
+                        }
+                    }
+                    
+                    if (!hasChanges) {
+                        logger.debug("No safe fields were modified for block #{}", block.getBlockNumber());
+                        return true; // No changes needed, but not an error
+                    }
+
+                    // Update only the existing block (with safe fields copied)
+                    // This ensures hash-critical fields remain unchanged
+                    blockRepository.updateBlock(existingBlock);
                     
                     if (logger.isDebugEnabled()) {
                         logger.debug("✅ Successfully updated block #{} (safe fields only)", block.getBlockNumber());
@@ -6457,7 +6597,7 @@ public class Blockchain {
      * @param blockId The ID of the block to encrypt
      * @param password The password for encryption
      * @return true if encryption was successful, false if block was already encrypted or not found
-     * @since 2.1.0
+     * @since 1.0.5
      */
     public boolean encryptExistingBlock(Long blockId, String password) {
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.writeLock();
@@ -6466,94 +6606,6 @@ public class Blockchain {
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.unlockWrite(stamp);
         }
-    }
-
-    /**
-     * Validates that only safe fields are being updated (fields that don't affect block hash)
-     * SECURITY: Prevents modification of hash-critical fields that would break blockchain integrity
-     * 
-     * @param original The original block from database
-     * @param updated The block with updates to validate
-     * @return true if update is safe, false if critical fields are modified
-     */
-    private boolean validateSafeUpdate(Block original, Block updated) {
-        // Verify that hash-critical fields have NOT changed
-        if (!Objects.equals(original.getData(), updated.getData())) {
-            logger.error("❌ Cannot modify 'data' field - affects block hash");
-            return false;
-        }
-        if (!Objects.equals(original.getBlockNumber(), updated.getBlockNumber())) {
-            logger.error("❌ Cannot modify 'blockNumber' field - affects block hash");
-            return false;
-        }
-        if (!Objects.equals(original.getPreviousHash(), updated.getPreviousHash())) {
-            logger.error("❌ Cannot modify 'previousHash' field - affects block hash");
-            return false;
-        }
-        if (!Objects.equals(original.getTimestamp(), updated.getTimestamp())) {
-            logger.error("❌ Cannot modify 'timestamp' field - affects block hash");
-            return false;
-        }
-        if (!Objects.equals(original.getSignerPublicKey(), updated.getSignerPublicKey())) {
-            logger.error("❌ Cannot modify 'signerPublicKey' field - affects block hash");
-            return false;
-        }
-        if (!Objects.equals(original.getHash(), updated.getHash())) {
-            logger.error("❌ Cannot modify 'hash' field - would break blockchain integrity");
-            return false;
-        }
-        if (!Objects.equals(original.getSignature(), updated.getSignature())) {
-            logger.error("❌ Cannot modify 'signature' field - would break blockchain integrity");
-            return false;
-        }
-        
-        // Log which safe fields are being modified
-        boolean hasModifications = false;
-        if (!Objects.equals(original.getCustomMetadata(), updated.getCustomMetadata())) {
-            if (logger.isTraceEnabled()) {
-                logger.trace("✅ Safe update: customMetadata modified");
-            }
-            hasModifications = true;
-        }
-        if (!Objects.equals(original.getManualKeywords(), updated.getManualKeywords())) {
-            if (logger.isTraceEnabled()) {
-                logger.trace("✅ Safe update: manualKeywords modified");
-            }
-            hasModifications = true;
-        }
-        if (!Objects.equals(original.getAutoKeywords(), updated.getAutoKeywords())) {
-            if (logger.isTraceEnabled()) {
-                logger.trace("✅ Safe update: autoKeywords modified");
-            }
-            hasModifications = true;
-        }
-        if (!Objects.equals(original.getSearchableContent(), updated.getSearchableContent())) {
-            if (logger.isTraceEnabled()) {
-                logger.trace("✅ Safe update: searchableContent modified");
-            }
-            hasModifications = true;
-        }
-        if (!Objects.equals(original.getContentCategory(), updated.getContentCategory())) {
-            if (logger.isTraceEnabled()) {
-                logger.trace("✅ Safe update: contentCategory modified");
-            }
-            hasModifications = true;
-        }
-        if (!Objects.equals(original.getEncryptionMetadata(), updated.getEncryptionMetadata())) {
-            if (logger.isTraceEnabled()) {
-                logger.trace("✅ Safe update: encryptionMetadata modified");
-            }
-            hasModifications = true;
-        }
-        
-        if (!hasModifications) {
-            logger.warn("⚠️ No modifications detected in safe fields for block #{}", updated.getBlockNumber());
-        }
-        
-        if (logger.isDebugEnabled()) {
-            logger.debug("✅ Safe update validation passed - only metadata fields modified");
-        }
-        return true;
     }
 
     /**
