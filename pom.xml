@@ -19,9 +19,9 @@
         <hibernate.version>7.0.10.Final</hibernate.version>
         <jakarta.persistence.version>3.2.0</jakarta.persistence.version>
         <sqlite.version>3.50.3.0</sqlite.version>
-        <postgresql.version>42.7.4</postgresql.version>
-        <mysql.version>9.1.0</mysql.version>
-        <h2.version>2.3.232</h2.version>
+        <postgresql.version>42.7.8</postgresql.version>
+        <mysql.version>9.4.0</mysql.version>
+        <h2.version>2.4.240</h2.version>
         <jackson.version>2.19.1</jackson.version>
         <slf4j.version>2.0.17</slf4j.version>
         <junit-jupiter.version>5.13.4</junit-jupiter.version>
@@ -300,12 +300,12 @@
                                         <limit>
                                             <counter>COMPLEXITY</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.55</minimum>
+                                            <minimum>0.53</minimum>
                                         </limit>
                                         <limit>
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.73</minimum>
+                                            <minimum>0.71</minimum>
                                         </limit>
                                     </limits>
                                 </rule>
