@@ -86,7 +86,7 @@ public class SearchSpecialistAPIValidationTest {
         // Should be able to use search methods immediately
         assertDoesNotThrow(
             () -> {
-                api.searchSimple("test");
+                api.searchAll("test");
             },
             "Search methods should work immediately after auto-initializing constructor"
         );
@@ -116,7 +116,7 @@ public class SearchSpecialistAPIValidationTest {
                     api.getEncryptionConfig().getSecurityLevel(),
                     "Should use custom encryption config");
         
-        assertDoesNotThrow(() -> api.searchSimple("test"),
+        assertDoesNotThrow(() -> api.searchAll("test"),
                           "Should work with custom config");
     }
 
@@ -134,13 +134,13 @@ public class SearchSpecialistAPIValidationTest {
         // Should work immediately without additional initialization
         assertDoesNotThrow(
             () -> {
-                api.searchSimple("test");
+                api.searchAll("test");
             },
             "Should not throw exception with properly constructed API"
         );
 
         // Verify it actually finds results (assuming test blockchain has data)
-        var results = api.searchSimple("test");
+        var results = api.searchAll("test");
         assertNotNull(results, "Results should not be null");
     }
 
@@ -212,8 +212,8 @@ public class SearchSpecialistAPIValidationTest {
 
         // Test null query validation for all search methods
         assertThrows(IllegalArgumentException.class, () ->
-            api.searchSimple(null),
-            "searchSimple should reject null query"
+            api.searchAll(null),
+            "searchAll should reject null query"
         );
         
         assertThrows(IllegalArgumentException.class, () ->
@@ -239,8 +239,8 @@ public class SearchSpecialistAPIValidationTest {
 
         // Test empty string queries
         assertThrows(IllegalArgumentException.class, () ->
-            api.searchSimple(""),
-            "searchSimple should reject empty query"
+            api.searchAll(""),
+            "searchAll should reject empty query"
         );
         
         assertThrows(IllegalArgumentException.class, () ->
@@ -250,8 +250,8 @@ public class SearchSpecialistAPIValidationTest {
 
         // Test whitespace-only queries
         assertThrows(IllegalArgumentException.class, () ->
-            api.searchSimple("   "),
-            "searchSimple should reject whitespace-only query"
+            api.searchAll("   "),
+            "searchAll should reject whitespace-only query"
         );
         
         assertThrows(IllegalArgumentException.class, () ->
@@ -292,13 +292,13 @@ public class SearchSpecialistAPIValidationTest {
 
         // Test invalid maxResults validation
         assertThrows(IllegalArgumentException.class, () ->
-            api.searchSimple("test", 0),
-            "searchSimple should reject maxResults = 0"
+            api.searchAll("test", 0),
+            "searchAll should reject maxResults = 0"
         );
         
         assertThrows(IllegalArgumentException.class, () ->
-            api.searchSimple("test", -1),
-            "searchSimple should reject negative maxResults"
+            api.searchAll("test", -1),
+            "searchAll should reject negative maxResults"
         );
         
         assertThrows(IllegalArgumentException.class, () ->
@@ -326,7 +326,7 @@ public class SearchSpecialistAPIValidationTest {
 
         // All core search methods should work without throwing exceptions
         assertDoesNotThrow(() -> {
-            api.searchSimple("test");
+            api.searchAll("test");
             api.searchSecure("test", testPassword);
             api.searchIntelligent("test", testPassword, 10);
         }, "Core search functionality should work without exceptions");
@@ -351,16 +351,16 @@ public class SearchSpecialistAPIValidationTest {
         );
 
         // Search results should be non-null (but may be empty)
-        assertNotNull(api.searchSimple("test"), 
-                     "searchSimple should return non-null result");
+        assertNotNull(api.searchAll("test"), 
+                     "searchAll should return non-null result");
         assertNotNull(api.searchSecure("test", testPassword), 
                      "searchSecure should return non-null result");
         assertNotNull(api.searchIntelligent("test", testPassword, 5), 
                      "searchIntelligent should return non-null result");
 
         // Results should respect maxResults parameter
-        assertTrue(api.searchSimple("test", 3).size() <= 3,
-                  "searchSimple should respect maxResults limit");
+        assertTrue(api.searchAll("test", 3).size() <= 3,
+                  "searchAll should respect maxResults limit");
         assertTrue(api.searchSecure("test", testPassword, 2).size() <= 2,
                   "searchSecure should respect maxResults limit");
     }
@@ -396,13 +396,13 @@ public class SearchSpecialistAPIValidationTest {
 
         // API should work correctly after proper initialization
         assertDoesNotThrow(() -> {
-            api.searchSimple("test");
+            api.searchAll("test");
             api.searchSecure("test", testPassword);
             api.searchIntelligent("test", testPassword, 5);
         }, "API should work correctly when properly initialized");
 
         // Results should be non-null (even if empty)
-        assertNotNull(api.searchSimple("test"), "searchSimple should return non-null result");
+        assertNotNull(api.searchAll("test"), "searchAll should return non-null result");
         assertNotNull(api.searchSecure("test", testPassword), "searchSecure should return non-null result");
         assertNotNull(api.searchIntelligent("test", testPassword, 5), "searchIntelligent should return non-null result");
 
@@ -412,7 +412,7 @@ public class SearchSpecialistAPIValidationTest {
         );
 
         try {
-            readyApi.searchSimple(null);
+            readyApi.searchAll(null);
             fail("Should have thrown IllegalArgumentException");
         } catch (IllegalArgumentException e) {
             String message = e.getMessage();
@@ -438,7 +438,7 @@ public class SearchSpecialistAPIValidationTest {
 
         // Basic search functionality should work as expected
         assertDoesNotThrow(() -> {
-            api.searchSimple("test");
+            api.searchAll("test");
             api.searchSecure("test", testPassword);
             api.searchIntelligent("test", testPassword, 10);
         }, "Core search functionality should remain compatible");

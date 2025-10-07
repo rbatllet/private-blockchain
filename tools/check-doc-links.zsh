@@ -6,7 +6,7 @@
 
 # Detect project root (looks for pom.xml or .git directory)
 SCRIPT_DIR="${0:a:h}"  # Get absolute path of script directory
-BASE_DIR="$SCRIPT_DIR"
+BASE_DIR="$(dirname "$SCRIPT_DIR")"  # Start from parent of tools/ directory
 
 # Navigate up until we find project root markers
 while [[ "$BASE_DIR" != "/" ]]; do

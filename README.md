@@ -47,7 +47,7 @@ This is a **private blockchain** for controlled environments where only authoriz
 - **Indexing Coordination**: Prevent infinite loops and coordinate indexing operations - see [IndexingCoordinator examples](docs/INDEXING_COORDINATOR_EXAMPLES.md)
 - **Advanced Search System**: Multi-level search with TRUE exhaustive capabilities
   - **SearchSpecialistAPI**: Professional search API with password-based initialization
-  - **Generic Search**: searchSimple() function searches both encrypted and non-encrypted content
+  - **Generic Search**: searchAll() function searches both encrypted and non-encrypted content
   - **Enhanced Password Management**: Secure password registry for encrypted content access
   - **Multi-format Keywords**: autoKeywords field supports multiple encrypted strings
   - **Fast Search**: Keywords-only search for optimal performance
@@ -127,7 +127,9 @@ This is a **private blockchain** for controlled environments where only authoriz
 - **🔧 Metadata Management**: Dynamic block metadata updates without modifying encrypted content - see [Metadata Management Guide](docs/METADATA_MANAGEMENT_GUIDE.md)
 
 ### Technical Features
-- **Persistence**: SQLite database with JPA standard for ORM (using Hibernate as provider)
+- **Persistence**: Database-agnostic architecture with JPA standard for ORM (using Hibernate as provider)
+  - **Supported Databases**: SQLite (development), PostgreSQL (production), MySQL (production), H2 (testing)
+  - **Zero-Code Switching**: Switch databases via configuration without code changes
 - **Off-Chain Storage**: Encrypted file storage with automatic data tiering (AES-256-GCM)
 - **Professional Logging**: SLF4J with Logback - configurable performance modes (dev/production/test)
 - **Comprehensive Testing**: **828+ JUnit 5 tests** with **72% code coverage** + integration demos + security tests
@@ -178,8 +180,12 @@ System.out.println(report.getFormattedSummary()); // Rich output
 
 - **Java 21** - Programming language with modern features
 - **Maven** - Build and dependency management
-- **SQLite** - Lightweight database for data storage
-- **JPA** - Java Persistence API with Hibernate as implementation provider
+- **Database-Agnostic Architecture** - 100% portable across multiple databases:
+  - **SQLite** - Development and demos (single-writer, 2-5 connections)
+  - **PostgreSQL** - Production environments (multi-writer, 10-60 connections)
+  - **MySQL** - Production environments (multi-writer, 10-60 connections)
+  - **H2** - Testing (in-memory, fast isolation)
+- **JPA** - Java Persistence API with Hibernate as implementation provider (100% JPQL, zero native SQL)
 - **Cryptography**:
   - **Hashing**: SHA3-256 (modern, secure hash function)
   - **Digital Signatures**: ECDSA with secp256r1 (NIST P-256) curve
@@ -1535,11 +1541,12 @@ blockchain.resetLimitsToDefault();                    // Reset to defaults
 ```
 
 ### Database
-- **On-Chain Location**: `blockchain.db` in project root directory
+- **Architecture**: Database-agnostic with support for SQLite, PostgreSQL, MySQL, and H2
+- **On-Chain Location**: Configured via `DatabaseConfig` (e.g., `blockchain.db` for SQLite)
 - **Off-Chain Location**: `off-chain-data/` directory for large files
-- **Type**: SQLite database with automatic table creation
-- **JPA Provider**: Hibernate as JPA implementation
-- **Configuration**: `persistence.xml` for JPA settings
+- **Configuration**: Switch databases via `DatabaseConfig.create*()` factory methods without code changes
+- **JPA Provider**: Hibernate as JPA implementation (100% JPQL queries for database portability)
+- **Connection Pooling**: HikariCP with database-optimized settings
 
 ### Security
 - **Hash Algorithm**: SHA3-256 for block integrity
@@ -1560,11 +1567,11 @@ blockchain.resetLimitsToDefault();                    // Reset to defaults
 - **Data Recovery**: Plan for off-chain data recovery and integrity verification
 
 ### Current Limitations
-- **Single Database**: Uses one SQLite file for on-chain data
 - **Local Storage**: Off-chain files stored locally (not distributed)
 - **No Network**: Designed for single-application use
 - **No Consensus**: No multi-node consensus mechanism
 - **Key Recovery**: No built-in key recovery system
+- **SQLite Concurrency**: SQLite is single-writer (use PostgreSQL/MySQL for high-concurrency production)
 
 ### Performance Notes
 - **On-Chain Performance**: Small blocks ensure fast blockchain operations
@@ -1707,35 +1714,3 @@ We welcome contributions! Please see our [Contribution Guidelines](CONTRIBUTING.
 ---
 
 **💡 Remember**: This blockchain includes **more than 150 comprehensive tests** covering everything from basic operations to critical consistency scenarios, ensuring enterprise-grade reliability for your applications.
-
-### 🔄 Migration Guide
-
-### From RSA/SHA-2 to ECDSA/SHA-3
-
-#### Key Changes
-- **Digital Signatures**: Migrated from RSA to ECDSA (SHA3-256withECDSA)
-- **Hashing**: Upgraded from SHA-256 to SHA3-256
-- **Key Management**: New hierarchical key management system
-
-#### Required Code Changes
-
-1. **Key Generation**
-   ```java
-   // Old (RSA)
-   KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-   keyGen.initialize(2048);
-   
-   // New (ECDSA)
-   KeyPair keyPair = CryptoUtil.generateKeyPair();
-   ```
-
-2. **Signature Verification**
-   ```java
-   // Modern approach (recommended)
-   ChainValidationResult result = blockchain.validateChainDetailed();
-   if (result.isStructurallyIntact() && result.isFullyCompliant()) {
-       // Chain is valid
-   }
-   ```
-
-The blockchain now uses modern ECDSA/SHA-3 cryptography for enhanced security and performance.

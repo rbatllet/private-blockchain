@@ -189,7 +189,7 @@ public class SearchStatisticsDiscrepancyTest {
             logger.error("   - Blockchain has {} blocks", testBlockchain.getBlockCount());
             
             // Let's test if search actually works despite stats showing 0
-            var searchResults = specialistAPI.searchSimple("Test block");
+            var searchResults = specialistAPI.searchAll("Test block");
             logger.info("🔍 Search test results: {} found", searchResults.size());
             
             if (searchResults.size() > 0) {
@@ -251,7 +251,7 @@ public class SearchStatisticsDiscrepancyTest {
         
         try {
             // Test simple search
-            var simpleResults = specialistAPI.searchSimple("Test");
+            var simpleResults = specialistAPI.searchAll("Test");
             logger.info("   - Simple search: {} results", simpleResults.size());
             
             // Test secure search

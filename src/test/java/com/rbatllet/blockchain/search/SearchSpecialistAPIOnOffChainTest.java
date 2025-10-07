@@ -115,9 +115,9 @@ public class SearchSpecialistAPIOnOffChainTest {
         System.out.println("\n=== TEST 1: ON-CHAIN SEARCH CAPABILITIES ===");
         
         // Search for on-chain specific terms
-        List<EnhancedSearchResult> blockchainResults = searchAPI.searchSimple("blockchain");
-        List<EnhancedSearchResult> onchainResults = searchAPI.searchSimple("onchain");
-        List<EnhancedSearchResult> financialResults = searchAPI.searchSimple("financial");
+        List<EnhancedSearchResult> blockchainResults = searchAPI.searchAll("blockchain");
+        List<EnhancedSearchResult> onchainResults = searchAPI.searchAll("onchain");
+        List<EnhancedSearchResult> financialResults = searchAPI.searchAll("financial");
         
         System.out.println("📊 On-chain search results:");
         System.out.println("  'blockchain': " + blockchainResults.size() + " results");
@@ -145,9 +145,9 @@ public class SearchSpecialistAPIOnOffChainTest {
         System.out.println("\n=== TEST 2: OFF-CHAIN SEARCH CAPABILITIES ===");
         
         // Search for off-chain specific terms
-        List<EnhancedSearchResult> documentResults = searchAPI.searchSimple("document");
-        List<EnhancedSearchResult> sensitiveResults = searchAPI.searchSimple("sensitive");
-        List<EnhancedSearchResult> generalResults = searchAPI.searchSimple("general");
+        List<EnhancedSearchResult> documentResults = searchAPI.searchAll("document");
+        List<EnhancedSearchResult> sensitiveResults = searchAPI.searchAll("sensitive");
+        List<EnhancedSearchResult> generalResults = searchAPI.searchAll("general");
         
         System.out.println("📊 Off-chain search results:");
         System.out.println("  'document': " + documentResults.size() + " results");
@@ -173,8 +173,8 @@ public class SearchSpecialistAPIOnOffChainTest {
         System.out.println("\n=== TEST 3: MIXED ON-CHAIN AND OFF-CHAIN SEARCH ===");
         
         // Search for terms that might appear in both on-chain and off-chain content
-        List<EnhancedSearchResult> dataResults = searchAPI.searchSimple("data");
-        List<EnhancedSearchResult> informationResults = searchAPI.searchSimple("information");
+        List<EnhancedSearchResult> dataResults = searchAPI.searchAll("data");
+        List<EnhancedSearchResult> informationResults = searchAPI.searchAll("information");
         
         System.out.println("📊 Mixed search results:");
         System.out.println("  'data': " + dataResults.size() + " results");
@@ -208,7 +208,7 @@ public class SearchSpecialistAPIOnOffChainTest {
         System.out.println("📊 Secure search with wrong password: " + wrongPasswordResults.size() + " results");
         
         // Test simple search (should access both encrypted and public with default password)
-        List<EnhancedSearchResult> simpleResults = searchAPI.searchSimple("financial");
+        List<EnhancedSearchResult> simpleResults = searchAPI.searchAll("financial");
         System.out.println("📊 Simple search: " + simpleResults.size() + " results");
         
         // Verify encrypted content is accessible with correct password
@@ -284,7 +284,7 @@ public class SearchSpecialistAPIOnOffChainTest {
             
             // Test simple search performance
             long startTime = System.nanoTime();
-            List<EnhancedSearchResult> simpleResults = searchAPI.searchSimple(query);
+            List<EnhancedSearchResult> simpleResults = searchAPI.searchAll(query);
             long simpleTime = System.nanoTime() - startTime;
             double simpleMs = simpleTime / 1_000_000.0;
             
@@ -330,12 +330,12 @@ public class SearchSpecialistAPIOnOffChainTest {
         System.out.println("📊 Search capabilities: " + capabilities);
         
         // Test specific search patterns
-        List<EnhancedSearchResult> allDataResults = searchAPI.searchSimple("*");
+        List<EnhancedSearchResult> allDataResults = searchAPI.searchAll("*");
         System.out.println("📊 Wildcard search results: " + allDataResults.size());
         
         // Test empty query handling
         try {
-            searchAPI.searchSimple("");
+            searchAPI.searchAll("");
             fail("Should throw exception for empty query");
         } catch (IllegalArgumentException e) {
             System.out.println("✅ Empty query correctly rejected: " + e.getMessage());

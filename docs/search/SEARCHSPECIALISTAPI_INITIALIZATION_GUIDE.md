@@ -10,7 +10,7 @@ This guide shows how to properly initialize and use SearchSpecialistAPI.
 ```java
 // This pattern may not work as expected:
 SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(blockchain, password, privateKey);
-List<EnhancedSearchResult> results = searchAPI.searchSimple("medical");
+List<EnhancedSearchResult> results = searchAPI.searchAll("medical");
 // Results: 0 (even when data exists)
 ```
 
@@ -44,7 +44,7 @@ SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(blockchain, "password123
 // ⚡ PERFORMANCE: Constructor reuses blockchain's existing SearchFrameworkEngine
 // ✅ READY: Ready to use immediately, no additional initialization needed
 
-List<EnhancedSearchResult> results = searchAPI.searchSimple("medical");
+List<EnhancedSearchResult> results = searchAPI.searchAll("medical");
 System.out.println("Results: " + results.size()); // Will return > 0 if data exists
 ```
 
@@ -54,7 +54,7 @@ System.out.println("Results: " + results.size()); // Will return > 0 if data exi
 EncryptionConfig config = EncryptionConfig.createHighSecurityConfig();
 SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(blockchain, "password123", userKeys.getPrivate(), config);
 
-List<EnhancedSearchResult> results = searchAPI.searchSimple("medical");
+List<EnhancedSearchResult> results = searchAPI.searchAll("medical");
 ```
 
 ## ⚠️ Common Issues
@@ -91,7 +91,7 @@ dataAPI.storeSearchableData("confidential medical data", password, keywords);
 
 ### Problem: No Search Results
 **Symptoms:**
-- `searchAPI.searchSimple("term")` returns empty list
+- `searchAPI.searchAll("term")` returns empty list
 - No errors thrown, but results are always 0
 
 **Diagnostic Steps:**
@@ -196,7 +196,7 @@ public class SearchSpecialistAPIExample {
             // 🔍 AUTOMATIC: blockchain.initializeAdvancedSearch(password) called internally
             
             // 5. Use the API immediately (ready to use, no need to check isReady())
-            List<EnhancedSearchResult> results = searchAPI.searchSimple("medical");
+            List<EnhancedSearchResult> results = searchAPI.searchAll("medical");
             System.out.println("✅ Search results: " + results.size());
             
             // 6. Test different search methods
@@ -208,7 +208,7 @@ public class SearchSpecialistAPIExample {
             System.out.println("✅ Intelligent search results: " + intelligentResults.size());
             
             // 8. Test with custom configuration
-            List<EnhancedSearchResult> highSecResults = highSecSearchAPI.searchSimple("treatment");
+            List<EnhancedSearchResult> highSecResults = highSecSearchAPI.searchAll("treatment");
             System.out.println("✅ High security search results: " + highSecResults.size());
             
         } catch (IllegalArgumentException e) {
@@ -333,8 +333,8 @@ if (config == null) {
 ### Search Method Availability
 
 After proper initialization, these search methods are available:
-- `searchSimple(String query)` - Fast public metadata search (limit: 20)
-- `searchSimple(String query, int maxResults)` - Fast public metadata with custom limit
+- `searchAll(String query)` - Fast public metadata search (limit: 20)
+- `searchAll(String query, int maxResults)` - Fast public metadata with custom limit
 - `searchSecure(String query, String password)` - Encrypted content search (limit: 20)
 - `searchSecure(String query, String password, int maxResults)` - Encrypted with custom limit
 - `searchIntelligent(String query, String password, int maxResults)` - Adaptive strategy

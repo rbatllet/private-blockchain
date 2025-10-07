@@ -211,7 +211,7 @@ public class PublicSearchController {
 | Method | Speed | Content | Authentication | Use Case |
 |--------|-------|---------|---------------|----------|
 | **`searchPublic()`** | ⚡ Ultra-Fast (<50ms) | Public only | None required | Fast discovery, public APIs |
-| `searchSimple()` | ⚡ Fast | Public + Private | Default credentials | Convenient hybrid search |
+| `searchAll()` | ⚡ Fast | Public + Private | Default credentials | Convenient hybrid search |
 | `searchSecure()` | 🔒 Moderate | Encrypted only | Explicit password | Sensitive data access |
 | `searchIntelligent()` | 🧠 Adaptive | Auto-routing | Password for encrypted | Smart strategy selection |
 | `searchAdvanced()` | 🔍 Comprehensive | Full control | Configurable | Expert-level control |
@@ -227,7 +227,7 @@ long publicTime = System.currentTimeMillis() - startTime;
 
 startTime = System.currentTimeMillis();
 // Hybrid search (public + private)
-List<EnhancedSearchResult> hybridResults = searchAPI.searchSimple("medical");
+List<EnhancedSearchResult> hybridResults = searchAPI.searchAll("medical");
 long hybridTime = System.currentTimeMillis() - startTime;
 
 System.out.println("Public search: " + publicTime + "ms");
@@ -315,7 +315,7 @@ public class TieredSearchService {
         }
         
         // Level 2: Hybrid search for authenticated users
-        List<EnhancedSearchResult> hybridResults = searchAPI.searchSimple(query);
+        List<EnhancedSearchResult> hybridResults = searchAPI.searchAll(query);
         
         if (!user.hasEncryptedAccess()) {
             return new SearchResponse(hybridResults, "hybrid");

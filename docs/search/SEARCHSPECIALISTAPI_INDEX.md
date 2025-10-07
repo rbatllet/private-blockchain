@@ -59,7 +59,7 @@ SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(blockchain, password, pr
 
 // Ready to use immediately - complete search architecture available!
 List<EnhancedSearchResult> publicResults = searchAPI.searchPublic("medical records");    // Fast public-only
-List<EnhancedSearchResult> hybridResults = searchAPI.searchSimple("patient data");      // Hybrid search
+List<EnhancedSearchResult> hybridResults = searchAPI.searchAll("patient data");      // Hybrid search
 List<EnhancedSearchResult> secureResults = searchAPI.searchSecure("confidential", password); // Encrypted-only
 ```
 

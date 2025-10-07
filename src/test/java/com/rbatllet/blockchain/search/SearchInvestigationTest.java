@@ -80,10 +80,10 @@ public class SearchInvestigationTest {
                 searchAPI.searchSecure("financial", testPassword, 10);
             System.out.println("🔐 searchSecure('financial'): " + secureResults.size() + " results");
             
-            // Test searchSimple
+            // Test searchAll
             List<SearchFrameworkEngine.EnhancedSearchResult> simpleResults = 
-                searchAPI.searchSimple("financial");
-            System.out.println("⚡ searchSimple('financial'): " + simpleResults.size() + " results");
+                searchAPI.searchAll("financial");
+            System.out.println("⚡ searchAll('financial'): " + simpleResults.size() + " results");
         }
         
         // 6. Check password registry

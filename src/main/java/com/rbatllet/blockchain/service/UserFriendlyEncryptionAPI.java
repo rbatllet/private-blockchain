@@ -473,12 +473,12 @@ public class UserFriendlyEncryptionAPI {
         }
 
         // Use Advanced Search public metadata search (no password required)
-        logger.debug("🔍 DEBUG: Calling searchSimple() with term '{}'", searchTerm);
+        logger.debug("🔍 DEBUG: Calling searchAll() with term '{}'", searchTerm);
         var enhancedResults = blockchain
             .getSearchSpecialistAPI()
-            .searchSimple(searchTerm, 50);
+            .searchAll(searchTerm, 50);
             
-        logger.warn("🔧 DEBUG: searchSimple() returned {} enhanced results", enhancedResults.size());
+        logger.warn("🔧 DEBUG: searchAll() returned {} enhanced results", enhancedResults.size());
         for (int i = 0; i < enhancedResults.size(); i++) {
             var result = enhancedResults.get(i);
             logger.warn("🔧 DEBUG: Enhanced result {}: hash={}, score={}", 
@@ -728,7 +728,7 @@ public class UserFriendlyEncryptionAPI {
         // Use Advanced Search public search (no password, metadata only)
         var enhancedResults = blockchain
             .getSearchSpecialistAPI()
-            .searchSimple(searchTerm, 50);
+            .searchAll(searchTerm, 50);
             
         // BATCH OPTIMIZATION: Collect all hashes and retrieve blocks in single query
         List<String> blockHashes = enhancedResults.stream()
@@ -908,7 +908,7 @@ public class UserFriendlyEncryptionAPI {
         // Search using Advanced Search with extracted keywords
         var enhancedResults = blockchain
             .getSearchSpecialistAPI()
-            .searchSimple(searchTerms, 50);
+            .searchAll(searchTerms, 50);
         return convertEnhancedResultsToBlocks(enhancedResults);
     }
 
@@ -953,7 +953,7 @@ public class UserFriendlyEncryptionAPI {
         } else {
             var enhancedResults = blockchain
                 .getSearchSpecialistAPI()
-                .searchSimple(searchTerms, 50);
+                .searchAll(searchTerms, 50);
             return convertEnhancedResultsToBlocks(enhancedResults);
         }
     }

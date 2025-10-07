@@ -39,7 +39,7 @@ import org.slf4j.LoggerFactory;
  * List<EnhancedSearchResult> publicResults = searchAPI.searchPublic("medical records");
  * 
  * // Convenient hybrid search (public + private with default credentials)
- * List<EnhancedSearchResult> hybridResults = searchAPI.searchSimple("patient data");
+ * List<EnhancedSearchResult> hybridResults = searchAPI.searchAll("patient data");
  * 
  * // Secure encrypted-only search
  * List<EnhancedSearchResult> secureResults = searchAPI.searchSecure("confidential", password, 50);
@@ -289,11 +289,11 @@ public class SearchSpecialistAPI {
      *         limited to 20 results. Never null, but may be empty if no matches found.
      * @throws IllegalArgumentException if query is null or empty
      * @throws IllegalStateException if the search API is not initialized
-     * @see #searchSimple(String, int) for custom result limits
+     * @see #searchAll(String, int) for custom result limits
      * @see #searchSecure(String, String) for encrypted content search
      */
-    public List<SearchFrameworkEngine.EnhancedSearchResult> searchSimple(String query) {
-        return searchSimple(query, 20);
+    public List<SearchFrameworkEngine.EnhancedSearchResult> searchAll(String query) {
+        return searchAll(query, 20);
     }
     
     /**
@@ -326,10 +326,10 @@ public class SearchSpecialistAPI {
      *         limited to maxResults entries. Never null, but may be empty if no matches found.
      * @throws IllegalArgumentException if query is null/empty or maxResults is not positive
      * @throws IllegalStateException if the search API is not initialized
-     * @see #searchSimple(String) for default 20-result limit
+     * @see #searchAll(String) for default 20-result limit
      * @see #searchSecure(String, String, int) for encrypted content search with limits
      */
-    public List<SearchFrameworkEngine.EnhancedSearchResult> searchSimple(String query, int maxResults) {
+    public List<SearchFrameworkEngine.EnhancedSearchResult> searchAll(String query, int maxResults) {
         // No need to check initialization since constructor always initializes properly
         
         // Validate query parameter
@@ -355,8 +355,8 @@ public class SearchSpecialistAPI {
                               "Expected results: 0. Use blockchain.getSearchSpecialistAPI() instead.");
         }
         
-        // REVERTED: searchSimple searches with default password (OPCIÓ B)
-        // This allows searchSimple to find both public and private content using default credentials
+        // REVERTED: searchAll searches with default password (OPCIÓ B)
+        // This allows searchAll to find both public and private content using default credentials
         SearchFrameworkEngine.SearchResult result = searchEngine.search(query, defaultPassword, maxResults);
         return result.getResults();
     }
@@ -387,7 +387,7 @@ public class SearchSpecialistAPI {
      * @throws IllegalArgumentException if query is null or empty
      * @throws IllegalStateException if the search API is not initialized
      * @see #searchPublic(String, int) for custom result limits
-     * @see #searchSimple(String) for hybrid search with default credentials
+     * @see #searchAll(String) for hybrid search with default credentials
      */
     public List<SearchFrameworkEngine.EnhancedSearchResult> searchPublic(String query) {
         return searchPublic(query, 20);
@@ -424,7 +424,7 @@ public class SearchSpecialistAPI {
      * @throws IllegalArgumentException if query is null/empty or maxResults is not positive
      * @throws IllegalStateException if the search API is not initialized
      * @see #searchPublic(String) for default 20-result limit
-     * @see #searchSimple(String, int) for hybrid search with default credentials
+     * @see #searchAll(String, int) for hybrid search with default credentials
      * @see #searchSecure(String, String, int) for encrypted content search with limits
      */
     public List<SearchFrameworkEngine.EnhancedSearchResult> searchPublic(String query, int maxResults) {
@@ -1083,7 +1083,7 @@ public class SearchSpecialistAPI {
      * }
      * 
      * // Now safe to perform search operations
-     * List<EnhancedSearchResult> results = searchAPI.searchSimple("query");
+     * List<EnhancedSearchResult> results = searchAPI.searchAll("query");
      * }</pre>
      * 
      * <p><strong>Thread Safety:</strong> This method is thread-safe and can be called
@@ -1505,7 +1505,7 @@ public class SearchSpecialistAPI {
      * // Always shutdown in finally block or using try-with-resources pattern
      * try {
      *     // Use search API
-     *     searchAPI.searchSimple("query");
+     *     searchAPI.searchAll("query");
      * } finally {
      *     // Ensure proper cleanup
      *     searchAPI.shutdown();

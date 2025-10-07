@@ -42,7 +42,7 @@ public class SearchSpecialistAPIErrorDemo {
             
             System.out.println();
             System.out.println("🔍 Testing search with properly initialized API...");
-            List<EnhancedSearchResult> results = api.searchSimple("test");
+            List<EnhancedSearchResult> results = api.searchAll("test");
             System.out.println("Results: " + results.size() + " (works correctly)");
             
             System.out.println();
@@ -60,7 +60,7 @@ public class SearchSpecialistAPIErrorDemo {
             
             // Test search with data
             System.out.println("🔍 Searching for 'test' in blockchain with data...");
-            List<EnhancedSearchResult> dataResults = updatedAPI.searchSimple("test");
+            List<EnhancedSearchResult> dataResults = updatedAPI.searchAll("test");
             System.out.println("Results with data: " + dataResults.size());
             
             System.out.println();

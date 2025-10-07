@@ -76,7 +76,7 @@ public class SearchConfigurationDemo {
             SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(blockchain, password, userKeys.getPrivate(), highSecConfig);
             
             // Test search
-            List<EnhancedSearchResult> results = searchAPI.searchSimple("financial");
+            List<EnhancedSearchResult> results = searchAPI.searchAll("financial");
             long endTime = System.nanoTime();
             double timeMs = (endTime - startTime) / 1_000_000.0;
             
@@ -105,7 +105,7 @@ public class SearchConfigurationDemo {
             SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(blockchain, password, userKeys.getPrivate(), perfConfig);
             
             // Test search
-            List<EnhancedSearchResult> results = searchAPI.searchSimple("healthcare");
+            List<EnhancedSearchResult> results = searchAPI.searchAll("healthcare");
             long endTime = System.nanoTime();
             double timeMs = (endTime - startTime) / 1_000_000.0;
             
@@ -135,7 +135,7 @@ public class SearchConfigurationDemo {
             SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(blockchain, password, userKeys.getPrivate(), balancedConfig);
             
             // Test search
-            List<EnhancedSearchResult> results = searchAPI.searchSimple("confidential");
+            List<EnhancedSearchResult> results = searchAPI.searchAll("confidential");
             long endTime = System.nanoTime();
             double timeMs = (endTime - startTime) / 1_000_000.0;
             
@@ -172,7 +172,7 @@ public class SearchConfigurationDemo {
             SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(blockchain, password, userKeys.getPrivate(), customConfig);
             
             // Test search
-            List<EnhancedSearchResult> results = searchAPI.searchSimple("performance");
+            List<EnhancedSearchResult> results = searchAPI.searchAll("performance");
             long endTime = System.nanoTime();
             double timeMs = (endTime - startTime) / 1_000_000.0;
             

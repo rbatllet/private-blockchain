@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
  * CRITICAL FIX: Corregeix el problema de discrepància entre indexació i cerca
  * 
  * Aquest test demostra i valida la solució al problema identificat:
- * - Keywords sense prefix "public:" no es poden cercar amb searchSimple()
+ * - Keywords sense prefix "public:" no es poden cercar amb searchAll()
  * - Keywords amb prefix "public:" es poden cercar correctament
  * 
  * La solució és utilitzar el prefix "public:" per keywords que han de ser
@@ -101,7 +101,7 @@ class SearchIntegrityFixTest {
         waitForIndexing();
         
         // Try to search for "medical" - this WILL FAIL with original implementation
-        List<EnhancedSearchResult> searchResult = blockchain.getSearchSpecialistAPI().searchSimple("medical", 10);
+        List<EnhancedSearchResult> searchResult = blockchain.getSearchSpecialistAPI().searchAll("medical", 10);
         
         logger.info("🔍 Search for 'medical' (without prefix) returned {} results", 
                    searchResult.size());
@@ -153,13 +153,13 @@ class SearchIntegrityFixTest {
         waitForIndexing();
         
         // Now search for "medical" (the API internally handles the public: prefix)
-        List<EnhancedSearchResult> publicSearchResult = blockchain.getSearchSpecialistAPI().searchSimple("medical", 10);
+        List<EnhancedSearchResult> publicSearchResult = blockchain.getSearchSpecialistAPI().searchAll("medical", 10);
         
         logger.info("🔍 Search for 'medical' (public term) returned {} results", 
                    publicSearchResult.size());
         
         assertTrue(publicSearchResult.size() > 0, 
-                  "CRITICAL: 'medical' should be findable via searchSimple() when stored as public term");
+                  "CRITICAL: 'medical' should be findable via searchAll() when stored as public term");
         
         // Verify the found block is our test block
         boolean foundOurBlock = publicSearchResult.stream()

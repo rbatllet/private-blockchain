@@ -350,7 +350,7 @@ public class SearchFrameworkExhaustiveTest {
         System.out.printf("  📊 Specialist API initialized with %d blocks%n", initResult.getBlocksIndexed());
         
         // Test all simple search methods
-        List<EnhancedSearchResult> simpleResults = specialistAPI.searchSimple("financial");
+        List<EnhancedSearchResult> simpleResults = specialistAPI.searchAll("financial");
         assertNotNull(simpleResults);
         System.out.printf("  ⚡ Simple search: %d results%n", simpleResults.size());
         
@@ -358,7 +358,7 @@ public class SearchFrameworkExhaustiveTest {
         assertNotNull(secureResults);
         System.out.printf("  🔐 Secure search: %d results%n", secureResults.size());
         
-        List<EnhancedSearchResult> privateResults = specialistAPI.searchSimple("contains:data");
+        List<EnhancedSearchResult> privateResults = specialistAPI.searchAll("contains:data");
         assertNotNull(privateResults);
         System.out.printf("  🎭 Private search: %d results%n", privateResults.size());
         
@@ -594,7 +594,7 @@ public class SearchFrameworkExhaustiveTest {
         
         // Scenario 5: Privacy Impact Assessment
         System.out.printf("  🔒 Privacy Impact Assessment:%n");
-        List<EnhancedSearchResult> privacyAssessment = specialistAPI.searchSimple("contains:personal_info");
+        List<EnhancedSearchResult> privacyAssessment = specialistAPI.searchAll("contains:personal_info");
         assertNotNull(privacyAssessment);
         System.out.printf("    Identified %d blocks with personal information%n", privacyAssessment.size());
         
