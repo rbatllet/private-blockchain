@@ -1,6 +1,5 @@
 package com.rbatllet.blockchain.core;
 
-import com.rbatllet.blockchain.config.DatabaseConfig;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.JPAUtil;
@@ -45,15 +44,17 @@ public class BlockchainRobustnessTest {
 
     @BeforeAll
     static void setUpDatabase() {
-        DatabaseConfig h2Config = DatabaseConfig.createH2TestConfig();
-        JPAUtil.initialize(h2Config);
-        logger.info("✅ H2 test database initialized");
+        // Initialize JPAUtil with default configuration (respects environment variables)
+        JPAUtil.initializeDefault();
     }
 
     @BeforeEach
     void setUp() throws Exception {
         logger.info("🔧 Starting Blockchain robustness test setup");
         blockchain = new Blockchain();
+
+        // Clean any existing data from previous tests
+        blockchain.clearAndReinitialize();
 
         keyPair = CryptoUtil.generateKeyPair();
         privateKey = keyPair.getPrivate();

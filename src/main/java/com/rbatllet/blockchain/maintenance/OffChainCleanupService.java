@@ -4,9 +4,6 @@ import com.rbatllet.blockchain.config.MaintenanceConstants;
 import com.rbatllet.blockchain.service.PerformanceMetricsService;
 import com.rbatllet.blockchain.service.PerformanceMetricsService.AlertSeverity;
 import com.rbatllet.blockchain.util.JPAUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -20,7 +17,10 @@ import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.regex.Pattern;
 import java.util.zip.GZIPOutputStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Manages cleanup and compression of off-chain storage files.
@@ -78,10 +78,23 @@ import java.util.zip.GZIPOutputStream;
  */
 public class OffChainCleanupService {
 
-    private static final Logger logger = LoggerFactory.getLogger(OffChainCleanupService.class);
+    private static final Logger logger = LoggerFactory.getLogger(
+        OffChainCleanupService.class
+    );
 
     private static final String OFF_CHAIN_DIR = "off-chain-data";
     private static final String GZIP_EXTENSION = ".gz";
+
+    // Security: Pattern for valid off-chain filenames
+    // Supports two formats:
+    // 1. Legacy hash format: abc123.dat (hex hash)
+    // 2. Current format: offchain_1234567890_1234.dat (timestamp_random)
+    private static final Pattern VALID_HASH_PATTERN = Pattern.compile(
+        "^[a-fA-F0-9]{8,128}$"
+    );
+    private static final Pattern VALID_FILENAME_PATTERN = Pattern.compile(
+        "^([a-fA-F0-9]{8,128}|offchain_\\d+_\\d+)(\\.dat)?$"
+    );
 
     private final PerformanceMetricsService metricsService;
 
@@ -99,7 +112,9 @@ public class OffChainCleanupService {
     public OffChainCleanupService() {
         this.metricsService = PerformanceMetricsService.getInstance();
         if (this.metricsService == null) {
-            throw new IllegalStateException("PerformanceMetricsService not available");
+            throw new IllegalStateException(
+                "PerformanceMetricsService not available"
+            );
         }
     }
 
@@ -134,20 +149,29 @@ public class OffChainCleanupService {
             // Check disk space
             File offChainDir = new File(OFF_CHAIN_DIR);
             if (!offChainDir.exists()) {
-                logger.warn("⚠️ Off-chain directory does not exist: {}", OFF_CHAIN_DIR);
+                logger.warn(
+                    "⚠️ Off-chain directory does not exist: {}",
+                    OFF_CHAIN_DIR
+                );
                 return new CleanupResult(0, 0, 0, "Directory does not exist");
             }
 
             long freeSpace = offChainDir.getFreeSpace();
             if (freeSpace < MaintenanceConstants.MIN_FREE_DISK_SPACE_BYTES) {
-                logger.warn("⚠️ Insufficient free disk space: {} bytes (minimum: {} bytes). Skipping cleanup.",
-                    freeSpace, MaintenanceConstants.MIN_FREE_DISK_SPACE_BYTES);
+                logger.warn(
+                    "⚠️ Insufficient free disk space: {} bytes (minimum: {} bytes). Skipping cleanup.",
+                    freeSpace,
+                    MaintenanceConstants.MIN_FREE_DISK_SPACE_BYTES
+                );
                 return new CleanupResult(0, 0, 0, "Insufficient disk space");
             }
 
             // Get all referenced hashes from database
             Set<String> referencedHashes = getReferencedOffChainHashes();
-            logger.info("📊 Found {} referenced off-chain files in database", referencedHashes.size());
+            logger.info(
+                "📊 Found {} referenced off-chain files in database",
+                referencedHashes.size()
+            );
 
             // Scan off-chain directory
             File[] files = offChainDir.listFiles();
@@ -156,7 +180,10 @@ public class OffChainCleanupService {
                 return new CleanupResult(0, 0, 0, "No files found");
             }
 
-            logger.info("📊 Found {} files in off-chain directory", files.length);
+            logger.info(
+                "📊 Found {} files in off-chain directory",
+                files.length
+            );
 
             // Identify and delete orphaned files
             int deletedCount = 0;
@@ -165,22 +192,44 @@ public class OffChainCleanupService {
 
             for (File file : files) {
                 // Skip if max files limit reached
-                if (deletedCount >= MaintenanceConstants.MAX_ORPHANED_FILES_PER_CLEANUP) {
-                    logger.warn("⚠️ Reached maximum orphaned files per cleanup limit: {}",
-                        MaintenanceConstants.MAX_ORPHANED_FILES_PER_CLEANUP);
+                if (
+                    deletedCount >=
+                    MaintenanceConstants.MAX_ORPHANED_FILES_PER_CLEANUP
+                ) {
+                    logger.warn(
+                        "⚠️ Reached maximum orphaned files per cleanup limit: {}",
+                        MaintenanceConstants.MAX_ORPHANED_FILES_PER_CLEANUP
+                    );
                     break;
                 }
 
                 processedCount++;
 
                 // Progress logging
-                if (processedCount % MaintenanceConstants.MAINTENANCE_PROGRESS_LOG_INTERVAL == 0) {
-                    logger.info("  └─ Progress: {}/{} files processed, {} orphaned files deleted",
-                        processedCount, files.length, deletedCount);
+                if (
+                    processedCount %
+                        MaintenanceConstants.MAINTENANCE_PROGRESS_LOG_INTERVAL ==
+                    0
+                ) {
+                    logger.info(
+                        "  └─ Progress: {}/{} files processed, {} orphaned files deleted",
+                        processedCount,
+                        files.length,
+                        deletedCount
+                    );
                 }
 
                 try {
                     String fileName = file.getName();
+
+                    // Security: Validate filename to prevent directory traversal
+                    if (!isValidFilename(fileName)) {
+                        logger.warn(
+                            "⚠️ Invalid filename detected (security): {}",
+                            fileName
+                        );
+                        continue;
+                    }
 
                     // Skip compressed files (will be handled separately)
                     if (fileName.endsWith(GZIP_EXTENSION)) {
@@ -192,31 +241,56 @@ public class OffChainCleanupService {
                         continue;
                     }
 
-                    // Extract hash from filename (format: hash.dat or just hash)
-                    String hash = extractHashFromFilename(fileName);
-                    if (hash == null) {
-                        logger.warn("⚠️ Could not extract hash from filename: {}", fileName);
+                    // Extract base name from filename (format: hash.dat or offchain_*.dat)
+                    String baseName = extractHashFromFilename(fileName);
+                    if (baseName == null) {
+                        logger.warn(
+                            "⚠️ Could not extract base name from filename: {}",
+                            fileName
+                        );
                         continue;
                     }
 
-                    // Check if hash is referenced in database
-                    if (!referencedHashes.contains(hash)) {
+                    // Check if baseName is referenced in database
+                    if (!referencedHashes.contains(baseName)) {
                         // Orphaned file - delete it
-                        long fileSize = file.length();
-                        if (file.delete()) {
-                            deletedCount++;
-                            spaceSaved += fileSize;
-                            totalFilesDeleted.incrementAndGet();
-                            totalSpaceSaved.addAndGet(fileSize);
+                        // Security: Double-check file still exists and is in correct directory before deletion
+                        if (
+                            file.exists() &&
+                            file.isFile() &&
+                            isFileInOffChainDirectory(file)
+                        ) {
+                            long fileSize = file.length();
+                            if (file.delete()) {
+                                deletedCount++;
+                                spaceSaved += fileSize;
+                                totalFilesDeleted.incrementAndGet();
+                                totalSpaceSaved.addAndGet(fileSize);
 
-                            logger.debug("  └─ Deleted orphaned file: {} ({} bytes)", fileName, fileSize);
+                                logger.debug(
+                                    "  └─ Deleted orphaned file: {} ({} bytes)",
+                                    fileName,
+                                    fileSize
+                                );
+                            } else {
+                                logger.warn(
+                                    "  └─ Failed to delete orphaned file: {}",
+                                    fileName
+                                );
+                            }
                         } else {
-                            logger.warn("  └─ Failed to delete orphaned file: {}", fileName);
+                            logger.warn(
+                                "  └─ File security validation failed: {}",
+                                fileName
+                            );
                         }
                     }
-
                 } catch (Exception e) {
-                    logger.warn("  └─ Error processing file: {}", file.getName(), e);
+                    logger.warn(
+                        "  └─ Error processing file: {}",
+                        file.getName(),
+                        e
+                    );
                     // Continue with next file
                 }
             }
@@ -227,25 +301,38 @@ public class OffChainCleanupService {
             metricsService.recordThroughput("files_deleted", deletedCount);
 
             long spaceSavedMB = spaceSaved / 1024 / 1024;
-            logger.info("✅ Orphaned file cleanup completed: {} files deleted, {} MB saved, duration: {}ms",
-                deletedCount, spaceSavedMB, durationMs);
+            logger.info(
+                "✅ Orphaned file cleanup completed: {} files deleted, {} MB saved, duration: {}ms",
+                deletedCount,
+                spaceSavedMB,
+                durationMs
+            );
 
             // Alert if many orphaned files found
-            if (deletedCount > 100 && MaintenanceConstants.ENABLE_MAINTENANCE_ALERTS) {
+            if (
+                deletedCount > 100 &&
+                MaintenanceConstants.ENABLE_MAINTENANCE_ALERTS
+            ) {
                 metricsService.createPerformanceAlert(
                     "HIGH_ORPHANED_FILES",
-                    String.format("Deleted %d orphaned files (%d MB). " +
-                        "This may indicate failed transactions or incomplete cleanup.",
-                        deletedCount, spaceSavedMB),
+                    String.format(
+                        "Deleted %d orphaned files (%d MB). " +
+                            "This may indicate failed transactions or incomplete cleanup.",
+                        deletedCount,
+                        spaceSavedMB
+                    ),
                     AlertSeverity.WARNING
                 );
             }
 
             return new CleanupResult(deletedCount, 0, spaceSaved, "Success");
-
         } catch (Exception e) {
             long durationMs = System.currentTimeMillis() - startTime;
-            logger.error("❌ Error during orphaned file cleanup after {}ms", durationMs, e);
+            logger.error(
+                "❌ Error during orphaned file cleanup after {}ms",
+                durationMs,
+                e
+            );
             metricsService.recordOperation("offchain_cleanup", false);
 
             if (MaintenanceConstants.ENABLE_MAINTENANCE_ALERTS) {
@@ -282,19 +369,25 @@ public class OffChainCleanupService {
     public CleanupResult compressOldFiles() {
         long startTime = System.currentTimeMillis();
 
-        logger.info("📦 Starting old file compression (age threshold: {} days)...",
-            MaintenanceConstants.FILE_COMPRESSION_AGE_DAYS);
+        logger.info(
+            "📦 Starting old file compression (age threshold: {} days)...",
+            MaintenanceConstants.FILE_COMPRESSION_AGE_DAYS
+        );
 
         try {
             File offChainDir = new File(OFF_CHAIN_DIR);
             if (!offChainDir.exists()) {
-                logger.warn("⚠️ Off-chain directory does not exist: {}", OFF_CHAIN_DIR);
+                logger.warn(
+                    "⚠️ Off-chain directory does not exist: {}",
+                    OFF_CHAIN_DIR
+                );
                 return new CleanupResult(0, 0, 0, "Directory does not exist");
             }
 
             // Calculate cutoff date
-            LocalDateTime cutoffDate = LocalDateTime.now()
-                .minusDays(MaintenanceConstants.FILE_COMPRESSION_AGE_DAYS);
+            LocalDateTime cutoffDate = LocalDateTime.now().minusDays(
+                MaintenanceConstants.FILE_COMPRESSION_AGE_DAYS
+            );
 
             File[] files = offChainDir.listFiles();
             if (files == null || files.length == 0) {
@@ -310,13 +403,30 @@ public class OffChainCleanupService {
                 processedCount++;
 
                 // Progress logging
-                if (processedCount % MaintenanceConstants.MAINTENANCE_PROGRESS_LOG_INTERVAL == 0) {
-                    logger.info("  └─ Progress: {}/{} files processed, {} files compressed",
-                        processedCount, files.length, compressedCount);
+                if (
+                    processedCount %
+                        MaintenanceConstants.MAINTENANCE_PROGRESS_LOG_INTERVAL ==
+                    0
+                ) {
+                    logger.info(
+                        "  └─ Progress: {}/{} files processed, {} files compressed",
+                        processedCount,
+                        files.length,
+                        compressedCount
+                    );
                 }
 
                 try {
                     String fileName = file.getName();
+
+                    // Security: Validate filename to prevent directory traversal
+                    if (!isValidFilename(fileName)) {
+                        logger.warn(
+                            "⚠️ Invalid filename detected (security): {}",
+                            fileName
+                        );
+                        continue;
+                    }
 
                     // Skip already compressed files
                     if (fileName.endsWith(GZIP_EXTENSION)) {
@@ -328,11 +438,15 @@ public class OffChainCleanupService {
                         continue;
                     }
 
-                    // Check file age
+                    // Check file age (use last modified time, not creation time)
+                    // Note: Creation time is immutable on many filesystems (e.g., APFS on macOS)
                     Path filePath = Paths.get(file.getAbsolutePath());
-                    BasicFileAttributes attrs = Files.readAttributes(filePath, BasicFileAttributes.class);
+                    BasicFileAttributes attrs = Files.readAttributes(
+                        filePath,
+                        BasicFileAttributes.class
+                    );
                     LocalDateTime fileTime = LocalDateTime.ofInstant(
-                        attrs.creationTime().toInstant(),
+                        attrs.lastModifiedTime().toInstant(),
                         ZoneId.systemDefault()
                     );
 
@@ -341,25 +455,48 @@ public class OffChainCleanupService {
                         continue;
                     }
 
-                    // Compress file
-                    long originalSize = file.length();
-                    boolean compressed = compressFile(file);
+                    // Compress file - with additional security checks
+                    if (
+                        file.exists() &&
+                        file.isFile() &&
+                        isFileInOffChainDirectory(file)
+                    ) {
+                        long originalSize = file.length();
+                        boolean compressed = compressFile(file);
 
-                    if (compressed) {
-                        compressedCount++;
-                        long compressedSize = new File(file.getAbsolutePath() + GZIP_EXTENSION).length();
-                        long saved = originalSize - compressedSize;
-                        spaceSaved += saved;
-                        totalFilesCompressed.incrementAndGet();
-                        totalSpaceSaved.addAndGet(saved);
+                        if (compressed) {
+                            compressedCount++;
+                            File compressedFile = new File(
+                                file.getAbsolutePath() + GZIP_EXTENSION
+                            );
+                            long compressedSize = compressedFile.exists()
+                                ? compressedFile.length()
+                                : 0;
+                            long saved = originalSize - compressedSize;
+                            spaceSaved += saved;
+                            totalFilesCompressed.incrementAndGet();
+                            totalSpaceSaved.addAndGet(saved);
 
-                        logger.debug("  └─ Compressed: {} ({} → {} bytes, {:.1f}% savings)",
-                            fileName, originalSize, compressedSize,
-                            (saved * 100.0) / originalSize);
+                            logger.debug(
+                                "  └─ Compressed: {} ({} → {} bytes, {:.1f}% savings)",
+                                fileName,
+                                originalSize,
+                                compressedSize,
+                                (saved * 100.0) / originalSize
+                            );
+                        }
+                    } else {
+                        logger.warn(
+                            "  └─ File security validation failed for compression: {}",
+                            fileName
+                        );
                     }
-
                 } catch (Exception e) {
-                    logger.warn("  └─ Error compressing file: {}", file.getName(), e);
+                    logger.warn(
+                        "  └─ Error compressing file: {}",
+                        file.getName(),
+                        e
+                    );
                     // Continue with next file
                 }
             }
@@ -367,17 +504,27 @@ public class OffChainCleanupService {
             // Record metrics
             long durationMs = System.currentTimeMillis() - startTime;
             metricsService.recordResponseTime("offchain_compress", durationMs);
-            metricsService.recordThroughput("files_compressed", compressedCount);
+            metricsService.recordThroughput(
+                "files_compressed",
+                compressedCount
+            );
 
             long spaceSavedMB = spaceSaved / 1024 / 1024;
-            logger.info("✅ File compression completed: {} files compressed, {} MB saved, duration: {}ms",
-                compressedCount, spaceSavedMB, durationMs);
+            logger.info(
+                "✅ File compression completed: {} files compressed, {} MB saved, duration: {}ms",
+                compressedCount,
+                spaceSavedMB,
+                durationMs
+            );
 
             return new CleanupResult(0, compressedCount, spaceSaved, "Success");
-
         } catch (Exception e) {
             long durationMs = System.currentTimeMillis() - startTime;
-            logger.error("❌ Error during file compression after {}ms", durationMs, e);
+            logger.error(
+                "❌ Error during file compression after {}ms",
+                durationMs,
+                e
+            );
             metricsService.recordOperation("offchain_compress", false);
 
             if (MaintenanceConstants.ENABLE_MAINTENANCE_ALERTS) {
@@ -393,42 +540,71 @@ public class OffChainCleanupService {
     }
 
     /**
-     * Gets all off-chain file hashes referenced in the database.
+     * Gets all off-chain file names referenced in the database.
      *
      * <p>Queries the database for all blocks that have off-chain data
-     * and returns their file hashes.
+     * and returns their file paths (filenames).
      *
-     * @return Set of referenced file hashes
+     * @return Set of referenced file names (without directory path)
      */
     private Set<String> getReferencedOffChainHashes() {
         try {
             return JPAUtil.<Set<String>>executeInTransaction(em -> {
-                // Query all off-chain file hashes from blocks
+                // Query all off-chain file paths from blocks
                 @SuppressWarnings("unchecked")
-                java.util.List<String> hashes = em.createQuery(
-                    "SELECT DISTINCT b.offChainFileHash FROM Block b " +
-                    "WHERE b.offChainFileHash IS NOT NULL"
-                ).getResultList();
+                java.util.List<String> filePaths = em
+                    .createQuery(
+                        "SELECT DISTINCT ocd.filePath FROM Block b " +
+                            "JOIN b.offChainData ocd " +
+                            "WHERE ocd.filePath IS NOT NULL"
+                    )
+                    .getResultList();
 
-                return new HashSet<>(hashes);
+                // Extract just the filename from each path (without extension)
+                Set<String> fileNames = new HashSet<>();
+                for (String filePath : filePaths) {
+                    if (filePath != null && !filePath.isEmpty()) {
+                        // Extract filename from path (handle both Unix and Windows paths)
+                        String fileName = filePath;
+                        int lastSlash = Math.max(
+                            filePath.lastIndexOf('/'),
+                            filePath.lastIndexOf('\\')
+                        );
+                        if (lastSlash >= 0 && lastSlash < filePath.length() - 1) {
+                            fileName = filePath.substring(lastSlash + 1);
+                        }
+
+                        // Remove .dat extension for consistent comparison
+                        String baseName = fileName;
+                        if (fileName.endsWith(".dat")) {
+                            baseName = fileName.substring(0, fileName.length() - 4);
+                        }
+
+                        fileNames.add(baseName);
+                    }
+                }
+
+                return fileNames;
             });
         } catch (Exception e) {
-            logger.error("❌ Error querying referenced off-chain hashes", e);
+            logger.error("❌ Error querying referenced off-chain files", e);
             return new HashSet<>();
         }
     }
 
     /**
-     * Extracts hash from off-chain filename.
+     * Extracts base name from off-chain filename.
      *
      * <p>Expected formats:
      * <ul>
      *   <li>{@code abc123.dat} → {@code abc123}</li>
-     *   <li>{@code abc123} → {@code abc123}</li>
+     *   <li>{@code offchain_1234567890_1234.dat} → {@code offchain_1234567890_1234}</li>
      * </ul>
      *
-     * @param fileName Filename to extract hash from
-     * @return Extracted hash, or null if extraction failed
+     * <p><strong>Security:</strong> Validates filename format to prevent directory traversal attacks.
+     *
+     * @param fileName Filename to extract base name from
+     * @return Extracted base name (without .dat extension), or null if invalid
      */
     private String extractHashFromFilename(String fileName) {
         if (fileName == null || fileName.trim().isEmpty()) {
@@ -436,11 +612,82 @@ public class OffChainCleanupService {
         }
 
         // Remove .dat extension if present
+        String baseName;
         if (fileName.endsWith(".dat")) {
-            return fileName.substring(0, fileName.length() - 4);
+            baseName = fileName.substring(0, fileName.length() - 4);
+        } else {
+            baseName = fileName;
         }
 
-        return fileName;
+        // Security: Validate filename format
+        // Supports both legacy hash format and current offchain_timestamp_random format
+        if (
+            !VALID_HASH_PATTERN.matcher(baseName).matches() &&
+            !baseName.matches("^offchain_\\d+_\\d+$")
+        ) {
+            logger.warn("⚠️ Invalid filename format detected: {}", baseName);
+            return null;
+        }
+
+        return baseName;
+    }
+
+    /**
+     * Validates filename for security purposes.
+     *
+     * @param fileName Filename to validate
+     * @return true if filename is safe, false otherwise
+     */
+    private boolean isValidFilename(String fileName) {
+        if (fileName == null || fileName.trim().isEmpty()) {
+            return false;
+        }
+
+        // Security checks
+        if (
+            fileName.contains("..") ||
+            fileName.contains("/") ||
+            fileName.contains("\\")
+        ) {
+            return false;
+        }
+
+        if (fileName.endsWith(GZIP_EXTENSION)) {
+            // Remove .gz and check the base filename
+            String baseName = fileName.substring(
+                0,
+                fileName.length() - GZIP_EXTENSION.length()
+            );
+            return VALID_FILENAME_PATTERN.matcher(baseName).matches();
+        }
+
+        return VALID_FILENAME_PATTERN.matcher(fileName).matches();
+    }
+
+    /**
+     * Verifies that a file is actually within the off-chain directory.
+     *
+     * @param file File to check
+     * @return true if file is in off-chain directory, false otherwise
+     */
+    private boolean isFileInOffChainDirectory(File file) {
+        try {
+            File offChainDir = new File(OFF_CHAIN_DIR);
+            String offChainPath = offChainDir.getCanonicalPath();
+            String filePath = file.getCanonicalPath();
+
+            return (
+                filePath.startsWith(offChainPath + File.separator) ||
+                filePath.equals(offChainPath)
+            );
+        } catch (IOException e) {
+            logger.error(
+                "Error validating file path: {}",
+                file.getAbsolutePath(),
+                e
+            );
+            return false;
+        }
     }
 
     /**
@@ -449,22 +696,40 @@ public class OffChainCleanupService {
      * <p>Creates a compressed version with {@code .gz} extension and deletes
      * the original file after successful compression.
      *
+     * <p><strong>Security:</strong> Validates file paths and handles cleanup properly.
+     *
      * @param file File to compress
      * @return {@code true} if compression succeeded, {@code false} otherwise
      */
     private boolean compressFile(File file) {
+        // Security: Validate file is within off-chain directory
+        if (!isFileInOffChainDirectory(file)) {
+            logger.error(
+                "  └─ Security violation: File not in off-chain directory: {}",
+                file.getAbsolutePath()
+            );
+            return false;
+        }
+
         File compressedFile = new File(file.getAbsolutePath() + GZIP_EXTENSION);
 
         // Skip if compressed version already exists
         if (compressedFile.exists()) {
-            logger.debug("  └─ Compressed file already exists: {}", compressedFile.getName());
+            logger.debug(
+                "  └─ Compressed file already exists: {}",
+                compressedFile.getName()
+            );
             return false;
         }
 
-        try (FileInputStream fis = new FileInputStream(file);
-             FileOutputStream fos = new FileOutputStream(compressedFile);
-             GZIPOutputStream gzos = new GZIPOutputStream(fos)) {
+        // Atomic operation flag for cleanup
+        boolean compressionCompleted = false;
 
+        try (
+            FileInputStream fis = new FileInputStream(file);
+            FileOutputStream fos = new FileOutputStream(compressedFile);
+            GZIPOutputStream gzos = new GZIPOutputStream(fos)
+        ) {
             // Copy data with compression
             byte[] buffer = new byte[8192];
             int bytesRead;
@@ -473,24 +738,40 @@ public class OffChainCleanupService {
             }
 
             gzos.finish();
+            compressionCompleted = true;
 
-            // Delete original file after successful compression
-            if (!file.delete()) {
-                logger.warn("  └─ Failed to delete original file after compression: {}", file.getName());
-                // Keep compressed file even if original deletion failed
+            // Verify compressed file was created successfully before deleting original
+            if (compressedFile.exists() && compressedFile.length() > 0) {
+                // Delete original file after successful compression
+                if (!file.delete()) {
+                    logger.warn(
+                        "  └─ Failed to delete original file after compression: {}",
+                        file.getName()
+                    );
+                    // Keep compressed file even if original deletion failed
+                }
+                return true;
+            } else {
+                logger.error(
+                    "  └─ Compressed file creation failed or is empty: {}",
+                    compressedFile.getName()
+                );
+                return false;
             }
-
-            return true;
-
         } catch (IOException e) {
             logger.error("  └─ Error compressing file: {}", file.getName(), e);
-
-            // Clean up incomplete compressed file
-            if (compressedFile.exists()) {
-                compressedFile.delete();
-            }
-
             return false;
+        } finally {
+            // Clean up incomplete compressed file if compression failed
+            if (!compressionCompleted && compressedFile.exists()) {
+                boolean deleted = compressedFile.delete();
+                if (!deleted) {
+                    logger.warn(
+                        "  └─ Failed to clean up incomplete compressed file: {}",
+                        compressedFile.getName()
+                    );
+                }
+            }
         }
     }
 
@@ -503,10 +784,27 @@ public class OffChainCleanupService {
         StringBuilder stats = new StringBuilder();
         stats.append("📊 Off-Chain Cleanup Statistics\n");
         stats.append("=".repeat(50)).append("\n");
-        stats.append(String.format("Total Cleanup Operations: %d\n", totalCleanupOperations.get()));
-        stats.append(String.format("Total Files Deleted: %d\n", totalFilesDeleted.get()));
-        stats.append(String.format("Total Files Compressed: %d\n", totalFilesCompressed.get()));
-        stats.append(String.format("Total Space Saved: %d MB\n", totalSpaceSaved.get() / 1024 / 1024));
+        stats.append(
+            String.format(
+                "Total Cleanup Operations: %d\n",
+                totalCleanupOperations.get()
+            )
+        );
+        stats.append(
+            String.format("Total Files Deleted: %d\n", totalFilesDeleted.get())
+        );
+        stats.append(
+            String.format(
+                "Total Files Compressed: %d\n",
+                totalFilesCompressed.get()
+            )
+        );
+        stats.append(
+            String.format(
+                "Total Space Saved: %d MB\n",
+                totalSpaceSaved.get() / 1024 / 1024
+            )
+        );
         stats.append("=".repeat(50));
         return stats.toString();
     }
@@ -515,28 +813,53 @@ public class OffChainCleanupService {
      * Result of a cleanup or compression operation.
      */
     public static class CleanupResult {
+
         private final int deletedCount;
         private final int compressedCount;
         private final long spaceSaved;
         private final String message;
 
-        public CleanupResult(int deletedCount, int compressedCount, long spaceSaved, String message) {
+        public CleanupResult(
+            int deletedCount,
+            int compressedCount,
+            long spaceSaved,
+            String message
+        ) {
             this.deletedCount = deletedCount;
             this.compressedCount = compressedCount;
             this.spaceSaved = spaceSaved;
             this.message = message;
         }
 
-        public int getDeletedCount() { return deletedCount; }
-        public int getCompressedCount() { return compressedCount; }
-        public long getSpaceSaved() { return spaceSaved; }
-        public long getSpaceSavedMB() { return spaceSaved / 1024 / 1024; }
-        public String getMessage() { return message; }
+        public int getDeletedCount() {
+            return deletedCount;
+        }
+
+        public int getCompressedCount() {
+            return compressedCount;
+        }
+
+        public long getSpaceSaved() {
+            return spaceSaved;
+        }
+
+        public long getSpaceSavedMB() {
+            return spaceSaved / 1024 / 1024;
+        }
+
+        public String getMessage() {
+            return message;
+        }
 
         @Override
         public String toString() {
-            return String.format("CleanupResult[deleted=%d, compressed=%d, savedMB=%d, message=%s]",
-                deletedCount, compressedCount, getSpaceSavedMB(), message);
+            return String.format(
+                "CleanupResult[deleted=%d, compressed=%d, savedMB=%d, message=%s]",
+                deletedCount,
+                compressedCount,
+                getSpaceSavedMB(),
+                message
+            );
         }
     }
 }
