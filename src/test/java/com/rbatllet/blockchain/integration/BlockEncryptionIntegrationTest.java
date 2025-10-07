@@ -1,6 +1,5 @@
 package com.rbatllet.blockchain.integration;
 
-import com.rbatllet.blockchain.config.DatabaseConfig;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
@@ -101,10 +100,13 @@ public class BlockEncryptionIntegrationTest {
 
     @BeforeAll
     static void setUpClass() {
-        DatabaseConfig h2Config = DatabaseConfig.createH2TestConfig();
-        JPAUtil.initialize(h2Config);
+        // Initialize JPAUtil with default configuration (respects environment variables)
+        JPAUtil.initializeDefault();
 
         blockchain = new Blockchain();
+
+        // Clean any existing data from previous tests
+        blockchain.clearAndReinitialize();
 
         try {
             keyPair = CryptoUtil.generateKeyPair();
