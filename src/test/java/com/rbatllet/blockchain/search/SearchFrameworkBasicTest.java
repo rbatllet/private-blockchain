@@ -82,7 +82,7 @@ public class SearchFrameworkBasicTest {
         );
 
         // Try a simple search to verify the search engine is working
-        List<EnhancedSearchResult> searchResults = specialistAPI.searchSimple("financial");
+        List<EnhancedSearchResult> searchResults = specialistAPI.searchAll("financial");
         System.out.println("   - Search test results: " + searchResults.size());
 
         // Show performance metrics for additional debugging
@@ -107,7 +107,7 @@ public class SearchFrameworkBasicTest {
     @DisplayName("Basic Fast Public Search")
     void testBasicFastPublicSearch() {
         // Perform fast public search using SearchSpecialistAPI
-        List<EnhancedSearchResult> results = specialistAPI.searchSimple("financial");
+        List<EnhancedSearchResult> results = specialistAPI.searchAll("financial");
 
         assertNotNull(results, "Search result should not be null");
         assertNotNull(results, "Results list should not be null");
@@ -141,7 +141,7 @@ public class SearchFrameworkBasicTest {
     @DisplayName("Basic Public Search")
     void testBasicPublicSearch() {
         // Perform public search using SearchSpecialistAPI
-        List<EnhancedSearchResult> results = specialistAPI.searchSimple("data");
+        List<EnhancedSearchResult> results = specialistAPI.searchAll("data");
 
         assertNotNull(results, "Public search result should not be null");
 
@@ -156,7 +156,7 @@ public class SearchFrameworkBasicTest {
     @DisplayName("Basic Intelligent Search Routing")
     void testBasicIntelligentRouting() {
         // Test simple query (should route to fast search)
-        List<EnhancedSearchResult> simpleResults = specialistAPI.searchSimple("medical");
+        List<EnhancedSearchResult> simpleResults = specialistAPI.searchAll("medical");
         assertNotNull(simpleResults);
 
         // Test complex query with password (should route to encrypted search)
@@ -187,7 +187,7 @@ public class SearchFrameworkBasicTest {
         assertTrue(specialistAPI.isReady(), "Specialist API should be ready");
 
         // Test simple search
-        List<EnhancedSearchResult> simpleResults = specialistAPI.searchSimple(
+        List<EnhancedSearchResult> simpleResults = specialistAPI.searchAll(
             "financial"
         );
         assertNotNull(simpleResults);
@@ -208,7 +208,7 @@ public class SearchFrameworkBasicTest {
         );
 
         // Test private search
-        List<EnhancedSearchResult> privateResults = specialistAPI.searchSimple(
+        List<EnhancedSearchResult> privateResults = specialistAPI.searchAll(
             "contains:data"
         );
         assertNotNull(privateResults);
@@ -302,14 +302,14 @@ public class SearchFrameworkBasicTest {
         // Test null query
         assertThrows(
             IllegalArgumentException.class,
-            () -> specialistAPI.searchSimple(null),
+            () -> specialistAPI.searchAll(null),
             "Should throw exception for null query"
         );
 
         // Test empty query  
         assertThrows(
             IllegalArgumentException.class,
-            () -> specialistAPI.searchSimple(""),
+            () -> specialistAPI.searchAll(""),
             "Should throw exception for empty query"
         );
 
@@ -326,7 +326,7 @@ public class SearchFrameworkBasicTest {
 
         for (int i = 0; i < numSearches; i++) {
             long startTime = System.nanoTime();
-            List<EnhancedSearchResult> results = specialistAPI.searchSimple(
+            List<EnhancedSearchResult> results = specialistAPI.searchAll(
                 "test" + (i % 5)
             );
             long endTime = System.nanoTime();

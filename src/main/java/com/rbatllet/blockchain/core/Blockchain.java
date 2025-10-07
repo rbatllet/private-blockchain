@@ -3986,7 +3986,7 @@ public class Blockchain {
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
         try {
             return convertEnhancedResultsToBlocks(
-                searchSpecialistAPI.searchSimple(searchTerm)
+                searchSpecialistAPI.searchAll(searchTerm)
             );
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
@@ -5560,7 +5560,7 @@ public class Blockchain {
             // This searches in PublicLayer metadata (timestamps, categories)
             // without requiring passwords
             List<EnhancedSearchResult> results =
-                searchSpecialistAPI.searchSimple(searchTerm);
+                searchSpecialistAPI.searchAll(searchTerm);
 
             // Filter to only encrypted blocks and convert to Block objects
             List<Block> encryptedBlocks = new ArrayList<>();
@@ -5652,7 +5652,7 @@ public class Blockchain {
         try {
             // Use general search for any user-defined term
             return convertEnhancedResultsToBlocks(
-                searchSpecialistAPI.searchSimple(searchTerm)
+                searchSpecialistAPI.searchAll(searchTerm)
             );
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
@@ -5673,7 +5673,7 @@ public class Blockchain {
             // Advanced Search Engine automatically determines the optimal strategy
             // No need for manual blockchain composition analysis
             return convertEnhancedResultsToBlocks(
-                searchSpecialistAPI.searchSimple(searchTerm)
+                searchSpecialistAPI.searchAll(searchTerm)
             );
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);

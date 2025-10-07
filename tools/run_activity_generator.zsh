@@ -6,12 +6,13 @@
 
 # Set script directory and navigate to project root
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="${SCRIPT_DIR}/.."
 
 # Load common functions library
-source "${SCRIPT_DIR}/../scripts/lib/common_functions.zsh"
+source "${PROJECT_ROOT}/scripts/lib/common_functions.zsh"
 
 # Change to project root directory
-cd "$SCRIPT_DIR/.."
+cd "$PROJECT_ROOT"
 
 print_header "BLOCKCHAIN ACTIVITY GENERATOR"
 print_info "This generates blockchain activity to test the dashboard"

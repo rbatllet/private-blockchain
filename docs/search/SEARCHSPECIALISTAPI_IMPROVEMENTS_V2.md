@@ -90,7 +90,7 @@ SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(blockchain, password, pr
 
 // API is immediately ready to use - no additional configuration needed
 List<EnhancedSearchResult> publicResults = searchAPI.searchPublic("medical records");  // Fast public-only
-List<EnhancedSearchResult> hybridResults = searchAPI.searchSimple("patient data");     // Hybrid search
+List<EnhancedSearchResult> hybridResults = searchAPI.searchAll("patient data");     // Hybrid search
 System.out.println("Public results: " + publicResults.size() + ", Hybrid results: " + hybridResults.size());
 ```
 
@@ -159,7 +159,7 @@ public void testOptimizedConstructorPerformance() {
     
     // Validation: Must have access to all indexed blocks
     List<EnhancedSearchResult> publicResults = api.searchPublic("test");
-    List<EnhancedSearchResult> hybridResults = api.searchSimple("test");
+    List<EnhancedSearchResult> hybridResults = api.searchAll("test");
     assertNotNull(publicResults, "Public search results cannot be null");
     assertNotNull(hybridResults, "Hybrid search results cannot be null");
 }
@@ -256,7 +256,7 @@ public class OptimizedSearchExample {
             System.out.println("✅ Public search 'medical': " + publicResults.size() + " results");
             
             // Hybrid search (public + private with default password)
-            List<EnhancedSearchResult> hybridResults = searchAPI.searchSimple("medical records");
+            List<EnhancedSearchResult> hybridResults = searchAPI.searchAll("medical records");
             System.out.println("✅ Hybrid search 'medical records': " + hybridResults.size() + " results");
             
             // Secure encrypted-only search

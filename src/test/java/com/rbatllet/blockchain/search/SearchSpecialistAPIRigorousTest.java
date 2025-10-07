@@ -139,8 +139,8 @@ public class SearchSpecialistAPIRigorousTest {
         List<EnhancedSearchResult> secureResults = searchAPI.searchSecure(searchTerm, testPassword, 10);
         System.out.println("❌ searchSecure('" + searchTerm + "'): " + secureResults.size() + " results");
         
-        List<EnhancedSearchResult> simpleResults = searchAPI.searchSimple(searchTerm);
-        System.out.println("❌ searchSimple('" + searchTerm + "'): " + simpleResults.size() + " results");
+        List<EnhancedSearchResult> simpleResults = searchAPI.searchAll(searchTerm);
+        System.out.println("❌ searchAll('" + searchTerm + "'): " + simpleResults.size() + " results");
         
         // DEBUG: Check if autoKeywords can be decrypted
         System.out.println("\\n🔍 DEBUG: Testing autoKeywords decryption:");
@@ -236,7 +236,7 @@ public class SearchSpecialistAPIRigorousTest {
         System.out.println("   Wrong password: " + wrongPwdResults.size() + " results");
         
         // No password (simple search)
-        List<EnhancedSearchResult> noPwdResults = searchAPI.searchSimple("financial");
+        List<EnhancedSearchResult> noPwdResults = searchAPI.searchAll("financial");
         System.out.println("   No password: " + noPwdResults.size() + " results");
         
         // Compare with working method

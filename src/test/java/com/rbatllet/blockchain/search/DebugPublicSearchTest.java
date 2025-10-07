@@ -55,15 +55,15 @@ public class DebugPublicSearchTest {
         System.out.println("✅ Data stored with public: [medical], private: [hypertension]");
         
         // Test 1: Search for public term directly
-        List<SearchFrameworkEngine.EnhancedSearchResult> results1 = searchAPI.searchSimple("medical");
+        List<SearchFrameworkEngine.EnhancedSearchResult> results1 = searchAPI.searchAll("medical");
         System.out.println("🔍 Search 'medical': " + results1.size() + " results");
         
         // Test 2: Search for public term with prefix
-        List<SearchFrameworkEngine.EnhancedSearchResult> results2 = searchAPI.searchSimple("public:medical");
+        List<SearchFrameworkEngine.EnhancedSearchResult> results2 = searchAPI.searchAll("public:medical");
         System.out.println("🔍 Search 'public:medical': " + results2.size() + " results");
         
         // Test 3: Search for private term (should be 0)
-        List<SearchFrameworkEngine.EnhancedSearchResult> results3 = searchAPI.searchSimple("hypertension");
+        List<SearchFrameworkEngine.EnhancedSearchResult> results3 = searchAPI.searchAll("hypertension");
         System.out.println("🔍 Search 'hypertension': " + results3.size() + " results");
         
         // Test 4: Search using searchSecure (should find both)
@@ -73,6 +73,6 @@ public class DebugPublicSearchTest {
         List<SearchFrameworkEngine.EnhancedSearchResult> results5 = searchAPI.searchSecure("hypertension", "testPassword");
         System.out.println("🔍 SearchSecure 'hypertension': " + results5.size() + " results");
         
-        System.out.println("\n🔍 DEBUG: Amb l'opció B, searchSimple hauria de trobar TOTS els termes (públics i privats)");
+        System.out.println("\n🔍 DEBUG: Amb l'opció B, searchAll hauria de trobar TOTS els termes (públics i privats)");
     }
 }

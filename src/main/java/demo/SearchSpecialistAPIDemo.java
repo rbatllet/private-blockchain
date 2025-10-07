@@ -118,7 +118,7 @@ public class SearchSpecialistAPIDemo {
 
         for (String term : searchTerms) {
             long startTime = System.nanoTime();
-            List<EnhancedSearchResult> results = searchAPI.searchSimple(term);
+            List<EnhancedSearchResult> results = searchAPI.searchAll(term);
             long endTime = System.nanoTime();
             double timeMs = (endTime - startTime) / 1_000_000.0;
 
@@ -153,7 +153,7 @@ public class SearchSpecialistAPIDemo {
         // Check if searches are working
         boolean hasResults = successfulSearches > 0;
         for (String term : searchTerms) {
-            List<EnhancedSearchResult> results = searchAPI.searchSimple(term);
+            List<EnhancedSearchResult> results = searchAPI.searchAll(term);
             if (!results.isEmpty()) {
                 hasResults = true;
                 break;
@@ -273,7 +273,7 @@ public class SearchSpecialistAPIDemo {
         System.out.println("📊 Running real-time performance analysis...");
         for (String term : testTerms) {
             long startTime = System.nanoTime();
-            var results = searchAPI.searchSimple(term);
+            var results = searchAPI.searchAll(term);
             long endTime = System.nanoTime();
             double timeMs = (endTime - startTime) / 1_000_000.0;
 
@@ -320,7 +320,7 @@ public class SearchSpecialistAPIDemo {
         System.out.println("🔍 Testing Different Search Modes:");
         
         // Mode 1: Public-only search
-        List<EnhancedSearchResult> publicResults = searchAPI.searchSimple("medical");
+        List<EnhancedSearchResult> publicResults = searchAPI.searchAll("medical");
         System.out.printf("   📊 Public-only mode: %d results%n", publicResults.size());
         
         // Mode 2: Encrypted-only search

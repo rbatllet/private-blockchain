@@ -72,16 +72,16 @@ public class SearchSpecialistAPIComprehensiveTest {
     
     @Test
     @Order(1)
-    @DisplayName("Test 1: searchSimple() - Generic search functionality")
-    void testSearchSimpleGeneric() throws Exception {
-        System.out.println("=== TEST 1: searchSimple() GENERIC FUNCTIONALITY ===");
+    @DisplayName("Test 1: searchAll() - Generic search functionality")
+    void testSearchAll() throws Exception {
+        System.out.println("=== TEST 1: searchAll() GENERIC FUNCTIONALITY ===");
         
         // Test with different search terms
         String[] testTerms = {"financial", "healthcare", "confidential", "nonexistent"};
         
         for (String term : testTerms) {
-            List<EnhancedSearchResult> results = searchAPI.searchSimple(term);
-            System.out.println("📊 searchSimple('" + term + "'): " + results.size() + " results");
+            List<EnhancedSearchResult> results = searchAPI.searchAll(term);
+            System.out.println("📊 searchAll('" + term + "'): " + results.size() + " results");
             
             if (term.equals("nonexistent")) {
                 assertEquals(0, results.size(), "Should find no results for non-existent term");
@@ -91,10 +91,10 @@ public class SearchSpecialistAPIComprehensiveTest {
         }
         
         // Test with custom result limit
-        List<EnhancedSearchResult> limitedResults = searchAPI.searchSimple("financial", 3);
+        List<EnhancedSearchResult> limitedResults = searchAPI.searchAll("financial", 3);
         assertTrue(limitedResults.size() <= 3, "Should respect result limit");
         
-        System.out.println("✅ searchSimple() generic functionality validated");
+        System.out.println("✅ searchAll() generic functionality validated");
     }
     
     @Test
@@ -186,11 +186,11 @@ public class SearchSpecialistAPIComprehensiveTest {
         String searchTerm = "financial";
         int iterations = 5;
         
-        // Test searchSimple performance
+        // Test searchAll performance
         long simpleTotal = 0;
         for (int i = 0; i < iterations; i++) {
             long start = System.nanoTime();
-            searchAPI.searchSimple(searchTerm);
+            searchAPI.searchAll(searchTerm);
             long end = System.nanoTime();
             simpleTotal += (end - start);
         }
@@ -217,12 +217,12 @@ public class SearchSpecialistAPIComprehensiveTest {
         double intelligentAvg = (intelligentTotal / iterations) / 1_000_000.0;
         
         System.out.println("📊 Performance Results (average over " + iterations + " iterations):");
-        System.out.println("    searchSimple: " + String.format("%.2f", simpleAvg) + "ms");
+        System.out.println("    searchAll: " + String.format("%.2f", simpleAvg) + "ms");
         System.out.println("    searchSecure: " + String.format("%.2f", secureAvg) + "ms");
         System.out.println("    searchIntelligent: " + String.format("%.2f", intelligentAvg) + "ms");
         
         // All methods should complete within reasonable time
-        assertTrue(simpleAvg < 1000, "searchSimple should complete within 1 second");
+        assertTrue(simpleAvg < 1000, "searchAll should complete within 1 second");
         assertTrue(secureAvg < 1000, "searchSecure should complete within 1 second");
         assertTrue(intelligentAvg < 1000, "searchIntelligent should complete within 1 second");
         
@@ -238,12 +238,12 @@ public class SearchSpecialistAPIComprehensiveTest {
         String searchTerm = "financial";
         
         // Get results from all methods
-        List<EnhancedSearchResult> simpleResults = searchAPI.searchSimple(searchTerm);
+        List<EnhancedSearchResult> simpleResults = searchAPI.searchAll(searchTerm);
         List<EnhancedSearchResult> secureResults = searchAPI.searchSecure(searchTerm, testPassword);
         List<EnhancedSearchResult> intelligentResults = searchAPI.searchIntelligent(searchTerm, testPassword, 20);
         
         System.out.println("📊 Result counts:");
-        System.out.println("    searchSimple: " + simpleResults.size());
+        System.out.println("    searchAll: " + simpleResults.size());
         System.out.println("    searchSecure: " + secureResults.size());
         System.out.println("    searchIntelligent: " + intelligentResults.size());
         
@@ -312,7 +312,7 @@ public class SearchSpecialistAPIComprehensiveTest {
         assertTrue(api.isReady(), "API should be ready immediately after proper construction");
         
         // Test search with properly constructed API (should find results)
-        List<EnhancedSearchResult> results = api.searchSimple("financial");
+        List<EnhancedSearchResult> results = api.searchAll("financial");
         System.out.println("📊 Constructor search results: " + results.size());
         assertTrue(results.size() > 0, "Properly constructed API should find results immediately");
         
@@ -327,20 +327,20 @@ public class SearchSpecialistAPIComprehensiveTest {
         
         // Test null/empty queries
         assertThrows(IllegalArgumentException.class, () -> {
-            searchAPI.searchSimple(null);
+            searchAPI.searchAll(null);
         }, "Should throw exception for null query");
         
         assertThrows(IllegalArgumentException.class, () -> {
-            searchAPI.searchSimple("");
+            searchAPI.searchAll("");
         }, "Should throw exception for empty query");
         
         // Test invalid result limits
         assertThrows(IllegalArgumentException.class, () -> {
-            searchAPI.searchSimple("test", 0);
+            searchAPI.searchAll("test", 0);
         }, "Should throw exception for zero limit");
         
         assertThrows(IllegalArgumentException.class, () -> {
-            searchAPI.searchSimple("test", -1);
+            searchAPI.searchAll("test", -1);
         }, "Should throw exception for negative limit");
         
         // Test null password in secure search
@@ -375,7 +375,7 @@ public class SearchSpecialistAPIComprehensiveTest {
         
         for (String query : specialQueries) {
             try {
-                List<EnhancedSearchResult> results = searchAPI.searchSimple(query);
+                List<EnhancedSearchResult> results = searchAPI.searchAll(query);
                 System.out.println("📊 Special query '" + query + "': " + results.size() + " results");
                 // Should not throw exceptions, even if no results found
                 assertTrue(results.size() >= 0, "Should handle special characters gracefully");

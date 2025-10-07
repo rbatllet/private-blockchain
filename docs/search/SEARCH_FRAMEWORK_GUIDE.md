@@ -73,7 +73,7 @@ SearchSpecialistAPI searchAPI = new SearchSpecialistAPI();
 List<EnhancedSearchResult> publicResults = searchAPI.searchPublic("medical records");
 
 // Hybrid search (public + private with default password)  
-List<EnhancedSearchResult> hybridResults = searchAPI.searchSimple("patient data");
+List<EnhancedSearchResult> hybridResults = searchAPI.searchAll("patient data");
 
 // Encrypted-only search with explicit password
 List<EnhancedSearchResult> privateResults = searchAPI.searchSecure(
@@ -177,7 +177,7 @@ List<EnhancedSearchResult> publicResults = searchAPI.searchPublic("medical");
 // Will find only public blocks - private content completely ignored
 
 // Hybrid search uses default credentials to access both public and private content  
-List<EnhancedSearchResult> hybridResults = searchAPI.searchSimple("patient");
+List<EnhancedSearchResult> hybridResults = searchAPI.searchAll("patient");
 // Will find both public and private content using default password
 
 // Encrypted-only search returns only private/encrypted content
@@ -596,7 +596,7 @@ if (result.isSuccessful()) {
 searchAPI.searchPublic("keyword");
 
 // For convenient hybrid search (public + private with default credentials)
-searchAPI.searchSimple("keyword");
+searchAPI.searchAll("keyword");
 
 // For encrypted-only sensitive data
 searchAPI.searchSecure("confidential", password, limit);
@@ -665,7 +665,7 @@ try {
 | Method | Speed | Privacy | Use Case |
 |--------|-------|---------|----------|
 | `searchPublic()` | ⚡ Ultra-Fast (<50ms) | Public only | Fast discovery, anonymous access |
-| `searchSimple()` | ⚡ Fast | Public + Private (default) | Convenient hybrid search |
+| `searchAll()` | ⚡ Fast | Public + Private (default) | Convenient hybrid search |
 | `searchSecure()` | 🔒 Moderate | Encrypted only | Sensitive data with explicit password |
 | `searchIntelligent()` | 🧠 Adaptive | Auto-detect | General purpose with smart routing |
 | `searchAdvanced()` | 🔍 Comprehensive | Complete control | Expert configuration |
@@ -676,7 +676,7 @@ try {
 // Pattern 1: Progressive search (public → hybrid → encrypted)
 List<EnhancedSearchResult> fast = searchAPI.searchPublic(term);
 if (needMoreScope) {
-    List<EnhancedSearchResult> hybrid = searchAPI.searchSimple(term);
+    List<EnhancedSearchResult> hybrid = searchAPI.searchAll(term);
 }
 if (needEncryptedOnly) {
     List<EnhancedSearchResult> encrypted = searchAPI.searchSecure(term, pass, 100);

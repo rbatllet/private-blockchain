@@ -144,7 +144,7 @@ public class SearchFrameworkDemoTest {
         String[] searchTerms = {"financial", "medical", "public", "blockchain", "technology"};
         
         for (String term : searchTerms) {
-            List<EnhancedSearchResult> results = searchAPI.searchSimple(term, 10);
+            List<EnhancedSearchResult> results = searchAPI.searchAll(term, 10);
             
             // The results list should not be null
             assertNotNull(results, "Search results should not be null for term: " + term);

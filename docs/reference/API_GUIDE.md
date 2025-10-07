@@ -3236,7 +3236,7 @@ List<Block> blocks = blockchain.batchRetrieveBlocksByHash(hashes);
 **Perfect for:**
 - `findEncryptedData()` operations
 - `findBlocksByContent()` processing  
-- `searchPublic()`, `searchSimple()`, `searchSecure()`, and `searchIntelligent()` result processing
+- `searchPublic()`, `searchAll()`, `searchSecure()`, and `searchIntelligent()` result processing
 - Any `EnhancedSearchResult` processing
 
 For complete details on batch optimization, see the [Batch Optimization Guide](../data-management/BATCH_OPTIMIZATION_GUIDE.md).
