@@ -279,4 +279,94 @@ public class OffChainStorageService {
     public boolean fileExists(OffChainData offChainData) {
         return Files.exists(Paths.get(offChainData.getFilePath()));
     }
+
+    /**
+     * Verify file structure without decryption (basic corruption detection)
+     * This method checks if the encrypted file has valid structure without requiring password
+     *
+     * Checks performed:
+     * 1. File exists and is readable
+     * 2. File size is reasonable (at least minimum for encrypted content)
+     * 3. File can be opened and read
+     * 4. IV stored in metadata is valid Base64
+     *
+     * Note: This does NOT verify cryptographic integrity - that requires password.
+     * Use verifyIntegrity() for full cryptographic verification.
+     *
+     * @param offChainData The off-chain data metadata
+     * @return true if file structure appears valid, false if corrupted or suspicious
+     */
+    public boolean verifyFileStructure(OffChainData offChainData) {
+        try {
+            // Check 1: File must exist
+            Path filePath = Paths.get(offChainData.getFilePath());
+            if (!Files.exists(filePath)) {
+                logger.debug("File structure check failed: File does not exist: {}", offChainData.getFilePath());
+                return false;
+            }
+
+            // Check 2: File must be readable
+            if (!Files.isReadable(filePath)) {
+                logger.debug("File structure check failed: File is not readable: {}", offChainData.getFilePath());
+                return false;
+            }
+
+            // Check 3: File size must be at least minimum for encrypted content
+            // AES-256-GCM encrypted file must have at least: GCM_TAG_LENGTH bytes for auth tag
+            long actualSize = Files.size(filePath);
+            if (actualSize == 0) {
+                logger.debug("File structure check failed: File is empty: {}", offChainData.getFilePath());
+                return false;
+            }
+            if (actualSize < GCM_TAG_LENGTH) {
+                logger.debug("File structure check failed: File too small ({} bytes) to be valid AES-GCM encrypted file", actualSize);
+                return false;
+            }
+
+            // Check 4: Verify expected size relationship
+            // Encrypted file should be larger than original (due to GCM tag)
+            long expectedOriginalSize = offChainData.getFileSize();
+            if (expectedOriginalSize > 0) {
+                // Encrypted size should be: original_size + GCM_TAG_LENGTH
+                // Allow some tolerance for edge cases
+                long minEncryptedSize = expectedOriginalSize + GCM_TAG_LENGTH - 8;
+                long maxEncryptedSize = expectedOriginalSize + GCM_TAG_LENGTH + 32; // Allow extra padding
+
+                if (actualSize < minEncryptedSize || actualSize > maxEncryptedSize) {
+                    logger.debug("File structure check failed: Size mismatch - expected ~{} bytes (original) + {} (GCM tag) = ~{}, actual: {}",
+                        expectedOriginalSize, GCM_TAG_LENGTH, expectedOriginalSize + GCM_TAG_LENGTH, actualSize);
+                    return false;
+                }
+            }
+
+            // Check 5: Verify IV in metadata is valid Base64
+            try {
+                byte[] iv = Base64.getDecoder().decode(offChainData.getEncryptionIV());
+                if (iv.length != IV_LENGTH) {
+                    logger.debug("File structure check failed: Invalid IV length: {} (expected {})", iv.length, IV_LENGTH);
+                    return false;
+                }
+            } catch (IllegalArgumentException e) {
+                logger.debug("File structure check failed: Invalid Base64 IV in metadata");
+                return false;
+            }
+
+            // Check 6: Attempt to read first few bytes to ensure file is not corrupted at OS level
+            try (FileInputStream fis = new FileInputStream(filePath.toFile())) {
+                byte[] buffer = new byte[Math.min(1024, (int) actualSize)];
+                int bytesRead = fis.read(buffer);
+                if (bytesRead <= 0) {
+                    logger.debug("File structure check failed: Cannot read file content");
+                    return false;
+                }
+            }
+
+            // All checks passed - file structure appears valid
+            return true;
+
+        } catch (Exception e) {
+            logger.debug("File structure check failed with exception: {}", e.getMessage());
+            return false;
+        }
+    }
 }

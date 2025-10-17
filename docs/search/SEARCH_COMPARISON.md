@@ -348,7 +348,7 @@ The `searchExhaustiveOffChain()` search is the **ONLY ONE** that offers:
 - **[TECHNICAL_DETAILS.md](../reference/TECHNICAL_DETAILS.md)** - Database schema, security model, architecture
 
 ### 🏢 Production and Operations
-- **[PRODUCTION_GUIDE.md](../PRODUCTION_GUIDE.md)** - Production deployment and operational guidelines
+- **[PRODUCTION_GUIDE.md](../deployment/PRODUCTION_GUIDE.md)** - Production deployment and operational guidelines
 - **[ENCRYPTED_EXPORT_IMPORT_GUIDE.md](../security/ENCRYPTED_EXPORT_IMPORT_GUIDE.md)** - Encrypted export/import procedures
 
 ### 🚀 Demos and Code Examples

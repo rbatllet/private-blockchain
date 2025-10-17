@@ -21,7 +21,15 @@ public class DatabaseConfigDemo {
         System.out.println();
 
         try {
-            // Demo 1: Default SQLite configuration
+            // Initialize with SQLite for this demo (instead of default H2)
+            System.out.println("ℹ️  Initializing with SQLite for demonstration purposes...");
+            // Close any existing EntityManagerFactory first
+            JPAUtil.closeEntityManager();
+            // Now initialize with SQLite
+            JPAUtil.initialize(DatabaseConfig.createSQLiteConfig());
+            System.out.println();
+
+            // Demo 1: SQLite configuration (now active)
             demonstrateSQLiteConfig();
 
             System.out.println();
@@ -54,13 +62,13 @@ public class DatabaseConfigDemo {
     }
 
     /**
-     * Demo 1: SQLite configuration (default)
+     * Demo 1: SQLite configuration (explicitly initialized)
      */
     private static void demonstrateSQLiteConfig() {
-        System.out.println("📋 Demo 1: SQLite Configuration (Default)");
+        System.out.println("📋 Demo 1: SQLite Configuration");
         System.out.println("-".repeat(70));
 
-        // SQLite is the default, already initialized
+        // SQLite is now initialized explicitly (H2 is the default since v1.0.5)
         DatabaseConfig currentConfig = JPAUtil.getCurrentConfig();
 
         System.out.println("Current database: " + currentConfig.getDatabaseType());

@@ -13,14 +13,14 @@ cd "$SCRIPT_DIR/.."
 
 print_header "🚀 PRIVATE BLOCKCHAIN - PROFILE SELECTOR"
 echo ""
-echo "1) Development (logging detallat)"
-echo "2) Production (logging mínim)"
+echo "1) Development (detailed logging)"
+echo "2) Production (minimal logging)"
 echo ""
-read -r "profile?Selecciona perfil [1-2]: "
+read -r "profile?Select profile [1-2]: "
 
 case $profile in
     1)
-        print_info "📊 Executant amb perfil DEVELOPMENT..."
+        print_info "📊 Running with DEVELOPMENT profile..."
 
         # Clean database before running
         cleanup_database
@@ -40,7 +40,7 @@ case $profile in
         mvn exec:java -Dexec.mainClass="demo.BlockchainDemo" -Pdevelopment
         ;;
     2)
-        print_info "🔐 Executant amb perfil PRODUCTION..."
+        print_info "🔐 Running with PRODUCTION profile..."
 
         # Clean database before running
         cleanup_database
@@ -60,7 +60,7 @@ case $profile in
         mvn exec:java -Dexec.mainClass="demo.BlockchainDemo" -Pproduction
         ;;
     *)
-        print_error "❌ Opció invàlida"
+        print_error "❌ Invalid option"
         exit 1
         ;;
 esac

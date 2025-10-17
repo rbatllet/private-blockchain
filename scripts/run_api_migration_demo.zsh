@@ -167,7 +167,7 @@ print_info "  🎯 Enhanced debugging and monitoring capabilities"
 print_info ""
 
 print_info "📚 Reference Documentation:"
-print_info "  📄 Migration guide: docs/API_GUIDE.md"
+print_info "  📄 Migration guide: docs/reference/API_GUIDE.md"
 print_info "  🎯 Enhanced demo: src/main/java/demo/EnhancedDangerousDeleteDemo.java"
 print_info ""
 

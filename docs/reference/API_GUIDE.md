@@ -37,11 +37,11 @@ boolean isStructurallyIntact()
 // Check if the blockchain is fully compliant (all blocks are authorized and not revoked)
 boolean isFullyCompliant()
 
-// Get the COUNT of invalid blocks (returns int, not list)
-int getInvalidBlocks()
+// Get the COUNT of invalid blocks (returns long, not list)
+long getInvalidBlocks()
 
-// Get the COUNT of revoked blocks (returns int, not list)
-int getRevokedBlocks()
+// Get the COUNT of revoked blocks (returns long, not list)
+long getRevokedBlocks()
 
 // Get the LIST of invalid blocks (use this to iterate over blocks)
 List<Block> getInvalidBlocksList()
@@ -1030,6 +1030,8 @@ switch (decision) {
 ```
 
 #### Integrity Verification
+
+##### High-Level API (Blockchain)
 ```java
 // Verify individual block
 public boolean checkBlockIntegrity(Block block) {
@@ -1046,9 +1048,9 @@ public boolean checkBlockIntegrity(Block block) {
 // Verify entire blockchain off-chain data
 public void performIntegrityAudit() {
     System.out.println("Starting comprehensive off-chain integrity audit...");
-    
+
     boolean allValid = blockchain.verifyAllOffChainIntegrity();
-    
+
     if (allValid) {
         System.out.println("✅ All off-chain data passed integrity checks");
     } else {
@@ -1057,6 +1059,129 @@ public void performIntegrityAudit() {
     }
 }
 ```
+
+##### Low-Level API (OffChainStorageService)
+
+The `OffChainStorageService` provides two levels of verification:
+
+**1. Structural Verification (No Password Required)**
+
+```java
+// Verify file structure without decryption
+OffChainStorageService storage = new OffChainStorageService();
+OffChainData offChainData = block.getOffChainData();
+
+boolean structureValid = storage.verifyFileStructure(offChainData);
+
+if (!structureValid) {
+    System.err.println("❌ File structure validation failed!");
+    // File is corrupted, missing, or has invalid metadata
+}
+```
+
+**Checks Performed by `verifyFileStructure()`:**
+- ✅ File exists and is readable
+- ✅ File size > 0 and >= 16 bytes (minimum for AES-GCM tag)
+- ✅ Encrypted file size = original size + GCM_TAG_LENGTH (16 bytes) ± tolerance
+- ✅ IV in metadata is valid Base64 with correct length (12 bytes)
+- ✅ File can be opened and read (OS-level check)
+
+**2. Cryptographic Verification (Password Required)**
+
+```java
+// Full cryptographic integrity verification
+OffChainStorageService storage = new OffChainStorageService();
+String password = "encryption_password";
+
+boolean integrityValid = storage.verifyIntegrity(offChainData, password);
+
+if (!integrityValid) {
+    System.err.println("❌ Cryptographic integrity verification failed!");
+    // Data has been tampered with or password is incorrect
+}
+```
+
+**Checks Performed by `verifyIntegrity()`:**
+- ✅ All structural checks (from `verifyFileStructure()`)
+- ✅ File can be decrypted with provided password
+- ✅ Decrypted data matches expected size
+- ✅ SHA3-256 hash matches stored hash
+- ✅ AES-GCM authentication tag is valid
+
+**Comparison: Structural vs Cryptographic Verification**
+
+| Aspect | `verifyFileStructure()` | `verifyIntegrity()` |
+|--------|------------------------|---------------------|
+| Password Required | ❌ No | ✅ Yes |
+| Speed | ⚡ Fast (~1ms) | 🐢 Slower (~10-100ms) |
+| Detects Corruption | ✅ Structural only | ✅ Complete |
+| Detects Tampering | ❌ No | ✅ Yes |
+| Use Case | Quick health checks | Security audits |
+
+**Example: Comprehensive Verification Strategy**
+
+```java
+public void performMultiLevelVerification(Block block, String password) {
+    OffChainData offChainData = block.getOffChainData();
+    OffChainStorageService storage = new OffChainStorageService();
+
+    // Level 1: Quick structural check (fast)
+    System.out.println("🔍 Level 1: Structural verification...");
+    if (!storage.verifyFileStructure(offChainData)) {
+        System.err.println("❌ CRITICAL: File structure is invalid!");
+        System.err.println("   Possible causes: file deleted, truncated, or OS corruption");
+        return;
+    }
+    System.out.println("✅ Level 1 passed: File structure is valid");
+
+    // Level 2: Cryptographic integrity check (slower but thorough)
+    System.out.println("🔍 Level 2: Cryptographic verification...");
+    if (!storage.verifyIntegrity(offChainData, password)) {
+        System.err.println("❌ CRITICAL: Cryptographic integrity failed!");
+        System.err.println("   Possible causes: data tampered, wrong password, or encryption corruption");
+        return;
+    }
+    System.out.println("✅ Level 2 passed: Cryptographic integrity verified");
+
+    System.out.println("✅ All verification levels passed!");
+}
+```
+
+**Storage Health Report Generation**
+
+The `UserFriendlyEncryptionAPI` provides a comprehensive off-chain storage report:
+
+```java
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+String report = api.generateOffChainStorageReport();
+System.out.println(report);
+```
+
+**Example Report Output:**
+```
+📊 OFF-CHAIN STORAGE ANALYTICS:
+📁 OFF-CHAIN STORAGE COMPREHENSIVE REPORT
+════════════════════════════════════════════════════════════
+
+📊 Storage Analysis:
+   📄 Blocks with Off-chain Data: 3
+   💾 Total Off-chain Storage: 51.2 KB
+   📄 Missing Files: 0
+   ⚠️ Corrupted Files: 0
+
+📋 Content Types:
+   application/pdf: 1 file(s), 50.0 KB
+   text/plain: 2 file(s), 1.2 KB
+
+🏥 Storage Health: ✅ EXCELLENT - All files present with valid structure
+   ℹ️  Structure validation: file existence, size, format, IV validation
+   ℹ️  Cryptographic integrity verification requires passwords (use verifyIntegrity())
+
+💡 Recommendations:
+   • Continue regular backup and monitoring procedures
+```
+
+**Note:** The report uses `verifyFileStructure()` for fast health checks. For complete cryptographic verification with passwords, use `verifyIntegrity()` directly.
 
 ### Security Features
 
@@ -1822,6 +1947,73 @@ boolean exported = blockchain.exportChain("backup.json");
 boolean imported = blockchain.importChain("backup.json");
 boolean rolledBack = blockchain.rollbackBlocks(numberOfBlocks);
 ```
+
+#### OffChainStorageService Methods
+
+The `OffChainStorageService` class provides low-level off-chain storage operations with encryption and integrity verification.
+
+```java
+// Store data off-chain with encryption
+OffChainStorageService storage = new OffChainStorageService();
+OffChainData metadata = storage.storeData(
+    dataBytes,
+    password,
+    signerPrivateKey,
+    signerPublicKey,
+    "application/pdf"  // Content type
+);
+
+// Retrieve and decrypt off-chain data
+byte[] retrievedData = storage.retrieveData(metadata, password);
+
+// Verify cryptographic integrity (requires password)
+boolean isValid = storage.verifyIntegrity(metadata, password);
+
+// Verify file structure (no password required) - NEW in v1.0.6
+boolean structureValid = storage.verifyFileStructure(metadata);
+
+// Check if off-chain file exists
+boolean exists = storage.fileExists(metadata);
+
+// Get encrypted file size
+long fileSize = storage.getFileSize(metadata);
+
+// Delete off-chain data file
+boolean deleted = storage.deleteData(metadata);
+```
+
+**Method Details:**
+
+**`verifyFileStructure(OffChainData offChainData)` - NEW**
+- **Purpose**: Fast structural validation without requiring password
+- **Speed**: ~1ms per file (very fast)
+- **Checks**:
+  - File exists and is readable
+  - File size is valid (> 0, >= 16 bytes for GCM tag)
+  - Encrypted file size matches expected size (original + 16 bytes ± tolerance)
+  - IV in metadata is valid Base64 (12 bytes)
+  - File can be opened and read
+- **Returns**: `true` if structure is valid, `false` if corrupted
+- **Use Case**: Quick health checks, monitoring, batch validation
+
+**`verifyIntegrity(OffChainData offChainData, String password)`**
+- **Purpose**: Complete cryptographic integrity verification
+- **Speed**: ~10-100ms per file (depends on file size)
+- **Checks**:
+  - All structural checks (from `verifyFileStructure()`)
+  - File can be decrypted with password
+  - Decrypted data matches expected size
+  - SHA3-256 hash matches stored hash
+  - AES-GCM authentication tag is valid
+- **Returns**: `true` if data is intact, `false` if corrupted or tampered
+- **Use Case**: Security audits, compliance verification, tamper detection
+
+**Verification Comparison:**
+
+| Method | Password | Speed | Detection | Use Case |
+|--------|----------|-------|-----------|----------|
+| `verifyFileStructure()` | ❌ No | ⚡ ~1ms | Corruption | Health checks |
+| `verifyIntegrity()` | ✅ Yes | 🐢 ~10-100ms | Tampering | Security audits |
 
 #### Search Operations
 ```java
@@ -2873,7 +3065,7 @@ MemorySafetyConstants.PROGRESS_REPORT_INTERVAL          // 5,000 - Progress logg
 - **Signature Algorithm**: ECDSA
 - **Key Size**: 2048 bits (default)
 
-For detailed technical specifications and production considerations, see [TECHNICAL_DETAILS.md](TECHNICAL_DETAILS.md) and [PRODUCTION_GUIDE.md](../PRODUCTION_GUIDE.md).
+For detailed technical specifications and production considerations, see [TECHNICAL_DETAILS.md](TECHNICAL_DETAILS.md) and [PRODUCTION_GUIDE.md](../deployment/PRODUCTION_GUIDE.md).
 
 ## Cryptographic Utility Methods
 
@@ -3545,7 +3737,7 @@ CompletableFuture.allOf(blockCount, validationResult)
 - **Mixed Workloads**: Read-heavy applications perform very well
 - **High Concurrency**: Tested and verified with 20+ concurrent threads
 
-For practical concurrent usage examples, see [EXAMPLES.md](EXAMPLES.md#thread-safe-concurrent-usage-patterns).
+For practical concurrent usage examples, see [EXAMPLES.md](../getting-started/EXAMPLES.md#thread-safe-concurrent-usage-patterns).
 
 ### Security Best Practices
 
@@ -4892,7 +5084,7 @@ For comprehensive metadata management documentation including advanced examples,
 
 ### 🏢 Technical & Production
 - **[TECHNICAL_DETAILS.md](TECHNICAL_DETAILS.md)** - Architecture and implementation details
-- **[PRODUCTION_GUIDE.md](../PRODUCTION_GUIDE.md)** - Production deployment guidance
+- **[PRODUCTION_GUIDE.md](../deployment/PRODUCTION_GUIDE.md)** - Production deployment guidance
 - **[ENHANCED_VALIDATION_GUIDE.md](../recovery/ENHANCED_VALIDATION_GUIDE.md)** - Advanced validation techniques
 
 ### 📖 Reference Guides

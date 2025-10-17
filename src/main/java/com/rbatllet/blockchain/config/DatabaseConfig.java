@@ -208,6 +208,14 @@ public class DatabaseConfig {
     }
 
     /**
+     * Create H2 file-based configuration with default file path (persistent storage)
+     * Uses "./blockchain.db" as the default database file
+     */
+    public static DatabaseConfig createH2Config() {
+        return createH2FileConfig("./blockchain");
+    }
+
+    /**
      * Create H2 file-based configuration (for persistent testing)
      */
     public static DatabaseConfig createH2FileConfig(String filePath) {
@@ -246,6 +254,60 @@ public class DatabaseConfig {
             .formatSql(true)
             .highlightSql(true)
             .enableStatistics(true)
+            .build();
+    }
+
+    /**
+     * Create a database configuration with custom JDBC URL.
+     *
+     * @param databaseType the database type
+     * @param jdbcUrl the JDBC URL
+     * @return database configuration
+     */
+    public static DatabaseConfig forDatabaseUrl(DatabaseType databaseType, String jdbcUrl) {
+        return builder()
+            .databaseType(databaseType)
+            .databaseUrl(jdbcUrl)
+            .poolMinSize(5)
+            .poolMaxSize(10)
+            .connectionTimeout(10000)
+            .idleTimeout(300000)
+            .maxLifetime(600000)
+            .poolName("CustomPool")
+            .hbm2ddlAuto("update")
+            .showSql(false)
+            .formatSql(false)
+            .highlightSql(false)
+            .enableStatistics(false)
+            .build();
+    }
+
+    /**
+     * Create a database configuration with custom JDBC URL and credentials.
+     *
+     * @param databaseType the database type
+     * @param jdbcUrl the JDBC URL
+     * @param username username for database connection
+     * @param password password for database connection
+     * @return database configuration
+     */
+    public static DatabaseConfig forDatabaseUrl(DatabaseType databaseType, String jdbcUrl, String username, String password) {
+        return builder()
+            .databaseType(databaseType)
+            .databaseUrl(jdbcUrl)
+            .username(username)
+            .password(password)
+            .poolMinSize(5)
+            .poolMaxSize(10)
+            .connectionTimeout(10000)
+            .idleTimeout(300000)
+            .maxLifetime(600000)
+            .poolName("CustomPool")
+            .hbm2ddlAuto("update")
+            .showSql(false)
+            .formatSql(false)
+            .highlightSql(false)
+            .enableStatistics(false)
             .build();
     }
 

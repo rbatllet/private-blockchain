@@ -17,16 +17,19 @@ RED='\033[0;31m'
 CYAN='\033[0;36m'
 NC='\033[0m'  # No Color
 
-# Auto-detect base directory
-BASE_DIR="$(dirname "$(dirname "$(realpath "${0:a}")")")"
+# Get script directory and find project root
+SCRIPT_DIR="${0:A:h}"
 
-# Navigate up to find project root (look for pom.xml or .git)
-while [[ "$BASE_DIR" != "/" ]]; do
-    if [[ -f "$BASE_DIR/pom.xml" ]] || [[ -d "$BASE_DIR/.git" ]]; then
-        break
-    fi
-    BASE_DIR="$(dirname "$BASE_DIR")"
+# Find project root by looking for pom.xml
+BASE_DIR="$SCRIPT_DIR"
+while [[ ! -f "$BASE_DIR/pom.xml" && "$BASE_DIR" != "/" ]]; do
+    BASE_DIR="${BASE_DIR:h}"
 done
+
+if [[ ! -f "$BASE_DIR/pom.xml" ]]; then
+    print -P "${RED}❌ Cannot find project root (pom.xml not found)${NC}"
+    exit 1
+fi
 
 SCRIPTS_DIR="$BASE_DIR/scripts"
 DOCS_DIR="$BASE_DIR/docs"

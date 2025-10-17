@@ -155,6 +155,6 @@ cleanup_database > /dev/null 2>&1
 print_success "🧹 Examples script completed - all temporary files cleaned up automatically"
 echo ""
 print_info "📚 For detailed documentation, see:"
-print_info "   📖 docs/EXHAUSTIVE_SEARCH_GUIDE.md - Complete guide with API reference"
+print_info "   📖 docs/search/EXHAUSTIVE_SEARCH_GUIDE.md - Complete guide with API reference"
 print_info "   🔧 src/main/java/demo/ExhaustiveSearchExamples.java - Source code for examples"
 print_info "   🎯 Run './scripts/run_exhaustive_search_demo.zsh' for interactive demonstration"

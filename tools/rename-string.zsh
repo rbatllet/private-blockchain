@@ -2,7 +2,7 @@
 
 # Generic script to rename any string across the entire codebase
 # This includes Java source files, tests, documentation, and README files
-# Usage: ./scripts/rename-string.zsh <old_string> <new_string>
+# Usage: ./tools/rename-string.zsh <old_string> <new_string>
 
 set -e
 
@@ -63,7 +63,17 @@ fi
 
 # Get script directory and project root
 SCRIPT_DIR="${0:A:h}"
-PROJECT_ROOT="${SCRIPT_DIR:h}"
+
+# Find project root by looking for pom.xml
+PROJECT_ROOT="$SCRIPT_DIR"
+while [[ ! -f "$PROJECT_ROOT/pom.xml" && "$PROJECT_ROOT" != "/" ]]; do
+    PROJECT_ROOT="${PROJECT_ROOT:h}"
+done
+
+if [[ ! -f "$PROJECT_ROOT/pom.xml" ]]; then
+    print_error "Cannot find project root (pom.xml not found)"
+    exit 1
+fi
 
 cd "$PROJECT_ROOT"
 
@@ -75,23 +85,20 @@ echo ""
 
 # Search in Java files
 JAVA_FILES=()
-if grep -rl "$OLD_STRING" --include="*.java" . 2>/dev/null | while read -r file; do
+while IFS= read -r file; do
+    file="${file#./}"
     JAVA_FILES+=("$file")
-done
+done < <(grep -rl "$OLD_STRING" --include="*.java" . 2>/dev/null)
 
 # Search in Markdown files
 MD_FILES=()
-if grep -rl "$OLD_STRING" --include="*.md" . 2>/dev/null | while read -r file; do
+while IFS= read -r file; do
+    file="${file#./}"
     MD_FILES+=("$file")
-done
+done < <(grep -rl "$OLD_STRING" --include="*.md" . 2>/dev/null)
 
 # Combine all files
-ALL_FILES=()
-while IFS= read -r file; do
-    # Remove leading './'
-    file="${file#./}"
-    ALL_FILES+=("$file")
-done < <(grep -rl "$OLD_STRING" --include="*.java" --include="*.md" . 2>/dev/null)
+ALL_FILES=("${JAVA_FILES[@]}" "${MD_FILES[@]}")
 
 if [[ ${#ALL_FILES[@]} -eq 0 ]]; then
     print_warning "No files found containing '$OLD_STRING'"
@@ -163,8 +170,8 @@ for file in "${ALL_FILES[@]}"; do
     if [[ -f "$file" ]]; then
         # Use sed for in-place replacement
         # Escape special characters for sed
-        OLD_ESCAPED=$(printf '%s\n' "$OLD_STRING" | sed 's/[[\.*^$/]/\\&/g')
-        NEW_ESCAPED=$(printf '%s\n' "$NEW_STRING" | sed 's/[[\.*^$/]/\\&/g')
+        OLD_ESCAPED=$(printf '%s\n' "$OLD_STRING" | sed 's/[]\.*^$/[]/\\&/g')
+        NEW_ESCAPED=$(printf '%s\n' "$NEW_STRING" | sed 's/[]\.*^$/[]/\\&/g')
 
         # macOS uses 'sed -i ""', Linux uses 'sed -i'
         if [[ "$OSTYPE" == "darwin"* ]]; then

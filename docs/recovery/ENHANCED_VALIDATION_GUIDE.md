@@ -6,7 +6,7 @@
 > - [API_GUIDE.md](../reference/API_GUIDE.md) - Complete API reference
 > - [TESTING.md](../testing/TESTING.md) - Testing framework and guidelines
 > - [THREAD_SAFETY_TESTS.md](../testing/THREAD_SAFETY_TESTS.md) - Thread safety testing documentation
-> - [PRODUCTION_GUIDE.md](../PRODUCTION_GUIDE.md) - Production deployment guidelines
+> - [PRODUCTION_GUIDE.md](../deployment/PRODUCTION_GUIDE.md) - Production deployment guidelines
 > - [USER_FRIENDLY_SEARCH_GUIDE.md](../search/USER_FRIENDLY_SEARCH_GUIDE.md) - Advanced search system documentation
 > - [ENCRYPTION_GUIDE.md](../security/ENCRYPTION_GUIDE.md) - Encryption and security features
 

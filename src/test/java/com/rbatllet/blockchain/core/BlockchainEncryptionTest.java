@@ -35,10 +35,11 @@ public class BlockchainEncryptionTest {
     @BeforeAll
     static void setUpClass() {
         blockchain = new Blockchain();
+        blockchain.clearAndReinitialize(); // CRITICAL: Clear all data from previous tests
+        // BlockRepository now package-private - use clearAndReinitialize();
         authorizedKeyPair = CryptoUtil.generateKeyPair();
         
         // Clean ALL previous test data to ensure clean state using thread-safe DAO method
-        // BlockRepository now package-private - use clearAndReinitialize();
         blockchain.getAuthorizedKeyDAO().cleanupTestData();
     }
     

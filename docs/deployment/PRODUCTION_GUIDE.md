@@ -368,204 +368,84 @@ echo "✅ Database maintenance completed"
 
 ### Validation Strategies
 
-#### Scheduled Chain Validation
-```bash
-# Add to crontab -e
-# Run comprehensive validation daily at 2 AM
-0 2 * * * /opt/blockchain/scripts/validate-chain.zsh
-
-# Run quick validation hourly
-0 * * * * /opt/blockchain/scripts/quick-validate.zsh
-```
-
-#### Detailed Validation Script (`validate-chain.zsh`)
-```zsh
-#!/usr/bin/env zsh
-# Full chain validation with detailed reporting
-
-# Enable error handling
-emulate -L zsh
-set -euo pipefail
-
-# Load environment
-SCRIPT_DIR=${0:a:h}
-source "$SCRIPT_DIR/lib/common_functions.zsh"
-
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-LOG_FILE="/opt/blockchain/logs/validation_${TIMESTAMP}.log"
-
-{
-    echo "=== Starting Full Chain Validation at $(date) ==="
-    
-    # Run detailed validation
-    java -jar /opt/blockchain/application/private-blockchain.jar validate-chain --detailed \
-        --config /opt/blockchain/config/application.properties \
-        --output /opt/blockchain/logs/validation_report_${TIMESTAMP}.json
-    
-    VALIDATION_EXIT_CODE=$?
-    
-    if [ $VALIDATION_EXIT_CODE -eq 0 ]; then
-        echo "✅ Validation completed successfully"
-    else
-        echo "❌ Validation failed with exit code $VALIDATION_EXIT_CODE"
-        # Send alert to monitoring system
-        send_alert "Blockchain validation failed" "Check logs: $LOG_FILE"
-    fi
-    
-    echo "=== Validation completed at $(date) ==="
-} >> "$LOG_FILE" 2>&1
-```
-
-#### Quick Validation Script (`quick-validate.zsh`)
-```zsh
-#!/usr/bin/env zsh
-# Fast validation for production monitoring
-
-# Enable error handling
-emulate -L zsh
-set -euo pipefail
-
-# Load environment
-SCRIPT_DIR=${0:a:h}
-source "$SCRIPT_DIR/lib/common_functions.zsh"
-
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-LOG_FILE="/opt/blockchain/logs/quick_validate_${TIMESTAMP}.log"
-
-{
-    echo "=== Starting Quick Validation at $(date) ==="
-    
-    # Run quick validation (checks only recent blocks and structure)
-    java -jar /opt/blockchain/application/private-blockchain.jar validate-chain --quick \
-        --config /opt/blockchain/config/application.properties \
-        --max-blocks 100  # Only check last 100 blocks for performance
-    
-    VALIDATION_EXIT_CODE=$?
-    
-    if [ $VALIDATION_EXIT_CODE -ne 0 ]; then
-        echo "❌ Quick validation failed, triggering full validation"
-        # Trigger full validation if quick check fails
-        /opt/blockchain/scripts/validate-chain.zsh
-    fi
-    
-    echo "=== Quick validation completed at $(date) ==="
-} >> "$LOG_FILE" 2>&1
-```
+Production blockchain validation requires custom Java applications that use the BlockchainService API. The core library does not provide CLI commands - integrate validation into your application layer.
 
 #### Memory-Safe Validation for Large Blockchains
 
 > ⚠️ **CRITICAL FOR PRODUCTION**: Standard `validateChainDetailed()` has memory limits:
-> - **Warning threshold**: 100,000 blocks  
+> - **Warning threshold**: 100,000 blocks
 > - **Hard limit**: 500,000 blocks (throws exception)
 > - **Production requirement**: Use `validateChainStreaming()` for chains >100K blocks
 
-For production blockchains with millions of blocks, use the streaming validation API:
+**Java Example - Detailed Validation:**
+```java
+import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.validation.ChainValidationResult;
 
-**Large Chain Validation Script (`validate-large-chain.zsh`):**
-```zsh
-#!/usr/bin/env zsh
-# Memory-safe validation for blockchains with millions of blocks
+Blockchain blockchain = new Blockchain();
 
-# Enable error handling
-emulate -L zsh
-set -euo pipefail
+// For chains < 100K blocks
+ChainValidationResult result = blockchain.validateChainDetailed();
 
-# Load environment
-SCRIPT_DIR=${0:a:h}
-source "$SCRIPT_DIR/lib/common_functions.zsh"
+System.out.println("📊 Validation Summary: " + result.getSummary());
+System.out.println("Structural Integrity: " + (result.isStructurallyIntact() ? "✅" : "❌"));
+System.out.println("Authorization Compliance: " + (result.isFullyCompliant() ? "✅" : "⚠️"));
+System.out.println("Total Blocks: " + result.getTotalBlocks());
+System.out.println("Valid Blocks: " + result.getValidBlocks());
+System.out.println("Revoked Blocks: " + result.getRevokedBlocks());
+System.out.println("Invalid Blocks: " + result.getInvalidBlocks());
 
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-LOG_FILE="/opt/blockchain/logs/streaming_validation_${TIMESTAMP}.log"
-ALERT_FILE="/opt/blockchain/logs/validation_alerts_${TIMESTAMP}.log"
+if (!result.isStructurallyIntact()) {
+    System.err.println("❌ Chain integrity compromised!");
+    System.err.println(result.getDetailedReport());
+}
+```
 
-{
-    echo "=== Starting Streaming Validation at $(date) ==="
-    
-    # Check blockchain size first
-    BLOCK_COUNT=$(java -cp /opt/blockchain/application/private-blockchain.jar \
-                  com.rbatllet.blockchain.tools.BlockchainInfo --count-only)
-    
-    echo "📊 Total blocks in chain: $BLOCK_COUNT"
-    
-    if [ "$BLOCK_COUNT" -gt 100000 ]; then
-        echo "✅ Using streaming validation for large blockchain ($BLOCK_COUNT blocks)"
-        
-        # Run streaming validation with batch processing
-        java -Xmx2g -Xms2g \
-             -XX:+UseG1GC \
-             -XX:MaxGCPauseMillis=200 \
-             -jar /opt/blockchain/application/private-blockchain.jar \
-             validate-chain-streaming \
-             --config /opt/blockchain/config/application.properties \
-             --batch-size 1000 \
-             --alert-file "$ALERT_FILE" \
-             --progress-report-interval 5000
-        
-        VALIDATION_EXIT_CODE=$?
-        
-        if [ $VALIDATION_EXIT_CODE -eq 0 ]; then
-            echo "✅ Streaming validation completed successfully"
-        else
-            echo "❌ Streaming validation failed with exit code $VALIDATION_EXIT_CODE"
-            # Send critical alert
-            send_alert "CRITICAL: Blockchain streaming validation failed" \
-                      "Block count: $BLOCK_COUNT | Check logs: $LOG_FILE"
-        fi
-        
-        # Check if any alerts were generated
-        if [ -f "$ALERT_FILE" ] && [ -s "$ALERT_FILE" ]; then
-            ALERT_COUNT=$(wc -l < "$ALERT_FILE")
-            echo "⚠️  Generated $ALERT_COUNT validation alerts"
-            send_alert "Blockchain validation issues detected" \
-                      "Found $ALERT_COUNT issues | Details: $ALERT_FILE"
-        fi
-    else
-        echo "ℹ️  Chain size ($BLOCK_COUNT blocks) is safe for standard validation"
-        # Fallback to standard validation for smaller chains
-        /opt/blockchain/scripts/validate-chain.zsh
-    fi
-    
-    echo "=== Streaming validation completed at $(date) ==="
-} >> "$LOG_FILE" 2>&1
+**Java Example - Streaming Validation (for large chains):**
+```java
+import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.core.Blockchain.ValidationSummary;
+import com.rbatllet.blockchain.validation.BlockValidationResult;
+import com.rbatllet.blockchain.validation.BlockStatus;
+import java.util.List;
+
+Blockchain blockchain = new Blockchain();
+
+// For chains > 100K blocks - memory efficient
+ValidationSummary summary = blockchain.validateChainStreaming(
+    (List<BlockValidationResult> batchResults) -> {
+        // Process each batch as it's validated
+        batchResults.forEach(result -> {
+            if (result.getStatus() != BlockStatus.VALID) {
+                System.err.println("Issue in block #" + result.getBlock().getBlockNumber());
+            }
+        });
+    },
+    1000  // Batch size
+);
+
+System.out.println("📊 Streaming Validation Complete");
+System.out.println("Total Blocks: " + summary.getTotalBlocks());
+System.out.println("Valid Blocks: " + summary.getValidBlocks());
+System.out.println("Invalid Blocks: " + summary.getInvalidBlocks());
+System.out.println("Revoked Blocks: " + summary.getRevokedBlocks());
 ```
 
 **Key Configuration for Large Blockchains:**
 
-```properties
-# config/application.properties - Production settings for large chains
+Memory thresholds are defined in `MemorySafetyConstants`:
+- `SAFE_EXPORT_LIMIT`: 100,000 blocks
+- `MAX_EXPORT_LIMIT`: 500,000 blocks (hard limit)
+- `MAX_BATCH_SIZE`: 10,000 blocks per batch
+- `LARGE_ROLLBACK_THRESHOLD`: 100,000 blocks
 
-# Memory safety settings
-blockchain.validation.streaming.enabled=true
-blockchain.validation.batch.size=1000
-blockchain.validation.progress.interval=5000
+**JVM Memory Settings:**
+```bash
+# For chains with 1M+ blocks
+java -Xmx4g -Xms4g -XX:+UseG1GC -XX:MaxGCPauseMillis=200 YourApplication
 
-# Memory thresholds (referenced from MemorySafetyConstants)
-blockchain.max.batch.size=10000
-blockchain.safe.export.limit=100000
-blockchain.max.export.limit=500000
-blockchain.large.rollback.threshold=100000
-
-# JVM memory settings (adjust based on blockchain size)
-# For chains with 1M+ blocks:
-#   -Xmx4g -Xms4g (4GB heap)
-# For chains with 10M+ blocks:
-#   -Xmx8g -Xms8g (8GB heap)
-```
-
-**Monitoring Large Chain Validation:**
-
-```zsh
-# Monitor validation progress in real-time
-tail -f /opt/blockchain/logs/streaming_validation_*.log | grep "📦 Batch"
-
-# Expected output:
-# 📦 Batch 1: 1000 blocks processed | 0 invalid, 0 revoked
-# 📦 Batch 2: 1000 blocks processed | 0 invalid, 0 revoked
-# 📦 Batch 100: 1000 blocks processed | 2 invalid, 0 revoked
-# ...
-
-# Alert on validation failures
-watch -n 60 'grep -c "❌" /opt/blockchain/logs/streaming_validation_*.log'
+# For chains with 10M+ blocks
+java -Xmx8g -Xms8g -XX:+UseG1GC -XX:MaxGCPauseMillis=200 YourApplication
 ```
 
 **Performance Comparison:**
@@ -581,28 +461,38 @@ watch -n 60 'grep -c "❌" /opt/blockchain/logs/streaming_validation_*.log'
 **Production Best Practices:**
 
 1. **Automated Size-Based Selection:**
-   ```bash
-   # Automatically choose validation method based on chain size
-   BLOCK_COUNT=$(get_block_count)
-   if [ "$BLOCK_COUNT" -gt 100000 ]; then
-       run_streaming_validation
-   else
-       run_standard_validation
-   fi
+   ```java
+   import com.rbatllet.blockchain.core.Blockchain;
+   import com.rbatllet.blockchain.core.Blockchain.ValidationSummary;
+   import com.rbatllet.blockchain.validation.ChainValidationResult;
+
+   Blockchain blockchain = new Blockchain();
+   long blockCount = blockchain.getBlockCount();
+
+   if (blockCount > 100_000) {
+       // Use streaming validation for large chains
+       ValidationSummary summary = blockchain.validateChainStreaming(
+           batchResults -> {
+               // Process batches
+           },
+           1000
+       );
+       System.out.println("Validation: " + summary.getTotalBlocks() + " blocks");
+   } else {
+       // Use detailed validation for smaller chains
+       ChainValidationResult result = blockchain.validateChainDetailed();
+       if (!result.isValid()) {
+           System.err.println("Validation failed: " + result.getSummary());
+       }
+   }
    ```
 
-2. **Scheduled Validation:**
-   ```bash
-   # crontab entry for daily large chain validation
-   0 2 * * * /opt/blockchain/scripts/validate-large-chain.zsh
-   ```
-
-3. **Alert Thresholds:**
+2. **Alert Thresholds:**
    - **INFO**: Validation started/completed
    - **WARNING**: >1% invalid blocks detected
    - **CRITICAL**: >5% invalid blocks or validation failure
 
-4. **Resource Allocation:**
+3. **Resource Allocation:**
    - Reserve 2-4GB RAM for streaming validation
    - Use dedicated CPU cores during validation
    - Schedule during low-traffic periods
@@ -981,57 +871,83 @@ fi
 
 **Symptoms:**
 - `isStructurallyIntact()` returns `false`
-- `getInvalidBlocks()` returns one or more blocks
+- `getInvalidBlocks()` returns count > 0
 
-**Possible Causes and Solutions:**
+**Possible Causes:**
 
 1. **Corrupted Block Data**
-   ```bash
-   # Check block data integrity
-   java -jar private-blockchain.jar check-block-integrity --block-number <block-number>
-   
-   # If corruption is confirmed, restore from backup
-   java -jar private-blockchain.jar restore-block --from-backup <backup-file> --block-number <block-number>
-   ```
+   - Block data has been modified or corrupted
+   - Check database integrity with SQLite tools
+   - Restore from backup if corruption confirmed
 
 2. **Invalid Previous Hash**
    - The `previousHash` of a block doesn't match the hash of the previous block
    - This usually indicates data corruption or tampering
-   ```bash
-   # Verify hash chain
-   java -jar private-blockchain.jar verify-hash-chain --start <block-number> --end <block-number>
-   ```
+   - Use `getInvalidBlocksList()` to identify affected blocks
 
 3. **Invalid Signatures**
    - Block signatures don't match the block data
    - May indicate key compromise or data corruption
-   ```bash
-   # Verify signatures for a range of blocks
-   java -jar private-blockchain.jar verify-signatures --start <block-number> --end <block-number>
-   ```
+   - Review block validation results from `validateChainDetailed()`
+
+**Java Example - Identifying Invalid Blocks:**
+```java
+import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.validation.ChainValidationResult;
+import com.rbatllet.blockchain.entity.Block;
+import java.util.List;
+
+Blockchain blockchain = new Blockchain();
+ChainValidationResult result = blockchain.validateChainDetailed();
+
+if (!result.isStructurallyIntact()) {
+    System.err.println("❌ Chain integrity compromised");
+
+    // Get list of invalid blocks
+    List<Block> invalidBlocks = result.getInvalidBlocksList();
+    invalidBlocks.forEach(block -> {
+        System.err.println("Invalid Block #" + block.getBlockNumber());
+        System.err.println("  Hash: " + block.getHash());
+        System.err.println("  Previous Hash: " + block.getPreviousHash());
+    });
+
+    // Recovery action: restore from backup
+}
+```
 
 #### Problem: Validation Shows Revoked Keys
 
 **Symptoms:**
 - `isFullyCompliant()` returns `false`
-- `getRevokedBlocks()` returns blocks signed by revoked keys
+- `getRevokedBlocks()` returns count > 0
 
 **Solutions:**
 
-1. **Review Key Revocation**
-   ```bash
-   # List all revoked keys
-   java -jar private-blockchain.jar list-keys --status revoked
-   
-   # Check impact of key revocation
-   java -jar private-blockchain.jar key-impact <public-key>
+1. **Review Key Revocation Impact**
+   ```java
+   import com.rbatllet.blockchain.core.Blockchain;
+   import com.rbatllet.blockchain.validation.ChainValidationResult;
+   import com.rbatllet.blockchain.entity.Block;
+   import java.util.List;
+
+   Blockchain blockchain = new Blockchain();
+   ChainValidationResult result = blockchain.validateChainDetailed();
+
+   if (!result.isFullyCompliant()) {
+       List<Block> revokedBlocks = result.getOrphanedBlocks();
+       System.out.println("⚠️ Blocks signed by revoked keys: " + revokedBlocks.size());
+
+       revokedBlocks.forEach(block -> {
+           System.out.println("Block #" + block.getBlockNumber() +
+                            " signed by revoked key: " + block.getSignerPublicKey());
+       });
+   }
    ```
 
-2. **Re-sign Blocks (if needed)**
-   ```bash
-   # Re-sign blocks with a new key
-   java -jar private-blockchain.jar re-sign-blocks --old-key <old-key> --new-key <new-key> --start <block-number> --end <block-number>
-   ```
+2. **Document Revoked Blocks**
+   - Blocks signed by revoked keys remain in chain (audit trail)
+   - Document the reason for key revocation
+   - Implement business logic to handle revoked blocks appropriately
 
 ### Performance Issues
 
@@ -1043,58 +959,53 @@ fi
 
 **Solutions:**
 
-1. **Optimize Validation**
-   ```bash
-   # Run validation with performance profiling
-   java -jar private-blockchain.jar validate-chain --profile --output validation-report.json
+1. **Use Streaming Validation**
+   ```java
+   import com.rbatllet.blockchain.core.Blockchain;
+   import com.rbatllet.blockchain.core.Blockchain.ValidationSummary;
+
+   // For large chains (>100K blocks), use streaming validation
+   Blockchain blockchain = new Blockchain();
+   ValidationSummary summary = blockchain.validateChainStreaming(
+       batchResults -> { /* Process batches */ },
+       1000  // Batch size
+   );
+   // Much faster and memory-efficient for large chains
    ```
 
 2. **Adjust JVM Settings**
-   ```properties
+   ```bash
    # Increase heap size
-   -Xmx4G -Xms4G
-   
-   # Enable parallel GC
-   -XX:+UseG1GC -XX:MaxGCPauseMillis=200
+   java -Xmx4G -Xms4G -XX:+UseG1GC -XX:MaxGCPauseMillis=200 YourApplication
    ```
 
-3. **Validate in Parallel**
-   ```bash
-   # Validate different ranges in parallel
-   java -jar private-blockchain.jar validate-chain --start 0 --end 9999 &
-   java -jar private-blockchain.jar validate-chain --start 10000 --end 19999 &
-   # ...
+3. **Optimize Database**
+   ```sql
+   -- Run periodically
+   PRAGMA journal_mode=WAL;
+   PRAGMA synchronous=NORMAL;
+   VACUUM;
+   ANALYZE;
    ```
 
 ### Recovery Procedures
 
-#### Block Recovery
+#### Database Recovery
 
 1. **From Backup**
    ```bash
-   # Restore a single block from backup
-   java -jar private-blockchain.jar restore-block --from-backup backup_20230601.bak --block-number 1234
+   # Stop application
+   # Restore database from backup
+   gunzip -c /opt/blockchain/backups/daily/blockchain_backup.db.gz > blockchain.db
+   # Verify integrity
+   sqlite3 blockchain.db "PRAGMA integrity_check;"
+   # Restart application
    ```
 
-2. **From Export**
-   ```bash
-   # Import block from JSON export
-   java -jar private-blockchain.jar import-block --file block_1234.json
-   ```
-
-#### Chain Recovery
-
-1. **Partial Recovery**
-   ```bash
-   # Rebuild chain from last good block
-   java -jar private-blockchain.jar rebuild-chain --from-block <last-good-block>
-   ```
-
-2. **Full Recovery**
-   ```bash
-   # Restore entire chain from backup
-   java -jar private-blockchain.jar restore-chain --backup full_backup_20230601.bak
-   ```
+2. **Database Backup and Restore**
+   - Use SQLite backup commands for database-level backup
+   - Restore from backup file to recover blockchain state
+   - Verify database integrity after restore with `PRAGMA integrity_check`
 
 ### Common Issues and Solutions Issues
 
@@ -1212,7 +1123,7 @@ fi
 
 ---
 
-For comprehensive examples and use cases, see [EXAMPLES.md](getting-started/EXAMPLES.md) and [API_GUIDE.md](reference/API_GUIDE.md).
+For comprehensive examples and use cases, see [EXAMPLES.md](../getting-started/EXAMPLES.md) and [API_GUIDE.md](../reference/API_GUIDE.md).
 
 ### Advanced Security Best Practices
 
@@ -1337,4 +1248,4 @@ For comprehensive examples and use cases, see [EXAMPLES.md](getting-started/EXAM
 - **Cloud-Native Deployment**: Design for cloud-native scalability patterns
 
 For operational procedures and day-to-day management, see the monitoring and maintenance sections above.
-For development and testing information, see [TESTING.md](testing/TESTING.md) and [API_GUIDE.md](reference/API_GUIDE.md).
+For development and testing information, see [TESTING.md](../testing/TESTING.md) and [API_GUIDE.md](../reference/API_GUIDE.md).

@@ -90,7 +90,7 @@ print_separator
 # Display next steps
 print_info "Next steps:"
 echo "  1. Review the implementation: src/main/java/demo/CustomMetadataSearchDemo.java"
-echo "  2. Read the documentation: docs/METADATA_MANAGEMENT_GUIDE.md"
+echo "  2. Read the documentation: docs/data-management/METADATA_MANAGEMENT_GUIDE.md"
 echo "  3. Run tests: mvn test -Dtest=CustomMetadataSearchTest"
 echo "  4. Run 'scripts/run_blockchain_demo.zsh' for basic blockchain operations"
 echo ""

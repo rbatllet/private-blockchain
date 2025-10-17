@@ -62,21 +62,29 @@ if [ $TEST_RESULT -eq 0 ]; then
     # Extract key statistics from the log
     print_info "📊 Test Statistics:"
     
-    # Count blocks created
+    # Count blocks created (look for "Block #X added successfully!")
     BLOCKS_CREATED=$(grep -c "Block #[0-9]* added successfully" logs/simple-thread-safety-test.log 2>/dev/null || echo "0")
+    BLOCKS_CREATED=$(printf "%02d" "$BLOCKS_CREATED" 2>/dev/null || echo "00")
     print_info "• Blocks created: $BLOCKS_CREATED"
-    
-    # Count search operations
-    SEARCHES=$(grep -c "Search completed" logs/simple-thread-safety-test.log 2>/dev/null || echo "0")
-    print_info "• Search operations: $SEARCHES"
-    
-    # Count validations
-    VALIDATIONS=$(grep -c "validation passed" logs/simple-thread-safety-test.log 2>/dev/null || echo "0")
+
+    # Count off-chain operations (look for off-chain in validation results)
+    OFF_CHAIN=$(grep -c "✅ Valid off-chain blocks:" logs/simple-thread-safety-test.log 2>/dev/null || echo "0")
+    if [ "$OFF_CHAIN" -gt 0 ]; then
+        OFF_CHAIN=$(grep "Blocks with off-chain data:" logs/simple-thread-safety-test.log 2>/dev/null | grep -o "[0-9]*/[0-9]*" | cut -d'/' -f1 | tail -1 || echo "0")
+    fi
+    OFF_CHAIN=$(printf "%02d" "$OFF_CHAIN" 2>/dev/null || echo "00")
+    print_info "• Off-chain blocks: $OFF_CHAIN"
+
+    # Count validations performed (look for "Block #X validation passed")
+    VALIDATIONS=$(grep -c "Block #[0-9]* validation passed" logs/simple-thread-safety-test.log 2>/dev/null || echo "0")
+    VALIDATIONS=$(printf "%02d" "$VALIDATIONS" 2>/dev/null || echo "00")
     print_info "• Validations performed: $VALIDATIONS"
     
     # Check for any errors
     ERRORS=$(grep -c "ERROR\|Exception\|Failed" logs/simple-thread-safety-test.log 2>/dev/null || echo "0")
-    if [ "$ERRORS" -gt 0 ]; then
+    # Clean the variable to ensure it's a valid integer
+    ERRORS=$(echo "$ERRORS" | tr -d '\n' | tr -d ' ' | head -1)
+    if [[ "$ERRORS" =~ ^[0-9]+$ ]] && [ "$ERRORS" -gt 0 ]; then
         print_warning "Warnings/Errors found: $ERRORS"
         print_info "Check logs/simple-thread-safety-test.log for details"
     else

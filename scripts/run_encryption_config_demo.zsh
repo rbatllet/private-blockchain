@@ -103,7 +103,7 @@ if [ $DEMO_RESULT -eq 0 ] && [ $TEST_RESULT -eq 0 ]; then
     print_info ""
     print_info "💡 Next steps:"
     print_info "   • Run './run_user_friendly_encryption_demo.zsh' for practical usage"
-    print_info "   • Review docs/ENCRYPTION_GUIDE.md for detailed documentation"
+    print_info "   • Review docs/security/ENCRYPTION_GUIDE.md for detailed documentation"
     print_info "   • Check encryption tests with 'mvn test -Dtest=*Encryption*'"
     print_info "   • Explore advanced features in BlockDataEncryptionService"
 else
@@ -129,7 +129,7 @@ print_separator
 print_info "Next steps:"
 echo "  1. Run 'scripts/run_user_friendly_encryption_demo.zsh' for practical usage"
 echo "  2. Run 'scripts/run_crypto_security_demo.zsh' for security testing"
-echo "  3. Check the 'docs/ENCRYPTION_GUIDE.md' for detailed documentation"
+echo "  3. Check the 'docs/security/ENCRYPTION_GUIDE.md' for detailed documentation"
 echo ""
 
 # Final cleanup

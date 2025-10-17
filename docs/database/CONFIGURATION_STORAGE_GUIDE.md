@@ -374,7 +374,7 @@ The demo shows:
 
 - [DATABASE_AGNOSTIC.md](DATABASE_AGNOSTIC.md) - Database switching guide
 - [API_GUIDE.md](../reference/API_GUIDE.md) - Complete API reference
-- [PRODUCTION_GUIDE.md](../PRODUCTION_GUIDE.md) - Production deployment
+- [PRODUCTION_GUIDE.md](../deployment/PRODUCTION_GUIDE.md) - Production deployment
 
 ## 🎉 Summary
 

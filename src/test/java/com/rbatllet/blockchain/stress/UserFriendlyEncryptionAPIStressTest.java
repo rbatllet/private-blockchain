@@ -11,7 +11,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,7 +37,7 @@ public class UserFriendlyEncryptionAPIStressTest {
     @BeforeEach
     void setUp() {
         blockchain = new Blockchain();
-
+        blockchain.clearAndReinitialize(); // CRITICAL: Clear all data from previous tests
         // Clean up database before each test to ensure isolation
         // BlockRepository now package-private - use clearAndReinitialize();
         blockchain.getAuthorizedKeyDAO().cleanupTestData();

@@ -87,7 +87,7 @@ if [ $DEMO_RESULT -eq 0 ] && [ $TEST_RESULT -eq 0 ]; then
     print_info ""
     print_info "💡 Next steps:"
     print_info "   • Run './run_encryption_config_demo.zsh' for configuration options"
-    print_info "   • Review docs/ENCRYPTION_GUIDE.md for detailed documentation"
+    print_info "   • Review docs/security/ENCRYPTION_GUIDE.md for detailed documentation"
     print_info "   • Explore advanced search with 'scripts/run_advanced_search_demo.zsh'"
     print_info "   • Check all encryption tests with 'mvn test -Dtest=*Encryption*'"
 else
