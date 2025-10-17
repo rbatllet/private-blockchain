@@ -787,9 +787,9 @@ public boolean wasKeyAuthorizedAt(String publicKey, LocalDateTime timestamp)
  * @return ChainValidationResult containing detailed validation results, including:
  *         - isStructurallyIntact(): true if the blockchain structure is valid
  *         - isFullyCompliant(): true if all blocks are properly authorized
- *         - getInvalidBlocks(): count (int) of blocks with structural issues
+ *         - getInvalidBlocks(): count (long) of blocks with structural issues
  *         - getInvalidBlocksList(): list of blocks with structural issues
- *         - getRevokedBlocks(): count (int) of blocks with authorization issues
+ *         - getRevokedBlocks(): count (long) of blocks with authorization issues
  *         - getOrphanedBlocks(): list of blocks with authorization issues
  *         - getValidationReport(): detailed validation report
  * 
@@ -1943,4 +1943,4 @@ public int cleanupOrphanedFiles() {
 ---
 
 For practical usage examples and API reference, see [EXAMPLES.md](../getting-started/EXAMPLES.md) and [API_GUIDE.md](API_GUIDE.md).
-For production deployment information, see [PRODUCTION_GUIDE.md](../PRODUCTION_GUIDE.md).
+For production deployment information, see [PRODUCTION_GUIDE.md](../deployment/PRODUCTION_GUIDE.md).

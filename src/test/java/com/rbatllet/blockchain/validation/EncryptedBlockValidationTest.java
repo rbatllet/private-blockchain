@@ -33,10 +33,9 @@ public class EncryptedBlockValidationTest {
     
     @BeforeEach
     void cleanDatabase() {
-        // Clean database before each test to ensure isolation - using thread-safe DAO method
-        // BlockRepository now package-private - use clearAndReinitialize();
-        blockchain.getAuthorizedKeyDAO().cleanupTestData();
-        
+        // Clean database completely before each test to ensure isolation
+        blockchain.clearAndReinitialize();
+
         // Re-add authorized key after cleanup for test to work
         blockchain.addAuthorizedKey(
             CryptoUtil.publicKeyToString(authorizedKeyPair.getPublic()),

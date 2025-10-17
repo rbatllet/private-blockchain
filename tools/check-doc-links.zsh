@@ -28,48 +28,66 @@ echo ""
 BROKEN_LINKS=0
 TOTAL_LINKS=0
 
-# Find all markdown files and extract links
-while IFS= read -r line; do
-    file=$(echo "$line" | cut -d: -f1)
-    link_match=$(echo "$line" | cut -d: -f2-)
-    
-    # Extract the .md filename from the link
-    md_file=$(echo "$link_match" | grep -o '\[.*\](.*\.md)' | sed 's/.*(\(.*\.md\)).*/\1/' | head -1)
-    
-    if [[ -n "$md_file" ]]; then
-        TOTAL_LINKS=$((TOTAL_LINKS + 1))
-        
-        # Get directory of source file
-        file_dir=$(dirname "$file")
-        
-        # Resolve relative path
-        if [[ "$md_file" == /* ]]; then
-            # Absolute path
-            target="$BASE_DIR$md_file"
-        elif [[ "$md_file" == ../* ]]; then
-            # Relative path with ..
-            target="$file_dir/$md_file"
-        else
-            # Relative path in same or subdirectory
-            target="$file_dir/$md_file"
+# Find all markdown files in docs directory
+find "$BASE_DIR/docs" -name "*.md" -type f 2>/dev/null | while read -r source_file; do
+    # Get directory of source file
+    source_dir="$(dirname "$source_file")"
+
+    # Extract all markdown links from the file (format: [text](link.md))
+    # Use perl for more robust regex matching
+    grep -o '\[[^]]*\]([^)]*\.md[^)]*)' "$source_file" 2>/dev/null | while read -r link_full; do
+        # Extract just the link part (without [text])
+        link=$(echo "$link_full" | sed 's/.*(\([^)]*\)).*/\1/')
+
+        # Skip external links (http/https)
+        if [[ "$link" =~ ^https?:// ]]; then
+            continue
         fi
-        
-        # Normalize path (resolve ..)
-        target=$(cd "$(dirname "$target")" 2>/dev/null && echo "$(pwd)/$(basename "$target")")
-        
-        # Check if file exists
+
+        # Skip anchors-only links (#section)
+        if [[ "$link" =~ ^# ]]; then
+            continue
+        fi
+
+        # Remove anchor from link if present (file.md#section -> file.md)
+        link_file="${link%%#*}"
+
+        TOTAL_LINKS=$((TOTAL_LINKS + 1))
+
+        # Resolve the target path
+        if [[ "$link_file" == /* ]]; then
+            # Absolute path from project root
+            target="$BASE_DIR$link_file"
+        else
+            # Relative path - resolve from source file's directory
+            target="$source_dir/$link_file"
+        fi
+
+        # Normalize the path (resolve .., ., and symlinks)
+        if command -v realpath >/dev/null 2>&1; then
+            # Use realpath if available (GNU coreutils)
+            target=$(realpath -m "$target" 2>/dev/null || echo "$target")
+        else
+            # Fallback: manual normalization for macOS
+            target=$(cd "$(dirname "$target")" 2>/dev/null && echo "$(pwd)/$(basename "$target")" || echo "$target")
+        fi
+
+        # Check if target file exists
         if [[ ! -f "$target" ]]; then
-            # Calculate relative path from BASE_DIR for cleaner output
-            relative_target="${target#$BASE_DIR/}"
-            
-            echo "❌ BROKEN: $file"
-            echo "   Link: $md_file"
-            echo "   Expected: $relative_target"
+            # Calculate relative paths for cleaner output
+            rel_source="${source_file#$BASE_DIR/}"
+            rel_target="${target#$BASE_DIR/}"
+
+            echo "❌ BROKEN LINK:"
+            echo "   Source: $rel_source"
+            echo "   Link: $link_file"
+            echo "   Expected at: $rel_target"
+            echo "   (file does not exist)"
             echo ""
             BROKEN_LINKS=$((BROKEN_LINKS + 1))
         fi
-    fi
-done < <(grep -r "\[.*\](.*\.md)" docs/ --include="*.md" 2>/dev/null | grep -v "http")
+    done
+done
 
 echo ""
 echo "📊 Results:"

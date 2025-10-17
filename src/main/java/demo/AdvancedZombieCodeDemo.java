@@ -6,6 +6,7 @@ import com.rbatllet.blockchain.entity.OffChainData;
 import com.rbatllet.blockchain.recovery.ChainRecoveryManager;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.util.JPAUtil;
 
 import java.security.KeyPair;
 import java.security.PrivateKey;
@@ -622,6 +623,18 @@ public class AdvancedZombieCodeDemo {
                 "financial_report_Q1_2025.txt"
             );
 
+            // Create blockchain block with off-chain reference
+            String blockData = "OFF_CHAIN_REF:" + documentMetadata.getDataHash();
+            String[] documentKeywords = {"financial", "report", "Q1", "2025"};
+            blockchain.addBlockWithOffChainData(
+                blockData,
+                documentMetadata,
+                documentKeywords,
+                documentPassword,
+                userKeys.getPrivate(),
+                userKeys.getPublic()
+            );
+
             System.out.println("✅ Large financial document stored securely");
             System.out.println(
                 "   📄 File size: " +
@@ -645,6 +658,18 @@ public class AdvancedZombieCodeDemo {
                 binaryData,
                 binaryPassword,
                 "application/pdf"
+            );
+
+            // Create blockchain block with off-chain reference
+            String binaryBlockData = "OFF_CHAIN_REF:" + binaryMetadata.getDataHash();
+            String[] binaryKeywords = {"pdf", "binary", "document"};
+            blockchain.addBlockWithOffChainData(
+                binaryBlockData,
+                binaryMetadata,
+                binaryKeywords,
+                binaryPassword,
+                userKeys.getPrivate(),
+                userKeys.getPublic()
             );
 
             System.out.println(
@@ -719,18 +744,9 @@ public class AdvancedZombieCodeDemo {
                 );
             }
 
-            // 17. Storage Analytics Report
+            // 17. Advanced File Management Features (moved before report)
             System.out.println(
-                "\n🔟7️⃣ Generating comprehensive off-chain storage report..."
-            );
-
-            String storageReport = api.generateOffChainStorageReport();
-            System.out.println("\n📊 OFF-CHAIN STORAGE ANALYTICS:");
-            System.out.println(storageReport);
-
-            // 18. Advanced File Management Features
-            System.out.println(
-                "\n🔟8️⃣ Testing advanced file management features..."
+                "\n🔟7️⃣ Testing advanced file management features..."
             );
 
             // Get file sizes
@@ -746,12 +762,23 @@ public class AdvancedZombieCodeDemo {
             );
 
             // Test with custom signer (create another user)
-            KeyPair alternativeUser = api.createUser("FileStorageExpert");
+            System.out.println("\n🔍 Debug: Creating alternative user...");
+            KeyPair alternativeUser = CryptoUtil.generateKeyPair();  // Use raw key pair, not createUser
+            String alternativeUserPublicKey = CryptoUtil.publicKeyToString(alternativeUser.getPublic());
+
+            // CRITICAL: Add alternative user to authorized keys FIRST
+            System.out.println("🔍 Debug: Adding FileStorageExpert to authorized keys...");
+            boolean keyAdded = blockchain.addAuthorizedKey(
+                alternativeUserPublicKey,
+                "FileStorageExpert"
+            );
+            System.out.println("🔍 Debug: FileStorageExpert key added: " + keyAdded);
 
             String alternativeDocument =
                 "This is a document from an alternative user for testing multi-user file storage.";
             String altPassword = api.generateSecurePassword(16);
 
+            System.out.println("🔍 Debug: Storing off-chain file for alternative user...");
             OffChainData altMetadata = api.storeLargeFileWithSigner(
                 alternativeDocument.getBytes(
                     java.nio.charset.StandardCharsets.UTF_8
@@ -761,6 +788,25 @@ public class AdvancedZombieCodeDemo {
                 "FileStorageExpert",
                 "text/plain"
             );
+
+            // Create blockchain block with off-chain reference for alternative user
+            System.out.println("🔍 Debug: Creating blockchain block for alternative user...");
+            String altBlockData = "OFF_CHAIN_REF:" + altMetadata.getDataHash();
+            String[] altKeywords = {"alternative", "user", "test"};
+            Block createdBlock = blockchain.addBlockWithOffChainData(
+                altBlockData,
+                altMetadata,
+                altKeywords,
+                altPassword,
+                alternativeUser.getPrivate(),
+                alternativeUser.getPublic()
+            );
+
+            if (createdBlock != null) {
+                System.out.println("🔍 Debug: Alternative user block created - Block #" + createdBlock.getBlockNumber());
+            } else {
+                System.out.println("❌ Debug: Alternative user block creation FAILED!");
+            }
 
             System.out.println("✅ Multi-user file storage test completed");
             System.out.println("   👤 Alternative signer: FileStorageExpert");
@@ -803,6 +849,51 @@ public class AdvancedZombieCodeDemo {
                     (altContentMatches ? "✅ IDENTICAL" : "❌ CORRUPTED")
                 );
             }
+
+            // 18. Storage Analytics Report (MOVED TO END - after all 3 blocks are created)
+            System.out.println(
+                "\n🔟8️⃣ Generating comprehensive off-chain storage report..."
+            );
+
+            // Give time for all blocks to be fully persisted
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+
+            // Debug: Show total block count
+            System.out.println("   🔍 Debug: Total blocks in chain: " + blockchain.getBlockCount());
+            System.out.println("   🔍 Debug: Analyzing blocks for off-chain data...");
+
+            // Debug: Direct SQL query to see what's in the database
+            System.out.println("   🔍 Debug: Direct SQL query results:");
+            JPAUtil.executeInTransaction(em -> {
+                var query = em.createNativeQuery(
+                    "SELECT block_number, off_chain_data_id FROM blocks ORDER BY block_number"
+                );
+                var results = query.getResultList();
+                for (Object row : results) {
+                    Object[] cols = (Object[]) row;
+                    System.out.println("      Block #" + cols[0] + " - off_chain_data_id: " + cols[1]);
+                }
+                return null;
+            });
+
+            // Debug: Manually check each block for off-chain data
+            System.out.println("   🔍 Debug: Manual block inspection:");
+            blockchain.processChainInBatches(batch -> {
+                for (Block block : batch) {
+                    boolean hasOffChain = block.hasOffChainData();
+                    System.out.println("      Block #" + block.getBlockNumber() +
+                        " - hasOffChainData: " + hasOffChain +
+                        (hasOffChain ? " (ID: " + block.getOffChainData().getId() + ")" : ""));
+                }
+            }, 1000);
+
+            String storageReport = api.generateOffChainStorageReport();
+            System.out.println("\n📊 OFF-CHAIN STORAGE ANALYTICS:");
+            System.out.println(storageReport);
 
             System.out.println(
                 "\n🎉 ZOMBIE CODE RESURRECTION COMPLETED SUCCESSFULLY!"

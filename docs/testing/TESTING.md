@@ -1066,7 +1066,7 @@ public class PerformanceTest {
 }
 ```
 
-For production deployment considerations and technical specifications, see [PRODUCTION_GUIDE.md](../PRODUCTION_GUIDE.md) and [TECHNICAL_DETAILS.md](../reference/TECHNICAL_DETAILS.md).
+For production deployment considerations and technical specifications, see [PRODUCTION_GUIDE.md](../deployment/PRODUCTION_GUIDE.md) and [TECHNICAL_DETAILS.md](../reference/TECHNICAL_DETAILS.md).
 
 ### Advanced Troubleshooting
 
@@ -1447,7 +1447,7 @@ chmod +x health_check.zsh
 For comprehensive API documentation, see [API_GUIDE.md](../reference/API_GUIDE.md).  
 For real-world usage examples, see [EXAMPLES.md](../getting-started/EXAMPLES.md).  
 For system troubleshooting and error resolution, see [TROUBLESHOOTING_GUIDE.md](../getting-started/TROUBLESHOOTING_GUIDE.md).  
-For production deployment, see [PRODUCTION_GUIDE.md](../PRODUCTION_GUIDE.md).
+For production deployment, see [PRODUCTION_GUIDE.md](../deployment/PRODUCTION_GUIDE.md).
 
 ## 🛠️ Script Development and Management
 
@@ -1670,6 +1670,6 @@ public class OffChainStorageTest {
 This ensures tests run one after another, preventing race conditions and configuration contamination.
 
 ### Documentation References
-- [API_GUIDE.md](API_GUIDE.md#test-utilities) - Complete API for test methods
+- [API_GUIDE.md](../reference/API_GUIDE.md#test-utilities) - Complete API for test methods
 - [THREAD_SAFETY_TESTS.md](THREAD_SAFETY_TESTS.md) - Concurrency testing patterns
 - [SHARED_STATE_TESTING_PATTERNS.md](SHARED_STATE_TESTING_PATTERNS.md) - Shared state management

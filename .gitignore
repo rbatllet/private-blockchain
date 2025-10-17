@@ -84,7 +84,12 @@ replay_pid*
 
 # Other files
 CLAUDE.md
-*.json
+*.dat
+thread-test-*.json
 off-chain-data/
 private-keys/
 emergency-backups/
+test-config-export.properties
+test-config.env
+test-config.json
+test-config.properties

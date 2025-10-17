@@ -76,7 +76,7 @@ fi
 print_info "Next steps:"
 echo "  1. Run 'scripts/run_granular_term_visibility_demo.zsh' for granular control demo"
 echo "  2. Run 'scripts/run_user_friendly_encryption_demo.zsh' for encryption demo"
-echo "  3. Check docs/SEARCH_FRAMEWORK_GUIDE.md for detailed documentation"
+echo "  3. Check docs/search/SEARCH_FRAMEWORK_GUIDE.md for detailed documentation"
 echo "  4. Run tests with 'mvn test -Dtest=AdvancedSearch*'"
 echo ""
 

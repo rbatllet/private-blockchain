@@ -3361,7 +3361,7 @@ public class UserFriendlyEncryptionAPI {
             AtomicInteger blocksWithOffChain = new AtomicInteger(0);
             AtomicLong totalOffChainSize = new AtomicLong(0);
             AtomicInteger missingFiles = new AtomicInteger(0);
-            AtomicInteger corruptFiles = new AtomicInteger(0);
+            AtomicInteger corruptedFiles = new AtomicInteger(0);
 
             java.util.Map<String, Integer> contentTypes = Collections.synchronizedMap(new java.util.HashMap<>());
             java.util.Map<String, Long> sizeByType = Collections.synchronizedMap(new java.util.HashMap<>());
@@ -3393,19 +3393,12 @@ public class UserFriendlyEncryptionAPI {
                             sizeByType.getOrDefault(contentType, 0L) + fileSize
                         );
 
-                        // Check file status
+                        // Check file status and structure
                         if (!offChainStorage.fileExists(offChainData)) {
                             missingFiles.incrementAndGet();
-                        } else {
-                            // Quick integrity check (we don't have password here, so basic check only)
-                            try {
-                                long actualSize = offChainStorage.getFileSize(offChainData);
-                                if (actualSize != fileSize) {
-                                    corruptFiles.incrementAndGet();
-                                }
-                            } catch (Exception e) {
-                                corruptFiles.incrementAndGet();
-                            }
+                        } else if (!offChainStorage.verifyFileStructure(offChainData)) {
+                            // File exists but structure is invalid or corrupted
+                            corruptedFiles.incrementAndGet();
                         }
                     }
                 }
@@ -3424,8 +3417,8 @@ public class UserFriendlyEncryptionAPI {
                 .append(missingFiles.get())
                 .append("\n");
             report
-                .append("   ⚠️ Potentially Corrupt Files: ")
-                .append(corruptFiles.get())
+                .append("   ⚠️ Corrupted Files: ")
+                .append(corruptedFiles.get())
                 .append("\n\n");
 
             // Content type breakdown
@@ -3472,17 +3465,15 @@ public class UserFriendlyEncryptionAPI {
 
             // Health assessment
             report.append("\n🏥 Storage Health: ");
-            if (missingFiles.get() == 0 && corruptFiles.get() == 0) {
-                report.append("✅ EXCELLENT - All files intact\n");
+            if (missingFiles.get() == 0 && corruptedFiles.get() == 0) {
+                report.append("✅ EXCELLENT - All files present with valid structure\n");
             } else if (missingFiles.get() == 0) {
-                report.append(
-                    "🟡 GOOD - No missing files, some integrity issues\n"
-                );
+                report.append("🟡 WARNING - All files present but some have structural issues\n");
             } else {
-                report.append(
-                    "🔴 CRITICAL - Missing or corrupt files detected\n"
-                );
+                report.append("🔴 CRITICAL - Missing or corrupted files detected\n");
             }
+            report.append("   ℹ️  Structure validation: file existence, size, format, IV validation\n");
+            report.append("   ℹ️  Cryptographic integrity verification requires passwords (use verifyIntegrity())\n");
 
             // Recommendations
             report.append("\n💡 Recommendations:\n");
@@ -3491,9 +3482,12 @@ public class UserFriendlyEncryptionAPI {
                     "   • Restore missing files from backup immediately\n"
                 );
             }
-            if (corruptFiles.get() > 0) {
+            if (corruptedFiles.get() > 0) {
                 report.append(
-                    "   • Verify file integrity with proper passwords\n"
+                    "   • Investigate corrupted files - structural issues detected (invalid size, format, or IV)\n"
+                );
+                report.append(
+                    "   • Restore from backup or use verifyIntegrity() with password for detailed diagnosis\n"
                 );
             }
             if (totalOffChainSize.get() > 1024 * 1024 * 1024) {
@@ -3502,7 +3496,7 @@ public class UserFriendlyEncryptionAPI {
                     "   • Consider implementing file archival strategy\n"
                 );
             }
-            if (missingFiles.get() == 0 && corruptFiles.get() == 0) {
+            if (missingFiles.get() == 0 && corruptedFiles.get() == 0) {
                 report.append(
                     "   • Continue regular backup and monitoring procedures\n"
                 );

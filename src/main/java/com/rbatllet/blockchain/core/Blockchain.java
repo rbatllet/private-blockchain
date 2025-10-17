@@ -994,6 +994,9 @@ public class Blockchain {
             );
         }
 
+        logger.debug("🔷 Starting addBlockWithOffChainData - Off-chain data hash: {}",
+            offChainData.getDataHash().substring(0, 8));
+
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.writeLock();
         // Step 1: Create and save block inside writeLock
         Block savedBlock = null;
@@ -1086,7 +1089,7 @@ public class Blockchain {
                     em.flush();
 
                     logger.info(
-                        "🔗 Off-chain linked Block #{} added successfully! Off-chain data ID: {}",
+                        "🔗 Off-chain linked Block #{} persisted (inside transaction). Off-chain data ID: {}",
                         newBlock.getBlockNumber(),
                         offChainData.getId()
                     );
@@ -1096,6 +1099,12 @@ public class Blockchain {
                     return null;
                 }
             });
+
+            if (savedBlock != null) {
+                logger.debug("✅ Transaction committed for Block #{}", savedBlock.getBlockNumber());
+            } else {
+                logger.warn("⚠️ Transaction completed but savedBlock is null");
+            }
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.unlockWrite(stamp);
         }
@@ -2310,9 +2319,9 @@ public class Blockchain {
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
         try {
             long totalBlocks = blockRepository.getBlockCount();
-            final int[] validCount = {0};
-            final int[] invalidCount = {0};
-            final int[] revokedCount = {0};
+            final long[] validCount = {0};
+            final long[] invalidCount = {0};
+            final long[] revokedCount = {0};
 
             if (totalBlocks == 0) {
                 logger.error("❌ No blocks found in chain");
@@ -2388,11 +2397,11 @@ public class Blockchain {
      */
     public static class ValidationSummary {
         private final long totalBlocks;
-        private final int validBlocks;
-        private final int invalidBlocks;
-        private final int revokedBlocks;
+        private final long validBlocks;
+        private final long invalidBlocks;
+        private final long revokedBlocks;
 
-        public ValidationSummary(long totalBlocks, int validBlocks, int invalidBlocks, int revokedBlocks) {
+        public ValidationSummary(long totalBlocks, long validBlocks, long invalidBlocks, long revokedBlocks) {
             this.totalBlocks = totalBlocks;
             this.validBlocks = validBlocks;
             this.invalidBlocks = invalidBlocks;
@@ -2400,9 +2409,9 @@ public class Blockchain {
         }
 
         public long getTotalBlocks() { return totalBlocks; }
-        public int getValidBlocks() { return validBlocks; }
-        public int getInvalidBlocks() { return invalidBlocks; }
-        public int getRevokedBlocks() { return revokedBlocks; }
+        public long getValidBlocks() { return validBlocks; }
+        public long getInvalidBlocks() { return invalidBlocks; }
+        public long getRevokedBlocks() { return revokedBlocks; }
         public boolean isValid() { return invalidBlocks == 0; }
 
         @Override
@@ -4481,6 +4490,24 @@ public class Blockchain {
 
     public int getMaxBlockChars() {
         return currentMaxBlockChars;
+    }
+
+    /**
+     * Force a database refresh by flushing pending changes and clearing cache
+     * This ensures all entities are synchronized with the database
+     * Useful before generating reports or analytics that need up-to-date data
+     */
+    public void forceRefresh() {
+        try {
+            JPAUtil.executeInTransaction(em -> {
+                em.flush();  // Write all pending changes to database
+                em.clear();  // Clear the persistence context cache
+                logger.debug("🔄 Database cache refreshed successfully");
+                return null;
+            });
+        } catch (Exception e) {
+            logger.warn("⚠️ Could not refresh database cache: {}", e.getMessage());
+        }
     }
 
     /**

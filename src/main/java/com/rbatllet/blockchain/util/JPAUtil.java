@@ -46,15 +46,15 @@ public class JPAUtil {
 
     /**
      * Initialize with default configuration
-     * Checks environment variables first with robust validation, falls back to SQLite if not properly configured
+     * Checks environment variables first with robust validation, falls back to H2 persistent storage if not properly configured
      */
     public static void initializeDefault() {
         if (isEnvironmentConfigurationComplete()) {
             logger.info("Environment variables detected for database configuration");
             initialize(DatabaseConfig.createProductionConfigFromEnv());
         } else {
-            logger.debug("No complete environment configuration found, using default SQLite");
-            initialize(DatabaseConfig.createSQLiteConfig());
+            logger.debug("No complete environment configuration found, using default H2 persistent storage");
+            initialize(DatabaseConfig.createH2Config());
         }
     }
 
@@ -295,22 +295,27 @@ public class JPAUtil {
      */
     public static <T> T executeInTransaction(TransactionCallback<T> callback) {
         boolean shouldManageTransaction = !hasActiveTransaction();
-        
+
         try {
             if (shouldManageTransaction) {
+                logger.debug("🔄 Beginning transaction");
                 beginTransaction();
             }
-            
+
             T result = callback.execute(getEntityManager());
-            
+
             if (shouldManageTransaction) {
+                logger.debug("✅ Committing transaction");
                 commitTransaction();
+                logger.debug("✅ Transaction committed successfully");
             }
-            
+
             return result;
         } catch (Exception e) {
             if (shouldManageTransaction) {
+                logger.warn("❌ Rolling back transaction due to exception: {}", e.getMessage());
                 rollbackTransaction();
+                logger.debug("❌ Transaction rolled back");
             }
             throw new RuntimeException("Transaction failed", e);
         } finally {

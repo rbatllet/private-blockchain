@@ -1482,7 +1482,7 @@ This project includes 65+ comprehensive documentation files organized into **11 
 
 #### Database Maintenance
 1. **[Maintenance Guide](docs/maintenance/DATABASE_MAINTENANCE_GUIDE.md)** - Automated VACUUM, size monitoring, file cleanup
-2. **[Production Deployment](docs/PRODUCTION_GUIDE.md)** - Production best practices
+2. **[Production Deployment](docs/deployment/PRODUCTION_GUIDE.md)** - Production best practices
 
 #### Technical Audits & Reports
 1. **[StampedLock Audit](docs/reports/STAMPEDLOCK_AUDIT_REPORT.md)** - Lock migration audit (✅ Approved)
@@ -1516,7 +1516,7 @@ This project includes 65+ comprehensive documentation files organized into **11 
 | **Test components with shared static state** | [Shared State Testing](docs/testing/SHARED_STATE_TESTING_PATTERNS.md) |
 | **Implement thread-safe multi-instance operations** | [Atomic Protection](docs/testing/ATOMIC_PROTECTION_MULTI_INSTANCE_GUIDE.md) |
 | Understand technical implementation | [Technical Details](docs/reference/TECHNICAL_DETAILS.md) |
-| Deploy to production | [Production Guide](docs/PRODUCTION_GUIDE.md) |
+| Deploy to production | [Production Guide](docs/deployment/PRODUCTION_GUIDE.md) |
 | Set up encryption and security | [Encryption Guide](docs/security/ENCRYPTION_GUIDE.md) |
 | **Switch databases (SQLite/PostgreSQL/MySQL/H2)** | [Database-Agnostic](docs/database/DATABASE_AGNOSTIC.md) |
 | Manage configuration storage | [Configuration Storage](docs/database/CONFIGURATION_STORAGE_GUIDE.md) |

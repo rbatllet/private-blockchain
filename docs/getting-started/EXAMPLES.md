@@ -1788,7 +1788,7 @@ public class BlockchainCLI {
 ```
 
 For detailed API documentation, see [API_GUIDE.md](../reference/API_GUIDE.md).  
-For production deployment guidance, see [PRODUCTION_GUIDE.md](../PRODUCTION_GUIDE.md).  
+For production deployment guidance, see [PRODUCTION_GUIDE.md](../deployment/PRODUCTION_GUIDE.md).  
 For testing and troubleshooting, see [TESTING.md](../testing/TESTING.md).
         
         // Wait for all read operations to complete
@@ -2395,5 +2395,5 @@ For search performance benchmarks, see [SEARCH_COMPARISON.md](../search/SEARCH_C
 
 ### 🛠️ Operations & Troubleshooting
 For troubleshooting common issues and diagnostics, see [TROUBLESHOOTING_GUIDE.md](TROUBLESHOOTING_GUIDE.md).  
-For production deployment guidance, see [PRODUCTION_GUIDE.md](../PRODUCTION_GUIDE.md).  
+For production deployment guidance, see [PRODUCTION_GUIDE.md](../deployment/PRODUCTION_GUIDE.md).  
 For technical implementation details, see [TECHNICAL_DETAILS.md](../reference/TECHNICAL_DETAILS.md).

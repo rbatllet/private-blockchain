@@ -13,10 +13,10 @@ import java.util.stream.Collectors;
 public class ChainValidationResult {
     private final boolean structuralIntegrity;
     private final boolean authorizationCompliance;
-    private final int totalBlocks;
-    private final int validBlocks;
-    private final int revokedBlocks;
-    private final int invalidBlocks;
+    private final long totalBlocks;
+    private final long validBlocks;
+    private final long revokedBlocks;
+    private final long invalidBlocks;
     private final List<BlockValidationResult> blockResults;
     private final String summary;
     
@@ -31,9 +31,9 @@ public class ChainValidationResult {
                 Collectors.counting()
             ));
         
-        this.validBlocks = statusCounts.getOrDefault(BlockStatus.VALID, 0L).intValue();
-        this.revokedBlocks = statusCounts.getOrDefault(BlockStatus.REVOKED, 0L).intValue();
-        this.invalidBlocks = statusCounts.getOrDefault(BlockStatus.INVALID, 0L).intValue();
+        this.validBlocks = statusCounts.getOrDefault(BlockStatus.VALID, 0L).longValue();
+        this.revokedBlocks = statusCounts.getOrDefault(BlockStatus.REVOKED, 0L).longValue();
+        this.invalidBlocks = statusCounts.getOrDefault(BlockStatus.INVALID, 0L).longValue();
         
         // Structural integrity: all blocks are structurally/cryptographically valid
         this.structuralIntegrity = blockResults.stream()
@@ -50,10 +50,10 @@ public class ChainValidationResult {
     // Getters
     public boolean isStructurallyIntact() { return structuralIntegrity; }
     public boolean isFullyCompliant() { return authorizationCompliance; }
-    public int getTotalBlocks() { return totalBlocks; }
-    public int getValidBlocks() { return validBlocks; }
-    public int getRevokedBlocks() { return revokedBlocks; }
-    public int getInvalidBlocks() { return invalidBlocks; }
+    public long getTotalBlocks() { return totalBlocks; }
+    public long getValidBlocks() { return validBlocks; }
+    public long getRevokedBlocks() { return revokedBlocks; }
+    public long getInvalidBlocks() { return invalidBlocks; }
     public List<BlockValidationResult> getBlockResults() { return Collections.unmodifiableList(blockResults); }
     public String getSummary() { return summary; }
     

@@ -175,14 +175,14 @@ public class ValidationReport {
         private long invalidBlocks = 0;
         private long offChainFiles = 0;
         private long corruptFiles = 0;
-        private int totalChecks = 0;
-        private int passedChecks = 0;
-        private int failedChecks = 0;
+        private long totalChecks = 0;
+        private long passedChecks = 0;
+        private long failedChecks = 0;
         private long validationDuration = 0;
         
         public ValidationMetrics() {}
         
-        public ValidationMetrics(int totalChecks, int passedChecks, int failedChecks, long validationDuration) {
+        public ValidationMetrics(long totalChecks, long passedChecks, long failedChecks, long validationDuration) {
             this.totalChecks = totalChecks;
             this.passedChecks = passedChecks;
             this.failedChecks = failedChecks;
@@ -205,14 +205,14 @@ public class ValidationReport {
         public long getCorruptFiles() { return corruptFiles; }
         public void setCorruptFiles(long corruptFiles) { this.corruptFiles = corruptFiles; }
         
-        public int getTotalChecks() { return totalChecks; }
-        public void setTotalChecks(int totalChecks) { this.totalChecks = totalChecks; }
+        public long getTotalChecks() { return totalChecks; }
+        public void setTotalChecks(long totalChecks) { this.totalChecks = totalChecks; }
         
-        public int getPassedChecks() { return passedChecks; }
-        public void setPassedChecks(int passedChecks) { this.passedChecks = passedChecks; }
+        public long getPassedChecks() { return passedChecks; }
+        public void setPassedChecks(long passedChecks) { this.passedChecks = passedChecks; }
         
-        public int getFailedChecks() { return failedChecks; }
-        public void setFailedChecks(int failedChecks) { this.failedChecks = failedChecks; }
+        public long getFailedChecks() { return failedChecks; }
+        public void setFailedChecks(long failedChecks) { this.failedChecks = failedChecks; }
         
         public long getValidationDuration() { return validationDuration; }
         public void setValidationDuration(long validationDuration) { this.validationDuration = validationDuration; }

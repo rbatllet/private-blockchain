@@ -2,28 +2,56 @@
 
 ## 📊 Overview
 
-The PrivateBlockchain project now supports multiple database backends through a unified configuration system. You can easily switch between SQLite (development), H2 (testing), PostgreSQL (production), and MySQL without changing your code.
+The PrivateBlockchain project supports multiple database backends through a unified configuration system. You can easily switch between H2 (default), SQLite, PostgreSQL, and MySQL without changing your code.
+
+**Important Change (v1.0.5+)**: H2 with persistent file storage is now the default database, replacing SQLite. This provides better concurrency and performance while maintaining data persistence.
 
 ## 🎯 Supported Databases
 
-| Database | Use Case | Pool Size | Concurrent Writers |
-|----------|----------|-----------|-------------------|
-| **SQLite** | Development, Demos | 2-5 | 1 (single writer) |
-| **PostgreSQL** | Production, High Concurrency | 10-60 | Multiple |
-| **MySQL** | Production, Alternative | 10-50 | Multiple |
-| **H2** | Testing, CI/CD | 5-10 | Multiple (in-memory) |
+| Database | Use Case | Pool Size | Concurrent Writers | Persistence |
+|----------|----------|-----------|-------------------|-------------|
+| **H2** (file) | **Default**, Development, Demos | 5-10 | Multiple | ✅ Persistent file (`./blockchain.mv.db`) |
+| **H2** (memory) | Unit Testing, CI/CD | 5-10 | Multiple | ❌ In-memory (auto-cleanup) |
+| **SQLite** | Legacy, Single-user apps | 2-5 | 1 (single writer) | ✅ Persistent file (`blockchain.db`) |
+| **PostgreSQL** | Production, High Concurrency | 10-60 | Multiple | ✅ Server-based |
+| **MySQL** | Production, Alternative | 10-50 | Multiple | ✅ Server-based |
 
 ## 🚀 Quick Start
 
-### Option 1: Default SQLite (No Configuration Needed)
+### Option 1: Default H2 Persistent (No Configuration Needed)
 
 ```java
-// SQLite is the default - no configuration required
+// H2 persistent file storage is the default - no configuration required
 Blockchain blockchain = new Blockchain();
-// Works out of the box!
+// Works out of the box! Data saved to ./blockchain.mv.db
 ```
 
-### Option 2: Switch to PostgreSQL for Production
+### Option 2: Use H2 In-Memory for Tests
+
+```java
+import com.rbatllet.blockchain.config.DatabaseConfig;
+import com.rbatllet.blockchain.util.JPAUtil;
+
+// Switch to H2 in-memory for isolated, fast tests
+DatabaseConfig h2TestConfig = DatabaseConfig.createH2TestConfig();
+JPAUtil.initialize(h2TestConfig);
+
+// Fast, isolated tests with automatic cleanup (data NOT persisted)
+Blockchain blockchain = new Blockchain();
+```
+
+### Option 3: Use SQLite for Legacy Compatibility
+
+```java
+// Switch to SQLite (legacy default before v1.0.5)
+DatabaseConfig sqliteConfig = DatabaseConfig.createSQLiteConfig();
+JPAUtil.initialize(sqliteConfig);
+
+// Works with single writer, data saved to blockchain.db
+Blockchain blockchain = new Blockchain();
+```
+
+### Option 4: Switch to PostgreSQL for Production
 
 ```java
 import com.rbatllet.blockchain.config.DatabaseConfig;
@@ -43,18 +71,7 @@ JPAUtil.initialize(pgConfig);
 Blockchain blockchain = new Blockchain();
 ```
 
-### Option 3: H2 for Fast Testing
-
-```java
-// Switch to H2 in-memory for testing
-DatabaseConfig h2Config = DatabaseConfig.createH2TestConfig();
-JPAUtil.initialize(h2Config);
-
-// Fast, isolated tests with automatic cleanup
-Blockchain blockchain = new Blockchain();
-```
-
-### Option 4: Environment-Based Configuration
+### Option 5: Environment-Based Configuration
 
 ```bash
 # Set environment variables
@@ -166,6 +183,91 @@ System.out.println(config.getSummary());
 //    Statistics: ❌ Disabled
 ```
 
+### Detecting Database Type at Runtime
+
+You can programmatically detect which database is being used and whether it's in-memory or persistent:
+
+```java
+DatabaseConfig config = JPAUtil.getCurrentConfig();
+
+if (config != null) {
+    // Get database type
+    DatabaseConfig.DatabaseType type = config.getDatabaseType();
+    String url = config.getDatabaseUrl();
+
+    // Detect H2 mode (memory vs file)
+    boolean isH2InMemory = type == DatabaseConfig.DatabaseType.H2 && url.contains(":mem:");
+    boolean isH2Persistent = type == DatabaseConfig.DatabaseType.H2 && url.contains(":file:");
+
+    // Branch logic based on database
+    switch (type) {
+        case H2:
+            if (isH2InMemory) {
+                System.out.println("🧪 Running with H2 in-memory (tests)");
+                // Fast, isolated tests - data not persisted
+            } else {
+                System.out.println("💾 Running with H2 persistent file (default/demos)");
+                // Data persisted to ./blockchain.mv.db
+            }
+            break;
+
+        case SQLITE:
+            System.out.println("📁 Running with SQLite (legacy)");
+            // Single writer, data persisted to blockchain.db
+            break;
+
+        case POSTGRESQL:
+            System.out.println("🐘 Running with PostgreSQL (production)");
+            // Multiple writers, server-based
+            break;
+
+        case MYSQL:
+            System.out.println("🐬 Running with MySQL (production)");
+            // Multiple writers, server-based
+            break;
+    }
+
+    // You can also check specific URL patterns
+    if (url.contains(":mem:")) {
+        System.out.println("⚠️  In-memory database - data will be lost on shutdown");
+    } else if (url.contains(":file:") || url.startsWith("jdbc:sqlite:")) {
+        System.out.println("✅ File-based database - data persisted");
+    } else {
+        System.out.println("🌐 Server-based database");
+    }
+}
+```
+
+### Factory Methods Reference
+
+All available database configuration methods:
+
+```java
+// H2 Configurations
+DatabaseConfig.createH2Config()                    // DEFAULT: H2 persistent file (./blockchain.mv.db)
+DatabaseConfig.createH2TestConfig()                // H2 in-memory (tests, auto-cleanup)
+DatabaseConfig.createH2FileConfig("/custom/path")  // H2 with custom file path
+
+// SQLite Configuration
+DatabaseConfig.createSQLiteConfig()                // SQLite persistent file (blockchain.db)
+DatabaseConfig.createDevelopmentConfig()           // SQLite with verbose logging
+
+// PostgreSQL Configurations
+DatabaseConfig.createPostgreSQLConfig(host, db, user, pass)
+DatabaseConfig.createPostgreSQLConfig(host, port, db, user, pass)
+
+// MySQL Configurations
+DatabaseConfig.createMySQLConfig(host, db, user, pass)
+DatabaseConfig.createMySQLConfig(host, port, db, user, pass)
+
+// Environment-based
+DatabaseConfig.createProductionConfigFromEnv()     // Load from env vars
+
+// Custom JDBC URL
+DatabaseConfig.forDatabaseUrl(type, jdbcUrl)
+DatabaseConfig.forDatabaseUrl(type, jdbcUrl, user, pass)
+```
+
 ## 🔧 Database Setup Instructions
 
 ### PostgreSQL Setup
@@ -200,24 +302,55 @@ EOF
 ### H2 Setup
 
 ```java
-// No setup needed - H2 is embedded and in-memory
-DatabaseConfig h2Config = DatabaseConfig.createH2TestConfig();
-JPAUtil.initialize(h2Config);
-// Ready to use!
+// No setup needed - H2 is embedded and ready to use!
+
+// Option 1: Default H2 persistent (no code needed)
+Blockchain blockchain = new Blockchain();
+// Data saved to ./blockchain.mv.db
+
+// Option 2: H2 in-memory for tests
+DatabaseConfig h2TestConfig = DatabaseConfig.createH2TestConfig();
+JPAUtil.initialize(h2TestConfig);
+// Data NOT persisted, auto-cleanup on shutdown
+
+// Option 3: H2 with custom file path
+DatabaseConfig h2CustomConfig = DatabaseConfig.createH2FileConfig("/custom/path/mydb");
+JPAUtil.initialize(h2CustomConfig);
+// Data saved to /custom/path/mydb.mv.db
 ```
 
 ## ⚠️ Important Notes
 
-### SQLite Limitations
+### H2 Advantages (Default since v1.0.5)
 
-- ✅ **Perfect for**: Development, demos, single-user applications
+- ✅ **Multiple concurrent writers** (better than SQLite)
+- ✅ **Embedded** - no separate server needed
+- ✅ **Fast** - excellent performance for development and demos
+- ✅ **Two modes**: Persistent file (default) and in-memory (tests)
+- ✅ **PostgreSQL compatibility mode** - easy migration to production
+- ✅ **ACID transactions**
+
+### H2 vs SQLite Comparison
+
+| Feature | H2 (Default) | SQLite |
+|---------|--------------|--------|
+| **Concurrent Writers** | ✅ Multiple | ⚠️  Single |
+| **Connection Pool** | 5-10 | 2-5 (max) |
+| **Performance** | Fast | Fast |
+| **Memory Mode** | ✅ Yes | ❌ No |
+| **PostgreSQL Mode** | ✅ Yes | ❌ No |
+| **Use Case** | Development, Demos, Tests | Legacy, Single-user |
+
+### SQLite Limitations (Legacy)
+
+- ✅ **Perfect for**: Single-user applications, legacy compatibility
 - ⚠️ **Limitations**:
   - Single writer at a time (WAL mode helps with concurrent reads)
   - Connection pool: max 5 connections (2-5 recommended)
   - No true clustering or sharding support
-- 💡 **For production with high write concurrency**: Use PostgreSQL
+- 💡 **Recommendation**: Use H2 (default) for better concurrency
 
-### PostgreSQL Advantages
+### PostgreSQL Advantages (Production)
 
 - ✅ **Multiple concurrent writers** (60+ connections)
 - ✅ **True ACID transactions**
@@ -227,10 +360,20 @@ JPAUtil.initialize(h2Config);
 
 ### Migration Path
 
-1. **Development**: Start with SQLite (default)
-2. **Testing**: Use H2 for fast, isolated tests
-3. **Staging**: Test with PostgreSQL
+1. **Development**: Start with H2 persistent (default, no config needed)
+2. **Testing**: Use H2 in-memory (`createH2TestConfig()`) for fast, isolated tests
+3. **Staging**: Test with PostgreSQL (`createPostgreSQLConfig()`)
 4. **Production**: Deploy with PostgreSQL
+
+### Backwards Compatibility
+
+If you need to maintain compatibility with the old SQLite default (pre-v1.0.5):
+
+```java
+// Explicitly use SQLite (legacy behavior)
+DatabaseConfig sqliteConfig = DatabaseConfig.createSQLiteConfig();
+JPAUtil.initialize(sqliteConfig);
+```
 
 ## 🧪 Testing with Different Databases
 
@@ -356,7 +499,7 @@ The demo shows:
 
 - [API Guide](../reference/API_GUIDE.md) - Complete API reference
 - [CONFIGURATION_STORAGE_GUIDE.md](CONFIGURATION_STORAGE_GUIDE.md) - JPAConfigurationStorage guide
-- [PRODUCTION_GUIDE.md](../PRODUCTION_GUIDE.md) - Production deployment guide
+- [PRODUCTION_GUIDE.md](../deployment/PRODUCTION_GUIDE.md) - Production deployment guide
 - [TESTING.md](../testing/TESTING.md) - Testing strategies
 
 ## ❓ Troubleshooting
@@ -401,11 +544,19 @@ JPAUtil.initialize(prodConfig);
 
 ## 🎉 Summary
 
+- ✅ **H2 is now the default** (v1.0.5+) - better concurrency than SQLite
 - ✅ **Zero code changes** required to switch databases
 - ✅ **Type-safe configuration** with enums and builder pattern
 - ✅ **Production-ready** with PostgreSQL support
 - ✅ **Fast testing** with H2 in-memory database
 - ✅ **Environment-based** configuration for different deployments
 - ✅ **Backwards compatible** with existing SQLite code
+- ✅ **Runtime detection** of database type and persistence mode
+
+**New in v1.0.5**:
+- 🆕 H2 persistent file storage is now the default (replaces SQLite)
+- 🆕 Better concurrent write support out of the box
+- 🆕 `DatabaseConfig.createH2Config()` - default H2 persistent configuration
+- 🆕 Enhanced database detection API for runtime introspection
 
 **Switch databases with confidence!** 🚀
