@@ -2,14 +2,15 @@
 
 Database-agnostic architecture and configuration guides.
 
-## 📚 Documents (4 files)
+## 📚 Documents (5 files)
 
 | Document | Description |
 |----------|-------------|
+| **[DATABASE_MIGRATION_STRATEGY.md](DATABASE_MIGRATION_STRATEGY.md)** | 🆕 Comprehensive guide on hbm2ddl.auto vs DatabaseMigrator (when to use each) |
 | **[DATABASE_AGNOSTIC.md](DATABASE_AGNOSTIC.md)** | Switch between SQLite/PostgreSQL/MySQL/H2 with zero code changes |
 | **[DATABASE_FIELD_LIMITS.md](DATABASE_FIELD_LIMITS.md)** | Database field size limits and overflow protection |
 | **[CONFIGURATION_STORAGE_GUIDE.md](CONFIGURATION_STORAGE_GUIDE.md)** | JPAConfigurationStorage comprehensive guide |
-| **[DATABASE_CONFIGURATION_UTILITIES.md](DATABASE_CONFIGURATION_UTILITIES.md)** | 🆕 Configuration utility classes API reference (9 classes) |
+| **[DATABASE_CONFIGURATION_UTILITIES.md](DATABASE_CONFIGURATION_UTILITIES.md)** | Configuration utility classes API reference (9 classes) |
 
 ## 🎯 Supported Databases
 
@@ -28,4 +29,4 @@ Database-agnostic architecture and configuration guides.
 - Backwards compatible - SQLite still supported
 
 ---
-**Directory**: `docs/database/` | **Files**: 4 | **Updated**: 2025-10-16
+**Directory**: `docs/database/` | **Files**: 5 | **Updated**: 2025-10-23
