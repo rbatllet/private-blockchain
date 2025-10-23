@@ -79,34 +79,41 @@ jobs:
     - name: Generate changelog
       id: changelog
       run: |
+        set -e
         CURRENT_TAG="${{ steps.get_version.outputs.VERSION }}"
         PREVIOUS_TAG="${{ steps.previous_tag.outputs.PREVIOUS_TAG }}"
-        
-        echo "Generating changelog from $PREVIOUS_TAG to $CURRENT_TAG"
-        
+
+        echo "Generating changelog from '$PREVIOUS_TAG' to '$CURRENT_TAG'"
+
+        # Initialize changelog
+        CHANGELOG=""
+
         # Generate changelog with proper formatting
-        if git rev-parse --verify "$PREVIOUS_TAG" >/dev/null 2>&1; then
+        if [ -n "$PREVIOUS_TAG" ] && git rev-parse --verify "$PREVIOUS_TAG" >/dev/null 2>&1; then
           # If previous tag exists, get commits between tags
-          CHANGELOG=$(git log --pretty=format:"- %s" "$PREVIOUS_TAG..$CURRENT_TAG" | head -20)
-        else
-          # If previous tag doesn't exist (first commit), get all commits up to current tag
-          CHANGELOG=$(git log --pretty=format:"- %s" "$CURRENT_TAG" | head -20)
+          echo "Previous tag found: $PREVIOUS_TAG"
+          CHANGELOG=$(git log --oneline "$PREVIOUS_TAG..$CURRENT_TAG" | sed 's/^[a-f0-9]* /- /' | head -20) || echo "Git log failed"
+        elif [ -n "$CURRENT_TAG" ]; then
+          # If previous tag doesn't exist, get all commits up to current tag
+          echo "No previous tag found, getting all commits up to $CURRENT_TAG"
+          CHANGELOG=$(git log --oneline "$CURRENT_TAG" | sed 's/^[a-f0-9]* /- /' | head -20) || echo "Git log failed"
         fi
-        
+
         # If no commits found, provide default message
         if [ -z "$CHANGELOG" ]; then
+          echo "No commits found, using default message"
           CHANGELOG="- Initial release"
         fi
-        
+
         echo "Generated changelog:"
         echo "$CHANGELOG"
-        
+
         # Save to multiline output
         {
           echo 'CHANGELOG<<EOF'
           echo "$CHANGELOG"
           echo 'EOF'
-        } >> $GITHUB_OUTPUT
+        } >> "$GITHUB_OUTPUT"
       shell: bash
     
     - name: Create Release
