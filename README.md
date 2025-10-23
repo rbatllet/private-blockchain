@@ -44,7 +44,7 @@ This is a **private blockchain** for controlled environments where only authoriz
 
 ### Advanced Functions
 - **Export/Import**: Backup and restore complete blockchain with temporal consistency
-- **Indexing Coordination**: Prevent infinite loops and coordinate indexing operations - see [IndexingCoordinator examples](docs/INDEXING_COORDINATOR_EXAMPLES.md)
+- **Indexing Coordination**: Prevent infinite loops and coordinate indexing operations - see [IndexingCoordinator examples](docs/monitoring/INDEXING_COORDINATOR_EXAMPLES.md)
 - **Advanced Search System**: Multi-level search with TRUE exhaustive capabilities
   - **SearchSpecialistAPI**: Professional search API with password-based initialization
   - **Generic Search**: searchAll() function searches both encrypted and non-encrypted content
@@ -109,7 +109,7 @@ This is a **private blockchain** for controlled environments where only authoriz
 - **ExitUtil**: Test-compatible system exit handling
 - **BlockValidationUtil**: Utilities for block validation
 - **BlockValidationResult**: Representation of validation results
-- **FormatUtil**: Formatting of blockchain data for display - see [quality assessment](docs/FORMATUTIL_QUALITY_ASSESSMENT.md) | [technical analysis](docs/FORMAT_UTIL_ROBUSTNESS_ANALYSIS.md)
+- **FormatUtil**: Formatting of blockchain data for display - see [quality assessment](docs/reports/FORMATUTIL_QUALITY_ASSESSMENT.md) | [technical analysis](docs/reports/FORMAT_UTIL_ROBUSTNESS_ANALYSIS.md)
 
 ### 🔐 User-Friendly Encryption API
 
@@ -124,7 +124,7 @@ This is a **private blockchain** for controlled environments where only authoriz
 - **💾 Storage Tiering**: Intelligent data placement with compression and optimization
 - **🔧 Chain Recovery**: Automated corruption detection and recovery mechanisms
 - **📈 Analytics**: Comprehensive reporting and metrics for blockchain operations
-- **🔧 Metadata Management**: Dynamic block metadata updates without modifying encrypted content - see [Metadata Management Guide](docs/METADATA_MANAGEMENT_GUIDE.md)
+- **🔧 Metadata Management**: Dynamic block metadata updates without modifying encrypted content - see [Metadata Management Guide](docs/data-management/METADATA_MANAGEMENT_GUIDE.md)
 
 ### Technical Features
 - **Persistence**: Database-agnostic architecture with JPA standard for ORM (using Hibernate as provider)
@@ -171,9 +171,9 @@ report.generateRecommendations(); // AI-driven suggestions
 System.out.println(report.getFormattedSummary()); // Rich output
 ```
 
-**📚 Documentation**: 
-- **Quick Start**: [OFFCHAIN_INTEGRITY_REPORT_QUICK_START.md](docs/OFFCHAIN_INTEGRITY_REPORT_QUICK_START.md)
-- **Complete Guide**: [OFFCHAIN_INTEGRITY_REPORT_ROBUSTNESS_IMPROVEMENTS.md](docs/OFFCHAIN_INTEGRITY_REPORT_ROBUSTNESS_IMPROVEMENTS.md)
+**📚 Documentation**:
+- **Quick Start**: [OFFCHAIN_INTEGRITY_REPORT_QUICK_START.md](docs/recovery/OFFCHAIN_INTEGRITY_REPORT_QUICK_START.md)
+- **Complete Guide**: [OFFCHAIN_INTEGRITY_REPORT_ROBUSTNESS_IMPROVEMENTS.md](docs/reports/OFFCHAIN_INTEGRITY_REPORT_ROBUSTNESS_IMPROVEMENTS.md)
 - **Test Coverage**: 10 comprehensive tests covering thread safety, validation, and robustness
 
 ## 🛠️ Technologies Used
@@ -1626,11 +1626,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📞 Support
 
 For issues or questions:
-1. Check the [TESTING.md](docs/TESTING.md) troubleshooting section
+1. Check the [TESTING.md](docs/testing/TESTING.md) troubleshooting section
 2. Verify your Java and Maven versions meet requirements
 3. Run `./run_all_tests.zsh` to identify problems
 4. Check console output for specific error messages
-5. Review [TECHNICAL_DETAILS.md](docs/TECHNICAL_DETAILS.md) for implementation details
+5. Review [TECHNICAL_DETAILS.md](docs/reference/TECHNICAL_DETAILS.md) for implementation details
 
 ### Getting Help
 1. **Check this documentation** for common use cases and examples
@@ -1666,7 +1666,7 @@ mvn clean compile test-compile
 **🚀 Ready to start?** 
 
 1. Run `./run_all_tests.zsh` to verify everything works perfectly
-2. Try the practical examples in [EXAMPLES.md](docs/EXAMPLES.md) for your use case
+2. Try the practical examples in [EXAMPLES.md](docs/getting-started/EXAMPLES.md) for your use case
 3. Explore the comprehensive test suite to understand all features
 4. Build your own blockchain application using the patterns provided!
 
@@ -1709,7 +1709,11 @@ See [Performance Optimization Plan](docs/reports/PERFORMANCE_OPTIMIZATION_PLAN.m
 
 ### Contribution Guidelines
 
-We welcome contributions! Please see our [Contribution Guidelines](CONTRIBUTING.md) for details on how to contribute to this project.
+We welcome contributions! For details on how to contribute to this project, please review the following:
+- Follow the code style and patterns used in the codebase
+- Ensure all tests pass before submitting changes
+- Add tests for new features or bug fixes
+- Update documentation as needed
 
 ---
 
