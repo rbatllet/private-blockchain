@@ -1281,6 +1281,16 @@ class OffChainCleanupServiceTest {
             );
             executor.shutdown();
 
+            // Additional wait for file system operations to complete
+            // File I/O and compression can take additional time even after threads complete
+            assertTrue(
+                executor.awaitTermination(30, TimeUnit.SECONDS),
+                "Executor should terminate after completion"
+            );
+
+            // Additional buffer time for file system write operations
+            Thread.sleep(2000);
+
             // Verify no exceptions
             if (!exceptions.isEmpty()) {
                 fail(
