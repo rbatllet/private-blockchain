@@ -1,6 +1,6 @@
 # Filtered Pagination API
 
-**Version 2.1.0** introduces specialized pagination methods for filtering specific block types, enabling memory-efficient retrieval of encrypted blocks and blocks with off-chain data.
+**Version 1.0.5** introduces specialized pagination methods for filtering specific block types, enabling memory-efficient retrieval of encrypted blocks and blocks with off-chain data.
 
 These methods are available in both **`BlockRepository`** (low-level DAO layer) and **`Blockchain`** (high-level API with global locking).
 

@@ -34,7 +34,7 @@ import java.util.Set;
  * FilePermissionsUtil.setSecurePermissions(configFile);
  * }</pre>
  *
- * @since 1.0.6
+ * @since 1.0.5
  * @see java.nio.file.attribute.PosixFilePermissions
  */
 public final class FilePermissionsUtil {

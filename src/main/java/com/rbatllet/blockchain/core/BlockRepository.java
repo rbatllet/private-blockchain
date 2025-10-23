@@ -56,7 +56,7 @@ import java.util.stream.Collectors;
  * </p>
  *
  * @version 1.0.5
- * @since 1.0.0
+ * @since 1.0.5
  * @author Blockchain Development Team
  */
 class BlockRepository {

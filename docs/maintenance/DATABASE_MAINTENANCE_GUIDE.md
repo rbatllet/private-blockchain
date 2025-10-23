@@ -1,6 +1,6 @@
 # Database Maintenance Guide
 
-**Version:** 1.0.6
+**Version:** 1.0.5
 **Last Updated:** October 2025
 
 ## Overview

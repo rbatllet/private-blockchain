@@ -336,7 +336,7 @@ BlockCreationOptions options = new BlockCreationOptions()
     .withCategory("PROJECT")
     .withMetadata("author", "Alice Smith")           // NEW: Custom metadata
     .withMetadata("document_type", "specification")  // NEW: Multiple entries
-    .withMetadata("version", "2.1.0")                // NEW: Version tracking
+    .withMetadata("version", "1.0.5")                // NEW: Version tracking
     .withMetadata("clearance_level", "internal");    // NEW: Custom fields
 
 Block result = api.createBlockWithOptions("Project specification document", options);
@@ -596,7 +596,7 @@ TermVisibilityMap copy()
 
 ### Additional Blockchain Methods
 
-#### Pagination Methods (NEW in v2.1.0) 🆕
+#### Pagination Methods (NEW in v1.0.5) 🆕
 
 ```java
 public List<Block> getBlocksPaginated(long offset, int limit)
@@ -615,7 +615,7 @@ public List<Block> getBlocksWithOffChainDataPaginated(long offset, int limit)
 - **Description:** Retrieve only blocks that have off-chain data in paginated batches
 - **Use Cases:** Off-chain storage analysis, maintenance operations, report generation
 - **Thread-Safety:** Uses global read lock for concurrent access
-- **Since:** v2.1.0
+- **Since:** v1.0.5
 
 ```java
 public List<Block> getEncryptedBlocksPaginated(long offset, int limit)
@@ -625,7 +625,7 @@ public List<Block> getEncryptedBlocksPaginated(long offset, int limit)
 - **Description:** Retrieve only encrypted blocks in paginated batches
 - **Use Cases:** Security audits, re-encryption operations, compliance reporting
 - **Thread-Safety:** Uses global read lock for concurrent access
-- **Since:** v2.1.0
+- **Since:** v1.0.5
 
 **Example Usage:**
 ```java
@@ -1969,7 +1969,7 @@ byte[] retrievedData = storage.retrieveData(metadata, password);
 // Verify cryptographic integrity (requires password)
 boolean isValid = storage.verifyIntegrity(metadata, password);
 
-// Verify file structure (no password required) - NEW in v1.0.6
+// Verify file structure (no password required) - NEW in v1.0.5
 boolean structureValid = storage.verifyFileStructure(metadata);
 
 // Check if off-chain file exists
@@ -3433,7 +3433,7 @@ List<Block> blocks = blockchain.batchRetrieveBlocksByHash(hashes);
 
 For complete details on batch optimization, see the [Batch Optimization Guide](../data-management/BATCH_OPTIMIZATION_GUIDE.md).
 
-### Filtered Pagination Methods (NEW in v2.1.0) 🆕
+### Filtered Pagination Methods (NEW in v1.0.5) 🆕
 
 For memory-efficient retrieval of specific block types (encrypted blocks, blocks with off-chain data), see the [Filtered Pagination API Guide](../data-management/FILTERED_PAGINATION_API.md).
 

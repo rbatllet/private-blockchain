@@ -268,7 +268,7 @@ public class SearchFrameworkDemoTest {
         // Technical data
         blockchain.addBlock("API Response: {\"status\":\"success\",\"data\":{\"users\":1250,\"transactions\":5847," +
                           "\"hash\":\"SHA256-abc123def456\"},\"timestamp\":\"2024-01-15T10:30:00Z\"," +
-                          "\"version\":\"2.1.0\"}", privateKey, publicKey);
+                          "\"version\":\"1.0.5\"}", privateKey, publicKey);
         
         // Personal information
         blockchain.addBlock("Employee record: Maria Garcia, email: maria.garcia@company.com, " +
