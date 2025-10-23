@@ -50,7 +50,7 @@ import java.util.List;
  *
  * <p><b>Thread Safety:</b> This class is stateless and thread-safe.</p>
  *
- * @since 1.0.6
+ * @since 1.0.5
  * @see DatabaseConfig
  * @see ConnectionTestResult
  */

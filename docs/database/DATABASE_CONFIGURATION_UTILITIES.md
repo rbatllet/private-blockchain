@@ -54,7 +54,7 @@ The `com.rbatllet.blockchain.config.util` package provides 9 utility classes for
 ## 🔧 DatabasePropertiesParser
 
 **Package**: `com.rbatllet.blockchain.config.util`
-**Since**: 1.0.6
+**Since**: 1.0.5
 **Thread-Safe**: ✅ Yes (stateless utility class)
 
 ### Purpose
@@ -146,7 +146,7 @@ db.type=sqlite
 ## 🎯 ConfigurationPriorityResolver
 
 **Package**: `com.rbatllet.blockchain.config.util`
-**Since**: 1.0.6
+**Since**: 1.0.5
 **Thread-Safe**: ✅ Yes (immutable after build)
 
 ### Purpose
@@ -201,7 +201,7 @@ if (passwordSource == ConfigSource.CLI_ARGS) {
 ## 📤 ConfigurationExporter
 
 **Package**: `com.rbatllet.blockchain.config.util`
-**Since**: 1.0.6
+**Since**: 1.0.5
 **Thread-Safe**: ✅ Yes (immutable)
 
 ### Purpose
@@ -259,7 +259,7 @@ String unmasked = unsafe.exportToProperties(config);
 ## 🔐 SensitiveDataMasker
 
 **Package**: `com.rbatllet.blockchain.config.util`
-**Since**: 1.0.6
+**Since**: 1.0.5
 **Thread-Safe**: ✅ Yes (stateless utility class)
 
 ### Purpose
@@ -322,7 +322,7 @@ logger.info("Connecting to: " + safeUrl);
 ## 🛡️ ConfigurationSecurityAnalyzer
 
 **Package**: `com.rbatllet.blockchain.config.util`
-**Since**: 1.0.6
+**Since**: 1.0.5
 **Thread-Safe**: ✅ Yes (stateless)
 
 ### Purpose
@@ -395,7 +395,7 @@ if (criticalCount > 0) {
 ## ⚠️ SecurityWarning
 
 **Package**: `com.rbatllet.blockchain.config.util`
-**Since**: 1.0.6
+**Since**: 1.0.5
 **Thread-Safe**: ✅ Yes (immutable)
 
 ### Purpose
@@ -451,7 +451,7 @@ SecurityWarning medium = SecurityWarning.medium("Connection not using SSL");
 ## 📁 FilePermissionsUtil
 
 **Package**: `com.rbatllet.blockchain.config.util`
-**Since**: 1.0.6
+**Since**: 1.0.5
 **Thread-Safe**: ✅ Yes (stateless utility class)
 
 ### Purpose
@@ -519,7 +519,7 @@ if (FilePermissionsUtil.isPosixSupported()) {
 ## 🔌 DatabaseConnectionTester
 
 **Package**: `com.rbatllet.blockchain.config.util`
-**Since**: 1.0.6
+**Since**: 1.0.5
 **Thread-Safe**: ✅ Yes (stateless)
 
 ### Purpose
@@ -602,7 +602,7 @@ System.out.println("   Response: " + result.getResponseTime().toMillis() + "ms")
 ## 🔄 DatabaseMigrator
 
 **Package**: `com.rbatllet.blockchain.config.util`
-**Since**: 1.0.6
+**Since**: 1.0.5
 **Thread-Safe**: ❌ No (instance-level, single thread only)
 
 ### Purpose
@@ -899,7 +899,7 @@ if (result.isSuccess()) {
 
 ---
 
-**Document Version**: 1.0.6
+**Document Version**: 1.0.5
 **Last Updated**: October 2025
 **Package**: `com.rbatllet.blockchain.config.util`
 **Maintained By**: Private Blockchain Team

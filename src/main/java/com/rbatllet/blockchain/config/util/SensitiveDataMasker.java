@@ -38,7 +38,7 @@ import java.util.regex.Pattern;
  * // Result: db.password=***REDACTED***, db.user=***REDACTED***
  * }</pre>
  *
- * @since 1.0.6
+ * @since 1.0.5
  * @see com.rbatllet.blockchain.config.DatabaseConfig
  */
 public final class SensitiveDataMasker {

@@ -30,7 +30,7 @@ import java.util.Objects;
  * // API would include in JSON response
  * }</pre>
  *
- * @since 1.0.6
+ * @since 1.0.5
  * @see ConfigurationSecurityAnalyzer
  */
 public final class SecurityWarning {

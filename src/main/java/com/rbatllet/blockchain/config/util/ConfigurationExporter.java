@@ -53,7 +53,7 @@ import java.util.Properties;
  *
  * <p><b>Thread Safety:</b> This class is immutable and thread-safe.</p>
  *
- * @since 1.0.6
+ * @since 1.0.5
  * @see DatabaseConfig
  * @see SensitiveDataMasker
  */

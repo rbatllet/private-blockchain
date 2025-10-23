@@ -101,7 +101,7 @@ import java.util.*;
  * <p><b>Thread Safety:</b> This class is NOT thread-safe. Each instance should
  * be used by a single thread. Do not share migrator instances between threads.</p>
  *
- * @since 1.0.6
+ * @since 1.0.5
  * @see DatabaseConfig
  * @see Migration
  * @see MigrationResult
@@ -439,6 +439,50 @@ public final class DatabaseMigrator {
         } catch (SQLException e) {
             return new ValidationResult(false, "Validation error: " + e.getMessage(),
                 Collections.singletonList(e.getMessage()));
+        }
+    }
+
+    /**
+     * Resets migration history by dropping the schema version table.
+     * <p><b>⚠️ WARNING:</b> This is a DESTRUCTIVE operation intended for testing purposes only.
+     * Use with extreme caution in production environments.</p>
+     *
+     * <p>This method drops the migration tracking table ({@code schema_version}), effectively
+     * resetting the migration history. After calling this method, all migrations will be
+     * considered as not applied, even though the actual schema changes remain in the database.</p>
+     *
+     * <p><b>Usage in tests:</b></p>
+     * <pre>{@code
+     * // Reset migration history before each test
+     * @BeforeEach
+     * void setUp() {
+     *     DatabaseConfig config = DatabaseConfig.createH2Config();
+     *     DatabaseMigrator migrator = new DatabaseMigrator(config);
+     *     migrator.resetForTesting();
+     * }
+     * }</pre>
+     *
+     * @throws RuntimeException if the schema table cannot be dropped
+     * @since 1.0.5
+     */
+    public void resetForTesting() {
+        try (Connection connection = getConnection()) {
+            if (!schemaTableExists(connection)) {
+                logger.debug("Schema table does not exist, nothing to reset");
+                return;
+            }
+
+            logger.warn("⚠️ Resetting migration history - dropping {} table", schemaTableName);
+
+            try (Statement statement = connection.createStatement()) {
+                String dropTableSQL = "DROP TABLE IF EXISTS " + schemaTableName;
+                statement.execute(dropTableSQL);
+                logger.info("✅ Migration history reset successfully");
+            }
+
+        } catch (SQLException e) {
+            logger.error("❌ Failed to reset migration history: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to reset migration history: " + e.getMessage(), e);
         }
     }
 

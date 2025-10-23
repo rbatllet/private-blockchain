@@ -67,7 +67,7 @@ import java.util.Properties;
  * ParseResult result = DatabasePropertiesParser.parse(props);
  * }</pre>
  *
- * @since 1.0.6
+ * @since 1.0.5
  * @see DatabaseConfig
  * @see Properties
  */
@@ -130,8 +130,13 @@ public final class DatabasePropertiesParser {
         List<String> errors = new ArrayList<>();
         List<String> warnings = new ArrayList<>();
 
-        // Get database type
-        String dbType = properties.getProperty("db.type", "sqlite").toLowerCase();
+        // Get database type (trim whitespace and handle whitespace-only values)
+        String dbType = getRequired(properties, "db.type", "sqlite").toLowerCase();
+
+        // If dbType is still empty after trimming, use default
+        if (dbType.isEmpty()) {
+            dbType = "sqlite";
+        }
 
         try {
             DatabaseConfig config;
@@ -182,11 +187,42 @@ public final class DatabasePropertiesParser {
      * Parses PostgreSQL configuration.
      */
     private static DatabaseConfig parsePostgreSQL(Properties props, List<String> errors, List<String> warnings) {
+        // Check if using generic db.url property
+        String url = getRequired(props, "db.url", null);
+        if (url != null && !url.isEmpty()) {
+            String username = getRequired(props, "db.user", null);
+            String password = getRequired(props, "db.password", null);
+
+            // Validate username is provided
+            if (username == null || username.isEmpty()) {
+                errors.add("Username is required when using db.url (db.user)");
+                return null;
+            }
+
+            // Password is optional - might be in environment variable
+            if (password == null || password.isEmpty()) {
+                warnings.add("Password not found in properties. Ensure DB_PASSWORD environment variable is set.");
+            }
+
+            // Build config with custom URL
+            return DatabaseConfig.builder()
+                    .databaseType(DatabaseConfig.DatabaseType.POSTGRESQL)
+                    .databaseUrl(url)
+                    .username(username)
+                    .password(password)
+                    .poolMinSize(10)
+                    .poolMaxSize(60)
+                    .connectionTimeout(30000)
+                    .hbm2ddlAuto("update")
+                    .build();
+        }
+
+        // Standard PostgreSQL properties
         String host = getRequired(props, "db.postgresql.host", "localhost");
         int port = getInt(props, "db.postgresql.port", 5432, errors);
         String database = getRequired(props, "db.postgresql.database", "blockchain");
-        String username = props.getProperty("db.postgresql.username");
-        String password = props.getProperty("db.postgresql.password");
+        String username = getRequired(props, "db.postgresql.username", null);
+        String password = getRequired(props, "db.postgresql.password", null);
 
         // Validate required fields
         if (username == null || username.isEmpty()) {
@@ -209,11 +245,42 @@ public final class DatabasePropertiesParser {
      * Parses MySQL configuration.
      */
     private static DatabaseConfig parseMySQL(Properties props, List<String> errors, List<String> warnings) {
+        // Check if using generic db.url property
+        String url = getRequired(props, "db.url", null);
+        if (url != null && !url.isEmpty()) {
+            String username = getRequired(props, "db.user", null);
+            String password = getRequired(props, "db.password", null);
+
+            // Validate username is provided
+            if (username == null || username.isEmpty()) {
+                errors.add("Username is required when using db.url (db.user)");
+                return null;
+            }
+
+            // Password is optional - might be in environment variable
+            if (password == null || password.isEmpty()) {
+                warnings.add("Password not found in properties. Ensure DB_PASSWORD environment variable is set.");
+            }
+
+            // Build config with custom URL
+            return DatabaseConfig.builder()
+                    .databaseType(DatabaseConfig.DatabaseType.MYSQL)
+                    .databaseUrl(url)
+                    .username(username)
+                    .password(password)
+                    .poolMinSize(10)
+                    .poolMaxSize(50)
+                    .connectionTimeout(30000)
+                    .hbm2ddlAuto("update")
+                    .build();
+        }
+
+        // Standard MySQL properties
         String host = getRequired(props, "db.mysql.host", "localhost");
         int port = getInt(props, "db.mysql.port", 3306, errors);
         String database = getRequired(props, "db.mysql.database", "blockchain");
-        String username = props.getProperty("db.mysql.username");
-        String password = props.getProperty("db.mysql.password");
+        String username = getRequired(props, "db.mysql.username", null);
+        String password = getRequired(props, "db.mysql.password", null);
 
         // Validate required fields
         if (username == null || username.isEmpty()) {
@@ -250,9 +317,13 @@ public final class DatabasePropertiesParser {
 
     /**
      * Gets a required property with a default value.
+     * Trims whitespace and treats whitespace-only values as empty.
      */
     private static String getRequired(Properties props, String key, String defaultValue) {
         String value = props.getProperty(key);
+        if (value != null) {
+            value = value.trim();
+        }
         return (value == null || value.isEmpty()) ? defaultValue : value;
     }
 

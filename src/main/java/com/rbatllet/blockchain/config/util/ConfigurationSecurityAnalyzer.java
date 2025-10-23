@@ -39,7 +39,7 @@ import java.util.List;
  * }
  * }</pre>
  *
- * @since 1.0.6
+ * @since 1.0.5
  * @see SecurityWarning
  * @see DatabaseConfig
  */

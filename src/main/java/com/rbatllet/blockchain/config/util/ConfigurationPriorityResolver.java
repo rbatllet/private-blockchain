@@ -51,7 +51,7 @@ import java.util.*;
  * <p><b>Thread Safety:</b> This class is immutable after build() and thread-safe.
  * The builder is NOT thread-safe and should not be shared between threads.</p>
  *
- * @since 1.0.6
+ * @since 1.0.5
  * @see DatabaseConfig
  * @see ConfigurationSecurityAnalyzer
  */
