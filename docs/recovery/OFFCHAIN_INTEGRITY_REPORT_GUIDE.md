@@ -272,7 +272,7 @@ report.addCheckResult(newResult);
 
 #### Step 3: Enable Comprehensive Logging
 ```xml
-<!-- Add to logback.xml or log4j2.xml -->
+<!-- Add to log4j2-core.xml (development) or log4j2-core-production.xml (production) -->
 <logger name="com.rbatllet.blockchain.service.OffChainIntegrityReport" level="INFO"/>
 ```
 
