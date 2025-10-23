@@ -325,7 +325,7 @@
                 <activeByDefault>true</activeByDefault>
             </activation>
             <properties>
-                <log4j2.configurationFile>log4j2.xml</log4j2.configurationFile>
+                <log4j2.configurationFile>log4j2-core.xml</log4j2.configurationFile>
             </properties>
         </profile>
 
@@ -333,7 +333,7 @@
         <profile>
             <id>production</id>
             <properties>
-                <log4j2.configurationFile>log4j2-production.xml</log4j2.configurationFile>
+                <log4j2.configurationFile>log4j2-core-production.xml</log4j2.configurationFile>
             </properties>
         </profile>
     </profiles>

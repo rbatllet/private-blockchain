@@ -16,8 +16,8 @@ The Private Blockchain project uses **SLF4J with Log4j2** for professional loggi
 ## 📁 Configuration Files
 
 ### Active Configurations
-- `log4j2.xml` - Development configuration (default)
-- `log4j2-production.xml` - Production configuration 
+- `log4j2-core.xml` - Development configuration (default)
+- `log4j2-core-production.xml` - Production configuration
 - `log4j2-test.xml` - Test configuration (automatic during tests)
 
 ### Log Files Generated
@@ -36,7 +36,7 @@ mvn exec:java -Dexec.mainClass="demo.BlockchainDemo" -Pdevelopment
 ./scripts/run-development.zsh
 ```
 
-**Configuration**: `log4j2.xml` (automatic)
+**Configuration**: `log4j2-core.xml` (automatic)
 - **Application logs**: DEBUG level
 - **Framework logs**: INFO level
 - **Console output**: Enabled with thread names
@@ -50,7 +50,7 @@ mvn exec:java -Dexec.mainClass="demo.BlockchainDemo" -Pproduction
 ./scripts/run-production.zsh
 ```
 
-**Configuration**: `log4j2-production.xml` (automatic)
+**Configuration**: `log4j2-core-production.xml` (automatic)
 - **Application logs**: WARN level only
 - **Framework logs**: ERROR level only
 - **Console output**: Errors only to STDERR
@@ -108,13 +108,13 @@ secLogger.warn(securityEvent);
     <profile>
         <id>development</id>
         <properties>
-            <log4j2.configurationFile>log4j2.xml</log4j2.configurationFile>
+            <log4j2.configurationFile>log4j2-core.xml</log4j2.configurationFile>
         </properties>
     </profile>
     <profile>
         <id>production</id>
         <properties>
-            <log4j2.configurationFile>log4j2-production.xml</log4j2.configurationFile>
+            <log4j2.configurationFile>log4j2-core-production.xml</log4j2.configurationFile>
         </properties>
     </profile>
 </profiles>

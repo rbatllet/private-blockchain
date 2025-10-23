@@ -19,8 +19,8 @@ Performance metrics, logging, and indexing coordination guides.
 - Cache hit rate analysis
 
 ### Logging Levels
-- **Development**: Verbose (log4j2.xml)
-- **Production**: Minimal (log4j2-production.xml)
+- **Development**: Verbose (log4j2-core.xml)
+- **Production**: Minimal (log4j2-core-production.xml)
 - **Testing**: Optimized for test output
 
 ### Indexing Coordination
