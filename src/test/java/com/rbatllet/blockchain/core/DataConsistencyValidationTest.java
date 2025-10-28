@@ -2,7 +2,9 @@ package com.rbatllet.blockchain.core;
 
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.util.JPAUtil;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
@@ -18,13 +20,19 @@ import static org.junit.jupiter.api.Assertions.*;
  * Validation test for data consistency fixes
  */
 public class DataConsistencyValidationTest {
-    
+
     private Blockchain blockchain;
     private KeyPair testKeyPair;
     private PrivateKey testPrivateKey;
     private PublicKey testPublicKey;
     private String testPublicKeyString;
-    
+
+    @BeforeAll
+    static void setUpDatabase() {
+        // Initialize JPAUtil with default configuration (respects environment variables)
+        JPAUtil.initializeDefault();
+    }
+
     @BeforeEach
     void setUp() throws Exception {
         blockchain = new Blockchain();
@@ -44,6 +52,12 @@ public class DataConsistencyValidationTest {
     
     @AfterEach
     void cleanUp() {
+        // Clean blockchain and thread locals
+        if (blockchain != null) {
+            blockchain.clearAndReinitialize();
+            JPAUtil.cleanupThreadLocals();
+        }
+
         // Clean up off-chain data directory
         try {
             File offChainDir = new File("off-chain-data");

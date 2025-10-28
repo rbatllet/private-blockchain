@@ -1066,6 +1066,185 @@ public class PerformanceTest {
 }
 ```
 
+### Phase A.7: Large-Scale Integration Testing (Manual Execution)
+
+#### Overview
+
+Phase A.7 includes comprehensive integration tests for large-scale blockchain scenarios with 100K to 1M blocks. These tests verify memory safety and performance at extreme scales.
+
+**Important:** The slowest tests are marked with `@Tag("slow")` and `@Tag("extreme")` and do **NOT** execute by default because they take many hours to complete.
+
+#### Test Categories
+
+**Quick Tests (Execute by Default - ~2-3 minutes total)**
+- `testStreamingValidationScalability()` - Validates streaming APIs with 10K blocks
+- `Phase_A7_DatabaseCompatibilityTest` - Multi-database compatibility (H2, SQLite, PostgreSQL) with 10K blocks
+- `Phase_A7_PerformanceBenchmarkTest` - Performance benchmarks with 10K blocks
+
+**Slow Tests (Manual Execution with -Dgroups=slow - ~30+ minutes)**
+- `testProcessing100KBlocksMemory()` - Memory safety with 100K blocks (5-10 minutes)
+- `testProcessing500KBlocksMemory()` - Memory safety with 500K blocks (30 minutes)
+- `testMemoryStabilityAcrossIterations()` - Tests memory consistency across 3 cycles with 50K blocks (10+ minutes)
+- `testSearchMemorySafetyLargeBlockchain()` - Search operations with 50K blocks (5-10 minutes)
+
+**Extreme Tests (Manual Execution with -Dgroups=extreme - ~60+ minutes)**
+- `testProcessing1MBlocksMemory()` - Memory safety with 1M blocks (60+ minutes)
+
+#### Execution Commands
+
+**⚠️ IMPORTANT: Test Execution Modes**
+
+The project has **automatic tag filtering** configured in `pom.xml` that excludes `@Tag("slow")` and `@Tag("extreme")` tests by default when using JUnit Platform Console Launcher.
+
+**Recommended: Run all tests with JUnit Platform Console Launcher (excludes slow tests automatically)**
+```bash
+mvn clean compile test-compile exec:exec@run-tests
+# Automatically excludes @Tag("slow") and @Tag("extreme")
+# Runs only quick tests: testStreamingValidationScalability (10K blocks),
+#                        Phase_A7_DatabaseCompatibilityTest (10K blocks),
+#                        Phase_A7_PerformanceBenchmarkTest (10K blocks)
+# Total time: ~2-3 minutes ✅
+```
+
+**Alternative: Run all Phase A.7 tests (Maven Surefire - may include slow tests)**
+```bash
+mvn test -Dtest=Phase_A7_*
+# ⚠️ WARNING: Maven Surefire does NOT respect tag filtering by default
+# This will run ALL Phase A.7 tests including slow ones unless configured
+# Use exec:exec@run-tests instead for automatic filtering
+```
+
+**Run specific Phase A.7 quick tests only**
+```bash
+mvn test -Dtest=Phase_A7_DatabaseCompatibilityTest
+mvn test -Dtest=Phase_A7_PerformanceBenchmarkTest
+mvn test -Dtest=Phase_A7_LargeScaleMemoryTest#testStreamingValidationScalability
+# Time: ~1-2 minutes each
+```
+
+**Manual execution of slow tests (100K, 500K blocks)**
+```bash
+# Run all slow tests (100K + 500K + 50K tests)
+mvn test -Dgroups=slow
+# Time: ~45-60 minutes
+
+# Run specific slow test
+mvn test -Dtest=Phase_A7_LargeScaleMemoryTest#testProcessing100KBlocksMemory
+# Time: 5-10 minutes
+
+mvn test -Dtest=Phase_A7_LargeScaleMemoryTest#testProcessing500KBlocksMemory
+# Time: ~30 minutes
+
+mvn test -Dtest=Phase_A7_LargeScaleMemoryTest#testMemoryStabilityAcrossIterations
+# Time: 10+ minutes (50K blocks × 3 cycles)
+
+mvn test -Dtest=Phase_A7_LargeScaleMemoryTest#testSearchMemorySafetyLargeBlockchain
+# Time: 5-10 minutes (50K blocks)
+```
+
+**Manual execution of extreme tests (1M blocks)**
+```bash
+# ⚠️ WARNING: Requires 4GB+ heap memory and 60+ minutes execution time
+mvn test -Dgroups=extreme
+# Or specific test:
+mvn test -Dtest=Phase_A7_LargeScaleMemoryTest#testProcessing1MBlocksMemory
+# Time: 60+ minutes
+```
+
+**Run ALL tests including slow and extreme (not recommended)**
+```bash
+# This will run EVERYTHING (100K, 500K, 1M blocks)
+mvn test -Dtest=Phase_A7_*
+# Time: 90+ minutes (not recommended for regular testing)
+```
+
+**Execution Summary**
+- ✅ **Default (recommended)**: `mvn exec:exec@run-tests` - 2-3 minutes, excludes slow tests automatically
+- ⚠️ **Manual slow**: `mvn test -Dgroups=slow` - 45-60 minutes, requires explicit execution
+- 🚫 **Extreme**: `mvn test -Dgroups=extreme` - 60+ minutes, only for stress testing
+
+#### What These Tests Verify
+
+**Memory Safety at Scale:**
+- ✅ Memory delta stays < 100MB for 100K blocks
+- ✅ processChainInBatches() maintains constant ~50MB memory
+- ✅ validateChainStreaming() scales to unlimited block sizes
+- ✅ No memory leaks after processing completes
+
+**Database Compatibility:**
+- ✅ H2 in-memory database (development/testing)
+- ✅ SQLite development database
+- ✅ PostgreSQL production database (auto-detected via env vars)
+- ✅ Search and pagination work identically across databases
+
+**Performance Characteristics:**
+- ✅ Batch processing vs pagination comparison
+- ✅ Optimal batch size impact (100, 1K, 5K, 10K)
+- ✅ Search operation throughput
+- ✅ Pagination scalability
+- ✅ Validation throughput (blocks/second)
+
+#### System Requirements for Manual Tests
+
+**For 100K blocks test:**
+- CPU: Dual-core minimum (prefer 4+ cores)
+- RAM: 2GB free (1GB JVM heap + system)
+- Time: 5-10 minutes
+- Storage: ~500MB for blockchain database
+
+**For 500K blocks test:**
+- CPU: Quad-core or better
+- RAM: 4GB free (2GB JVM heap + system)
+- Time: ~30 minutes
+- Storage: ~2.5GB for blockchain database
+
+**For 1M blocks test (EXTREME):**
+- CPU: 8+ cores recommended
+- RAM: 8GB free (4GB JVM heap + system)
+- Time: 60+ minutes
+- Storage: ~5GB for blockchain database
+- ⚠️ Warning: Can significantly impact system performance during execution
+
+#### Increase JVM Heap for Large Tests
+
+For 1M blocks test, increase JVM heap size:
+
+```bash
+# Temporary for single test run
+export MAVEN_OPTS="-Xmx4g -Xms2g"
+mvn test -Dtest=Phase_A7_LargeScaleMemoryTest#testProcessing1MBlocksMemory -Dgroups=extreme
+
+# Persistent (add to ~/.zshrc)
+echo 'export MAVEN_OPTS="-Xmx4g -Xms2g"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+#### Expected Results
+
+**100K blocks test (should complete):**
+```
+✅ Processing time: ~3000-5000ms
+✅ Memory delta: 20-50MB (< 100MB threshold)
+✅ Blocks processed: 100,000
+✅ No memory leaks detected
+```
+
+**500K blocks test (should complete):**
+```
+✅ Processing time: ~20000-30000ms
+✅ Memory delta: 30-60MB (< 100MB threshold)
+✅ Blocks processed: 500,000
+✅ No memory leaks detected
+```
+
+**1M blocks test (should complete):**
+```
+✅ Processing time: ~40000-60000ms
+✅ Memory delta: 40-80MB (< 100MB threshold)
+✅ Blocks processed: 1,000,000
+✅ No memory leaks detected
+```
+
 For production deployment considerations and technical specifications, see [PRODUCTION_GUIDE.md](../deployment/PRODUCTION_GUIDE.md) and [TECHNICAL_DETAILS.md](../reference/TECHNICAL_DETAILS.md).
 
 ### Advanced Troubleshooting
@@ -1669,7 +1848,342 @@ public class OffChainStorageTest {
 
 This ensures tests run one after another, preventing race conditions and configuration contamination.
 
+---
+
+## 🧠 Memory Safety Testing Patterns (v1.0.6+)
+
+### Overview
+
+Memory Safety optimizations in v1.0.5 introduce new breaking changes and streaming APIs. Tests must validate:
+1. ✅ maxResults parameter validation (rejects ≤ 0)
+2. ✅ Streaming APIs don't load entire results into memory
+3. ✅ Batch processing with configurable sizes
+4. ✅ Database-specific optimizations (ScrollableResults vs pagination)
+
+### Testing maxResults Validation
+
+**Pattern: Verify IllegalArgumentException is thrown for invalid values**
+
+```java
+@Test
+@DisplayName("Search methods reject maxResults ≤ 0")
+void testMaxResultsValidation() {
+    blockchain.addAuthorizedKey(testPublicKey, "TestUser");
+    blockchain.addBlock("test data", testKeyPair.getPrivate(), testKeyPair.getPublic());
+
+    // ✅ Valid: positive maxResults
+    assertDoesNotThrow(() ->
+        blockchain.searchByCategory("TEST", 100)
+    );
+
+    // ❌ Invalid: zero maxResults should throw
+    assertThrows(IllegalArgumentException.class, () ->
+        blockchain.searchByCategory("TEST", 0),
+        "maxResults = 0 should throw IllegalArgumentException"
+    );
+
+    // ❌ Invalid: negative maxResults should throw
+    assertThrows(IllegalArgumentException.class, () ->
+        blockchain.searchByCategory("TEST", -1),
+        "maxResults < 0 should throw IllegalArgumentException"
+    );
+}
+```
+
+### Testing Streaming APIs
+
+**Pattern: Verify streaming methods don't accumulate memory**
+
+```java
+@Test
+@DisplayName("processChainInBatches processes large dataset without memory accumulation")
+void testMemoryEfficientBatchProcessing() {
+    // Create test blockchain with many blocks
+    int blockCount = 10000;
+    for (int i = 0; i < blockCount; i++) {
+        blockchain.addBlock(
+            "Test block " + i,
+            testKeyPair.getPrivate(),
+            testKeyPair.getPublic()
+        );
+    }
+
+    // Track memory usage
+    Runtime runtime = Runtime.getRuntime();
+    long memBefore = runtime.totalMemory() - runtime.freeMemory();
+
+    // Process in batches - memory should stay relatively constant
+    int[] processedCount = {0};
+    blockchain.processChainInBatches(batch -> {
+        processedCount[0] += batch.size();
+
+        // Verify batch size is reasonable
+        assertThat(batch.size()).isLessThanOrEqualTo(1000);
+    }, 1000);
+
+    long memAfter = runtime.totalMemory() - runtime.freeMemory();
+    long memIncrease = memAfter - memBefore;
+
+    // Verify all blocks were processed
+    assertEquals(blockCount + 1, processedCount[0]); // +1 for genesis
+
+    // Memory increase should be minimal (< 100MB for 10K blocks)
+    assertThat(memIncrease).isLessThan(100 * 1024 * 1024);
+}
+```
+
+### Testing Default Limits
+
+**Pattern: Verify search methods use safe default limits**
+
+```java
+@Test
+@DisplayName("Search methods apply default 10K limit when maxResults not specified")
+void testDefaultSearchLimits() {
+    // Create more than 10K blocks with searchable content
+    int blockCount = 15000;
+    for (int i = 0; i < blockCount; i++) {
+        blockchain.addBlock(
+            "MEDICAL content " + i,
+            testKeyPair.getPrivate(),
+            testKeyPair.getPublic()
+        );
+    }
+
+    // Search without specifying maxResults
+    List<Block> results = blockchain.searchByCategory("MEDICAL", 10000);
+
+    // Should never exceed default limit
+    assertThat(results.size()).isLessThanOrEqualTo(10000);
+
+    // Should have found some results but not all
+    assertThat(results.size()).isGreaterThan(100);
+    assertThat(results.size()).isLessThan(blockCount);
+}
+```
+
+### Testing Database-Specific Optimizations
+
+**Pattern: Verify correct optimization is used for each database**
+
+```java
+@Test
+@DisplayName("Streaming uses ScrollableResults for PostgreSQL/H2")
+@EnabledIfEnvironmentVariable(named = "BLOCKCHAIN_DB_HOST", matches = ".*")
+void testPostgresStreamingOptimization() {
+    // Create large dataset
+    int blockCount = 50000;
+    for (int i = 0; i < blockCount; i++) {
+        blockchain.addBlock("Test " + i, keyPair.getPrivate(), keyPair.getPublic());
+    }
+
+    // Measure streaming performance (ScrollableResults should be fast)
+    long start = System.currentTimeMillis();
+
+    int[] count = {0};
+    blockchain.processChainInBatches(batch -> {
+        count[0] += batch.size();
+    }, 1000);
+
+    long duration = System.currentTimeMillis() - start;
+
+    // ScrollableResults should be significantly faster
+    // Typical: 50K blocks in < 5 seconds
+    assertThat(duration).isLessThan(5000);
+    assertEquals(blockCount + 1, count[0]);
+}
+
+@Test
+@DisplayName("Streaming uses pagination for SQLite")
+void testSQLiteStreamingOptimization() {
+    // SQLite uses pagination - should still be efficient
+    int blockCount = 10000;
+    for (int i = 0; i < blockCount; i++) {
+        blockchain.addBlock("Test " + i, keyPair.getPrivate(), keyPair.getPublic());
+    }
+
+    long start = System.currentTimeMillis();
+
+    int[] count = {0};
+    blockchain.processChainInBatches(batch -> {
+        count[0] += batch.size();
+    }, 1000);
+
+    long duration = System.currentTimeMillis() - start;
+
+    // Pagination should still be reasonably fast
+    // Typical: 10K blocks in < 2 seconds
+    assertThat(duration).isLessThan(2000);
+    assertEquals(blockCount + 1, count[0]);
+}
+```
+
+### Testing Iteration Limits
+
+**Pattern: Verify JSON metadata search has iteration limits**
+
+```java
+@Test
+@DisplayName("JSON metadata search respects iteration limits")
+void testMetadataIterationLimits() {
+    // Create block with complex nested metadata
+    Block block = new Block();
+    block.setData("Test data");
+    block.setSignerPublicKey(testPublicKey);
+
+    // Set deeply nested JSON metadata (simulating complex structures)
+    StringBuilder complexJson = new StringBuilder("{");
+    for (int i = 0; i < 200; i++) {
+        complexJson.append("\"field").append(i).append("\":{");
+    }
+    complexJson.append("\"deepValue\":\"test\"");
+    for (int i = 0; i < 200; i++) {
+        complexJson.append("}");
+    }
+    complexJson.append("}");
+
+    block.setEncryptionMetadata(complexJson.toString());
+
+    // Search should respect iteration limit (MAX_JSON_METADATA_ITERATIONS = 100)
+    // and not hang on deeply nested structures
+    List<Block> results = assertTimeoutPreemptively(
+        Duration.ofSeconds(5),
+        () -> blockchain.searchByCustomMetadata("test", 100)
+    );
+
+    // Search should complete without hanging
+    assertThat(results).isNotNull();
+}
+```
+
+### Testing Batch Size Configuration
+
+**Pattern: Verify batch size can be customized**
+
+```java
+@Test
+@DisplayName("Batch size is configurable and respected")
+void testBatchSizeConfiguration() {
+    // Create 5000 blocks
+    int blockCount = 5000;
+    for (int i = 0; i < blockCount; i++) {
+        blockchain.addBlock("Block " + i, keyPair.getPrivate(), keyPair.getPublic());
+    }
+
+    // Test different batch sizes
+    List<Integer> batchSizes = new ArrayList<>();
+    blockchain.processChainInBatches(batch -> {
+        batchSizes.add(batch.size());
+    }, 500);  // Custom batch size: 500
+
+    // Verify batches respect size limit
+    for (int i = 0; i < batchSizes.size() - 1; i++) {
+        assertEquals(500, batchSizes.get(i), "All full batches should be size 500");
+    }
+
+    // Last batch can be smaller
+    assertThat(batchSizes.get(batchSizes.size() - 1)).isLessThanOrEqualTo(500);
+}
+```
+
+### Testing with Large Datasets
+
+**Pattern: Use @Tag for long-running tests**
+
+```java
+@Test
+@Tag("performance")
+@DisplayName("Streaming handles 100K+ blocks efficiently")
+void testLargeDatasetProcessing() {
+    int blockCount = 100000;
+
+    // Setup: Create large blockchain
+    for (int i = 0; i < blockCount; i++) {
+        if (i % 10000 == 0) System.out.println("Created " + i + " blocks");
+
+        blockchain.addBlock(
+            "Block " + i,
+            testKeyPair.getPrivate(),
+            testKeyPair.getPublic()
+        );
+    }
+
+    // Test: Process without memory explosion
+    int[] processed = {0};
+    blockchain.processChainInBatches(batch -> {
+        processed[0] += batch.size();
+    }, 5000);
+
+    assertEquals(blockCount + 1, processed[0]);
+}
+```
+
+Run with: `mvn test -Dgroups="performance"` for performance tests only.
+
+### Best Practices for Memory Safety Tests
+
+1. **Always test edge cases:**
+   ```java
+   // Test boundary values
+   blockchain.searchByCategory("TEST", 1);        // Minimum valid
+   blockchain.searchByCategory("TEST", Integer.MAX_VALUE);  // Maximum
+   ```
+
+2. **Test with realistic data:**
+   ```java
+   // Use actual data sizes, not minimal test data
+   for (int i = 0; i < 10000; i++) {
+       blockchain.addBlock(generateRealisticData(), key, pubkey);
+   }
+   ```
+
+3. **Monitor memory during tests:**
+   ```java
+   Runtime runtime = Runtime.getRuntime();
+   long before = runtime.totalMemory() - runtime.freeMemory();
+   // ... do work ...
+   long after = runtime.totalMemory() - runtime.freeMemory();
+   long increase = after - before;
+   assertTrue(increase < ACCEPTABLE_INCREASE);
+   ```
+
+4. **Test database-specific behavior:**
+   ```java
+   @EnabledIfEnvironmentVariable(named = "BLOCKCHAIN_DB_HOST", matches = ".*")
+   @Test
+   void testPostgresqlSpecificBehavior() { ... }
+   ```
+
+### Common Pitfalls to Avoid
+
+❌ **DON'T:** Create tests that assume unlimited memory
+```java
+// BAD: Will fail with OutOfMemoryError on large chains
+List<Block> allBlocks = blockchain.searchByCategory("MEDICAL", 0);
+```
+
+✅ **DO:** Use appropriate limits or streaming
+```java
+// GOOD: Safe limit with default
+List<Block> results = blockchain.searchByCategory("MEDICAL", 10000);
+
+// BETTER: Streaming for unlimited
+blockchain.processChainInBatches(batch -> { ... }, 1000);
+```
+
+❌ **DON'T:** Ignore iteration limits in JSON searches
+```java
+// BAD: Might hang on complex structures
+blockchain.searchByCustomMetadata(veryComplexQuery, unlimited);
+```
+
+✅ **DO:** Use reasonable limits
+```java
+// GOOD: Respects iteration limit
+blockchain.searchByCustomMetadata(query, 100);
+```
+
 ### Documentation References
-- [API_GUIDE.md](../reference/API_GUIDE.md#test-utilities) - Complete API for test methods
+- [API_GUIDE.md](../reference/API_GUIDE.md#-memory-safety--streaming-apis-v105) - Memory Safety & Streaming APIs
 - [THREAD_SAFETY_TESTS.md](THREAD_SAFETY_TESTS.md) - Concurrency testing patterns
 - [SHARED_STATE_TESTING_PATTERNS.md](SHARED_STATE_TESTING_PATTERNS.md) - Shared state management

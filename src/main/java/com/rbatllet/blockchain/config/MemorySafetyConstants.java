@@ -59,4 +59,12 @@ public final class MemorySafetyConstants {
      * Log progress every N blocks processed.
      */
     public static final int PROGRESS_REPORT_INTERVAL = 5000;
+
+    /**
+     * Maximum iterations for JSON metadata search operations.
+     * Prevents excessive iteration over large blockchains.
+     * Used by searchByCustomMetadata*, searchByCustomMetadataKeyValue*, and searchByCustomMetadataMultipleCriteria*.
+     * For unlimited results, use the streaming variants (streamByCustomMetadata*).
+     */
+    public static final int MAX_JSON_METADATA_ITERATIONS = 100;
 }

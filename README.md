@@ -611,6 +611,132 @@ mvn test -Dtest=UserFriendlyEncryptionAPIZeroCoverageTest    # Edge cases
 mvn test -Dtest=UserFriendlyEncryptionAPIRemainingCoverageTest # Full coverage
 
 # Run with coverage report
+```
+
+## 🎬 Demo Applications
+
+### Memory Safety Demonstrations (v1.0.6)
+
+Two comprehensive interactive demos showcase the memory safety improvements from Phases A and B:
+
+#### 1. Streaming APIs Demo (Phase B.2)
+
+Demonstrates the 4 new memory-safe streaming methods:
+
+```bash
+./scripts/run_streaming_apis_demo.zsh
+```
+
+**Features Demonstrated:**
+- ✅ `streamBlocksByTimeRange()` - Temporal queries with time filtering
+- ✅ `streamEncryptedBlocks()` - Encryption audits and key rotation operations
+- ✅ `streamBlocksWithOffChainData()` - Off-chain storage management
+- ✅ `streamBlocksAfter()` - Incremental processing for large rollbacks
+- ✅ Memory safety verification (constant ~50MB usage with any blockchain size)
+
+**Sample Output:**
+```
+═══════════════════════════════════════════════════════════════
+  STREAMING APIS DEMO - PHASE B.2
+═══════════════════════════════════════════════════════════════
+
+  🎯 DEMO: streamBlocksByTimeRange()
+     - Blocks found: 25
+     - Time range: 2024-01-01 to 2024-12-31
+     - Execution time: 15ms
+     - Memory-safe: Constant ~50MB usage
+
+  🎯 DEMO: streamEncryptedBlocks()
+     - Encrypted blocks found: 10
+     - Audit passed: 10 ✅
+     - Execution time: 12ms
+
+  🎯 DEMO: streamBlocksWithOffChainData()
+     - Off-chain blocks found: 10
+     - Total off-chain data: 6.00 MB
+     - Execution time: 18ms
+
+  🎯 DEMO: streamBlocksAfter()
+     - Blocks processed: 15
+     - Block range: #36 to #50
+     - Execution time: 10ms
+
+✅ All streaming API demos completed successfully!
+```
+
+#### 2. Memory Safety Demo (Phase A)
+
+Demonstrates critical memory safety improvements:
+
+```bash
+./scripts/run_memory_safety_demo.zsh
+```
+
+**Features Demonstrated:**
+- ✅ Breaking changes validation (`maxResults` parameter enforcement)
+- ✅ Batch processing with `processChainInBatches()` (constant memory)
+- ✅ Streaming validation with `validateChainStreaming()` (unlimited size)
+- ✅ Memory-safe search methods with automatic limits
+- ✅ Memory safety constants (`MemorySafetyConstants`)
+- ✅ Before vs After comparison (66% memory reduction)
+
+**Sample Output:**
+```
+═══════════════════════════════════════════════════════════════
+  MEMORY SAFETY DEMO - PHASE A
+═══════════════════════════════════════════════════════════════
+
+  ⚠️  DEMO: BREAKING CHANGES VALIDATION
+     Test 1: Attempting negative maxResults...
+       ✅ Correctly rejected: maxResults must be positive
+
+     Test 2: Attempting zero maxResults...
+       ✅ Correctly rejected: maxResults must be positive
+
+     Test 3: Using valid maxResults (1000)...
+       ✅ Accepted: Retrieved 1000 blocks
+
+  🎯 DEMO: BATCH PROCESSING
+     - Total blocks processed: 1001
+     - Encrypted blocks: 200
+     - Plain blocks: 801
+     - Processing time: 850ms
+     - Memory delta: 12.5 MB ✅
+
+  🎯 DEMO: STREAMING VALIDATION
+     - Blockchain valid: ✅ YES
+     - Total blocks validated: 1001
+     - Validation time: 920ms
+     - Perfect for chains > 500K blocks
+
+  📈 BEFORE vs AFTER COMPARISON
+     ❌ BEFORE: Memory used: 125 MB
+     ✅ AFTER: Memory used: 42 MB
+     📈 Improvement: Memory reduction: 66.4% ✅
+
+✅ All memory safety demos completed successfully!
+```
+
+#### Demo Source Code
+
+- **Phase B.2**: `src/main/java/demo/StreamingApisDemo.java`
+- **Phase A**: `src/main/java/demo/MemorySafetyDemo.java`
+
+Both demos:
+- Create real blockchains (50-1000 blocks)
+- Mix data types (encrypted, off-chain, plain text)
+- Perform actual blockchain operations (no simulations)
+- Include memory measurement and verification
+- Provide detailed output with metrics and timings
+
+**Related Documentation:**
+- [API_GUIDE.md - Memory Safety & Streaming APIs](docs/reference/API_GUIDE.md#-memory-safety--streaming-apis-v105)
+- [PERFORMANCE_BENCHMARK_REPORT.md](docs/reports/PERFORMANCE_BENCHMARK_REPORT.md)
+- [MIGRATION_GUIDE_V1_0_5.md](docs/reference/MIGRATION_GUIDE_V1_0_5.md)
+
+---
+
+# Run with coverage report
 mvn clean test jacoco:report
 # View report: target/site/jacoco/index.html
 ```

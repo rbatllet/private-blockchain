@@ -6,7 +6,7 @@
 
     <groupId>com.rbatllet</groupId>
     <artifactId>private-blockchain</artifactId>
-    <version>1.0.5</version>
+    <version>1.0.6</version>
     <packaging>jar</packaging>
 
     <name>Private Blockchain</name>
@@ -237,9 +237,9 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>${maven-execution-plugin.version}</version>
                 <configuration>
-                    <!-- Default configuration for running all tests -->
+                    <!-- Default configuration for running all tests (excludes slow and extreme tests by default) -->
                     <executable>java</executable>
-                    <commandlineArgs>${argLine} -cp "%classpath" org.junit.platform.console.ConsoleLauncher --scan-classpath --include-classname=".*Test.*" --details=tree</commandlineArgs>
+                    <commandlineArgs>${argLine} -cp "%classpath" org.junit.platform.console.ConsoleLauncher --scan-classpath --include-classname=".*Test.*" --exclude-tag=slow --exclude-tag=extreme --details=tree</commandlineArgs>
                     <classpathScope>test</classpathScope>
                     <systemProperties>
                         <systemProperty>
