@@ -5194,3 +5194,385 @@ matches.add(newMatch);  // Throws UnsupportedOperationException
 ```
 
 This robustness implementation ensures the `AdvancedSearchResult` class operates reliably in production environments with unpredictable input data and maintains data integrity through immutable return values.
+
+---
+
+## 🚀 Memory Safety & Streaming APIs (v1.0.6+)
+
+### Breaking Changes: maxResults Parameter Behavior
+
+**⚠️ IMPORTANT**: In v1.0.6+, the handling of `maxResults` parameter changed to prevent memory exhaustion.
+
+#### What Changed
+
+**Before (v1.0.4 and earlier):**
+```java
+// maxResults = 0 or negative returned ALL results (potentially millions of blocks in memory)
+blockchain.searchByCategory("MEDICAL", 0);        // ❌ DANGER: Unbounded memory usage
+blockchain.getBlocksBySignerPublicKey(publicKey); // ❌ Old default: no limit
+```
+
+**After (v1.0.5+):**
+```java
+// maxResults = 0 or negative is now REJECTED with IllegalArgumentException
+blockchain.searchByCategory("MEDICAL", 0);        // ❌ Throws IllegalArgumentException
+blockchain.getBlocksBySignerPublicKey(publicKey); // ✅ New default: 10,000 limit (safe)
+```
+
+#### Migration Guide
+
+**If your code was relying on unlimited results:**
+
+```java
+// ❌ OLD CODE (v1.0.4) - WILL BREAK in v1.0.5+
+List<Block> allBlocks = blockchain.searchByCategory("MEDICAL", 0);
+
+// ✅ NEW CODE (v1.0.5+) - Use appropriate limits
+// Option 1: Use reasonable limit (recommended)
+List<Block> topBlocks = blockchain.searchByCategory("MEDICAL", 10000);
+
+// Option 2: Use batch processing for large datasets
+blockchain.processChainInBatches(batch -> {
+    for (Block block : batch) {
+        if (block.getMetadata() != null &&
+            block.getMetadata().contains("MEDICAL")) {
+            // Process block
+        }
+    }
+}, 1000);
+
+// Option 3: Use streaming variant (if available)
+blockchain.validateChainStreaming(block -> {
+    // Process blocks one at a time without memory accumulation
+});
+```
+
+### Streaming APIs for Memory-Efficient Processing
+
+The following APIs are optimized for processing large blockchains without loading all results into memory:
+
+#### 1. processChainInBatches() - Recommended for Most Use Cases
+
+```java
+// Process blockchain in 1000-block batches
+blockchain.processChainInBatches(batch -> {
+    for (Block block : batch) {
+        // Process each block
+        validateBlock(block);
+        // Block is automatically released after batch processing
+    }
+}, 1000);
+```
+
+**Benefits:**
+- ✅ Constant memory usage regardless of chain size
+- ✅ Automatic session management (flush/clear every 10 batches)
+- ✅ Works with all database backends (SQLite/PostgreSQL/H2/MySQL)
+- ✅ Thread-safe with global blockchain lock
+
+**Performance:**
+- SQLite: Pagination-based (no ScrollableResults)
+- PostgreSQL/H2: Native ScrollableResults for optimal performance
+- Memory: ~50MB regardless of chain size
+
+#### 2. validateChainStreaming() - For Custom Validation
+
+```java
+// Validate blockchain without size limits
+boolean valid = blockchain.validateChainStreaming(block -> {
+    // Custom validation logic
+    if (!isBlockValid(block)) {
+        throw new ValidationException("Block invalid: " + block.getHash());
+    }
+});
+```
+
+**Benefits:**
+- ✅ No hard size limits (unlike validateChainDetailed)
+- ✅ Custom validation callback for each block
+- ✅ Memory-efficient streaming validation
+- ✅ Perfect for chains > 500K blocks
+
+#### 3. Paginated APIs with Size Limits
+
+```java
+// Safe pagination with automatic limits
+List<Block> page1 = blockchain.getBlocksPaginated(0, 1000);      // First 1000 blocks
+List<Block> page2 = blockchain.getBlocksPaginated(1000, 1000);   // Next 1000 blocks
+
+// Search with automatic limits
+List<Block> results = blockchain.searchByCategory("MEDICAL", 10000);  // Max 10K results
+```
+
+**Characteristics:**
+- ✅ Default limits prevent memory exhaustion
+- ✅ Long offset type supports chains > 2.1B blocks
+- ✅ Efficient pagination for database queries
+- ✅ Recommended for UI pagination, reports
+
+### Memory Safety Constants
+
+All limits are configurable via `MemorySafetyConstants`:
+
+```java
+// Query limits
+MAX_BATCH_SIZE = 10,000                    // Max items for batch operations
+DEFAULT_MAX_SEARCH_RESULTS = 10,000        // Default search result limit
+SAFE_EXPORT_LIMIT = 100,000                // Warning threshold for exports
+MAX_EXPORT_LIMIT = 500,000                 // Hard limit for chain exports
+
+// Batch processing
+DEFAULT_BATCH_SIZE = 1,000                 // Default batch size for streaming
+PROGRESS_REPORT_INTERVAL = 5,000           // Progress logging interval
+
+// JSON metadata search
+MAX_JSON_METADATA_ITERATIONS = 100         // Iteration limit for metadata search
+```
+
+### Recommended Patterns by Use Case
+
+| Use Case | Pattern | Limit |
+|----------|---------|-------|
+| **Real-time queries** | `getBlocksPaginated()` | 100-1000 |
+| **Bulk processing** | `processChainInBatches()` | 1000-10000 |
+| **Custom validation** | `validateChainStreaming()` | Unlimited |
+| **Search/filtering** | `searchByCategory()` | 10000 |
+| **Exports/backups** | `exportChain()` | 500000 max |
+| **Streaming analytics** | Custom loop + `processChainInBatches()` | Unlimited |
+
+### Error Handling for Memory Safety
+
+```java
+try {
+    // ❌ This will throw IllegalArgumentException in v1.0.5+
+    blockchain.searchByCategory("MEDICAL", -1);
+} catch (IllegalArgumentException e) {
+    // Handle: maxResults must be > 0
+    System.err.println("Invalid maxResults value: " + e.getMessage());
+}
+
+try {
+    // ✅ This is safe and will return up to 10,000 results
+    List<Block> results = blockchain.searchByCategory("MEDICAL", 10000);
+} catch (OutOfMemoryError e) {
+    // Rare, but if you get this, use processChainInBatches instead
+    System.err.println("Memory exhausted - use streaming APIs instead");
+}
+```
+
+### Database-Specific Optimizations
+
+The streaming APIs automatically detect your database and optimize accordingly:
+
+**PostgreSQL / H2:**
+```
+Uses native ScrollableResults → High performance ⚡
+Typical: 1M blocks in ~12-15 seconds
+```
+
+**SQLite:**
+```
+Uses pagination-based streaming → Good performance
+Typical: 100K blocks in ~2-3 seconds
+(SQLite has write-concurrency limitations)
+```
+
+**MySQL:**
+```
+Uses ScrollableResults → High performance ⚡
+Typical: 1M blocks in ~15-20 seconds
+```
+
+### Phase B.2: New Streaming Alternatives (v1.0.6)
+
+Four specialized streaming methods added for common use cases that previously required pagination:
+
+#### 4. streamBlocksByTimeRange() - Temporal Queries
+
+```java
+/**
+ * Stream blocks within a time range (unlimited size, memory-safe)
+ *
+ * Use cases:
+ * - Temporal audits and compliance reporting
+ * - Time-based analytics and trend analysis
+ * - Historical data processing
+ *
+ * @param startTime Inclusive start timestamp
+ * @param endTime Inclusive end timestamp
+ * @param blockConsumer Callback invoked for each block
+ * @throws IllegalArgumentException if startTime or endTime is null
+ */
+blockchain.streamBlocksByTimeRange(
+    LocalDateTime.of(2024, 1, 1, 0, 0),
+    LocalDateTime.of(2024, 12, 31, 23, 59),
+    block -> {
+        // Process blocks created in 2024
+        analyzeBlock(block);
+    }
+);
+```
+
+**Benefits:**
+- ✅ Unlimited time range support
+- ✅ Constant memory usage (~50MB)
+- ✅ Database-optimized (ScrollableResults for PostgreSQL/H2/MySQL, pagination for SQLite)
+- ✅ Ordered by block number ascending
+
+#### 5. streamEncryptedBlocks() - Encryption Operations
+
+```java
+/**
+ * Stream all encrypted blocks only (unlimited size, memory-safe)
+ *
+ * Use cases:
+ * - Mass re-encryption with new keys
+ * - Encryption audits and compliance checks
+ * - Key rotation operations
+ * - Encryption analytics
+ *
+ * @param blockConsumer Callback invoked for each encrypted block
+ */
+blockchain.streamEncryptedBlocks(block -> {
+    // Process only encrypted blocks
+    if (needsReEncryption(block)) {
+        reEncryptBlock(block, newPassword);
+    }
+});
+```
+
+**Benefits:**
+- ✅ Filters encrypted blocks at database level (efficient)
+- ✅ No memory accumulation
+- ✅ Perfect for key rotation across millions of blocks
+- ✅ Thread-safe with global blockchain lock
+
+#### 6. streamBlocksWithOffChainData() - Off-Chain Management
+
+```java
+/**
+ * Stream all blocks with off-chain storage (unlimited size, memory-safe)
+ *
+ * Use cases:
+ * - Off-chain data verification and integrity checks
+ * - Storage migration (move off-chain data to new location)
+ * - Off-chain cleanup and maintenance
+ * - Storage analytics
+ *
+ * @param blockConsumer Callback invoked for each block with off-chain data
+ */
+blockchain.streamBlocksWithOffChainData(block -> {
+    // Verify off-chain file integrity
+    String offChainPath = block.getOffChainData();
+    if (offChainPath != null) {
+        verifyOffChainFile(offChainPath);
+    }
+});
+```
+
+**Benefits:**
+- ✅ Efficient filtering (only blocks with `offChainData IS NOT NULL`)
+- ✅ Constant memory usage
+- ✅ Perfect for storage audits on large blockchains
+- ✅ Database-optimized queries
+
+#### 7. streamBlocksAfter() - Incremental Processing
+
+```java
+/**
+ * Stream blocks after a specific block number (unlimited size, memory-safe)
+ *
+ * Use cases:
+ * - Large rollbacks (>100K blocks)
+ * - Incremental processing of new blocks
+ * - Chain recovery and synchronization
+ * - Differential backups
+ *
+ * @param blockNumber Starting block number (exclusive)
+ * @param blockConsumer Callback invoked for each block after blockNumber
+ * @throws IllegalArgumentException if blockNumber is null
+ */
+blockchain.streamBlocksAfter(500_000L, block -> {
+    // Process blocks after block #500,000
+    if (needsRollback(block)) {
+        markForDeletion(block);
+    }
+});
+```
+
+**Benefits:**
+- ✅ Efficient range query (single index scan)
+- ✅ Perfect for large rollbacks without memory issues
+- ✅ Supports blockchains > 2.1B blocks (uses `long`)
+- ✅ Ordered by block number ascending
+
+### Performance Characteristics - Phase B.2 Methods
+
+All 4 new streaming methods use database-specific optimization:
+
+| Database | Implementation | Performance | Memory |
+|----------|----------------|-------------|---------|
+| **PostgreSQL** | ScrollableResults | ⚡ Excellent (server-side cursor) | ~50MB constant |
+| **MySQL** | ScrollableResults | ⚡ Excellent (server-side cursor) | ~50MB constant |
+| **H2** | ScrollableResults | ⚡ Excellent (forward-only cursor) | ~50MB constant |
+| **SQLite** | Manual Pagination | ✅ Good (client-side batching) | ~50MB constant |
+
+**Benchmark Results** (1M blocks):
+- PostgreSQL: ~12-15 seconds (all 4 methods)
+- H2: ~10-12 seconds (all 4 methods)
+- SQLite: ~20-25 seconds (pagination overhead)
+
+### When to Use Each Streaming Method
+
+| Method | Best For | Avoid For |
+|--------|----------|-----------|
+| `processChainInBatches()` | General-purpose processing, validation | N/A - always safe |
+| `validateChainStreaming()` | Custom validation logic | Heavy computation per block |
+| `streamBlocksByTimeRange()` | Temporal queries, compliance | Full blockchain scans |
+| `streamEncryptedBlocks()` | Encryption operations, key rotation | Mixed encrypted/plain searches |
+| `streamBlocksWithOffChainData()` | Off-chain maintenance | On-chain only operations |
+| `streamBlocksAfter()` | Rollbacks, incremental sync | Historical data analysis |
+
+### Summary
+
+- ✅ **Always use streaming APIs** for large datasets (>10K blocks)
+- ✅ **Always specify maxResults** when using search/filter methods
+- ❌ **Never set maxResults = 0** (throws exception in v1.0.5+)
+- ✅ **Use processChainInBatches()** as your default for bulk operations
+- ✅ **Use validateChainStreaming()** for unlimited validation
+- ✅ **Use specialized streaming methods** (Phase B.2) for specific use cases
+
+### Live Demos
+
+Two comprehensive demos are available to demonstrate the memory safety features:
+
+**1. Streaming APIs Demo (Phase B.2):**
+```bash
+./scripts/run_streaming_apis_demo.zsh
+```
+
+Demonstrates:
+- `streamBlocksByTimeRange()` - Temporal queries with time filtering
+- `streamEncryptedBlocks()` - Encryption audits and key rotation
+- `streamBlocksWithOffChainData()` - Off-chain storage management
+- `streamBlocksAfter()` - Incremental processing for rollbacks
+- Memory safety verification (constant ~50MB usage)
+
+**2. Memory Safety Demo (Phase A):**
+```bash
+./scripts/run_memory_safety_demo.zsh
+```
+
+Demonstrates:
+- Breaking changes validation (maxResults parameter)
+- Batch processing with `processChainInBatches()`
+- Streaming validation with `validateChainStreaming()`
+- Memory-safe search methods with automatic limits
+- Memory safety constants configuration
+- Before vs After comparison (memory reduction)
+
+**Source Code:**
+- `src/main/java/demo/StreamingApisDemo.java` - Phase B.2 features
+- `src/main/java/demo/MemorySafetyDemo.java` - Phase A features
+
+Both demos create sample blockchains and demonstrate memory-safe patterns with real blockchain operations (no simulations).

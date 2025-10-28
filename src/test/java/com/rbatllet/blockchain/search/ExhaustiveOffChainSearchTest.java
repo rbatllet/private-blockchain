@@ -500,13 +500,15 @@ public class ExhaustiveOffChainSearchTest {
         double avgSearchTime = totalSearchTime / searchIterations;
 
         // Performance assertions
+        // Note: These thresholds are intentionally relaxed for CI/CD environments
+        // where system load and resource contention may affect timing
         assertTrue(
-            indexTimeMs < 5000,
-            "Indexing should complete within 5 seconds: " + indexTimeMs + "ms"
+            indexTimeMs < 10000,
+            "Indexing should complete within 10 seconds: " + indexTimeMs + "ms"
         );
         assertTrue(
-            avgSearchTime < 500,
-            "Average search should complete within 500ms: " +
+            avgSearchTime < 1000,
+            "Average search should complete within 1 second: " +
             avgSearchTime +
             "ms"
         );

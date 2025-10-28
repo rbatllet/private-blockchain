@@ -1290,7 +1290,7 @@ The following test classes validate thread safety under various conditions:
 4. **Volatile Fields**: Proper memory visibility for shared state
 5. **Thread-Safe Collections**: Concurrent data structures for shared access
 
-#### 🔥 Recent Thread Safety Enhancements (v1.0.5+)
+#### 🔥 Recent Thread Safety Enhancements (v1.0.6+)
 
 **MetadataLayerManager Thread Safety Improvements:**
 

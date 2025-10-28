@@ -7283,159 +7283,178 @@ public class UserFriendlyEncryptionAPI {
                 ? Pattern.compile(regexPattern, Pattern.CASE_INSENSITIVE)
                 : null;
 
-            blockchain.processChainInBatches(batch -> {
+            // ✅ OPTIMIZED: Decide which streaming method to use based on active filters (Phase B.2)
+            // Priority:
+            // 1. Temporal filter (startDate && endDate) -> streamBlocksByTimeRange() [99%+ reduction]
+            // 2. Encrypted-only search -> streamEncryptedBlocks() [60% reduction]
+            // 3. Complex filters -> processChainInBatches() [fallback]
+
+            boolean useTemporalStreaming = (startDate != null && endDate != null);
+            boolean useEncryptedStreaming = (searchEncrypted && password != null && !useTemporalStreaming && categories.isEmpty());
+
+            // Define block processor lambda (reusable across all streaming methods)
+            java.util.function.Consumer<Block> blockProcessor = block -> {
                 if (maxResultsReached.get()) {
-                    return; // Skip processing if max results already reached
+                    return; // Early exit
                 }
 
-                for (Block block : batch) {
-                    blocksSearched.incrementAndGet();
+                blocksSearched.incrementAndGet();
 
-                    // Time range filter
-                    if (
-                        startDate != null &&
-                        block.getTimestamp().isBefore(startDate)
-                    ) continue;
-                    if (
-                        endDate != null && block.getTimestamp().isAfter(endDate)
-                    ) continue;
+                // Apply filters (only needed for non-streaming-filtered approaches)
+                // Time range filter (skip if using temporal streaming)
+                if (!useTemporalStreaming) {
+                    if (startDate != null && block.getTimestamp().isBefore(startDate)) return;
+                    if (endDate != null && block.getTimestamp().isAfter(endDate)) return;
+                }
 
-                    // Category filter
-                    if (
-                        !categories.isEmpty() &&
-                        !categories.contains(block.getContentCategory())
-                    ) continue;
+                // Category filter (always needed)
+                if (!categories.isEmpty() && !categories.contains(block.getContentCategory())) return;
 
-                    double relevanceScore = 0.0;
-                    List<String> matchedTerms = new ArrayList<>();
-                    Map<String, String> snippets = new HashMap<>();
-                    AdvancedSearchResult.SearchMatch.MatchLocation location = null;
+                double relevanceScore = 0.0;
+                List<String> matchedTerms = new ArrayList<>();
+                Map<String, String> snippets = new HashMap<>();
+                AdvancedSearchResult.SearchMatch.MatchLocation location = null;
 
-                    // Search in different locations
-                    String content = block.getData();
+                // Search in different locations
+                String content = block.getData();
 
-                    // Handle encrypted blocks
-                    if (
-                        block.isDataEncrypted() &&
-                        searchEncrypted &&
-                        password != null
-                    ) {
-                        try {
-                            content =
-                                SecureBlockEncryptionService.decryptFromString(
-                                    block.getEncryptionMetadata(),
-                                    password
-                                );
-                            encryptedBlocksDecrypted.incrementAndGet();
-                        } catch (Exception e) {
-                            logger.debug(
-                                "Could not decrypt block {}: {}",
-                                block.getBlockNumber(),
-                                e.getMessage()
-                            );
-                            continue;
-                        }
+                // Handle encrypted blocks (skip if using encrypted streaming, already guaranteed encrypted)
+                if (block.isDataEncrypted() && searchEncrypted && password != null) {
+                    try {
+                        content = SecureBlockEncryptionService.decryptFromString(
+                            block.getEncryptionMetadata(),
+                            password
+                        );
+                        encryptedBlocksDecrypted.incrementAndGet();
+                    } catch (Exception e) {
+                        logger.debug(
+                            "Could not decrypt block {}: {}",
+                            block.getBlockNumber(),
+                            e.getMessage()
+                        );
+                        return; // Changed from continue to return (lambda context)
                     }
+                }
 
-                    bytesProcessed.addAndGet(content != null ? content.length() : 0);
+                bytesProcessed.addAndGet(content != null ? content.length() : 0);
 
-                    // Keyword matching
-                    if (!keywords.isEmpty() && content != null) {
-                        String[] keywordArray = keywords
-                            .toLowerCase()
-                            .split("\\s+");
-                        for (String keyword : keywordArray) {
-                            if (content.toLowerCase().contains(keyword)) {
-                                matchedTerms.add(keyword);
-                                relevanceScore += 1.0;
-
-                                // Extract snippet
-                                int index = content.toLowerCase().indexOf(keyword);
-                                int start = Math.max(0, index - 50);
-                                int end = Math.min(
-                                    content.length(),
-                                    index + keyword.length() + 50
-                                );
-                                snippets.put(
-                                    keyword,
-                                    "..." + content.substring(start, end) + "..."
-                                );
-                                location =
-                                    AdvancedSearchResult.SearchMatch.MatchLocation.BLOCK_DATA;
-                            }
-                        }
-                    }
-
-                    // Regex matching
-                    if (regexMatcher != null && content != null) {
-                        Matcher matcher = regexMatcher.matcher(content);
-                        while (matcher.find()) {
-                            String match = matcher.group();
-                            matchedTerms.add("regex:" + match);
-                            relevanceScore += 2.0; // Higher score for regex matches
+                // Keyword matching
+                if (!keywords.isEmpty() && content != null) {
+                    String[] keywordArray = keywords
+                        .toLowerCase()
+                        .split("\\s+");
+                    for (String keyword : keywordArray) {
+                        if (content.toLowerCase().contains(keyword)) {
+                            matchedTerms.add(keyword);
+                            relevanceScore += 1.0;
 
                             // Extract snippet
-                            int start = Math.max(0, matcher.start() - 50);
+                            int index = content.toLowerCase().indexOf(keyword);
+                            int start = Math.max(0, index - 50);
                             int end = Math.min(
                                 content.length(),
-                                matcher.end() + 50
+                                index + keyword.length() + 50
                             );
                             snippets.put(
-                                "regex:" + match,
+                                keyword,
                                 "..." + content.substring(start, end) + "..."
                             );
                             location =
                                 AdvancedSearchResult.SearchMatch.MatchLocation.BLOCK_DATA;
                         }
                     }
+                }
 
-                    // Search in keywords
-                    if (!keywords.isEmpty()) {
-                        String manualKw = block.getManualKeywords() != null ? block.getManualKeywords() : "";
-                        String autoKw = block.getAutoKeywords() != null ? block.getAutoKeywords() : "";
-                        String combinedKeywords = (manualKw + " " + autoKw).toLowerCase();
-                        String[] keywordArray = keywords
-                            .toLowerCase()
-                            .split("\\s+");
-                        for (String keyword : keywordArray) {
-                            if (combinedKeywords.contains(keyword)) {
-                                matchedTerms.add("keyword:" + keyword);
-                                relevanceScore += 1.5; // Medium score for keyword matches
-                                if (location == null) {
-                                    location = (block.getManualKeywords() != null &&
-                                               block.getManualKeywords().toLowerCase().contains(keyword))
-                                        ? AdvancedSearchResult.SearchMatch.MatchLocation.MANUAL_KEYWORDS
-                                        : AdvancedSearchResult.SearchMatch.MatchLocation.AUTO_KEYWORDS;
-                                }
+                // Regex matching
+                if (regexMatcher != null && content != null) {
+                    Matcher matcher = regexMatcher.matcher(content);
+                    while (matcher.find()) {
+                        String match = matcher.group();
+                        matchedTerms.add("regex:" + match);
+                        relevanceScore += 2.0; // Higher score for regex matches
+
+                        // Extract snippet
+                        int start = Math.max(0, matcher.start() - 50);
+                        int end = Math.min(
+                            content.length(),
+                            matcher.end() + 50
+                        );
+                        snippets.put(
+                            "regex:" + match,
+                            "..." + content.substring(start, end) + "..."
+                        );
+                        location =
+                            AdvancedSearchResult.SearchMatch.MatchLocation.BLOCK_DATA;
+                    }
+                }
+
+                // Search in keywords
+                if (!keywords.isEmpty()) {
+                    String manualKw = block.getManualKeywords() != null ? block.getManualKeywords() : "";
+                    String autoKw = block.getAutoKeywords() != null ? block.getAutoKeywords() : "";
+                    String combinedKeywords = (manualKw + " " + autoKw).toLowerCase();
+                    String[] keywordArray = keywords
+                        .toLowerCase()
+                        .split("\\s+");
+                    for (String keyword : keywordArray) {
+                        if (combinedKeywords.contains(keyword)) {
+                            matchedTerms.add("keyword:" + keyword);
+                            relevanceScore += 1.5; // Medium score for keyword matches
+                            if (location == null) {
+                                location = (block.getManualKeywords() != null &&
+                                           block.getManualKeywords().toLowerCase().contains(keyword))
+                                    ? AdvancedSearchResult.SearchMatch.MatchLocation.MANUAL_KEYWORDS
+                                    : AdvancedSearchResult.SearchMatch.MatchLocation.AUTO_KEYWORDS;
                             }
                         }
                     }
+                }
 
-                    // Search in off-chain data
-                    if (block.getOffChainData() != null) {
-                        offChainFilesAccessed.incrementAndGet();
-                        // Count off-chain match (implementation delegated to off-chain search service)
-                    }
+                // Search in off-chain data
+                if (block.getOffChainData() != null) {
+                    offChainFilesAccessed.incrementAndGet();
+                    // Count off-chain match (implementation delegated to off-chain search service)
+                }
 
-                    // Add match if relevant
-                    if (relevanceScore > 0) {
-                        AdvancedSearchResult.SearchMatch match =
-                            new AdvancedSearchResult.SearchMatch(
-                                block,
-                                relevanceScore,
-                                matchedTerms,
-                                snippets,
-                                location
-                            );
-                        result.addMatch(match);
+                // Add match if relevant
+                if (relevanceScore > 0) {
+                    AdvancedSearchResult.SearchMatch match =
+                        new AdvancedSearchResult.SearchMatch(
+                            block,
+                            relevanceScore,
+                            matchedTerms,
+                            snippets,
+                            location
+                        );
+                    result.addMatch(match);
 
-                        if (result.getTotalMatches() >= maxResults) {
-                            maxResultsReached.set(true);
-                            return; // Exit batch processing
-                        }
+                    if (result.getTotalMatches() >= maxResults) {
+                        maxResultsReached.set(true);
+                        return; // Changed from return (exit batch) to return (exit lambda)
                     }
                 }
-            }, 1000);
+            }; // End of blockProcessor lambda
+
+            // ✅ EXECUTE: Call appropriate streaming method based on active filters
+            if (useTemporalStreaming) {
+                // ✅ OPTIMIZED: Temporal query (99%+ reduction for recent date ranges)
+                logger.debug("🎯 Using streamBlocksByTimeRange({}, {})", startDate, endDate);
+                blockchain.streamBlocksByTimeRange(startDate, endDate, blockProcessor);
+
+            } else if (useEncryptedStreaming) {
+                // ✅ OPTIMIZED: Encrypted-only search (60% reduction)
+                logger.debug("🎯 Using streamEncryptedBlocks() for encrypted-only search");
+                blockchain.streamEncryptedBlocks(blockProcessor);
+
+            } else {
+                // ❌ FALLBACK: Complex filter combinations require full scan
+                logger.debug("⚙️ Using processChainInBatches() for complex filters");
+                blockchain.processChainInBatches(batch -> {
+                    for (Block block : batch) {
+                        blockProcessor.accept(block);
+                    }
+                }, 1000);
+            }
 
             // Set statistics
             result.withStatistics(
