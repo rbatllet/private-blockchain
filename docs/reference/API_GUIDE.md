@@ -2470,11 +2470,11 @@ public ValidationSummary validateChainStreaming(
   ```
 
 **ValidationSummary Methods:**
-- `getTotalBlocks()`: Total number of blocks validated
-- `getValidBlocks()`: Count of valid blocks
-- `getInvalidBlocks()`: Count of invalid blocks
-- `getRevokedBlocks()`: Count of revoked blocks
-- `isValid()`: Returns true if no invalid blocks found
+- `long getTotalBlocks()`: Total number of blocks validated
+- `long getValidBlocks()`: Count of valid blocks
+- `long getInvalidBlocks()`: Count of invalid blocks
+- `long getRevokedBlocks()`: Count of revoked blocks
+- `boolean isValid()`: Returns true if no invalid blocks found
 
 ```java
 public long getBlockCount()

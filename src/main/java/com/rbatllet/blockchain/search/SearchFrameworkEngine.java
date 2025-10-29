@@ -2382,12 +2382,12 @@ public class SearchFrameworkEngine {
      */
     public static class SearchStats {
 
-        private final int totalBlocksIndexed;
+        private final long totalBlocksIndexed;
         private final SearchStrategyRouter.SearchRouterStats routerStats;
         private final long estimatedMemoryBytes;
 
         public SearchStats(
-            int totalBlocksIndexed,
+            long totalBlocksIndexed,
             SearchStrategyRouter.SearchRouterStats routerStats,
             long estimatedMemoryBytes
         ) {
@@ -2396,7 +2396,7 @@ public class SearchFrameworkEngine {
             this.estimatedMemoryBytes = estimatedMemoryBytes;
         }
 
-        public int getTotalBlocksIndexed() {
+        public long getTotalBlocksIndexed() {
             return totalBlocksIndexed;
         }
 

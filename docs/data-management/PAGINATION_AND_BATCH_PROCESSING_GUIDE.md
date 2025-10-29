@@ -88,30 +88,64 @@ do {
 
 ### ⚡ Search Framework Batch Processing
 
-#### SearchFrameworkEngine Implementation
+#### SearchFrameworkEngine Implementation (Memory-Safe Pattern)
 ```java
 /**
- * Search all blocks using batch processing to prevent memory exhaustion
+ * Search all blocks using streaming to prevent memory exhaustion
+ * ✅ CORRECT: Uses Consumer pattern with constant memory (~50MB)
  */
-public List<Block> searchAllBlocks() {
-    List<Block> allBlocks = new ArrayList<>();
-    final int BATCH_SIZE = 200;
-    long totalBlocks = blockchain.getBlockCount();  // ⚠️ Use long for block count
+public void processAllBlocks(Consumer<Block> blockProcessor) {
+    final int BATCH_SIZE = 1000;
 
-    // Process in batches to manage memory
-    // ⚠️ Use long offset to prevent overflow with large blockchains
-    for (long offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
-        List<Block> batchBlocks = blockchain.getBlocksPaginated(offset, BATCH_SIZE);
-        allBlocks.addAll(batchBlocks);
-
-        // Optional: memory pressure check
-        if (shouldPauseForMemory()) {
-            System.gc(); // Suggest garbage collection
-            Thread.sleep(100); // Brief pause
+    // Process in batches WITHOUT accumulation (constant memory)
+    blockchain.processChainInBatches(batch -> {
+        for (Block block : batch) {
+            blockProcessor.accept(block);  // ✅ Process directly
         }
+    }, BATCH_SIZE);
+}
+
+/**
+ * Search with limited results (when you need to return List<Block>)
+ * ✅ CORRECT: Uses maxResults limit + early termination
+ */
+public List<Block> searchBlocksLimited(int maxResults) {
+    List<Block> results = new ArrayList<>();
+    AtomicInteger count = new AtomicInteger(0);
+    AtomicBoolean limitReached = new AtomicBoolean(false);
+
+    blockchain.processChainInBatches(batch -> {
+        if (limitReached.get()) return;  // Early exit
+
+        for (Block block : batch) {
+            if (limitReached.get()) break;
+
+            if (matchesCriteria(block)) {
+                results.add(block);
+                if (count.incrementAndGet() >= maxResults) {
+                    limitReached.set(true);
+                    break;
+                }
+            }
+        }
+    }, 1000);
+
+    return results;
+}
+```
+
+#### ❌ ANTIPATTERN: Do NOT accumulate all blocks
+```java
+// ❌ BAD: Accumulates entire blockchain into memory
+public List<Block> searchAllBlocks() {
+    List<Block> allBlocks = new ArrayList<>();  // ❌ Memory bomb!
+
+    for (long offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
+        List<Block> batch = blockchain.getBlocksPaginated(offset, BATCH_SIZE);
+        allBlocks.addAll(batch);  // ❌ Accumulates GB of memory
     }
 
-    return allBlocks;
+    return allBlocks;  // ❌ Could be 10GB+ with 1M blocks
 }
 ```
 
@@ -415,16 +449,40 @@ public class MemoryAwarePagination {
 
 ### 🎯 Efficient Pagination
 - **Choose appropriate batch sizes** based on operation type:
-  - Search operations: 200 blocks
-  - Encryption operations: 50-100 blocks  
-  - Validation operations: 25-50 blocks
-  - Memory pressure: 10-25 blocks
+  - Search operations: 1000 blocks (with `processChainInBatches`)
+  - Encryption operations: 50-100 blocks
+  - Validation operations: 1000 blocks (streaming)
+  - Memory pressure: Adjust batch size dynamically
 
-### 📊 Memory Management
-- **Monitor memory usage** during batch processing
+### 📊 Memory Management (CRITICAL!)
+
+#### ✅ ALWAYS prefer streaming over accumulation:
+```java
+// ✅ CORRECT: Constant memory (~50MB)
+blockchain.processChainInBatches(batch -> {
+    for (Block block : batch) {
+        processBlock(block);  // Process directly
+    }
+}, 1000);
+
+// ❌ WRONG: Accumulates entire blockchain
+List<Block> allBlocks = new ArrayList<>();
+for (long offset = 0; offset < totalBlocks; offset += 1000) {
+    allBlocks.addAll(blockchain.getBlocksPaginated(offset, 1000));  // Memory bomb!
+}
+```
+
+#### When you MUST return List<Block>:
+- **ALWAYS enforce maxResults limit** (default: 10K via `MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS`)
+- **Use early termination** with `AtomicBoolean` to stop when limit reached
+- **Validate result size** before returning
+- **Consider using Consumer<Block> callback** instead of returning List
+
+#### Memory Safety Rules:
+- **NEVER accumulate unbounded results** with `addAll()` in a loop
+- **Use streaming methods** (`processChainInBatches`, `streamEncryptedBlocks`, etc.)
 - **Implement circuit breakers** for memory pressure conditions
-- **Use streaming processing** for very large datasets
-- **Configure garbage collection** parameters appropriately
+- **Configure JVM heap** appropriately for expected blockchain size (-Xmx4g minimum for production)
 
 ### ⚡ Performance Optimization
 - **Profile batch sizes** for your specific use case

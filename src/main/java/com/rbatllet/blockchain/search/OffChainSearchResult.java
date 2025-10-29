@@ -15,10 +15,10 @@ public class OffChainSearchResult implements SearchResultInterface {
     
     private final String searchTerm;
     private final List<OffChainMatch> matches;
-    private final int totalFilesSearched;
+    private final long totalFilesSearched;
     private final long searchTimestamp;
-    
-    public OffChainSearchResult(String searchTerm, List<OffChainMatch> matches, int totalFilesSearched) {
+
+    public OffChainSearchResult(String searchTerm, List<OffChainMatch> matches, long totalFilesSearched) {
         this.searchTerm = searchTerm;
         this.matches = matches;
         this.totalFilesSearched = totalFilesSearched;
@@ -60,7 +60,7 @@ public class OffChainSearchResult implements SearchResultInterface {
         return matches;
     }
 
-    public int getTotalFilesSearched() {
+    public long getTotalFilesSearched() {
         return totalFilesSearched;
     }
 

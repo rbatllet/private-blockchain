@@ -775,36 +775,36 @@ class UserFriendlyEncryptionAPIUntestedMethodsTest {
 
     @Test
     @Order(16)
-    @DisplayName("Test findBlocksByMetadataLinear() - Linear metadata search")
-    void testFindBlocksByMetadataLinear() throws Exception {
-        Method linearSearchMethod = UserFriendlyEncryptionAPI.class
-            .getDeclaredMethod("findBlocksByMetadataLinear", String.class, String.class);
-        linearSearchMethod.setAccessible(true);
+    @DisplayName("Test processMetadataMatches() - Streaming metadata search")
+    void testProcessMetadataMatches() throws Exception {
+        Method streamingSearchMethod = UserFriendlyEncryptionAPI.class
+            .getDeclaredMethod("processMetadataMatches", String.class, String.class, int.class, java.util.function.Consumer.class);
+        streamingSearchMethod.setAccessible(true);
 
         UserFriendlyEncryptionAPI realApi = createApiWithRealBlockchain();
 
         assertDoesNotThrow(() -> {
-            @SuppressWarnings("unchecked")
-            List<Block> results = (List<Block>) linearSearchMethod.invoke(realApi, "category", "test");
-            assertNotNull(results, "Linear search results should not be null");
-        }, "Linear metadata search should complete without errors");
+            List<Block> results = new ArrayList<>();
+            streamingSearchMethod.invoke(realApi, "category", "test", 100, (java.util.function.Consumer<Block>) results::add);
+            assertNotNull(results, "Streaming search results should not be null");
+        }, "Streaming metadata search should complete without errors");
     }
 
     @Test
     @Order(17)
-    @DisplayName("Test findBlocksByRecipientLinear() - Linear recipient search")
-    void testFindBlocksByRecipientLinear() throws Exception {
-        Method linearSearchMethod = UserFriendlyEncryptionAPI.class
-            .getDeclaredMethod("findBlocksByRecipientLinear", String.class);
-        linearSearchMethod.setAccessible(true);
+    @DisplayName("Test processRecipientMatches() - Streaming recipient search")
+    void testProcessRecipientMatches() throws Exception {
+        Method streamingSearchMethod = UserFriendlyEncryptionAPI.class
+            .getDeclaredMethod("processRecipientMatches", String.class, int.class, java.util.function.Consumer.class);
+        streamingSearchMethod.setAccessible(true);
 
         UserFriendlyEncryptionAPI realApi = createApiWithRealBlockchain();
 
         assertDoesNotThrow(() -> {
-            @SuppressWarnings("unchecked")
-            List<Block> results = (List<Block>) linearSearchMethod.invoke(realApi, "testUser");
-            assertNotNull(results, "Linear recipient search results should not be null");
-        }, "Linear recipient search should complete without errors");
+            List<Block> results = new ArrayList<>();
+            streamingSearchMethod.invoke(realApi, "testUser", 100, (java.util.function.Consumer<Block>) results::add);
+            assertNotNull(results, "Streaming recipient search results should not be null");
+        }, "Streaming recipient search should complete without errors");
     }
 
     @Test

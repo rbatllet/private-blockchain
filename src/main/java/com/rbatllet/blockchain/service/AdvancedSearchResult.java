@@ -78,46 +78,46 @@ public class AdvancedSearchResult implements SearchResultInterface {
     }
     
     public static class SearchStatistics {
-        private int totalBlocksSearched;
-        private int encryptedBlocksDecrypted;
-        private int offChainFilesAccessed;
+        private long totalBlocksSearched;
+        private long encryptedBlocksDecrypted;
+        private long offChainFilesAccessed;
         private long totalBytesProcessed;
         private Map<String, Integer> performanceMetrics;
-        
+
         public SearchStatistics() {
             this.performanceMetrics = new HashMap<>();
         }
-        
+
         // Builder methods
-        public SearchStatistics withBlocksSearched(int count) {
+        public SearchStatistics withBlocksSearched(long count) {
             this.totalBlocksSearched = count;
             return this;
         }
-        
-        public SearchStatistics withEncryptedBlocks(int count) {
+
+        public SearchStatistics withEncryptedBlocks(long count) {
             this.encryptedBlocksDecrypted = count;
             return this;
         }
-        
-        public SearchStatistics withOffChainFiles(int count) {
+
+        public SearchStatistics withOffChainFiles(long count) {
             this.offChainFilesAccessed = count;
             return this;
         }
-        
+
         public SearchStatistics withBytesProcessed(long bytes) {
             this.totalBytesProcessed = bytes;
             return this;
         }
-        
+
         public SearchStatistics addMetric(String metricName, int value) {
             this.performanceMetrics.put(metricName, value);
             return this;
         }
-        
+
         // Getters
-        public int getTotalBlocksSearched() { return totalBlocksSearched; }
-        public int getEncryptedBlocksDecrypted() { return encryptedBlocksDecrypted; }
-        public int getOffChainFilesAccessed() { return offChainFilesAccessed; }
+        public long getTotalBlocksSearched() { return totalBlocksSearched; }
+        public long getEncryptedBlocksDecrypted() { return encryptedBlocksDecrypted; }
+        public long getOffChainFilesAccessed() { return offChainFilesAccessed; }
         public long getTotalBytesProcessed() { return totalBytesProcessed; }
         public Map<String, Integer> getPerformanceMetrics() { return Collections.unmodifiableMap(performanceMetrics); }
     }

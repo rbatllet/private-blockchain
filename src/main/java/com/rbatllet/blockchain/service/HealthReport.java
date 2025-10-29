@@ -186,14 +186,14 @@ public class HealthReport {
         private double performanceScore = 0.0;
         private long memoryUsage = 0;
         private double diskUsage = 0.0;
-        private int totalBlocks = 0;
-        private int storageUsageMB = 0;
+        private long totalBlocks = 0;
+        private long storageUsageMB = 0;
         private long timestamp = 0;
         private int availableProcessors = 0;
-        
+
         public HealthMetrics() {}
-        
-        public HealthMetrics(int totalBlocks, int storageUsageMB, long timestamp, int availableProcessors) {
+
+        public HealthMetrics(long totalBlocks, long storageUsageMB, long timestamp, int availableProcessors) {
             this.totalBlocks = totalBlocks;
             this.storageUsageMB = storageUsageMB;
             this.timestamp = timestamp;
@@ -213,11 +213,11 @@ public class HealthReport {
         public double getDiskUsage() { return diskUsage; }
         public void setDiskUsage(double diskUsage) { this.diskUsage = diskUsage; }
         
-        public int getTotalBlocks() { return totalBlocks; }
-        public void setTotalBlocks(int totalBlocks) { this.totalBlocks = totalBlocks; }
-        
-        public int getStorageUsageMB() { return storageUsageMB; }
-        public void setStorageUsageMB(int storageUsageMB) { this.storageUsageMB = storageUsageMB; }
+        public long getTotalBlocks() { return totalBlocks; }
+        public void setTotalBlocks(long totalBlocks) { this.totalBlocks = totalBlocks; }
+
+        public long getStorageUsageMB() { return storageUsageMB; }
+        public void setStorageUsageMB(long storageUsageMB) { this.storageUsageMB = storageUsageMB; }
         
         public long getTimestamp() { return timestamp; }
         public void setTimestamp(long timestamp) { this.timestamp = timestamp; }

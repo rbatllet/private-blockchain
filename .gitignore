@@ -84,6 +84,7 @@ replay_pid*
 
 # Other files
 CLAUDE.md
+GUIDELINES.md
 *.dat
 thread-test-*.json
 off-chain-data/

@@ -18,7 +18,7 @@ public class ChainExportData {
     private EncryptionExportData encryptionData;
     private LocalDateTime exportTimestamp;
     private String version;
-    private int totalBlocks;
+    private long totalBlocks;
     private String description;
     private boolean hasEncryptedData;
     
@@ -76,11 +76,11 @@ public class ChainExportData {
         this.version = version;
     }
     
-    public int getTotalBlocks() {
+    public long getTotalBlocks() {
         return totalBlocks;
     }
     
-    public void setTotalBlocks(int totalBlocks) {
+    public void setTotalBlocks(long totalBlocks) {
         this.totalBlocks = totalBlocks;
     }
     

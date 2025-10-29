@@ -198,22 +198,22 @@ public class OnChainContentSearch {
     public static class OnChainSearchResult {
         private final String searchTerm;
         private final List<OnChainMatch> matches;
-        private final int totalBlocksSearched;
-        private final int encryptedBlocksDecrypted;
-        
-        public OnChainSearchResult(String searchTerm, List<OnChainMatch> matches, 
-                                 int totalBlocksSearched, int encryptedBlocksDecrypted) {
+        private final long totalBlocksSearched;
+        private final long encryptedBlocksDecrypted;
+
+        public OnChainSearchResult(String searchTerm, List<OnChainMatch> matches,
+                                 long totalBlocksSearched, long encryptedBlocksDecrypted) {
             this.searchTerm = searchTerm;
             this.matches = matches;
             this.totalBlocksSearched = totalBlocksSearched;
             this.encryptedBlocksDecrypted = encryptedBlocksDecrypted;
         }
-        
+
         // Getters
         public String getSearchTerm() { return searchTerm; }
         public List<OnChainMatch> getMatches() { return Collections.unmodifiableList(matches); }
-        public int getTotalBlocksSearched() { return totalBlocksSearched; }
-        public int getEncryptedBlocksDecrypted() { return encryptedBlocksDecrypted; }
+        public long getTotalBlocksSearched() { return totalBlocksSearched; }
+        public long getEncryptedBlocksDecrypted() { return encryptedBlocksDecrypted; }
         public boolean hasMatches() { return !matches.isEmpty(); }
         public int getMatchCount() { return matches.size(); }
         

@@ -89,36 +89,36 @@ public class ChainRecoveryResult {
 
     public static class RecoveryStatistics {
 
-        private int totalBlocksAnalyzed = 0;
-        private int corruptedBlocksFound = 0;
-        private int blocksRepaired = 0;
-        private int blocksRolledBack = 0;
-        private int orphanBlocksRemoved = 0;
+        private long totalBlocksAnalyzed = 0;
+        private long corruptedBlocksFound = 0;
+        private long blocksRepaired = 0;
+        private long blocksRolledBack = 0;
+        private long orphanBlocksRemoved = 0;
         private long dataBytesRecovered = 0;
         private Duration totalRecoveryTime = Duration.ZERO;
 
         // Builder methods
-        public RecoveryStatistics withBlocksAnalyzed(int count) {
+        public RecoveryStatistics withBlocksAnalyzed(long count) {
             this.totalBlocksAnalyzed = count;
             return this;
         }
 
-        public RecoveryStatistics withCorruptedBlocks(int count) {
+        public RecoveryStatistics withCorruptedBlocks(long count) {
             this.corruptedBlocksFound = count;
             return this;
         }
 
-        public RecoveryStatistics withBlocksRepaired(int count) {
+        public RecoveryStatistics withBlocksRepaired(long count) {
             this.blocksRepaired = count;
             return this;
         }
 
-        public RecoveryStatistics withBlocksRolledBack(int count) {
+        public RecoveryStatistics withBlocksRolledBack(long count) {
             this.blocksRolledBack = count;
             return this;
         }
 
-        public RecoveryStatistics withOrphanBlocksRemoved(int count) {
+        public RecoveryStatistics withOrphanBlocksRemoved(long count) {
             this.orphanBlocksRemoved = count;
             return this;
         }
@@ -134,23 +134,23 @@ public class ChainRecoveryResult {
         }
 
         // Getters
-        public int getTotalBlocksAnalyzed() {
+        public long getTotalBlocksAnalyzed() {
             return totalBlocksAnalyzed;
         }
 
-        public int getCorruptedBlocksFound() {
+        public long getCorruptedBlocksFound() {
             return corruptedBlocksFound;
         }
 
-        public int getBlocksRepaired() {
+        public long getBlocksRepaired() {
             return blocksRepaired;
         }
 
-        public int getBlocksRolledBack() {
+        public long getBlocksRolledBack() {
             return blocksRolledBack;
         }
 
-        public int getOrphanBlocksRemoved() {
+        public long getOrphanBlocksRemoved() {
             return orphanBlocksRemoved;
         }
 

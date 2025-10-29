@@ -321,7 +321,7 @@ Map<String, Object> details = standard.getSearchDetails();
 // OffChainSearchResult - File-level details
 OffChainSearchResult offChain = /* ... */;
 List<OffChainMatch> matches = offChain.getMatches();
-int filesSearched = offChain.getTotalFilesSearched();
+long filesSearched = offChain.getTotalFilesSearched();
 int totalInstances = offChain.getTotalMatchInstances();
 ```
 
