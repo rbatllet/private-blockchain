@@ -93,102 +93,88 @@ public class AdvancedZombieCodeDemo {
                 credentialsLoaded
             );
 
-            // 3. Advanced Cryptographic Services (Previously Hidden)
+            // 3. Advanced Cryptographic Services (Post-Quantum)
             System.out.println(
-                "\n3️⃣ Testing advanced cryptographic services..."
+                "\n3️⃣ Testing " + CryptoUtil.ALGORITHM_DISPLAY_NAME + " post-quantum cryptographic services..."
             );
 
-            // Key derivation (zombie code from ECKeyDerivation)
+            // Complete KeyPairs stored (no derivation needed)
             PrivateKey privateKey = userKeys.getPrivate();
-            PublicKey derivedPublic = api.derivePublicKeyFromPrivate(
-                privateKey
+            PublicKey publicKey = userKeys.getPublic();
+            System.out.println(
+                "🔑 " + CryptoUtil.ALGORITHM_DISPLAY_NAME + " KeyPair ready (" +
+                CryptoUtil.SECURITY_LEVEL_BITS + "-bit quantum-resistant security)"
             );
             System.out.println(
-                "🔑 Public key derived from private key using EC mathematics"
+                "ℹ️  Note: " + CryptoUtil.ALGORITHM_DISPLAY_NAME + " requires complete KeyPairs (public + private)"
+            );
+            System.out.println(
+                "ℹ️  Lattice-based cryptography does NOT support key derivation"
             );
 
-            // Verify that the derived public key matches the original
+            // Verify stored public key matches the KeyPair
             String originalPublicKeyStr = api
                 .getBlockchain()
                 .getAuthorizedKeys()
                 .get(0)
                 .getPublicKey();
-            String derivedPublicKeyStr =
-                CryptoUtil.publicKeyToString(
-                    derivedPublic
-                );
-            boolean keysMatch = originalPublicKeyStr.equals(
-                derivedPublicKeyStr
-            );
+            String currentPublicKeyStr = CryptoUtil.publicKeyToString(publicKey);
+            boolean keysMatch = originalPublicKeyStr.equals(currentPublicKeyStr);
             System.out.println(
-                "🔗 Derived public key matches original: " + keysMatch
+                "🔗 Stored public key matches current KeyPair: " + keysMatch
             );
 
-            // Key pair consistency verification using both original and derived keys
-            boolean isConsistent = api.verifyKeyPairConsistency(
-                privateKey,
-                userKeys.getPublic()
-            );
-            boolean isDerivedConsistent = api.verifyKeyPairConsistency(
-                privateKey,
-                derivedPublic
-            );
-            System.out.println(
-                "✅ Original key pair consistency: " + isConsistent
-            );
-            System.out.println(
-                "✅ Derived key pair consistency: " + isDerivedConsistent
-            );
-
-            // Create key pair from private key only
-            KeyPair reconstructedPair = api.createKeyPairFromPrivate(
-                privateKey
-            );
-            System.out.println(
-                "🔄 Complete key pair reconstructed from private key only"
-            );
-
-            // Verify the reconstructed key pair is valid and functional
-            boolean reconstructedValid = api.verifyKeyPairMathematically(
-                reconstructedPair.getPrivate(),
-                reconstructedPair.getPublic()
-            );
-            System.out.println(
-                "🧮 Reconstructed key pair mathematical validation: " +
-                reconstructedValid
-            );
-
-            // Compare reconstructed public key with original
-            String reconstructedPublicStr =
-                CryptoUtil.publicKeyToString(
-                    reconstructedPair.getPublic()
-                );
-            boolean reconstructedMatches = originalPublicKeyStr.equals(
-                reconstructedPublicStr
-            );
-            System.out.println(
-                "🔗 Reconstructed public key matches original: " +
-                reconstructedMatches
-            );
-
-            // Demonstrate we can use reconstructed pair for blockchain operations
-            if (reconstructedValid && reconstructedMatches) {
-                System.out.println(
-                    "🎯 SUCCESS: Reconstructed key pair is fully functional!"
+            // Key pair consistency verification using signature test
+            String testData = CryptoUtil.ALGORITHM_DISPLAY_NAME + " signature verification test";
+            try {
+                String signature = CryptoUtil.signData(testData, privateKey);
+                boolean isConsistent = CryptoUtil.verifySignature(
+                    testData,
+                    signature,
+                    publicKey
                 );
                 System.out.println(
-                    "   📝 Can be used for signing blockchain transactions"
+                    "✅ " + CryptoUtil.ALGORITHM_DISPLAY_NAME + " key pair signature verification: " + isConsistent
                 );
-                System.out.println("   🔐 Can be used for authentication");
                 System.out.println(
-                    "   💼 Ready for enterprise blockchain operations"
+                    String.format("ℹ️  Signature size: ~%,d bytes (%s standard)",
+                        CryptoUtil.SIGNATURE_SIZE_BYTES, CryptoUtil.ALGORITHM_DISPLAY_NAME)
+                );
+            } catch (Exception e) {
+                System.out.println(
+                    "❌ Signature verification failed: " + e.getMessage()
                 );
             }
 
-            // Final validation: all derived keys are equivalent
-            if (keysMatch && isDerivedConsistent && reconstructedMatches) {
+            // Demonstrate complete KeyPair handling
+            System.out.println(
+                "🔄 " + CryptoUtil.ALGORITHM_DISPLAY_NAME + " KeyPair management: Both keys stored together"
+            );
+            System.out.println(
+                String.format("   📦 Private key: %,d bytes (PKCS#8)", CryptoUtil.PRIVATE_KEY_SIZE_BYTES)
+            );
+            System.out.println(
+                String.format("   📦 Public key: %,d bytes (X.509)", CryptoUtil.PUBLIC_KEY_SIZE_BYTES)
+            );
+            System.out.println(
+                "✅ Complete KeyPair ready for quantum-resistant operations"
+            );
+
+            // Final validation: KeyPair is valid and functional
+            if (keysMatch) {
                 System.out.println(
-                    "🏆 ULTIMATE SUCCESS: All derived keys are cryptographically equivalent!"
+                    "🎯 SUCCESS: " + CryptoUtil.ALGORITHM_DISPLAY_NAME + " KeyPair is fully functional!"
+                );
+                System.out.println(
+                    "   📝 Ready for signing blockchain transactions"
+                );
+                System.out.println("   🔐 Ready for authentication");
+                System.out.println(
+                    "   💼 Ready for enterprise blockchain operations"
+                );
+                System.out.println(
+                    "   🛡️  " + CryptoUtil.SECURITY_LEVEL_BITS + "-bit post-quantum security (" +
+                    CryptoUtil.ALGORITHM_DISPLAY_NAME + ")"
                 );
             }
 
@@ -369,43 +355,30 @@ public class AdvancedZombieCodeDemo {
 
             // 11. Advanced Cryptographic Validation (NEWLY DISCOVERED)
             System.out.println(
-                "\n🔟1️⃣ Testing advanced EC cryptographic validation..."
+                "\n🔟1️⃣ Testing " + CryptoUtil.ALGORITHM_DISPLAY_NAME + " cryptographic validation (post-quantum)..."
             );
 
-            // Get curve parameters
+            // Key pair verification via signature test (post-quantum)
             try {
-                var curveParams = api.getCurveParameters("secp256r1");
-                System.out.println(
-                    "✅ Successfully retrieved secp256r1 curve parameters"
-                );
-
-                // Mathematical key pair verification
-                boolean mathValid = api.verifyKeyPairMathematically(
-                    privateKey,
+                String validationData = CryptoUtil.ALGORITHM_DISPLAY_NAME + " cryptographic validation test";
+                String validationSig = CryptoUtil.signData(validationData, privateKey);
+                boolean mathValid = CryptoUtil.verifySignature(
+                    validationData,
+                    validationSig,
                     userKeys.getPublic()
                 );
                 System.out.println(
-                    "🔗 Mathematical key pair verification: " + mathValid
+                    "🔗 " + CryptoUtil.ALGORITHM_DISPLAY_NAME + " key pair consistency verification: " + mathValid
                 );
-
-                // Test EC point validation (advanced cryptographic feature)
-                java.security.spec.ECPoint testPoint =
-                    userKeys.getPublic() instanceof
-                        java.security.interfaces.ECPublicKey
-                        ? ((java.security.interfaces.ECPublicKey) userKeys.getPublic()).getW()
-                        : null;
-                if (testPoint != null) {
-                    boolean pointValid = api.validateECPoint(
-                        testPoint,
-                        curveParams
-                    );
-                    System.out.println(
-                        "📐 EC point mathematical validation: " + pointValid
-                    );
-                }
+                System.out.println(
+                    "ℹ️  Note: " + CryptoUtil.ALGORITHM_DISPLAY_NAME + " uses lattice-based cryptography (no elliptic curves)"
+                );
+                System.out.println(
+                    "ℹ️  Verification via signature test (not derivation-based)"
+                );
             } catch (Exception e) {
                 System.out.println(
-                    "⚠️ Advanced cryptographic features require specialized setup"
+                    "⚠️ Key pair verification failed: " + e.getMessage()
                 );
             }
 

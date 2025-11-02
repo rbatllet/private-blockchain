@@ -11,7 +11,6 @@ import com.rbatllet.blockchain.recovery.ChainRecoveryManager;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.EnhancedSearchResult;
 import com.rbatllet.blockchain.search.metadata.TermVisibilityMap;
-import com.rbatllet.blockchain.security.ECKeyDerivation;
 import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.security.PasswordUtil;
 import com.rbatllet.blockchain.security.SecureKeyStorage;
@@ -25,8 +24,6 @@ import com.rbatllet.blockchain.validation.BlockValidationResult;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.security.spec.ECParameterSpec;
-import java.security.spec.ECPoint;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -64,7 +61,6 @@ public class UserFriendlyEncryptionAPI {
     );
 
     private final Blockchain blockchain;
-    private final ECKeyDerivation keyDerivation;
     private final ChainRecoveryManager recoveryManager;
     private final OffChainStorageService offChainStorage;
     private final SearchCacheManager searchCache;
@@ -127,7 +123,6 @@ public class UserFriendlyEncryptionAPI {
     ) {
         this.blockchain = blockchain;
         this.encryptionConfig = encryptionConfig;
-        this.keyDerivation = new ECKeyDerivation();
         this.recoveryManager = new ChainRecoveryManager(blockchain);
         this.offChainStorage = new OffChainStorageService();
         this.searchCache = new SearchCacheManager();
@@ -172,7 +167,6 @@ public class UserFriendlyEncryptionAPI {
     ) {
         this.blockchain = blockchain;
         this.encryptionConfig = encryptionConfig;
-        this.keyDerivation = new ECKeyDerivation();
         this.recoveryManager = new ChainRecoveryManager(blockchain);
         this.offChainStorage = new OffChainStorageService();
         this.searchCache = new SearchCacheManager();
@@ -216,7 +210,7 @@ public class UserFriendlyEncryptionAPI {
      * <p><strong>Security Features:</strong></p>
      * <ul>
      *   <li>AES-256-GCM authenticated encryption</li>
-     *   <li>ECDSA digital signature for authenticity</li>
+     *   <li>ML-DSA-87 digital signature for authenticity (NIST FIPS 204, quantum-resistant)</li>
      *   <li>SHA3-256 hash for integrity verification</li>
      *   <li>Automatic off-chain storage for large data (&gt;512KB)</li>
      * </ul>
@@ -1411,13 +1405,13 @@ public class UserFriendlyEncryptionAPI {
      * Create a new blockchain user with automatically generated cryptographic key pair.
      *
      * <p>This method creates a complete user account for blockchain operations by generating
-     * a new ECDSA key pair and registering the user's public key with the blockchain.
-     * The generated keys use enterprise-grade cryptographic algorithms suitable for
+     * a new ML-DSA-87 key pair and registering the user's public key with the blockchain.
+     * The generated keys use enterprise-grade post-quantum cryptographic algorithms suitable for
      * production blockchain applications.</p>
      *
      * <p><strong>Key Generation Features:</strong></p>
      * <ul>
-     *   <li><strong>ECDSA Algorithm:</strong> Industry-standard elliptic curve cryptography</li>
+     *   <li><strong>ML-DSA-87 Algorithm:</strong> NIST FIPS 204 standardized post-quantum digital signatures</li>
      *   <li><strong>Secure Random Generation:</strong> Cryptographically secure key generation</li>
      *   <li><strong>Blockchain Registration:</strong> Public key automatically registered</li>
      *   <li><strong>User Authorization:</strong> User authorized for blockchain operations</li>
@@ -2382,29 +2376,27 @@ public class UserFriendlyEncryptionAPI {
 
     /**
      * Load and set a user's credentials from secure storage
+     * Loads complete KeyPair (public + private) for ML-DSA compatibility
+     *
      * @param username Username to load
-     * @param password Password to decrypt the key
+     * @param password Password to decrypt the KeyPair
      * @return true if credentials were loaded and set successfully
      */
     public boolean loadUserCredentials(String username, String password) {
         validateInputData(username, 256, "Username"); // 256 char limit for usernames
         validatePasswordSecurity(password, "Password");
 
-        PrivateKey privateKey = SecureKeyStorage.loadPrivateKey(
-            username,
-            password
-        );
-        if (privateKey != null) {
+        KeyPair keyPair = SecureKeyStorage.loadKeyPair(username, password);
+        if (keyPair != null) {
             try {
-                PublicKey publicKey = keyDerivation.derivePublicKeyFromPrivate(
-                    privateKey
-                );
-                this.defaultKeyPair.set(new KeyPair(publicKey, privateKey));
-                this.defaultUsername.set(username);
+                synchronized (credentialsLock) {
+                    this.defaultKeyPair.set(keyPair);
+                    this.defaultUsername.set(username);
+                }
 
                 // Auto-register the user
                 String publicKeyString = CryptoUtil.publicKeyToString(
-                    publicKey
+                    keyPair.getPublic()
                 );
                 blockchain.addAuthorizedKey(publicKeyString, username);
 
@@ -2473,23 +2465,55 @@ public class UserFriendlyEncryptionAPI {
     }
 
     /**
-     * Import and register a user from a key file
+     * Import a complete KeyPair from a single file
+     * Required for ML-DSA where public keys cannot be derived from private keys
+     *
+     * @param keyPairPath Path to the combined KeyPair file
+     * @return Complete KeyPair or null if import failed
+     */
+    public KeyPair importKeyPairFromFile(String keyPairPath) {
+        if (!KeyFileLoader.isValidKeyFilePath(keyPairPath)) {
+            throw new IllegalArgumentException(
+                "Invalid key file path: " + keyPairPath
+            );
+        }
+        return KeyFileLoader.loadKeyPairFromFile(keyPairPath);
+    }
+
+    /**
+     * Import a complete KeyPair from two separate files (private + public)
+     * Required for ML-DSA where public keys cannot be derived from private keys
+     *
+     * @param privateKeyPath Path to the private key file
+     * @param publicKeyPath Path to the public key file
+     * @return Complete KeyPair or null if import failed
+     */
+    public KeyPair importKeyPairFromFiles(String privateKeyPath, String publicKeyPath) {
+        if (!KeyFileLoader.isValidKeyFilePath(privateKeyPath) ||
+            !KeyFileLoader.isValidKeyFilePath(publicKeyPath)) {
+            throw new IllegalArgumentException(
+                "Invalid key file path(s)"
+            );
+        }
+        return KeyFileLoader.loadKeyPairFromFiles(privateKeyPath, publicKeyPath);
+    }
+
+    /**
+     * Import and register a user from a KeyPair file
+     * Required for ML-DSA where public keys cannot be derived from private keys
+     *
      * @param username Username for the imported key
-     * @param keyFilePath Path to the private key file
+     * @param keyPairPath Path to the KeyPair file (combined public + private)
      * @return true if user was imported and registered successfully
      */
-    public boolean importAndRegisterUser(String username, String keyFilePath) {
+    public boolean importAndRegisterUser(String username, String keyPairPath) {
         try {
-            PrivateKey privateKey = importPrivateKeyFromFile(keyFilePath);
-            if (privateKey == null) {
+            KeyPair keyPair = importKeyPairFromFile(keyPairPath);
+            if (keyPair == null) {
                 return false;
             }
 
-            PublicKey publicKey = keyDerivation.derivePublicKeyFromPrivate(
-                privateKey
-            );
-            String publicKeyString = CryptoUtil.publicKeyToString(publicKey);
-
+            String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
             return blockchain.addAuthorizedKey(publicKeyString, username);
         } catch (Exception e) {
             return false;
@@ -2497,27 +2521,24 @@ public class UserFriendlyEncryptionAPI {
     }
 
     /**
-     * Import, register, and set as default user from a key file
+     * Import, register, and set as default user from a KeyPair file
+     * Required for ML-DSA where public keys cannot be derived from private keys
+     *
      * @param username Username for the imported key
-     * @param keyFilePath Path to the private key file
+     * @param keyPairPath Path to the KeyPair file (combined public + private)
      * @return true if user was imported, registered and set as default successfully
      */
     public boolean importAndSetDefaultUser(
         String username,
-        String keyFilePath
+        String keyPairPath
     ) {
         try {
-            PrivateKey privateKey = importPrivateKeyFromFile(keyFilePath);
-            if (privateKey == null) {
+            KeyPair keyPair = importKeyPairFromFile(keyPairPath);
+            if (keyPair == null) {
                 return false;
             }
 
-            PublicKey publicKey = keyDerivation.derivePublicKeyFromPrivate(
-                privateKey
-            );
-            KeyPair keyPair = new KeyPair(publicKey, privateKey);
-
-            String publicKeyString = CryptoUtil.publicKeyToString(publicKey);
+            String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
             boolean registered = blockchain.addAuthorizedKey(
                 publicKeyString,
                 username
@@ -2542,125 +2563,28 @@ public class UserFriendlyEncryptionAPI {
         return KeyFileLoader.detectKeyFileFormat(keyFilePath);
     }
 
-    // ===== ADVANCED CRYPTOGRAPHIC SERVICES =====
-
-    /**
-     * Derive a public key from a private key using elliptic curve mathematics
-     * @param privateKey The private key to derive from
-     * @return The corresponding public key
-     */
-    public PublicKey derivePublicKeyFromPrivate(PrivateKey privateKey) {
-        if (privateKey == null) {
-            throw new IllegalArgumentException("Private key cannot be null");
-        }
-        return keyDerivation.derivePublicKeyFromPrivate(privateKey);
-    }
-
-    /**
-     * Verify that a private and public key form a valid pair
-     * @param privateKey The private key to verify
-     * @param publicKey The public key to verify
-     * @return true if they form a valid key pair
-     */
-    public boolean verifyKeyPairConsistency(
-        PrivateKey privateKey,
-        PublicKey publicKey
-    ) {
-        try {
-            PublicKey derivedPublic = keyDerivation.derivePublicKeyFromPrivate(
-                privateKey
-            );
-            return CryptoUtil.publicKeyToString(derivedPublic).equals(
-                CryptoUtil.publicKeyToString(publicKey)
-            );
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    /**
-     * Create a complete key pair from just a private key
-     * @param privateKey The private key
-     * @return Complete KeyPair object
-     */
-    public KeyPair createKeyPairFromPrivate(PrivateKey privateKey) {
-        PublicKey publicKey = keyDerivation.derivePublicKeyFromPrivate(
-            privateKey
-        );
-        return new KeyPair(publicKey, privateKey);
-    }
-
-    /**
-     * Derive a public key using custom elliptic curve parameters
-     * Advanced feature for cryptographic experts requiring specific curves
-     * @param privateKey The private key to derive from
-     * @param curveParams Custom curve parameters to use
-     * @return The derived public key using custom curve
-     */
-    public PublicKey derivePublicKeyWithCustomCurve(
-        PrivateKey privateKey,
-        ECParameterSpec curveParams
-    ) {
-        if (privateKey == null) {
-            throw new IllegalArgumentException("Private key cannot be null");
-        }
-        if (curveParams == null) {
-            throw new IllegalArgumentException(
-                "Curve parameters cannot be null"
-            );
-        }
-        return keyDerivation.derivePublicKeyFromPrivate(
-            privateKey,
-            curveParams
-        );
-    }
-
-    /**
-     * Get supported elliptic curve parameters for advanced cryptographic operations
-     * @param curveName Name of the curve (e.g., "secp256r1")
-     * @return ECParameterSpec for the requested curve
-     */
-    public ECParameterSpec getCurveParameters(String curveName) {
-        if (curveName == null || curveName.trim().isEmpty()) {
-            throw new IllegalArgumentException(
-                "Curve name cannot be null or empty"
-            );
-        }
-        return keyDerivation.getCurveParameters(curveName);
-    }
-
-    /**
-     * Validate that a point lies on the specified elliptic curve
-     * Advanced cryptographic validation for custom implementations
-     * @param point The elliptic curve point to validate
-     * @param curveParams The curve parameters to validate against
-     * @return true if the point is mathematically valid on the curve
-     */
-    public boolean validateECPoint(ECPoint point, ECParameterSpec curveParams) {
-        if (point == null || curveParams == null) {
-            return false;
-        }
-        return keyDerivation.isPointOnCurve(point, curveParams);
-    }
-
-    /**
-     * Perform comprehensive key pair verification using mathematical validation
-     * More thorough than basic consistency check - uses EC mathematics
-     * @param privateKey The private key to verify
-     * @param publicKey The public key to verify
-     * @return true if they form a mathematically valid EC key pair
-     */
-    public boolean verifyKeyPairMathematically(
-        PrivateKey privateKey,
-        PublicKey publicKey
-    ) {
-        if (privateKey == null || publicKey == null) {
-            return false;
-        }
-        return keyDerivation.verifyKeyPair(privateKey, publicKey);
-    }
-
     // ===== BLOCKCHAIN RECOVERY AND MANAGEMENT SERVICES =====
+    //
+    // ❌ REMOVED: Advanced Cryptographic Services methods (NOT supported with ML-DSA-87)
+    //
+    // The following methods have been REMOVED because ML-DSA (Module-Lattice Digital Signature
+    // Algorithm) does NOT support public key derivation from private keys:
+    //
+    // - derivePublicKeyFromPrivate(PrivateKey)
+    //   → ML-DSA cannot derive public keys from private keys (lattice-based limitation)
+    //   → Use importKeyPairFromFile() or importKeyPairFromFiles() to load complete KeyPairs
+    //
+    // - verifyKeyPairConsistency(PrivateKey, PublicKey)
+    //   → Consistency verification through derivation is impossible with ML-DSA
+    //   → Use signature verification instead: CryptoUtil.signData() + CryptoUtil.verifySignature()
+    //
+    // - createKeyPairFromPrivate(PrivateKey)
+    //   → Complete KeyPairs (public + private) must be loaded together
+    //   → Use SecureKeyStorage.loadKeyPair() or KeyFileLoader.loadKeyPairFromFile()
+    //
+    // Reason: Lattice-based post-quantum cryptography fundamentally differs from elliptic curve
+    // cryptography. ML-DSA-87 requires complete KeyPairs to be stored and loaded together.
+    //
 
     /**
      * Recover the blockchain from corruption caused by deleted keys
@@ -4696,7 +4620,7 @@ public class UserFriendlyEncryptionAPI {
      *   <li><strong>Hierarchical Trust Chain:</strong> Each tier signs the next level</li>
      *   <li><strong>Automatic Key Rotation:</strong> Different validity periods for each tier</li>
      *   <li><strong>Secure Storage:</strong> All keys encrypted with master password</li>
-     *   <li><strong>Cryptographic Validation:</strong> ECDSA signatures for authenticity</li>
+     *   <li><strong>Cryptographic Validation:</strong> ML-DSA-87 signatures for authenticity (quantum-resistant)</li>
      *   <li><strong>Enterprise Compliance:</strong> Follows PKI best practices</li>
      * </ul>
      *
@@ -5329,8 +5253,8 @@ public class UserFriendlyEncryptionAPI {
                 ? (Integer) options.getOrDefault("keySize", 256)
                 : 256;
             String algorithm = options != null
-                ? (String) options.getOrDefault("algorithm", "ECDSA")
-                : "ECDSA";
+                ? (String) options.getOrDefault("algorithm", CryptoUtil.ALGORITHM_DISPLAY_NAME)
+                : CryptoUtil.ALGORITHM_DISPLAY_NAME;
             // deriveFromParent option reserved for future use in hierarchical derivation
 
             // Generate hierarchical key structure based on purpose and depth
@@ -5428,7 +5352,7 @@ public class UserFriendlyEncryptionAPI {
      * <ul>
      *   <li><strong>Trust Chain Verification:</strong> Root → Intermediate → Operational key signatures</li>
      *   <li><strong>Expiration Checking:</strong> Validates key validity periods and rotation schedules</li>
-     *   <li><strong>Cryptographic Integrity:</strong> ECDSA signature verification for each tier</li>
+     *   <li><strong>Cryptographic Integrity:</strong> ML-DSA-87 signature verification for each tier (quantum-resistant)</li>
      *   <li><strong>Authority Validation:</strong> Ensures proper signing authorities in hierarchy</li>
      *   <li><strong>Security Compliance:</strong> Verifies adherence to enterprise security policies</li>
      * </ul>
@@ -5813,7 +5737,7 @@ public class UserFriendlyEncryptionAPI {
                     1, // totalKeysGenerated
                     256, // keyStrength (default)
                     operationTime.toMillis(),
-                    "ECDSA" // algorithm
+                    CryptoUtil.ALGORITHM_DISPLAY_NAME // algorithm
                 );
 
             KeyManagementResult result = new KeyManagementResult(

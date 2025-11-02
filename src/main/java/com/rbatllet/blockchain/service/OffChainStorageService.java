@@ -18,9 +18,9 @@ import java.util.Base64;
 
 /**
  * Service for managing off-chain data storage with AES-256-GCM encryption
- * Uses same cryptographic standards as the blockchain (SHA-3-256, ECDSA)
+ * Uses same cryptographic standards as the blockchain (SHA3-256, ML-DSA-87)
  * Optimized for large files with streaming encryption/decryption
- * 
+ *
  * UPGRADED: Now uses AES-256-GCM for authenticated encryption
  */
 public class OffChainStorageService {

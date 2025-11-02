@@ -53,7 +53,7 @@ public class UserFriendlyEncryptionAPIPhase1KeyManagementTest {
             int depth = 2;
             Map<String, Object> options = new HashMap<>();
             options.put("keySize", 256);
-            options.put("algorithm", "ECDSA");
+            options.put("algorithm", CryptoUtil.ALGORITHM_DISPLAY_NAME);
 
             // When
             KeyManagementResult result = api.generateHierarchicalKey(purpose, depth, options);

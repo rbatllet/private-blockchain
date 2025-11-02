@@ -9,7 +9,7 @@ import java.security.KeyPair;
 
 /**
  * Test class for hybrid encryption functionality using public/private keys
- * Tests the BlockDataEncryptionService with ECDSA key pairs
+ * Tests the BlockDataEncryptionService with ML-DSA-87 key pairs
  */
 public class HybridEncryptionTest {
     

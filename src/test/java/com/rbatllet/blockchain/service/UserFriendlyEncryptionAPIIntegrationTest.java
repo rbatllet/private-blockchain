@@ -3,7 +3,6 @@ package com.rbatllet.blockchain.service;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.security.KeyPair;
-import java.security.KeyPairGenerator;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -13,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.util.CryptoUtil;
 
 /**
  * Integration tests for UserFriendlyEncryptionAPI without mocks
@@ -30,17 +30,16 @@ class UserFriendlyEncryptionAPIIntegrationTest {
     void setUp() throws Exception {
         // Configure real blockchain (slower)
         blockchain = new Blockchain();
-        
-        // Generate real EC keys (blockchain expects EC keys, not RSA)
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC");
-        keyGen.initialize(256);
-        testKeyPair = keyGen.generateKeyPair();
-        
+
+        // BUGFIX: Generate ML-DSA-87 keys using CryptoUtil (blockchain uses post-quantum crypto)
+        // Previously used EC keys which are incompatible with ML-DSA-87 validation
+        testKeyPair = CryptoUtil.generateKeyPair();
+
         // Real configuration
         testConfig = new EncryptionConfig();
         testConfig.setEncryptionAlgorithm("AES/GCM/NoPadding");
         testConfig.setKeyLength(256);
-        
+
         // Real API with real dependencies
         api = new UserFriendlyEncryptionAPI(blockchain, "testuser", testKeyPair, testConfig);
     }

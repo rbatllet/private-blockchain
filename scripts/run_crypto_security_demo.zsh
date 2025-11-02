@@ -82,8 +82,8 @@ fi
 
 print_info ""
 print_info "🔍 Security Features Demonstrated:"
-print_info "  • 🔗 SHA-3 hashing (replacing SHA-256)"
-print_info "  • 🔐 ECDSA signatures (replacing RSA)"
+print_info "  • 🔗 SHA-3 hashing (quantum-resistant)"
+print_info "  • 🔐 ML-DSA-87 signatures (NIST FIPS 204, post-quantum secure)"
 print_info "  • 🔑 Hierarchical key management system"
 print_info "  • 🔄 Key rotation capabilities"
 print_info "  • ❌ Key revocation with cascade option"

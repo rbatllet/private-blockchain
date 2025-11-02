@@ -927,7 +927,7 @@ The off-chain storage system automatically handles large data (>512KB by default
 2. **Storage Decision**: Data >512KB (configurable) is automatically stored off-chain
 3. **Encryption**: Off-chain files are encrypted with AES-256-GCM using authenticated encryption
 4. **Reference Storage**: Block contains `OFF_CHAIN_REF:hash` instead of actual data
-5. **Integrity Protection**: SHA3-256 hash and ECDSA signature verify data integrity
+5. **Integrity Protection**: SHA3-256 hash and ML-DSA-87 signature (256-bit quantum-resistant) verify data integrity
 
 ### Key Classes and Methods
 
@@ -1193,7 +1193,7 @@ System.out.println(report);
 
 #### Integrity Protection
 - **Content Hash**: SHA3-256 of original (unencrypted) data
-- **Digital Signature**: ECDSA signature of the content hash
+- **Digital Signature**: ML-DSA-87 signature of the content hash (256-bit quantum-resistant)
 - **Verification**: Automatic integrity check on retrieval
 - **Tamper Detection**: Any modification to off-chain files is detected
 
@@ -2911,8 +2911,9 @@ public int validateAndDetermineStorage(String data)
 ```java
 public static KeyPair generateKeyPair()
 ```
-- **Returns:** A new EC key pair (curve secp256r1)
-- **Description:** Generates cryptographically secure key pair for blockchain operations
+- **Returns:** A new ML-DSA-87 key pair (256-bit quantum-resistant, NIST FIPS 204)
+- **Description:** Generates cryptographically secure post-quantum key pair for blockchain operations
+- **Key Sizes:** Public: 2,592 bytes (X.509), Private: 4,896 bytes (PKCS#8)
 
 ```java
 public static String publicKeyToString(PublicKey publicKey)
@@ -3061,9 +3062,9 @@ MemorySafetyConstants.PROGRESS_REPORT_INTERVAL          // 5,000 - Progress logg
 - Use streaming methods (`validateChainStreaming`, `processChainInBatches`) for unlimited size support
 
 ### Security Configuration
-- **Hash Algorithm**: SHA3-256
-- **Signature Algorithm**: ECDSA
-- **Key Size**: 2048 bits (default)
+- **Hash Algorithm**: SHA3-256 (quantum-resistant)
+- **Signature Algorithm**: ML-DSA-87 (NIST FIPS 204, 256-bit quantum-resistant)
+- **Key Sizes**: Public: 2,592 bytes, Private: 4,896 bytes, Signature: 4,627 bytes
 
 For detailed technical specifications and production considerations, see [TECHNICAL_DETAILS.md](TECHNICAL_DETAILS.md) and [PRODUCTION_GUIDE.md](../deployment/PRODUCTION_GUIDE.md).
 
@@ -3071,7 +3072,7 @@ For detailed technical specifications and production considerations, see [TECHNI
 
 #### Key Generation and Management
 ```java
-// Generate new EC key pair
+// Generate new ML-DSA-87 key pair (post-quantum)
 KeyPair keyPair = CryptoUtil.generateKeyPair();
 
 // Convert keys to/from string format
@@ -3116,10 +3117,10 @@ System.out.println("Current performance: " + blockCount + " blocks");
 
 #### Security Configuration
 ```java
-// Security configuration constants (example)
-String hashAlgorithm = "SHA3-256";        
-String signatureAlgorithm = "SHA3withECDSA"; 
-String curveName = "secp256r1";                
+// Security configuration constants (from CryptoUtil)
+String hashAlgorithm = CryptoUtil.HASH_ALGORITHM;              // "SHA3-256"
+String signatureAlgorithm = CryptoUtil.SIGNATURE_ALGORITHM;    // "ML-DSA-87"
+int securityLevel = CryptoUtil.SECURITY_LEVEL_BITS;            // 256
 
 // Validate blockchain integrity
 ChainValidationResult securityResult = blockchain.validateChainDetailed();
@@ -3463,10 +3464,9 @@ blockchain.database.connection_timeout=30000   # 30 seconds
 blockchain.database.max_connections=20         # Connection pool size
 blockchain.database.batch_size=25              # Batch operations
 
-# Security settings
-blockchain.security.curve_name=secp256r1          # ECDSA curve name
-blockchain.security.signature_algorithm=SHA3withECDSA
-blockchain.security.hash_algorithm=SHA3-256
+# Security settings (Post-Quantum)
+blockchain.security.signature_algorithm=ML-DSA-87  # NIST FIPS 204, 256-bit quantum-resistant
+blockchain.security.hash_algorithm=SHA3-256        # Quantum-resistant hash
 
 # Performance settings
 blockchain.performance.chain_validation_batch=100    # Batch validation size
@@ -3650,13 +3650,13 @@ public Long getNextBlockNumber() {
         tx.begin();
         
         // Use pessimistic locking to prevent concurrent updates
-        BlockSequence sequence = em.find(BlockSequence.class, "block_number", 
+        BlockSequence sequence = em.find(BlockSequence.class, "BLOCK_NUMBER",
                                       LockModeType.PESSIMISTIC_WRITE);
-        
+
         if (sequence == null) {
             // Initialize if not exists
             sequence = new BlockSequence();
-            sequence.setSequenceName("block_number");
+            sequence.setSequenceName("BLOCK_NUMBER");
             sequence.setNextValue(1L);
             em.persist(sequence);
         } else {
@@ -4171,7 +4171,7 @@ public int cleanupOrphanedFiles() {
 
 // Manual integrity verification for all off-chain data
 public boolean verifyAllOffChainIntegrity() {
-    // Verifies SHA3-256 hash and ECDSA signature for all off-chain data
+    // Verifies SHA3-256 hash and ML-DSA-87 signature (quantum-resistant) for all off-chain data
     // Returns: true if all off-chain data passes integrity checks
     // ⚠️ Can be expensive for large numbers of off-chain files
 }
@@ -4655,12 +4655,8 @@ String detectKeyFileFormat(String keyFilePath)
 ```java
 // Key derivation and verification
 PublicKey derivePublicKeyFromPrivate(PrivateKey privateKey)
-boolean verifyKeyPairConsistency(PrivateKey privateKey, PublicKey publicKey)
-KeyPair createKeyPairFromPrivate(PrivateKey privateKey)
-boolean verifyKeyPairMathematically(PrivateKey privateKey, PublicKey publicKey)
-
-// Curve parameters
-ECParameterSpec getCurveParameters(String curveName)
+// Note: ECKeyDerivation methods removed - not compatible with ML-DSA-87 post-quantum cryptography
+// ML-DSA does not support public key derivation from private keys
 ```
 
 ### 🛡️ Security and Validation

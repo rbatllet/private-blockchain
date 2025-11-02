@@ -10,8 +10,6 @@ import org.junit.jupiter.api.Nested;
 import org.mockito.MockitoAnnotations;
 
 import java.security.KeyPair;
-import java.security.PublicKey;
-import java.security.spec.ECParameterSpec;
 import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -162,77 +160,17 @@ class UserFriendlyEncryptionAPIZeroCoverageTest {
         }
     }
 
-    @Nested
-    @DisplayName("🔧 Cryptographic Utility Methods")
-    class CryptographicUtilityTests {
-
-        @Test
-        @DisplayName("Should derive public key from private")
-        void shouldDerivePublicKeyFromPrivate() throws Exception {
-            // Given
-            KeyPair keyPair = CryptoUtil.generateKeyPair();
-            
-            // When
-            PublicKey derivedPublic = api.derivePublicKeyFromPrivate(keyPair.getPrivate());
-            
-            // Then
-            assertNotNull(derivedPublic, "Should derive public key");
-        }
-
-        @Test
-        @DisplayName("Should verify key pair consistency")
-        void shouldVerifyKeyPairConsistency() throws Exception {
-            // Given
-            KeyPair keyPair = CryptoUtil.generateKeyPair();
-            
-            // When
-            boolean isConsistent = api.verifyKeyPairConsistency(keyPair.getPrivate(), keyPair.getPublic());
-            
-            // Then
-            assertTrue(isConsistent, "Valid key pair should be consistent");
-        }
-
-        @Test
-        @DisplayName("Should create key pair from private")
-        void shouldCreateKeyPairFromPrivate() throws Exception {
-            // Given
-            KeyPair originalKeyPair = CryptoUtil.generateKeyPair();
-            
-            // When
-            KeyPair newKeyPair = api.createKeyPairFromPrivate(originalKeyPair.getPrivate());
-            
-            // Then
-            assertNotNull(newKeyPair, "Should create key pair");
-            assertNotNull(newKeyPair.getPrivate(), "Should have private key");
-            assertNotNull(newKeyPair.getPublic(), "Should have public key");
-        }
-
-        @Test
-        @DisplayName("Should get curve parameters")
-        void shouldGetCurveParameters() {
-            // Given
-            String curveName = "secp256r1";
-            
-            // When
-            ECParameterSpec curveParams = api.getCurveParameters(curveName);
-            
-            // Then
-            assertNotNull(curveParams, "Should return curve parameters");
-        }
-
-        @Test
-        @DisplayName("Should verify key pair mathematically")
-        void shouldVerifyKeyPairMathematically() throws Exception {
-            // Given
-            KeyPair keyPair = CryptoUtil.generateKeyPair();
-            
-            // When
-            boolean isValid = api.verifyKeyPairMathematically(keyPair.getPrivate(), keyPair.getPublic());
-            
-            // Then
-            assertTrue(isValid, "Valid key pair should verify mathematically");
-        }
-    }
+    // ❌ REMOVED: CryptographicUtilityTests class
+    // The following methods are NOT supported with ML-DSA-87 (lattice-based cryptography):
+    // - derivePublicKeyFromPrivate() - ML-DSA cannot derive public keys from private keys
+    // - verifyKeyPairConsistency() - Verification requires signature testing, not derivation
+    // - createKeyPairFromPrivate() - Complete KeyPairs must be loaded/stored together
+    //
+    // ML-DSA-87 requires complete KeyPairs (public + private) to be stored and loaded together.
+    // Use SecureKeyStorage.saveKeyPair() / loadKeyPair() or KeyFileLoader methods instead.
+    //
+    // Previous EC-specific tests also removed: getCurveParameters, verifyKeyPairMathematically
+    // Reason: ML-DSA uses lattice-based cryptography, not elliptic curves
 
     @Nested
     @DisplayName("🔍 Validation and Integrity Methods")
@@ -505,13 +443,6 @@ class UserFriendlyEncryptionAPIZeroCoverageTest {
             }, "Should throw IllegalArgumentException for null file data");
         }
 
-        @Test
-        @DisplayName("Should handle invalid curve names")
-        void shouldHandleInvalidCurveNames() {
-            // Test with invalid curve name - method validates and throws expected exception
-            assertThrows(IllegalArgumentException.class, () -> {
-                api.getCurveParameters("invalid_curve");
-            }, "Should throw IllegalArgumentException for invalid curve name");
-        }
+        // EC-specific test removed (getCurveParameters) - ML-DSA doesn't use elliptic curves
     }
 }

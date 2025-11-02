@@ -72,7 +72,7 @@ public class MultilingualBlockchainDemo {
         // 4. German - Technical documentation
         Block germanBlock = api.storeDataWithIdentifier(
             "TECHNISCHE DOKUMENTATION: Blockchain-System Version 2.5. " +
-            "Verschlüsselungsalgorithmus: AES-256-GCM. Digitale Signatur: ECDSA. " +
+            "Verschlüsselungsalgorithmus: AES-256-GCM. Digitale Signatur: ML-DSA-87 (Post-Quantum). " +
             "Hash-Funktion: SHA3-256. Sicherheitsstufe: Hoch. Entwickler: Tech Team.",
             password,
             "dokumentation:deu-001"

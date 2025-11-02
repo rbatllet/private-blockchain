@@ -112,9 +112,9 @@ List<Block> results = api.smartSearchEncryptedData("keyword", "password", 10);
 **See**: TECHNICAL_DETAILS.md - Section 2
 
 #### Cryptographic Primitives
-- **Hashing**: SHA3-256 (FIPS 202)
-- **Signatures**: ECDSA secp256r1
-- **Encryption**: AES-256-GCM
+- **Hashing**: SHA3-256 (FIPS 202, quantum-resistant)
+- **Signatures**: ML-DSA-87 (NIST FIPS 204, 256-bit quantum-resistant)
+- **Encryption**: AES-256-GCM (authenticated encryption)
 - **Key Derivation**: PBKDF2-SHA256
 
 **See**: TECHNICAL_DETAILS.md - Section 3
@@ -173,7 +173,7 @@ Search for:
 ### In TECHNICAL_DETAILS.md
 Search for:
 - Components: "database", "security", "threading"
-- Technologies: "SHA3", "ECDSA", "StampedLock"
+- Technologies: "SHA3", "ML-DSA-87", "StampedLock"
 - Concepts: "off-chain", "block numbering"
 
 ## 🔗 Related Documentation

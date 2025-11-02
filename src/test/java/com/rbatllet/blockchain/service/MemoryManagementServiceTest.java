@@ -92,12 +92,14 @@ public class MemoryManagementServiceTest {
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void testCryptoUtilCleanup() {
         // Test CryptoUtil cleanup functionality
-        
-        // Create some keys
+
+        // BUGFIX: Create managed keys that are added to keystore
+        // generateKeyPair() only generates keys without adding to keystore
+        // Use createRootKey() which properly adds keys to the managed keystore
         for (int i = 0; i < 5; i++) {
-            CryptoUtil.generateKeyPair();
+            CryptoUtil.createRootKey();
         }
-        
+
         var initialStats = CryptoUtil.getKeyStoreStats();
         int initialCount = (Integer) initialStats.get("totalKeys");
         assertTrue(initialCount > 0, "Should have created some keys");

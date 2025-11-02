@@ -66,8 +66,8 @@ public class SecureKeyStorageDemo {
         System.out.println("📋 Demo 1: Basic Key Storage and Retrieval");
         System.out.println("-".repeat(60));
 
-        // Generate an ECDSA key pair
-        System.out.println("🔑 Generating ECDSA key pair (secp256r1)...");
+        // Generate an ML-DSA-87 key pair
+        System.out.println("🔑 Generating " + CryptoUtil.ALGORITHM_DISPLAY_NAME + " key pair (" + CryptoUtil.SECURITY_LEVEL_BITS + "-bit quantum-resistant)...");
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         PrivateKey originalKey = keyPair.getPrivate();
         System.out.println("✅ Key pair generated");

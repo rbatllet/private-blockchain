@@ -237,7 +237,7 @@ public class AdvancedLoggingDemo {
             for (int i = 0; i < 3; i++) {
                 LoggingManager.logKeyOperation(
                     "GENERATE",
-                    "EC_SECP256R1",
+                    CryptoUtil.ALGORITHM_DISPLAY_NAME,
                     "demo_key_" + (i + 1),
                     () -> {
                         KeyPair keyPair = CryptoUtil.generateKeyPair();
@@ -252,7 +252,7 @@ public class AdvancedLoggingDemo {
             
             LoggingManager.logCryptoOperation(
                 "SIGN",
-                "ECDSA_SHA256",
+                CryptoUtil.ALGORITHM_DISPLAY_NAME,
                 messageToSign.length(),
                 () -> {
                     return CryptoUtil.signData(messageToSign, signingKeys.getPrivate());

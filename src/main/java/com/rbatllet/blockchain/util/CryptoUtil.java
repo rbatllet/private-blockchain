@@ -2,7 +2,6 @@ package com.rbatllet.blockchain.util;
 
 import java.nio.charset.StandardCharsets;
 import java.security.*;
-import java.security.spec.ECGenParameterSpec;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.time.LocalDateTime;
@@ -16,26 +15,53 @@ import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 /**
- * Enhanced cryptographic utility class with modern algorithms and key management
+ * Enhanced cryptographic utility class with 256-bit security throughout
  * FIXED: Complete thread-safety with proper synchronization
- * - SHA-3 for hashing (improved security over SHA-2)
- * - ECDSA for digital signatures (better performance and security than RSA)
+ *
+ * Cryptographic Consistency (256-bit quantum-resistant):
+ * - SHA3-256 for hashing (256-bit security, quantum-resistant)
+ * - ML-DSA-87 for digital signatures (256-bit security, NIST FIPS 204, quantum-resistant)
+ * - AES-256-GCM for encryption (256-bit security, quantum-resistant)
+ *
+ * Features:
  * - Hierarchical key management (root, intermediate, operational)
  * - Key rotation and revocation capabilities
+ * - Optimized for medical/sensitive data (HIPAA/GDPR compliance)
+ *
+ * @since 1.0.0
+ * @version 2.0.0 (Post-Quantum Migration)
  */
 public class CryptoUtil {
-    
-    // Hash algorithm constant
+
+    // Hash algorithm constant - SHA3-256 (256-bit security, quantum-resistant)
     public static final String HASH_ALGORITHM = "SHA3-256";
-    
-    // Signature algorithm constant
-    public static final String SIGNATURE_ALGORITHM = "SHA3-256withECDSA";
-    
-    // EC curve for ECDSA keys
-    public static final String EC_CURVE = "secp256r1"; // NIST P-256 curve
-    
-    // EC algorithm name
-    public static final String EC_ALGORITHM = "EC";
+
+    // Post-Quantum Signature Algorithms - ML-DSA (Module-Lattice Digital Signature Algorithm)
+    // NIST FIPS 204 standardized quantum-resistant signature algorithm
+
+    /** ML-DSA-87 algorithm name for KeyPairGenerator (256-bit security) */
+    public static final String SIGNATURE_ALGORITHM = "ML-DSA-87";
+
+    /** Generic ML-DSA algorithm name for Signature instances */
+    public static final String SIGNATURE_INSTANCE = "ML-DSA";
+
+    /** Algorithm display name (use this for user-facing messages and logs) */
+    public static final String ALGORITHM_DISPLAY_NAME = SIGNATURE_ALGORITHM;
+
+    /** Full algorithm description for documentation and messages */
+    public static final String ALGORITHM_DESCRIPTION = "Module-Lattice Digital Signature Algorithm (NIST FIPS 204)";
+
+    /** Security level in bits (256-bit quantum-resistant security) */
+    public static final int SECURITY_LEVEL_BITS = 256;
+
+    /** ML-DSA-87 public key size in bytes (X.509 format) */
+    public static final int PUBLIC_KEY_SIZE_BYTES = 2592;
+
+    /** ML-DSA-87 private key size in bytes (PKCS#8 format) */
+    public static final int PRIVATE_KEY_SIZE_BYTES = 4896;
+
+    /** ML-DSA-87 signature size in bytes */
+    public static final int SIGNATURE_SIZE_BYTES = 4627;
     
     // AES-GCM constants for modern encryption
     public static final String AES_ALGORITHM = "AES";
@@ -156,17 +182,27 @@ public class CryptoUtil {
     }
     
     /**
-     * Generate an ECDSA key pair (thread-safe method)
-     * 
-     * @return A new EC key pair
+     * Generate an ML-DSA-87 key pair (thread-safe method)
+     * Uses ML-DSA-87 parameter set (256-bit security level, NIST FIPS 204)
+     *
+     * Key sizes (NIST FIPS 204):
+     * - Public key: 2,592 bytes (X.509 format)
+     * - Private key: 4,896 bytes (PKCS#8 format)
+     * - Signature: 4,627 bytes
+     *
+     * Security level: 256-bit quantum-resistant (Category 5)
+     * Recommended for: Medical/sensitive data, HIPAA/GDPR compliance
+     *
+     * @return A new ML-DSA-87 key pair
+     * @since 2.0.0
      */
-    public static KeyPair generateECKeyPair() {
+    public static KeyPair generateKeyPair() {
         try {
-            KeyPairGenerator keyGen = KeyPairGenerator.getInstance(EC_ALGORITHM);
-            keyGen.initialize(new ECGenParameterSpec(EC_CURVE));
+            KeyPairGenerator keyGen = KeyPairGenerator.getInstance(SIGNATURE_ALGORITHM);
+            // ML-DSA-87 is initialized automatically when using "ML-DSA-87" algorithm name
             return keyGen.generateKeyPair();
         } catch (Exception e) {
-            throw new RuntimeException("Error generating EC key pair", e);
+            throw new RuntimeException("Error generating ML-DSA-87 key pair: " + e.getMessage(), e);
         }
     }
     
@@ -263,72 +299,84 @@ public class CryptoUtil {
     }
     
     /**
-     * Generate a key pair using EC
+     * Generate a hierarchical root key pair (ML-DSA)
      * FIXED: Thread-safe with proper synchronization
-     * 
-     * @return A new key pair
+     *
+     * @return A new root key pair with metadata
      */
-    public static KeyPair generateKeyPair() {
+    public static KeyPair generateHierarchicalKeyPair() {
         try {
             // Create a root key using the hierarchical key system
             KeyInfo keyInfo = createRootKey();
-            
+
             // Convert to standard KeyPair
             PublicKey publicKey = stringToPublicKey(keyInfo.getPublicKeyEncoded());
             PrivateKey privateKey = stringToPrivateKey(keyInfo.getPrivateKeyEncoded());
-            
+
             return new KeyPair(publicKey, privateKey);
         } catch (Exception e) {
-            throw new RuntimeException("Error generating key pair", e);
+            throw new RuntimeException("Error generating hierarchical key pair", e);
         }
     }
     
     /**
-     * Sign data with a private key using ECDSA (thread-safe method)
-     * 
+     * Sign data with a private key using ML-DSA-87 (thread-safe method)
+     *
+     * Produces a 4,627-byte signature (NIST FIPS 204, 256-bit security)
+     *
      * @param data The data to sign
-     * @param privateKey The private key to sign with
-     * @return Base64 encoded signature
+     * @param privateKey The ML-DSA-87 private key to sign with
+     * @return Base64 encoded signature (~6,169 chars Base64)
+     * @throws IllegalArgumentException if the key is not ML-DSA
+     * @since 2.0.0
      */
     public static String signData(String data, PrivateKey privateKey) {
         try {
-            // Only support EC keys
-            if (!privateKey.getAlgorithm().equals(EC_ALGORITHM)) {
-                throw new IllegalArgumentException("Only EC keys are supported for signing");
+            String keyAlgorithm = privateKey.getAlgorithm();
+            if (!keyAlgorithm.equals("ML-DSA") && !keyAlgorithm.startsWith("ML-DSA-")) {
+                throw new IllegalArgumentException(
+                    "Only ML-DSA keys are supported for signing. Got: " + keyAlgorithm
+                );
             }
-            
-            Signature signature = Signature.getInstance(SIGNATURE_ALGORITHM);
+
+            Signature signature = Signature.getInstance(SIGNATURE_INSTANCE);
             signature.initSign(privateKey);
             signature.update(data.getBytes(StandardCharsets.UTF_8));
             byte[] signedData = signature.sign();
             return Base64.getEncoder().encodeToString(signedData);
         } catch (Exception e) {
-            throw new RuntimeException("Error signing data: " + e.getMessage(), e);
+            throw new RuntimeException("Error signing data with ML-DSA-87: " + e.getMessage(), e);
         }
     }
     
     /**
-     * Verify a signature with a public key (thread-safe method)
-     * 
+     * Verify a signature with a public key using ML-DSA-87 (thread-safe method)
+     *
+     * Verifies a 4,627-byte ML-DSA-87 signature (NIST FIPS 204, 256-bit security)
+     *
      * @param data The original data
-     * @param signature The Base64 encoded signature
-     * @param publicKey The public key to verify with
+     * @param signature The Base64 encoded ML-DSA-87 signature
+     * @param publicKey The ML-DSA-87 public key to verify with
      * @return True if signature is valid
+     * @throws IllegalArgumentException if the key is not ML-DSA
+     * @since 2.0.0
      */
     public static boolean verifySignature(String data, String signature, PublicKey publicKey) {
         try {
-            // Only support EC keys
-            if (!publicKey.getAlgorithm().equals(EC_ALGORITHM)) {
-                throw new IllegalArgumentException("Only EC keys are supported for verification");
+            String keyAlgorithm = publicKey.getAlgorithm();
+            if (!keyAlgorithm.equals("ML-DSA") && !keyAlgorithm.startsWith("ML-DSA-")) {
+                throw new IllegalArgumentException(
+                    "Only ML-DSA keys are supported for verification. Got: " + keyAlgorithm
+                );
             }
-            
-            Signature sig = Signature.getInstance(SIGNATURE_ALGORITHM);
+
+            Signature sig = Signature.getInstance(SIGNATURE_INSTANCE);
             sig.initVerify(publicKey);
             sig.update(data.getBytes(StandardCharsets.UTF_8));
             byte[] signatureBytes = Base64.getDecoder().decode(signature);
             return sig.verify(signatureBytes);
         } catch (Exception e) {
-            throw new RuntimeException("Error verifying signature: " + e.getMessage(), e);
+            throw new RuntimeException("Error verifying ML-DSA-87 signature: " + e.getMessage(), e);
         }
     }
     
@@ -347,36 +395,42 @@ public class CryptoUtil {
     }
     
     /**
-     * Convert a Base64 string to public key (thread-safe method)
-     * 
-     * @param publicKeyString Base64 encoded public key
-     * @return The decoded public key
+     * Convert a Base64 string to ML-DSA-87 public key (thread-safe method)
+     *
+     * Expects 2,592-byte X.509 encoded public key (NIST FIPS 204)
+     *
+     * @param publicKeyString Base64 encoded ML-DSA-87 public key (~3,456 chars Base64)
+     * @return The decoded ML-DSA-87 public key
+     * @since 2.0.0
      */
     public static PublicKey stringToPublicKey(String publicKeyString) {
         try {
             byte[] keyBytes = Base64.getDecoder().decode(publicKeyString);
             X509EncodedKeySpec keySpec = new X509EncodedKeySpec(keyBytes);
-            KeyFactory keyFactory = KeyFactory.getInstance(EC_ALGORITHM);
+            KeyFactory keyFactory = KeyFactory.getInstance(SIGNATURE_ALGORITHM);
             return keyFactory.generatePublic(keySpec);
         } catch (Exception e) {
-            throw new RuntimeException("Error converting string to public key", e);
+            throw new RuntimeException("Error converting string to ML-DSA-87 public key: " + e.getMessage(), e);
         }
     }
-    
+
     /**
-     * Convert a Base64 string to private key (thread-safe method)
-     * 
-     * @param privateKeyString Base64 encoded private key
-     * @return The decoded private key
+     * Convert a Base64 string to ML-DSA-87 private key (thread-safe method)
+     *
+     * Expects 4,896-byte PKCS#8 encoded private key (NIST FIPS 204)
+     *
+     * @param privateKeyString Base64 encoded ML-DSA-87 private key (~6,528 chars Base64)
+     * @return The decoded ML-DSA-87 private key
+     * @since 2.0.0
      */
     public static PrivateKey stringToPrivateKey(String privateKeyString) {
         try {
             byte[] keyBytes = Base64.getDecoder().decode(privateKeyString);
             PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(keyBytes);
-            KeyFactory keyFactory = KeyFactory.getInstance(EC_ALGORITHM);
+            KeyFactory keyFactory = KeyFactory.getInstance(SIGNATURE_ALGORITHM);
             return keyFactory.generatePrivate(keySpec);
         } catch (Exception e) {
-            throw new RuntimeException("Error converting string to private key", e);
+            throw new RuntimeException("Error converting string to ML-DSA-87 private key: " + e.getMessage(), e);
         }
     }    
     /**
@@ -388,7 +442,7 @@ public class CryptoUtil {
     public static KeyInfo createRootKey() {
         KEY_STORE_LOCK.writeLock().lock();
         try {
-            KeyPair keyPair = generateECKeyPair();
+            KeyPair keyPair = generateKeyPair();
             String keyId = UUID.randomUUID().toString();
             LocalDateTime now = LocalDateTime.now();
             LocalDateTime expiresAt = now.plus(ROOT_KEY_VALIDITY_DAYS, ChronoUnit.DAYS);
@@ -437,7 +491,7 @@ public class CryptoUtil {
                 throw new IllegalArgumentException("Operational keys cannot issue intermediate keys");
             }
             
-            KeyPair keyPair = generateECKeyPair();
+            KeyPair keyPair = generateKeyPair();
             String keyId = UUID.randomUUID().toString();
             LocalDateTime now = LocalDateTime.now();
             LocalDateTime expiresAt = now.plus(INTERMEDIATE_KEY_VALIDITY_DAYS, ChronoUnit.DAYS);
@@ -492,7 +546,7 @@ public class CryptoUtil {
                 throw new IllegalArgumentException("Operational keys cannot issue other keys");
             }
             
-            KeyPair keyPair = generateECKeyPair();
+            KeyPair keyPair = generateKeyPair();
             String keyId = UUID.randomUUID().toString();
             LocalDateTime now = LocalDateTime.now();
             LocalDateTime expiresAt = now.plus(OPERATIONAL_KEY_VALIDITY_DAYS, ChronoUnit.DAYS);
@@ -605,7 +659,7 @@ public class CryptoUtil {
      * Internal method to create root key (assumes lock is already held)
      */
     private static KeyInfo createRootKeyInternal() {
-        KeyPair keyPair = generateECKeyPair();
+        KeyPair keyPair = generateKeyPair();
         String keyId = UUID.randomUUID().toString();
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime expiresAt = now.plus(ROOT_KEY_VALIDITY_DAYS, ChronoUnit.DAYS);
@@ -633,7 +687,7 @@ public class CryptoUtil {
             throw new IllegalArgumentException("Parent key not found: " + parentKeyId);
         }
         
-        KeyPair keyPair = generateECKeyPair();
+        KeyPair keyPair = generateKeyPair();
         String keyId = UUID.randomUUID().toString();
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime expiresAt = now.plus(INTERMEDIATE_KEY_VALIDITY_DAYS, ChronoUnit.DAYS);
@@ -666,7 +720,7 @@ public class CryptoUtil {
             throw new IllegalArgumentException("Parent key not found: " + parentKeyId);
         }
         
-        KeyPair keyPair = generateECKeyPair();
+        KeyPair keyPair = generateKeyPair();
         String keyId = UUID.randomUUID().toString();
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime expiresAt = now.plus(OPERATIONAL_KEY_VALIDITY_DAYS, ChronoUnit.DAYS);

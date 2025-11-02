@@ -13,7 +13,7 @@ All VARCHAR fields with size limits now have validation in their setters that th
 | `previousHash` | VARCHAR(64) | 64 chars | ❌ No (system-generated) | SHA3-256 hash |
 | `hash` | VARCHAR(64) | 64 chars | ❌ No (system-generated) | SHA3-256 hash |
 | `data` | TEXT | unlimited | ❌ No | Main block content |
-| `signature` | TEXT | unlimited | ❌ No | ECDSA signature |
+| `signature` | TEXT | unlimited | ❌ No | ML-DSA-87 signature (NIST FIPS 204, 256-bit quantum-resistant) |
 | `signerPublicKey` | TEXT | unlimited | ❌ No | Public key |
 | `manualKeywords` | VARCHAR(1024) | 1024 chars | ✅ **Yes** | User-provided keywords |
 | `autoKeywords` | VARCHAR(1024) | 1024 chars | ✅ **Yes** | Auto-extracted keywords |
@@ -92,7 +92,7 @@ key.setOwnerName("Alice".repeat(30));  // 150 chars
 | Field | Type | Limit | Setter Validation | Notes |
 |-------|------|-------|------------------|-------|
 | `dataHash` | VARCHAR(64) | 64 chars | ❌ No (system-generated) | SHA3-256 hash |
-| `signature` | TEXT | unlimited | ❌ No | ECDSA signature |
+| `signature` | TEXT | unlimited | ❌ No | ML-DSA-87 signature (NIST FIPS 204, 256-bit quantum-resistant) |
 | `filePath` | VARCHAR(255) | 255 chars | ❌ No | System-managed path |
 | `encryptionIV` | VARCHAR(32) | 32 chars | ❌ No (system-generated) | AES-256-GCM IV |
 | `contentType` | VARCHAR(100) | 100 chars | ✅ **Yes** | MIME type |

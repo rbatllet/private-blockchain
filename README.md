@@ -1,6 +1,6 @@
 # Private Blockchain Implementation
 
-A comprehensive private blockchain implementation in Java with advanced features, security controls, and extensive testing.
+A comprehensive **post-quantum secure** private blockchain implementation in Java with ML-DSA-87 signatures (NIST FIPS 204), advanced features, and extensive testing.
 
 ## 📋 Table of Contents
 
@@ -25,19 +25,20 @@ A comprehensive private blockchain implementation in Java with advanced features
 
 ## 📋 Overview
 
-This is a **private blockchain** for controlled environments where only authorized users can add blocks. Unlike public blockchains, there is no mining - blocks are added directly by authorized users through cryptographic authorization.
+This is a **post-quantum secure private blockchain** for controlled environments where only authorized users can add blocks. Unlike public blockchains, there is no mining - blocks are added directly by authorized users through cryptographic authorization using **ML-DSA-87 post-quantum signatures** (NIST FIPS 204 standardized).
 
 **Key Differences from Public Blockchains:**
 - **Controlled Access**: Only pre-approved users can add blocks
-- **No Mining**: Direct block creation with digital signatures
+- **No Mining**: Direct block creation with post-quantum digital signatures
 - **Private Environment**: Designed for organizational/enterprise use
 - **Full Control**: Complete control over participants and data
+- **Quantum-Resistant**: Protected against future quantum computer attacks with ML-DSA-87 (256-bit security)
 
 ## 🎯 Key Features
 
 ### Core Blockchain Features
 - **Genesis Block**: Created automatically when blockchain starts
-- **Modern Cryptography**: SHA3-256 hashing with ECDSA digital signatures (secp256r1 curve)
+- **Post-Quantum Cryptography**: SHA3-256 hashing with ML-DSA-87 digital signatures (NIST FIPS 204, 256-bit quantum-resistant)
 - **Access Control**: Hierarchical key management (Root/Intermediate/Operational)
 - **Chain Validation**: Detailed blockchain integrity checking with `validateChainDetailed()`
 - **Immutable Records**: Cryptographically secured blocks with digital signatures
@@ -84,9 +85,9 @@ This is a **private blockchain** for controlled environments where only authoriz
 
 ### 🔐 Enhanced Security Features
 
-### ⚡ Modern Cryptography
-- **ECDSA Signatures**: Using secp256r1 (NIST P-256) curve
-- **SHA3-256 Hashing**: Modern cryptographic hash function
+### ⚡ Post-Quantum Cryptography
+- **ML-DSA-87 Signatures**: NIST FIPS 204 standardized lattice-based signatures (256-bit quantum-resistant)
+- **SHA3-256 Hashing**: Modern cryptographic hash function (quantum-resistant)
 - **Key Hierarchy**: Three-tier key management (Root/Intermediate/Operational)
 - **Automatic Key Rotation**: Built-in key rotation policies
 - **Key Revocation**: Secure key revocation with audit trails
@@ -187,8 +188,8 @@ System.out.println(report.getFormattedSummary()); // Rich output
   - **H2** - Testing (in-memory, fast isolation)
 - **JPA** - Java Persistence API with Hibernate as implementation provider (100% JPQL, zero native SQL)
 - **Cryptography**:
-  - **Hashing**: SHA3-256 (modern, secure hash function)
-  - **Digital Signatures**: ECDSA with secp256r1 (NIST P-256) curve
+  - **Hashing**: SHA3-256 (quantum-resistant hash function)
+  - **Digital Signatures**: ML-DSA-87 (NIST FIPS 204, 256-bit quantum-resistant lattice-based)
   - **Key Management**: Hierarchical key structure with automatic rotation
   - **Encryption**: AES-256-GCM for off-chain data encryption with authenticated encryption
 - **JUnit 5** - Testing framework for comprehensive validation
@@ -552,7 +553,7 @@ blockchain.resetLimitsToDefault();
 ### Security Features
 - **AES-256-GCM Encryption**: All off-chain files are encrypted with authenticated encryption
 - **SHA3-256 Integrity**: Each file has cryptographic hash verification
-- **ECDSA Signatures**: Digital signatures ensure authenticity
+- **ML-DSA-87 Signatures**: Post-quantum digital signatures ensure authenticity (NIST FIPS 204, 256-bit quantum-resistant)
 - **Deterministic Keys**: Encryption passwords derived from block metadata
 
 ### Storage Limits
@@ -1675,8 +1676,8 @@ blockchain.resetLimitsToDefault();                    // Reset to defaults
 - **Connection Pooling**: HikariCP with database-optimized settings
 
 ### Security
-- **Hash Algorithm**: SHA3-256 for block integrity
-- **Signature Algorithm**: ECDSA with secp256r1 curve
+- **Hash Algorithm**: SHA3-256 for block integrity (quantum-resistant)
+- **Signature Algorithm**: ML-DSA-87 (NIST FIPS 204, 256-bit quantum-resistant)
 - **Access Control**: Authorized public key validation
 - **Off-Chain Encryption**: AES-256-GCM with authenticated encryption
 - **Key Derivation**: SHA3-256 based deterministic encryption passwords

@@ -908,7 +908,7 @@ public class MetadataLayerManager {
         
         // Signature validation info
         if (block.getSignature() != null && !block.getSignature().trim().isEmpty()) {
-            validationInfo.put("signature_algorithm", "ECDSA");
+            validationInfo.put("signature_algorithm", CryptoUtil.ALGORITHM_DISPLAY_NAME);
             validationInfo.put("signature_length", block.getSignature().length());
             validationInfo.put("has_digital_signature", true);
         } else {

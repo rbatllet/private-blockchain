@@ -4,9 +4,11 @@ import com.rbatllet.blockchain.util.CryptoUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.KeyFactory;
@@ -138,13 +140,14 @@ public class KeyFileLoader {
                 return parsePrivateKeyPKCS8(base64Key);
             }
             
-            // Try traditional EC format (BEGIN EC PRIVATE KEY)
+            // Try traditional EC format (BEGIN EC PRIVATE KEY) - Legacy ECDSA format, not supported
             var ecMatcher = PRIVATE_KEY_PEM_PATTERN.matcher(pemContent);
             if (ecMatcher.find()) {
-                // This would require BouncyCastle for specific EC format parsing
-                // For now, we'll assume PKCS#8 format
-                logger.warn("⚠️ EC PRIVATE KEY format detected. Please convert to PKCS#8 format:");
-                logger.warn("⚠️ openssl pkcs8 -topk8 -nocrypt -in ec_key.pem -out pkcs8_key.pem");
+                // Legacy ECDSA format not supported (project uses ML-DSA-87 post-quantum cryptography)
+                // Only PKCS#8 format is supported for ML-DSA keys
+                logger.warn("⚠️ Legacy EC PRIVATE KEY format detected (ECDSA). Not supported.");
+                logger.warn("⚠️ This project uses ML-DSA-87 post-quantum cryptography with PKCS#8 format.");
+                logger.warn("⚠️ Please generate new ML-DSA-87 keys using CryptoUtil.generateKeyPair()");
                 return null;
             }
             
@@ -174,7 +177,7 @@ public class KeyFileLoader {
         try {
             byte[] keyBytes = Files.readAllBytes(keyFilePath);
             PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(keyBytes);
-            KeyFactory keyFactory = KeyFactory.getInstance(CryptoUtil.EC_ALGORITHM);
+            KeyFactory keyFactory = KeyFactory.getInstance(CryptoUtil.SIGNATURE_ALGORITHM);
             return keyFactory.generatePrivate(keySpec);
         } catch (Exception e) {
             return null;
@@ -187,7 +190,7 @@ public class KeyFileLoader {
     private static PrivateKey parsePrivateKeyPKCS8(String base64Key) throws Exception {
         byte[] keyBytes = Base64.getDecoder().decode(base64Key);
         PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(keyBytes);
-        KeyFactory keyFactory = KeyFactory.getInstance(CryptoUtil.EC_ALGORITHM);
+        KeyFactory keyFactory = KeyFactory.getInstance(CryptoUtil.SIGNATURE_ALGORITHM);
         return keyFactory.generatePrivate(keySpec);
     }
     
@@ -219,7 +222,7 @@ public class KeyFileLoader {
                 String base64Key = matcher.group(2).replaceAll("\\s", "");
                 byte[] keyBytes = Base64.getDecoder().decode(base64Key);
                 X509EncodedKeySpec keySpec = new X509EncodedKeySpec(keyBytes);
-                KeyFactory keyFactory = KeyFactory.getInstance(CryptoUtil.EC_ALGORITHM);
+                KeyFactory keyFactory = KeyFactory.getInstance(CryptoUtil.SIGNATURE_ALGORITHM);
                 return keyFactory.generatePublic(keySpec);
             }
             
@@ -228,7 +231,7 @@ public class KeyFileLoader {
                 String cleanBase64 = content.replaceAll("\\s", "");
                 byte[] keyBytes = Base64.getDecoder().decode(cleanBase64);
                 X509EncodedKeySpec keySpec = new X509EncodedKeySpec(keyBytes);
-                KeyFactory keyFactory = KeyFactory.getInstance(CryptoUtil.EC_ALGORITHM);
+                KeyFactory keyFactory = KeyFactory.getInstance(CryptoUtil.SIGNATURE_ALGORITHM);
                 return keyFactory.generatePublic(keySpec);
             } catch (Exception e) {
                 // Ignore and return null
@@ -280,6 +283,174 @@ public class KeyFileLoader {
         }
     }
     
+    /**
+     * Load a complete KeyPair from two separate files (private + public keys)
+     * Required for ML-DSA where public keys cannot be derived from private keys
+     *
+     * @param privateKeyPath Path to the private key file
+     * @param publicKeyPath Path to the public key file
+     * @return Complete KeyPair if both keys loaded successfully, null otherwise
+     */
+    public static KeyPair loadKeyPairFromFiles(String privateKeyPath, String publicKeyPath) {
+        try {
+            PrivateKey privateKey = loadPrivateKeyFromFile(privateKeyPath);
+            if (privateKey == null) {
+                logger.error("❌ Failed to load private key from: {}", privateKeyPath);
+                return null;
+            }
+
+            PublicKey publicKey = loadPublicKeyFromFile(publicKeyPath);
+            if (publicKey == null) {
+                logger.error("❌ Failed to load public key from: {}", publicKeyPath);
+                return null;
+            }
+
+            return new KeyPair(publicKey, privateKey);
+
+        } catch (Exception e) {
+            logger.error("❌ Error loading KeyPair from files: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Load a complete KeyPair from a single file containing both keys
+     * Format: [4 bytes: private length][private bytes PKCS#8][public bytes X.509]
+     *
+     * @param keyPairPath Path to the combined KeyPair file
+     * @return Complete KeyPair if successful, null otherwise
+     */
+    public static KeyPair loadKeyPairFromFile(String keyPairPath) {
+        try {
+            Path path = Paths.get(keyPairPath);
+
+            if (!Files.exists(path) || !Files.isReadable(path)) {
+                logger.error("❌ KeyPair file not found or not readable: {}", keyPairPath);
+                return null;
+            }
+
+            byte[] fileBytes = Files.readAllBytes(path);
+
+            if (fileBytes.length < 4) {
+                logger.error("❌ KeyPair file too small: {}", keyPairPath);
+                return null;
+            }
+
+            // Read private key length (big-endian)
+            int privateKeyLength = ((fileBytes[0] & 0xFF) << 24) |
+                                   ((fileBytes[1] & 0xFF) << 16) |
+                                   ((fileBytes[2] & 0xFF) << 8) |
+                                   (fileBytes[3] & 0xFF);
+
+            if (4 + privateKeyLength > fileBytes.length) {
+                logger.error("❌ Invalid KeyPair file format: {}", keyPairPath);
+                return null;
+            }
+
+            // Extract private and public key bytes
+            byte[] privateKeyBytes = new byte[privateKeyLength];
+            byte[] publicKeyBytes = new byte[fileBytes.length - 4 - privateKeyLength];
+
+            System.arraycopy(fileBytes, 4, privateKeyBytes, 0, privateKeyLength);
+            System.arraycopy(fileBytes, 4 + privateKeyLength, publicKeyBytes, 0, publicKeyBytes.length);
+
+            // Reconstruct keys
+            KeyFactory keyFactory = KeyFactory.getInstance(CryptoUtil.SIGNATURE_ALGORITHM);
+
+            PKCS8EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(privateKeyBytes);
+            PrivateKey privateKey = keyFactory.generatePrivate(privateKeySpec);
+
+            X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(publicKeyBytes);
+            PublicKey publicKey = keyFactory.generatePublic(publicKeySpec);
+
+            return new KeyPair(publicKey, privateKey);
+
+        } catch (Exception e) {
+            logger.error("❌ Error loading KeyPair from file: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Save a complete KeyPair to two separate files (PEM format)
+     *
+     * @param keyPair KeyPair to save
+     * @param privateKeyPath Path for private key file (PKCS#8 PEM)
+     * @param publicKeyPath Path for public key file (X.509 PEM)
+     * @return true if both files saved successfully, false otherwise
+     */
+    public static boolean saveKeyPairToFiles(KeyPair keyPair, String privateKeyPath, String publicKeyPath) {
+        try {
+            if (keyPair == null || keyPair.getPrivate() == null || keyPair.getPublic() == null) {
+                return false;
+            }
+
+            // Save private key in PKCS#8 PEM format
+            byte[] privateKeyBytes = keyPair.getPrivate().getEncoded();
+            String privateKeyPem = "-----BEGIN PRIVATE KEY-----\n" +
+                Base64.getMimeEncoder(64, "\n".getBytes()).encodeToString(privateKeyBytes) +
+                "\n-----END PRIVATE KEY-----\n";
+
+            Files.write(Paths.get(privateKeyPath), privateKeyPem.getBytes(StandardCharsets.UTF_8));
+
+            // Save public key in X.509 PEM format
+            byte[] publicKeyBytes = keyPair.getPublic().getEncoded();
+            String publicKeyPem = "-----BEGIN PUBLIC KEY-----\n" +
+                Base64.getMimeEncoder(64, "\n".getBytes()).encodeToString(publicKeyBytes) +
+                "\n-----END PUBLIC KEY-----\n";
+
+            Files.write(Paths.get(publicKeyPath), publicKeyPem.getBytes(StandardCharsets.UTF_8));
+
+            return true;
+
+        } catch (Exception e) {
+            logger.error("❌ Error saving KeyPair to files: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Save a complete KeyPair to a single binary file
+     * Format: [4 bytes: private length][private bytes PKCS#8][public bytes X.509]
+     *
+     * @param keyPair KeyPair to save
+     * @param keyPairPath Path for combined KeyPair file
+     * @return true if saved successfully, false otherwise
+     */
+    public static boolean saveKeyPairToFile(KeyPair keyPair, String keyPairPath) {
+        try {
+            if (keyPair == null || keyPair.getPrivate() == null || keyPair.getPublic() == null) {
+                return false;
+            }
+
+            // Serialize both keys
+            byte[] privateKeyBytes = keyPair.getPrivate().getEncoded(); // PKCS#8 format
+            byte[] publicKeyBytes = keyPair.getPublic().getEncoded();   // X.509 format
+
+            // Create combined payload: [4 bytes: private length][private bytes][public bytes]
+            byte[] combined = new byte[4 + privateKeyBytes.length + publicKeyBytes.length];
+
+            // Write private key length (big-endian)
+            combined[0] = (byte) (privateKeyBytes.length >> 24);
+            combined[1] = (byte) (privateKeyBytes.length >> 16);
+            combined[2] = (byte) (privateKeyBytes.length >> 8);
+            combined[3] = (byte) privateKeyBytes.length;
+
+            // Copy private and public keys
+            System.arraycopy(privateKeyBytes, 0, combined, 4, privateKeyBytes.length);
+            System.arraycopy(publicKeyBytes, 0, combined, 4 + privateKeyBytes.length, publicKeyBytes.length);
+
+            // Write to file
+            Files.write(Paths.get(keyPairPath), combined);
+
+            return true;
+
+        } catch (Exception e) {
+            logger.error("❌ Error saving KeyPair to file: {}", e.getMessage());
+            return false;
+        }
+    }
+
     /**
      * Get file format information for debugging
      */

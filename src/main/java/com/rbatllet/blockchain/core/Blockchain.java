@@ -528,17 +528,18 @@ public class Blockchain {
                             blockTimestamp
                         )
                     ) {
-                        logger.error(
-                            "❌ Unauthorized key attempting to add block"
-                        );
+                        logger.error("❌ Unauthorized key attempting to add block");
                         return null;
                     }
 
-                    // 3. Get the next block number atomically to prevent race conditions
+                    // 3. Get the last block for previous hash (MUST BE CALLED BEFORE getNextBlockNumberAtomic!)
+                    // CRITICAL: getNextBlockNumberAtomic() increments the sequence, so we must read lastBlock first
+                    Block lastBlock = blockRepository.getLastBlockWithLock();
+
+                    // 4. Get the next block number atomically to prevent race conditions
+                    // CRITICAL: This increments the sequence, so it must be called AFTER getting lastBlock
                     Long nextBlockNumber = blockRepository.getNextBlockNumberAtomic();
 
-                    // 4. Get the last block for previous hash
-                    Block lastBlock = blockRepository.getLastBlockWithLock();
                     if (lastBlock == null && nextBlockNumber != 0L) {
                         logger.error(
                             "❌ Inconsistent state: no genesis block but number is {}",
@@ -614,14 +615,14 @@ public class Blockchain {
                     if (
                         lastBlock != null && !validateBlock(newBlock, lastBlock)
                     ) {
-                        logger.error("❌ Block validation failed");
+                        logger.error("❌ Block validation failed for block #{}", nextBlockNumber);
                         return null;
                     }
 
                     // 10. Final check: verify this block number doesn't exist
                     if (blockRepository.existsBlockWithNumber(nextBlockNumber)) {
                         logger.error(
-                            "🚨 CRITICAL: Race condition detected! Block number {} already exists",
+                            "❌ CRITICAL: Race condition detected! Block number {} already exists",
                             nextBlockNumber
                         );
                         return null;
@@ -644,16 +645,13 @@ public class Blockchain {
                         currentEm.flush();
                     }
 
-                    logger.info(
-                        "✅ Block #{} added successfully!",
-                        newBlock.getBlockNumber()
-                    );
                     return newBlock; // ✅ RETURN THE ACTUAL CREATED BLOCK
                 } catch (Exception e) {
                     logger.error("❌ Error adding block", e);
                     return null;
                 }
             });
+
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.unlockWrite(stamp);
         }
@@ -3579,6 +3577,9 @@ public class Blockchain {
                         blockRepository.saveBlock(block);
                     }
 
+                    // CRITICAL: Synchronize block sequence after import
+                    blockRepository.synchronizeBlockSequence();
+
                     logger.info(
                         "✅ Chain imported successfully from: {}",
                         filePath
@@ -4705,6 +4706,12 @@ public class Blockchain {
                     // Clear database first - this is the critical operation
                     blockRepository.deleteAllBlocks();
                     authorizedKeyDAO.deleteAllAuthorizedKeys();
+
+                    // BUGFIX: Reset block_sequence to prevent "inconsistent state" errors
+                    // Without this, getBlockCount() returns old sequence value instead of 0
+                    // causing genesis block creation to be skipped
+                    em.createQuery("DELETE FROM BlockSequence").executeUpdate();
+                    logger.info("🧹 Reset block_sequence table");
 
                     // CRITICAL: Clear Hibernate session cache to avoid entity conflicts
                     em.flush();
@@ -6248,6 +6255,9 @@ public class Blockchain {
                         importData.getBlocks(),
                         encryptionData
                     );
+
+                    // CRITICAL: Synchronize block sequence after import
+                    blockRepository.synchronizeBlockSequence();
 
                     logger.info(
                         "✅ Encrypted chain import completed successfully!"

@@ -1,5 +1,7 @@
 package com.rbatllet.blockchain.service;
 
+import com.rbatllet.blockchain.util.CryptoUtil;
+
 import java.time.LocalDateTime;
 import java.time.Duration;
 import java.util.List;
@@ -139,8 +141,8 @@ public class KeyManagementResult {
         private int totalKeysGenerated = 0;
         private int keyStrength = 256;
         private long generationTime = 0;
-        private String algorithm = "ECDSA";
-        
+        private String algorithm = CryptoUtil.ALGORITHM_DISPLAY_NAME;
+
         public KeyStatistics() {}
         
         public KeyStatistics(int totalKeysGenerated, int keyStrength, long generationTime, String algorithm) {

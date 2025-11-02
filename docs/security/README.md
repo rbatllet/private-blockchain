@@ -44,9 +44,9 @@ This directory contains comprehensive security, encryption, and key management d
 ## 🔐 Security Architecture
 
 ### Cryptographic Primitives
-- **Hashing**: SHA3-256 (FIPS 202 standard)
-- **Signatures**: ECDSA with secp256r1 curve
-- **Encryption**: AES-256-GCM (authenticated encryption)
+- **Hashing**: SHA3-256 (FIPS 202 standard, quantum-resistant)
+- **Signatures**: ML-DSA-87 (NIST FIPS 204, 256-bit quantum-resistant, Module-Lattice Digital Signature Algorithm)
+- **Encryption**: AES-256-GCM (authenticated encryption, quantum-resistant)
 - **Key Derivation**: PBKDF2 with SHA-256
 
 ### Key Management Hierarchy
@@ -136,9 +136,9 @@ UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, config
 
 | Feature | Implementation | Documentation |
 |---------|---------------|---------------|
-| **Block Signing** | ECDSA secp256r1 | SECURITY_GUIDE.md |
-| **Data Encryption** | AES-256-GCM | ENCRYPTION_GUIDE.md |
-| **Key Derivation** | Hierarchical (BIP32-like) | KEY_MANAGEMENT_GUIDE.md |
+| **Block Signing** | ML-DSA-87 (NIST FIPS 204, 256-bit quantum-resistant) | SECURITY_GUIDE.md |
+| **Data Encryption** | AES-256-GCM (quantum-resistant) | ENCRYPTION_GUIDE.md |
+| **Key Derivation** | Hierarchical key management | KEY_MANAGEMENT_GUIDE.md |
 | **Password Hashing** | PBKDF2-SHA256 | ENCRYPTION_CONFIG_INTEGRATION_GUIDE.md |
 | **Access Control** | Pre-approved keys | SECURITY_GUIDE.md |
 | **Key Revocation** | Timestamp-based | SECURITY_CLASSES_GUIDE.md |

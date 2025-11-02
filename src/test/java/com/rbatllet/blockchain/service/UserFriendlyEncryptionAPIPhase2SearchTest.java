@@ -98,7 +98,7 @@ public class UserFriendlyEncryptionAPIPhase2SearchTest {
 
         // Block 4: Medium relevance - contains "blockchain" once
         blockchain.addBlock(
-            "Technical specifications: SHA-256 hashing, ECDSA signatures, Merkle trees. " +
+            "Technical specifications: SHA3-256 hashing, ML-DSA-87 signatures, Merkle trees. " +
             "Blockchain uses these cryptographic primitives.",
             testKeyPair.getPrivate(),
             testKeyPair.getPublic()

@@ -39,6 +39,13 @@ This directory separates **analytical reports** from **developer guides** to imp
 | **[MEMORY_SAFETY_REFACTORING_PLAN.md](MEMORY_SAFETY_REFACTORING_PLAN.md)** | Comprehensive memory safety refactoring plan (Phase A-B) | 2025-10-04 | ✅ Completed |
 | **[MEMORY_MANAGEMENT_IMPLEMENTATION_SUMMARY.md](MEMORY_MANAGEMENT_IMPLEMENTATION_SUMMARY.md)** | Memory management implementation summary | 2025-07-17 | ℹ️ Reference |
 
+### 🔐 Security and Cryptography Analysis
+
+| Document | Description | Date | Status |
+|----------|-------------|------|--------|
+| **[POST_QUANTUM_MIGRATION_PLAN.md](POST_QUANTUM_MIGRATION_PLAN.md)** | 🆕 **Post-quantum cryptography migration plan (ML-DSA direct migration, NIST FIPS 204)** | 2025-10-30 | 📋 Planning |
+| **[PQC_OBSOLETE_COMPONENTS_ANALYSIS.md](PQC_OBSOLETE_COMPONENTS_ANALYSIS.md)** | 🆕 **Analysis of components becoming obsolete with PQC migration (ECKeyDerivation, ECDSA methods)** | 2025-10-30 | ℹ️ Reference |
+
 ### 🛡️ Robustness and Quality Analysis
 
 | Document | Description | Date | Status |
@@ -80,11 +87,12 @@ This directory separates **analytical reports** from **developer guides** to imp
 
 ### Most Important Reports (Start Here)
 
-2. **[MEMORY_STREAMING_OPTIMIZATIONS_PHASE_4.md](MEMORY_STREAMING_OPTIMIZATIONS_PHASE_4.md)** - 🆕 Phase 4 streaming optimizations (2-3GB savings)
-3. **[MEMORY_OPTIMIZATION_PRIORITIES_1_2_3.md](MEMORY_OPTIMIZATION_PRIORITIES_1_2_3.md)** - 🆕 Completed optimizations (4GB saved)
-4. **[STAMPEDLOCK_AUDIT_REPORT.md](STAMPEDLOCK_AUDIT_REPORT.md)** - Understand current lock architecture
-5. **[ATOMIC_REFERENCE_AUDIT_REPORT.md](ATOMIC_REFERENCE_AUDIT_REPORT.md)** - Learn atomicity best practices
-6. **[GLOBAL_BLOCKCHAIN_LOCK_ANALYSIS.md](GLOBAL_BLOCKCHAIN_LOCK_ANALYSIS.md)** - Understand blockchain lock design
+2. **[POST_QUANTUM_MIGRATION_PLAN.md](POST_QUANTUM_MIGRATION_PLAN.md)** - 🆕 🔐 **Post-quantum cryptography roadmap (ML-DSA hybrid signatures, NIST 2024)**
+3. **[MEMORY_STREAMING_OPTIMIZATIONS_PHASE_4.md](MEMORY_STREAMING_OPTIMIZATIONS_PHASE_4.md)** - 🆕 Phase 4 streaming optimizations (2-3GB savings)
+4. **[MEMORY_OPTIMIZATION_PRIORITIES_1_2_3.md](MEMORY_OPTIMIZATION_PRIORITIES_1_2_3.md)** - 🆕 Completed optimizations (4GB saved)
+5. **[STAMPEDLOCK_AUDIT_REPORT.md](STAMPEDLOCK_AUDIT_REPORT.md)** - Understand current lock architecture
+6. **[ATOMIC_REFERENCE_AUDIT_REPORT.md](ATOMIC_REFERENCE_AUDIT_REPORT.md)** - Learn atomicity best practices
+7. **[GLOBAL_BLOCKCHAIN_LOCK_ANALYSIS.md](GLOBAL_BLOCKCHAIN_LOCK_ANALYSIS.md)** - Understand blockchain lock design
 
 ### Historical Context
 
@@ -103,9 +111,10 @@ This directory separates **analytical reports** from **developer guides** to imp
 | Lock & Concurrency | 6 | ~100 pages |
 | Performance | 3 | ~30 pages |
 | Memory Optimization | 5 | ~170 pages |
+| Security & Cryptography | 1 | ~50 pages |
 | Robustness | 6 | ~60 pages |
 | Implementation | 4 | ~30 pages |
-| **TOTAL** | **24** | **~390 pages** |
+| **TOTAL** | **25** | **~440 pages** |
 
 ## 🎯 Report Quality Standards
 
@@ -131,5 +140,6 @@ All reports in this directory follow these standards:
 ---
 
 **Directory Created**: 2025-10-04
-**Total Reports**: 24
+**Total Reports**: 26
 **Status**: Active - New reports added as needed
+**Last Updated**: 2025-10-30

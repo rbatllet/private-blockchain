@@ -19,8 +19,8 @@ import java.util.Base64;
  * 
  * Features:
  * - AES-256-GCM for authenticated encryption
- * - Hybrid encryption: ECDSA for key exchange, AES for data
- * - Per-block Data Encryption Keys (DEK) 
+ * - Hybrid encryption: ML-DSA-87 for key exchange, AES for data
+ * - Per-block Data Encryption Keys (DEK)
  * - Key Encryption Keys (KEK) per user/organization
  * - Cryptographic integrity and authenticity
  */
@@ -111,8 +111,8 @@ public class BlockDataEncryptionService {
     }
     
     /**
-     * Encrypt block data using hybrid AES-256-GCM + ECDSA encryption
-     * 
+     * Encrypt block data using hybrid AES-256-GCM + ML-DSA-87 encryption
+     *
      * @param plainData The plain text data to encrypt
      * @param userPublicKey The user's public key for DEK encryption
      * @param signerPrivateKey The signer's private key for authentication
@@ -165,8 +165,8 @@ public class BlockDataEncryptionService {
     }
     
     /**
-     * Decrypt block data using hybrid AES-256-GCM + ECDSA decryption
-     * 
+     * Decrypt block data using hybrid AES-256-GCM + ML-DSA-87 decryption
+     *
      * @param encryptedData The encrypted data container
      * @param userPrivateKey The user's private key for DEK decryption
      * @return The decrypted plain text data

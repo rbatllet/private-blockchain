@@ -365,7 +365,7 @@ public class BlockchainEncryptionTest {
                          publicTime > 0 ? (double) encryptedTime / publicTime : 0.0);
         
         // Performance should be reasonable (encrypted blocks shouldn't be >50x slower)
-        // Higher threshold because hybrid encryption with ECDSA + AES-GCM is computationally intensive
+        // Higher threshold because hybrid encryption with ML-DSA-87 + AES-GCM is computationally intensive
         assertTrue(encryptedTime < publicTime * 50, "Encrypted blocks shouldn't be more than 50x slower");
     }
 }

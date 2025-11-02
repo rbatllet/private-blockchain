@@ -12,19 +12,19 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Tests for the enhanced CryptoUtil class with SHA-3, ECDSA, and key management features
+ * Tests for the enhanced CryptoUtil class with SHA-3, ML-DSA-87, and key management features
  */
 public class CryptoUtilTest {
 
     private String testData;
     private KeyPair keyPair;
-    private KeyPair ecKeyPair;
+    private KeyPair mldsaKeyPair;
 
     @BeforeEach
     public void setUp() {
         testData = "Test data for cryptographic operations";
-        keyPair = CryptoUtil.generateKeyPair(); // EC key pair using hierarchical key system
-        ecKeyPair = CryptoUtil.generateECKeyPair(); // Direct EC key pair
+        keyPair = CryptoUtil.generateHierarchicalKeyPair(); // ML-DSA hierarchical key pair
+        mldsaKeyPair = CryptoUtil.generateKeyPair(); // Direct ML-DSA key pair
     }
 
     @Test
@@ -46,22 +46,22 @@ public class CryptoUtilTest {
     // Legacy SHA-256 test removed as part of modernization
     
     @Test
-    @DisplayName("Test ECDSA signature and verification")
-    public void testECDSASignature() {
-        String signature = CryptoUtil.signData(testData, ecKeyPair.getPrivate());
+    @DisplayName("Test " + CryptoUtil.ALGORITHM_DISPLAY_NAME + " signature and verification")
+    public void testMLDSASignature() {
+        String signature = CryptoUtil.signData(testData, mldsaKeyPair.getPrivate());
         assertNotNull(signature);
-        
-        boolean verified = CryptoUtil.verifySignature(testData, signature, ecKeyPair.getPublic());
-        assertTrue(verified, "ECDSA signature verification should succeed with correct key");
-        
+
+        boolean verified = CryptoUtil.verifySignature(testData, signature, mldsaKeyPair.getPublic());
+        assertTrue(verified, CryptoUtil.ALGORITHM_DISPLAY_NAME + " signature verification should succeed with correct key");
+
         // Verification should fail with wrong key
-        KeyPair anotherKeyPair = CryptoUtil.generateECKeyPair();
+        KeyPair anotherKeyPair = CryptoUtil.generateKeyPair();
         boolean verifiedWithWrongKey = CryptoUtil.verifySignature(testData, signature, anotherKeyPair.getPublic());
-        assertFalse(verifiedWithWrongKey, "ECDSA signature verification should fail with incorrect key");
-        
+        assertFalse(verifiedWithWrongKey, CryptoUtil.ALGORITHM_DISPLAY_NAME + " signature verification should fail with incorrect key");
+
         // Verification should fail with tampered data
-        boolean verifiedWithTamperedData = CryptoUtil.verifySignature(testData + "tampered", signature, ecKeyPair.getPublic());
-        assertFalse(verifiedWithTamperedData, "ECDSA signature verification should fail with tampered data");
+        boolean verifiedWithTamperedData = CryptoUtil.verifySignature(testData + "tampered", signature, mldsaKeyPair.getPublic());
+        assertFalse(verifiedWithTamperedData, CryptoUtil.ALGORITHM_DISPLAY_NAME + " signature verification should fail with tampered data");
     }
     
     // Legacy RSA signature test removed as part of modernization
@@ -69,7 +69,7 @@ public class CryptoUtilTest {
     @Test
     @DisplayName("Test key conversion between string and object formats")
     public void testKeyConversion() {
-        // Test EC key conversion from hierarchical key system
+        // Test ML-DSA-87 key conversion from hierarchical key system
         String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
         String privateKeyString = CryptoUtil.privateKeyToString(keyPair.getPrivate());
         
@@ -78,16 +78,16 @@ public class CryptoUtilTest {
         
         assertEquals(keyPair.getPublic().getAlgorithm(), recoveredPublicKey.getAlgorithm());
         assertEquals(keyPair.getPrivate().getAlgorithm(), recoveredPrivateKey.getAlgorithm());
-        
-        // Test direct EC key conversion
-        String ecPublicKeyString = CryptoUtil.publicKeyToString(ecKeyPair.getPublic());
-        String ecPrivateKeyString = CryptoUtil.privateKeyToString(ecKeyPair.getPrivate());
-        
-        PublicKey recoveredEcPublicKey = CryptoUtil.stringToPublicKey(ecPublicKeyString);
-        PrivateKey recoveredEcPrivateKey = CryptoUtil.stringToPrivateKey(ecPrivateKeyString);
-        
-        assertEquals(ecKeyPair.getPublic().getAlgorithm(), recoveredEcPublicKey.getAlgorithm());
-        assertEquals(ecKeyPair.getPrivate().getAlgorithm(), recoveredEcPrivateKey.getAlgorithm());
+
+        // Test direct ML-DSA key conversion
+        String mldsaPublicKeyString = CryptoUtil.publicKeyToString(mldsaKeyPair.getPublic());
+        String mldsaPrivateKeyString = CryptoUtil.privateKeyToString(mldsaKeyPair.getPrivate());
+
+        PublicKey recoveredMldsaPublicKey = CryptoUtil.stringToPublicKey(mldsaPublicKeyString);
+        PrivateKey recoveredMldsaPrivateKey = CryptoUtil.stringToPrivateKey(mldsaPrivateKeyString);
+
+        assertEquals(mldsaKeyPair.getPublic().getAlgorithm(), recoveredMldsaPublicKey.getAlgorithm());
+        assertEquals(mldsaKeyPair.getPrivate().getAlgorithm(), recoveredMldsaPrivateKey.getAlgorithm());
     }
     
     @Test

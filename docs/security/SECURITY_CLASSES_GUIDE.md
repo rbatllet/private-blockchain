@@ -1,11 +1,10 @@
 # 🔐 Security Classes Guide
 
-This guide provides detailed information about the security classes in the privateBlockchain project, which implement modern cryptographic standards including ECDSA with SHA3-256 and hierarchical key management.
+This guide provides detailed information about the security classes in the privateBlockchain project, which implement post-quantum cryptographic standards including ML-DSA-87 (NIST FIPS 204) with SHA3-256 and hierarchical key management.
 
 ## 📋 Table of Contents
 
 - [Overview](#-overview)
-- [ECKeyDerivation](#-eckeyderivation)
 - [SecureKeyStorage](#-securekeystorage)
 - [PasswordUtil](#-passwordutil)
 - [KeyFileLoader](#-keyfileloader)
@@ -19,75 +18,16 @@ The security classes provide essential functionalities for:
 - Secure storage of private keys with AES-256-GCM encryption
 - Password validation with security requirements
 - Loading keys from files
-- Elliptic curve key derivation and validation
+- Post-quantum key management with ML-DSA-87
 
-## 🔑 ECKeyDerivation
+**Note:** The `ECKeyDerivation` class has been removed as it is not compatible with ML-DSA-87 post-quantum cryptography. ML-DSA (Module-Lattice Digital Signature Algorithm) does not support public key derivation from private keys due to its lattice-based mathematical structure.
 
-High-performance, thread-safe EC key derivation utility for secure cryptographic operations.
-
-### Features
-
-- **Thread Safety**: Fully thread-safe with synchronized provider initialization
-- **Performance**: Uses `ConcurrentHashMap` for curve parameter caching and `ThreadLocal` for `KeyFactory` instances
-- **Reliability**: Leverages BouncyCastle for proven EC point multiplication
-- **Validation**: Comprehensive input validation and curve point verification
-- **Flexibility**: Supports multiple EC curves and key types
-
-### Key Methods
-
-- `derivePublicKey(PrivateKey privateKey)`: Derives a public key from a private key
-- `derivePublicKeyFromPrivate(PrivateKey privateKey, ECParameterSpec curveParams)`: Derives a public key with custom curve parameters
-- `verifyKeyPair(PrivateKey privateKey, PublicKey publicKey)`: Verifies if a private and public key form a valid pair
-- `isPointOnCurve(ECPoint point, ECParameterSpec curveParams)`: Validates if a point lies on the specified curve
-
-### Thread Safety
-
-All public methods are thread-safe with the following characteristics:
-- No shared mutable state
-- Thread-local `KeyFactory` instances to prevent contention
-- Synchronized BouncyCastle provider initialization
-- Concurrent caching of curve parameters
-
-### Example Usage
-
-```java
-// Generate a key pair using the hierarchical key system
-KeyPair keyPair = CryptoUtil.generateKeyPair();
-
-// Derive public key from private key
-ECKeyDerivation keyDerivation = new ECKeyDerivation();
-PublicKey derivedPublic = keyDerivation.derivePublicKey(keyPair.getPrivate());
-
-// Verify the key pair using modern ECDSA
-boolean isValid = keyDerivation.verifyKeyPair(keyPair.getPrivate(), derivedPublic);
-
-// Example of hierarchical key usage
-KeyInfo rootKey = CryptoUtil.createRootKey();
-KeyInfo intermediateKey = CryptoUtil.createIntermediateKey(rootKey.getKeyId());
-KeyInfo operationalKey = CryptoUtil.createOperationalKey(intermediateKey.getKeyId());
-```
-
-### Performance Considerations
-
-- Curve parameters are cached in a `ConcurrentHashMap` for efficient lookups
-- Each thread gets its own `KeyFactory` instance via `ThreadLocal`
-- BouncyCastle provider initialization is synchronized to prevent race conditions
-- Point validation is optimized to fail fast with minimal computations
-
-### Error Handling
-
-- All methods throw `ECKeyDerivationException` for cryptographic operations
-- Input validation throws `IllegalArgumentException` for invalid parameters
-- Curve validation throws `IllegalStateException` for unsupported curves
-
-## 🚀 Overview
-
-The security classes provide essential cryptographic functionalities:
+These classes are available in the `com.rbatllet.blockchain.security` package.
 
 - **Key Management**: Hierarchical key management (Root/Intermediate/Operational)
 - **Encryption**: AES-256-GCM encryption for private key storage
-- **Hashing**: SHA3-256 for message digests
-- **Digital Signatures**: ECDSA with secp256r1 curve
+- **Hashing**: SHA3-256 for message digests (quantum-resistant)
+- **Digital Signatures**: ML-DSA-87 (NIST FIPS 204, 256-bit quantum-resistant, Module-Lattice Digital Signature Algorithm)
 - **Key Derivation**: Secure key derivation with PBKDF2
 - **Password Validation**: Strong password policies and secure input handling
 
@@ -144,7 +84,7 @@ import com.rbatllet.blockchain.util.CryptoUtil;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 
-// Generate an ECDSA key pair using secp256r1 curve
+// Generate an ML-DSA-87 key pair (NIST FIPS 204, 256-bit quantum-resistant)
 KeyPair keyPair = CryptoUtil.generateKeyPair();
 PrivateKey privateKey = keyPair.getPrivate();
 
@@ -358,10 +298,8 @@ import java.security.KeyPairGenerator;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 
-// Generate a key pair for the example
-KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC");
-keyGen.initialize(new ECGenParameterSpec("secp256r1"));
-KeyPair keyPair = keyGen.generateKeyPair();
+// Generate an ML-DSA-87 key pair (NIST FIPS 204, 256-bit quantum-resistant)
+KeyPair keyPair = CryptoUtil.generateKeyPair();
 PrivateKey privateKey = keyPair.getPrivate();
 PublicKey publicKey = keyPair.getPublic();
 
@@ -384,14 +322,13 @@ PublicKey loadedPublicKey = KeyFileLoader.loadPublicKey(publicKeyPath);
 
 ```java
 import com.rbatllet.blockchain.security.*;
+import com.rbatllet.blockchain.util.CryptoUtil;
 import java.security.*;
 
 public class SecurityExample {
     public static void main(String[] args) throws Exception {
-        // 1. Generate a key pair
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC");
-        keyGen.initialize(new ECGenParameterSpec("secp256r1"));
-        KeyPair keyPair = keyGen.generateKeyPair();
+        // 1. Generate an ML-DSA-87 key pair (NIST FIPS 204, 256-bit quantum-resistant)
+        KeyPair keyPair = CryptoUtil.generateKeyPair();
         
         // 2. Validate the password
         String password;

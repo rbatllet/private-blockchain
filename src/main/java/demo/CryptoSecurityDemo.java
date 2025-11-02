@@ -11,8 +11,8 @@ import java.util.List;
 
 /**
  * Demonstration of enhanced cryptographic security features:
- * - SHA-3 for hashing (improved security over SHA-2)
- * - ECDSA for digital signatures (better performance and security than RSA)
+ * - SHA-3 for hashing (quantum-resistant)
+ * - ML-DSA-87 for digital signatures (NIST FIPS 204, 256-bit quantum-resistant, post-quantum secure)
  * - Hierarchical key management (root, intermediate, operational)
  * - Key rotation and revocation capabilities
  */
@@ -99,31 +99,31 @@ public class CryptoSecurityDemo {
     }
     
     private static void demonstrateSignatureAlgorithms() {
-        System.out.println("📊 === 🔐 ECDSA SIGNATURE ALGORITHM 🔐 === 📊");
-        String data = "This is sample data to sign";
-        
-        // Generate EC key pair (ECDSA)
-        KeyPair ecKeyPair = CryptoUtil.generateECKeyPair();
-        System.out.println("🔑 Generated EC key pair for ECDSA");
-        
+        System.out.println("📊 === 🔐 ML-DSA SIGNATURE ALGORITHM 🔐 === 📊");
+        String data = "This is sample data to sign with ML-DSA-65";
+
+        // Generate ML-DSA key pair
+        KeyPair mldsaKeyPair = CryptoUtil.generateKeyPair();
+        System.out.println("🔑 Generated ML-DSA-65 key pair (post-quantum)");
+
         // Generate hierarchical key pair
-        KeyPair hierarchicalKeyPair = CryptoUtil.generateKeyPair();
-        System.out.println("🔑 Generated hierarchical key pair");
-        
-        // Sign with ECDSA (direct key)
-        String ecdsaSignature = CryptoUtil.signData(data, ecKeyPair.getPrivate());
-        System.out.println("🔐 ECDSA signature (direct key): " + ecdsaSignature.substring(0, 20) + "...");
-        
-        // Sign with ECDSA (hierarchical key)
+        KeyPair hierarchicalKeyPair = CryptoUtil.generateHierarchicalKeyPair();
+        System.out.println("🔑 Generated hierarchical ML-DSA key pair");
+
+        // Sign with ML-DSA (direct key)
+        String mldsaSignature = CryptoUtil.signData(data, mldsaKeyPair.getPrivate());
+        System.out.println("🔐 ML-DSA signature (direct key): " + mldsaSignature.substring(0, 20) + "...");
+
+        // Sign with ML-DSA (hierarchical key)
         String hierSignature = CryptoUtil.signData(data, hierarchicalKeyPair.getPrivate());
-        System.out.println("🔐 ECDSA signature (hierarchical key): " + hierSignature.substring(0, 20) + "...");
-        
+        System.out.println("🔐 ML-DSA signature (hierarchical key): " + hierSignature.substring(0, 20) + "...");
+
         // Verify signatures
-        boolean ecdsaVerified = CryptoUtil.verifySignature(data, ecdsaSignature, ecKeyPair.getPublic());
+        boolean mldsaVerified = CryptoUtil.verifySignature(data, mldsaSignature, mldsaKeyPair.getPublic());
         boolean hierVerified = CryptoUtil.verifySignature(data, hierSignature, hierarchicalKeyPair.getPublic());
-        
-        System.out.println("🔍 ECDSA signature verification (direct key): " + (ecdsaVerified ? "✅ Success" : "❌ Failed"));
-        System.out.println("🔍 ECDSA signature verification (hierarchical key): " + (hierVerified ? "✅ Success" : "❌ Failed"));
+
+        System.out.println("🔍 ML-DSA signature verification (direct key): " + (mldsaVerified ? "✅ Success" : "❌ Failed"));
+        System.out.println("🔍 ML-DSA signature verification (hierarchical key): " + (hierVerified ? "✅ Success" : "❌ Failed"));
         System.out.println();
     }
     

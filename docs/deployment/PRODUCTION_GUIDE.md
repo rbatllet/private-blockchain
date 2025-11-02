@@ -119,16 +119,22 @@ KEYS_DIR="$APP_HOME/keys/master"
 
 echo "🔐 Generating master keys..."
 
-# Generate master key pair for blockchain administration (ECDSA with secp256r1 curve)
-openssl ecparam -name prime256v1 -genkey -out "$KEYS_DIR/master_private.pem"
-openssl ec -in "$KEYS_DIR/master_private.pem" -pubout -out "$KEYS_DIR/master_public.pem"
+# Generate master key pair for blockchain administration (ML-DSA-87, NIST FIPS 204, 256-bit quantum-resistant)
+# Uses Java 25 native ML-DSA implementation (no external libraries required)
+# Use CryptoUtil.generateKeyPair() from the blockchain library instead of openssl
+# Example:
+# java -cp blockchain.jar com.rbatllet.blockchain.util.KeyGeneratorCLI \
+#   --output "$KEYS_DIR/master_private.pem" \
+#   --public-output "$KEYS_DIR/master_public.pem"
 
-# Generate operational keys for daily use (ECDSA with secp256r1 curve)
-openssl ecparam -name prime256v1 -genkey -out "$APP_HOME/keys/operational/admin_private.pem"
-openssl ec -in "$APP_HOME/keys/operational/admin_private.pem" -pubout -out "$APP_HOME/keys/operational/admin_public.pem"
+# Generate operational keys for daily use (ML-DSA-87, NIST FIPS 204, 256-bit quantum-resistant)
+# java -cp blockchain.jar com.rbatllet.blockchain.util.KeyGeneratorCLI \
+#   --output "$APP_HOME/keys/operational/admin_private.pem" \
+#   --public-output "$APP_HOME/keys/operational/admin_public.pem"
 
-openssl ecparam -name prime256v1 -genkey -out "$APP_HOME/keys/operational/operator_private.pem"
-openssl ec -in "$APP_HOME/keys/operational/operator_private.pem" -pubout -out "$APP_HOME/keys/operational/operator_public.pem"
+# java -cp blockchain.jar com.rbatllet.blockchain.util.KeyGeneratorCLI \
+#   --output "$APP_HOME/keys/operational/operator_private.pem" \
+#   --public-output "$APP_HOME/keys/operational/operator_public.pem"
 
 # Set restrictive permissions
 chmod 600 "$KEYS_DIR"/*.pem
@@ -308,7 +314,7 @@ DB_SIZE=$(stat -c%s "$DB_FILE")
 DB_SIZE_MB=$((DB_SIZE / 1024 / 1024))
 BLOCK_COUNT=$(sqlite3 "$DB_FILE" "SELECT COUNT(*) FROM blocks;")
 KEY_COUNT=$(sqlite3 "$DB_FILE" "SELECT COUNT(*) FROM authorized_keys;")
-SEQ_VALUE=$(sqlite3 "$DB_FILE" "SELECT next_value FROM block_sequence WHERE sequence_name='block_number';")
+SEQ_VALUE=$(sqlite3 "$DB_FILE" "SELECT next_value FROM block_sequence WHERE sequence_name='BLOCK_NUMBER';")
 
 echo "📊 Database statistics:"
 echo "  Size: ${DB_SIZE_MB}MB"
@@ -322,7 +328,7 @@ if [ "$BLOCK_COUNT" -gt 0 ]; then
     if [ "$SEQ_VALUE" -le "$MAX_BLOCK_NUM" ]; then
         echo "⚠️ Warning: Block sequence value ($SEQ_VALUE) is not greater than max block number ($MAX_BLOCK_NUM)"
         echo "   Fixing sequence value..."
-        sqlite3 "$DB_FILE" "UPDATE block_sequence SET next_value = $((MAX_BLOCK_NUM + 1)) WHERE sequence_name='block_number';"
+        sqlite3 "$DB_FILE" "UPDATE block_sequence SET next_value = $((MAX_BLOCK_NUM + 1)) WHERE sequence_name='BLOCK_NUMBER';"
         echo "✅ Sequence fixed: next_value set to $((MAX_BLOCK_NUM + 1))"
     else
         echo "✅ Block sequence integrity verified"

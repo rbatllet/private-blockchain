@@ -8,8 +8,6 @@ import com.rbatllet.blockchain.entity.OffChainData;
 import com.rbatllet.blockchain.security.PasswordUtil;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import java.security.KeyPair;
-import java.security.PrivateKey;
-import java.security.spec.ECParameterSpec;
 import java.util.*;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -317,101 +315,7 @@ public class UserFriendlyEncryptionAPIRobustnessTest {
     @DisplayName("Cryptographic Operations Robustness")
     class CryptographicOperationsRobustnessTest {
 
-        @Test
-        @DisplayName("validateECPoint should handle null ECPoint")
-        void testValidateECPointWithNullPoint() {
-            // Create a basic ECParameterSpec for testing
-            try {
-                KeyPair testKeyPair = CryptoUtil.generateKeyPair();
-
-                // Extract real EC parameters from the generated key pair
-                if (
-                    testKeyPair.getPublic() instanceof
-                    java.security.interfaces.ECPublicKey
-                ) {
-                    java.security.interfaces.ECPublicKey ecPublicKey =
-                        (java.security.interfaces.ECPublicKey) testKeyPair.getPublic();
-                    ECParameterSpec ecParams = ecPublicKey.getParams();
-
-                    // Test with null ECPoint but real ECParameterSpec
-                    boolean result = api.validateECPoint(null, ecParams);
-                    assertFalse(
-                        result,
-                        "Should return false for null ECPoint even with valid params"
-                    );
-                } else {
-                    // Fallback if not EC key
-                    boolean result = api.validateECPoint(null, null);
-                    assertFalse(result, "Should return false for null ECPoint");
-                }
-            } catch (Exception e) {
-                // If we can't create proper EC params, just test with nulls
-                boolean result = api.validateECPoint(null, null);
-                assertFalse(result, "Should return false for null ECPoint");
-            }
-        }
-
-        @Test
-        @DisplayName("validateECPoint should handle null ECParameterSpec")
-        void testValidateECPointWithNullParams() {
-            // Test with null ECParameterSpec
-            boolean result = api.validateECPoint(null, null);
-            assertFalse(result, "Should return false for null ECParameterSpec");
-        }
-
-        @Test
-        @DisplayName("validateECPoint should handle both null parameters")
-        void testValidateECPointWithBothNull() {
-            boolean result = api.validateECPoint(null, null);
-            assertFalse(result, "Should return false for both null parameters");
-        }
-
-        @Test
-        @DisplayName(
-            "derivePublicKeyWithCustomCurve should handle null private key"
-        )
-        void testDerivePublicKeyWithNullPrivateKey() {
-            // Test with null private key and null curve params
-            IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> {
-                    api.derivePublicKeyWithCustomCurve(null, null);
-                }
-            );
-            assertEquals("Private key cannot be null", exception.getMessage());
-        }
-
-        @Test
-        @DisplayName(
-            "derivePublicKeyWithCustomCurve should handle null curve parameters"
-        )
-        void testDerivePublicKeyWithNullCurveParams() {
-            PrivateKey privateKey = testKeyPair.getPrivate();
-
-            IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> {
-                    api.derivePublicKeyWithCustomCurve(privateKey, null);
-                }
-            );
-            assertEquals(
-                "Curve parameters cannot be null",
-                exception.getMessage()
-            );
-        }
-
-        @Test
-        @DisplayName(
-            "derivePublicKeyWithCustomCurve should work with valid parameters"
-        )
-        void testDerivePublicKeyWithValidParameters() {
-            PrivateKey privateKey = testKeyPair.getPrivate();
-
-            // For now, we'll test that it properly handles null curve params
-            assertThrows(IllegalArgumentException.class, () -> {
-                api.derivePublicKeyWithCustomCurve(privateKey, null);
-            });
-        }
+        // EC-specific tests removed - ML-DSA uses lattice-based cryptography (no elliptic curves)
     }
 
     @Nested
@@ -895,7 +799,6 @@ public class UserFriendlyEncryptionAPIRobustnessTest {
             assertDoesNotThrow(() -> {
                 try {
                     api.getLargeFileSize(null);
-                    api.validateECPoint(null, null);
                     api.findBlocksByDateRange(null, null);
                     api.searchSecure(null, null);
                 } catch (Exception e) {

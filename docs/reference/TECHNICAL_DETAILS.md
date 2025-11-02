@@ -55,7 +55,7 @@ graph TD
     K --> L[Encrypted File Storage]
     K --> M[AES-256-GCM Encryption]
     B --> E[Cryptographic Utils]
-    E --> F[ECDSA Key Management]
+    E --> F[ML-DSA-87 Key Management]
     E --> G[SHA3-256 Hashing]
     B --> H[Validation Engine]
     H --> I[Chain Integrity]
@@ -81,7 +81,7 @@ graph TD
 #### 3. Off-Chain Storage Service (`OffChainStorageService.java`)
 - **Automatic Storage Decision**: Size-based automatic storage routing
 - **AES-256-GCM Encryption**: Streaming encryption for large files with authenticated encryption
-- **Integrity Protection**: SHA3-256 hash verification and ECDSA digital signatures
+- **Integrity Protection**: SHA3-256 hash verification and ML-DSA-87 digital signatures (NIST FIPS 204, 256-bit quantum-resistant)
 - **File Management**: Secure file creation, retrieval, and deletion
 - **Error Handling**: Comprehensive error handling for file operations
 
@@ -91,7 +91,7 @@ graph TD
 - **OffChainData Entity**: Stores metadata for off-chain stored data files
 
 #### 5. Utility Services
-- **CryptoUtil**: ECDSA key generation, signing, and verification
+- **CryptoUtil**: ML-DSA-87 key generation, signing, and verification (NIST FIPS 204, 256-bit quantum-resistant)
 - **JPAUtil**: JPA EntityManager and EntityManagerFactory management
 
 ## 🗄️ Database Schema
@@ -165,7 +165,7 @@ CREATE TABLE block_sequence (
 CREATE TABLE off_chain_data (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     data_hash TEXT NOT NULL,           -- SHA3-256 hash of original data for integrity
-    signature TEXT NOT NULL,           -- ECDSA signature of data hash for authenticity
+    signature TEXT NOT NULL,           -- ML-DSA-87 signature of data hash for authenticity (NIST FIPS 204, 256-bit quantum-resistant)
     file_path TEXT NOT NULL,           -- Path to encrypted file in off-chain-data/ directory
     file_size INTEGER NOT NULL,        -- Original file size in bytes
     encryption_iv TEXT NOT NULL,       -- Base64-encoded AES-256-GCM nonce (unique per file)
@@ -371,7 +371,7 @@ public class BlockSequence {
     
     @Id
     @Column(name = "sequence_name")
-    private String sequenceName = "block_number";
+    private String sequenceName = "BLOCK_NUMBER";
     
     @Column(name = "next_value")
     private Long nextValue = 1L;
@@ -516,7 +516,7 @@ graph LR
     C --> D[AES-256-GCM Encrypt]
     D --> E[Store Encrypted File]
     A --> F[Calculate SHA3-256 Hash]
-    F --> G[Sign Hash with ECDSA]
+    F --> G[Sign Hash with ML-DSA-87]
     G --> H[Store Metadata in DB]
 ```
 
@@ -541,8 +541,8 @@ public boolean verifyIntegrity(OffChainData metadata, String password) {
     if (!calculatedHash.equals(metadata.getDataHash())) {
         return false; // Data corrupted or tampered
     }
-    
-    // 4. Verify ECDSA signature
+
+    // 4. Verify ML-DSA-87 signature (quantum-resistant)
     return verifySignature(metadata.getDataHash(), metadata.getSignature(), metadata.getSignerPublicKey());
 }
 ```
@@ -568,7 +568,7 @@ private String generateOffChainPassword(Long blockNumber, String signerPublicKey
 #### Security Properties
 - **Confidentiality**: AES-256-GCM encryption protects data at rest
 - **Integrity**: SHA3-256 hash detects any data modification
-- **Authenticity**: ECDSA signature verifies data origin
+- **Authenticity**: ML-DSA-87 signature verifies data origin (NIST FIPS 204, 256-bit quantum-resistant)
 - **Non-repudiation**: Digital signatures provide proof of authorship
 - **Deterministic Access**: Passwords are reproducible from blockchain metadata
 
@@ -618,7 +618,7 @@ public enum OffChainError {
     FILE_NOT_FOUND,      // Off-chain file missing
     DECRYPTION_FAILED,   // Invalid password or corrupted file
     INTEGRITY_CHECK_FAILED, // Hash mismatch (data tampered)
-    SIGNATURE_INVALID,   // ECDSA signature verification failed
+    SIGNATURE_INVALID,   // ML-DSA-87 signature verification failed
     DISK_SPACE_ERROR,    // Insufficient storage space
     PERMISSION_ERROR     // File system permission issues
 }
@@ -656,10 +656,9 @@ blockchain.database.connection_timeout=30000   # 30 seconds
 blockchain.database.max_connections=20         # Connection pool size
 blockchain.database.batch_size=25              # Batch operations
 
-# Security settings
-blockchain.security.curve_name=secp256r1         # EC curve for ECDSA
-blockchain.security.signature_algorithm=SHA3withECDSA
-blockchain.security.hash_algorithm=SHA3-256
+# Security settings (Post-Quantum Cryptography)
+blockchain.security.signature_algorithm=ML-DSA-87  # NIST FIPS 204, 256-bit quantum-resistant
+blockchain.security.hash_algorithm=SHA3-256        # Quantum-resistant hash
 
 # Performance settings
 blockchain.performance.chain_validation_batch=100    # Batch validation size
@@ -727,7 +726,7 @@ public boolean dangerouslyDeleteAuthorizedKey(String publicKey, boolean force, S
 
 **Secure Admin-Authorized Deletion (Level 3):**
 - 🔐 Requires valid administrator cryptographic signature
-- 🔐 Multi-level authorization with ECDSA signature verification
+- 🔐 Multi-level authorization with ML-DSA-87 signature verification (NIST FIPS 204, 256-bit quantum-resistant)
 - ✅ Comprehensive audit logging with secure key hashing
 - ✅ Impact analysis before deletion
 - ✅ Emergency backup creation for rollback safety
@@ -831,9 +830,9 @@ public ChainValidationResult validateChainDetailed()
 - **GC Impact**: <10ms pause times with G1GC
 
 #### Cryptographic Performance
-- **Key Generation**: ~50ms for EC key pair (secp256r1)
-- **Block Signing**: ~5ms per block signature
-- **Signature Verification**: ~2ms per verification
+- **Key Generation**: ~50-100ms for ML-DSA-87 key pair (NIST FIPS 204, 256-bit quantum-resistant)
+- **Block Signing**: ~5-10ms per ML-DSA-87 block signature
+- **Signature Verification**: ~2-5ms per ML-DSA-87 verification
 - **Hash Calculation**: ~0.15ms per SHA3-256 hash
 
 ### Performance Optimization Techniques
