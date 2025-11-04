@@ -1,5 +1,8 @@
 # Post-Quantum Cryptography Migration Plan
 
+> **📌 Migration Planning Document**: This plan outlines the strategy for quantum-resistant cryptography.  
+> **⚠️ Code Examples Note (v1.0.6)**: Test examples using `getLastBlock()` are safe (outside transactions). For internal transaction use, see [TRANSACTION_ISOLATION_FIX.md](../database/TRANSACTION_ISOLATION_FIX.md).
+
 **Version**: 1.0
 **Date**: 2025-10-29
 **Status**: 📋 Planning
@@ -556,7 +559,7 @@ class MLDSASignatureTests {
 
         assertTrue(added);
 
-        Block lastBlock = blockchain.getLastBlock();
+        Block lastBlock = blockchain.getLastBlock();  // ⚠️ Safe here (test, outside transaction)
         assertNotNull(lastBlock.getSignature());  // ML-DSA signature
 
         // Validation (same code, now validates ML-DSA)
@@ -569,7 +572,7 @@ class MLDSASignatureTests {
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         blockchain.addBlock("Original data", keyPair.getPrivate(), keyPair.getPublic());
 
-        Block lastBlock = blockchain.getLastBlock();
+        Block lastBlock = blockchain.getLastBlock();  // ⚠️ Safe here (test, outside transaction)
 
         // Tamper with data
         lastBlock.setData("Tampered data");

@@ -4,6 +4,57 @@
 
 This guide covers security best practices for using UserFriendlyEncryptionAPI in production environments. Follow these guidelines to ensure maximum security for your blockchain applications.
 
+---
+
+## ⚠️ CRITICAL SECURITY UPDATE (v1.0.6)
+
+> **BREAKING CHANGE**: The UserFriendlyEncryptionAPI now requires **mandatory pre-authorization** of all users before they can perform blockchain operations.
+
+### New Authorization Model (v1.0.6+)
+
+All users **MUST** be pre-authorized before using the API. The following pattern is now **mandatory**:
+
+```java
+// 1. Create blockchain (auto-creates genesis admin on first run)
+Blockchain blockchain = new Blockchain();
+
+// 2. Load genesis admin keys
+KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+    "./keys/genesis-admin.private",
+    "./keys/genesis-admin.public"
+);
+
+// 3. Create API with genesis admin credentials
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+
+// 4. Create and authorize regular users
+KeyPair userKeys = api.createUser("username");
+api.setDefaultCredentials("username", userKeys);
+
+// 5. Now use API normally
+Block block = api.storeEncryptedData("data", "password");
+```
+
+### What Changed
+
+**Protected Methods** (now require pre-authorization):
+- `new UserFriendlyEncryptionAPI(blockchain, username, keyPair)` - Constructor
+- `createUser(username)` - User creation
+- `loadUserCredentials(username, password)` - Credential loading
+- `importAndRegisterUser(username, keyFilePath)` - Key import
+- `importAndSetDefaultUser(username, keyFilePath)` - Import and set default
+
+**Security Fixes** (v1.0.6):
+- ✅ Eliminated 6 auto-authorization vulnerabilities
+- ✅ Enforced genesis admin bootstrap pattern
+- ✅ All users must be explicitly authorized before use
+- ✅ Prevented unauthorized self-authorization attacks
+
+> **⚠️ IMPORTANT**: Any code examples in this guide showing direct constructor usage without pre-authorization are for illustration only. Always follow the secure initialization pattern shown above.
+
+---
+
 ## 🔐 Password Security
 
 ### Password Requirements

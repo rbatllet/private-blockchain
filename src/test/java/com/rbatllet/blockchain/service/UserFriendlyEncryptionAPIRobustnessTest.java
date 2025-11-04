@@ -38,6 +38,11 @@ public class UserFriendlyEncryptionAPIRobustnessTest {
         // Create real blockchain for integration testing
         blockchain = new Blockchain();
         testKeyPair = CryptoUtil.generateKeyPair();
+        
+        // SECURITY FIX (v1.0.6): Pre-authorize user before creating API
+        String publicKeyString = CryptoUtil.publicKeyToString(testKeyPair.getPublic());
+        blockchain.addAuthorizedKey(publicKeyString, TEST_USERNAME);
+        
         api = new UserFriendlyEncryptionAPI(
             blockchain,
             TEST_USERNAME,

@@ -1,6 +1,7 @@
 package demo;
 
 import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.entity.Block;
 
@@ -9,36 +10,43 @@ import java.util.List;
 
 /**
  * SEARCH FRAMEWORK DEMONSTRATION
- * 
+ *
  * Showcases the complete capabilities of our search framework engine:
  * - Lightning-fast public metadata search
  * - Encrypted content deep search
  * - Advanced privacy-preserving search
  * - Intelligent strategy routing
  * - Three-layer metadata architecture
- * 
+ *
  * This demo proves that we've achieved a breakthrough in blockchain search
  * technology combining performance, privacy, and intelligence.
  */
 public class SearchFrameworkDemo {
-    
+
     public static void main(String[] args) {
         System.out.println("🚀 ADVANCED BLOCKCHAIN SEARCH ENGINE DEMO");
         System.out.println("================================================");
         System.out.println();
-        
+
         try {
             // Demo password and setup
             String demoPassword = "SecureSearchDemo2024!";
-            
+
             // Create blockchain and initialize UserFriendlyEncryptionAPI
             System.out.println("📊 Setting up demo blockchain with searchable content...");
             Blockchain blockchain = new Blockchain();
-            
+
+            // Load genesis admin keys
+            KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+                "./keys/genesis-admin.private",
+                "./keys/genesis-admin.public"
+            );
+
             // Initialize UserFriendlyEncryptionAPI - the ONE API for everything
             System.out.println("⚡ Initializing UserFriendlyEncryptionAPI...");
             UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
-            
+            api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+
             // Set up default credentials (this is required!)
             System.out.println("🔑 Setting up default credentials...");
             KeyPair demoKeys = api.createUser("demo-user");

@@ -131,72 +131,67 @@ public class BlockchainService {
 
 ## Configuration
 
-### Logback Configuration
+### Log4j2 Configuration
+
+> **Note**: This project has migrated from Logback to Log4j2. The examples below show the equivalent Log4j2 configuration.
 
 The system uses separate appenders for different log types:
 
 ```xml
-<!-- Advanced Logging Appender -->
-<appender name="ADVANCED_LOGGING" class="ch.qos.logback.core.rolling.RollingFileAppender">
-    <file>logs/advanced-logging-${ENV:-development}.log</file>
-    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-        <fileNamePattern>logs/archived/advanced-logging-${ENV:-development}-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
-        <maxFileSize>100MB</maxFileSize>
-        <maxHistory>30</maxHistory>
-        <totalSizeCap>10GB</totalSizeCap>
-    </rollingPolicy>
-    <encoder>
-        <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{operationId}] %logger{36} - %msg%n</pattern>
-    </encoder>
-</appender>
+<!-- Structured alerts file -->
+<RollingFile name="StructuredAlertsFile" fileName="logs/structured-alerts.log" 
+             filePattern="logs/structured-alerts-%d{yyyy-MM-dd}-%i.log.gz">
+    <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} - %msg%n"/>
+    <Policies>
+        <TimeBasedTriggeringPolicy />
+        <SizeBasedTriggeringPolicy size="100MB"/>
+    </Policies>
+    <DefaultRolloverStrategy max="90"/>
+</RollingFile>
 
-<!-- Performance Metrics Appender -->
-<appender name="PERFORMANCE_METRICS" class="ch.qos.logback.core.rolling.RollingFileAppender">
-    <file>logs/performance-metrics-${ENV:-development}.log</file>
-    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-        <fileNamePattern>logs/archived/performance-metrics-${ENV:-development}-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
-        <maxFileSize>50MB</maxFileSize>
-        <maxHistory>15</maxHistory>
-        <totalSizeCap>5GB</totalSizeCap>
-    </rollingPolicy>
-    <encoder>
-        <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
-    </encoder>
-</appender>
+<!-- Performance metrics file -->
+<RollingFile name="PerformanceMetricsFile" fileName="logs/performance-metrics.log" 
+             filePattern="logs/performance-metrics-%d{yyyy-MM-dd}-%i.log.gz">
+    <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} - %msg%n"/>
+    <Policies>
+        <TimeBasedTriggeringPolicy />
+        <SizeBasedTriggeringPolicy size="100MB"/>
+    </Policies>
+    <DefaultRolloverStrategy max="90"/>
+</RollingFile>
 
-<!-- Security Events Appender -->
-<appender name="SECURITY_EVENTS" class="ch.qos.logback.core.rolling.RollingFileAppender">
-    <file>logs/security-events-${ENV:-development}.log</file>
-    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-        <fileNamePattern>logs/archived/security-events-${ENV:-development}-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
-        <maxFileSize>200MB</maxFileSize>
-        <maxHistory>90</maxHistory>
-        <totalSizeCap>20GB</totalSizeCap>
-    </rollingPolicy>
-    <encoder>
-        <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{operationId}] %logger{36} - %msg%n</pattern>
-    </encoder>
-</appender>
+<!-- Security events file -->
+<RollingFile name="SecurityEventsFile" fileName="logs/security-events.log" 
+             filePattern="logs/security-events-%d{yyyy-MM-dd}-%i.log.gz">
+    <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} - %msg%n"/>
+    <Policies>
+        <TimeBasedTriggeringPolicy />
+        <SizeBasedTriggeringPolicy size="50MB"/>
+    </Policies>
+    <DefaultRolloverStrategy max="180"/>
+</RollingFile>
 ```
 
 ### Logger Configuration
 
 ```xml
-<!-- Advanced Logging Service -->
-<logger name="com.rbatllet.blockchain.logging.AdvancedLoggingService" level="INFO" additivity="false">
-    <appender-ref ref="ADVANCED_LOGGING"/>
-    <appender-ref ref="CONSOLE"/>
-</logger>
+<!-- Structured alerts logger -->
+<Logger name="alerts.structured" level="INFO" additivity="false">
+    <AppenderRef ref="StructuredAlertsFile"/>
+    <AppenderRef ref="Console"/>
+</Logger>
 
-<!-- Performance Metrics -->
-<logger name="performance.metrics" level="INFO" additivity="false">
-    <appender-ref ref="PERFORMANCE_METRICS"/>
-</logger>
+<!-- Performance metrics logger -->
+<Logger name="performance.metrics" level="INFO" additivity="false">
+    <AppenderRef ref="PerformanceMetricsFile"/>
+    <AppenderRef ref="Console"/>
+</Logger>
 
-<!-- Security Events -->
-<logger name="security.events" level="INFO" additivity="false">
-    <appender-ref ref="SECURITY_EVENTS"/>
-</logger>
+<!-- Security events logger -->
+<Logger name="security.events" level="INFO" additivity="false">
+    <AppenderRef ref="SecurityEventsFile"/>
+    <AppenderRef ref="Console"/>
+</Logger>
 ```
 
 ## Operation Context

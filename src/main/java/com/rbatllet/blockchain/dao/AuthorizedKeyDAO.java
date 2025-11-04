@@ -375,4 +375,27 @@ public class AuthorizedKeyDAO {
             });
         }
     }
+
+    /**
+     * Get total count of authorized keys in database.
+     *
+     * <p>This method is used for genesis admin bootstrap detection.
+     * When count is 0, the blockchain will create the first authorized user (genesis admin).</p>
+     *
+     * @return Total number of authorized keys (active and revoked)
+     * @since 1.0.6
+     */
+    public long getAuthorizedKeyCount() {
+        EntityManager em = JPAUtil.getEntityManager();
+        try {
+            TypedQuery<Long> query = em.createQuery(
+                "SELECT COUNT(ak) FROM AuthorizedKey ak", Long.class
+            );
+            return query.getSingleResult();
+        } finally {
+            if (!JPAUtil.hasActiveTransaction()) {
+                em.close();
+            }
+        }
+    }
 }

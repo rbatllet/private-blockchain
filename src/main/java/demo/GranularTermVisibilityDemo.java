@@ -3,8 +3,8 @@ package demo;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.search.metadata.TermVisibilityMap;
+import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
-import com.rbatllet.blockchain.util.CryptoUtil;
 
 import java.security.KeyPair;
 import java.util.List;
@@ -12,24 +12,35 @@ import java.util.Set;
 
 /**
  * GRANULAR TERM VISIBILITY DEMONSTRATION
- * 
+ *
  * Showcases the advanced granular term visibility control feature that allows
  * users to specify exactly which search terms should be public vs private.
- * 
+ *
  * This enables fine-grained privacy control where general terms can be
  * publicly searchable while sensitive details require password authentication.
  */
 public class GranularTermVisibilityDemo {
-    
+
     public static void main(String[] args) {
         try {
             System.out.println("🔐 GRANULAR TERM VISIBILITY DEMO");
             System.out.println("=================================");
-            
+
             // Setup
             Blockchain blockchain = new Blockchain();
-            KeyPair keyPair = CryptoUtil.generateKeyPair();
-            UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, "demo_user", keyPair);
+
+            // Load genesis admin keys
+            KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+                "./keys/genesis-admin.private",
+                "./keys/genesis-admin.public"
+            );
+
+            UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+            api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+
+            // Create demo user (authorized by genesis admin)
+            KeyPair keyPair = api.createUser("demo_user");
+            api.setDefaultCredentials("demo_user", keyPair);
             String password = "demo_password_123";
             
             // Demo scenarios

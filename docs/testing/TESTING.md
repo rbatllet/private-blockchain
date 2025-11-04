@@ -40,6 +40,7 @@ The project includes comprehensive test suites to verify all functionality and e
 - ✅ **Hybrid Search System**: Multi-level search with keyword extraction and validation
 - ✅ **Advanced Search**: Content, hash, and date range search
 - ✅ **UserFriendlyEncryptionAPI**: Comprehensive 212-method encryption and blockchain API
+- ✅ **Authorization Security (v1.0.6+)**: Pre-authorization enforcement and attack vector prevention
 - ✅ **Security Testing**: Encryption, key management, and authentication
 - ✅ **Search Testing**: Multi-level search, caching, and advanced search
 - ✅ **Storage Testing**: Off-chain storage, compression, and tiering
@@ -47,6 +48,53 @@ The project includes comprehensive test suites to verify all functionality and e
 - ✅ **Integration**: All functions working together
 - ✅ **Error Handling**: Graceful failure handling
 - ✅ **Performance**: Execution time validation
+
+#### Authorization Security Testing (v1.0.6+) 🔒
+
+**New Test Suite**: `AuthorizationSecurityTest.java` - 8 comprehensive security tests
+
+Validates the security fixes that eliminated 6 critical auto-authorization vulnerabilities:
+
+1. **testGenesisAdminCreated** - Verifies genesis admin bootstrap on first initialization
+2. **testGenesisAdminCreatedOnce** - Ensures only one genesis admin is created
+3. **testSelfAuthorizationBlocked** - Validates constructor blocks unauthorized users (Vulnerability #1)
+4. **testPreAuthorizedWorks** - Confirms authorized users can access the API
+5. **testMultipleUsersAuthorized** - Tests multi-user authorization workflow
+6. **testLoadUserCredentialsBlocked** - Blocks unauthorized credential loading (Vulnerability #4)
+7. **testImportAndRegisterUserBlocked** - Blocks unauthorized key import (Vulnerability #5)
+8. **testImportAndSetDefaultUserBlocked** - Blocks one-shot compromise attack (Vulnerability #6)
+
+**All tests verify:**
+- ✅ Pre-authorization enforcement
+- ✅ Self-authorization prevention
+- ✅ Genesis admin bootstrap security
+- ✅ Clear `SecurityException` error messages
+- ✅ Proper authorization workflow
+
+**Test Pattern (v1.0.6+):**
+All tests using `UserFriendlyEncryptionAPI` must follow the secure initialization pattern:
+
+```java
+@BeforeEach
+void setUp() {
+    blockchain = new Blockchain();
+    
+    // Load genesis admin keys (auto-created on first blockchain init)
+    KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+        "./keys/genesis-admin.private",
+        "./keys/genesis-admin.public"
+    );
+    
+    // Authenticate with genesis admin
+    api = new UserFriendlyEncryptionAPI(blockchain);
+    api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+    
+    // Create test user (authorized by genesis admin)
+    testUserKeys = api.createUser("testuser");
+}
+```
+
+> **⚠️ Breaking Change**: Tests using the old pattern (direct constructor with user keys) will fail with `SecurityException`. See [Pre-Authorization Guide](../security/PRE_AUTHORIZATION_GUIDE.md) for migration instructions.
 
 ### Test Statistics
 

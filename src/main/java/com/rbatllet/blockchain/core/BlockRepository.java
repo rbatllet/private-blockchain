@@ -338,8 +338,52 @@ class BlockRepository {
     }
 
     /**
-     * Get the last block in the chain (without locking for regular queries)
-     * OPTIMIZED: Uses block_sequence for O(1) performance instead of ORDER BY (O(n log n))
+     * Get the last block in the chain (for read operations OUTSIDE active transactions).
+     * 
+     * <p><b>⚠️ TRANSACTION ISOLATION WARNING:</b></p>
+     * <p>This method creates a <b>new EntityManager</b> that cannot see uncommitted data from active transactions.
+     * Using this method inside a transaction will cause <b>stale reads</b>, leading to duplicate block numbers 
+     * and {@code ConstraintViolationException} on the unique index {@code UK36EVC1SETVFXRT8IJY0UIRT9R}.</p>
+     * 
+     * <p><b>When to Use This Method:</b></p>
+     * <ul>
+     *   <li>✅ <b>Read-only queries</b> outside transactions (safe)</li>
+     *   <li>✅ <b>Tests and demos</b> that don't modify data (safe)</li>
+     *   <li>✅ <b>Public API calls</b> for blockchain inspection (safe)</li>
+     *   <li>❌ <b>Inside JPAUtil.executeInTransaction()</b> - USE {@link #getLastBlock(EntityManager)} instead!</li>
+     *   <li>❌ <b>Inside any active JPA transaction</b> - USE {@link #getLastBlock(EntityManager)} instead!</li>
+     * </ul>
+     * 
+     * <p><b>Example - Correct Usage:</b></p>
+     * <pre>{@code
+     * // ✅ CORRECT: Outside transaction (read-only)
+     * Block lastBlock = blockRepository.getLastBlock();
+     * System.out.println("Last block: " + lastBlock.getBlockNumber());
+     * 
+     * // ❌ WRONG: Inside transaction
+     * JPAUtil.executeInTransaction(em -> {
+     *     Block lastBlock = blockRepository.getLastBlock();  // Stale read!
+     *     // This will cause duplicate block numbers
+     * });
+     * 
+     * // ✅ CORRECT: Inside transaction - use getLastBlock(em)
+     * JPAUtil.executeInTransaction(em -> {
+     *     Block lastBlock = blockRepository.getLastBlock(em);  // Correct!
+     *     return lastBlock;
+     * });
+     * }</pre>
+     * 
+     * <p><b>Performance:</b> O(1) using block_sequence + indexed lookup (avoids O(n log n) ORDER BY)</p>
+     * 
+     * <p><b>See Also:</b></p>
+     * <ul>
+     *   <li>{@link #getLastBlock(EntityManager)} - Transaction-aware version for use inside transactions</li>
+     *   <li>Documentation: {@code docs/database/TRANSACTION_ISOLATION_FIX.md} - Complete technical details</li>
+     * </ul>
+     * 
+     * @return Last block in chain, or null if blockchain is empty
+     * @see #getLastBlock(EntityManager) for transaction-aware version
+     * @since 1.0.0
      */
     public Block getLastBlock() {
         EntityManager em = JPAUtil.getEntityManager();
@@ -418,6 +462,80 @@ class BlockRepository {
             if (!JPAUtil.hasActiveTransaction()) {
                 em.close();
             }
+        }
+    }
+
+    /**
+     * Get the last block using a provided EntityManager (transaction-aware version).
+     * 
+     * <p><b>⚠️ CRITICAL - Transaction Isolation:</b></p>
+     * <p>This method MUST be used when calling {@code getLastBlock()} from within an active JPA transaction.
+     * It uses the provided EntityManager to ensure visibility of uncommitted blocks in the current transaction,
+     * preventing duplicate block numbers and constraint violations.</p>
+     * 
+     * <p><b>Use Case:</b></p>
+     * <pre>{@code
+     * // ✅ CORRECT: Inside transaction - use getLastBlock(em)
+     * JPAUtil.executeInTransaction(em -> {
+     *     Block lastBlock = blockRepository.getLastBlock(em);  // Sees uncommitted blocks
+     *     long nextBlockNumber = lastBlock.getBlockNumber() + 1;
+     *     Block newBlock = createBlock(nextBlockNumber, data);
+     *     em.persist(newBlock);
+     *     return newBlock;
+     * });
+     * 
+     * // ❌ WRONG: Inside transaction - using getLastBlock() without parameter
+     * JPAUtil.executeInTransaction(em -> {
+     *     Block lastBlock = blockRepository.getLastBlock();  // Creates new EM! Stale read!
+     *     // Will cause duplicate block numbers and ConstraintViolationException
+     * });
+     * }</pre>
+     * 
+     * <p><b>Performance Optimization:</b></p>
+     * <ul>
+     *   <li>Uses {@code MAX(b.blockNumber)} for O(1) indexed lookup</li>
+     *   <li>Avoids expensive {@code ORDER BY DESC} which is O(n log n)</li>
+     *   <li>Leverages unique index {@code UK36EVC1SETVFXRT8IJY0UIRT9R} on block_number</li>
+     * </ul>
+     * 
+     * <p><b>See Also:</b></p>
+     * <ul>
+     *   <li>{@link #getLastBlock()} - For read-only operations outside transactions</li>
+     *   <li>Documentation: {@code docs/database/TRANSACTION_ISOLATION_FIX.md}</li>
+     * </ul>
+     *
+     * @param em The EntityManager from the current transaction context (must not be null)
+     * @return The last block in the chain, or null if the chain is empty
+     * @throws IllegalArgumentException if em is null
+     * @since 1.0.6
+     */
+    public Block getLastBlock(EntityManager em) {
+        if (em == null) {
+            throw new IllegalArgumentException("EntityManager cannot be null");
+        }
+
+        try {
+            // First, get the maximum block number (O(1) with index)
+            TypedQuery<Long> maxQuery = em.createQuery(
+                    "SELECT MAX(b.blockNumber) FROM Block b", 
+                    Long.class);
+            Long maxBlockNumber = maxQuery.getSingleResult();
+
+            if (maxBlockNumber == null) {
+                return null;
+            }
+
+            // Then get the block by number (O(1) with unique index)
+            TypedQuery<Block> query = em.createQuery(
+                    "SELECT b FROM Block b WHERE b.blockNumber = :blockNumber", 
+                    Block.class);
+            query.setParameter("blockNumber", maxBlockNumber);
+
+            List<Block> blocks = query.getResultList();
+            return blocks.isEmpty() ? null : blocks.get(0);
+        } catch (Exception e) {
+            logger.error("❌ Error getting last block within transaction: {}", e.getMessage());
+            return null;
         }
     }
 

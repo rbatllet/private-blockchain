@@ -55,12 +55,25 @@
             </Policies>
             <DefaultRolloverStrategy max="180"/>
         </RollingFile>
+
+        <!-- Error-only file (logger.error) -->
+        <RollingFile name="ErrorLogFile" fileName="logs/errors.log" 
+                     filePattern="logs/errors-%d{yyyy-MM-dd}-%i.log.gz">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %logger{36} - %msg%n"/>
+            <ThresholdFilter level="ERROR" onMatch="ACCEPT" onMismatch="DENY"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy />
+                <SizeBasedTriggeringPolicy size="50MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="90"/>
+        </RollingFile>
     </Appenders>
 
     <Loggers>
         <!-- Application logs - WARN level for production -->
         <Logger name="com.rbatllet.blockchain" level="WARN" additivity="false">
             <AppenderRef ref="AppLogFile"/>
+            <AppenderRef ref="ErrorLogFile"/>
         </Logger>
 
         <!-- Structured alerts logger -->
@@ -105,6 +118,7 @@
         <!-- Root logger with ERROR level -->
         <Root level="ERROR">
             <AppenderRef ref="AppLogFile"/>
+            <AppenderRef ref="ErrorLogFile"/>
         </Root>
     </Loggers>
 </Configuration>

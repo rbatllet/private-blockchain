@@ -15,6 +15,7 @@ import com.rbatllet.blockchain.recovery.ChainRecoveryManager;
 import com.rbatllet.blockchain.recovery.ChainRecoveryManager.ChainDiagnostic;
 import com.rbatllet.blockchain.recovery.ChainRecoveryManager.RecoveryResult;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine;
+import com.rbatllet.blockchain.security.GenesisAdminInfo;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.EnhancedSearchResult;
 import com.rbatllet.blockchain.search.SearchSpecialistAPI;
 import com.rbatllet.blockchain.service.OffChainStorageService;
@@ -30,6 +31,10 @@ import com.rbatllet.blockchain.validation.EncryptedBlockValidator;
 import jakarta.persistence.EntityManager;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.security.KeyPair;
 import java.security.MessageDigest;
 import java.security.PrivateKey;
@@ -104,6 +109,9 @@ public class Blockchain {
 
         initializeGenesisBlock();
 
+        // Genesis admin bootstrap: Create first admin if no authorized keys exist
+        initializeGenesisAdminIfNeeded();
+
         // Note: Advanced Search is initialized on-demand when blocks are created
         // This prevents conflicts with per-block password management
         // initializeAdvancedSearch();
@@ -153,6 +161,91 @@ public class Blockchain {
             blockRepository.synchronizeBlockSequence();
 
             logger.info("✅ Genesis block created successfully!");
+        }
+    }
+
+    /**
+     * Initialize genesis admin on first blockchain creation.
+     *
+     * <p>This creates the first authorized admin with full privileges, solving the
+     * "bootstrap problem" of how to create the first admin without already having an admin.</p>
+     *
+     * <p><strong>SECURITY:</strong> Genesis admin keypair is stored in:</p>
+     * <ul>
+     *   <li>Private key: {@code ./keys/genesis-admin.private} (owner read/write only)</li>
+     *   <li>Public key: {@code ./keys/genesis-admin.public} (plaintext for verification)</li>
+     * </ul>
+     *
+     * <p>This method only runs if ZERO authorized keys exist in the database.</p>
+     *
+     * @return GenesisAdminInfo with keys and storage location, or null if admin already exists
+     * @since 1.0.6
+     */
+    private GenesisAdminInfo initializeGenesisAdminIfNeeded() {
+        long stamp = GLOBAL_BLOCKCHAIN_LOCK.writeLock();
+        try {
+            // Only run if no authorized keys exist (bootstrap problem)
+            long authorizedCount = authorizedKeyDAO.getAuthorizedKeyCount();
+            if (authorizedCount > 0) {
+                logger.debug("ℹ️  {} authorized keys exist, skipping genesis admin creation", authorizedCount);
+                return null;
+            }
+
+            logger.warn("🔐 No authorized keys found. Creating genesis admin...");
+
+            // Generate genesis admin keypair
+            KeyPair genesisAdminKeys = CryptoUtil.generateKeyPair();
+            String publicKeyString = CryptoUtil.publicKeyToString(genesisAdminKeys.getPublic());
+            String privateKeyString = CryptoUtil.privateKeyToString(genesisAdminKeys.getPrivate());
+
+            // Store keys using filesystem
+            Path keysDir = Paths.get("./keys");
+            if (!Files.exists(keysDir)) {
+                Files.createDirectories(keysDir);
+            }
+
+            // Save to files
+            Path privateKeyPath = keysDir.resolve("genesis-admin.private");
+            Path publicKeyPath = keysDir.resolve("genesis-admin.public");
+
+            Files.writeString(privateKeyPath, privateKeyString);
+            Files.writeString(publicKeyPath, publicKeyString);
+
+            // Set restrictive permissions (owner read/write only)
+            if (!System.getProperty("os.name").toLowerCase().contains("win")) {
+                Files.setPosixFilePermissions(privateKeyPath,
+                    PosixFilePermissions.fromString("rw-------"));
+            }
+
+            // Add to authorized keys (SPECIAL CASE: no admin approval needed for genesis)
+            boolean success = addAuthorizedKeyInternal(publicKeyString, "GENESIS_ADMIN", null);
+
+            if (!success) {
+                logger.error("❌ Failed to add genesis admin to authorized keys");
+                return null;
+            }
+
+            GenesisAdminInfo adminInfo = new GenesisAdminInfo(
+                publicKeyString,
+                privateKeyPath.toString(),
+                "GENESIS_ADMIN"
+            );
+
+            logger.warn("✅ Genesis admin created successfully!");
+            logger.warn("📋 Username: GENESIS_ADMIN");
+            logger.warn("📋 Public Key: {}...", publicKeyString.substring(0, Math.min(50, publicKeyString.length())));
+            logger.warn("📁 Private key: {}", privateKeyPath);
+            logger.warn("📁 Public key: {}", publicKeyPath);
+            logger.warn("⚠️  IMPORTANT: Backup genesis admin keys immediately!");
+            logger.warn("⚠️  Store keys in a secure location (password manager, HSM, etc.)");
+
+            return adminInfo;
+
+        } catch (Exception e) {
+            logger.error("❌ Failed to initialize genesis admin", e);
+            return null;
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.unlockWrite(stamp);
         }
     }
 
@@ -1025,8 +1118,9 @@ public class Blockchain {
                         em.flush(); // Ensure ID is generated
                     }
 
-                    // 4. Get blockchain info
-                    Block lastBlock = blockRepository.getLastBlock();
+                    // 4. Get blockchain info using current EntityManager to avoid stale reads
+                    // CRITICAL FIX: Use em from current transaction to see most recent blocks
+                    Block lastBlock = blockRepository.getLastBlock(em);
                     Long newBlockNumber = (lastBlock != null)
                         ? lastBlock.getBlockNumber() + 1
                         : 1L;
@@ -2535,6 +2629,39 @@ public class Blockchain {
         }
         
         return content;
+    }
+
+    /**
+     * Check if a public key is currently authorized.
+     *
+     * @param publicKey The public key to check (string format)
+     * @return true if key is authorized and active, false otherwise
+     * @since 1.0.6
+     */
+    public boolean isKeyAuthorized(String publicKey) {
+        long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
+        try {
+            return authorizedKeyDAO.isKeyAuthorized(publicKey);
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
+        }
+    }
+
+    /**
+     * Get total count of authorized keys in database.
+     *
+     * <p>This includes both active and revoked keys.</p>
+     *
+     * @return Total number of authorized keys
+     * @since 1.0.6
+     */
+    public long getAuthorizedKeyCount() {
+        long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
+        try {
+            return authorizedKeyDAO.getAuthorizedKeyCount();
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
+        }
     }
 
     /**
@@ -4293,9 +4420,15 @@ public class Blockchain {
     }
 
     /**
-     * Get the last block
-     * FIXED: Now uses global write lock to ensure complete serialization with addBlock()
-     * This method is now completely thread-safe for post-write operations
+     * Get the last block in the blockchain
+     * 
+     * <p><b>Thread Safety:</b> Uses optimistic read locking for high-performance concurrent access</p>
+     * 
+     * <p><b>⚠️ Usage Note:</b> This method is safe for external API calls and read operations.
+     * Internal blockchain methods that modify data within active transactions should use
+     * {@code blockRepository.getLastBlock(EntityManager)} to avoid transaction isolation issues.</p>
+     * 
+     * @return Last block in chain, or null if blockchain is empty
      */
     public Block getLastBlock() {
         // Try optimistic read first (lock-free, ~50% faster)

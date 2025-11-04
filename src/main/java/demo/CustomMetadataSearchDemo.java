@@ -2,8 +2,8 @@ package demo;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
-import com.rbatllet.blockchain.util.CryptoUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.security.KeyPair;
@@ -34,8 +34,19 @@ public class CustomMetadataSearchDemo {
 
             // Setup
             Blockchain blockchain = new Blockchain();
-            KeyPair keyPair = CryptoUtil.generateKeyPair();
-            UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, "demo_user", keyPair);
+
+            // Load genesis admin keys
+            KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+                "./keys/genesis-admin.private",
+                "./keys/genesis-admin.public"
+            );
+
+            UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+            api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+
+            // Create demo user (authorized by genesis admin)
+            KeyPair keyPair = api.createUser("demo_user");
+            api.setDefaultCredentials("demo_user", keyPair);
 
             // Demo scenarios
             demonstrateBasicSubstringSearch(api, blockchain, keyPair);

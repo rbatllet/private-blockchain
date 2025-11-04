@@ -30,10 +30,15 @@ class UserFriendlyEncryptionAPIIntegrationTest {
     void setUp() throws Exception {
         // Configure real blockchain (slower)
         blockchain = new Blockchain();
+        blockchain.clearAndReinitialize();
 
         // BUGFIX: Generate ML-DSA-87 keys using CryptoUtil (blockchain uses post-quantum crypto)
         // Previously used EC keys which are incompatible with ML-DSA-87 validation
         testKeyPair = CryptoUtil.generateKeyPair();
+
+        // SECURITY FIX (v1.0.6): Pre-authorize user before creating API
+        String publicKeyString = CryptoUtil.publicKeyToString(testKeyPair.getPublic());
+        blockchain.addAuthorizedKey(publicKeyString, "testuser");
 
         // Real configuration
         testConfig = new EncryptionConfig();

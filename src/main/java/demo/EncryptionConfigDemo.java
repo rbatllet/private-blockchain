@@ -1,6 +1,7 @@
 package demo;
 
 import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import java.security.KeyPair;
@@ -13,12 +14,20 @@ public class EncryptionConfigDemo {
     public static void main(String[] args) {
         try {
             System.out.println("=== 🔐 ENCRYPTION CONFIGURATION DEMO ===\n");
-            
+
             // Setup blockchain and API
             Blockchain blockchain = new Blockchain();
+
+            // Load genesis admin keys
+            KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+                "./keys/genesis-admin.private",
+                "./keys/genesis-admin.public"
+            );
+
             UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
-            
-            // Create user
+            api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+
+            // Create user (authorized by genesis admin)
             KeyPair userKeys = api.createUser("TestUser");
             api.setDefaultCredentials("TestUser", userKeys);
             

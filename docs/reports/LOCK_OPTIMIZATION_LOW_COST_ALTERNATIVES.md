@@ -1,5 +1,8 @@
 # Low-Cost Lock Optimization Alternatives
 
+> **📌 Historical Document Note**: This document was created to evaluate lock optimization strategies.  
+> **⚠️ UPDATE (v1.0.6)**: The `getLastBlock()` method mentioned in migration strategies now has transaction-aware considerations. See [TRANSACTION_ISOLATION_FIX.md](../database/TRANSACTION_ISOLATION_FIX.md) for important usage guidelines.
+
 ## 📊 Executive Summary
 
 Based on Context7 research and Java concurrency best practices, this document proposes **low-cost alternatives** to improve GLOBAL_BLOCKCHAIN_LOCK performance without the massive refactoring required by async queue implementation.
@@ -95,8 +98,10 @@ public boolean addBlock(...) {
 
 **Phase 1: Core Reads (4-6h)**
 - Replace `GLOBAL_BLOCKCHAIN_LOCK` declaration
-- Update read methods: `getBlock()`, `getBlockCount()`, `getLastBlock()`
+- Update read methods: `getBlock()`, `getBlockCount()`, `getLastBlock()`†
 - Pattern: Try optimistic → fallback to readLock
+
+**†Note**: `getLastBlock()` has additional transaction-aware considerations in v1.0.6 - see [TRANSACTION_ISOLATION_FIX.md](../database/TRANSACTION_ISOLATION_FIX.md)
 
 **Phase 2: Validation Reads (2-3h)**
 - Update `validateChainDetailed()`, `processChainInBatches()`

@@ -35,7 +35,7 @@ run_demo() {
     print_zombie "  • Previously hidden API methods now accessible"
     echo ""
     
-    print_warning "This demo reveals zombie code worth $50,000+ in development effort"
+    print_warning "This demo reveals zombie code worth significant development effort"
     echo ""
     
     print_info "🚀 Launching AdvancedZombieCodeDemo..."

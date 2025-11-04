@@ -2,10 +2,10 @@ package demo;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.service.AdvancedSearchResult;
 import com.rbatllet.blockchain.validation.ChainValidationResult;
-import com.rbatllet.blockchain.util.CryptoUtil;
 
 import java.security.KeyPair;
 import java.util.*;
@@ -13,7 +13,7 @@ import java.util.*;
 /**
  * Demonstrates that the blockchain is now truly language-independent
  * and can handle content in multiple languages without hardcoded assumptions.
- * 
+ *
  * This demo shows the blockchain working with:
  * - Catalan (Català)
  * - Spanish (Español)
@@ -23,17 +23,34 @@ import java.util.*;
  * - Portuguese (Português)
  */
 public class MultilingualBlockchainDemo {
-    
+
     public static void main(String[] args) throws Exception {
         System.out.println("🌐 MULTILINGUAL BLOCKCHAIN DEMONSTRATION");
         System.out.println("========================================");
         System.out.println();
-        
-        // Initialize blockchain and API
+
+        // Initialize blockchain (auto-creates genesis admin)
         Blockchain blockchain = new Blockchain();
-        KeyPair keys = CryptoUtil.generateKeyPair();
-        UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, "multilingual-user", keys);
-        
+        System.out.println("✅ Blockchain initialized (genesis admin created)");
+
+        // Load genesis admin keys
+        KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+        System.out.println("✅ Genesis admin keys loaded");
+
+        // Create API with genesis admin credentials
+        UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+        api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+        System.out.println("✅ API configured with genesis admin credentials");
+
+        // Create the multilingual user (authorized by genesis admin)
+        KeyPair userKeys = api.createUser("multilingual-user");
+        api.setDefaultCredentials("multilingual-user", userKeys);
+        System.out.println("✅ User 'multilingual-user' created and authorized");
+        System.out.println();
+
         String password = "MultiLang2025!";
         
         // Store data in different languages

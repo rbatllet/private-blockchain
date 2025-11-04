@@ -134,10 +134,20 @@ public class UserFriendlyEncryptionAPI {
     }
 
     /**
-     * Initialize the API with default user credentials
+     * Initialize the API with default user credentials.
+     * 
+     * <p><strong>🔒 Security (v1.0.6+):</strong> This constructor requires the user to be 
+     * <strong>pre-authorized</strong> via {@code blockchain.addAuthorizedKey()} before instantiation.
+     * Attempting to create an API instance with an unauthorized user will throw {@code SecurityException}.</p>
+     *
+     * <p><strong>Recommended Pattern:</strong> Use the parameterless constructor and 
+     * {@link #setDefaultCredentials(String, KeyPair)} for more flexible initialization.</p>
+     *
      * @param blockchain The blockchain to operate on
-     * @param defaultUsername Default username for operations
-     * @param defaultKeyPair Default key pair for signing
+     * @param defaultUsername Default username for operations (must be pre-authorized)
+     * @param defaultKeyPair Default key pair for signing (must be pre-authorized)
+     * @throws SecurityException if user is not pre-authorized (v1.0.6+)
+     * @since 1.0
      */
     public UserFriendlyEncryptionAPI(
         Blockchain blockchain,
@@ -153,11 +163,41 @@ public class UserFriendlyEncryptionAPI {
     }
 
     /**
-     * Initialize the API with default user credentials and custom encryption configuration
+     * Initialize the API with default user credentials and custom encryption configuration.
+     * 
+     * <p><strong>🔒 Security (v1.0.6+):</strong> This constructor requires the user to be 
+     * <strong>pre-authorized</strong> via {@code blockchain.addAuthorizedKey()} before instantiation.
+     * Attempting to create an API instance with an unauthorized user will throw {@code SecurityException}.</p>
+     *
+     * <p><strong>Recommended Pattern (v1.0.6+):</strong></p>
+     * <pre>{@code
+     * // 1. Create blockchain (auto-creates genesis admin)
+     * Blockchain blockchain = new Blockchain();
+     * 
+     * // 2. Load genesis admin keys
+     * KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+     *     "./keys/genesis-admin.private",
+     *     "./keys/genesis-admin.public"
+     * );
+     * 
+     * // 3. Authorize user BEFORE creating API instance
+     * blockchain.addAuthorizedKey(
+     *     CryptoUtil.publicKeyToString(userKeys.getPublic()), 
+     *     "username"
+     * );
+     * 
+     * // 4. Now create API instance (user is pre-authorized)
+     * UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(
+     *     blockchain, "username", userKeys, config
+     * );
+     * }</pre>
+     *
      * @param blockchain The blockchain to operate on
-     * @param defaultUsername Default username for operations
-     * @param defaultKeyPair Default key pair for signing
+     * @param defaultUsername Default username for operations (must be pre-authorized)
+     * @param defaultKeyPair Default key pair for signing (must be pre-authorized)
      * @param encryptionConfig The encryption configuration to use
+     * @throws SecurityException if user is not pre-authorized (v1.0.6+)
+     * @since 1.0
      */
     public UserFriendlyEncryptionAPI(
         Blockchain blockchain,
@@ -177,25 +217,25 @@ public class UserFriendlyEncryptionAPI {
         );
         setDefaultCredentials(defaultUsername, defaultKeyPair);
 
-        // Auto-register the user if not already registered
-        try {
-            String publicKeyString = CryptoUtil.publicKeyToString(
-                getDefaultKeyPair().getPublic()
-            );
-            blockchain.addAuthorizedKey(publicKeyString, defaultUsername);
-        } catch (IllegalArgumentException e) {
-            logger.debug("User key already registered: {}", defaultUsername);
-        } catch (SecurityException e) {
-            logger.warn(
-                "Failed to register user key due to security policy: {}",
-                defaultUsername
-            );
-        } catch (Exception e) {
-            logger.error(
-                "Unexpected error during user registration: {}",
-                e.getClass().getSimpleName()
+        // SECURITY FIX (v1.0.6): Verify user is pre-authorized
+        // Users must be authorized by admin BEFORE creating UserFriendlyEncryptionAPI
+        String publicKeyString = CryptoUtil.publicKeyToString(
+            getDefaultKeyPair().getPublic()
+        );
+
+        if (!blockchain.isKeyAuthorized(publicKeyString)) {
+            throw new SecurityException(
+                "❌ AUTHORIZATION REQUIRED: User '" + defaultUsername + "' is not authorized.\n" +
+                "Keys must be pre-authorized before creating UserFriendlyEncryptionAPI.\n\n" +
+                "Solution:\n" +
+                "  1. Load genesis admin keys (if first user): ./keys/genesis-admin.private\n" +
+                "  2. Authorize user: blockchain.addAuthorizedKey(publicKey, username)\n" +
+                "  3. Then create API instance\n\n" +
+                "Public key: " + publicKeyString.substring(0, Math.min(50, publicKeyString.length())) + "..."
             );
         }
+
+        logger.debug("✅ User '{}' verified as pre-authorized", defaultUsername);
     }
 
     // ===== SIMPLE ENCRYPTED BLOCK OPERATIONS =====
@@ -1409,12 +1449,18 @@ public class UserFriendlyEncryptionAPI {
      * The generated keys use enterprise-grade post-quantum cryptographic algorithms suitable for
      * production blockchain applications.</p>
      *
+     * <p><strong>🔒 Security (v1.0.6+):</strong> This method requires the caller to be 
+     * <strong>pre-authorized</strong>. Only authorized users (e.g., genesis admin or other 
+     * authorized admins) can create new users. The newly created user is automatically 
+     * authorized by the calling user.</p>
+     *
      * <p><strong>Key Generation Features:</strong></p>
      * <ul>
      *   <li><strong>ML-DSA-87 Algorithm:</strong> NIST FIPS 204 standardized post-quantum digital signatures</li>
      *   <li><strong>Secure Random Generation:</strong> Cryptographically secure key generation</li>
      *   <li><strong>Blockchain Registration:</strong> Public key automatically registered</li>
-     *   <li><strong>User Authorization:</strong> User authorized for blockchain operations</li>
+     *   <li><strong>User Authorization:</strong> New user automatically authorized by the caller</li>
+     *   <li><strong>Caller Validation:</strong> Validates caller is authorized before user creation</li>
      * </ul>
      *
      * <p><strong>Security Note:</strong> The generated private key should be stored securely
@@ -1423,17 +1469,26 @@ public class UserFriendlyEncryptionAPI {
      *
      * <p><strong>Usage Examples:</strong></p>
      * <pre>{@code
-     * // Create new user account
+     * // 1. First, authenticate as genesis admin or authorized user
+     * Blockchain blockchain = new Blockchain();
+     * KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+     *     "./keys/genesis-admin.private",
+     *     "./keys/genesis-admin.public"
+     * );
+     * 
      * UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+     * api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+     *
+     * // 2. Now create new user (authorized by genesis admin)
      * KeyPair userKeys = api.createUser("alice-medical");
      *
-     * // Store keys securely for future use
+     * // 3. Store keys securely for future use
      * SecureKeyStorage.savePrivateKey("alice-medical", userKeys.getPrivate(), "userPassword");
      *
-     * // Set as default credentials for this session
+     * // 4. Switch to new user for operations
      * api.setDefaultCredentials("alice-medical", userKeys);
      *
-     * // User can now perform blockchain operations
+     * // 5. User can now perform blockchain operations
      * Block block = api.storeSecret("Patient medical record", "encryptionPassword");
      * System.out.println("✅ User created and data stored successfully");
      * }</pre>
@@ -1445,6 +1500,8 @@ public class UserFriendlyEncryptionAPI {
      *         The private key should be stored securely by the application.
      *         Never returns null.
      * @throws IllegalArgumentException if username is null or empty
+     * @throws SecurityException if caller is not authorized (v1.0.6+) - must call 
+     *         {@link #setDefaultCredentials(String, KeyPair)} with authorized user first
      * @throws RuntimeException if key generation fails or blockchain registration fails
      * @see #setDefaultCredentials(String, KeyPair)
      * @see SecureKeyStorage#savePrivateKey(String, PrivateKey, String)
@@ -1453,12 +1510,38 @@ public class UserFriendlyEncryptionAPI {
     public KeyPair createUser(String username) {
         validateInputData(username, 256, "Username"); // 256 char limit for usernames
 
+        // SECURITY FIX (v1.0.6): Only authorized users can create new users
+        // This prevents unauthorized user creation attacks
+        synchronized (credentialsLock) {
+            if (defaultKeyPair.get() == null || defaultUsername.get() == null) {
+                throw new SecurityException(
+                    "❌ AUTHORIZATION REQUIRED: Must set authorized credentials before creating users.\n\n" +
+                    "Solution:\n" +
+                    "  1. Load genesis admin keys: KeyFileLoader.loadPrivateKey(\"./keys/genesis-admin.private\")\n" +
+                    "  2. Set credentials: api.setDefaultCredentials(\"GENESIS_ADMIN\", genesisKeys)\n" +
+                    "  3. Then create new users: api.createUser(\"newuser\")"
+                );
+            }
+
+            String callerPublicKey = CryptoUtil.publicKeyToString(defaultKeyPair.get().getPublic());
+            if (!blockchain.isKeyAuthorized(callerPublicKey)) {
+                throw new SecurityException(
+                    "❌ AUTHORIZATION REQUIRED: Only authorized users can create new users.\n" +
+                    "Current user '" + defaultUsername.get() + "' is not authorized.\n\n" +
+                    "Solution:\n" +
+                    "  1. Get authorized by an admin: blockchain.addAuthorizedKey(yourPublicKey, username)\n" +
+                    "  2. Or use genesis admin credentials to create users"
+                );
+            }
+        }
+
         try {
             KeyPair keyPair = CryptoUtil.generateKeyPair();
             String publicKeyString = CryptoUtil.publicKeyToString(
                 keyPair.getPublic()
             );
             blockchain.addAuthorizedKey(publicKeyString, username);
+            logger.info("✅ User '{}' created and authorized by '{}'", username, defaultUsername.get());
             return keyPair;
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException(
@@ -1546,28 +1629,10 @@ public class UserFriendlyEncryptionAPI {
             this.defaultKeyPair.set(keyPair);
         }
 
-        // Auto-register the user if not already registered
-        try {
-            String publicKeyString = CryptoUtil.publicKeyToString(
-                keyPair.getPublic()
-            );
-            blockchain.addAuthorizedKey(publicKeyString, username);
-        } catch (IllegalArgumentException e) {
-            logger.debug(
-                "User key already registered during credential setup: {}",
-                username
-            );
-        } catch (SecurityException e) {
-            logger.warn(
-                "Failed to register user key during credential setup: {}",
-                username
-            );
-        } catch (Exception e) {
-            logger.error(
-                "Unexpected error during credential setup: {}",
-                e.getClass().getSimpleName()
-            );
-        }
+        // SECURITY FIX (v1.0.6): Removed auto-authorization
+        // Users must be pre-authorized before calling setDefaultCredentials()
+        // Authorization check happens in constructor or when using API methods
+        logger.debug("✅ Credentials set for user: {}", username);
     }
 
     /**
@@ -2375,33 +2440,86 @@ public class UserFriendlyEncryptionAPI {
     }
 
     /**
-     * Load and set a user's credentials from secure storage
-     * Loads complete KeyPair (public + private) for ML-DSA compatibility
+     * Load and set a user's credentials from secure storage.
+     * 
+     * <p>Loads complete KeyPair (public + private) for ML-DSA compatibility and sets
+     * them as the default credentials for this API instance.</p>
+     *
+     * <p><strong>🔒 Security (v1.0.6+):</strong> This method requires the caller to be 
+     * <strong>pre-authorized</strong>. Only authorized users can load credentials from 
+     * secure storage. The loaded user is automatically authorized if not already registered.</p>
+     *
+     * <p><strong>Usage Example:</strong></p>
+     * <pre>{@code
+     * // 1. Authenticate as genesis admin or authorized user
+     * Blockchain blockchain = new Blockchain();
+     * KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+     *     "./keys/genesis-admin.private",
+     *     "./keys/genesis-admin.public"
+     * );
+     * 
+     * UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+     * api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+     *
+     * // 2. Load user credentials (requires authorized caller)
+     * boolean success = api.loadUserCredentials("alice", "userPassword");
+     * 
+     * if (success) {
+     *     // Alice's credentials are now loaded and set as default
+     *     Block block = api.storeEncryptedData("data", "password");
+     * }
+     * }</pre>
      *
      * @param username Username to load
      * @param password Password to decrypt the KeyPair
      * @return true if credentials were loaded and set successfully
+     * @throws IllegalArgumentException if username or password is invalid
+     * @throws SecurityException if caller is not authorized (v1.0.6+) - must authenticate
+     *         with authorized user first via {@link #setDefaultCredentials(String, KeyPair)}
+     * @since 1.0
      */
     public boolean loadUserCredentials(String username, String password) {
         validateInputData(username, 256, "Username"); // 256 char limit for usernames
         validatePasswordSecurity(password, "Password");
 
+        // SECURITY FIX (v1.0.6): Only authorized users can load credentials
+        synchronized (credentialsLock) {
+            if (defaultKeyPair.get() == null || defaultUsername.get() == null) {
+                throw new SecurityException(
+                    "❌ AUTHORIZATION REQUIRED: Must set authorized credentials before loading user credentials.\n\n" +
+                    "Solution:\n" +
+                    "  1. Load genesis admin keys: KeyFileLoader.loadKeyPairFromFiles(\"./keys/genesis-admin.private\", \"./keys/genesis-admin.public\")\n" +
+                    "  2. Set credentials: api.setDefaultCredentials(\"GENESIS_ADMIN\", genesisKeys)\n" +
+                    "  3. Then load user credentials: api.loadUserCredentials(username, password)"
+                );
+            }
+
+            String callerPublicKey = CryptoUtil.publicKeyToString(defaultKeyPair.get().getPublic());
+            if (!blockchain.isKeyAuthorized(callerPublicKey)) {
+                throw new SecurityException(
+                    "❌ AUTHORIZATION REQUIRED: Only authorized users can load credentials.\n" +
+                    "Current user '" + defaultUsername.get() + "' is not authorized."
+                );
+            }
+        }
+
+        // Now load and authorize the credentials
         KeyPair keyPair = SecureKeyStorage.loadKeyPair(username, password);
         if (keyPair != null) {
             try {
-                synchronized (credentialsLock) {
-                    this.defaultKeyPair.set(keyPair);
-                    this.defaultUsername.set(username);
+                String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
+                boolean registered = blockchain.addAuthorizedKey(publicKeyString, username);
+
+                if (registered) {
+                    synchronized (credentialsLock) {
+                        this.defaultKeyPair.set(keyPair);
+                        this.defaultUsername.set(username);
+                    }
+                    logger.info("✅ User '{}' credentials loaded and authorized by '{}'", username, defaultUsername.get());
+                    return true;
                 }
-
-                // Auto-register the user
-                String publicKeyString = CryptoUtil.publicKeyToString(
-                    keyPair.getPublic()
-                );
-                blockchain.addAuthorizedKey(publicKeyString, username);
-
-                return true;
             } catch (Exception e) {
+                logger.error("❌ Failed to load credentials for user '{}'", username, e);
                 return false;
             }
         }
@@ -2499,14 +2617,67 @@ public class UserFriendlyEncryptionAPI {
     }
 
     /**
-     * Import and register a user from a KeyPair file
-     * Required for ML-DSA where public keys cannot be derived from private keys
+     * Import and register a user from a KeyPair file.
+     * 
+     * <p>Required for ML-DSA where public keys cannot be derived from private keys.
+     * This method imports a user's key pair from a file and registers the user with
+     * the blockchain for authorization.</p>
+     *
+     * <p><strong>🔒 Security (v1.0.6+):</strong> This method requires the caller to be 
+     * <strong>pre-authorized</strong>. Only authorized users can import and register new users.
+     * The imported user is automatically authorized upon successful registration.</p>
+     *
+     * <p><strong>Usage Example:</strong></p>
+     * <pre>{@code
+     * // 1. Authenticate as genesis admin or authorized user
+     * Blockchain blockchain = new Blockchain();
+     * KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+     *     "./keys/genesis-admin.private",
+     *     "./keys/genesis-admin.public"
+     * );
+     * 
+     * UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+     * api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+     *
+     * // 2. Import and register user (requires authorized caller)
+     * boolean success = api.importAndRegisterUser("alice", "/path/to/alice-keys.pem");
+     * 
+     * if (success) {
+     *     // Alice is now authorized but not set as default
+     *     // To use Alice's credentials, call setDefaultCredentials separately
+     * }
+     * }</pre>
      *
      * @param username Username for the imported key
      * @param keyPairPath Path to the KeyPair file (combined public + private)
      * @return true if user was imported and registered successfully
+     * @throws SecurityException if caller is not authorized (v1.0.6+) - must authenticate
+     *         with authorized user first via {@link #setDefaultCredentials(String, KeyPair)}
+     * @since 1.0
      */
     public boolean importAndRegisterUser(String username, String keyPairPath) {
+        // SECURITY FIX (v1.0.6): Only authorized users can import and register users
+        synchronized (credentialsLock) {
+            if (defaultKeyPair.get() == null || defaultUsername.get() == null) {
+                throw new SecurityException(
+                    "❌ AUTHORIZATION REQUIRED: Must set authorized credentials before importing users.\n\n" +
+                    "Solution:\n" +
+                    "  1. Load genesis admin keys: KeyFileLoader.loadKeyPairFromFiles(\"./keys/genesis-admin.private\", \"./keys/genesis-admin.public\")\n" +
+                    "  2. Set credentials: api.setDefaultCredentials(\"GENESIS_ADMIN\", genesisKeys)\n" +
+                    "  3. Then import user: api.importAndRegisterUser(username, keyPairPath)"
+                );
+            }
+
+            String callerPublicKey = CryptoUtil.publicKeyToString(defaultKeyPair.get().getPublic());
+            if (!blockchain.isKeyAuthorized(callerPublicKey)) {
+                throw new SecurityException(
+                    "❌ AUTHORIZATION REQUIRED: Only authorized users can import and register users.\n" +
+                    "Current user '" + defaultUsername.get() + "' is not authorized."
+                );
+            }
+        }
+
+        // Now import and register the user
         try {
             KeyPair keyPair = importKeyPairFromFile(keyPairPath);
             if (keyPair == null) {
@@ -2514,24 +2685,85 @@ public class UserFriendlyEncryptionAPI {
             }
 
             String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
-            return blockchain.addAuthorizedKey(publicKeyString, username);
+            boolean registered = blockchain.addAuthorizedKey(publicKeyString, username);
+
+            if (registered) {
+                logger.info("✅ User '{}' imported and authorized by '{}'", username, defaultUsername.get());
+            }
+
+            return registered;
         } catch (Exception e) {
+            logger.error("❌ Failed to import user '{}'", username, e);
             return false;
         }
     }
 
     /**
-     * Import, register, and set as default user from a KeyPair file
-     * Required for ML-DSA where public keys cannot be derived from private keys
+     * Import, register, and set as default user from a KeyPair file.
+     * 
+     * <p>Required for ML-DSA where public keys cannot be derived from private keys.
+     * This is a convenience method that combines key import, user authorization, and 
+     * credential setup in a single operation.</p>
+     *
+     * <p><strong>🔒 Security (v1.0.6+):</strong> This method requires the caller to be 
+     * <strong>pre-authorized</strong>. Only authorized users can import and register new users.
+     * The imported user is automatically authorized and set as the default user for subsequent
+     * operations.</p>
+     *
+     * <p><strong>Usage Example:</strong></p>
+     * <pre>{@code
+     * // 1. Authenticate as genesis admin
+     * Blockchain blockchain = new Blockchain();
+     * KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+     *     "./keys/genesis-admin.private",
+     *     "./keys/genesis-admin.public"
+     * );
+     * 
+     * UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+     * api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+     *
+     * // 2. Import and authorize user (requires authorized caller)
+     * boolean success = api.importAndSetDefaultUser("alice", "/path/to/alice-keys.pem");
+     * 
+     * if (success) {
+     *     // Alice is now authorized and set as default user
+     *     Block block = api.storeEncryptedData("data", "password");
+     * }
+     * }</pre>
      *
      * @param username Username for the imported key
      * @param keyPairPath Path to the KeyPair file (combined public + private)
      * @return true if user was imported, registered and set as default successfully
+     * @throws SecurityException if caller is not authorized (v1.0.6+) - must authenticate
+     *         with authorized user first via {@link #setDefaultCredentials(String, KeyPair)}
+     * @since 1.0
      */
     public boolean importAndSetDefaultUser(
         String username,
         String keyPairPath
     ) {
+        // SECURITY FIX (v1.0.6): Only authorized users can import and set default user
+        synchronized (credentialsLock) {
+            if (defaultKeyPair.get() == null || defaultUsername.get() == null) {
+                throw new SecurityException(
+                    "❌ AUTHORIZATION REQUIRED: Must set authorized credentials before importing users.\n\n" +
+                    "Solution:\n" +
+                    "  1. Load genesis admin keys: KeyFileLoader.loadKeyPairFromFiles(\"./keys/genesis-admin.private\", \"./keys/genesis-admin.public\")\n" +
+                    "  2. Set credentials: api.setDefaultCredentials(\"GENESIS_ADMIN\", genesisKeys)\n" +
+                    "  3. Then import and set user: api.importAndSetDefaultUser(username, keyPairPath)"
+                );
+            }
+
+            String callerPublicKey = CryptoUtil.publicKeyToString(defaultKeyPair.get().getPublic());
+            if (!blockchain.isKeyAuthorized(callerPublicKey)) {
+                throw new SecurityException(
+                    "❌ AUTHORIZATION REQUIRED: Only authorized users can import and set default user.\n" +
+                    "Current user '" + defaultUsername.get() + "' is not authorized."
+                );
+            }
+        }
+
+        // Now import, register, and set as default
         try {
             KeyPair keyPair = importKeyPairFromFile(keyPairPath);
             if (keyPair == null) {
@@ -2546,10 +2778,12 @@ public class UserFriendlyEncryptionAPI {
 
             if (registered) {
                 setDefaultCredentials(username, keyPair);
+                logger.info("✅ User '{}' imported, authorized, and set as default by '{}'", username, defaultUsername.get());
                 return true;
             }
             return false;
         } catch (Exception e) {
+            logger.error("❌ Failed to import and set default user '{}'", username, e);
             return false;
         }
     }
@@ -6822,31 +7056,43 @@ public class UserFriendlyEncryptionAPI {
         }
 
         try {
-            // First try to get block directly from blockchain if it has indexing
+            // PRIMARY STRATEGY: Direct lookup (O(1) via database index)
             Block directBlock = blockchain.getBlockByHash(blockHash);
             if (directBlock != null) {
                 return directBlock;
             }
 
-            // Fallback to linear search with optimization
-            List<Block> allBlocks = blockchain.getValidChain();
+            // MEMORY-SAFE FALLBACK: Paginated search (never loads entire chain)
+            // This prevents OutOfMemoryError on large blockchains (100K+ blocks)
+            logger.warn(
+                "⚠️ Direct hash lookup failed for {}, using memory-safe paginated search",
+                blockHash.substring(0, 8)
+            );
 
-            if (allBlocks == null || allBlocks.isEmpty()) {
+            long blockCount = blockchain.getBlockCount();
+            if (blockCount == 0) {
                 logger.debug("No blocks available for hash search");
                 return null;
             }
 
-            // Performance optimization: search from newest to oldest
-            // (most searches are for recent blocks)
-            for (int i = allBlocks.size() - 1; i >= 0; i--) {
-                Block block = allBlocks.get(i);
-                if (block != null && blockHash.equals(block.getHash())) {
-                    logger.debug(
-                        "✅ Found block #{} with hash {}...",
-                        block.getBlockNumber(),
-                        blockHash.substring(0, 8)
-                    );
-                    return block;
+            // Search in batches from newest to oldest (most queries are for recent blocks)
+            int batchSize = 1000;
+            for (long offset = blockCount - batchSize; offset >= 0; offset -= batchSize) {
+                // Calculate actual batch size (avoid negative on last batch)
+                long actualBatchSize = Math.min(batchSize, blockCount - offset);
+                
+                List<Block> batch = blockchain.getBlocksPaginated(offset, (int) actualBatchSize);
+
+                // Search within current batch
+                for (Block block : batch) {
+                    if (block != null && blockHash.equals(block.getHash())) {
+                        logger.info(
+                            "✅ Found block #{} with hash {} via paginated search",
+                            block.getBlockNumber(),
+                            blockHash.substring(0, 8)
+                        );
+                        return block;
+                    }
                 }
             }
 
@@ -8224,16 +8470,11 @@ public class UserFriendlyEncryptionAPI {
             }
 
             if (popularTerms.isEmpty()) {
-                // Fallback to basic terms if still empty
-                popularTerms = Arrays.asList(
-                    "payment",
-                    "transaction",
-                    "contract",
-                    "data",
-                    "user",
-                    "encrypted"
-                );
-                logger.info("Using fallback terms for cache warm-up");
+                // NO FALLBACK - If blockchain analysis produces no terms, skip cache warm-up
+                logger.error("❌ Blockchain analysis produced no terms - cache warm-up SKIPPED");
+                logger.error("This indicates analyzeBlockchainForPopularTerms() is broken or blockchain is empty");
+                logger.error("Cache performance may be degraded - investigate blockchain analysis!");
+                return; // Exit early - don't use hardcoded fake data
             }
 
             // Warm up cache with popular terms
@@ -8272,22 +8513,17 @@ public class UserFriendlyEncryptionAPI {
             // Update metrics
             globalSearchMetrics.recordCacheOptimization("warm_up", warmedCount);
         } catch (Exception e) {
-            logger.error("❌ Error warming up cache: {}", e.getMessage());
-
-            // Fallback warm-up with basic terms
-            try {
-                List<String> fallbackTerms = Arrays.asList(
-                    "data",
-                    "user",
-                    "transaction"
-                );
-                warmUpCache(fallbackTerms);
-            } catch (Exception fallbackError) {
-                logger.error(
-                    "❌ Fallback cache warm-up also failed: {}",
-                    fallbackError.getMessage()
-                );
-            }
+            // NO NESTED FALLBACK - Report failure clearly for diagnosis
+            logger.error("🚨 Cache warm-up FAILED - this indicates a serious issue!", e);
+            logger.error("Cache warm-up failure may indicate: search system bugs, database issues, or performance problems");
+            
+            // Record failure for monitoring (don't hide the problem with nested fallbacks)
+            globalSearchMetrics.recordCacheOptimization("warm_up_failed", 0);
+            
+            // In production: Continue without cache (degraded but functional)
+            // In testing: This will be visible in logs for diagnosis
+            logger.warn("⚠️ Continuing without cache warm-up - search performance may be degraded");
+            logger.warn("⚠️ Investigate cache warm-up failure before deploying to production!");
         }
     }
 
@@ -12064,7 +12300,29 @@ public class UserFriendlyEncryptionAPI {
                 normalizedSearchTerm,
                 e.getMessage()
             );
-            // Fallback to linear search if cache fails
+            
+            // ⚠️ CRITICAL: Optimized search failed - linear fallback has 100x performance degradation
+            long blockchainSize = blockchain.getBlockCount();
+            
+            if (blockchainSize > 10_000) {
+                logger.error(
+                    "🚨 FAIL-FAST: Blockchain too large ({} blocks) for linear fallback. " +
+                    "Fix the optimized search instead of falling back!",
+                    blockchainSize
+                );
+                throw new RuntimeException(
+                    "Optimized encrypted blocks search failed on large blockchain (" + 
+                    blockchainSize + " blocks). Linear fallback would cause severe performance degradation.",
+                    e
+                );
+            }
+            
+            logger.warn(
+                "⚠️ Falling back to linear search for encrypted blocks (SLOW: expect 100x degradation). " +
+                "Blockchain size: {} blocks. This should be investigated and fixed!",
+                blockchainSize
+            );
+            
             return getEncryptedBlocksOnlyLinear(normalizedSearchTerm);
         }
     }
@@ -12989,6 +13247,30 @@ public class UserFriendlyEncryptionAPI {
                 trimmedUsername,
                 e.getMessage()
             );
+            
+            // ⚠️ CRITICAL: Optimized recipient search failed - linear fallback has 100x performance degradation
+            long blockchainSize = blockchain.getBlockCount();
+            
+            if (blockchainSize > 10_000) {
+                logger.error(
+                    "🚨 FAIL-FAST: Blockchain too large ({} blocks) for linear recipient fallback. " +
+                    "Fix the optimized search instead of falling back!",
+                    blockchainSize
+                );
+                throw new RuntimeException(
+                    "Optimized recipient search failed on large blockchain (" + 
+                    blockchainSize + " blocks). Linear fallback would cause severe performance degradation.",
+                    e
+                );
+            }
+            
+            logger.warn(
+                "⚠️ Falling back to linear search for recipient '{}' (SLOW: expect 100x degradation). " +
+                "Blockchain size: {} blocks. This should be investigated and fixed!",
+                trimmedUsername,
+                blockchainSize
+            );
+            
             // Fallback to linear search if index fails (OPTIMIZED Phase 4.3)
             final List<Block> fallbackResults = new ArrayList<>();
             processRecipientMatches(
@@ -13327,6 +13609,31 @@ public class UserFriendlyEncryptionAPI {
                 metadataValue,
                 e.getMessage()
             );
+            
+            // ⚠️ CRITICAL: Optimized metadata search failed - linear fallback has 100x performance degradation
+            long blockchainSize = blockchain.getBlockCount();
+            
+            if (blockchainSize > 10_000) {
+                logger.error(
+                    "🚨 FAIL-FAST: Blockchain too large ({} blocks) for linear metadata fallback. " +
+                    "Fix the optimized search instead of falling back!",
+                    blockchainSize
+                );
+                throw new RuntimeException(
+                    "Optimized metadata search failed on large blockchain (" + 
+                    blockchainSize + " blocks). Linear fallback would cause severe performance degradation.",
+                    e
+                );
+            }
+            
+            logger.warn(
+                "⚠️ Falling back to linear search for metadata {}={} (SLOW: expect 100x degradation). " +
+                "Blockchain size: {} blocks. This should be investigated and fixed!",
+                normalizedKey,
+                metadataValue,
+                blockchainSize
+            );
+            
             // Fallback to linear search if index fails (OPTIMIZED Phase 4.4)
             final List<Block> fallbackResults = new ArrayList<>();
             processMetadataMatches(

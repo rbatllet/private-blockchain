@@ -4,6 +4,7 @@ import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.entity.OffChainData;
 import com.rbatllet.blockchain.recovery.ChainRecoveryManager;
+import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.JPAUtil;
@@ -40,11 +41,21 @@ public class AdvancedZombieCodeDemo {
                 "1️⃣ Setting up advanced blockchain with exposed zombie code..."
             );
             Blockchain blockchain = new Blockchain();
-            UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(
-                blockchain
-            );
+            System.out.println("✅ Blockchain initialized (genesis admin created)");
 
-            // Create primary user
+            // Load genesis admin keys
+            KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+                "./keys/genesis-admin.private",
+                "./keys/genesis-admin.public"
+            );
+            System.out.println("✅ Genesis admin keys loaded");
+
+            // Create API with genesis admin credentials
+            UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+            api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+            System.out.println("✅ API configured with genesis admin credentials");
+
+            // Create primary user (authorized by genesis admin)
             KeyPair userKeys = api.createUser("ZombieCodeExpert");
             api.setDefaultCredentials("ZombieCodeExpert", userKeys);
             System.out.println("✅ Primary user created: ZombieCodeExpert");

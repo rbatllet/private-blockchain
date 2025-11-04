@@ -156,6 +156,40 @@ public class SearchFrameworkEngine {
     );
 
     /**
+     * Explicit indexing strategies - no implicit fallbacks
+     * Replaces the previous triple-nested fallback pattern with clear, explicit strategy selection
+     */
+    public enum IndexingStrategy {
+        /**
+         * Full decryption with password - best search quality
+         * Used when: Block is encrypted AND password is provided
+         */
+        FULL_DECRYPT("Full decryption with password"),
+        
+        /**
+         * Public metadata only - no decryption
+         * Used when: Block is encrypted BUT no password provided
+         */
+        PUBLIC_METADATA_ONLY("Public metadata only (no password)"),
+        
+        /**
+         * Standard indexing for unencrypted blocks
+         * Used when: Block is NOT encrypted
+         */
+        UNENCRYPTED_STANDARD("Standard unencrypted indexing");
+        
+        private final String description;
+        
+        IndexingStrategy(String description) {
+            this.description = description;
+        }
+        
+        public String getDescription() {
+            return description;
+        }
+    }
+
+    /**
      * Creates a new Search Framework Engine with default high-security configuration.
      *
      * <p>This constructor initializes the search engine with the most secure default settings,
@@ -1159,7 +1193,7 @@ public class SearchFrameworkEngine {
                         );
 
                         if (!userTerms.isEmpty()) {
-                            // Use user-defined terms for indexing
+                            // STRATEGY 1: Use user-defined terms for indexing
                             Set<String> publicTerms = new HashSet<>();
                             Set<String> privateTerms = new HashSet<>();
 
@@ -1183,9 +1217,9 @@ public class SearchFrameworkEngine {
                                 privateTerms.isEmpty() ? null : privateTerms
                             );
                         } else {
-                            // Fallback to traditional indexing
+                            // STRATEGY 2: No user terms - use automatic content extraction
                             if (block.isDataEncrypted()) {
-                                // For encrypted blocks, try with provided password (if any), fallback to public metadata only
+                                // For encrypted blocks, try with provided password (if any)
                                 if (password != null) {
                                     indexBlockWithSpecificPassword(
                                         block,
@@ -1669,12 +1703,134 @@ public class SearchFrameworkEngine {
     /**
      * Index a single block with specific password for that block
      * This allows different blocks to have different passwords
-     * Enhanced with robust error handling and graceful degradation
+     * 
+     * REFACTORED (v1.0.6): Now uses explicit strategy pattern instead of triple-nested fallbacks
+     * Benefits:
+     * - Clear strategy selection upfront
+     * - No hidden bugs from cascading fallbacks
+     * - Fast failure detection in tests
+     * - Single execution path per block
      */
     public void indexBlockWithSpecificPassword(
         Block block,
         String blockSpecificPassword,
         PrivateKey privateKey,
+        EncryptionConfig config
+    ) {
+        // Delegate to explicit strategy implementation
+        indexBlockWithExplicitStrategy(block, blockSpecificPassword, privateKey, config);
+    }
+
+    /**
+     * Select optimal indexing strategy based on block characteristics
+     * Clear decision tree - no ambiguity, no trial-and-error
+     * 
+     * @param block Block to index
+     * @param password Optional password for decryption
+     * @return Optimal strategy for this block
+     */
+    private IndexingStrategy selectIndexingStrategy(Block block, String password) {
+        // Decision tree based on block characteristics
+        if (!block.isDataEncrypted()) {
+            // Unencrypted blocks: simple standard indexing
+            logger.debug("Block {} is unencrypted - using UNENCRYPTED_STANDARD strategy", 
+                block.getHash().substring(0, 8));
+            return IndexingStrategy.UNENCRYPTED_STANDARD;
+        }
+        
+        // Block is encrypted - check if password is available
+        if (password != null && !password.isEmpty()) {
+            // Encrypted block + password: full decryption for best search quality
+            logger.debug("Block {} is encrypted with password - using FULL_DECRYPT strategy", 
+                block.getHash().substring(0, 8));
+            return IndexingStrategy.FULL_DECRYPT;
+        }
+        
+        // Encrypted block without password: public metadata only
+        logger.debug("Block {} is encrypted without password - using PUBLIC_METADATA_ONLY strategy", 
+            block.getHash().substring(0, 8));
+        return IndexingStrategy.PUBLIC_METADATA_ONLY;
+    }
+
+    /**
+     * Generate metadata for a specific strategy
+     * Single execution path - no trial-and-error
+     * 
+     * @param block Block to index
+     * @param strategy Indexing strategy to use
+     * @param password Optional password (only used for FULL_DECRYPT)
+     * @param privateKey Private key for signatures
+     * @param config Encryption configuration
+     * @return Generated metadata layers
+     * @throws Exception if metadata generation fails (no fallbacks!)
+     */
+    private BlockMetadataLayers generateMetadataForStrategy(
+        Block block,
+        IndexingStrategy strategy,
+        String password,
+        PrivateKey privateKey,
+        EncryptionConfig config
+    ) throws Exception {
+        
+        switch (strategy) {
+            case FULL_DECRYPT:
+                // Full decryption with password
+                if (password == null || password.isEmpty()) {
+                    throw new IllegalArgumentException(
+                        "FULL_DECRYPT strategy requires password but none provided"
+                    );
+                }
+                return metadataManager.generateMetadataLayers(
+                    block, 
+                    config, 
+                    password, 
+                    privateKey
+                );
+                
+            case PUBLIC_METADATA_ONLY:
+                // Public metadata only (no password)
+                return metadataManager.generateMetadataLayers(
+                    block, 
+                    config, 
+                    null,  // No password for public-only
+                    privateKey
+                );
+                
+            case UNENCRYPTED_STANDARD:
+                // Standard indexing (block is not encrypted)
+                return metadataManager.generateMetadataLayers(
+                    block, 
+                    config, 
+                    null,  // No password needed
+                    privateKey
+                );
+                
+            default:
+                throw new IllegalStateException("Unknown indexing strategy: " + strategy);
+        }
+    }
+
+    /**
+     * Index a single block using explicit strategy selection
+     * NO FALLBACKS - Fail fast and report problems clearly
+     * 
+     * This method replaces the previous triple-nested fallback pattern with explicit strategy selection.
+     * Benefits:
+     * - Clear intent: Strategy is selected ONCE upfront
+     * - Fast failure: Bugs exposed immediately in tests
+     * - Maintainability: Single execution path per strategy
+     * - Diagnostics: Failures recorded with strategy context
+     * - Performance: No retries on errors (fails fast)
+     * 
+     * @param block Block to index
+     * @param blockSpecificPassword Optional password for this specific block
+     * @param privateKey Private key for signatures
+     * @param config Encryption configuration
+     */
+    private void indexBlockWithExplicitStrategy(
+        Block block, 
+        String blockSpecificPassword,
+        PrivateKey privateKey, 
         EncryptionConfig config
     ) {
         if (block == null || block.getHash() == null) {
@@ -1690,194 +1846,93 @@ public class SearchFrameworkEngine {
         String callerInfo = "UNKNOWN";
         for (int i = 2; i < Math.min(stack.length, 6); i++) {
             StackTraceElement element = stack[i];
-            if (!element.getMethodName().equals("indexBlockWithSpecificPassword")) {
+            if (!element.getMethodName().equals("indexBlockWithExplicitStrategy")) {
                 callerInfo = element.getClassName() + "." + element.getMethodName() + ":" + element.getLineNumber();
                 break;
             }
         }
         
-        // 🔍 ENHANCED RACE CONDITION DEBUGGING
-        logger.info("🟧 INDEX BLOCK WITH SPECIFIC PASSWORD ATTEMPT: {} | Instance: {} | Map: {} | MapSize: {} | Thread: {} | Caller: {}", 
+        // 🔍 ENHANCED DEBUGGING
+        logger.info("🟦 EXPLICIT STRATEGY INDEX ATTEMPT: {} | Instance: {} | Thread: {} | Caller: {}", 
             shortHash, 
             this.instanceId,
-            System.identityHashCode(this.blockMetadataIndex),
-            this.blockMetadataIndex.size(),
             Thread.currentThread().getName(),
             callerInfo);
         
-        // 🔍 DEBUG: Check current map state before putIfAbsent
-        BlockMetadataLayers existingValue = globalProcessingMap.get(blockHash);
-        logger.info("🔍 PRE-ATOMIC CHECK (SPECIFIC PASSWORD): {} | Existing: {} | IsPlaceholder: {} | Instance: {}", 
-            shortHash,
-            existingValue != null ? "EXISTS" : "NULL",
-            existingValue != null ? existingValue.isProcessingPlaceholder() : "N/A",
-            this.instanceId);
-        
         // Atomic check-and-reserve to prevent race conditions
-        // Use putIfAbsent for atomic check-and-reserve
         BlockMetadataLayers putResult = globalProcessingMap.putIfAbsent(blockHash, BlockMetadataLayers.PROCESSING_PLACEHOLDER);
         
-        // 🔍 DEBUG: Detailed putIfAbsent result logging
-        logger.info("🔒 ATOMIC OPERATION RESULT (SPECIFIC PASSWORD): {} | PutIfAbsent returned: {} | Instance: {} | MapSize: {}", 
+        logger.info("🔒 ATOMIC OPERATION RESULT (EXPLICIT): {} | PutIfAbsent returned: {} | Instance: {}", 
             shortHash,
             putResult != null ? (putResult.isProcessingPlaceholder() ? "PLACEHOLDER" : "REAL_METADATA") : "NULL",
-            this.instanceId,
-            globalProcessingMap.size());
+            this.instanceId);
             
         if (putResult != null) {
-            logger.info("⏭️ SKIPPED specific password block (already indexed/processing): {} | Instance: {} | Thread: {} | Caller: {}", 
+            logger.info("⏭️ SKIPPED block (already indexed/processing): {} | Instance: {} | Thread: {}", 
                 shortHash,
                 this.instanceId,
-                Thread.currentThread().getName(),
-                callerInfo);
+                Thread.currentThread().getName());
             return;
         }
         
-        logger.info("🔒 RESERVED specific password block for processing: {} | Instance: {} | Thread: {} | Caller: {}", 
+        logger.info("🔒 RESERVED block for processing: {} | Instance: {} | Thread: {}", 
             shortHash,
             this.instanceId,
-            Thread.currentThread().getName(),
-            callerInfo);
-        boolean indexedSuccessfully = false;
-
-        // Strategy 1: Try indexing with specific password (if block is encrypted)
-        if (block.isDataEncrypted() && blockSpecificPassword != null) {
-            try {
-                BlockMetadataLayers metadata =
-                    metadataManager.generateMetadataLayers(
-                        block,
-                        config,
-                        blockSpecificPassword,
-                        privateKey
-                    );
-
-                // Replace placeholder with actual metadata in BOTH maps
-                blockMetadataIndex.put(blockHash, metadata);  // Instance map for data storage
-                globalProcessingMap.put(blockHash, metadata); // Global map for coordination
-                strategyRouter.indexBlock(blockHash, metadata);
-
-                indexedSuccessfully = true;
-                logger.info("✅ SUCCESSFULLY indexed encrypted block {} with specific password | Instance: {} | Thread: {} | Caller: {}",
-                    shortHash,
-                    this.instanceId,
-                    Thread.currentThread().getName(),
-                    callerInfo
-                );
-            } catch (Exception e) {
-                logger.error(
-                    "❌ Failed to index block {} with specific password | Instance: {} | Thread: {} | Caller: {} | Error: {}",
-                    shortHash,
-                    this.instanceId,
-                    Thread.currentThread().getName(),
-                    callerInfo,
-                    e.getMessage(),
-                    e
-                );
-                // Continue to fallback strategy (don't remove placeholder yet)
-            }
-        }
-
-        // Strategy 2: Fallback to public metadata only (if not already indexed)
-        if (!indexedSuccessfully) {
-            // Double-check if another thread completed indexing during Strategy 1
-            BlockMetadataLayers existingMetadata = blockMetadataIndex.get(blockHash);
-            if (existingMetadata != null && !existingMetadata.isProcessingPlaceholder()) {
-                logger.info("🔍 Another thread completed indexing during Strategy 1, skipping Strategy 2: {} | Instance: {} | Thread: {}",
-                    shortHash,
-                    this.instanceId,
-                    Thread.currentThread().getName());
-                return;
-            }
-            
-            try {
-                BlockMetadataLayers publicMetadata =
-                    metadataManager.generateMetadataLayers(
-                        block,
-                        config,
-                        null,
-                        privateKey
-                    );
-
-                // Replace placeholder with actual metadata in BOTH maps
-                blockMetadataIndex.put(blockHash, publicMetadata);  // Instance map for data storage
-                globalProcessingMap.put(blockHash, publicMetadata); // Global map for coordination
-                strategyRouter.indexBlock(blockHash, publicMetadata);
-
-                indexedSuccessfully = true;
-                logger.info("✅ SUCCESSFULLY indexed block {} with public metadata only | Instance: {} | Thread: {} | Caller: {}",
-                    shortHash,
-                    this.instanceId,
-                    Thread.currentThread().getName(),
-                    callerInfo
-                );
-            } catch (Exception e2) {
-                logger.error(
-                    "❌ Failed to index block {} even with public metadata | Instance: {} | Thread: {} | Caller: {} | Error: {}",
-                    shortHash,
-                    this.instanceId,
-                    Thread.currentThread().getName(),
-                    callerInfo,
-                    e2.getMessage(),
-                    e2
-                );
-                // Continue to emergency fallback (don't remove placeholder yet)
-            }
-        }
-
-        // Strategy 3: Emergency fallback - minimal indexing
-        if (!indexedSuccessfully) {
-            // Final double-check if another thread completed indexing
-            BlockMetadataLayers existingMetadata = blockMetadataIndex.get(blockHash);
-            if (existingMetadata != null && !existingMetadata.isProcessingPlaceholder()) {
-                logger.info("🔍 Another thread completed indexing during Strategy 2, skipping Strategy 3: {} | Instance: {} | Thread: {}",
-                    shortHash,
-                    this.instanceId,
-                    Thread.currentThread().getName());
-                return;
-            }
-            
-            try {
-                // Create minimal metadata for at least basic indexing
-                createMinimalBlockIndex(block, config);
-                logger.info("✅ SUCCESSFULLY created minimal index for block {} as emergency fallback | Instance: {} | Thread: {} | Caller: {}",
-                    shortHash,
-                    this.instanceId,
-                    Thread.currentThread().getName(),
-                    callerInfo
-                );
-            } catch (Exception e3) {
-                logger.error(
-                    "❌ COMPLETE indexing failure for block {} | Instance: {} | Thread: {} | Caller: {} | Error: {}",
-                    shortHash,
-                    this.instanceId,
-                    Thread.currentThread().getName(),
-                    callerInfo,
-                    e3.getMessage(),
-                    e3
-                );
-                // Remove placeholder on complete failure from BOTH maps
-                BlockMetadataLayers removedValue = blockMetadataIndex.remove(blockHash);
-                BlockMetadataLayers removedGlobal = globalProcessingMap.remove(blockHash);
-                logger.error("🗑️ REMOVED placeholder after complete failure: {} | Removed: {} | Global: {} | Instance: {}",
-                    shortHash,
-                    removedValue != null ? (removedValue.isProcessingPlaceholder() ? "PLACEHOLDER" : "REAL_METADATA") : "NULL",
-                    removedGlobal != null ? (removedGlobal.isProcessingPlaceholder() ? "PLACEHOLDER" : "REAL_METADATA") : "NULL",
-                    this.instanceId);
-                // This is a complete failure - block won't be searchable
-            }
-        }
+            Thread.currentThread().getName());
         
-        // If we reached here without indexing success, remove placeholder from BOTH maps
-        if (!indexedSuccessfully) {
-            BlockMetadataLayers removedValue = blockMetadataIndex.remove(blockHash);
-            BlockMetadataLayers removedGlobal = globalProcessingMap.remove(blockHash);
-            logger.warn("⚠️ Block {} could not be indexed, placeholder removed | Removed: {} | Global: {} | Instance: {} | Thread: {} | Caller: {}", 
-                shortHash,
-                removedValue != null ? (removedValue.isProcessingPlaceholder() ? "PLACEHOLDER" : "REAL_METADATA") : "NULL",
-                removedGlobal != null ? (removedGlobal.isProcessingPlaceholder() ? "PLACEHOLDER" : "REAL_METADATA") : "NULL",
+        // STEP 1: Select strategy ONCE upfront (no guessing, no retries)
+        IndexingStrategy strategy = selectIndexingStrategy(block, blockSpecificPassword);
+        
+        logger.info("📋 Indexing block {} with strategy: {} | Instance: {} | Thread: {} | Caller: {}", 
+            shortHash, 
+            strategy.getDescription(), 
+            this.instanceId, 
+            Thread.currentThread().getName(),
+            callerInfo
+        );
+        
+        // STEP 2: Execute the selected strategy ONCE (no fallbacks hiding bugs)
+        try {
+            BlockMetadataLayers metadata = generateMetadataForStrategy(
+                block, 
+                strategy, 
+                blockSpecificPassword, 
+                privateKey, 
+                config
+            );
+            
+            // Store metadata in both maps
+            blockMetadataIndex.put(blockHash, metadata);
+            globalProcessingMap.put(blockHash, metadata);
+            strategyRouter.indexBlock(blockHash, metadata);
+            
+            logger.info("✅ SUCCESSFULLY indexed block {} with strategy: {} | Instance: {} | Thread: {}", 
+                shortHash, 
+                strategy.getDescription(),
+                this.instanceId,
+                Thread.currentThread().getName()
+            );
+            
+        } catch (Exception e) {
+            // NO FALLBACKS - Report failure clearly for diagnosis
+            logger.error("❌ FAILED to index block {} with strategy: {} | Instance: {} | Thread: {} | Error: {}", 
+                shortHash, 
+                strategy.getDescription(),
                 this.instanceId,
                 Thread.currentThread().getName(),
-                callerInfo);
+                e.getMessage(), 
+                e
+            );
+            
+            // Clean up placeholder
+            blockMetadataIndex.remove(blockHash);
+            globalProcessingMap.remove(blockHash);
+            
+            // CRITICAL: Don't hide the failure
+            // In production: Log and continue (don't break indexing pipeline)
+            // In testing: We want to see failures clearly in logs
+            logger.error("🚨 Block {} will not be searchable - indexing failed with strategy: {}", 
+                shortHash, strategy.getDescription());
         }
     }
 
@@ -1998,42 +2053,6 @@ public class SearchFrameworkEngine {
         }
 
         return enhanced;
-    }
-
-    /**
-     * Create minimal block index for emergency fallback
-     * Used when full metadata generation fails
-     */
-    private void createMinimalBlockIndex(Block block, EncryptionConfig config)
-        throws Exception {
-        // Create a very basic metadata layer with just essential information
-        PublicMetadata minimalPublic = new PublicMetadata();
-
-        // Set minimal metadata
-        Set<String> minimalKeywords = new HashSet<>();
-        minimalKeywords.add("block");
-        minimalKeywords.add("indexed");
-        minimalPublic.setGeneralKeywords(minimalKeywords);
-        minimalPublic.setBlockCategory("GENERAL");
-        minimalPublic.setContentType("unknown");
-        minimalPublic.setSizeRange("medium");
-        minimalPublic.setHashFingerprint(block.getHash());
-
-        if (block.getTimestamp() != null) {
-            minimalPublic.setTimeRange(
-                block.getTimestamp().toLocalDate().toString()
-            );
-        } else {
-            minimalPublic.setTimeRange(java.time.LocalDate.now().toString());
-        }
-
-        BlockMetadataLayers minimalMetadata = new BlockMetadataLayers(
-            minimalPublic,
-            null // No encrypted private layer
-        );
-
-        blockMetadataIndex.put(block.getHash(), minimalMetadata);
-        strategyRouter.indexBlock(block.getHash(), minimalMetadata);
     }
 
     /**

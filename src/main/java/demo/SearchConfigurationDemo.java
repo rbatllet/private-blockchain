@@ -3,6 +3,7 @@ package demo;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.search.SearchSpecialistAPI;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.EnhancedSearchResult;
+import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import java.security.KeyPair;
@@ -12,19 +13,27 @@ import java.util.List;
  * Demo that showcases different EncryptionConfig options with SearchSpecialistAPI
  */
 public class SearchConfigurationDemo {
-    
+
     public static void main(String[] args) {
         System.out.println("🔐 SEARCH CONFIGURATION DEMO");
         System.out.println("============================");
         System.out.println();
-        
+
         try {
             // Setup blockchain and data
             Blockchain blockchain = new Blockchain();
-            UserFriendlyEncryptionAPI dataAPI = new UserFriendlyEncryptionAPI(blockchain);
             String password = "ConfigDemo2024!";
-            
-            // Create user and store test data
+
+            // Load genesis admin keys
+            KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+                "./keys/genesis-admin.private",
+                "./keys/genesis-admin.public"
+            );
+
+            UserFriendlyEncryptionAPI dataAPI = new UserFriendlyEncryptionAPI(blockchain);
+            dataAPI.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+
+            // Create user and store test data (authorized by genesis admin)
             KeyPair userKeys = dataAPI.createUser("config-demo-user");
             dataAPI.setDefaultCredentials("config-demo-user", userKeys);
             

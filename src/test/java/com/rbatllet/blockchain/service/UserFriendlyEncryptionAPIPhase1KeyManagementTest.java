@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.HashMap;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 /**
  * Comprehensive tests for UserFriendlyEncryptionAPI Phase 1 Key Management methods
@@ -36,6 +37,10 @@ public class UserFriendlyEncryptionAPIPhase1KeyManagementTest {
         
         // Generate test key pair
         testKeyPair = CryptoUtil.generateKeyPair();
+        
+        // SECURITY FIX (v1.0.6): Mock authorization check for constructor
+        String publicKeyString = CryptoUtil.publicKeyToString(testKeyPair.getPublic());
+        lenient().when(mockBlockchain.isKeyAuthorized(publicKeyString)).thenReturn(true);
         
         // Initialize API with mock blockchain
         api = new UserFriendlyEncryptionAPI(mockBlockchain, testUsername, testKeyPair);

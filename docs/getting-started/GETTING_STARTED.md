@@ -4,25 +4,40 @@
 
 The UserFriendlyEncryptionAPI provides a simplified interface for blockchain operations with enterprise-grade security. This guide will help you get started with the most common use cases.
 
+> **⚠️ SECURITY UPDATE (v1.0.6)**: The API now requires **mandatory pre-authorization** of all users. Follow the secure initialization pattern below.
+
 ## 🚀 Quick Start
 
-### 1. Basic Setup
+### 1. Secure Initialization (REQUIRED)
 
 ```java
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
-import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.security.KeyFileLoader;
 
-// Create blockchain instance
+// Step 1: Create blockchain (auto-creates genesis admin on first run)
 Blockchain blockchain = new Blockchain();
 
-// Generate user credentials
-KeyPair userKeys = CryptoUtil.generateKeyPair();
+// Step 2: Load genesis admin keys
+KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+    "./keys/genesis-admin.private",
+    "./keys/genesis-admin.public"
+);
 
-// Initialize API
-UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(
-    blockchain, "your-username", userKeys);
+// Step 3: Create API with genesis admin credentials
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+
+// Step 4: Create your user (authorized by genesis admin)
+KeyPair yourKeys = api.createUser("your-username");
+
+// Step 5: Switch to your user for daily operations
+api.setDefaultCredentials("your-username", yourKeys);
+
+// ✅ Now you're ready to use the API securely!
 ```
+
+> **💡 TIP**: The genesis admin keys are created automatically the first time you run the blockchain. Store them securely as they're required for all user management operations.
 
 ### 2. Store Your First Secret
 

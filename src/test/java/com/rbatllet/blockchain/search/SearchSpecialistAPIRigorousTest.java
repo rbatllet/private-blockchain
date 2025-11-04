@@ -7,6 +7,7 @@ import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.search.BlockPasswordRegistry.RegistryStats;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.*;
 import com.rbatllet.blockchain.service.SecureBlockEncryptionService;
+import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -38,7 +39,14 @@ public class SearchSpecialistAPIRigorousTest {
         api = new UserFriendlyEncryptionAPI(blockchain);
         testPassword = "RigorousTest123!";
 
-        // Create and set default credentials
+        // PRE-AUTHORIZATION REQUIRED (v1.0.6 security): 
+        // 1. Create admin to act as authorized user creator
+        KeyPair adminKeys = CryptoUtil.generateKeyPair();
+        String adminPublicKey = CryptoUtil.publicKeyToString(adminKeys.getPublic());
+        blockchain.addAuthorizedKey(adminPublicKey, "Admin");
+        api.setDefaultCredentials("Admin", adminKeys);  // Authenticate as admin
+
+        // 2. Now admin can create test user (generates new keys internally)
         KeyPair userKeys = api.createUser("rigorous-test-user");
         api.setDefaultCredentials("rigorous-test-user", userKeys);
 
@@ -53,6 +61,7 @@ public class SearchSpecialistAPIRigorousTest {
 
         // Ensure SearchSpecialistAPI is properly initialized
         if (!searchAPI.isReady()) {
+            // Admin is already authenticated, can create search-setup-user directly
             KeyPair testKeys = api.createUser("search-setup-user");
             searchAPI.initializeWithBlockchain(blockchain, testPassword, testKeys.getPrivate());
         }
@@ -66,7 +75,9 @@ public class SearchSpecialistAPIRigorousTest {
         
         // Use new improved constructor that requires blockchain, password, and private key
         System.out.println("🔑 Creating SearchSpecialistAPI with improved constructor...");
-        KeyPair userKeys = api.createUser("rigorous-test-user");
+        
+        // User already created in setUp, just get new keys for this test
+        KeyPair userKeys = api.createUser("rigorous-test-user-2");
         searchAPI = new SearchSpecialistAPI(blockchain, testPassword, userKeys.getPrivate());
         
         // After initialization

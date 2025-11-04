@@ -35,6 +35,11 @@ class UserFriendlyEncryptionAPIZeroCoverageTest {
         
         // Create API with default credentials to avoid key pair errors
         KeyPair defaultKeyPair = CryptoUtil.generateKeyPair();
+        
+        // SECURITY FIX (v1.0.6): Pre-authorize user before creating API
+        String publicKeyString = CryptoUtil.publicKeyToString(defaultKeyPair.getPublic());
+        realBlockchain.addAuthorizedKey(publicKeyString, testUsername);
+        
         api = new UserFriendlyEncryptionAPI(realBlockchain, testUsername, defaultKeyPair);
     }
 

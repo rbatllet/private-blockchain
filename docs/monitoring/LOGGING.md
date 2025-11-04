@@ -21,11 +21,20 @@ The Private Blockchain project uses **SLF4J with Log4j2** for professional loggi
 - `log4j2-test.xml` - Test configuration (automatic during tests)
 
 ### Log Files Generated
-- `logs/blockchain.log` - Main application logs
-- `logs/structured-alerts.log` - JSON-formatted alerts
-- `logs/performance-metrics.log` - Performance tracking data
-- `logs/security-events.log` - Security-related events
-- `logs/test-app.log` - Test execution logs (tests only)
+
+**Application Logs** (created when demos/application runs with log4j2-core.xml):
+- `logs/blockchain.log` - Main application logs (all levels) - *Used by demo applications*
+- `logs/errors.log` - Error-only logs (logger.error and logger.fatal)
+
+**Specialized Logs** (created by specific loggers - **actively used**):
+- `logs/structured-alerts.log` - JSON-formatted alerts ✅
+- `logs/performance-metrics.log` - Performance tracking data ✅
+- `logs/security-events.log` - Security-related events ✅
+
+**Test Logs** (created during test execution - **primary usage**):
+- `logs/test-app.log` - Test execution logs ✅
+
+> **Note**: In this project, **tests use `log4j2-test.xml`** which writes to `test-app.log`, not `blockchain.log`. The `blockchain.log` file would only be created when running demo applications like `BlockchainDemo.java` with the development/production profiles.
 
 ## ⚙️ Maven Profiles
 
@@ -42,6 +51,7 @@ mvn exec:java -Dexec.mainClass="demo.BlockchainDemo" -Pdevelopment
 - **Console output**: Enabled with thread names
 - **SQL logging**: Enabled for development
 - **File rotation**: 10MB files, 10 files max
+- **Error log**: 20MB files, 60 files retention (2 months)
 
 ### Production Profile
 ```bash
@@ -56,6 +66,7 @@ mvn exec:java -Dexec.mainClass="demo.BlockchainDemo" -Pproduction
 - **Console output**: Errors only to STDERR
 - **SQL logging**: Disabled
 - **File rotation**: 50-100MB files, 30-180 files retention
+- **Error log**: 50MB files, 90 files retention (3 months)
 
 ## 🚀 Usage Examples
 
@@ -79,7 +90,7 @@ private static final Logger logger = LoggerFactory.getLogger(MyClass.class);
 
 // Standard application logging
 logger.info("Processing block {}", blockId);
-logger.error("Failed to validate block", exception);
+logger.error("Failed to validate block", exception);  // ⚠️ Goes to errors.log
 
 // Specialized loggers
 Logger alertLogger = LoggerFactory.getLogger("alerts.structured");
@@ -90,6 +101,23 @@ perfLogger.info(performanceData);
 
 Logger secLogger = LoggerFactory.getLogger("security.events");
 secLogger.warn(securityEvent);
+```
+
+### Error-Only Logging
+The `errors.log` file captures **only ERROR and FATAL level** messages:
+- **Automatic filtering**: ThresholdFilter ensures only errors are logged
+- **Complete stack traces**: Full exception details included
+- **Thread information**: Identifies which thread generated the error
+- **Class context**: Shows exact class and logger name
+- **Retention**: Development (60 files, ~2 months), Production (90 files, ~3 months)
+
+Example error log entry:
+```
+2025-11-03 14:23:45.123 [pool-2-thread-5] ERROR com.rbatllet.blockchain.search.SearchFrameworkEngine - ❌ FAILED to index block ab12cd34 with strategy: Full decryption | Instance: SFE-001 | Error: Password decryption failed
+java.security.InvalidKeyException: Invalid AES key length
+    at com.rbatllet.blockchain.encryption.AESEncryption.decrypt(AESEncryption.java:145)
+    at com.rbatllet.blockchain.search.MetadataManager.generateMetadataLayers(MetadataManager.java:234)
+    ...
 ```
 
 ## 📈 Performance Impact
@@ -183,6 +211,15 @@ wc -l logs/*.log
 
 # Monitor logs in real-time
 tail -f logs/blockchain.log
+
+# Monitor errors only
+tail -f logs/errors.log
+
+# Count errors in last hour
+grep "$(date +%Y-%m-%d\ %H)" logs/errors.log | wc -l
+
+# Find errors from specific class
+grep "SearchFrameworkEngine" logs/errors.log
 ```
 
 ## 📚 Migration from Previous System

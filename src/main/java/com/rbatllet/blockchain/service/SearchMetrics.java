@@ -971,8 +971,12 @@ public class SearchMetrics {
                 // Return searches per minute
                 return (double) totalSearches / totalMinutes;
             } catch (Exception e) {
-                // Fallback to basic calculation if time comparison fails
-                return 0.0;
+                // ⚠️ CRITICAL: Return sentinel value instead of misleading 0.0
+                logger.warn(
+                    "⚠️ Failed to calculate searches per minute: {}. Returning -1.0 (sentinel value for error)",
+                    e.getMessage()
+                );
+                return -1.0; // Sentinel value indicating calculation failure (NOT 0.0 which looks like "no activity")
             }
         }
         

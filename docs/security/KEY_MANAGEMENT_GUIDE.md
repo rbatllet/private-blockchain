@@ -4,6 +4,38 @@
 
 The UserFriendlyEncryptionAPI provides enterprise-grade hierarchical key management for secure blockchain operations. This guide covers key generation, storage, rotation, and recovery best practices.
 
+---
+
+## ⚠️ SECURITY UPDATE (v1.0.6)
+
+> **IMPORTANT**: All key management operations now require **pre-authorization**. You must initialize the API with genesis admin credentials before creating or managing keys.
+
+### Secure Initialization Required
+
+Before using any key management features, initialize the API:
+
+```java
+// 1. Create blockchain (auto-creates genesis admin)
+Blockchain blockchain = new Blockchain();
+
+// 2. Load genesis admin keys
+KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+    "./keys/genesis-admin.private",
+    "./keys/genesis-admin.public"
+);
+
+// 3. Create API with genesis admin credentials
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+
+// 4. Now you can create and manage keys
+KeyPair userKeys = api.createUser("username");
+```
+
+> **⚠️ NOTE**: All code examples in this guide assume you have already initialized the API with authorized credentials. See [API_GUIDE.md](../reference/API_GUIDE.md#-secure-initialization--authorization) for complete initialization details.
+
+---
+
 ## 🏗️ Key Architecture
 
 ### Hierarchical Key Structure

@@ -49,6 +49,11 @@ class SearchIntegrityFixTest {
         // Clean database before each test to ensure test isolation
         blockchain.clearAndReinitialize();
         testKeyPair = CryptoUtil.generateKeyPair();
+
+        // SECURITY FIX (v1.0.6): Pre-authorize user before creating API
+        String publicKeyString = CryptoUtil.publicKeyToString(testKeyPair.getPublic());
+        blockchain.addAuthorizedKey(publicKeyString, testUsername);
+
         api = new UserFriendlyEncryptionAPI(blockchain, testUsername, testKeyPair);
 
         try {

@@ -6,6 +6,7 @@ import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI.EncryptionAnalysis;
+import com.rbatllet.blockchain.util.CryptoUtil;
 import java.security.KeyPair;
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -46,7 +47,14 @@ public class EncryptionAnalysisTest {
         api = new UserFriendlyEncryptionAPI(blockchain);
         testPassword = "TestPassword123!";
 
-        // Create test user
+        // PRE-AUTHORIZATION REQUIRED (v1.0.6 security): 
+        // 1. Create admin to act as authorized user creator
+        KeyPair adminKeys = CryptoUtil.generateKeyPair();
+        String adminPublicKey = CryptoUtil.publicKeyToString(adminKeys.getPublic());
+        blockchain.addAuthorizedKey(adminPublicKey, "Admin");
+        api.setDefaultCredentials("Admin", adminKeys);  // Authenticate as admin
+
+        // 2. Now admin can create test user (generates new keys internally)
         testUserKeys = api.createUser("test-user");
         api.setDefaultCredentials("test-user", testUserKeys);
 

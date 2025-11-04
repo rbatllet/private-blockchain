@@ -370,13 +370,26 @@ The UserFriendlyEncryptionAPI provides a comprehensive, simplified interface for
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.security.KeyFileLoader;
 
-// Initialize the API
+// 1. Create blockchain (auto-creates genesis admin on first run)
 Blockchain blockchain = new Blockchain();
-KeyPair userKeys = CryptoUtil.generateKeyPair();
-UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, "alice", userKeys);
 
-// Store encrypted data with automatic keyword extraction
+// 2. Load genesis admin keys
+KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+    "./keys/genesis-admin.private",
+    "./keys/genesis-admin.public"
+);
+
+// 3. Create API with genesis admin credentials
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+
+// 4. Create regular user (requires authorized caller - genesis admin in this case)
+KeyPair aliceKeys = api.createUser("alice");
+api.setDefaultCredentials("alice", aliceKeys);
+
+// 5. Store encrypted data with automatic keyword extraction
 Block block = api.storeEncryptedData("Medical record: Patient exhibits normal symptoms", "secure123");
 
 // Search encrypted content (password required)
@@ -432,10 +445,12 @@ KeyManagementResult result = api.setupHierarchicalKeys("masterPassword123!");
 // Generate secure passwords with validation
 String password = api.generateValidatedPassword(16, true);
 
-// Import and manage user credentials
+// Import and manage user credentials (v1.0.6+: requires authorized caller)
 boolean imported = api.importAndSetDefaultUser("alice", "/path/to/key.pem");
 List<CryptoUtil.KeyInfo> keys = api.listManagedKeys();
 ```
+
+> **⚠️ Security Note (v1.0.6+):** Methods like `createUser()`, `importAndSetDefaultUser()`, and `loadUserCredentials()` require the caller to be pre-authorized. See [Pre-Authorization Guide](docs/security/PRE_AUTHORIZATION_GUIDE.md) for the mandatory secure initialization pattern.
 
 #### Health Monitoring & Analytics
 ```java
@@ -1615,10 +1630,6 @@ This project includes 65+ comprehensive documentation files organized into **11 
 1. **[StampedLock Audit](docs/reports/STAMPEDLOCK_AUDIT_REPORT.md)** - Lock migration audit (✅ Approved)
 2. **[AtomicReference Audit](docs/reports/ATOMIC_REFERENCE_AUDIT_REPORT.md)** - Atomicity audit (✅ No issues)
 3. **[All Reports Index](docs/reports/README.md)** - 18 reports categorized
-
-### 📖 Complete Documentation Index
-
-**See [DOCUMENTATION_ORGANIZATION.md](docs/DOCUMENTATION_ORGANIZATION.md)** for complete navigation guide and organization details.
 
 ### 🚀 Quick Navigation
 

@@ -33,6 +33,10 @@ public class PaginationPerformanceTest {
         keyPair = CryptoUtil.generateKeyPair();
         password = "testPassword123";
         
+        // SECURITY FIX (v1.0.6): Pre-authorize user before operations
+        String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
+        blockchain.addAuthorizedKey(publicKeyString, "TestUser");
+        
         // Set up default credentials
         api.setDefaultCredentials("TestUser", keyPair);
         

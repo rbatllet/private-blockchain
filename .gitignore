@@ -90,6 +90,7 @@ thread-test-*.json
 off-chain-data/
 private-keys/
 emergency-backups/
+keys/
 test-config-export.properties
 test-config.env
 test-config.json

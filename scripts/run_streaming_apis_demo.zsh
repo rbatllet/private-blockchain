@@ -1,54 +1,22 @@
 #!/usr/bin/env zsh
 
 # Streaming APIs Demo - Phase B.2 Features
-# Demonstrates the 4 new memory-safe streaming methods added in v1.0.7
+# Demonstrates the 4 new memory-safe streaming methods added in v1.0.6
 
-SCRIPT_DIR="${0:a:h}"
-PROJECT_ROOT="${SCRIPT_DIR}/.."
+# Set script directory before changing directories
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# Load common functions library
+if [ -f "${SCRIPT_DIR}/lib/common_functions.zsh" ]; then
+    source "${SCRIPT_DIR}/lib/common_functions.zsh"
+else
+    echo "❌ Error: common_functions.zsh not found. Please ensure the lib directory exists."
+    exit 1
+fi
 
-print_header() {
-    echo "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
-    echo "${BLUE}  $1${NC}"
-    echo "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
-    echo ""
-}
-
-print_success() {
-    echo "${GREEN}✅ $1${NC}"
-}
-
-print_error() {
-    echo "${RED}❌ $1${NC}"
-}
-
-print_info() {
-    echo "${YELLOW}ℹ️  $1${NC}"
-}
-
-cleanup_database() {
-    # Clean up demo database files
-    if [ -f "${PROJECT_ROOT}/streaming_demo_db.mv.db" ]; then
-        rm -f "${PROJECT_ROOT}/streaming_demo_db.mv.db"
-        print_info "Cleaned up demo database"
-    fi
-
-    if [ -f "${PROJECT_ROOT}/streaming_demo_db.trace.db" ]; then
-        rm -f "${PROJECT_ROOT}/streaming_demo_db.trace.db"
-    fi
-
-    # Clean up off-chain data directory
-    if [ -d "${PROJECT_ROOT}/off-chain-data" ]; then
-        rm -rf "${PROJECT_ROOT}/off-chain-data"
-        print_info "Cleaned up off-chain data directory"
-    fi
-}
+# Change to project root directory
+cd "$SCRIPT_DIR/.."
+PROJECT_ROOT="$(pwd)"
 
 # Trap to ensure cleanup on exit
 trap cleanup_database EXIT INT TERM

@@ -55,6 +55,7 @@ RecoveryCheckpoint autoCheckpoint = api.createRecoveryCheckpoint(
 
 ```java
 // Only for internal use or very specific cases
+// ⚠️ Note: getLastBlock() is safe here (outside transaction context)
 RecoveryCheckpoint checkpoint = new RecoveryCheckpoint(
     "manual-checkpoint-" + System.currentTimeMillis(),
     RecoveryCheckpoint.CheckpointType.MANUAL,

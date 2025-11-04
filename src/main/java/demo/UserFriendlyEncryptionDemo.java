@@ -2,6 +2,7 @@ package demo;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import java.security.KeyPair;
 import java.util.List;
@@ -16,25 +17,35 @@ public class UserFriendlyEncryptionDemo {
         System.out.println("=== 🔐 USER-FRIENDLY ENCRYPTION API DEMO ===\n");
 
         try {
-            // 1. Setup - Create blockchain and user-friendly API
+            // 1. Setup - Create blockchain (auto-creates genesis admin)
             System.out.println(
                 "1️⃣ Setting up blockchain and user-friendly API..."
             );
             Blockchain blockchain = new Blockchain();
-            UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(
-                blockchain
-            );
+            System.out.println("✅ Blockchain initialized (genesis admin created)");
 
-            // Create a user with generated keys
+            // 2. Load genesis admin keys to authorize user creation
+            System.out.println("2️⃣ Loading genesis admin credentials...");
+            KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+                "./keys/genesis-admin.private",
+                "./keys/genesis-admin.public"
+            );
+            System.out.println("✅ Genesis admin keys loaded");
+
+            // 3. Create API with genesis admin credentials
+            UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+            api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+            System.out.println("✅ API configured with genesis admin credentials");
+
+            // 4. Now create a regular user (authorized by genesis admin)
+            System.out.println("3️⃣ Creating user 'Dr. Alice'...");
             KeyPair userKeys = api.createUser("Dr. Alice");
             api.setDefaultCredentials("Dr. Alice", userKeys);
-            System.out.println(
-                "✅ User 'Dr. Alice' created with generated keys"
-            );
-            System.out.println("✅ API ready for use\n");
+            System.out.println("✅ User 'Dr. Alice' created and authorized by GENESIS_ADMIN");
+            System.out.println("✅ API now operating as 'Dr. Alice'\n");
 
-            // 2. Initialize advanced search system BEFORE storing data
-            System.out.println("2️⃣ Initializing advanced search system...");
+            // 5. Initialize advanced search system BEFORE storing data
+            System.out.println("4️⃣ Initializing advanced search system...");
 
             // Generate realistic department-specific passwords (enterprise scenario)
             String medicalPassword = "Medical_Dept_2024!SecureKey_" + api.generateSecurePassword(12);

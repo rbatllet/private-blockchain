@@ -3,6 +3,7 @@ package demo;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.search.SearchSpecialistAPI;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.EnhancedSearchResult;
+import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import java.security.KeyPair;
@@ -11,47 +12,54 @@ import java.util.List;
 /**
  * Demo showing how EncryptionConfig can be used across all three APIs:
  * - UserFriendlyEncryptionAPI
- * - SearchSpecialistAPI  
+ * - SearchSpecialistAPI
  * - SearchFrameworkEngine (via SearchSpecialistAPI)
  */
 public class MultiAPIConfigurationDemo {
-    
+
     public static void main(String[] args) {
         System.out.println("🔐 MULTI-API ENCRYPTION CONFIGURATION DEMO");
         System.out.println("==========================================");
         System.out.println();
-        
+
         try {
             // Demo 1: UserFriendlyEncryptionAPI with different configs
             demonstrateUserFriendlyAPIConfigurations();
-            
+
             // Demo 2: SearchSpecialistAPI with different configs
             demonstrateSearchSpecialistAPIConfigurations();
-            
+
             // Demo 3: All APIs working together with same config
             demonstrateUnifiedConfiguration();
-            
+
         } catch (Exception e) {
             System.err.println("❌ Demo failed: " + e.getMessage());
             e.printStackTrace();
         }
-        
+
         // Force exit to stop background threads
         System.exit(0);
     }
-    
+
     private static void demonstrateUserFriendlyAPIConfigurations() throws Exception {
         System.out.println("👥 USER FRIENDLY API CONFIGURATIONS");
         System.out.println("===================================");
-        
+
         Blockchain blockchain = new Blockchain();
         String password = "UserFriendlyDemo2024!";
-        
+
+        // Load genesis admin keys
+        KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
         // High Security Configuration
         System.out.println("🔒 High Security Configuration:");
         EncryptionConfig highSecConfig = EncryptionConfig.createHighSecurityConfig();
         UserFriendlyEncryptionAPI highSecAPI = new UserFriendlyEncryptionAPI(blockchain, highSecConfig);
-        
+        highSecAPI.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+
         KeyPair userKeys = highSecAPI.createUser("high-sec-user");
         highSecAPI.setDefaultCredentials("high-sec-user", userKeys);
         
@@ -72,7 +80,8 @@ public class MultiAPIConfigurationDemo {
         System.out.println("🚀 Performance Configuration:");
         EncryptionConfig perfConfig = EncryptionConfig.createPerformanceConfig();
         UserFriendlyEncryptionAPI perfAPI = new UserFriendlyEncryptionAPI(blockchain, perfConfig);
-        
+        perfAPI.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+
         KeyPair perfKeys = perfAPI.createUser("perf-user");
         perfAPI.setDefaultCredentials("perf-user", perfKeys);
         

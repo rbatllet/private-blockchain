@@ -6,6 +6,7 @@ import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI.UserSearchType;
+import com.rbatllet.blockchain.util.CryptoUtil;
 import java.security.KeyPair;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,11 +46,18 @@ public class UserSearchTypeTest {
         api = new UserFriendlyEncryptionAPI(blockchain);
         testPassword = "TestPassword123!";
 
-        // Create test users
+        // PRE-AUTHORIZATION REQUIRED (v1.0.6 security): 
+        // 1. Create admin to act as authorized user creator
+        KeyPair adminKeys = CryptoUtil.generateKeyPair();
+        String adminPublicKey = CryptoUtil.publicKeyToString(adminKeys.getPublic());
+        blockchain.addAuthorizedKey(adminPublicKey, "Admin");
+        api.setDefaultCredentials("Admin", adminKeys);  // Authenticate as admin
+
+        // 2. Now admin can create test users (generates new keys internally)
         testUserKeys = api.createUser("test-user");
         otherUserKeys = api.createUser("other-user");
 
-        // Set default credentials
+        // Set default credentials to test-user
         api.setDefaultCredentials("test-user", testUserKeys);
 
         logger.info("Test setup completed");
@@ -421,6 +429,8 @@ public class UserSearchTypeTest {
     void testFindBlocksByUserSpecialCharacters() throws Exception {
         // Create user with special characters
         String specialUser = "user@domain.com";
+        
+        // Admin is already authenticated from setUp, can create user directly
         KeyPair specialKeys = api.createUser(specialUser);
         api.setDefaultCredentials(specialUser, specialKeys);
 

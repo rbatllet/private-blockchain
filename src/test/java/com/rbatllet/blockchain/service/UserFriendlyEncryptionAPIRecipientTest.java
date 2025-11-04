@@ -27,9 +27,17 @@ class UserFriendlyEncryptionAPIRecipientTest {
         blockchain = new Blockchain();
         // Clean database before each test to ensure test isolation
         blockchain.clearAndReinitialize();
-        
+
         KeyPair defaultKeyPair = CryptoUtil.generateKeyPair();
+
+        // SECURITY FIX (v1.0.6): Pre-authorize user before creating API
+        String publicKeyString = CryptoUtil.publicKeyToString(defaultKeyPair.getPublic());
+        blockchain.addAuthorizedKey(publicKeyString, testUsername);
+
+        // Create API with pre-authorized keys (this constructor sets credentials automatically)
         api = new UserFriendlyEncryptionAPI(blockchain, testUsername, defaultKeyPair);
+        
+        // Note: testUsername is now authenticated and can create other users via createUser()
     }
 
     @AfterEach

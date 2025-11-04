@@ -2,6 +2,7 @@ package com.rbatllet.blockchain.search;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
+import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.AfterEach;
@@ -25,7 +26,14 @@ public class DebugPublicSearchTest {
         // Set up encryption credentials
         encryptionAPI = new UserFriendlyEncryptionAPI(blockchain);
         
-        // Create user and set default credentials 
+        // PRE-AUTHORIZATION REQUIRED (v1.0.6 security): 
+        // 1. Create admin to act as authorized user creator
+        java.security.KeyPair adminKeys = CryptoUtil.generateKeyPair();
+        String adminPublicKey = CryptoUtil.publicKeyToString(adminKeys.getPublic());
+        blockchain.addAuthorizedKey(adminPublicKey, "Admin");
+        encryptionAPI.setDefaultCredentials("Admin", adminKeys);  // Authenticate as admin
+        
+        // 2. Now admin can create test user (generates new keys internally)
         java.security.KeyPair userKeyPair = encryptionAPI.createUser("searchFixUser");
         encryptionAPI.setDefaultCredentials("searchFixUser", userKeyPair);
         

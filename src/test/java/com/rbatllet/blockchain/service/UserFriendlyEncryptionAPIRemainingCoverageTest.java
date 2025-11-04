@@ -31,6 +31,10 @@ public class UserFriendlyEncryptionAPIRemainingCoverageTest {
         realBlockchain = new Blockchain();
         testKeyPair = CryptoUtil.generateKeyPair();
         
+        // SECURITY FIX (v1.0.6): Pre-authorize user before creating API
+        String publicKeyString = CryptoUtil.publicKeyToString(testKeyPair.getPublic());
+        realBlockchain.addAuthorizedKey(publicKeyString, testUsername);
+        
         // Initialize API with test credentials (blockchain, username, keyPair)
         api = new UserFriendlyEncryptionAPI(realBlockchain, testUsername, testKeyPair);
         

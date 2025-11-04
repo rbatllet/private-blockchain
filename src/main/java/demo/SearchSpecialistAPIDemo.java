@@ -3,6 +3,7 @@ package demo;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.search.SearchSpecialistAPI;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.EnhancedSearchResult;
+import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 
 import java.security.KeyPair;
@@ -10,35 +11,44 @@ import java.util.List;
 
 /**
  * SEARCH SPECIALIST API DEMONSTRATION
- * 
+ *
  * Showcases the advanced capabilities of the SearchSpecialistAPI:
  * - Multiple search strategies (fast, secure, intelligent)
  * - Real-time performance metrics and analytics
  * - Advanced search modes (public, encrypted, hybrid)
  * - Automatic strategy selection based on query complexity
  * - Comprehensive diagnostics and capability reporting
- * 
+ *
  * This demo proves the power of specialized search operations for
  * search specialists, analytics developers, and discovery tools.
  */
 public class SearchSpecialistAPIDemo {
-    
+
     public static void main(String[] args) {
         System.out.println("⚡ SEARCH SPECIALIST API DEMONSTRATION");
         System.out.println("=====================================");
         System.out.println();
-        
+
         try {
             // Demo password and setup
             String demoPassword = "SearchSpecialistDemo2024!";
-            
+
             // Create blockchain and initialize SearchSpecialistAPI
             System.out.println("📊 Setting up specialized search environment...");
             Blockchain blockchain = new Blockchain();
-            
+
+            // Load genesis admin keys
+            KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+                "./keys/genesis-admin.private",
+                "./keys/genesis-admin.public"
+            );
+
             // Set up test data using UserFriendlyEncryptionAPI for convenience
             System.out.println("🔍 Setting up demo environment...");
             UserFriendlyEncryptionAPI dataAPI = new UserFriendlyEncryptionAPI(blockchain);
+            dataAPI.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+
+            // Create search specialist user (authorized by genesis admin)
             KeyPair demoKeys = dataAPI.createUser("search-specialist");
             dataAPI.setDefaultCredentials("search-specialist", demoKeys);
             

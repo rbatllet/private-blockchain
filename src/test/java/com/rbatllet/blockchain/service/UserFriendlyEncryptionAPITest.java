@@ -2,6 +2,7 @@ package com.rbatllet.blockchain.service;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.*;
 
 import java.security.KeyPair;
@@ -31,9 +32,16 @@ public class UserFriendlyEncryptionAPITest {
         blockchain = new Blockchain();
         api = new UserFriendlyEncryptionAPI(blockchain);
         
-        // Create user with generated keys
+        // PRE-AUTHORIZATION REQUIRED (v1.0.6 security): 
+        // 1. Generate admin keys to act as authorized creator
+        KeyPair adminKeys = CryptoUtil.generateKeyPair();
+        String adminPublicKey = CryptoUtil.publicKeyToString(adminKeys.getPublic());
+        blockchain.addAuthorizedKey(adminPublicKey, "Admin");
+        api.setDefaultCredentials("Admin", adminKeys);  // ✅ Authenticate as admin FIRST
+        
+        // 2. Now admin can create the test user (generates new keys internally)
         userKeys = api.createUser("Test User");
-        api.setDefaultCredentials("Test User", userKeys);
+        api.setDefaultCredentials("Test User", userKeys);  // ✅ Switch to test user credentials
         
         // Generate deterministic passwords for consistent testing
         medicalPassword = "MedicalTest123!@";
@@ -335,6 +343,7 @@ public class UserFriendlyEncryptionAPITest {
     void testCompleteWorkflow() {
         System.out.println("\n=== Testing Complete Workflow ===");
         
+        // Test User (from setUp) is already authenticated and can create new users
         // Complete workflow: Create user, store data, search, retrieve
         KeyPair newUserKeys = api.createUser("Workflow User");
         api.setDefaultCredentials("Workflow User", newUserKeys);

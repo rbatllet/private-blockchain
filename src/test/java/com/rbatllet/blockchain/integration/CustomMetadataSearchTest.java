@@ -36,6 +36,11 @@ public class CustomMetadataSearchTest {
         blockchain.clearAndReinitialize();
 
         keyPair = CryptoUtil.generateKeyPair();
+
+        // SECURITY FIX (v1.0.6): Pre-authorize user before creating API
+        String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
+        blockchain.addAuthorizedKey(publicKeyString, "test_user");
+
         api = new UserFriendlyEncryptionAPI(blockchain, "test_user", keyPair);
         jsonMapper = new ObjectMapper();
     }

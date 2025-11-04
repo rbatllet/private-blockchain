@@ -5,6 +5,7 @@ import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.*;
 import com.rbatllet.blockchain.test.util.TestDatabaseUtils;
+import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,7 +43,30 @@ public class SearchCompatibilityTest {
         api = new UserFriendlyEncryptionAPI(blockchain);
         testPassword = "CompatibilityTest123!";
         
-        // Create user and set credentials
+        // ========================================================================
+        // PRE-AUTHORIZATION WORKFLOW (v1.0.6 Security Model)
+        // ========================================================================
+        // ARCHITECTURE: api.createUser() requires authenticated admin credentials
+        // REASON: Prevents unauthorized user creation attacks (security requirement)
+        // WORKFLOW:
+        //   Step 1: Generate admin keypair
+        //   Step 2: Authorize admin's public key in blockchain
+        //   Step 3: Authenticate as admin via setDefaultCredentials() ← CRITICAL!
+        //   Step 4: Now admin can create new users (createUser validates caller)
+        // 
+        // IMPORTANT: createUser() internally generates NEW keys for the created user
+        // (the admin keys are only used for authorization, not for the new user)
+        // ========================================================================
+        
+        // Step 1-2: Create and authorize admin
+        KeyPair adminKeys = CryptoUtil.generateKeyPair();
+        String adminPublicKey = CryptoUtil.publicKeyToString(adminKeys.getPublic());
+        blockchain.addAuthorizedKey(adminPublicKey, "Admin");
+        
+        // Step 3: Authenticate as admin (enables createUser() calls)
+        api.setDefaultCredentials("Admin", adminKeys);
+        
+        // Step 4: Admin creates test user (generates new keys internally)
         userKeys = api.createUser("compatibility-test-user");
         api.setDefaultCredentials("compatibility-test-user", userKeys);
         

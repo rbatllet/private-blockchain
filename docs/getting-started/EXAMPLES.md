@@ -20,6 +20,39 @@ Comprehensive real-world examples and practical use cases for the Private Blockc
 > - `/src/main/java/demo/QuickDemo.java` - Fast verification test
 > - `/src/main/java/demo/CryptoSecurityDemo.java` - Cryptographic security demo
 
+---
+
+## ⚠️ SECURITY UPDATE (v1.0.6)
+
+> **CRITICAL**: All examples in this document have been updated to reflect the new **mandatory pre-authorization** security model introduced in v1.0.6.
+
+### Required Initialization Pattern
+
+All code examples now require this initialization pattern:
+
+```java
+// 1. Create blockchain (auto-creates genesis admin)
+Blockchain blockchain = new Blockchain();
+
+// 2. Load genesis admin keys
+KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+    "./keys/genesis-admin.private",
+    "./keys/genesis-admin.public"
+);
+
+// 3. Create API with genesis admin credentials
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+
+// 4. Create user for your application
+KeyPair appKeys = api.createUser("app-user");
+api.setDefaultCredentials("app-user", appKeys);
+```
+
+> **💡 NOTE**: All examples below assume you have completed this initialization. See [GETTING_STARTED.md](GETTING_STARTED.md) for detailed initialization instructions.
+
+---
+
 ## 📋 Table of Contents
 
 - [Use Case Examples](#-use-case-examples)

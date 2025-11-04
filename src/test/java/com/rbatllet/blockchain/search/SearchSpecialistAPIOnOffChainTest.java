@@ -5,6 +5,7 @@ import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.entity.OffChainData;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.*;
+import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -42,7 +43,14 @@ public class SearchSpecialistAPIOnOffChainTest {
         api = new UserFriendlyEncryptionAPI(blockchain);
         testPassword = "OnOffChainTest123!";
         
-        // Create user and set credentials
+        // PRE-AUTHORIZATION REQUIRED (v1.0.6 security): 
+        // 1. Create admin to act as authorized user creator
+        KeyPair adminKeys = CryptoUtil.generateKeyPair();
+        String adminPublicKey = CryptoUtil.publicKeyToString(adminKeys.getPublic());
+        blockchain.addAuthorizedKey(adminPublicKey, "Admin");
+        api.setDefaultCredentials("Admin", adminKeys);  // Authenticate as admin
+        
+        // 2. Now admin can create test user (generates new keys internally)
         userKeys = api.createUser("onoffchain-test-user");
         api.setDefaultCredentials("onoffchain-test-user", userKeys);
         

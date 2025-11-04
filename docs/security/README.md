@@ -2,12 +2,13 @@
 
 This directory contains comprehensive security, encryption, and key management documentation for the Private Blockchain.
 
-## 📚 Documents in This Directory (7 files)
+## 📚 Documents in This Directory (8 files)
 
 ### 🎯 Essential Guides
 | Document | Description | Recommended For |
 |----------|-------------|-----------------|
 | **[SECURITY_GUIDE.md](SECURITY_GUIDE.md)** | Security best practices and guidelines | **START HERE** - All developers |
+| **[PRE_AUTHORIZATION_GUIDE.md](PRE_AUTHORIZATION_GUIDE.md)** | Pre-Authorization Security Model (v1.0.6+) | **REQUIRED** - User creation workflow |
 | **[ENCRYPTION_GUIDE.md](ENCRYPTION_GUIDE.md)** | Block encryption and metadata layer management | Encryption basics |
 | **[RETROACTIVE_ENCRYPTION_ARCHITECTURE.md](RETROACTIVE_ENCRYPTION_ARCHITECTURE.md)** | Retroactive encryption architecture and hash integrity | Advanced encryption |
 | **[KEY_MANAGEMENT_GUIDE.md](KEY_MANAGEMENT_GUIDE.md)** | Hierarchical key management with rotation | Key lifecycle |
@@ -27,9 +28,14 @@ This directory contains comprehensive security, encryption, and key management d
 
 ### For New Developers
 1. **[SECURITY_GUIDE.md](SECURITY_GUIDE.md)** - Understand security fundamentals
-2. **[ENCRYPTION_GUIDE.md](ENCRYPTION_GUIDE.md)** - Learn encryption basics
-3. **[RETROACTIVE_ENCRYPTION_ARCHITECTURE.md](RETROACTIVE_ENCRYPTION_ARCHITECTURE.md)** - Understand retroactive encryption
-4. **[KEY_MANAGEMENT_GUIDE.md](KEY_MANAGEMENT_GUIDE.md)** - Master key management
+2. **[PRE_AUTHORIZATION_GUIDE.md](PRE_AUTHORIZATION_GUIDE.md)** - Learn user creation workflow (v1.0.6+)
+3. **[ENCRYPTION_GUIDE.md](ENCRYPTION_GUIDE.md)** - Learn encryption basics
+4. **[RETROACTIVE_ENCRYPTION_ARCHITECTURE.md](RETROACTIVE_ENCRYPTION_ARCHITECTURE.md)** - Understand retroactive encryption
+5. **[KEY_MANAGEMENT_GUIDE.md](KEY_MANAGEMENT_GUIDE.md)** - Master key management
+
+### For Test Development (v1.0.6+)
+1. **[PRE_AUTHORIZATION_GUIDE.md](PRE_AUTHORIZATION_GUIDE.md)** - **REQUIRED** - Pre-authorization pattern for tests
+2. **[SECURITY_GUIDE.md](SECURITY_GUIDE.md)** - Security best practices
 
 ### For Production Deployment
 1. **[SECURITY_GUIDE.md](SECURITY_GUIDE.md)** - Review all best practices

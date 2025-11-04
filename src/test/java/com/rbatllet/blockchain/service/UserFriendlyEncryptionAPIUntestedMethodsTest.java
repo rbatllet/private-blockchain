@@ -122,6 +122,11 @@ class UserFriendlyEncryptionAPIUntestedMethodsTest {
             return null;
         }).when(mockBlockchain).processChainInBatches(any(), any(Integer.class));
 
+        // v1.0.6 Security: Mock authorization check to allow API initialization
+        // The constructor verifies that testKeyPair is authorized before proceeding
+        String publicKeyString = CryptoUtil.publicKeyToString(testKeyPair.getPublic());
+        lenient().when(mockBlockchain.isKeyAuthorized(publicKeyString)).thenReturn(true);
+
         // Initialize the API instance with mocked dependencies for tests that need it
         api = new UserFriendlyEncryptionAPI(mockBlockchain, TEST_USERNAME, testKeyPair, testConfig);
     }
@@ -149,6 +154,10 @@ class UserFriendlyEncryptionAPIUntestedMethodsTest {
         
         // Clear and reinitialize to ensure clean state for each test
         realBlockchain.clearAndReinitialize();
+        
+        // v1.0.6 Security: Authorize testKeyPair before creating API
+        String publicKeyString = CryptoUtil.publicKeyToString(testKeyPair.getPublic());
+        realBlockchain.addAuthorizedKey(publicKeyString, TEST_USERNAME);
         
         // Initialize SearchSpecialistAPI properly (following stress test pattern)
         try {

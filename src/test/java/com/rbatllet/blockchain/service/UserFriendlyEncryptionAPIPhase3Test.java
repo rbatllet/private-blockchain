@@ -43,6 +43,11 @@ public class UserFriendlyEncryptionAPIPhase3Test {
         
         // Initialize API with real blockchain for better test stability
         Blockchain realBlockchain = new Blockchain();
+        
+        // SECURITY FIX (v1.0.6): Pre-authorize user before creating API
+        String publicKeyString = CryptoUtil.publicKeyToString(testKeyPair.getPublic());
+        realBlockchain.addAuthorizedKey(publicKeyString, testUsername);
+        
         api = new UserFriendlyEncryptionAPI(realBlockchain, testUsername, testKeyPair);
         
         // Setup mock blockchain data

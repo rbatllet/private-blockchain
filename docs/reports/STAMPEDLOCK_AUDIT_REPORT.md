@@ -1,5 +1,8 @@
 # StampedLock Migration Audit Report
 
+> **📌 Historical Document Note**: This report describes the codebase state at the time of the StampedLock migration (2025-10-04).  
+> **⚠️ UPDATE (v1.0.6)**: The `getLastBlock()` method mentioned throughout this report now has transaction-aware considerations. See [TRANSACTION_ISOLATION_FIX.md](../database/TRANSACTION_ISOLATION_FIX.md) for important usage guidelines when working within JPA transactions.
+
 ## 📊 Executive Summary
 
 **Audit Date**: 2025-10-04
@@ -51,6 +54,7 @@ This audit evaluates the migration from `ReentrantReadWriteLock` to `StampedLock
    - Used extensively in chain validation
    - Bugfix: Changed from `writeLock` to optimistic read
    - Impact: Massive improvement (writeLock → lock-free)
+   - **⚠️ UPDATE (v1.0.6)**: Method now has transaction-aware variant `getLastBlock(EntityManager em)` - see [TRANSACTION_ISOLATION_FIX.md](../database/TRANSACTION_ISOLATION_FIX.md)
 
 4. **`initializeAdvancedSearch()`** - Line 166
    - Lock-free search initialization when no concurrent writes
@@ -123,6 +127,7 @@ When initially migrating to StampedLock, **13 deadlocks** were introduced due to
 - **getLastBlock()**: Was using `writeLock()` for a read operation!
 - **Solution**: Changed to optimistic read pattern
 - **Verdict**: ✅ **Critical bugfix - now uses correct lock type (lock-free optimistic read)**
+- **⚠️ UPDATE (v1.0.6)**: `getLastBlock()` has transaction isolation considerations - see [TRANSACTION_ISOLATION_FIX.md](../database/TRANSACTION_ISOLATION_FIX.md)
 
 ### **2. Thread-Safety Guarantees**
 
@@ -341,11 +346,13 @@ public List<AuthorizedKey> getAuthorizedKeysWithoutLock() {
 
 | Improvement | Impact | Evidence |
 |-------------|--------|----------|
-| **Lock-free reads** | 🟢 HIGH | 5 methods use optimistic reads (getBlock, getBlockCount, getLastBlock, initializeAdvancedSearch x2) |
+| **Lock-free reads** | 🟢 HIGH | 5 methods use optimistic reads (getBlock, getBlockCount, getLastBlock†, initializeAdvancedSearch x2) |
 | **Cache efficiency** | 🟢 HIGH | Eliminates cache invalidation on every readLock() |
-| **Bugfixes** | 🔴 CRITICAL | Fixed 2 methods using writeLock for read operations (getBlockCount, getLastBlock) |
+| **Bugfixes** | 🔴 CRITICAL | Fixed 2 methods using writeLock for read operations (getBlockCount, getLastBlock†) |
 | **Virtual threads** | 🟢 HIGH | No 65K thread limit (Java 21 Project Loom ready) |
 | **Dual-mode pattern** | 🟢 HIGH | Eliminates 13 deadlocks with clean architecture |
+
+**†Note**: `getLastBlock()` has additional transaction-aware considerations in v1.0.6 - see [TRANSACTION_ISOLATION_FIX.md](../database/TRANSACTION_ISOLATION_FIX.md)
 
 ### **Risks Mitigated**
 
@@ -390,13 +397,15 @@ public List<AuthorizedKey> getAuthorizedKeysWithoutLock() {
 | Metric | Value |
 |--------|-------|
 | **Files using StampedLock** | 4 (Blockchain.java, LockTracer.java, AuthorizedKeyDAO.java, OffChainIntegrityReport.java) |
-| **Methods with optimistic reads** | 5 (getBlock, getBlockCount, getLastBlock, initializeAdvancedSearch x2) |
+| **Methods with optimistic reads** | 5 (getBlock, getBlockCount, getLastBlock†, initializeAdvancedSearch x2) |
 | **Deadlocks fixed** | 13 |
 | **Lock eliminations** | 82 (72 BlockRepository + 10 AuthorizedKeyDAO) |
 | **Dual-mode pattern methods** | 6 (validateSingleBlock, validateChainDetailed, getAuthorizedKeys, addAuthorizedKey, revokeAuthorizedKey, rollbackToBlock) |
 | **Total tests passing** | 828+ |
 | **Test success rate** | 100% (PerformanceOptimizationTest: 5/5) |
 | **Performance improvement** | ~50% (read operations) |
+
+**†Note**: See v1.0.6 update regarding `getLastBlock()` transaction isolation in [TRANSACTION_ISOLATION_FIX.md](../database/TRANSACTION_ISOLATION_FIX.md)
 | **Documentation files** | 3 (STAMPEDLOCK_MIGRATION_DEADLOCKS.md, GLOBAL_BLOCKCHAIN_LOCK_ANALYSIS.md, LOCK_OPTIMIZATION_LOW_COST_ALTERNATIVES.md) |
 
 ---

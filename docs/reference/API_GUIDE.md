@@ -10,6 +10,7 @@ Comprehensive guide to the Private Blockchain API, core functions, off-chain sto
 
 ## 📋 Table of Contents
 
+- [Secure Initialization & Authorization](#-secure-initialization--authorization) **← v1.0.6 Security Update**
 - [Core Functions Usage](#-core-functions-usage)
 - [API Reference](#-api-reference)
 - [Chain Validation Result](#-chain-validation-result)
@@ -23,6 +24,83 @@ Comprehensive guide to the Private Blockchain API, core functions, off-chain sto
 - [Thread Safety](#-thread-safety-and-concurrent-usage)
 - [Best Practices](#-best-practices)
 - [Metadata Management](#-metadata-management)
+
+---
+
+## 🔐 Secure Initialization & Authorization
+
+> **⚠️ SECURITY UPDATE (v1.0.6)**: The UserFriendlyEncryptionAPI now requires **pre-authorization** of all users before they can perform blockchain operations. This prevents unauthorized self-authorization attacks.
+
+### Mandatory Secure Initialization Pattern
+
+All applications **MUST** follow this initialization pattern (any deviation will result in `SecurityException`):
+
+```java
+import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
+import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.util.CryptoUtil;
+
+// 1. Create blockchain (auto-creates genesis admin on first run)
+Blockchain blockchain = new Blockchain();
+
+// 2. Load genesis admin keys
+KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+    "./keys/genesis-admin.private",
+    "./keys/genesis-admin.public"
+);
+
+// 3. Create API instance with genesis admin credentials
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+
+// 4. Create regular users (only authorized users can create new users)
+KeyPair aliceKeys = api.createUser("alice");  // Genesis admin creates alice
+KeyPair bobKeys = api.createUser("bob");      // Genesis admin creates bob
+
+// 5. Switch to regular user for operations
+api.setDefaultCredentials("alice", aliceKeys);
+
+// 6. Now use API normally
+Block block = api.storeEncryptedData("data", "password");
+```
+
+### Security Model
+
+**Pre-Authorization Required:**
+- All users must be authorized via `blockchain.addAuthorizedKey()` **before** using the API
+- The genesis admin is auto-created on first blockchain initialization
+- Only authorized users can create new users via `api.createUser()` (caller must be authorized)
+- **New users are automatically authorized** when created by an authorized caller
+
+**Protected Methods** (v1.0.6+):
+- `new UserFriendlyEncryptionAPI(blockchain, username, keyPair)` - Requires pre-authorized user
+- `createUser(username)` - Requires caller to be authorized (then auto-authorizes the new user)
+- `loadUserCredentials(username, password)` - Requires caller to be authorized
+- `importAndRegisterUser(username, keyFilePath)` - Requires caller to be authorized (then auto-authorizes the imported user)
+- `importAndSetDefaultUser(username, keyFilePath)` - Requires caller to be authorized (then auto-authorizes the imported user)
+
+**Error Messages:**
+If you attempt to use the API without proper authorization, you'll receive:
+```
+❌ AUTHORIZATION REQUIRED: User 'username' is not authorized.
+Keys must be pre-authorized before creating UserFriendlyEncryptionAPI.
+
+Solution:
+  1. Load genesis admin keys: ./keys/genesis-admin.private
+  2. Authorize user: blockchain.addAuthorizedKey(publicKey, username)
+  3. Then create API instance
+```
+
+### Genesis Admin Bootstrap
+
+The blockchain automatically creates a **genesis admin** on first initialization:
+- Genesis admin keys are stored at `./keys/genesis-admin.{private,public}`
+- Only one genesis admin exists per blockchain
+- Genesis admin can create and authorize other users
+- Genesis admin keys should be securely backed up
+
+---
 
 ## 🔗 Chain Validation Result
 
@@ -148,6 +226,8 @@ metrics.recordValidationResult(
 - Use `toString()` for user-friendly status messages
 - Log detailed validation results for debugging
 - Consider automatic recovery procedures for common issues
+- **Transaction-Aware Methods**: Use `getLastBlock(EntityManager em)` inside transactions, `getLastBlock()` for external queries
+  - See [Transaction-Aware Method Usage](#️-transaction-aware-method-usage) section for details
 
 ## 🚀 Enhanced Block Creation API
 
@@ -1682,9 +1762,9 @@ public class BlockchainExample {
 
 #### Blockchain Management
 ```java
-// Basic information
+// Basic information (read-only operations - safe outside transactions)
 long totalBlocks = blockchain.getBlockCount();
-Block lastBlock = blockchain.getLastBlock();
+Block lastBlock = blockchain.getLastBlock(); // ⚠️ DO NOT use inside active transactions
 Block specificBlock = blockchain.getBlock(blockNumber);
 
 // Batch processing (memory-efficient)
@@ -1708,6 +1788,47 @@ boolean revoked = blockchain.revokeAuthorizedKey(publicKeyString);
 // Get authorized keys
 List<AuthorizedKey> activeKeys = blockchain.getAllAuthorizedKeys();
 ```
+
+### ⚠️ Transaction-Aware Method Usage
+
+When working with JPA transactions, some methods require special attention to avoid transaction isolation issues:
+
+#### Pattern for External/Public API Use (✅ Correct)
+```java
+// Safe for read-only operations OUTSIDE transactions
+Block lastBlock = blockchain.getLastBlock();
+long blockCount = blockchain.getBlockCount();
+```
+
+#### Pattern for Internal Transaction Use (✅ Correct)
+```java
+// When inside a transaction, pass the EntityManager
+JPAUtil.executeInTransaction(em -> {
+    // Use transaction-aware version
+    Block lastBlock = blockRepository.getLastBlock(em);
+    
+    // Process using uncommitted data
+    long nextBlockNumber = lastBlock.getBlockNumber() + 1;
+    Block newBlock = createBlock(nextBlockNumber, data);
+    em.persist(newBlock);
+    
+    return newBlock;
+});
+```
+
+#### Anti-Pattern: getLastBlock() Inside Transactions (❌ Incorrect)
+```java
+// ❌ NEVER DO THIS - creates new EntityManager that can't see uncommitted blocks
+JPAUtil.executeInTransaction(em -> {
+    Block lastBlock = blockchain.getLastBlock(); // ❌ Stale read!
+    // This will cause duplicate block numbers and constraint violations
+});
+```
+
+**Key Rules:**
+- **External/Read-only**: Use `blockchain.getLastBlock()` - safe for queries, tests, demos
+- **Internal/Transactions**: Use `blockRepository.getLastBlock(em)` - sees uncommitted changes
+- **See**: [TRANSACTION_ISOLATION_FIX.md](../database/TRANSACTION_ISOLATION_FIX.md) for technical details
 
 ### DAO Methods
 
@@ -1772,6 +1893,7 @@ public Long getNextBlockNumberAtomic() {
 public Block getLastBlockWithLock() {
     // Returns the last block with a pessimistic lock to prevent concurrent modifications
     // Used in high-concurrency scenarios where consistency is critical
+    // ⚠️ Note: For internal transaction-aware use, prefer getLastBlock(EntityManager em)
 }
 
 // Get the last block with forced refresh to see latest committed data
@@ -1779,6 +1901,7 @@ public Block getLastBlockWithRefresh() {
     // Returns the last block with a forced refresh from the database
     // Ensures we see the most recent data even in high-concurrency scenarios
     // Prevents race conditions where reads happen before writes are fully committed
+    // ⚠️ Note: For internal transaction-aware use, prefer getLastBlock(EntityManager em)
 }
 
 // Check if a block with specific number exists
@@ -1806,6 +1929,9 @@ public Block getBlockByNumber(Long blockNumber) {
 // Get the last block in the chain
 public Block getLastBlock() {
     // Returns the block with the highest block number or null if chain is empty
+    // ⚠️ WARNING: Creates new EntityManager - DO NOT USE inside active transactions
+    // For transaction-aware access, use getLastBlock(EntityManager em) instead
+    // SAFE FOR: read-only operations, tests, demos, queries outside transactions
 }
 
 // Get blocks within a time range (memory-efficient, max 10K results)
@@ -2335,7 +2461,7 @@ safeBlock.setCustomMetadata("{}"); // ✅ Safe
 
 // ERROR: updateBlock() returns false but no clear error message
 // SOLUTION: Enable DEBUG logging to see detailed validation messages
-// Add to logback.xml: <logger name="com.rbatllet.blockchain.core.Blockchain" level="DEBUG"/>
+// Add to log4j2-core.xml: <Logger name="com.rbatllet.blockchain.core.Blockchain" level="DEBUG"/>
 ```
 
 #### Security Validation Messages Reference
@@ -2485,6 +2611,11 @@ public long getBlockCount()
 public Block getLastBlock()
 ```
 - **Returns:** The most recently added block, or null if only genesis block exists
+- **⚠️ Transaction Isolation Note:** 
+  - **DO NOT USE** inside active transactions - creates new EntityManager that can't see uncommitted blocks
+  - **USE** `BlockRepository.getLastBlock(EntityManager em)` when working within transactions
+  - **SAFE FOR** read-only operations, external queries, tests, and demos outside transactions
+  - See [TRANSACTION_ISOLATION_FIX.md](../database/TRANSACTION_ISOLATION_FIX.md) for details
 
 ```java
 public Block getBlock(long blockNumber)

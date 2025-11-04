@@ -46,16 +46,21 @@ public abstract class UserFriendlyEncryptionAPIBaseTest {
     @BeforeEach
     void setUp(TestInfo testInfo) {
         int testNumber = testCounter.incrementAndGet();
-        
+
         // Create blockchain instance
         blockchain = new Blockchain();
-        
+        blockchain.clearAndReinitialize();
+
         // Generate test key pair
         testKeyPair = CryptoUtil.generateKeyPair();
-        
+
+        // SECURITY FIX (v1.0.6): Pre-authorize user before creating API
+        String publicKeyString = CryptoUtil.publicKeyToString(testKeyPair.getPublic());
+        blockchain.addAuthorizedKey(publicKeyString, TEST_USERNAME);
+
         // Create API instance with test credentials
         api = new UserFriendlyEncryptionAPI(blockchain, TEST_USERNAME, testKeyPair);
-        
+
         // Initialize SearchSpecialistAPI to enable storeSecret and storeSearchableData methods
         try {
             blockchain.initializeAdvancedSearch(TEST_PASSWORD);
@@ -63,10 +68,10 @@ public abstract class UserFriendlyEncryptionAPIBaseTest {
         } catch (Exception e) {
             System.err.printf("⚠️ Warning: SearchSpecialistAPI initialization failed in test #%d: %s%n", testNumber, e.getMessage());
         }
-        
+
         // Log test execution for debugging
-        System.out.printf("🧪 Test #%d: %s.%s%n", 
-                         testNumber, 
+        System.out.printf("🧪 Test #%d: %s.%s%n",
+                         testNumber,
                          testInfo.getTestClass().map(Class::getSimpleName).orElse("Unknown"),
                          testInfo.getDisplayName());
     }
@@ -109,6 +114,11 @@ public abstract class UserFriendlyEncryptionAPIBaseTest {
      */
     protected UserFriendlyEncryptionAPI createSecondaryUser(String username) {
         KeyPair userKeyPair = CryptoUtil.generateKeyPair();
+
+        // SECURITY FIX (v1.0.6): Pre-authorize secondary user before creating API
+        String publicKeyString = CryptoUtil.publicKeyToString(userKeyPair.getPublic());
+        blockchain.addAuthorizedKey(publicKeyString, username);
+
         return new UserFriendlyEncryptionAPI(blockchain, username, userKeyPair);
     }
     

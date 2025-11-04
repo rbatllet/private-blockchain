@@ -424,13 +424,13 @@ new OffChainIntegrityReport(goodId);
 ```
 
 #### 4. Don't Disable Logging in Production
-```java
-// ❌ Missing important operational information
-<!-- logback.xml -->
-<logger name="com.rbatllet.blockchain.service.OffChainIntegrityReport" level="OFF"/>
+```xml
+<!-- ❌ Missing important operational information -->
+<!-- log4j2-core.xml or log4j2-core-production.xml -->
+<Logger name="com.rbatllet.blockchain.service.OffChainIntegrityReport" level="OFF"/>
 
-// ✅ Enable appropriate logging level
-<logger name="com.rbatllet.blockchain.service.OffChainIntegrityReport" level="INFO"/>
+<!-- ✅ Enable appropriate logging level -->
+<Logger name="com.rbatllet.blockchain.service.OffChainIntegrityReport" level="INFO"/>
 ```
 
 ## 🚨 Troubleshooting

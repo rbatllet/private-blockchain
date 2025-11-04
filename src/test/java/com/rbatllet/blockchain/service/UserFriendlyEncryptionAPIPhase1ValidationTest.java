@@ -41,6 +41,10 @@ public class UserFriendlyEncryptionAPIPhase1ValidationTest {
         // Generate test key pair
         testKeyPair = CryptoUtil.generateKeyPair();
         
+        // SECURITY FIX (v1.0.6): Mock authorization check for constructor
+        String publicKeyString = CryptoUtil.publicKeyToString(testKeyPair.getPublic());
+        lenient().when(mockBlockchain.isKeyAuthorized(publicKeyString)).thenReturn(true);
+        
         // Initialize API with mock blockchain
         api = new UserFriendlyEncryptionAPI(mockBlockchain, testUsername, testKeyPair);
         

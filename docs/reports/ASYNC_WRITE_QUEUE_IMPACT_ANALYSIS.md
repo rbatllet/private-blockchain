@@ -1,5 +1,8 @@
 # Async Write Queue Implementation - Impact Analysis
 
+> **📌 Historical Document Note**: This report analyzes the codebase state as of 2025-10-03.  
+> **⚠️ UPDATE (v1.0.6)**: The `getLastBlock()` method mentioned in this analysis now has transaction-aware considerations. See [TRANSACTION_ISOLATION_FIX.md](../database/TRANSACTION_ISOLATION_FIX.md) for important usage guidelines.
+
 ## 📊 Executive Summary
 
 This document analyzes the complete impact of implementing an asynchronous write queue architecture with JCTools MPSC queues and CompletableFuture-based API for the private blockchain project.
@@ -107,6 +110,7 @@ Found **17 methods** in `Blockchain.java` that acquire write locks:
     - Uses write lock for serialization
     - **Read operation** - should use readLock
     - **Impact**: 🟢 LOW (optimization opportunity)
+    - **⚠️ UPDATE (v1.0.6)**: Method has transaction-aware considerations - see [TRANSACTION_ISOLATION_FIX.md](../database/TRANSACTION_ISOLATION_FIX.md)
 
 #### 📖 **Read-Only** (2 methods - LOCK TYPE ERROR)
 

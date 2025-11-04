@@ -9,6 +9,84 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [1.0.6] - 2025-11-02
+
+### 🔒 Security - CRITICAL Authorization Fixes
+
+**Fixed 6 critical auto-authorization vulnerabilities** that allowed unauthorized access to the blockchain.
+
+#### Breaking Changes
+
+All user creation and credential management methods now require **pre-authorization**. Any code using these methods must be updated to follow the secure initialization pattern.
+
+**Affected Methods:**
+- `UserFriendlyEncryptionAPI(blockchain, username, keyPair, config)` - Constructor now requires pre-authorized user
+- `createUser(username)` - Now requires caller to be authorized
+- `loadUserCredentials(username, password)` - Now requires caller to be authorized  
+- `importAndRegisterUser(username, keyFilePath)` - Now requires caller to be authorized
+- `importAndSetDefaultUser(username, keyFilePath)` - Now requires caller to be authorized
+- `setDefaultCredentials(username, keyPair)` - No longer auto-authorizes users
+
+**Migration Required:**
+```java
+// ❌ OLD (vulnerable - no longer works):
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, "user", keys, config);
+
+// ✅ NEW (secure - mandatory pattern):
+// 1. Create blockchain (auto-creates genesis admin on first run)
+Blockchain blockchain = new Blockchain();
+
+// 2. Load genesis admin keys
+KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+    "./keys/genesis-admin.private", 
+    "./keys/genesis-admin.public"
+);
+
+// 3. Authenticate with genesis admin
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+
+// 4. Create regular users (authorized by genesis admin)
+KeyPair userKeys = api.createUser("username");
+api.setDefaultCredentials("username", userKeys);
+```
+
+#### Security Improvements
+
+- ✅ **Genesis Admin Bootstrap**: First blockchain initialization auto-creates genesis admin at `./keys/genesis-admin.{private,public}`
+- ✅ **Pre-Authorization Enforcement**: All sensitive operations now validate caller authorization
+- ✅ **Self-Authorization Prevention**: Removed all auto-authorization code paths (6 vulnerabilities eliminated)
+- ✅ **Clear Error Messages**: Helpful `SecurityException` messages guide users to correct patterns
+- ✅ **Comprehensive Testing**: 8 new security tests verify all attack vectors are blocked
+
+#### Documentation
+
+**Complete security documentation:**
+- 📖 [AUTO_AUTHORIZATION_SECURITY_FIX_PLAN.md](docs/security/AUTO_AUTHORIZATION_SECURITY_FIX_PLAN.md) - Complete fix documentation with all 6 vulnerabilities
+- 📖 [PRE_AUTHORIZATION_GUIDE.md](docs/security/PRE_AUTHORIZATION_GUIDE.md) - Mandatory pre-authorization workflow guide
+- 📖 [SECURITY_GUIDE.md](docs/security/SECURITY_GUIDE.md) - Updated security best practices
+- 📖 [API_GUIDE.md](docs/reference/API_GUIDE.md) - Updated with secure initialization patterns
+
+**Tests:**
+- Added `AuthorizationSecurityTest.java` - 8 comprehensive security tests (100% passing)
+- Updated 11 integration test files with secure patterns
+- Updated 11 demo applications with genesis admin pattern
+
+#### Impact
+
+- **Severity**: 🔴 **CRITICAL** (complete authorization bypass possible before fix)
+- **Attack Vectors Fixed**: 6 different methods that allowed self-authorization
+- **Backward Compatibility**: ⚠️ **BREAKING** - requires code updates (see migration guide above)
+- **Test Coverage**: 85+ tests updated and passing
+
+> **⚠️ IMPORTANT**: This is a breaking security fix. All applications must update to the secure initialization pattern. Any code attempting the old pattern will receive `SecurityException`.
+
+---
+
+## [1.0.5] - 2025-10-30
+
 ### Added - Memory Safety Refactoring (Phases A.1-A.7, B.1-B.5)
 
 #### New Streaming APIs (Memory-Safe, Unlimited Results)

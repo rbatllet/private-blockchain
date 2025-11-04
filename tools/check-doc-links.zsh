@@ -28,31 +28,38 @@ echo ""
 BROKEN_LINKS=0
 TOTAL_LINKS=0
 
-# Find all markdown files in docs directory
-find "$BASE_DIR/docs" -name "*.md" -type f 2>/dev/null | while read -r source_file; do
-    # Get directory of source file
-    source_dir="$(dirname "$source_file")"
+# Create arrays to store markdown files
+typeset -a MD_FILES
 
-    # Extract all markdown links from the file (format: [text](link.md))
-    # Use perl for more robust regex matching
-    grep -o '\[[^]]*\]([^)]*\.md[^)]*)' "$source_file" 2>/dev/null | while read -r link_full; do
+# Find all markdown files in docs directory AND root level markdown files
+while IFS= read -r file; do
+    MD_FILES+=("$file")
+done < <(find "$BASE_DIR/docs" -name "*.md" -type f 2>/dev/null; find "$BASE_DIR" -maxdepth 1 -name "*.md" -type f 2>/dev/null)
+
+# Process each markdown file
+for source_file in "${MD_FILES[@]}"; do
+    source_dir="$(dirname "$source_file")"
+    
+    # Extract all markdown links from the file
+    while IFS= read -r link_full; do
+        [[ -z "$link_full" ]] && continue
+        
         # Extract just the link part (without [text])
         link=$(echo "$link_full" | sed 's/.*(\([^)]*\)).*/\1/')
 
         # Skip external links (http/https)
-        if [[ "$link" =~ ^https?:// ]]; then
-            continue
-        fi
+        [[ "$link" =~ ^https?:// ]] && continue
 
         # Skip anchors-only links (#section)
-        if [[ "$link" =~ ^# ]]; then
-            continue
-        fi
+        [[ "$link" =~ ^# ]] && continue
 
         # Remove anchor from link if present (file.md#section -> file.md)
         link_file="${link%%#*}"
+        
+        # Skip empty links
+        [[ -z "$link_file" ]] && continue
 
-        TOTAL_LINKS=$((TOTAL_LINKS + 1))
+        ((TOTAL_LINKS++))
 
         # Resolve the target path
         if [[ "$link_file" == /* ]]; then
@@ -63,7 +70,7 @@ find "$BASE_DIR/docs" -name "*.md" -type f 2>/dev/null | while read -r source_fi
             target="$source_dir/$link_file"
         fi
 
-        # Normalize the path (resolve .., ., and symlinks)
+        # Normalize the path
         if command -v realpath >/dev/null 2>&1; then
             # Use realpath if available (GNU coreutils)
             target=$(realpath -m "$target" 2>/dev/null || echo "$target")
@@ -84,9 +91,9 @@ find "$BASE_DIR/docs" -name "*.md" -type f 2>/dev/null | while read -r source_fi
             echo "   Expected at: $rel_target"
             echo "   (file does not exist)"
             echo ""
-            BROKEN_LINKS=$((BROKEN_LINKS + 1))
+            ((BROKEN_LINKS++))
         fi
-    done
+    done < <(grep -o '\[[^]]*\]([^)]*\.md[^)]*)' "$source_file" 2>/dev/null)
 done
 
 echo ""

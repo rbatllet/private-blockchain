@@ -37,11 +37,17 @@ public class UserFriendlyEncryptionAPIBlockCreationOptionsTest {
     @BeforeEach
     void setUp() throws Exception {
         MockitoAnnotations.openMocks(this);
-        
+
         blockchain = new Blockchain();
         // Clean database before each test to ensure test isolation
         blockchain.clearAndReinitialize();
+
         KeyPair defaultKeyPair = CryptoUtil.generateKeyPair();
+
+        // SECURITY FIX (v1.0.6): Pre-authorize user before creating API
+        String publicKeyString = CryptoUtil.publicKeyToString(defaultKeyPair.getPublic());
+        blockchain.addAuthorizedKey(publicKeyString, testUsername);
+
         api = new UserFriendlyEncryptionAPI(blockchain, testUsername, defaultKeyPair);
 
         // Initialize SearchSpecialistAPI

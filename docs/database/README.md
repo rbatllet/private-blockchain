@@ -2,11 +2,13 @@
 
 Database-agnostic architecture and configuration guides.
 
-## 📚 Documents (5 files)
+## 📚 Documents (7 files)
 
 | Document | Description |
 |----------|-------------|
-| **[DATABASE_MIGRATION_STRATEGY.md](DATABASE_MIGRATION_STRATEGY.md)** | 🆕 Comprehensive guide on hbm2ddl.auto vs DatabaseMigrator (when to use each) |
+| **[TRANSACTION_ISOLATION_FIX.md](TRANSACTION_ISOLATION_FIX.md)** | 🆕 Transaction isolation fix for getLastBlock() - constraint violation prevention |
+| **[GETLASTBLOCK_DOCUMENTATION_UPDATE.md](GETLASTBLOCK_DOCUMENTATION_UPDATE.md)** | 🆕 Documentation update summary - getLastBlock() usage guidance across all docs |
+| **[DATABASE_MIGRATION_STRATEGY.md](DATABASE_MIGRATION_STRATEGY.md)** | Comprehensive guide on hbm2ddl.auto vs DatabaseMigrator (when to use each) |
 | **[DATABASE_AGNOSTIC.md](DATABASE_AGNOSTIC.md)** | Switch between SQLite/PostgreSQL/MySQL/H2 with zero code changes |
 | **[DATABASE_FIELD_LIMITS.md](DATABASE_FIELD_LIMITS.md)** | Database field size limits and overflow protection |
 | **[CONFIGURATION_STORAGE_GUIDE.md](CONFIGURATION_STORAGE_GUIDE.md)** | JPAConfigurationStorage comprehensive guide |
@@ -21,7 +23,14 @@ Database-agnostic architecture and configuration guides.
 - **MySQL** - Production (high concurrency)
 - **SQLite** - Legacy (single-user apps)
 
-## 🆕 What's New in v1.0.5
+## 🆕 What's New in v1.0.6
+
+- **Transaction Isolation Fix** - Fixed constraint violation in addBlockWithOffChainData
+- **Performance Optimization** - getLastBlock() now uses MAX() instead of ORDER BY (O(1) vs O(n log n))
+- **Transaction-Aware Methods** - New overloaded getLastBlock(EntityManager em) for active transactions
+- **Documentation Updates** - Comprehensive usage guidance for getLastBlock() across API_GUIDE and other docs
+
+## What's New in v1.0.5
 
 - **H2 is now the default database** (replaces SQLite)
 - Better concurrent write support out of the box
@@ -29,4 +38,4 @@ Database-agnostic architecture and configuration guides.
 - Backwards compatible - SQLite still supported
 
 ---
-**Directory**: `docs/database/` | **Files**: 5 | **Updated**: 2025-10-23
+**Directory**: `docs/database/` | **Files**: 7 | **Updated**: 2025-01-03
