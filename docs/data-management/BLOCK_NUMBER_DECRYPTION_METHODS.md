@@ -1,5 +1,38 @@
 # Block Number-Based Decryption Methods Guide
 
+---
+
+## ⚠️ SECURITY UPDATE (v1.0.6)
+
+> **CRITICAL**: All UserFriendlyEncryptionAPI usage now requires **mandatory pre-authorization**. Users must be authorized before performing any operations.
+
+### Required Secure Initialization
+
+All code examples assume this initialization pattern:
+
+```java
+// 1. Create blockchain (auto-creates genesis admin)
+Blockchain blockchain = new Blockchain();
+
+// 2. Load genesis admin keys
+KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+    "./keys/genesis-admin.private",
+    "./keys/genesis-admin.public"
+);
+
+// 3. Create API with genesis admin credentials
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+
+// 4. Create user for operations
+KeyPair userKeys = api.createUser("username");
+api.setDefaultCredentials("username", userKeys);
+```
+
+> **💡 NOTE**: See [../reference/API_GUIDE.md](../reference/API_GUIDE.md#-secure-initialization--authorization) for complete security details.
+
+---
+
 ## Overview
 
 This document describes the new block number-based decryption methods that were implemented to resolve the hash-to-block mapping issue discovered in the `UserFriendlyEncryptionAPIOptimizationTest`. These methods provide a clean separation between database ID-based and block number-based operations.
@@ -86,8 +119,10 @@ public String retrieveSecret(Long blockNumber, String password)
 
 **Usage Example**:
 ```java
-// User-friendly API usage (recommended)
-UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, "user", keyPair);
+// User-friendly API usage (after secure initialization shown above)
+// Genesis admin creates user:
+KeyPair userKeys = api.createUser("user");
+api.setDefaultCredentials("user", userKeys);
 
 // Store encrypted data
 Block block = api.storeSecret("Sensitive medical data", "password123");
@@ -102,8 +137,10 @@ System.out.println("Retrieved: " + decrypted);
 ### Example 1: Medical Records Management
 
 ```java
-// Initialize API
-UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, "doctor", keyPair);
+// Initialize API (after secure initialization shown above)
+// Genesis admin creates doctor user:
+KeyPair doctorKeys = api.createUser("doctor");
+api.setDefaultCredentials("doctor", doctorKeys);
 
 // Store patient record
 String patientData = "Patient: John Doe, Diagnosis: Diabetes Type 1, Treatment: Insulin";
@@ -123,8 +160,10 @@ if (retrievedRecord != null) {
 ### Example 2: Financial Transaction Processing
 
 ```java
-// Initialize API
-UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, "financial_officer", keyPair);
+// Initialize API (after secure initialization shown above)
+// Genesis admin creates financial officer user:
+KeyPair financeKeys = api.createUser("financial_officer");
+api.setDefaultCredentials("financial_officer", financeKeys);
 
 // Store transaction data with identifier
 String transactionData = "Transfer $50,000 from Account A123 to Account B456";
@@ -145,8 +184,10 @@ for (Block block : transactions) {
 ### Example 3: Search and Decrypt Workflow
 
 ```java
-// Initialize API
-UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, "researcher", keyPair);
+// Initialize API (after secure initialization shown above)
+// Genesis admin creates researcher user:
+KeyPair researcherKeys = api.createUser("researcher");
+api.setDefaultCredentials("researcher", researcherKeys);
 
 // Search for encrypted data by term
 List<Block> encryptedBlocks = api.findEncryptedData("medical");

@@ -2,6 +2,39 @@
 
 This directory contains comprehensive API reference documentation, technical details, and utility class guides.
 
+---
+
+## ⚠️ SECURITY UPDATE (v1.0.6)
+
+> **CRITICAL**: All API usage now requires **mandatory pre-authorization**. The UserFriendlyEncryptionAPI requires users to be authorized before performing any operations.
+
+### Required Secure Initialization
+
+All code examples in this directory assume the following secure initialization:
+
+```java
+// 1. Create blockchain (auto-creates genesis admin)
+Blockchain blockchain = new Blockchain();
+
+// 2. Load genesis admin keys
+KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+    "./keys/genesis-admin.private",
+    "./keys/genesis-admin.public"
+);
+
+// 3. Create API with genesis admin credentials
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+
+// 4. Create user for operations
+KeyPair userKeys = api.createUser("username");
+api.setDefaultCredentials("username", userKeys);
+```
+
+> **💡 NOTE**: See [API_GUIDE.md](API_GUIDE.md#-secure-initialization--authorization) for complete security details and migration guide.
+
+---
+
 ## 📚 Documents in This Directory (5 files)
 
 ### 🎯 Essential Reference
@@ -79,8 +112,9 @@ Block block = blockchain.getBlock(0);
 
 #### User-Friendly Encryption
 ```java
-// See: API_GUIDE.md - Section 2
-UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, "alice", keyPair);
+// See: API_GUIDE.md - Section 2 (Secure initialization required - see above)
+// After secure initialization with genesis admin and creating user "alice":
+api.setDefaultCredentials("alice", aliceKeys);
 Block encrypted = api.storeEncryptedData("data", "password");
 List<Block> results = api.smartSearchEncryptedData("keyword", "password", 10);
 ```

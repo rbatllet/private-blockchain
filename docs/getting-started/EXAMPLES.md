@@ -74,10 +74,18 @@ import java.util.*;
 
 public class MedicalRecordsEncryptionSystem {
     public static void main(String[] args) throws Exception {
-        // Initialize blockchain and API
+        // Secure initialization (see security section above)
         Blockchain blockchain = new Blockchain();
-        KeyPair doctorKeys = CryptoUtil.generateKeyPair();
-        UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, "dr.smith", doctorKeys);
+        KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+        UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+        api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+
+        // Create doctor user
+        KeyPair doctorKeys = api.createUser("dr.smith");
+        api.setDefaultCredentials("dr.smith", doctorKeys);
         
         // Setup hierarchical security system
         System.out.println("🔐 Setting up medical-grade security...");
@@ -203,10 +211,18 @@ import java.util.*;
 
 public class FinancialTransactionSystem {
     public static void main(String[] args) throws Exception {
-        // Initialize financial blockchain
+        // Secure initialization (see security section above)
         Blockchain blockchain = new Blockchain();
-        KeyPair bankKeys = CryptoUtil.generateKeyPair();
-        UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, "bank-system", bankKeys);
+        KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+        UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+        api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+
+        // Create bank system user
+        KeyPair bankKeys = api.createUser("bank-system");
+        api.setDefaultCredentials("bank-system", bankKeys);
         
         // Setup financial-grade security
         System.out.println("🏦 Initializing financial security system...");

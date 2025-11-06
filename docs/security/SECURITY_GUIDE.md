@@ -165,8 +165,11 @@ api.setDefaultCredentials("user", null); // Null keypair - will fail
 ```
 
 ### Credential Management
+
+> **⚠️ v1.0.6+**: All examples assume API is initialized with genesis admin credentials (see security update section above).
+
 ```java
-// ✅ SECURE: Load credentials securely
+// ✅ SECURE: Load credentials securely (requires caller to be authorized)
 boolean loaded = api.loadUserCredentials("username", "strongMasterPassword");
 if (!loaded) {
     logger.warn("Failed to load user credentials - check password");
@@ -613,11 +616,24 @@ public class ProductionSecurityConfig {
             throw new SecurityException("Missing required security configuration");
         }
         
-        // Use high-security configuration for production
+        // Use high-security configuration for production (v1.0.6+ secure pattern)
         Blockchain blockchain = new Blockchain();
+
+        // Load genesis admin keys
+        KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+        api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+
+        // Create production user with loaded keys
         KeyPair keys = loadProductionKeys(keystorePath, masterPassword);
-        
-        return new UserFriendlyEncryptionAPI(blockchain, "production-user", keys);
+        api.addAuthorizedKey(keys.getPublic().getEncoded(), "production-user");
+        api.setDefaultCredentials("production-user", keys);
+
+        return api;
     }
 }
 ```

@@ -1,5 +1,38 @@
 # Block Number-Based Decryption - Practical Examples
 
+---
+
+## ⚠️ SECURITY UPDATE (v1.0.6)
+
+> **CRITICAL**: All UserFriendlyEncryptionAPI usage now requires **mandatory pre-authorization**. Users must be authorized before performing any operations.
+
+### Required Secure Initialization
+
+All code examples assume this initialization pattern at the beginning:
+
+```java
+// 1. Create blockchain (auto-creates genesis admin)
+Blockchain blockchain = new Blockchain();
+
+// 2. Load genesis admin keys
+KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+    "./keys/genesis-admin.private",
+    "./keys/genesis-admin.public"
+);
+
+// 3. Create API with genesis admin credentials
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+
+// 4. Create user for operations
+KeyPair userKeys = api.createUser("username");
+api.setDefaultCredentials("username", userKeys);
+```
+
+> **💡 NOTE**: See [../reference/API_GUIDE.md](../reference/API_GUIDE.md#-secure-initialization--authorization) for complete security details.
+
+---
+
 ## Quick Start Examples
 
 ### Example 1: Simple Secret Storage and Retrieval
@@ -12,14 +45,18 @@ import java.security.KeyPair;
 
 public class SimpleSecretExample {
     public static void main(String[] args) throws Exception {
-        // Initialize blockchain and API
+        // Secure initialization (see security section above)
         Blockchain blockchain = new Blockchain();
-        KeyPair userKeys = generateUserKeyPair(); // Your key generation logic
-        UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(
-            blockchain, 
-            "alice", 
-            userKeys
+        KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
         );
+        UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+        api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+
+        // Create alice user
+        KeyPair aliceKeys = api.createUser("alice");
+        api.setDefaultCredentials("alice", aliceKeys);
 
         // Store a secret
         String sensitiveData = "My secret cryptocurrency private key: 0x123abc...";
@@ -50,9 +87,11 @@ import java.util.ArrayList;
 public class MedicalRecordsExample {
     private final UserFriendlyEncryptionAPI api;
     private final String MEDICAL_PASSWORD = "MedicalSecure2025!";
-    
-    public MedicalRecordsExample(Blockchain blockchain, KeyPair doctorKeys) {
-        this.api = new UserFriendlyEncryptionAPI(blockchain, "Dr.Smith", doctorKeys);
+
+    public MedicalRecordsExample(UserFriendlyEncryptionAPI api) {
+        // API must be already initialized with secure pattern (see security section above)
+        // and have Dr.Smith user created and set as default
+        this.api = api;
     }
     
     // Store patient record with searchable identifier
@@ -142,9 +181,11 @@ import java.time.LocalDateTime;
 public class FinancialTransactionsExample {
     private final UserFriendlyEncryptionAPI api;
     private final String FINANCE_PASSWORD = "FinancialVault2025!";
-    
-    public FinancialTransactionsExample(Blockchain blockchain, KeyPair financeKeys) {
-        this.api = new UserFriendlyEncryptionAPI(blockchain, "FinanceOfficer", financeKeys);
+
+    public FinancialTransactionsExample(UserFriendlyEncryptionAPI api) {
+        // API must be already initialized with secure pattern (see security section above)
+        // and have FinanceOfficer user created and set as default
+        this.api = api;
     }
     
     // Store encrypted transaction
@@ -255,9 +296,11 @@ public class FinancialTransactionsExample {
 public class LegalDocumentsExample {
     private final UserFriendlyEncryptionAPI api;
     private final String LEGAL_PASSWORD = "LegalVault2025!";
-    
-    public LegalDocumentsExample(Blockchain blockchain, KeyPair legalKeys) {
-        this.api = new UserFriendlyEncryptionAPI(blockchain, "LegalCounsel", legalKeys);
+
+    public LegalDocumentsExample(UserFriendlyEncryptionAPI api) {
+        // API must be already initialized with secure pattern (see security section above)
+        // and have LegalCounsel user created and set as default
+        this.api = api;
     }
     
     // Store confidential legal document
@@ -428,8 +471,19 @@ public class RobustDecryptionExample {
     
     // Usage example with error handling
     public static void main(String[] args) throws Exception {
+        // Secure initialization (see security section above)
         Blockchain blockchain = new Blockchain();
-        UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, "user", generateKeys());
+        KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+        UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+        api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+
+        // Create user
+        KeyPair userKeys = api.createUser("user");
+        api.setDefaultCredentials("user", userKeys);
+
         RobustDecryptionExample robust = new RobustDecryptionExample(api);
         
         // Store some test data
@@ -532,8 +586,19 @@ public class OptimizedDecryptionExample {
     
     // Usage example
     public static void main(String[] args) throws Exception {
+        // Secure initialization (see security section above)
         Blockchain blockchain = new Blockchain();
-        UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, "user", generateKeys());
+        KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+        UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+        api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+
+        // Create user
+        KeyPair userKeys = api.createUser("user");
+        api.setDefaultCredentials("user", userKeys);
+
         OptimizedDecryptionExample optimized = new OptimizedDecryptionExample(api);
         
         // Create test data
@@ -588,9 +653,19 @@ public class BlockNumberDecryptionIntegrationTest {
     
     @BeforeEach
     public void setUp() throws Exception {
+        // Secure initialization for tests (see security section above)
         blockchain = new Blockchain();
+        KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+        api = new UserFriendlyEncryptionAPI(blockchain);
+        api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+
+        // Create test user
         testKeys = generateTestKeyPair();
-        api = new UserFriendlyEncryptionAPI(blockchain, "testUser", testKeys);
+        api.addAuthorizedKey(testKeys.getPublic().getEncoded(), "testUser");
+        api.setDefaultCredentials("testUser", testKeys);
     }
     
     @Test

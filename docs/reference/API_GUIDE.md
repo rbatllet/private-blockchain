@@ -4479,13 +4479,26 @@ The UserFriendlyEncryptionAPI provides a comprehensive, simplified interface for
 
 ### 📋 API Initialization
 
-```java
-// Basic initialization
-UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+> **⚠️ SECURITY**: See [Secure Initialization & Authorization](#-secure-initialization--authorization) section above for the mandatory secure initialization pattern required in v1.0.6+.
 
-// Initialize with default user credentials
-KeyPair userKeys = CryptoUtil.generateKeyPair();
-UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, "username", userKeys);
+```java
+// v1.0.6+ Secure initialization (REQUIRED)
+// 1. Create blockchain (auto-creates genesis admin)
+Blockchain blockchain = new Blockchain();
+
+// 2. Load genesis admin keys
+KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+    "./keys/genesis-admin.private",
+    "./keys/genesis-admin.public"
+);
+
+// 3. Create API with genesis admin credentials
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+
+// 4. Create user for operations
+KeyPair userKeys = api.createUser("username");
+api.setDefaultCredentials("username", userKeys);
 ```
 
 ### 🎯 Core Data Storage Methods
@@ -4988,11 +5001,14 @@ The UserFriendlyEncryptionAPI is thoroughly tested with **828+ JUnit 5 tests** a
 ### 🚀 Usage Patterns and Best Practices
 
 #### Initialization Pattern
+
+> **⚠️ SECURITY**: See [Secure Initialization & Authorization](#-secure-initialization--authorization) section above for mandatory security requirements.
+
 ```java
-// Recommended initialization for production
-Blockchain blockchain = new Blockchain();
-KeyPair userKeys = CryptoUtil.generateKeyPair();
-UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, "production-user", userKeys);
+// Recommended initialization for production (v1.0.6+)
+// After secure initialization with genesis admin:
+KeyPair productionKeys = api.createUser("production-user");
+api.setDefaultCredentials("production-user", productionKeys);
 
 // Setup hierarchical security - fully thread-safe
 KeyManagementResult keySetup = api.setupHierarchicalKeys("masterPassword123!");

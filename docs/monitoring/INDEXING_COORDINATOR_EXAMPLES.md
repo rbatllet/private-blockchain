@@ -1,5 +1,38 @@
 # 🎯 IndexingCoordinator - Practical Usage Examples
 
+---
+
+## ⚠️ SECURITY UPDATE (v1.0.6)
+
+> **CRITICAL**: All UserFriendlyEncryptionAPI usage now requires **mandatory pre-authorization**. Users must be authorized before performing any operations.
+
+### Required Secure Initialization
+
+All code examples assume this initialization pattern:
+
+```java
+// 1. Create blockchain (auto-creates genesis admin)
+Blockchain blockchain = new Blockchain();
+
+// 2. Load genesis admin keys
+KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+    "./keys/genesis-admin.private",
+    "./keys/genesis-admin.public"
+);
+
+// 3. Create API with genesis admin credentials
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+
+// 4. Create user for operations
+KeyPair userKeys = api.createUser("username");
+api.setDefaultCredentials("username", userKeys);
+```
+
+> **💡 NOTE**: See [../reference/API_GUIDE.md](../reference/API_GUIDE.md#-secure-initialization--authorization) for complete security details.
+
+---
+
 ## Overview
 
 The `IndexingCoordinator` is a powerful component that prevents infinite indexing loops and coordinates all blockchain indexing operations. This document provides practical examples for different use cases.
@@ -21,13 +54,21 @@ The IndexingCoordinator requires manual registration of indexers before use:
 
 ```java
 public class BasicBlockchainApp {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
+        // 1. Secure initialization (see security section above)
         Blockchain blockchain = new Blockchain();
-        UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(
-            blockchain, "myapp", generateKeyPair()
+        KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
         );
-        
-        // 📝 REQUIRED: Register indexers before using them
+        UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+        api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+
+        // 2. Create application user
+        KeyPair appKeys = api.createUser("myapp");
+        api.setDefaultCredentials("myapp", appKeys);
+
+        // 3. REQUIRED: Register indexers before using them
         setupIndexers(api, blockchain);
         
         // Now these operations will be coordinated
@@ -128,14 +169,25 @@ class MyBlockchainTests {
     private UserFriendlyEncryptionAPI api;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         // Enable test mode to prevent automatic indexing
         coordinator = IndexingCoordinator.getInstance();
         coordinator.enableTestMode();
-        
+
+        // Secure initialization for tests
         blockchain = new Blockchain();
-        api = new UserFriendlyEncryptionAPI(blockchain, "testuser", generateKeyPair());
-        
+        KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+        api = new UserFriendlyEncryptionAPI(blockchain);
+        api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+
+        // Create test user
+        KeyPair testKeys = generateKeyPair();
+        api.addAuthorizedKey(testKeys.getPublic().getEncoded(), "testuser");
+        api.setDefaultCredentials("testuser", testKeys);
+
         // Setup controlled indexing for tests
         setupControlledIndexing();
     }

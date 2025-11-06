@@ -177,8 +177,11 @@ SecureKeyStorage.savePrivateKey("alice-researcher",
 ```
 
 ### Load Existing User
+
+> **⚠️ v1.0.6+**: `loadUserCredentials()` requires the caller to be authorized. Assumes secure initialization completed above.
+
 ```java
-// Load user credentials
+// Load user credentials (requires authorized caller)
 boolean loaded = api.loadUserCredentials("alice-researcher", "userPassword");
 if (loaded) {
     System.out.println("✅ User credentials loaded successfully");

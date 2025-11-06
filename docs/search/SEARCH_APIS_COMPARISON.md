@@ -1,5 +1,38 @@
 # Search APIs Comparison and Developer Guide
 
+---
+
+## ⚠️ SECURITY UPDATE (v1.0.6)
+
+> **CRITICAL**: All examples in this guide now require **mandatory pre-authorization**. Users must be authorized before using any API.
+
+### Required Secure Initialization
+
+All code examples assume this initialization pattern:
+
+```java
+// 1. Create blockchain (auto-creates genesis admin)
+Blockchain blockchain = new Blockchain();
+
+// 2. Load genesis admin keys
+KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+    "./keys/genesis-admin.private",
+    "./keys/genesis-admin.public"
+);
+
+// 3. Create API with genesis admin credentials
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+
+// 4. Create user for operations
+KeyPair userKeys = api.createUser("username");
+api.setDefaultCredentials("username", userKeys);
+```
+
+> **💡 NOTE**: See [../reference/API_GUIDE.md](../reference/API_GUIDE.md#-secure-initialization--authorization) for complete security details.
+
+---
+
 ## 🎯 Which Search API Should You Use?
 
 This guide helps developers choose the right search API for their blockchain application needs.
@@ -26,8 +59,10 @@ This is the **main entry point** for blockchain applications. It provides:
 - Enterprise-grade features out of the box
 
 ```java
-// RECOMMENDED APPROACH - Complete blockchain solution
-UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, username, keys);
+// RECOMMENDED APPROACH - Complete blockchain solution (v1.0.6+ secure pattern)
+// After secure initialization with genesis admin (see security section above):
+KeyPair userKeys = api.createUser("username");
+api.setDefaultCredentials("username", userKeys);
 
 // Optional: Use custom EncryptionConfig for specific security requirements
 EncryptionConfig config = EncryptionConfig.createHighSecurityConfig();
@@ -118,8 +153,10 @@ SearchResult result = engine.searchPublicOnly("medical", 20);
 ### 🏥 Medical Records Application
 **Recommendation: UserFriendlyEncryptionAPI**
 ```java
-// Complete medical records solution
-UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, "dr-smith", doctorKeys);
+// Complete medical records solution (after secure initialization shown above)
+// Genesis admin creates dr-smith user:
+KeyPair doctorKeys = api.createUser("dr-smith");
+api.setDefaultCredentials("dr-smith", doctorKeys);
 
 // Store patient record with automatic encryption
 String patientData = "Patient: John Doe, Diagnosis: Type 2 Diabetes";
@@ -146,8 +183,10 @@ List<EnhancedSearchResult> detailedAnalysis = searchAPI.searchAdvanced(
 ### 💰 Financial Trading Platform
 **Recommendation: UserFriendlyEncryptionAPI**
 ```java
-// Complete financial platform
-UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, "trader-001", traderKeys);
+// Complete financial platform (after secure initialization shown above)
+// Genesis admin creates trader-001 user:
+KeyPair traderKeys = api.createUser("trader-001");
+api.setDefaultCredentials("trader-001", traderKeys);
 
 // Store trading data with automatic compliance
 Block trade = api.storeSecret("TRADE: Buy 100 AAPL @ $150.00", tradePassword);
@@ -229,8 +268,10 @@ Are you building a complete blockchain application?
 ### Migration Path
 
 ```java
-// Phase 1: Start with UserFriendlyEncryptionAPI
-UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, user, keys);
+// Phase 1: Start with UserFriendlyEncryptionAPI (v1.0.6+ secure pattern)
+// After secure initialization with genesis admin:
+KeyPair userKeys = api.createUser("user");
+api.setDefaultCredentials("user", userKeys);
 
 // Phase 2: Add specialized search if needed - NEW IMPROVED CONSTRUCTOR
 SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(blockchain, password, privateKey);

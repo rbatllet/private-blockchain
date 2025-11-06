@@ -363,8 +363,18 @@ Block result2 = api.createBlockWithOptions("Test content 2", options2);
 void setUp() throws Exception {
     blockchain = new Blockchain();
     blockchain.clearAndReinitialize(); // Clean database before each test
-    KeyPair defaultKeyPair = CryptoUtil.generateKeyPair();
-    api = new UserFriendlyEncryptionAPI(blockchain, testUsername, defaultKeyPair);
+
+    // ⚠️ v1.0.6+: Use secure initialization pattern even in tests
+    KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+        "./keys/genesis-admin.private",
+        "./keys/genesis-admin.public"
+    );
+    api = new UserFriendlyEncryptionAPI(blockchain);
+    api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+
+    // Create test user
+    KeyPair defaultKeyPair = api.createUser(testUsername);
+    api.setDefaultCredentials(testUsername, defaultKeyPair);
 }
 
 @AfterEach

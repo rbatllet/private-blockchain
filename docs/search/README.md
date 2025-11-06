@@ -1,5 +1,38 @@
 # Search Documentation
 
+---
+
+## ⚠️ SECURITY UPDATE (v1.0.6)
+
+> **CRITICAL**: All UserFriendlyEncryptionAPI usage now requires **mandatory pre-authorization**. Users must be authorized before performing any operations.
+
+### Required Secure Initialization
+
+All code examples assume this initialization pattern:
+
+```java
+// 1. Create blockchain (auto-creates genesis admin)
+Blockchain blockchain = new Blockchain();
+
+// 2. Load genesis admin keys
+KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+    "./keys/genesis-admin.private",
+    "./keys/genesis-admin.public"
+);
+
+// 3. Create API with genesis admin credentials
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+
+// 4. Create user for operations
+KeyPair userKeys = api.createUser("username");
+api.setDefaultCredentials("username", userKeys);
+```
+
+> **💡 NOTE**: See [../reference/API_GUIDE.md](../reference/API_GUIDE.md#-secure-initialization--authorization) for complete security details.
+
+---
+
 This directory contains comprehensive documentation for all search functionality in the Private Blockchain.
 
 ## 📚 Documents in This Directory (9 files)
@@ -80,8 +113,10 @@ List<Block> results = blockchain.searchBlocksByContent("keyword");
 
 #### Search Encrypted Blocks (Simple)
 ```java
-// See: USER_FRIENDLY_SEARCH_GUIDE.md
-UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, "alice", keyPair);
+// See: USER_FRIENDLY_SEARCH_GUIDE.md (after secure initialization shown above)
+// Genesis admin creates alice user:
+KeyPair aliceKeys = api.createUser("alice");
+api.setDefaultCredentials("alice", aliceKeys);
 List<Block> results = api.smartSearchEncryptedData("keyword", "password", 10);
 ```
 

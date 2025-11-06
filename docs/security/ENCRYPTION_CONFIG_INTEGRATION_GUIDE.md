@@ -1,5 +1,39 @@
 # EncryptionConfig Integration Guide
 
+---
+
+## ⚠️ SECURITY UPDATE (v1.0.6)
+
+> **IMPORTANT**: All UserFriendlyEncryptionAPI usage now requires **mandatory pre-authorization**. Even when using EncryptionConfig, users must be authorized before performing operations.
+
+### Required Secure Initialization
+
+Before using any API with EncryptionConfig:
+
+```java
+// 1. Create blockchain (auto-creates genesis admin)
+Blockchain blockchain = new Blockchain();
+
+// 2. Load genesis admin keys
+KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+    "./keys/genesis-admin.private",
+    "./keys/genesis-admin.public"
+);
+
+// 3. Create API with genesis admin + config
+EncryptionConfig config = EncryptionConfig.createHighSecurityConfig();
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, config);
+api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+
+// 4. Create user for operations
+KeyPair userKeys = api.createUser("username");
+api.setDefaultCredentials("username", userKeys);
+```
+
+> **💡 NOTE**: All code examples below assume you have completed secure initialization. See [API_GUIDE.md](../reference/API_GUIDE.md#-secure-initialization--authorization) for complete details.
+
+---
+
 ## 🔐 Overview
 
 The `EncryptionConfig` class provides a unified way to configure encryption settings across all APIs in the blockchain system. This guide explains how to use EncryptionConfig with all supported APIs and demonstrates the benefits of consistent configuration management.

@@ -4,6 +4,8 @@
 
 This guide helps you resolve common issues when using the UserFriendlyEncryptionAPI. It covers error diagnosis, solutions, and preventive measures for the most frequent problems.
 
+> **⚠️ SECURITY (v1.0.6+)**: All code examples in this guide assume secure initialization with genesis admin credentials. Methods like `createUser()`, `loadUserCredentials()`, `importAndSetDefaultUser()` require the caller to be authorized. See [API_GUIDE.md](../reference/API_GUIDE.md#-secure-initialization--authorization) for the mandatory initialization pattern.
+
 ## 🚨 Common Error Categories
 
 ### 1. Authentication and Key Management Issues

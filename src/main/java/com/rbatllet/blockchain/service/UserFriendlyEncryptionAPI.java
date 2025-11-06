@@ -255,9 +255,23 @@ public class UserFriendlyEncryptionAPI {
      *   <li>Automatic off-chain storage for large data (&gt;512KB)</li>
      * </ul>
      *
-     * <p><strong>Usage Example:</strong></p>
+     * <p><strong>Usage Example (v1.0.6+ secure pattern):</strong></p>
      * <pre>{@code
-     * UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, "user", keyPair);
+     * // 1. Load genesis admin keys
+     * KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+     *     "./keys/genesis-admin.private",
+     *     "./keys/genesis-admin.public"
+     * );
+     *
+     * // 2. Create API with genesis admin
+     * UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+     * api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+     *
+     * // 3. Create user
+     * KeyPair userKeys = api.createUser("user");
+     * api.setDefaultCredentials("user", userKeys);
+     *
+     * // 4. Store secret
      * Block block = api.storeSecret("Confidential medical record data", "mySecurePassword123");
      * if (block != null) {
      *     System.out.println("Secret stored in block #" + block.getBlockNumber());
@@ -4298,9 +4312,13 @@ public class UserFriendlyEncryptionAPI {
      *   <li>Result sanitization to prevent data leakage</li>
      * </ul>
      *
-     * <p><strong>Usage Example:</strong></p>
+     * <p><strong>Usage Example (v1.0.6+ secure pattern):</strong></p>
      * <pre>{@code
-     * UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, "user", keyPair);
+     * // After secure initialization (see class documentation):
+     * KeyPair userKeys = api.createUser("user");
+     * api.setDefaultCredentials("user", userKeys);
+     *
+     * // Search and decrypt
      * String[] terms = {"medical", "patient-001", "diagnosis"};
      * List<Block> decryptedResults = api.searchAndDecryptByTerms(terms, "password123", 10);
      *
