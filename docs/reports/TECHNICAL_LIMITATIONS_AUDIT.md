@@ -1,5 +1,7 @@
 # Technical Limitations Audit - Private Blockchain v1.0.6
 
+
+> **🔄 CODE UPDATE (v1.0.6+)**: Methods like `revokeAuthorizedKey()`, `rollbackToBlock()` now throw exceptions. See [Exception-Based Error Handling Guide](../security/EXCEPTION_BASED_ERROR_HANDLING_V1_0_6.md).
 **Document Version:** 1.0
 **Audit Date:** 2025-10-29
 **Auditor:** Comprehensive codebase analysis

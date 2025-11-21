@@ -2,6 +2,8 @@ package com.rbatllet.blockchain.service;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI.BlockCreationOptions;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,9 +30,10 @@ public class UserFriendlyEncryptionAPIBlockCreationOptionsTest {
 
     private UserFriendlyEncryptionAPI api;
     private Blockchain blockchain;
+    private KeyPair bootstrapKeyPair;
     private String testUsername = "testuser";
     private String testPassword = "TestPassword123!";
-    
+
     @TempDir
     Path tempDir;
 
@@ -42,11 +45,23 @@ public class UserFriendlyEncryptionAPIBlockCreationOptionsTest {
         // Clean database before each test to ensure test isolation
         blockchain.clearAndReinitialize();
 
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         KeyPair defaultKeyPair = CryptoUtil.generateKeyPair();
 
         // SECURITY FIX (v1.0.6): Pre-authorize user before creating API
         String publicKeyString = CryptoUtil.publicKeyToString(defaultKeyPair.getPublic());
-        blockchain.addAuthorizedKey(publicKeyString, testUsername);
+        blockchain.addAuthorizedKey(publicKeyString, testUsername, bootstrapKeyPair, UserRole.ADMIN);
 
         api = new UserFriendlyEncryptionAPI(blockchain, testUsername, defaultKeyPair);
 

@@ -11,7 +11,7 @@
 Before using any API with EncryptionConfig:
 
 ```java
-// 1. Create blockchain (auto-creates genesis admin)
+// 1. Create blockchain (only genesis block is automatic)
 Blockchain blockchain = new Blockchain();
 
 // 2. Load genesis admin keys
@@ -20,10 +20,16 @@ KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
     "./keys/genesis-admin.public"
 );
 
-// 3. Create API with genesis admin + config
+// 3. Register bootstrap admin in blockchain (REQUIRED!)
+blockchain.createBootstrapAdmin(
+    CryptoUtil.publicKeyToString(genesisKeys.getPublic()),
+    "BOOTSTRAP_ADMIN"
+);
+
+// 4. Create API with genesis admin + config
 EncryptionConfig config = EncryptionConfig.createHighSecurityConfig();
 UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, config);
-api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+api.setDefaultCredentials("BOOTSTRAP_ADMIN", genesisKeys);
 
 // 4. Create user for operations
 KeyPair userKeys = api.createUser("username");

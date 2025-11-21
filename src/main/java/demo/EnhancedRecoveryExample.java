@@ -3,6 +3,7 @@ package demo;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.recovery.ChainRecoveryManager;
 import com.rbatllet.blockchain.recovery.RecoveryConfig;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.validation.ChainValidationResult;
 
@@ -45,8 +46,18 @@ public class EnhancedRecoveryExample {
             KeyPair userKey = CryptoUtil.generateKeyPair();
             String publicKey = CryptoUtil.publicKeyToString(userKey.getPublic());
 
-            blockchain.addAuthorizedKey(adminPublicKey, "System Admin");
-            blockchain.addAuthorizedKey(publicKey, "Test User");
+            // First user (admin) - Genesis bootstrap
+            blockchain.createBootstrapAdmin(
+                adminPublicKey,
+                "System Admin"
+            );
+            // Second user - Created by admin
+            blockchain.addAuthorizedKey(
+                publicKey,
+                "Test User",
+                adminKeyPair,  // Admin is the caller
+                UserRole.USER
+            );
             blockchain.addBlock("Test transaction", userKey.getPrivate(), userKey.getPublic());
             
             System.out.println("✅ Initial setup complete");
@@ -130,10 +141,30 @@ public class EnhancedRecoveryExample {
             String charlieKey = CryptoUtil.publicKeyToString(charlie.getPublic());
 
             // Setup complex blockchain
-            blockchain.addAuthorizedKey(adminPublicKey, "System Admin");
-            blockchain.addAuthorizedKey(aliceKey, "Alice");
-            blockchain.addAuthorizedKey(bobKey, "Bob");
-            blockchain.addAuthorizedKey(charlieKey, "Charlie");
+            // First user (admin) - Genesis bootstrap
+            blockchain.createBootstrapAdmin(
+                adminPublicKey,
+                "System Admin"
+            );
+            // Subsequent users - Created by admin
+            blockchain.addAuthorizedKey(
+                aliceKey,
+                "Alice",
+                adminKeyPair,  // Admin is the caller
+                UserRole.USER
+            );
+            blockchain.addAuthorizedKey(
+                bobKey,
+                "Bob",
+                adminKeyPair,  // Admin is the caller
+                UserRole.USER
+            );
+            blockchain.addAuthorizedKey(
+                charlieKey,
+                "Charlie",
+                adminKeyPair,  // Admin is the caller
+                UserRole.USER
+            );
             
             blockchain.addBlock("Alice's contract", alice.getPrivate(), alice.getPublic());
             blockchain.addBlock("Bob's payment", bob.getPrivate(), bob.getPublic());
@@ -217,15 +248,25 @@ public class EnhancedRecoveryExample {
             // Setup admin
             KeyPair adminKeyPair = CryptoUtil.generateKeyPair();
             String adminPublicKey = CryptoUtil.publicKeyToString(adminKeyPair.getPublic());
-            blockchain.addAuthorizedKey(adminPublicKey, "System Admin");
+            // First user (admin) - Genesis bootstrap
+            blockchain.createBootstrapAdmin(
+                adminPublicKey,
+                "System Admin"
+            );
 
             // Create multiple users and transactions
             for (int i = 1; i <= 5; i++) {
                 KeyPair userKey = CryptoUtil.generateKeyPair();
                 String publicKey = CryptoUtil.publicKeyToString(userKey.getPublic());
                 String userName = "ProductionUser" + i;
-                
-                blockchain.addAuthorizedKey(publicKey, userName);
+
+                // Subsequent users - Created by admin
+                blockchain.addAuthorizedKey(
+                    publicKey,
+                    userName,
+                    adminKeyPair,  // Admin is the caller
+                    UserRole.USER
+                );
                 blockchain.addBlock("Production transaction " + i, userKey.getPrivate(), userKey.getPublic());
                 
                 // Actually delete a production key to test recovery

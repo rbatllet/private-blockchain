@@ -1,6 +1,8 @@
 package com.rbatllet.blockchain.recovery;
 
 import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.validation.ChainValidationResult;
 import org.junit.jupiter.api.AfterEach;
@@ -21,6 +23,7 @@ class ChainRecoveryManagerTest {
 
     private Blockchain blockchain;
     private ChainRecoveryManager recoveryManager;
+    private KeyPair bootstrapKeyPair;
     private KeyPair testKeyPair;
     private String testPublicKey;
     private KeyPair adminKeyPair;
@@ -32,13 +35,27 @@ class ChainRecoveryManagerTest {
         blockchain.clearAndReinitialize();
         recoveryManager = new ChainRecoveryManager(blockchain);
 
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         // Setup admin
         adminKeyPair = CryptoUtil.generateKeyPair();
         adminPublicKey = CryptoUtil.publicKeyToString(adminKeyPair.getPublic());
-        blockchain.addAuthorizedKey(adminPublicKey, "Test Admin");
+        blockchain.addAuthorizedKey(adminPublicKey, "Test Admin", bootstrapKeyPair, UserRole.ADMIN);
 
+        // Setup test user (MUST be authorized to sign blocks)
         testKeyPair = CryptoUtil.generateKeyPair();
         testPublicKey = CryptoUtil.publicKeyToString(testKeyPair.getPublic());
+        blockchain.addAuthorizedKey(testPublicKey, "Test User", adminKeyPair, UserRole.USER);
     }
 
     @AfterEach
@@ -87,7 +104,7 @@ class ChainRecoveryManagerTest {
         @DisplayName("Should reject recovery for existing keys")
         void shouldRejectRecoveryForExistingKeys() {
             // Add a key to blockchain
-            blockchain.addAuthorizedKey(testPublicKey, "Test User");
+            blockchain.addAuthorizedKey(testPublicKey, "Test User", adminKeyPair, UserRole.USER);
 
             // Try to recover it
             ChainRecoveryManager.RecoveryResult result = 
@@ -102,7 +119,7 @@ class ChainRecoveryManagerTest {
         @DisplayName("Should attempt re-authorization strategy first")
         void shouldAttemptReauthorizationStrategyFirst() {
             // Setup: Create a block with a key, then delete the key
-            blockchain.addAuthorizedKey(testPublicKey, "Test User");
+            blockchain.addAuthorizedKey(testPublicKey, "Test User", adminKeyPair, UserRole.USER);
             blockchain.addBlock("Test data", testKeyPair.getPrivate(), testKeyPair.getPublic());
             
             // Verify chain is valid
@@ -113,8 +130,9 @@ class ChainRecoveryManagerTest {
             // Delete the key to create corruption
             String reason = "Test corruption";
             String adminSignature = CryptoUtil.createAdminSignature(testPublicKey, true, reason, adminKeyPair.getPrivate());
-            blockchain.dangerouslyDeleteAuthorizedKey(testPublicKey, true, reason, adminSignature, adminPublicKey);
-            
+            boolean deleted = blockchain.dangerouslyDeleteAuthorizedKey(testPublicKey, true, reason, adminSignature, adminPublicKey);
+            assertTrue(deleted, "Key deletion should succeed with valid admin authorization");
+
             // Verify chain is now invalid
             ChainValidationResult afterCorruption = blockchain.validateChainDetailed();
             assertTrue(afterCorruption.isStructurallyIntact()); // Structure still intact
@@ -145,21 +163,26 @@ class ChainRecoveryManagerTest {
             
             String user1Key = CryptoUtil.publicKeyToString(user1.getPublic());
             String user2Key = CryptoUtil.publicKeyToString(user2.getPublic());
-            
-            blockchain.addAuthorizedKey(user1Key, "User 1");
-            blockchain.addAuthorizedKey(user2Key, "User 2");
-            
+
+            // RBAC FIX (v1.0.6): Clear and re-bootstrap with User 1 as genesis admin
+            blockchain.clearAndReinitialize();
+            blockchain.createBootstrapAdmin(user1Key, "User 1");
+            // RBAC v1.0.6: Create User 2 as SUPER_ADMIN to allow deleting User 1
+            blockchain.addAuthorizedKey(user2Key, "User 2", user1, UserRole.SUPER_ADMIN);
+
             blockchain.addBlock("User 1 block", user1.getPrivate(), user1.getPublic());
             blockchain.addBlock("User 2 block", user2.getPrivate(), user2.getPublic());
-            
+
             ChainValidationResult beforeRollback = blockchain.validateChainDetailed();
             assertTrue(beforeRollback.isFullyCompliant());
             assertTrue(beforeRollback.isStructurallyIntact());
-            
-            // Delete user 1's key
+
+            // Delete user 1's key (User 2 remains as SUPER_ADMIN)
+            // RBAC v1.0.6 FIX: Use User 2 (SUPER_ADMIN) to authorize deletion since adminKeyPair was cleared
             String user1Reason = "Test corruption";
-            String user1AdminSignature = CryptoUtil.createAdminSignature(user1Key, true, user1Reason, adminKeyPair.getPrivate());
-            blockchain.dangerouslyDeleteAuthorizedKey(user1Key, true, user1Reason, user1AdminSignature, adminPublicKey);
+            String user1AdminSignature = CryptoUtil.createAdminSignature(user1Key, true, user1Reason, user2.getPrivate());
+            boolean deleted = blockchain.dangerouslyDeleteAuthorizedKey(user1Key, true, user1Reason, user1AdminSignature, user2Key);
+            assertTrue(deleted, "User 1 deletion should succeed with User 2's authorization");
             ChainValidationResult afterCorruption = blockchain.validateChainDetailed();
             assertTrue(afterCorruption.isStructurallyIntact());
             assertFalse(afterCorruption.isFullyCompliant());
@@ -182,16 +205,24 @@ class ChainRecoveryManagerTest {
             // We'll create a scenario where only partial export can help
             
             KeyPair user1 = CryptoUtil.generateKeyPair();
+            KeyPair user2 = CryptoUtil.generateKeyPair();
             String user1Key = CryptoUtil.publicKeyToString(user1.getPublic());
-            
-            blockchain.addAuthorizedKey(user1Key, "User 1");
+            String user2Key = CryptoUtil.publicKeyToString(user2.getPublic());
+
+            // RBAC FIX (v1.0.6): Clear and re-bootstrap with User 1 as genesis admin
+            blockchain.clearAndReinitialize();
+            blockchain.createBootstrapAdmin(user1Key, "User 1");
+            // RBAC v1.0.6: Create User 2 as SUPER_ADMIN to allow deleting User 1
+            blockchain.addAuthorizedKey(user2Key, "User 2", user1, UserRole.SUPER_ADMIN);
             blockchain.addBlock("User 1 block", user1.getPrivate(), user1.getPublic());
-            
-            // Delete the key
+
+            // Delete the key (User 2 remains as SUPER_ADMIN)
+            // RBAC v1.0.6 FIX: Use User 2 (SUPER_ADMIN) to authorize deletion since adminKeyPair was cleared
             String deleteReason = "Test corruption";
-            String deleteAdminSignature = CryptoUtil.createAdminSignature(user1Key, true, deleteReason, adminKeyPair.getPrivate());
-            blockchain.dangerouslyDeleteAuthorizedKey(user1Key, true, deleteReason, deleteAdminSignature, adminPublicKey);
-            
+            String deleteAdminSignature = CryptoUtil.createAdminSignature(user1Key, true, deleteReason, user2.getPrivate());
+            boolean deleted = blockchain.dangerouslyDeleteAuthorizedKey(user1Key, true, deleteReason, deleteAdminSignature, user2Key);
+            assertTrue(deleted, "User 1 deletion should succeed with User 2's authorization");
+
             // Attempt recovery
             ChainRecoveryManager.RecoveryResult result = 
                 recoveryManager.recoverCorruptedChain(user1Key, "User 1");
@@ -210,7 +241,7 @@ class ChainRecoveryManagerTest {
         @DisplayName("Should diagnose healthy chain correctly")
         void shouldDiagnoseHealthyChainCorrectly() {
             // Add some blocks to a healthy chain
-            blockchain.addAuthorizedKey(testPublicKey, "Test User");
+            blockchain.addAuthorizedKey(testPublicKey, "Test User", adminKeyPair, UserRole.USER);
             blockchain.addBlock("Test block", testKeyPair.getPrivate(), testKeyPair.getPublic());
             
             ChainValidationResult healthyResult = blockchain.validateChainDetailed();
@@ -230,7 +261,7 @@ class ChainRecoveryManagerTest {
         @DisplayName("Should diagnose corrupted chain correctly")
         void shouldDiagnoseCorruptedChainCorrectly() {
             // Create corruption
-            blockchain.addAuthorizedKey(testPublicKey, "Test User");
+            blockchain.addAuthorizedKey(testPublicKey, "Test User", adminKeyPair, UserRole.USER);
             blockchain.addBlock("Test block", testKeyPair.getPrivate(), testKeyPair.getPublic());
             
             ChainValidationResult beforeDiagnostic = blockchain.validateChainDetailed();
@@ -240,7 +271,8 @@ class ChainRecoveryManagerTest {
             // Delete key to create corruption
             String corruptReason = "Test corruption";
             String corruptAdminSignature = CryptoUtil.createAdminSignature(testPublicKey, true, corruptReason, adminKeyPair.getPrivate());
-            blockchain.dangerouslyDeleteAuthorizedKey(testPublicKey, true, corruptReason, corruptAdminSignature, adminPublicKey);
+            boolean deleted = blockchain.dangerouslyDeleteAuthorizedKey(testPublicKey, true, corruptReason, corruptAdminSignature, adminPublicKey);
+            assertTrue(deleted, "Key deletion should succeed with valid admin authorization");
             ChainValidationResult afterDiagnostic = blockchain.validateChainDetailed();
             assertTrue(afterDiagnostic.isStructurallyIntact());
             assertFalse(afterDiagnostic.isFullyCompliant());
@@ -273,16 +305,17 @@ class ChainRecoveryManagerTest {
         @Test
         @DisplayName("Should work with default configuration")
         void shouldWorkWithDefaultConfiguration() {
-            ChainRecoveryManager customRecoveryManager = 
+            ChainRecoveryManager customRecoveryManager =
                 new ChainRecoveryManager(blockchain);
-            
+
             // Test that it works with default config
-            blockchain.addAuthorizedKey(testPublicKey, "Test User");
+            blockchain.addAuthorizedKey(testPublicKey, "Test User", adminKeyPair, UserRole.USER);
             blockchain.addBlock("Test block", testKeyPair.getPrivate(), testKeyPair.getPublic());
             String configCorruptReason = "Test corruption";
             String configCorruptAdminSignature = CryptoUtil.createAdminSignature(testPublicKey, true, configCorruptReason, adminKeyPair.getPrivate());
-            blockchain.dangerouslyDeleteAuthorizedKey(testPublicKey, true, configCorruptReason, configCorruptAdminSignature, adminPublicKey);
-            
+            boolean deleted = blockchain.dangerouslyDeleteAuthorizedKey(testPublicKey, true, configCorruptReason, configCorruptAdminSignature, adminPublicKey);
+            assertTrue(deleted, "Key deletion should succeed with valid admin authorization");
+
             ChainRecoveryManager.RecoveryResult result = 
                 customRecoveryManager.recoverCorruptedChain(testPublicKey, "Test User");
             
@@ -308,12 +341,13 @@ class ChainRecoveryManagerTest {
         @DisplayName("Should handle multiple recovery attempts")
         void shouldHandleMultipleRecoveryAttempts() {
             // Setup corruption
-            blockchain.addAuthorizedKey(testPublicKey, "Test User");
+            blockchain.addAuthorizedKey(testPublicKey, "Test User", adminKeyPair, UserRole.USER);
             blockchain.addBlock("Test block", testKeyPair.getPrivate(), testKeyPair.getPublic());
             String multiCorruptReason = "Test corruption";
             String multiCorruptAdminSignature = CryptoUtil.createAdminSignature(testPublicKey, true, multiCorruptReason, adminKeyPair.getPrivate());
-            blockchain.dangerouslyDeleteAuthorizedKey(testPublicKey, true, multiCorruptReason, multiCorruptAdminSignature, adminPublicKey);
-            
+            boolean deleted = blockchain.dangerouslyDeleteAuthorizedKey(testPublicKey, true, multiCorruptReason, multiCorruptAdminSignature, adminPublicKey);
+            assertTrue(deleted, "Key deletion should succeed with valid admin authorization");
+
             // First recovery attempt
             ChainRecoveryManager.RecoveryResult result1 = 
                 recoveryManager.recoverCorruptedChain(testPublicKey, "Test User");
@@ -330,7 +364,7 @@ class ChainRecoveryManagerTest {
         @DisplayName("Should handle recovery with no blocks")
         void shouldHandleRecoveryWithNoBlocks() {
             // Add and immediately delete a key without creating blocks
-            blockchain.addAuthorizedKey(testPublicKey, "Test User");
+            blockchain.addAuthorizedKey(testPublicKey, "Test User", adminKeyPair, UserRole.USER);
             blockchain.revokeAuthorizedKey(testPublicKey);
             
             // Try recovery (should fail because key was safely deleted)
@@ -352,29 +386,35 @@ class ChainRecoveryManagerTest {
             String user1Key = CryptoUtil.publicKeyToString(user1.getPublic());
             String user2Key = CryptoUtil.publicKeyToString(user2.getPublic());
             String user3Key = CryptoUtil.publicKeyToString(user3.getPublic());
-            
-            blockchain.addAuthorizedKey(user1Key, "User 1");
-            blockchain.addAuthorizedKey(user2Key, "User 2");
-            blockchain.addAuthorizedKey(user3Key, "User 3");
-            
+
+            // RBAC FIX (v1.0.6): Clear and re-bootstrap with User 1 as genesis admin
+            blockchain.clearAndReinitialize();
+            blockchain.createBootstrapAdmin(user1Key, "User 1");
+            // RBAC v1.0.6: Create User 2 as SUPER_ADMIN to allow deleting User 1
+            blockchain.addAuthorizedKey(user2Key, "User 2", user1, UserRole.SUPER_ADMIN);
+            blockchain.addAuthorizedKey(user3Key, "User 3", user1, UserRole.USER);
+
             blockchain.addBlock("User 1 block 1", user1.getPrivate(), user1.getPublic());
             blockchain.addBlock("User 2 block 1", user2.getPrivate(), user2.getPublic());
             blockchain.addBlock("User 3 block 1", user3.getPrivate(), user3.getPublic());
             blockchain.addBlock("User 1 block 2", user1.getPrivate(), user1.getPublic());
-            
+
             ChainValidationResult beforeMultipleCorruption = blockchain.validateChainDetailed();
             assertTrue(beforeMultipleCorruption.isFullyCompliant());
             assertTrue(beforeMultipleCorruption.isStructurallyIntact());
-            
-            // Delete multiple keys
+
+            // Delete multiple keys (User 2 remains as SUPER_ADMIN)
+            // RBAC v1.0.6 FIX: Use User 2 (SUPER_ADMIN) to authorize deletions since adminKeyPair was cleared
             String user1CorruptReason = "Test corruption 1";
-            String user1CorruptAdminSignature = CryptoUtil.createAdminSignature(user1Key, true, user1CorruptReason, adminKeyPair.getPrivate());
-            blockchain.dangerouslyDeleteAuthorizedKey(user1Key, true, user1CorruptReason, user1CorruptAdminSignature, adminPublicKey);
+            String user1CorruptAdminSignature = CryptoUtil.createAdminSignature(user1Key, true, user1CorruptReason, user2.getPrivate());
+            boolean deleted1 = blockchain.dangerouslyDeleteAuthorizedKey(user1Key, true, user1CorruptReason, user1CorruptAdminSignature, user2Key);
+            assertTrue(deleted1, "User 1 deletion should succeed with User 2's authorization");
 
             String user3CorruptReason = "Test corruption 3";
-            String user3CorruptAdminSignature = CryptoUtil.createAdminSignature(user3Key, true, user3CorruptReason, adminKeyPair.getPrivate());
-            blockchain.dangerouslyDeleteAuthorizedKey(user3Key, true, user3CorruptReason, user3CorruptAdminSignature, adminPublicKey);
-            
+            String user3CorruptAdminSignature = CryptoUtil.createAdminSignature(user3Key, true, user3CorruptReason, user2.getPrivate());
+            boolean deleted3 = blockchain.dangerouslyDeleteAuthorizedKey(user3Key, true, user3CorruptReason, user3CorruptAdminSignature, user2Key);
+            assertTrue(deleted3, "User 3 deletion should succeed with User 2's authorization");
+
             ChainValidationResult afterMultipleCorruption = blockchain.validateChainDetailed();
             assertTrue(afterMultipleCorruption.isStructurallyIntact());
             assertFalse(afterMultipleCorruption.isFullyCompliant());
@@ -402,7 +442,7 @@ class ChainRecoveryManagerTest {
             long startTime = System.currentTimeMillis();
 
             // Setup scenario
-            blockchain.addAuthorizedKey(testPublicKey, "Test User");
+            blockchain.addAuthorizedKey(testPublicKey, "Test User", adminKeyPair, UserRole.USER);
             blockchain.addBlock("Test block", testKeyPair.getPrivate(), testKeyPair.getPublic());
             String perfCorruptReason = "Test corruption";
             String perfCorruptAdminSignature = CryptoUtil.createAdminSignature(testPublicKey, true, perfCorruptReason, adminKeyPair.getPrivate());

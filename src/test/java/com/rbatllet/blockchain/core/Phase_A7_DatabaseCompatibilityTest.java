@@ -2,6 +2,8 @@ package com.rbatllet.blockchain.core;
 
 import com.rbatllet.blockchain.config.DatabaseConfig;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.JPAUtil;
 import org.junit.jupiter.api.*;
@@ -40,6 +42,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class Phase_A7_DatabaseCompatibilityTest {
 
     private Blockchain blockchain;
+    private KeyPair bootstrapKeyPair;
     private KeyPair keyPair;
     private String databaseType;
     private static final int BLOCK_COUNT = 10_000; // Test size (reduced for faster execution)
@@ -107,9 +110,21 @@ public class Phase_A7_DatabaseCompatibilityTest {
         blockchain = new Blockchain();
         blockchain.clearAndReinitialize();
 
+        // Load bootstrap admin keys (created automatically)
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         keyPair = CryptoUtil.generateKeyPair();
         String publicKeyStr = CryptoUtil.publicKeyToString(keyPair.getPublic());
-        blockchain.addAuthorizedKey(publicKeyStr, "TestUser");
+        blockchain.addAuthorizedKey(publicKeyStr, "TestUser", bootstrapKeyPair, UserRole.USER);
 
         // Generate blocks
         generateBlocks(BLOCK_COUNT);
@@ -156,9 +171,21 @@ public class Phase_A7_DatabaseCompatibilityTest {
         blockchain = new Blockchain();
         blockchain.clearAndReinitialize();
 
+        // Load bootstrap admin keys (created automatically)
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         keyPair = CryptoUtil.generateKeyPair();
         String publicKeyStr = CryptoUtil.publicKeyToString(keyPair.getPublic());
-        blockchain.addAuthorizedKey(publicKeyStr, "TestUser");
+        blockchain.addAuthorizedKey(publicKeyStr, "TestUser", bootstrapKeyPair, UserRole.USER);
 
         // Generate blocks
         generateBlocks(BLOCK_COUNT);
@@ -217,9 +244,21 @@ public class Phase_A7_DatabaseCompatibilityTest {
         blockchain = new Blockchain();
         blockchain.clearAndReinitialize();
 
+        // Load bootstrap admin keys (created automatically)
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         keyPair = CryptoUtil.generateKeyPair();
         String publicKeyStr = CryptoUtil.publicKeyToString(keyPair.getPublic());
-        blockchain.addAuthorizedKey(publicKeyStr, "TestUser");
+        blockchain.addAuthorizedKey(publicKeyStr, "TestUser", bootstrapKeyPair, UserRole.USER);
 
         // Generate blocks
         generateBlocks(BLOCK_COUNT);
@@ -263,9 +302,21 @@ public class Phase_A7_DatabaseCompatibilityTest {
         blockchain = new Blockchain();
         blockchain.clearAndReinitialize();
 
+        // Load bootstrap admin keys (created automatically)
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         keyPair = CryptoUtil.generateKeyPair();
         String publicKeyStr = CryptoUtil.publicKeyToString(keyPair.getPublic());
-        blockchain.addAuthorizedKey(publicKeyStr, "TestUser");
+        blockchain.addAuthorizedKey(publicKeyStr, "TestUser", bootstrapKeyPair, UserRole.USER);
 
         // Generate blocks with searchable content
         System.out.println("📝 Generating blocks with searchable content");
@@ -310,9 +361,21 @@ public class Phase_A7_DatabaseCompatibilityTest {
         blockchain = new Blockchain();
         blockchain.clearAndReinitialize();
 
+        // Load bootstrap admin keys (created automatically)
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         keyPair = CryptoUtil.generateKeyPair();
         String publicKeyStr = CryptoUtil.publicKeyToString(keyPair.getPublic());
-        blockchain.addAuthorizedKey(publicKeyStr, "TestUser");
+        blockchain.addAuthorizedKey(publicKeyStr, "TestUser", bootstrapKeyPair, UserRole.USER);
 
         // Generate blocks
         generateBlocks(BLOCK_COUNT);

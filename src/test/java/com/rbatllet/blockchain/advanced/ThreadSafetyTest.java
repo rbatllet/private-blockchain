@@ -34,7 +34,7 @@ public class ThreadSafetyTest {
             String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
             
             // Add authorized key
-            boolean keyAdded = blockchain.addAuthorizedKey(publicKeyString, "TestUser");
+            boolean keyAdded = blockchain.createBootstrapAdmin(publicKeyString, "TestUser");
             if (!keyAdded) {
                 System.err.println("❌ Failed to add authorized key");
                 return;
@@ -147,7 +147,7 @@ public class ThreadSafetyTest {
                     String ownerName = "ConcurrentUser-" + threadId;
                     
                     // Add key
-                    boolean added = blockchain.addAuthorizedKey(publicKeyString, ownerName);
+                    boolean added = blockchain.createBootstrapAdmin(publicKeyString, ownerName);
                     if (added) {
                         System.out.println("✅ Thread " + threadId + " added key for " + ownerName);
                         

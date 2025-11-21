@@ -11,7 +11,7 @@
 Before using UserFriendlyEncryptionAPI to create users for SearchSpecialistAPI:
 
 ```java
-// 1. Create blockchain (auto-creates genesis admin)
+// 1. Create blockchain (only genesis block is automatic)
 Blockchain blockchain = new Blockchain();
 
 // 2. Load genesis admin keys
@@ -20,9 +20,15 @@ KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
     "./keys/genesis-admin.public"
 );
 
-// 3. Create API with genesis admin credentials
+// 3. Register bootstrap admin in blockchain (REQUIRED!)
+blockchain.createBootstrapAdmin(
+    CryptoUtil.publicKeyToString(genesisKeys.getPublic()),
+    "BOOTSTRAP_ADMIN"
+);
+
+// 4. Create API with genesis admin credentials
 UserFriendlyEncryptionAPI dataAPI = new UserFriendlyEncryptionAPI(blockchain);
-dataAPI.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+dataAPI.setDefaultCredentials("BOOTSTRAP_ADMIN", genesisKeys);
 
 // 4. Create user for operations (authorized by genesis admin)
 KeyPair userKeys = dataAPI.createUser("test-user");

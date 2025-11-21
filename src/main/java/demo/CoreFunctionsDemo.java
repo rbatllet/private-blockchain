@@ -3,6 +3,7 @@ package demo;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.AuthorizedKey;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.validation.ChainValidationResult;
 
@@ -48,8 +49,16 @@ public class CoreFunctionsDemo {
             String charliePublicKey = CryptoUtil.publicKeyToString(charlie.getPublic());
             
             // Test adding authorized keys
-            boolean alice_added = blockchain.addAuthorizedKey(alicePublicKey, "Alice");
-            boolean bob_added = blockchain.addAuthorizedKey(bobPublicKey, "Bob");
+            // First user (Alice) - Bootstrap admin
+            boolean alice_added = blockchain.createBootstrapAdmin(alicePublicKey, "Alice");
+
+            // Second user (Bob) - Created by Alice
+            boolean bob_added = blockchain.addAuthorizedKey(
+                bobPublicKey,
+                "Bob",
+                alice,  // Alice is the caller
+                UserRole.USER
+            );
             
             System.out.println("   ✅ Alice's key added: " + alice_added);
             System.out.println("   ✅ Bob's key added: " + bob_added);

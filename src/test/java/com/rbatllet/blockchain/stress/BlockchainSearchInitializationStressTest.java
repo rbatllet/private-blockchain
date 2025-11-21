@@ -2,6 +2,8 @@ package com.rbatllet.blockchain.stress;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,24 +32,41 @@ public class BlockchainSearchInitializationStressTest {
     private Blockchain blockchain;
     private ExecutorService executorService;
     private KeyPair testKeyPair;
+    private KeyPair bootstrapKeyPair;
     private String testUsername = "searchTestUser";
     
     @BeforeEach
     void setUp() throws Exception {
         blockchain = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
         executorService = Executors.newCachedThreadPool();
         testKeyPair = CryptoUtil.generateKeyPair();
-        
-        // Add test user to blockchain
+
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // SECURITY (v1.0.6): Register bootstrap admin in blockchain (REQUIRED!)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
+        // SECURITY FIX (v1.0.6): Pre-authorize user before creating blocks
         String publicKeyString = CryptoUtil.publicKeyToString(testKeyPair.getPublic());
-        blockchain.addAuthorizedKey(publicKeyString, testUsername);
-        
+        blockchain.addAuthorizedKey(publicKeyString, testUsername, bootstrapKeyPair, UserRole.USER);
+
         // Create some test data for search initialization
         for (int i = 0; i < 5; i++) {
             blockchain.addEncryptedBlock(
-                "Test data for search " + i, 
-                "testPassword" + i, 
-                testKeyPair.getPrivate(), 
+                "Test data for search " + i,
+                "testPassword" + i,
+                testKeyPair.getPrivate(),
                 testKeyPair.getPublic()
             );
         }

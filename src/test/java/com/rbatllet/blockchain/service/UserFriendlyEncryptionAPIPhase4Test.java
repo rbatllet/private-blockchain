@@ -2,6 +2,8 @@ package com.rbatllet.blockchain.service;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.recovery.ChainRecoveryManager;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,24 +28,40 @@ public class UserFriendlyEncryptionAPIPhase4Test {
     private UserFriendlyEncryptionAPI api;
     private Blockchain realBlockchain;
     private KeyPair testKeyPair;
+    private KeyPair bootstrapKeyPair;
     private String testUsername = "testuser";
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        
+
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
         // Generate test key pair
         testKeyPair = CryptoUtil.generateKeyPair();
-        
+
         // Initialize API with real blockchain for better test stability
         realBlockchain = new Blockchain();
-        
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        realBlockchain.clearAndReinitialize();
+
+        // Register bootstrap admin first (RBAC v1.0.6)
+        realBlockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         // SECURITY FIX (v1.0.6): Pre-authorize user before creating API
         String publicKeyString = CryptoUtil.publicKeyToString(testKeyPair.getPublic());
-        realBlockchain.addAuthorizedKey(publicKeyString, testUsername);
-        
+        realBlockchain.addAuthorizedKey(publicKeyString, testUsername, bootstrapKeyPair, UserRole.USER);
+
         api = new UserFriendlyEncryptionAPI(realBlockchain, testUsername, testKeyPair);
-        
+
         // Add some test blocks to work with
         setupTestBlockchain();
     }

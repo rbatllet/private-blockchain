@@ -1,6 +1,7 @@
 package com.rbatllet.blockchain.core;
 
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.validation.ChainValidationResult;
 import org.junit.jupiter.api.AfterEach;
@@ -33,7 +34,7 @@ class BlockchainTest {
         // Setup admin
         adminKeyPair = CryptoUtil.generateKeyPair();
         adminPublicKey = CryptoUtil.publicKeyToString(adminKeyPair.getPublic());
-        blockchain.addAuthorizedKey(adminPublicKey, "Test Admin");
+        blockchain.createBootstrapAdmin(adminPublicKey, "Test Admin");
 
         testKeyPair = CryptoUtil.generateKeyPair();
         testPublicKey = CryptoUtil.publicKeyToString(testKeyPair.getPublic());
@@ -63,8 +64,8 @@ class BlockchainTest {
         @Test
         @DisplayName("Should clear and reinitialize properly")
         void shouldClearAndReinitializeProperly() {
-            // Add some data
-            blockchain.addAuthorizedKey(testPublicKey, "Test User");
+            // Add some data (admin creates test user)
+            blockchain.addAuthorizedKey(testPublicKey, "Test User", adminKeyPair, UserRole.USER);
             blockchain.addBlock("Test data", testKeyPair.getPrivate(), testKeyPair.getPublic());
             
             assertTrue(blockchain.getBlockCount() > 1);
@@ -87,8 +88,8 @@ class BlockchainTest {
         @Test
         @DisplayName("Should add authorized key successfully")
         void shouldAddAuthorizedKeySuccessfully() {
-            boolean result = blockchain.addAuthorizedKey(testPublicKey, "Test User");
-            
+            boolean result = blockchain.addAuthorizedKey(testPublicKey, "Test User", adminKeyPair, UserRole.USER);
+
             assertTrue(result);
             
             // Check if key exists in the list
@@ -108,14 +109,14 @@ class BlockchainTest {
         @Test
         @DisplayName("Should reject duplicate keys")
         void shouldRejectDuplicateKeys() {
-            assertTrue(blockchain.addAuthorizedKey(testPublicKey, "Test User"));
-            assertFalse(blockchain.addAuthorizedKey(testPublicKey, "Another User"));
+            assertTrue(blockchain.addAuthorizedKey(testPublicKey, "Test User", adminKeyPair, UserRole.USER));
+            assertFalse(blockchain.addAuthorizedKey(testPublicKey, "Another User", adminKeyPair, UserRole.USER));
         }
 
         @Test
         @DisplayName("Should revoke authorized key successfully")
         void shouldRevokeAuthorizedKeySuccessfully() {
-            blockchain.addAuthorizedKey(testPublicKey, "Test User");
+            blockchain.addAuthorizedKey(testPublicKey, "Test User", adminKeyPair, UserRole.USER);
             
             // Check key exists
             boolean keyFound = blockchain.getAuthorizedKeys().stream()
@@ -135,7 +136,10 @@ class BlockchainTest {
         @Test
         @DisplayName("Should handle revoke of non-existent key")
         void shouldHandleRevokeOfNonExistentKey() {
-            assertFalse(blockchain.revokeAuthorizedKey(testPublicKey));
+            // Revoking non-existent key should throw IllegalArgumentException
+            assertThrows(IllegalArgumentException.class, () -> {
+                blockchain.revokeAuthorizedKey(testPublicKey);
+            }, "Should throw IllegalArgumentException when revoking non-existent key");
         }
 
         @Test
@@ -146,7 +150,7 @@ class BlockchainTest {
             assertFalse(impact1.keyExists());
             
             // Key that exists but has no blocks
-            blockchain.addAuthorizedKey(testPublicKey, "Test User");
+            blockchain.addAuthorizedKey(testPublicKey, "Test User", adminKeyPair, UserRole.USER);
             var impact2 = blockchain.canDeleteAuthorizedKey(testPublicKey);
             assertTrue(impact2.keyExists());
             assertTrue(impact2.canSafelyDelete());
@@ -168,7 +172,7 @@ class BlockchainTest {
         @Test
         @DisplayName("Should add block successfully")
         void shouldAddBlockSuccessfully() {
-            blockchain.addAuthorizedKey(testPublicKey, "Test User");
+            blockchain.addAuthorizedKey(testPublicKey, "Test User", adminKeyPair, UserRole.USER);
             
             boolean result = blockchain.addBlock("Test data", testKeyPair.getPrivate(), testKeyPair.getPublic());
             
@@ -192,7 +196,7 @@ class BlockchainTest {
         @Test
         @DisplayName("Should validate single block correctly")
         void shouldValidateSingleBlockCorrectly() {
-            blockchain.addAuthorizedKey(testPublicKey, "Test User");
+            blockchain.addAuthorizedKey(testPublicKey, "Test User", adminKeyPair, UserRole.USER);
             blockchain.addBlock("Test data", testKeyPair.getPrivate(), testKeyPair.getPublic());
 
             assertTrue(blockchain.getBlockCount() >= 2);
@@ -209,7 +213,7 @@ class BlockchainTest {
         @Test
         @DisplayName("Should handle block size limits")
         void shouldHandleBlockSizeLimits() {
-            blockchain.addAuthorizedKey(testPublicKey, "Test User");
+            blockchain.addAuthorizedKey(testPublicKey, "Test User", adminKeyPair, UserRole.USER);
             
             // Normal size should work
             String normalData = "A".repeat(1000);
@@ -228,7 +232,7 @@ class BlockchainTest {
         @Test
         @DisplayName("Should validate healthy chain")
         void shouldValidateHealthyChain() {
-            blockchain.addAuthorizedKey(testPublicKey, "Test User");
+            blockchain.addAuthorizedKey(testPublicKey, "Test User", adminKeyPair, UserRole.USER);
             blockchain.addBlock("Test data 1", testKeyPair.getPrivate(), testKeyPair.getPublic());
             blockchain.addBlock("Test data 2", testKeyPair.getPrivate(), testKeyPair.getPublic());
             
@@ -240,7 +244,7 @@ class BlockchainTest {
         @Test
         @DisplayName("Should detect corrupted chain")
         void shouldDetectCorruptedChain() {
-            blockchain.addAuthorizedKey(testPublicKey, "Test User");
+            blockchain.addAuthorizedKey(testPublicKey, "Test User", adminKeyPair, UserRole.USER);
             blockchain.addBlock("Test data", testKeyPair.getPrivate(), testKeyPair.getPublic());
             
             ChainValidationResult beforeCorruption = blockchain.validateChainDetailed();
@@ -266,7 +270,7 @@ class BlockchainTest {
         @Test
         @DisplayName("Should integrate with recovery manager")
         void shouldIntegrateWithRecoveryManager() {
-            blockchain.addAuthorizedKey(testPublicKey, "Test User");
+            blockchain.addAuthorizedKey(testPublicKey, "Test User", adminKeyPair, UserRole.USER);
             blockchain.addBlock("Test data", testKeyPair.getPrivate(), testKeyPair.getPublic());
             
             ChainValidationResult beforeCorruption = blockchain.validateChainDetailed();
@@ -296,7 +300,7 @@ class BlockchainTest {
         @Test
         @DisplayName("Should validate chain with recovery")
         void shouldValidateChainWithRecovery() {
-            blockchain.addAuthorizedKey(testPublicKey, "Test User");
+            blockchain.addAuthorizedKey(testPublicKey, "Test User", adminKeyPair, UserRole.USER);
             blockchain.addBlock("Test data", testKeyPair.getPrivate(), testKeyPair.getPublic());
             
             // Healthy chain should validate normally
@@ -318,7 +322,7 @@ class BlockchainTest {
         @DisplayName("Should initialize advanced search with multiple passwords")
         void shouldInitializeAdvancedSearchWithMultiplePasswords() {
             // Setup test data
-            blockchain.addAuthorizedKey(testPublicKey, "Test User");
+            blockchain.addAuthorizedKey(testPublicKey, "Test User", adminKeyPair, UserRole.USER);
 
             // Store some encrypted data first
             String medicalPassword = "MedicalDept2024!SecureKey_abcd1234";
@@ -347,7 +351,7 @@ class BlockchainTest {
         @Test
         @DisplayName("Should handle empty password array gracefully")
         void shouldHandleEmptyPasswordArrayGracefully() {
-            blockchain.addAuthorizedKey(testPublicKey, "Test User");
+            blockchain.addAuthorizedKey(testPublicKey, "Test User", adminKeyPair, UserRole.USER);
             blockchain.addBlock("Test data", testKeyPair.getPrivate(), testKeyPair.getPublic());
 
             // Empty password array should not throw
@@ -364,7 +368,7 @@ class BlockchainTest {
         @Test
         @DisplayName("Should handle null password array gracefully")
         void shouldHandleNullPasswordArrayGracefully() {
-            blockchain.addAuthorizedKey(testPublicKey, "Test User");
+            blockchain.addAuthorizedKey(testPublicKey, "Test User", adminKeyPair, UserRole.USER);
             blockchain.addBlock("Test data", testKeyPair.getPrivate(), testKeyPair.getPublic());
 
             // Null password array should not throw
@@ -399,7 +403,7 @@ class BlockchainTest {
         @Test
         @DisplayName("Should handle passwords with null elements")
         void shouldHandlePasswordsWithNullElements() {
-            blockchain.addAuthorizedKey(testPublicKey, "Test User");
+            blockchain.addAuthorizedKey(testPublicKey, "Test User", adminKeyPair, UserRole.USER);
             blockchain.addBlock("Test data", testKeyPair.getPrivate(), testKeyPair.getPublic());
 
             // Password array with null elements
@@ -424,7 +428,7 @@ class BlockchainTest {
         @DisplayName("Should reject null parameters with exceptions")
         void shouldRejectNullParametersWithExceptions() {
             // UPDATED: Matching BlockchainRobustnessTest strict validation standard
-            blockchain.addAuthorizedKey(testPublicKey, "Test User");
+            blockchain.addAuthorizedKey(testPublicKey, "Test User", adminKeyPair, UserRole.USER);
             
             assertThrows(IllegalArgumentException.class, () -> {
                 blockchain.addBlock(null, testKeyPair.getPrivate(), testKeyPair.getPublic());
@@ -442,16 +446,21 @@ class BlockchainTest {
         @Test
         @DisplayName("Should handle empty parameters gracefully")
         void shouldHandleEmptyParametersGracefully() {
-            assertFalse(blockchain.addAuthorizedKey("", "Test User"));
-            assertFalse(blockchain.addAuthorizedKey(testPublicKey, ""));
-            assertFalse(blockchain.revokeAuthorizedKey(""));
+            // addAuthorizedKey throws IllegalArgumentException for empty parameters
+            assertThrows(IllegalArgumentException.class, () ->
+                blockchain.addAuthorizedKey("", "Test User", adminKeyPair, UserRole.USER));
+            assertThrows(IllegalArgumentException.class, () ->
+                blockchain.addAuthorizedKey(testPublicKey, "", adminKeyPair, UserRole.USER));
+            // revokeAuthorizedKey also throws IllegalArgumentException for empty parameter
+            assertThrows(IllegalArgumentException.class, () ->
+                blockchain.revokeAuthorizedKey(""));
         }
         
         @Test
         @DisplayName("Should reject empty data")
         void shouldRejectEmptyData() {
             // Add a test user
-            blockchain.addAuthorizedKey(testPublicKey, "Test User");
+            blockchain.addAuthorizedKey(testPublicKey, "Test User", adminKeyPair, UserRole.USER);
             
             // Empty data should be rejected (no legitimate use case for empty blocks)
             // UPDATED: Matching BlockchainRobustnessTest strict validation standard

@@ -1,6 +1,8 @@
 package com.rbatllet.blockchain.core;
 
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.JPAUtil;
 import org.junit.jupiter.api.AfterEach;
@@ -22,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class DataConsistencyValidationTest {
 
     private Blockchain blockchain;
+    private KeyPair bootstrapKeyPair;
     private KeyPair testKeyPair;
     private PrivateKey testPrivateKey;
     private PublicKey testPublicKey;
@@ -36,18 +39,30 @@ public class DataConsistencyValidationTest {
     @BeforeEach
     void setUp() throws Exception {
         blockchain = new Blockchain();
-        
+
         // Ensure clean state for each test
         blockchain.clearAndReinitialize();
-        
+
+        // Load bootstrap admin keys (created automatically)
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         // Generate test key pair
         testKeyPair = CryptoUtil.generateKeyPair();
         testPrivateKey = testKeyPair.getPrivate();
         testPublicKey = testKeyPair.getPublic();
         testPublicKeyString = CryptoUtil.publicKeyToString(testPublicKey);
-        
+
         // Add authorized key to blockchain
-        blockchain.addAuthorizedKey(testPublicKeyString, "TestUser");
+        blockchain.addAuthorizedKey(testPublicKeyString, "TestUser", bootstrapKeyPair, UserRole.USER);
     }
     
     @AfterEach

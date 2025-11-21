@@ -97,17 +97,24 @@ public class ExhaustiveSearchExamples {
      */
     public static void basicOnChainSearch() throws Exception {
         System.out.println("Creating blockchain with on-chain content...");
-        
+
         // Setup
         Blockchain blockchain = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
         SearchFrameworkEngine searchEngine = new SearchFrameworkEngine();
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         PrivateKey privateKey = keyPair.getPrivate();
         PublicKey publicKey = keyPair.getPublic();
-        
+
         // Authorize key
         String publicKeyString = CryptoUtil.publicKeyToString(publicKey);
-        blockchain.addAuthorizedKey(publicKeyString, "DemoUser", null);
+        blockchain.createBootstrapAdmin(
+            publicKeyString,
+            "DemoUser"
+        );
         
         // Create blocks with searchable content
         blockchain.addBlockWithKeywords(
@@ -159,18 +166,25 @@ public class ExhaustiveSearchExamples {
      */
     public static void offChainFileSearch() throws Exception {
         System.out.println("Creating blockchain with off-chain files...");
-        
+
         // Setup
         Blockchain blockchain = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
         SearchFrameworkEngine searchEngine = new SearchFrameworkEngine();
         OffChainStorageService offChainService = new OffChainStorageService();
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         PrivateKey privateKey = keyPair.getPrivate();
         PublicKey publicKey = keyPair.getPublic();
         String publicKeyString = CryptoUtil.publicKeyToString(publicKey);
-        
+
         // Authorize key
-        blockchain.addAuthorizedKey(publicKeyString, "DemoUser", null);
+        blockchain.createBootstrapAdmin(
+            publicKeyString,
+            "DemoUser"
+        );
         
         // Create off-chain medical file
         File medicalFile = new File(tempDir, "patient_record.txt");
@@ -245,18 +259,25 @@ public class ExhaustiveSearchExamples {
      */
     public static void mixedContentSearch() throws Exception {
         System.out.println("Creating mixed content blockchain...");
-        
+
         // Setup
         Blockchain blockchain = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
         SearchFrameworkEngine searchEngine = new SearchFrameworkEngine();
         OffChainStorageService offChainService = new OffChainStorageService();
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         PrivateKey privateKey = keyPair.getPrivate();
         PublicKey publicKey = keyPair.getPublic();
         String publicKeyString = CryptoUtil.publicKeyToString(publicKey);
-        
+
         // Authorize key
-        blockchain.addAuthorizedKey(publicKeyString, "DemoUser", null);
+        blockchain.createBootstrapAdmin(
+            publicKeyString,
+            "DemoUser"
+        );
         
         // 1. Plain text on-chain block
         blockchain.addBlockWithKeywords(
@@ -364,17 +385,24 @@ public class ExhaustiveSearchExamples {
      */
     public static void securityValidationExample() throws Exception {
         System.out.println("Testing security and access control...");
-        
+
         // Setup
         Blockchain blockchain = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
         SearchFrameworkEngine searchEngine = new SearchFrameworkEngine();
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         PrivateKey privateKey = keyPair.getPrivate();
         PublicKey publicKey = keyPair.getPublic();
         String publicKeyString = CryptoUtil.publicKeyToString(publicKey);
-        
+
         // Authorize key
-        blockchain.addAuthorizedKey(publicKeyString, "DemoUser", null);
+        blockchain.createBootstrapAdmin(
+            publicKeyString,
+            "DemoUser"
+        );
         
         // Create blocks with different security levels
         blockchain.addBlockWithKeywords(
@@ -443,17 +471,24 @@ public class ExhaustiveSearchExamples {
      */
     public static void performanceExample() throws Exception {
         System.out.println("Testing performance and caching...");
-        
+
         // Setup with multiple blocks
         Blockchain blockchain = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
         SearchFrameworkEngine searchEngine = new SearchFrameworkEngine();
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         PrivateKey privateKey = keyPair.getPrivate();
         PublicKey publicKey = keyPair.getPublic();
         String publicKeyString = CryptoUtil.publicKeyToString(publicKey);
-        
+
         // Authorize key
-        blockchain.addAuthorizedKey(publicKeyString, "DemoUser", null);
+        blockchain.createBootstrapAdmin(
+            publicKeyString,
+            "DemoUser"
+        );
         
         // Create multiple blocks for performance testing
         for (int i = 0; i < 5; i++) {
@@ -518,17 +553,24 @@ public class ExhaustiveSearchExamples {
      */
     public static void threadSafetyExample() throws Exception {
         System.out.println("Testing thread safety with concurrent searches...");
-        
+
         // Setup
         Blockchain blockchain = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
         SearchFrameworkEngine searchEngine = new SearchFrameworkEngine();
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         PrivateKey privateKey = keyPair.getPrivate();
         PublicKey publicKey = keyPair.getPublic();
         String publicKeyString = CryptoUtil.publicKeyToString(publicKey);
-        
+
         // Authorize key
-        blockchain.addAuthorizedKey(publicKeyString, "DemoUser", null);
+        blockchain.createBootstrapAdmin(
+            publicKeyString,
+            "DemoUser"
+        );
         
         // Create test data
         for (int i = 0; i < 3; i++) {

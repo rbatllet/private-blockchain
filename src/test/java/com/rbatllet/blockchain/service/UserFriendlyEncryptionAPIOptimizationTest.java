@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.indexing.IndexingCoordinator;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import java.security.KeyPair;
 import java.util.*;
@@ -31,10 +33,11 @@ import org.junit.jupiter.api.Timeout;
 class UserFriendlyEncryptionAPIOptimizationTest {
 
     private static final Logger logger = LoggerFactory.getLogger(UserFriendlyEncryptionAPIOptimizationTest.class);
-    
+
     private Blockchain blockchain;
     private UserFriendlyEncryptionAPI api;
     private KeyPair testKeyPair;
+    private KeyPair bootstrapKeyPair;
     private String testUsername = "optimizationTestUser";
 
     // Test data - reduced for better performance
@@ -48,12 +51,28 @@ class UserFriendlyEncryptionAPIOptimizationTest {
         IndexingCoordinator.getInstance().enableTestMode();
 
         blockchain = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // SECURITY (v1.0.6): Register bootstrap admin in blockchain (REQUIRED!)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         testKeyPair = CryptoUtil.generateKeyPair();
-        
+
         // SECURITY FIX (v1.0.6): Pre-authorize user before creating API
         String publicKeyString = CryptoUtil.publicKeyToString(testKeyPair.getPublic());
-        blockchain.addAuthorizedKey(publicKeyString, testUsername);
-        
+        blockchain.addAuthorizedKey(publicKeyString, testUsername, bootstrapKeyPair, UserRole.USER);
+
         api = new UserFriendlyEncryptionAPI(
             blockchain,
             testUsername,

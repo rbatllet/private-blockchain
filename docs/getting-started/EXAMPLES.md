@@ -31,7 +31,7 @@ Comprehensive real-world examples and practical use cases for the Private Blockc
 All code examples now require this initialization pattern:
 
 ```java
-// 1. Create blockchain (auto-creates genesis admin)
+// 1. Create blockchain (only genesis block is automatic)
 Blockchain blockchain = new Blockchain();
 
 // 2. Load genesis admin keys
@@ -40,16 +40,45 @@ KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
     "./keys/genesis-admin.public"
 );
 
-// 3. Create API with genesis admin credentials
-UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
-api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+// 3. Register bootstrap admin in blockchain (REQUIRED!)
+blockchain.createBootstrapAdmin(
+    CryptoUtil.publicKeyToString(genesisKeys.getPublic()),
+    "BOOTSTRAP_ADMIN"
+);
 
-// 4. Create user for your application
+// 4. Create API with bootstrap admin credentials
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+api.setDefaultCredentials("BOOTSTRAP_ADMIN", genesisKeys);
+
+// 5. Create user for your application
 KeyPair appKeys = api.createUser("app-user");
 api.setDefaultCredentials("app-user", appKeys);
 ```
 
 > **💡 NOTE**: All examples below assume you have completed this initialization. See [GETTING_STARTED.md](GETTING_STARTED.md) for detailed initialization instructions.
+
+### Exception-Based Error Handling (v1.0.6+)
+
+> **🔄 BREAKING CHANGE**: Critical security and operational methods now throw **exceptions** instead of returning `false`. This fail-fast pattern ensures security violations cannot be silently ignored.
+>
+> **Affected methods**: `revokeAuthorizedKey()`, `deleteAuthorizedKey()`, `rollbackBlocks()`, `rollbackToBlock()`, `exportChain()`, `importChain()`.
+>
+> **Example:**
+> ```java
+> // Before v1.0.6:
+> boolean result = blockchain.exportChain("backup.json");
+> if (!result) { System.err.println("Export failed"); }
+>
+> // After v1.0.6:
+> try {
+>     blockchain.exportChain("backup.json");
+>     System.out.println("✅ Export successful");
+> } catch (IllegalArgumentException | SecurityException | IllegalStateException e) {
+>     System.err.println("❌ Export failed: " + e.getMessage());
+> }
+> ```
+>
+> See [Exception-Based Error Handling Guide](../security/EXCEPTION_BASED_ERROR_HANDLING_V1_0_6.md) for complete migration guide.
 
 ---
 
@@ -80,16 +109,23 @@ public class MedicalRecordsEncryptionSystem {
             "./keys/genesis-admin.private",
             "./keys/genesis-admin.public"
         );
-        UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
-        api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
 
-        // Create doctor user
-        KeyPair doctorKeys = api.createUser("dr.smith");
-        api.setDefaultCredentials("dr.smith", doctorKeys);
-        
-        // Setup hierarchical security system
+        // Register bootstrap admin in blockchain (REQUIRED!)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(genesisKeys.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
+        UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+        api.setDefaultCredentials("BOOTSTRAP_ADMIN", genesisKeys);
+
+        // Setup hierarchical security system (requires SUPER_ADMIN)
         System.out.println("🔐 Setting up medical-grade security...");
         KeyManagementResult security = api.setupHierarchicalKeys("MedicalMaster2025!");
+
+        // Create doctor user AFTER security setup
+        KeyPair doctorKeys = api.createUser("dr.smith");
+        api.setDefaultCredentials("dr.smith", doctorKeys);
         if (security.isSuccess()) {
             System.out.println("✅ HIPAA-compliant security established");
         }
@@ -217,16 +253,23 @@ public class FinancialTransactionSystem {
             "./keys/genesis-admin.private",
             "./keys/genesis-admin.public"
         );
-        UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
-        api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
 
-        // Create bank system user
-        KeyPair bankKeys = api.createUser("bank-system");
-        api.setDefaultCredentials("bank-system", bankKeys);
-        
-        // Setup financial-grade security
+        // Register bootstrap admin in blockchain (REQUIRED!)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(genesisKeys.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
+        UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+        api.setDefaultCredentials("BOOTSTRAP_ADMIN", genesisKeys);
+
+        // Setup financial-grade security (requires SUPER_ADMIN)
         System.out.println("🏦 Initializing financial security system...");
         KeyManagementResult security = api.setupHierarchicalKeys("FinancialSecure2025#");
+
+        // Create bank system user AFTER security setup
+        KeyPair bankKeys = api.createUser("bank-system");
+        api.setDefaultCredentials("bank-system", bankKeys);
         String transactionPassword = api.generateValidatedPassword(20, true);
         
         // Store high-value transactions with visibility control
@@ -342,20 +385,47 @@ public class DocumentVerificationSystem {
     public static void main(String[] args) {
         try {
             Blockchain blockchain = new Blockchain();
-            
+
+            // Load bootstrap admin keys (RBAC v1.0.6+)
+            KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
+                "./keys/genesis-admin.private",
+                "./keys/genesis-admin.public"
+            );
+
+            // Register bootstrap admin in blockchain (REQUIRED!)
+            blockchain.createBootstrapAdmin(
+                CryptoUtil.publicKeyToString(bootstrapKeys.getPublic()),
+                "BOOTSTRAP_ADMIN"
+            );
+
             // Setup document verification authorities
             KeyPair notary = CryptoUtil.generateKeyPair();
             KeyPair university = CryptoUtil.generateKeyPair();
             KeyPair government = CryptoUtil.generateKeyPair();
-            
+
             String notaryKey = CryptoUtil.publicKeyToString(notary.getPublic());
             String universityKey = CryptoUtil.publicKeyToString(university.getPublic());
             String governmentKey = CryptoUtil.publicKeyToString(government.getPublic());
-            
-            blockchain.addAuthorizedKey(notaryKey, "Public Notary Office");
-            blockchain.addAuthorizedKey(universityKey, "University of Barcelona");
-            blockchain.addAuthorizedKey(governmentKey, "Government Registry");
-            
+
+            blockchain.addAuthorizedKey(
+                notaryKey,
+                "Public Notary Office",
+                bootstrapKeys,      // Caller: bootstrap admin
+                UserRole.USER
+            );
+            blockchain.addAuthorizedKey(
+                universityKey,
+                "University of Barcelona",
+                bootstrapKeys,
+                UserRole.USER
+            );
+            blockchain.addAuthorizedKey(
+                governmentKey,
+                "Government Registry",
+                bootstrapKeys,
+                UserRole.USER
+            );
+
             // Record document verifications
             blockchain.addBlock("Document: Birth Certificate #BC-2025-001 | Status: VERIFIED | Hash: sha3-256:a1b2c3...", 
                               government.getPrivate(), government.getPublic());
@@ -417,18 +487,50 @@ public class SupplyChainTracker {
     public static void main(String[] args) {
         try {
             Blockchain blockchain = new Blockchain();
-            
+
+            // Load bootstrap admin keys (RBAC v1.0.6+)
+            KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
+                "./keys/genesis-admin.private",
+                "./keys/genesis-admin.public"
+            );
+
+            // Register bootstrap admin in blockchain (REQUIRED!)
+            blockchain.createBootstrapAdmin(
+                CryptoUtil.publicKeyToString(bootstrapKeys.getPublic()),
+                "BOOTSTRAP_ADMIN"
+            );
+
             // Setup supply chain participants
             KeyPair manufacturer = CryptoUtil.generateKeyPair();
             KeyPair distributor = CryptoUtil.generateKeyPair();
             KeyPair retailer = CryptoUtil.generateKeyPair();
             KeyPair qualityControl = CryptoUtil.generateKeyPair();
-            
-            blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(manufacturer.getPublic()), "Barcelona Electronics Mfg");
-            blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(distributor.getPublic()), "Iberian Distribution Ltd");
-            blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(retailer.getPublic()), "TechStore Barcelona");
-            blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(qualityControl.getPublic()), "EU Quality Assurance");
-            
+
+            blockchain.addAuthorizedKey(
+                CryptoUtil.publicKeyToString(manufacturer.getPublic()),
+                "Barcelona Electronics Mfg",
+                bootstrapKeys,
+                UserRole.USER
+            );
+            blockchain.addAuthorizedKey(
+                CryptoUtil.publicKeyToString(distributor.getPublic()),
+                "Iberian Distribution Ltd",
+                bootstrapKeys,
+                UserRole.USER
+            );
+            blockchain.addAuthorizedKey(
+                CryptoUtil.publicKeyToString(retailer.getPublic()),
+                "TechStore Barcelona",
+                bootstrapKeys,
+                UserRole.USER
+            );
+            blockchain.addAuthorizedKey(
+                CryptoUtil.publicKeyToString(qualityControl.getPublic()),
+                "EU Quality Assurance",
+                bootstrapKeys,
+                UserRole.USER
+            );
+
             // Track product lifecycle
             blockchain.addBlock("MANUFACTURED: Product #PS5-2025-001 | Location: Barcelona Factory | Date: 2025-06-10 | Batch: B2025-156", 
                               manufacturer.getPrivate(), manufacturer.getPublic());
@@ -505,18 +607,50 @@ public class MedicalRecordsSystem {
     public static void main(String[] args) {
         try {
             Blockchain blockchain = new Blockchain();
-            
+
+            // Load bootstrap admin keys (RBAC v1.0.6+)
+            KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
+                "./keys/genesis-admin.private",
+                "./keys/genesis-admin.public"
+            );
+
+            // Register bootstrap admin in blockchain (REQUIRED!)
+            blockchain.createBootstrapAdmin(
+                CryptoUtil.publicKeyToString(bootstrapKeys.getPublic()),
+                "BOOTSTRAP_ADMIN"
+            );
+
             // Setup medical system participants
             KeyPair hospital = CryptoUtil.generateKeyPair();
             KeyPair doctor = CryptoUtil.generateKeyPair();
             KeyPair pharmacy = CryptoUtil.generateKeyPair();
             KeyPair insurance = CryptoUtil.generateKeyPair();
-            
-            blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(hospital.getPublic()), "Hospital Clínic Barcelona");
-            blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(doctor.getPublic()), "Dr. Maria Garcia - Cardiology");
-            blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(pharmacy.getPublic()), "Farmacia Central");
-            blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(insurance.getPublic()), "Sanitas Insurance");
-            
+
+            blockchain.addAuthorizedKey(
+                CryptoUtil.publicKeyToString(hospital.getPublic()),
+                "Hospital Clínic Barcelona",
+                bootstrapKeys,
+                UserRole.USER
+            );
+            blockchain.addAuthorizedKey(
+                CryptoUtil.publicKeyToString(doctor.getPublic()),
+                "Dr. Maria Garcia - Cardiology",
+                bootstrapKeys,
+                UserRole.USER
+            );
+            blockchain.addAuthorizedKey(
+                CryptoUtil.publicKeyToString(pharmacy.getPublic()),
+                "Farmacia Central",
+                bootstrapKeys,
+                UserRole.USER
+            );
+            blockchain.addAuthorizedKey(
+                CryptoUtil.publicKeyToString(insurance.getPublic()),
+                "Sanitas Insurance",
+                bootstrapKeys,
+                UserRole.USER
+            );
+
             // Record medical events (anonymized)
             blockchain.addBlock("PATIENT_ADMISSION: ID: P-[HASH] | Department: Cardiology | Condition: Routine Checkup | Date: 2025-06-10", 
                               hospital.getPrivate(), hospital.getPublic());
@@ -577,18 +711,50 @@ public class FinancialAuditSystem {
     public static void main(String[] args) {
         try {
             Blockchain blockchain = new Blockchain();
-            
+
+            // Load bootstrap admin keys (RBAC v1.0.6+)
+            KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
+                "./keys/genesis-admin.private",
+                "./keys/genesis-admin.public"
+            );
+
+            // Register bootstrap admin in blockchain (REQUIRED!)
+            blockchain.createBootstrapAdmin(
+                CryptoUtil.publicKeyToString(bootstrapKeys.getPublic()),
+                "BOOTSTRAP_ADMIN"
+            );
+
             // Setup financial system participants
             KeyPair bank = CryptoUtil.generateKeyPair();
             KeyPair auditor = CryptoUtil.generateKeyPair();
             KeyPair compliance = CryptoUtil.generateKeyPair();
             KeyPair regulator = CryptoUtil.generateKeyPair();
-            
-            blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(bank.getPublic()), "Banco Santander España");
-            blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(auditor.getPublic()), "PwC Auditing Services");
-            blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(compliance.getPublic()), "Internal Compliance Dept");
-            blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(regulator.getPublic()), "Banco de España");
-            
+
+            blockchain.addAuthorizedKey(
+                CryptoUtil.publicKeyToString(bank.getPublic()),
+                "Banco Santander España",
+                bootstrapKeys,
+                UserRole.USER
+            );
+            blockchain.addAuthorizedKey(
+                CryptoUtil.publicKeyToString(auditor.getPublic()),
+                "PwC Auditing Services",
+                bootstrapKeys,
+                UserRole.USER
+            );
+            blockchain.addAuthorizedKey(
+                CryptoUtil.publicKeyToString(compliance.getPublic()),
+                "Internal Compliance Dept",
+                bootstrapKeys,
+                UserRole.USER
+            );
+            blockchain.addAuthorizedKey(
+                CryptoUtil.publicKeyToString(regulator.getPublic()),
+                "Banco de España",
+                bootstrapKeys,
+                UserRole.USER
+            );
+
             // Record financial transactions and audits
             blockchain.addBlock("TRANSACTION: ID: TXN-2025-001 | Type: Wire Transfer | Amount: €50,000.00 | From: ACME Corp | To: Global Services Ltd | Status: COMPLETED", 
                               bank.getPrivate(), bank.getPublic());
@@ -1009,17 +1175,23 @@ import java.security.PublicKey;
 public class KeyRotationExample {
     
     // Simple key rotation example with overlap period for security and thread-safety
-    public boolean rotateKey(Blockchain blockchain, String oldPublicKey, String ownerName) {
+    // RBAC v1.0.6+: Requires admin credentials to authorize new keys
+    public boolean rotateKey(Blockchain blockchain, String oldPublicKey, String ownerName, KeyPair adminKeyPair) {
         try {
             System.out.println("🔄 Starting key rotation for: " + ownerName);
-            
+
             // Generate new key
             KeyPair newKeyPair = CryptoUtil.generateKeyPair();
             String newPublicKey = CryptoUtil.publicKeyToString(newKeyPair.getPublic());
-            
-            // Add new key to blockchain
+
+            // Add new key to blockchain (RBAC v1.0.6+)
             String fullOwnerName = ownerName + " (Rotated Key)";
-            if (!blockchain.addAuthorizedKey(newPublicKey, fullOwnerName)) {
+            if (!blockchain.addAuthorizedKey(
+                    newPublicKey,
+                    fullOwnerName,
+                    adminKeyPair,       // Caller: requires ADMIN or SUPER_ADMIN
+                    UserRole.USER
+                )) {
                 System.err.println("❌ Failed to authorize new key");
                 return false;
             }
@@ -1169,13 +1341,13 @@ public class KeyCleanupManager {
             String adminSignature = CryptoUtil.createAdminSignature(publicKey, force, reason, adminPrivateKey);
             System.out.println("🔐 Admin signature created for authorization");
 
-            // Step 4: Perform secure admin-authorized deletion
-            boolean deleted = blockchain.dangerouslyDeleteAuthorizedKey(publicKey, force, reason, adminSignature, adminPublicKey);
-            
-            if (deleted) {
+            // Step 4: Perform secure admin-authorized deletion (v1.0.6+: throws exceptions)
+            try {
+                boolean deleted = blockchain.dangerouslyDeleteAuthorizedKey(publicKey, force, reason, adminSignature, adminPublicKey);
+
                 System.out.println("🗑️ ✅ Key permanently deleted from database");
                 System.out.println("⚠️ WARNING: This action was IRREVERSIBLE!");
-                
+
                 // Validate the chain after deletion
                 ChainValidationResult result = blockchain.validateChainDetailed();
                 if (!result.isStructurallyIntact()) {
@@ -1188,6 +1360,16 @@ public class KeyCleanupManager {
                 } else {
                     System.out.println("✅ Chain validation passed after key deletion");
                 }
+            } catch (SecurityException e) {
+                System.err.println("❌ SECURITY VIOLATION: " + e.getMessage());
+                System.err.println("   Admin authorization invalid - operation blocked");
+            } catch (IllegalStateException e) {
+                System.err.println("❌ DELETION BLOCKED: " + e.getMessage());
+                System.err.println("   Safety checks or backup creation failed");
+            } catch (IllegalArgumentException e) {
+                System.err.println("❌ INVALID KEY: " + e.getMessage());
+                System.err.println("   The specified key does not exist");
+            }
                 
                 // Log the deletion event to the blockchain itself
                 try {
@@ -1211,26 +1393,37 @@ public class KeyCleanupManager {
     }
     
     // Practical usage examples
-    public void demonstrateKeyDeletionWorkflow(Blockchain blockchain) {
+    // RBAC v1.0.6+: Requires admin credentials to authorize new keys
+    public void demonstrateKeyDeletionWorkflow(Blockchain blockchain, KeyPair adminKeyPair) {
         // Example 1: Safe deletion workflow
         System.out.println("=== EXAMPLE 1: Safe Deletion Workflow ===");
-        
+
         // Create a test key that hasn't signed any blocks
         KeyPair testKey = CryptoUtil.generateKeyPair();
         String testPublicKey = CryptoUtil.publicKeyToString(testKey.getPublic());
-        blockchain.addAuthorizedKey(testPublicKey, "Test User - No Blocks");
-        
+        blockchain.addAuthorizedKey(
+            testPublicKey,
+            "Test User - No Blocks",
+            adminKeyPair,       // Caller: requires ADMIN or SUPER_ADMIN
+            UserRole.USER
+        );
+
         // Safe deletion - should succeed
         boolean safeResult = safeDeleteKey(blockchain, testPublicKey, "Cleanup test keys");
         System.out.println("Safe deletion result: " + (safeResult ? "SUCCESS ✅" : "FAILED ❌"));
-        
-        // Example 2: Blocked deletion workflow  
+
+        // Example 2: Blocked deletion workflow
         System.out.println("\n=== EXAMPLE 2: Blocked Deletion Workflow ===");
-        
+
         // Create a key and use it to sign blocks
         KeyPair activeKey = CryptoUtil.generateKeyPair();
         String activePublicKey = CryptoUtil.publicKeyToString(activeKey.getPublic());
-        blockchain.addAuthorizedKey(activePublicKey, "Active User - Has Blocks");
+        blockchain.addAuthorizedKey(
+            activePublicKey,
+            "Active User - Has Blocks",
+            adminKeyPair,
+            UserRole.USER
+        );
         blockchain.addBlock("Important transaction", activeKey.getPrivate(), activeKey.getPublic());
         
         // Attempt safe deletion - should be blocked because key has signed blocks
@@ -1661,11 +1854,28 @@ public class JPAUtil {
 ```java
 public class BlockchainCLI {
     private Blockchain blockchain;
-    
+    private KeyPair adminKeyPair;  // RBAC v1.0.6+
+
     public BlockchainCLI() {
         this.blockchain = new Blockchain();
+        // Load bootstrap admin keys (RBAC v1.0.6+)
+        try {
+            this.adminKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+                "./keys/genesis-admin.private",
+                "./keys/genesis-admin.public"
+            );
+
+            // Register bootstrap admin in blockchain (REQUIRED!)
+            blockchain.createBootstrapAdmin(
+                CryptoUtil.publicKeyToString(this.adminKeyPair.getPublic()),
+                "BOOTSTRAP_ADMIN"
+            );
+        } catch (Exception e) {
+            System.err.println("Failed to load admin keys: " + e.getMessage());
+            throw new RuntimeException("Cannot initialize CLI without admin keys", e);
+        }
     }
-    
+
     public void processCommand(String[] args) {
         if (args.length == 0) {
             printUsage();
@@ -1719,7 +1929,13 @@ public class BlockchainCLI {
     
     private void handleAddKey(String publicKey, String ownerName) {
         try {
-            if (blockchain.addAuthorizedKey(publicKey, ownerName)) {
+            // RBAC v1.0.6+: Requires admin credentials
+            if (blockchain.addAuthorizedKey(
+                    publicKey,
+                    ownerName,
+                    adminKeyPair,       // Caller: bootstrap admin
+                    UserRole.USER
+                )) {
                 System.out.println("✅ Key authorized for: " + ownerName);
             } else {
                 System.err.println("❌ Failed to authorize key");
@@ -2012,12 +2228,29 @@ public class ConcurrentPerformanceTest {
     
     public static void testHighConcurrency() {
         Blockchain blockchain = new Blockchain();
-        
+
+        // Load bootstrap admin keys (RBAC v1.0.6+)
+        KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (REQUIRED!)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeys.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         // Setup test keys
         KeyPair testKeys = CryptoUtil.generateKeyPair();
         String publicKeyString = CryptoUtil.publicKeyToString(testKeys.getPublic());
-        blockchain.addAuthorizedKey(publicKeyString, "Performance Test User");
-        
+        blockchain.addAuthorizedKey(
+            publicKeyString,
+            "Performance Test User",
+            bootstrapKeys,      // Caller: bootstrap admin
+            UserRole.USER
+        );
+
         // Test parameters
         int numberOfThreads = 20;
         int blocksPerThread = 10;

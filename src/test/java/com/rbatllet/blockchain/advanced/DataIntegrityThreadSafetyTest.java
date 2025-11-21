@@ -2,6 +2,7 @@ package com.rbatllet.blockchain.advanced;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -138,7 +139,7 @@ public class DataIntegrityThreadSafetyTest {
     void testTimestampConsistency() throws InterruptedException {
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
-        blockchain.addAuthorizedKey(publicKeyString, "TimestampUser");
+        blockchain.createBootstrapAdmin(publicKeyString, "TimestampUser");
 
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch endLatch = new CountDownLatch(THREAD_COUNT);
@@ -234,7 +235,7 @@ public class DataIntegrityThreadSafetyTest {
     void testBlockNumberSequenceIntegrity() throws InterruptedException {
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
-        blockchain.addAuthorizedKey(publicKeyString, "SequenceUser");
+        blockchain.createBootstrapAdmin(publicKeyString, "SequenceUser");
 
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch endLatch = new CountDownLatch(THREAD_COUNT);
@@ -329,14 +330,22 @@ public class DataIntegrityThreadSafetyTest {
     
     private List<KeyPair> setupMultipleKeys(int count) {
         List<KeyPair> keyPairs = new ArrayList<>();
-        
+
+        // RBAC FIX (v1.0.6): First user is bootstrap admin, rest are created by admin
         for (int i = 0; i < count; i++) {
             KeyPair keyPair = CryptoUtil.generateKeyPair();
             String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
-            blockchain.addAuthorizedKey(publicKeyString, "IntegrityUser-" + i);
+
+            if (i == 0) {
+                // First user is bootstrap admin
+                blockchain.createBootstrapAdmin(publicKeyString, "IntegrityUser-" + i);
+            } else {
+                // Subsequent users are created by the first admin
+                blockchain.addAuthorizedKey(publicKeyString, "IntegrityUser-" + i, keyPairs.get(0), UserRole.USER);
+            }
             keyPairs.add(keyPair);
         }
-        
+
         return keyPairs;
     }
     

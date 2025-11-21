@@ -111,7 +111,7 @@ public class BlockEncryptionIntegrationTest {
         try {
             keyPair = CryptoUtil.generateKeyPair();
             String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
-            blockchain.addAuthorizedKey(publicKeyString, "TestUser");
+            blockchain.createBootstrapAdmin(publicKeyString, "TestUser");
 
             api = new UserFriendlyEncryptionAPI(blockchain, "TestUser", keyPair);
             testPassword = "SecureTestPassword123!@#";

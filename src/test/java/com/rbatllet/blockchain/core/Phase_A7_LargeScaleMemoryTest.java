@@ -57,7 +57,7 @@ public class Phase_A7_LargeScaleMemoryTest {
 
         // Authorize key BEFORE adding blocks
         String publicKeyStr = CryptoUtil.publicKeyToString(keyPair.getPublic());
-        blockchain.addAuthorizedKey(publicKeyStr, "TestUser");
+        blockchain.createBootstrapAdmin(publicKeyStr, "TestUser");
 
         System.out.println("✅ Setup complete: H2 database ready for testing");
     }

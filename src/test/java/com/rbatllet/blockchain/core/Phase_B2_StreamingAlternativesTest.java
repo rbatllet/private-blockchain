@@ -1,6 +1,8 @@
 package com.rbatllet.blockchain.core;
 
 import com.rbatllet.blockchain.config.DatabaseConfig;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.JPAUtil;
 import org.junit.jupiter.api.*;
@@ -33,6 +35,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class Phase_B2_StreamingAlternativesTest {
 
     private static Blockchain blockchain;
+    private static KeyPair bootstrapKeyPair;
     private static KeyPair keyPair;
     private static String publicKeyString;
 
@@ -46,6 +49,13 @@ public class Phase_B2_StreamingAlternativesTest {
         JPAUtil.initialize(config);
 
         blockchain = new Blockchain();
+
+        // Load bootstrap admin keys (created automatically)
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
         keyPair = CryptoUtil.generateKeyPair();
         publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
 
@@ -62,7 +72,12 @@ public class Phase_B2_StreamingAlternativesTest {
     @BeforeEach
     void clearBlockchain() {
         blockchain.clearAndReinitialize();
-        blockchain.addAuthorizedKey(publicKeyString, "TestUser");
+        // Register bootstrap admin in blockchain (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+        blockchain.addAuthorizedKey(publicKeyString, "TestUser", bootstrapKeyPair, UserRole.USER);
     }
 
     @AfterEach

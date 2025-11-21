@@ -1,5 +1,7 @@
 package com.rbatllet.blockchain.core;
 
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.JPAUtil;
 import com.rbatllet.blockchain.validation.BlockValidationResult;
@@ -28,6 +30,7 @@ public class StreamingValidationTest {
     private static final Logger logger = LoggerFactory.getLogger(StreamingValidationTest.class);
 
     private Blockchain blockchain;
+    private KeyPair bootstrapKeyPair;
     private KeyPair keyPair1;
     private PrivateKey privateKey1;
     private PublicKey publicKey1;
@@ -45,13 +48,25 @@ public class StreamingValidationTest {
         // Clean any existing data from previous tests
         blockchain.clearAndReinitialize();
 
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         // Generate test keys
         keyPair1 = CryptoUtil.generateKeyPair();
         privateKey1 = keyPair1.getPrivate();
         publicKey1 = keyPair1.getPublic();
 
         String publicKeyString = CryptoUtil.publicKeyToString(publicKey1);
-        blockchain.addAuthorizedKey(publicKeyString, "TestUser1");
+        blockchain.addAuthorizedKey(publicKeyString, "TestUser1", bootstrapKeyPair, UserRole.USER);
 
         logger.info("🔧 Test blockchain initialized");
     }

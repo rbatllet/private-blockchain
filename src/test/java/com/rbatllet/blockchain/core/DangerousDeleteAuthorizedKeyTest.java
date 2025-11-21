@@ -1,6 +1,8 @@
 package com.rbatllet.blockchain.core;
 
 import com.rbatllet.blockchain.entity.AuthorizedKey;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.validation.ChainValidationResult;
 import org.junit.jupiter.api.AfterEach;
@@ -15,19 +17,32 @@ import static org.junit.jupiter.api.Assertions.*;
 class DangerousDeleteAuthorizedKeyTest {
 
     private Blockchain blockchain;
+    private KeyPair bootstrapKeyPair;
     private KeyPair adminKeyPair;
     private String adminPublicKey;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         blockchain = new Blockchain();
         // Clean up any existing data properly
         blockchain.clearAndReinitialize();
 
+        // Load bootstrap admin keys (created automatically)
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         // Create admin key pair for secure operations
         adminKeyPair = CryptoUtil.generateKeyPair();
         adminPublicKey = CryptoUtil.publicKeyToString(adminKeyPair.getPublic());
-        blockchain.addAuthorizedKey(adminPublicKey, "Administrator");
+        blockchain.addAuthorizedKey(adminPublicKey, "Administrator", bootstrapKeyPair, UserRole.ADMIN);
     }
 
 
@@ -56,8 +71,8 @@ class DangerousDeleteAuthorizedKeyTest {
         // Create a key that hasn't signed any blocks
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         String publicKey = CryptoUtil.publicKeyToString(keyPair.getPublic());
-        
-        blockchain.addAuthorizedKey(publicKey, "Test User Safe");
+
+        blockchain.addAuthorizedKey(publicKey, "Test User Safe", bootstrapKeyPair, UserRole.USER);
         
         Blockchain.KeyDeletionImpact impact = blockchain.canDeleteAuthorizedKey(publicKey);
         
@@ -73,8 +88,8 @@ class DangerousDeleteAuthorizedKeyTest {
         // Create a key and use it to sign blocks
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         String publicKey = CryptoUtil.publicKeyToString(keyPair.getPublic());
-        
-        blockchain.addAuthorizedKey(publicKey, "Test User With Blocks");
+
+        blockchain.addAuthorizedKey(publicKey, "Test User With Blocks", bootstrapKeyPair, UserRole.USER);
         
         // Add some blocks signed by this key
         blockchain.addBlock("Test block 1", keyPair.getPrivate(), keyPair.getPublic());
@@ -94,8 +109,8 @@ class DangerousDeleteAuthorizedKeyTest {
         // Create a key, use it to sign blocks, then revoke it
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         String publicKey = CryptoUtil.publicKeyToString(keyPair.getPublic());
-        
-        blockchain.addAuthorizedKey(publicKey, "Test User Revoked");
+
+        blockchain.addAuthorizedKey(publicKey, "Test User Revoked", bootstrapKeyPair, UserRole.USER);
         blockchain.addBlock("Test block before revocation", keyPair.getPrivate(), keyPair.getPublic());
         blockchain.revokeAuthorizedKey(publicKey);
         
@@ -113,8 +128,8 @@ class DangerousDeleteAuthorizedKeyTest {
         // Test safe deletion of a key with no blocks
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         String publicKey = CryptoUtil.publicKeyToString(keyPair.getPublic());
-        
-        blockchain.addAuthorizedKey(publicKey, "Test User Safe Delete");
+
+        blockchain.addAuthorizedKey(publicKey, "Test User Safe Delete", bootstrapKeyPair, UserRole.USER);
         
         // Should be able to delete safely
         boolean deleted = blockchain.deleteAuthorizedKey(publicKey);
@@ -130,33 +145,39 @@ class DangerousDeleteAuthorizedKeyTest {
         // Test that deletion is blocked when key has signed blocks
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         String publicKey = CryptoUtil.publicKeyToString(keyPair.getPublic());
-        
-        blockchain.addAuthorizedKey(publicKey, "Test User Blocked Delete");
+
+        blockchain.addAuthorizedKey(publicKey, "Test User Blocked Delete", bootstrapKeyPair, UserRole.USER);
         blockchain.addBlock("Blocking block", keyPair.getPrivate(), keyPair.getPublic());
-        
-        // Should NOT be able to delete safely
-        boolean deleted = blockchain.deleteAuthorizedKey(publicKey);
-        assertFalse(deleted);
-        
-        // Verify key still exists
+
+        // Should NOT be able to delete safely - should throw IllegalStateException
+        assertThrows(IllegalStateException.class, () -> {
+            blockchain.deleteAuthorizedKey(publicKey);
+        }, "deleteAuthorizedKey should throw IllegalStateException when key has signed blocks");
+
+        // Verify key still exists (deletion was blocked by exception)
         assertTrue(blockchain.getAuthorizedKeys().stream()
             .anyMatch(key -> key.getPublicKey().equals(publicKey)));
     }
 
     @Test
     void testDangerouslyDeleteAuthorizedKey_SafeMode() {
-        // Test dangerous deletion without force on a key with blocks (should fail)
+        // Test dangerous deletion without force on a key with blocks (should throw exception)
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         String publicKey = CryptoUtil.publicKeyToString(keyPair.getPublic());
-        
-        blockchain.addAuthorizedKey(publicKey, "Test User Dangerous Safe");
+
+        blockchain.addAuthorizedKey(publicKey, "Test User Dangerous Safe", bootstrapKeyPair, UserRole.USER);
         blockchain.addBlock("Protected block", keyPair.getPrivate(), keyPair.getPublic());
-        
-        // Should fail without force (using new secure method)
+
+        // Should throw IllegalStateException without force (v1.0.6+: throws exception)
         String signature = CryptoUtil.createAdminSignature(publicKey, false, "Test deletion", adminKeyPair.getPrivate());
-        boolean deleted = blockchain.dangerouslyDeleteAuthorizedKey(publicKey, false, "Test deletion", signature, adminPublicKey);
-        assertFalse(deleted, "Should fail without force on key with blocks");
-        
+        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> {
+            blockchain.dangerouslyDeleteAuthorizedKey(publicKey, false, "Test deletion", signature, adminPublicKey);
+        }, "Should throw IllegalStateException without force on key with blocks");
+        assertTrue(exception.getMessage().contains("SAFETY BLOCK"),
+            "Exception should indicate safety block");
+        assertTrue(exception.getMessage().contains("historical blocks"),
+            "Exception should mention historical blocks");
+
         // Verify key still exists
         assertTrue(blockchain.getAuthorizedKeys().stream()
             .anyMatch(key -> key.getPublicKey().equals(publicKey)));
@@ -167,8 +188,8 @@ class DangerousDeleteAuthorizedKeyTest {
         // Test dangerous deletion with force on a key with blocks (should succeed)
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         String publicKey = CryptoUtil.publicKeyToString(keyPair.getPublic());
-        
-        blockchain.addAuthorizedKey(publicKey, "Test User Dangerous Force");
+
+        blockchain.addAuthorizedKey(publicKey, "Test User Dangerous Force", bootstrapKeyPair, UserRole.USER);
         blockchain.addBlock("Block to be orphaned", keyPair.getPrivate(), keyPair.getPublic());
         
         // Verify blockchain is valid before deletion
@@ -194,12 +215,17 @@ class DangerousDeleteAuthorizedKeyTest {
 
     @Test
     void testDangerouslyDeleteAuthorizedKey_NonExistentKey() {
-        // Test deletion of non-existent key (using new secure method)
+        // Test deletion of non-existent key (v1.0.6+: throws IllegalArgumentException)
         String nonExistentKey = "non-existent-key-456";
         String signature = CryptoUtil.createAdminSignature(nonExistentKey, true, "Test non-existent", adminKeyPair.getPrivate());
 
-        boolean deleted = blockchain.dangerouslyDeleteAuthorizedKey(nonExistentKey, true, "Test non-existent", signature, adminPublicKey);
-        assertFalse(deleted, "Should fail on non-existent key");
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.dangerouslyDeleteAuthorizedKey(nonExistentKey, true, "Test non-existent", signature, adminPublicKey);
+        }, "Should throw IllegalArgumentException on non-existent key");
+        assertTrue(exception.getMessage().contains("Key deletion failed"),
+            "Exception should indicate key deletion failed");
+        assertTrue(exception.getMessage().contains("not found"),
+            "Exception should mention key not found");
     }
 
     @Test
@@ -207,8 +233,8 @@ class DangerousDeleteAuthorizedKeyTest {
         // Test dangerous deletion of a safe key (should succeed)
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         String publicKey = CryptoUtil.publicKeyToString(keyPair.getPublic());
-        
-        blockchain.addAuthorizedKey(publicKey, "Test User No Blocks");
+
+        blockchain.addAuthorizedKey(publicKey, "Test User No Blocks", bootstrapKeyPair, UserRole.USER);
         
         // Should succeed even without force since no blocks are affected (using new secure method)
         String signature = CryptoUtil.createAdminSignature(publicKey, false, "Test safe dangerous deletion", adminKeyPair.getPrivate());
@@ -235,11 +261,11 @@ class DangerousDeleteAuthorizedKeyTest {
         String publicKey1 = CryptoUtil.publicKeyToString(keyPair1.getPublic());
         String publicKey2 = CryptoUtil.publicKeyToString(keyPair2.getPublic());
         String publicKey3 = CryptoUtil.publicKeyToString(keyPair3.getPublic());
-        
+
         // Add all keys
-        blockchain.addAuthorizedKey(publicKey1, "User 1 - Has Blocks");
-        blockchain.addAuthorizedKey(publicKey2, "User 2 - No Blocks");
-        blockchain.addAuthorizedKey(publicKey3, "User 3 - Has Blocks");
+        blockchain.addAuthorizedKey(publicKey1, "User 1 - Has Blocks", bootstrapKeyPair, UserRole.USER);
+        blockchain.addAuthorizedKey(publicKey2, "User 2 - No Blocks", bootstrapKeyPair, UserRole.USER);
+        blockchain.addAuthorizedKey(publicKey3, "User 3 - Has Blocks", bootstrapKeyPair, UserRole.USER);
         
         // Add blocks for key 1 and 3
         blockchain.addBlock("Block by user 1", keyPair1.getPrivate(), keyPair1.getPublic());
@@ -272,8 +298,10 @@ class DangerousDeleteAuthorizedKeyTest {
         assertTrue(afterSafeDeletion.isFullyCompliant()); // Should still be valid
         assertTrue(afterSafeDeletion.isStructurallyIntact());
         
-        // Try to delete key with blocks (should fail without force)
-        assertFalse(blockchain.deleteAuthorizedKey(publicKey1));
+        // Try to delete key with blocks (should throw IllegalStateException without force)
+        assertThrows(IllegalStateException.class, () -> {
+            blockchain.deleteAuthorizedKey(publicKey1);
+        }, "deleteAuthorizedKey should throw IllegalStateException when key has signed blocks");
         ChainValidationResult afterFailedDeletion = blockchain.validateChainDetailed();
         assertTrue(afterFailedDeletion.isFullyCompliant()); // Should still be valid
         assertTrue(afterFailedDeletion.isStructurallyIntact());
@@ -286,10 +314,11 @@ class DangerousDeleteAuthorizedKeyTest {
         assertFalse(afterForceDeletion.isFullyCompliant()); // But not fully compliant
         assertTrue(afterForceDeletion.getRevokedBlocks() > 0); // Should have revoked blocks
         
-        // Verify only key 3 and admin remain
+        // Verify only key 3, admin and bootstrap remain (RBAC v1.0.6: bootstrap admin always present)
         List<AuthorizedKey> remainingKeys = blockchain.getAuthorizedKeys();
-        assertEquals(2, remainingKeys.size());
-        // Should have admin and publicKey3
+        assertEquals(3, remainingKeys.size());
+        // Should have bootstrap, admin and publicKey3
+        assertTrue(remainingKeys.stream().anyMatch(key -> key.getOwnerName().equals("BOOTSTRAP_ADMIN")));
         assertTrue(remainingKeys.stream().anyMatch(key -> key.getPublicKey().equals(adminPublicKey)));
         assertTrue(remainingKeys.stream().anyMatch(key -> key.getPublicKey().equals(publicKey3)));
     }

@@ -4,6 +4,8 @@ import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.*;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.*;
 
@@ -25,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class EncryptedBlockThreadSafetyTest {
     
     private Blockchain blockchain;
+    private KeyPair bootstrapKeyPair;
     private SearchFrameworkEngine searchEngine;
     private SearchSpecialistAPI specialistAPI;
     private PrivateKey testPrivateKey;
@@ -36,19 +39,35 @@ public class EncryptedBlockThreadSafetyTest {
     void setUp() throws Exception {
         // Clear global processing map before each test to ensure clean state
         SearchFrameworkEngine.clearGlobalProcessingMapForTesting();
-        
+
         blockchain = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // SECURITY (v1.0.6): Register bootstrap admin in blockchain (REQUIRED!)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         config = EncryptionConfig.createBalancedConfig();
         searchEngine = new SearchFrameworkEngine(config);
         testPassword = "ThreadSafetyTest2024!";
-        
+
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         testPrivateKey = keyPair.getPrivate();
         testPublicKey = keyPair.getPublic();
-        
+
         // Add authorized key for test operations
         String publicKeyString = java.util.Base64.getEncoder().encodeToString(testPublicKey.getEncoded());
-        blockchain.addAuthorizedKey(publicKeyString, "ThreadSafetyTestUser");
+        blockchain.addAuthorizedKey(publicKeyString, "ThreadSafetyTestUser", bootstrapKeyPair, UserRole.USER);
         
         // Initialize SearchSpecialistAPI with proper constructor
         specialistAPI = new SearchSpecialistAPI(blockchain, testPassword, testPrivateKey, config);

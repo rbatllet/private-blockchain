@@ -14,6 +14,7 @@ import com.rbatllet.blockchain.search.metadata.TermVisibilityMap;
 import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.security.PasswordUtil;
 import com.rbatllet.blockchain.security.SecureKeyStorage;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.CustomMetadataUtil;
 import com.rbatllet.blockchain.util.JPAUtil;
@@ -171,22 +172,30 @@ public class UserFriendlyEncryptionAPI {
      *
      * <p><strong>Recommended Pattern (v1.0.6+):</strong></p>
      * <pre>{@code
-     * // 1. Create blockchain (auto-creates genesis admin)
+     * // 1. Create blockchain
      * Blockchain blockchain = new Blockchain();
-     * 
+     *
      * // 2. Load genesis admin keys
      * KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
      *     "./keys/genesis-admin.private",
      *     "./keys/genesis-admin.public"
      * );
-     * 
-     * // 3. Authorize user BEFORE creating API instance
-     * blockchain.addAuthorizedKey(
-     *     CryptoUtil.publicKeyToString(userKeys.getPublic()), 
-     *     "username"
+     *
+     * // 3. Register bootstrap admin in blockchain (REQUIRED!)
+     * blockchain.createBootstrapAdmin(
+     *     CryptoUtil.publicKeyToString(genesisKeys.getPublic()),
+     *     "BOOTSTRAP_ADMIN"
      * );
-     * 
-     * // 4. Now create API instance (user is pre-authorized)
+     *
+     * // 4. Authorize user BEFORE creating API instance
+     * blockchain.addAuthorizedKey(
+     *     CryptoUtil.publicKeyToString(userKeys.getPublic()),
+     *     "username",
+     *     genesisKeys,
+     *     UserRole.USER
+     * );
+     *
+     * // 5. Now create API instance (user is pre-authorized)
      * UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(
      *     blockchain, "username", userKeys, config
      * );
@@ -257,17 +266,26 @@ public class UserFriendlyEncryptionAPI {
      *
      * <p><strong>Usage Example (v1.0.6+ secure pattern):</strong></p>
      * <pre>{@code
-     * // 1. Load genesis admin keys
+     * // 1. Create blockchain
+     * Blockchain blockchain = new Blockchain();
+     *
+     * // 2. Load genesis admin keys
      * KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
      *     "./keys/genesis-admin.private",
      *     "./keys/genesis-admin.public"
      * );
      *
-     * // 2. Create API with genesis admin
-     * UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
-     * api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+     * // 3. Register bootstrap admin in blockchain (REQUIRED!)
+     * blockchain.createBootstrapAdmin(
+     *     CryptoUtil.publicKeyToString(genesisKeys.getPublic()),
+     *     "BOOTSTRAP_ADMIN"
+     * );
      *
-     * // 3. Create user
+     * // 4. Create API with genesis admin
+     * UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+     * api.setDefaultCredentials("BOOTSTRAP_ADMIN", genesisKeys);
+     *
+     * // 5. Create user
      * KeyPair userKeys = api.createUser("user");
      * api.setDefaultCredentials("user", userKeys);
      *
@@ -1483,17 +1501,26 @@ public class UserFriendlyEncryptionAPI {
      *
      * <p><strong>Usage Examples:</strong></p>
      * <pre>{@code
-     * // 1. First, authenticate as genesis admin or authorized user
+     * // 1. Create blockchain
      * Blockchain blockchain = new Blockchain();
+     *
+     * // 2. Load genesis admin keys
      * KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
      *     "./keys/genesis-admin.private",
      *     "./keys/genesis-admin.public"
      * );
-     * 
-     * UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
-     * api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
      *
-     * // 2. Now create new user (authorized by genesis admin)
+     * // 3. Register bootstrap admin in blockchain (REQUIRED!)
+     * blockchain.createBootstrapAdmin(
+     *     CryptoUtil.publicKeyToString(genesisKeys.getPublic()),
+     *     "BOOTSTRAP_ADMIN"
+     * );
+     *
+     * // 4. Create API and set genesis admin credentials
+     * UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+     * api.setDefaultCredentials("BOOTSTRAP_ADMIN", genesisKeys);
+     *
+     * // 5. Now create new user (authorized by genesis admin)
      * KeyPair userKeys = api.createUser("alice-medical");
      *
      * // 3. Store keys securely for future use
@@ -1522,40 +1549,178 @@ public class UserFriendlyEncryptionAPI {
      * @since 1.0
      */
     public KeyPair createUser(String username) {
-        validateInputData(username, 256, "Username"); // 256 char limit for usernames
+        // RBAC v1.0.6: Delegate to createUserWithRole() to eliminate code duplication
+        return createUserWithRole(username, UserRole.USER);
+    }
 
-        // SECURITY FIX (v1.0.6): Only authorized users can create new users
-        // This prevents unauthorized user creation attacks
+    /**
+     * Create a new administrator user.
+     *
+     * <p>This method creates a new user with {@link UserRole#ADMIN} privileges, allowing them to
+     * create regular users and read-only users. Only SUPER_ADMIN users can create administrators.</p>
+     *
+     * <p><strong>🔒 Security (v1.0.6+):</strong></p>
+     * <ul>
+     *   <li>Caller must be SUPER_ADMIN</li>
+     *   <li>New admin gets ADMIN role (not SUPER_ADMIN)</li>
+     *   <li>Prevents privilege escalation - ADMIN cannot create other ADMINs</li>
+     *   <li>Audit trail: createdBy field tracks who created this admin</li>
+     * </ul>
+     *
+     * <p><strong>RBAC Permission Matrix:</strong></p>
+     * <pre>
+     * SUPER_ADMIN (100) → Can create: ADMIN, USER, READ_ONLY
+     * ADMIN (50)        → Can create: USER, READ_ONLY (NOT ADMIN)
+     * USER (10)         → Can create: Nothing
+     * READ_ONLY (1)     → Can create: Nothing
+     * </pre>
+     *
+     * <p><strong>Usage Example:</strong></p>
+     * <pre>{@code
+     * // 1. Create blockchain
+     * Blockchain blockchain = new Blockchain();
+     *
+     * // 2. Load genesis admin keys (SUPER_ADMIN)
+     * KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+     *     "./keys/genesis-admin.private",
+     *     "./keys/genesis-admin.public"
+     * );
+     *
+     * // 3. Register bootstrap admin in blockchain (REQUIRED!)
+     * blockchain.createBootstrapAdmin(
+     *     CryptoUtil.publicKeyToString(genesisKeys.getPublic()),
+     *     "BOOTSTRAP_ADMIN"
+     * );
+     *
+     * // 4. Set genesis credentials
+     * UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+     * api.setDefaultCredentials("BOOTSTRAP_ADMIN", genesisKeys);
+     *
+     * // 3. Create delegated administrator
+     * KeyPair adminKeys = api.createAdmin("alice-admin");
+     * SecureKeyStorage.savePrivateKey("alice-admin", adminKeys.getPrivate(), "adminPassword");
+     *
+     * // 4. Switch to admin user
+     * api.setDefaultCredentials("alice-admin", adminKeys);
+     *
+     * // 5. Admin can create regular users (but NOT other admins)
+     * KeyPair userKeys = api.createUser("bob");  // ✅ Works
+     * KeyPair otherAdmin = api.createAdmin("charlie-admin");  // ❌ SecurityException
+     * }</pre>
+     *
+     * @param username The unique username for the new administrator
+     * @return A newly generated {@link KeyPair} for the new admin
+     * @throws IllegalArgumentException if username is null or empty
+     * @throws SecurityException if caller is not SUPER_ADMIN
+     * @throws RuntimeException if key generation or registration fails
+     * @see #createUser(String)
+     * @see #createUserWithRole(String, UserRole)
+     * @see UserRole#ADMIN
+     * @since 1.0.6
+     */
+    public KeyPair createAdmin(String username) {
+        return createUserWithRole(username, UserRole.ADMIN);
+    }
+
+    /**
+     * Create a new user with a specific role.
+     *
+     * <p>This is the underlying implementation for role-based user creation. All role creation
+     * methods delegate to this method. It enforces RBAC validation and permission checks.</p>
+     *
+     * <p><strong>🔒 Security (v1.0.6+):</strong></p>
+     * <ul>
+     *   <li>Validates caller has permission to create target role</li>
+     *   <li>Enforces privilege escalation prevention</li>
+     *   <li>Requires authorized credentials via {@link #setDefaultCredentials}</li>
+     *   <li>Creates audit trail with createdBy field</li>
+     * </ul>
+     *
+     * <p><strong>Permission Validation:</strong></p>
+     * <pre>
+     * Caller Role  │ Can Create Roles
+     * ─────────────┼──────────────────────────────────
+     * SUPER_ADMIN  │ ADMIN, USER, READ_ONLY
+     * ADMIN        │ USER, READ_ONLY (NOT ADMIN)
+     * USER         │ Nothing (SecurityException)
+     * READ_ONLY    │ Nothing (SecurityException)
+     * </pre>
+     *
+     * @param username The unique username for the new user
+     * @param targetRole The role to assign to the new user
+     * @return A newly generated {@link KeyPair} for the new user
+     * @throws IllegalArgumentException if username is null/empty or targetRole is null
+     * @throws SecurityException if caller lacks permission to create target role
+     * @throws RuntimeException if key generation or registration fails
+     * @see #createUser(String)
+     * @see #createAdmin(String)
+     * @see UserRole#canCreateRole(UserRole)
+     * @since 1.0.6
+     */
+    private KeyPair createUserWithRole(String username, UserRole targetRole) {
+        validateInputData(username, 256, "Username");
+        if (targetRole == null) {
+            throw new IllegalArgumentException("Target role cannot be null");
+        }
+
+        // RBAC v1.0.6: Validate caller authorization and role permission
         synchronized (credentialsLock) {
             if (defaultKeyPair.get() == null || defaultUsername.get() == null) {
                 throw new SecurityException(
                     "❌ AUTHORIZATION REQUIRED: Must set authorized credentials before creating users.\n\n" +
                     "Solution:\n" +
-                    "  1. Load genesis admin keys: KeyFileLoader.loadPrivateKey(\"./keys/genesis-admin.private\")\n" +
-                    "  2. Set credentials: api.setDefaultCredentials(\"GENESIS_ADMIN\", genesisKeys)\n" +
-                    "  3. Then create new users: api.createUser(\"newuser\")"
+                    "  1. Load authorized user keys (SUPER_ADMIN or ADMIN)\n" +
+                    "  2. Set credentials: api.setDefaultCredentials(username, keyPair)\n" +
+                    "  3. Then create new users with roles"
                 );
             }
 
             String callerPublicKey = CryptoUtil.publicKeyToString(defaultKeyPair.get().getPublic());
             if (!blockchain.isKeyAuthorized(callerPublicKey)) {
                 throw new SecurityException(
-                    "❌ AUTHORIZATION REQUIRED: Only authorized users can create new users.\n" +
-                    "Current user '" + defaultUsername.get() + "' is not authorized.\n\n" +
-                    "Solution:\n" +
-                    "  1. Get authorized by an admin: blockchain.addAuthorizedKey(yourPublicKey, username)\n" +
-                    "  2. Or use genesis admin credentials to create users"
+                    "❌ AUTHORIZATION REQUIRED: Current user '" + defaultUsername.get() + "' is not authorized.\n" +
+                    "Only authorized users can create new users."
+                );
+            }
+
+            // Get caller's role and validate permission
+            UserRole callerRole = blockchain.getUserRole(callerPublicKey);
+            if (callerRole == null) {
+                throw new SecurityException(
+                    "❌ ROLE NOT FOUND: Cannot determine role for user '" + defaultUsername.get() + "'.\n" +
+                    "User may have been revoked or database is inconsistent."
+                );
+            }
+
+            if (!callerRole.canCreateRole(targetRole)) {
+                throw new SecurityException(
+                    "❌ PERMISSION DENIED: Role '" + callerRole + "' cannot create users with role '" + targetRole + "'.\n" +
+                    "Caller: " + defaultUsername.get() + "\n" +
+                    "Target user: " + username + "\n\n" +
+                    "Permission Matrix:\n" +
+                    "  SUPER_ADMIN → Can create: ADMIN, USER, READ_ONLY\n" +
+                    "  ADMIN       → Can create: USER, READ_ONLY (NOT ADMIN)\n" +
+                    "  USER        → Can create: Nothing\n" +
+                    "  READ_ONLY   → Can create: Nothing\n\n" +
+                    "See docs/security/ROLE_BASED_ACCESS_CONTROL.md for details."
                 );
             }
         }
 
         try {
             KeyPair keyPair = CryptoUtil.generateKeyPair();
-            String publicKeyString = CryptoUtil.publicKeyToString(
-                keyPair.getPublic()
+            String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
+
+            // RBAC v1.0.6: Pass caller credentials and target role
+            blockchain.addAuthorizedKey(
+                publicKeyString,
+                username,
+                defaultKeyPair.get(),  // Caller credentials
+                targetRole  // Target role
             );
-            blockchain.addAuthorizedKey(publicKeyString, username);
-            logger.info("✅ User '{}' created and authorized by '{}'", username, defaultUsername.get());
+
+            logger.info("✅ User '{}' created with role {} by '{}'",
+                username, targetRole, defaultUsername.get());
             return keyPair;
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException(
@@ -1563,15 +1728,98 @@ public class UserFriendlyEncryptionAPI {
                 e
             );
         } catch (SecurityException e) {
-            throw new SecurityException(
-                "Key generation failed due to security policy",
-                e
-            );
+            // Re-throw security exceptions as-is (contain useful error messages)
+            throw e;
         } catch (Exception e) {
             throw new RuntimeException(
                 "Failed to create user due to system error",
                 e
             );
+        }
+    }
+
+    /**
+     * Validates that the current caller has one of the specified roles.
+     *
+     * <p><strong>🔒 Security Helper Method (v1.0.6+):</strong></p>
+     * <p>This method enforces role-based access control by validating that the current
+     * authenticated user (set via {@link #setDefaultCredentials}) has at least one of the
+     * specified roles. Used to protect privileged operations like hierarchical key management.</p>
+     *
+     * <p><strong>Validation Steps:</strong></p>
+     * <ol>
+     *   <li>Verify credentials are set (defaultUsername and defaultKeyPair)</li>
+     *   <li>Verify user is authorized in blockchain</li>
+     *   <li>Retrieve user's role from blockchain</li>
+     *   <li>Verify role matches at least one allowed role</li>
+     * </ol>
+     *
+     * @param allowedRoles Variable number of roles that are permitted for this operation
+     * @return The caller's actual role (for auditing purposes)
+     * @throws SecurityException if credentials not set, user not authorized, or role not permitted
+     * @since 1.0.6
+     */
+    private UserRole validateCallerHasRole(
+        UserRole... allowedRoles
+    ) {
+        synchronized (credentialsLock) {
+            // Step 1: Verify credentials are set
+            if (defaultKeyPair.get() == null || defaultUsername.get() == null) {
+                throw new SecurityException(
+                    "❌ AUTHORIZATION REQUIRED: Must set authorized credentials before performing privileged operations.\n\n" +
+                    "Solution:\n" +
+                    "  1. Load authorized user keys\n" +
+                    "  2. Set credentials: api.setDefaultCredentials(username, keyPair)\n" +
+                    "  3. Then perform privileged operations"
+                );
+            }
+
+            // Step 2: Verify user is authorized in blockchain
+            String callerPublicKey = CryptoUtil.publicKeyToString(defaultKeyPair.get().getPublic());
+            if (!blockchain.isKeyAuthorized(callerPublicKey)) {
+                throw new SecurityException(
+                    "❌ AUTHORIZATION REQUIRED: Current user '" + defaultUsername.get() + "' is not authorized.\n" +
+                    "Only authorized users can perform privileged operations."
+                );
+            }
+
+            // Step 3: Retrieve caller's role
+            UserRole callerRole = blockchain.getUserRole(callerPublicKey);
+            if (callerRole == null) {
+                throw new SecurityException(
+                    "❌ ROLE NOT FOUND: Cannot determine role for user '" + defaultUsername.get() + "'.\n" +
+                    "User may have been revoked or database is inconsistent."
+                );
+            }
+
+            // Step 4: Verify caller has one of the allowed roles
+            boolean hasPermission = false;
+            for (UserRole allowedRole : allowedRoles) {
+                if (callerRole == allowedRole) {
+                    hasPermission = true;
+                    break;
+                }
+            }
+
+            if (!hasPermission) {
+                // Build allowed roles string for error message
+                StringBuilder allowedRolesStr = new StringBuilder();
+                for (int i = 0; i < allowedRoles.length; i++) {
+                    allowedRolesStr.append(allowedRoles[i]);
+                    if (i < allowedRoles.length - 1) {
+                        allowedRolesStr.append(", ");
+                    }
+                }
+
+                throw new SecurityException(
+                    "❌ PERMISSION DENIED: This operation requires one of the following roles: " + allowedRolesStr + "\n" +
+                    "Caller: " + defaultUsername.get() + "\n" +
+                    "Caller role: " + callerRole + "\n\n" +
+                    "See docs/security/ROLE_BASED_ACCESS_CONTROL.md for details."
+                );
+            }
+
+            return callerRole;
         }
     }
 
@@ -1634,6 +1882,28 @@ public class UserFriendlyEncryptionAPI {
             throw new IllegalArgumentException("KeyPair cannot be null");
         }
 
+        // SECURITY VALIDATION (v1.0.6): Verify username matches key owner
+        String publicKeyStr = CryptoUtil.publicKeyToString(keyPair.getPublic());
+        AuthorizedKey authorizedKey = blockchain.getAuthorizedKeyDAO()
+            .getAuthorizedKeyByPublicKey(publicKeyStr);
+
+        if (authorizedKey == null) {
+            throw new SecurityException(
+                "❌ UNAUTHORIZED: Keys not authorized in blockchain.\n" +
+                "Public key: " + publicKeyStr.substring(0, Math.min(50, publicKeyStr.length())) + "...\n" +
+                "Solution: Authorize keys before calling setDefaultCredentials()."
+            );
+        }
+
+        if (!authorizedKey.getOwnerName().equals(username)) {
+            throw new IllegalArgumentException(
+                "❌ USERNAME MISMATCH: Username '" + username + "' does not match key owner '" +
+                authorizedKey.getOwnerName() + "'.\n" +
+                "Keys belong to: " + authorizedKey.getOwnerName() + "\n" +
+                "Solution: Use correct username or correct KeyPair."
+            );
+        }
+
         // CRITICAL FIX: Username and KeyPair must be set atomically together
         // Without synchronization, concurrent threads can cause mismatches:
         // Thread A sets username="A", Thread B sets username="B" and keyPair="B", Thread A sets keyPair="A"
@@ -1645,8 +1915,8 @@ public class UserFriendlyEncryptionAPI {
 
         // SECURITY FIX (v1.0.6): Removed auto-authorization
         // Users must be pre-authorized before calling setDefaultCredentials()
-        // Authorization check happens in constructor or when using API methods
-        logger.debug("✅ Credentials set for user: {}", username);
+        logger.debug("✅ Credentials validated and set for user: {} (role: {})",
+            username, authorizedKey.getRole());
     }
 
     /**
@@ -2465,17 +2735,26 @@ public class UserFriendlyEncryptionAPI {
      *
      * <p><strong>Usage Example:</strong></p>
      * <pre>{@code
-     * // 1. Authenticate as genesis admin or authorized user
+     * // 1. Create blockchain
      * Blockchain blockchain = new Blockchain();
+     *
+     * // 2. Load genesis admin keys
      * KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
      *     "./keys/genesis-admin.private",
      *     "./keys/genesis-admin.public"
      * );
-     * 
-     * UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
-     * api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
      *
-     * // 2. Load user credentials (requires authorized caller)
+     * // 3. Register bootstrap admin in blockchain (REQUIRED!)
+     * blockchain.createBootstrapAdmin(
+     *     CryptoUtil.publicKeyToString(genesisKeys.getPublic()),
+     *     "BOOTSTRAP_ADMIN"
+     * );
+     *
+     * // 4. Create API and set genesis admin credentials
+     * UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+     * api.setDefaultCredentials("BOOTSTRAP_ADMIN", genesisKeys);
+     *
+     * // 5. Load user credentials (requires authorized caller)
      * boolean success = api.loadUserCredentials("alice", "userPassword");
      * 
      * if (success) {
@@ -2503,8 +2782,9 @@ public class UserFriendlyEncryptionAPI {
                     "❌ AUTHORIZATION REQUIRED: Must set authorized credentials before loading user credentials.\n\n" +
                     "Solution:\n" +
                     "  1. Load genesis admin keys: KeyFileLoader.loadKeyPairFromFiles(\"./keys/genesis-admin.private\", \"./keys/genesis-admin.public\")\n" +
-                    "  2. Set credentials: api.setDefaultCredentials(\"GENESIS_ADMIN\", genesisKeys)\n" +
-                    "  3. Then load user credentials: api.loadUserCredentials(username, password)"
+                    "  2. Register bootstrap admin: blockchain.createBootstrapAdmin(CryptoUtil.publicKeyToString(genesisKeys.getPublic()), \"BOOTSTRAP_ADMIN\")\n" +
+                    "  3. Set credentials: api.setDefaultCredentials(\"BOOTSTRAP_ADMIN\", genesisKeys)\n" +
+                    "  4. Then load user credentials: api.loadUserCredentials(username, password)"
                 );
             }
 
@@ -2522,7 +2802,13 @@ public class UserFriendlyEncryptionAPI {
         if (keyPair != null) {
             try {
                 String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
-                boolean registered = blockchain.addAuthorizedKey(publicKeyString, username);
+                // RBAC v1.0.6: Pass caller credentials and assign USER role
+                boolean registered = blockchain.addAuthorizedKey(
+                    publicKeyString,
+                    username,
+                    defaultKeyPair.get(),  // Caller credentials
+                    UserRole.USER  // Target role
+                );
 
                 if (registered) {
                     synchronized (credentialsLock) {
@@ -2643,17 +2929,26 @@ public class UserFriendlyEncryptionAPI {
      *
      * <p><strong>Usage Example:</strong></p>
      * <pre>{@code
-     * // 1. Authenticate as genesis admin or authorized user
+     * // 1. Create blockchain
      * Blockchain blockchain = new Blockchain();
+     *
+     * // 2. Load genesis admin keys
      * KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
      *     "./keys/genesis-admin.private",
      *     "./keys/genesis-admin.public"
      * );
-     * 
-     * UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
-     * api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
      *
-     * // 2. Import and register user (requires authorized caller)
+     * // 3. Register bootstrap admin in blockchain (REQUIRED!)
+     * blockchain.createBootstrapAdmin(
+     *     CryptoUtil.publicKeyToString(genesisKeys.getPublic()),
+     *     "BOOTSTRAP_ADMIN"
+     * );
+     *
+     * // 4. Create API and set genesis admin credentials
+     * UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+     * api.setDefaultCredentials("BOOTSTRAP_ADMIN", genesisKeys);
+     *
+     * // 5. Import and register user (requires authorized caller)
      * boolean success = api.importAndRegisterUser("alice", "/path/to/alice-keys.pem");
      * 
      * if (success) {
@@ -2677,8 +2972,9 @@ public class UserFriendlyEncryptionAPI {
                     "❌ AUTHORIZATION REQUIRED: Must set authorized credentials before importing users.\n\n" +
                     "Solution:\n" +
                     "  1. Load genesis admin keys: KeyFileLoader.loadKeyPairFromFiles(\"./keys/genesis-admin.private\", \"./keys/genesis-admin.public\")\n" +
-                    "  2. Set credentials: api.setDefaultCredentials(\"GENESIS_ADMIN\", genesisKeys)\n" +
-                    "  3. Then import user: api.importAndRegisterUser(username, keyPairPath)"
+                    "  2. Register bootstrap admin: blockchain.createBootstrapAdmin(CryptoUtil.publicKeyToString(genesisKeys.getPublic()), \"BOOTSTRAP_ADMIN\")\n" +
+                    "  3. Set credentials: api.setDefaultCredentials(\"BOOTSTRAP_ADMIN\", genesisKeys)\n" +
+                    "  4. Then import user: api.importAndRegisterUser(username, keyPairPath)"
                 );
             }
 
@@ -2699,7 +2995,13 @@ public class UserFriendlyEncryptionAPI {
             }
 
             String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
-            boolean registered = blockchain.addAuthorizedKey(publicKeyString, username);
+            // RBAC v1.0.6: Pass caller credentials and assign USER role
+            boolean registered = blockchain.addAuthorizedKey(
+                publicKeyString,
+                username,
+                defaultKeyPair.get(),  // Caller credentials
+                UserRole.USER  // Target role
+            );
 
             if (registered) {
                 logger.info("✅ User '{}' imported and authorized by '{}'", username, defaultUsername.get());
@@ -2726,17 +3028,26 @@ public class UserFriendlyEncryptionAPI {
      *
      * <p><strong>Usage Example:</strong></p>
      * <pre>{@code
-     * // 1. Authenticate as genesis admin
+     * // 1. Create blockchain
      * Blockchain blockchain = new Blockchain();
+     *
+     * // 2. Load genesis admin keys
      * KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
      *     "./keys/genesis-admin.private",
      *     "./keys/genesis-admin.public"
      * );
-     * 
-     * UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
-     * api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
      *
-     * // 2. Import and authorize user (requires authorized caller)
+     * // 3. Register bootstrap admin in blockchain (REQUIRED!)
+     * blockchain.createBootstrapAdmin(
+     *     CryptoUtil.publicKeyToString(genesisKeys.getPublic()),
+     *     "BOOTSTRAP_ADMIN"
+     * );
+     *
+     * // 4. Create API and set genesis admin credentials
+     * UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+     * api.setDefaultCredentials("BOOTSTRAP_ADMIN", genesisKeys);
+     *
+     * // 5. Import and authorize user (requires authorized caller)
      * boolean success = api.importAndSetDefaultUser("alice", "/path/to/alice-keys.pem");
      * 
      * if (success) {
@@ -2763,8 +3074,9 @@ public class UserFriendlyEncryptionAPI {
                     "❌ AUTHORIZATION REQUIRED: Must set authorized credentials before importing users.\n\n" +
                     "Solution:\n" +
                     "  1. Load genesis admin keys: KeyFileLoader.loadKeyPairFromFiles(\"./keys/genesis-admin.private\", \"./keys/genesis-admin.public\")\n" +
-                    "  2. Set credentials: api.setDefaultCredentials(\"GENESIS_ADMIN\", genesisKeys)\n" +
-                    "  3. Then import and set user: api.importAndSetDefaultUser(username, keyPairPath)"
+                    "  2. Register bootstrap admin: blockchain.createBootstrapAdmin(CryptoUtil.publicKeyToString(genesisKeys.getPublic()), \"BOOTSTRAP_ADMIN\")\n" +
+                    "  3. Set credentials: api.setDefaultCredentials(\"BOOTSTRAP_ADMIN\", genesisKeys)\n" +
+                    "  4. Then import and set user: api.importAndSetDefaultUser(username, keyPairPath)"
                 );
             }
 
@@ -2785,9 +3097,12 @@ public class UserFriendlyEncryptionAPI {
             }
 
             String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
+            // RBAC v1.0.6: Pass caller credentials and assign USER role
             boolean registered = blockchain.addAuthorizedKey(
                 publicKeyString,
-                username
+                username,
+                defaultKeyPair.get(),  // Caller credentials
+                UserRole.USER  // Target role
             );
 
             if (registered) {
@@ -4912,6 +5227,10 @@ public class UserFriendlyEncryptionAPI {
     public KeyManagementResult setupHierarchicalKeys(String masterPassword) {
         logger.info("🔑 Setting up hierarchical key management system");
 
+        // SECURITY FIX (v1.0.6): Only SUPER_ADMIN can setup hierarchical keys
+        // Creating ROOT and INTERMEDIATE keys is a highly privileged operation
+        validateCallerHasRole(UserRole.SUPER_ADMIN);
+
         if (masterPassword == null || masterPassword.trim().isEmpty()) {
             throw new IllegalArgumentException(
                 "❌ Master password cannot be null or empty"
@@ -4988,6 +5307,10 @@ public class UserFriendlyEncryptionAPI {
                 "✅ Hierarchical key management system established successfully"
             );
             return result;
+        } catch (SecurityException e) {
+            // SECURITY FIX (v1.0.6): Re-throw security exceptions (don't convert to result)
+            // SecurityException must propagate to caller to enforce RBAC
+            throw e;
         } catch (Exception e) {
             logger.error(
                 "❌ Failed to setup hierarchical keys: {}",
@@ -5513,42 +5836,56 @@ public class UserFriendlyEncryptionAPI {
             CryptoUtil.KeyInfo generatedKey;
 
             if (depth == 1) {
+                // SECURITY FIX (v1.0.6): Only SUPER_ADMIN can create ROOT keys
+                validateCallerHasRole(UserRole.SUPER_ADMIN);
+
                 // Root level key
                 generatedKey = CryptoUtil.createRootKey();
             } else if (depth == 2) {
+                // SECURITY FIX (v1.0.6): Only SUPER_ADMIN or ADMIN can create INTERMEDIATE keys
+                validateCallerHasRole(
+                    UserRole.SUPER_ADMIN,
+                    UserRole.ADMIN
+                );
+
                 // Intermediate key - find suitable parent
                 List<CryptoUtil.KeyInfo> rootKeys = CryptoUtil.getKeysByType(
                     CryptoUtil.KeyType.ROOT
                 );
-                String parentKeyId = rootKeys.isEmpty()
-                    ? null
-                    : rootKeys.get(0).getKeyId();
-                generatedKey = CryptoUtil.createIntermediateKey(parentKeyId);
+
+                // BUG FIX: Validate that root key exists before creating intermediate key
+                if (rootKeys.isEmpty()) {
+                    throw new IllegalStateException(
+                        "❌ Cannot create intermediate key: No root key exists. " +
+                        "Create a root key first with depth=1"
+                    );
+                }
+                generatedKey = CryptoUtil.createIntermediateKey(rootKeys.get(0).getKeyId());
             } else {
-                // Operational or deeper level key - ensure intermediate key exists
+                // Operational or deeper level key - validate hierarchy exists
                 List<CryptoUtil.KeyInfo> intermediateKeys =
                     CryptoUtil.getKeysByType(CryptoUtil.KeyType.INTERMEDIATE);
 
+                // SECURITY FIX: NEVER auto-create keys - validate hierarchy exists
                 if (intermediateKeys.isEmpty()) {
-                    // No intermediate key exists - create one first
                     List<CryptoUtil.KeyInfo> rootKeys = CryptoUtil.getKeysByType(
                         CryptoUtil.KeyType.ROOT
                     );
                     if (rootKeys.isEmpty()) {
-                        // No root key exists either - create a root key first
-                        CryptoUtil.KeyInfo rootKey = CryptoUtil.createRootKey();
-                        // Now create an intermediate key
-                        CryptoUtil.KeyInfo intermediateKey = CryptoUtil.createIntermediateKey(rootKey.getKeyId());
-                        generatedKey = CryptoUtil.createOperationalKey(intermediateKey.getKeyId());
+                        throw new IllegalStateException(
+                            "❌ Cannot create operational key: No root key exists. " +
+                            "Create a root key first with depth=1, then an intermediate key with depth=2"
+                        );
                     } else {
-                        // Root key exists, create intermediate key
-                        CryptoUtil.KeyInfo intermediateKey = CryptoUtil.createIntermediateKey(rootKeys.get(0).getKeyId());
-                        generatedKey = CryptoUtil.createOperationalKey(intermediateKey.getKeyId());
+                        throw new IllegalStateException(
+                            "❌ Cannot create operational key: No intermediate key exists. " +
+                            "Create an intermediate key first with depth=2"
+                        );
                     }
-                } else {
-                    // Intermediate key exists, use it
-                    generatedKey = CryptoUtil.createOperationalKey(intermediateKeys.get(0).getKeyId());
                 }
+
+                // Intermediate key exists, use it
+                generatedKey = CryptoUtil.createOperationalKey(intermediateKeys.get(0).getKeyId());
             }
 
             // Calculate statistics
@@ -5577,6 +5914,14 @@ public class UserFriendlyEncryptionAPI {
                 operationTime.toMillis()
             );
             return result;
+        } catch (SecurityException e) {
+            // SECURITY FIX (v1.0.6): Re-throw security exceptions (don't convert to result)
+            // SecurityException must propagate to caller to enforce RBAC
+            throw e;
+        } catch (IllegalStateException e) {
+            // SECURITY FIX (v1.0.6): Re-throw validation exceptions (missing hierarchy)
+            // These indicate configuration errors that must be addressed
+            throw e;
         } catch (Exception e) {
             Duration operationTime = Duration.between(startTime, Instant.now());
             logger.error(
@@ -5955,27 +6300,45 @@ public class UserFriendlyEncryptionAPI {
             if (preserveHierarchy) {
                 // Create new key of the same type as the old one
                 if (oldKey.getKeyType() == CryptoUtil.KeyType.ROOT) {
+                    // SECURITY FIX (v1.0.6): Only SUPER_ADMIN can rotate ROOT keys
+                    validateCallerHasRole(UserRole.SUPER_ADMIN);
                     newKey = CryptoUtil.createRootKey();
                 } else if (
                     oldKey.getKeyType() == CryptoUtil.KeyType.INTERMEDIATE
                 ) {
+                    // SECURITY FIX (v1.0.6): Only SUPER_ADMIN or ADMIN can rotate INTERMEDIATE keys
+                    validateCallerHasRole(
+                        UserRole.SUPER_ADMIN,
+                        UserRole.ADMIN
+                    );
+
                     // Find root parent for new intermediate key
                     List<CryptoUtil.KeyInfo> rootKeys =
                         CryptoUtil.getKeysByType(CryptoUtil.KeyType.ROOT);
-                    String parentKeyId = rootKeys.isEmpty()
-                        ? null
-                        : rootKeys.get(0).getKeyId();
-                    newKey = CryptoUtil.createIntermediateKey(parentKeyId);
+
+                    // BUG FIX: Validate that root key exists before creating intermediate key
+                    if (rootKeys.isEmpty()) {
+                        throw new IllegalStateException(
+                            "❌ Cannot rotate intermediate key: No root key exists. " +
+                            "Create a root key first with depth=1"
+                        );
+                    }
+                    newKey = CryptoUtil.createIntermediateKey(rootKeys.get(0).getKeyId());
                 } else {
-                    // Operational key
+                    // Operational key - all authorized users can rotate their own operational keys
                     List<CryptoUtil.KeyInfo> intermediateKeys =
                         CryptoUtil.getKeysByType(
                             CryptoUtil.KeyType.INTERMEDIATE
                         );
-                    String parentKeyId = intermediateKeys.isEmpty()
-                        ? null
-                        : intermediateKeys.get(0).getKeyId();
-                    newKey = CryptoUtil.createOperationalKey(parentKeyId);
+
+                    // BUG FIX: Validate that intermediate key exists before creating operational key
+                    if (intermediateKeys.isEmpty()) {
+                        throw new IllegalStateException(
+                            "❌ Cannot rotate operational key: No intermediate key exists. " +
+                            "Create an intermediate key first with depth=2"
+                        );
+                    }
+                    newKey = CryptoUtil.createOperationalKey(intermediateKeys.get(0).getKeyId());
                 }
             } else {
                 // Simple rotation without hierarchy preservation
@@ -6017,6 +6380,14 @@ public class UserFriendlyEncryptionAPI {
                 operationTime.toMillis()
             );
             return result;
+        } catch (SecurityException e) {
+            // SECURITY FIX (v1.0.6): Re-throw security exceptions (don't convert to result)
+            // SecurityException must propagate to caller to enforce RBAC
+            throw e;
+        } catch (IllegalStateException e) {
+            // SECURITY FIX (v1.0.6): Re-throw validation exceptions (missing hierarchy)
+            // These indicate configuration errors that must be addressed
+            throw e;
         } catch (Exception e) {
             Duration operationTime = Duration.between(startTime, Instant.now());
             logger.error("❌ Key rotation failed: {}", e.getMessage(), e);

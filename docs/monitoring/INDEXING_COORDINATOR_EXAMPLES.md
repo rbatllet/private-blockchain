@@ -11,7 +11,7 @@
 All code examples assume this initialization pattern:
 
 ```java
-// 1. Create blockchain (auto-creates genesis admin)
+// 1. Create blockchain (only genesis block is automatic)
 Blockchain blockchain = new Blockchain();
 
 // 2. Load genesis admin keys
@@ -20,11 +20,17 @@ KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
     "./keys/genesis-admin.public"
 );
 
-// 3. Create API with genesis admin credentials
-UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
-api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+// 3. Register bootstrap admin in blockchain (REQUIRED!)
+blockchain.createBootstrapAdmin(
+    CryptoUtil.publicKeyToString(genesisKeys.getPublic()),
+    "BOOTSTRAP_ADMIN"
+);
 
-// 4. Create user for operations
+// 4. Create API with genesis admin credentials
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+api.setDefaultCredentials("BOOTSTRAP_ADMIN", genesisKeys);
+
+// 5. Create user for operations
 KeyPair userKeys = api.createUser("username");
 api.setDefaultCredentials("username", userKeys);
 ```
@@ -61,8 +67,15 @@ public class BasicBlockchainApp {
             "./keys/genesis-admin.private",
             "./keys/genesis-admin.public"
         );
+
+        // Register bootstrap admin in blockchain (REQUIRED!)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(genesisKeys.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
-        api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+        api.setDefaultCredentials("BOOTSTRAP_ADMIN", genesisKeys);
 
         // 2. Create application user
         KeyPair appKeys = api.createUser("myapp");
@@ -180,8 +193,15 @@ class MyBlockchainTests {
             "./keys/genesis-admin.private",
             "./keys/genesis-admin.public"
         );
+
+        // Register bootstrap admin in blockchain (REQUIRED!)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(genesisKeys.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         api = new UserFriendlyEncryptionAPI(blockchain);
-        api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+        api.setDefaultCredentials("BOOTSTRAP_ADMIN", genesisKeys);
 
         // Create test user
         KeyPair testKeys = generateKeyPair();

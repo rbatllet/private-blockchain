@@ -4,6 +4,8 @@ import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.search.metadata.TermVisibilityMap;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.*;
 import java.security.KeyPair;
@@ -25,19 +27,28 @@ public class UserFriendlyEncryptionAPIRemainingCoverageTest {
     private Blockchain realBlockchain;
     private String testUsername = "coverageuser";
     private KeyPair testKeyPair;
+    private KeyPair bootstrapKeyPair;
     
     @BeforeEach
     void setUp() throws Exception {
         realBlockchain = new Blockchain();
+
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
         testKeyPair = CryptoUtil.generateKeyPair();
-        
+
         // SECURITY FIX (v1.0.6): Pre-authorize user before creating API
+        // RBAC FIX (v1.0.6): Use SUPER_ADMIN role for hierarchical key operations
         String publicKeyString = CryptoUtil.publicKeyToString(testKeyPair.getPublic());
-        realBlockchain.addAuthorizedKey(publicKeyString, testUsername);
-        
+        realBlockchain.addAuthorizedKey(publicKeyString, testUsername, bootstrapKeyPair, UserRole.SUPER_ADMIN);
+
         // Initialize API with test credentials (blockchain, username, keyPair)
         api = new UserFriendlyEncryptionAPI(realBlockchain, testUsername, testKeyPair);
-        
+
         // Add some test blocks for methods that need existing data
         realBlockchain.addBlock("Test data 1", testKeyPair.getPrivate(), testKeyPair.getPublic());
         realBlockchain.addBlock("Test data 2", testKeyPair.getPrivate(), testKeyPair.getPublic());

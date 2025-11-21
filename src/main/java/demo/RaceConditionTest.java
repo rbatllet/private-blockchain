@@ -24,7 +24,10 @@ public class RaceConditionTest {
         
         // Add authorized key
         String publicKeyString = CryptoUtil.publicKeyToString(publicKey);
-        blockchain.addAuthorizedKey(publicKeyString, "TestUser");
+        blockchain.createBootstrapAdmin(
+            publicKeyString,
+            "TestUser"
+        );
         
         // Test parameters
         final int THREAD_COUNT = 50;

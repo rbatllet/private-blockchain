@@ -2,6 +2,7 @@ package demo;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 
 import org.apache.logging.log4j.LogManager;
@@ -60,19 +61,38 @@ public class SimpleThreadSafetyTest {
         
         // Clean up
         cleanup();
-        
+
         Blockchain blockchain = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
         logger.debug("Blockchain initialized for concurrent block creation test");
-        
+
         // Setup keys
         PrivateKey[] privateKeys = new PrivateKey[NUM_THREADS];
         PublicKey[] publicKeys = new PublicKey[NUM_THREADS];
-        
+
         for (int i = 0; i < NUM_THREADS; i++) {
             KeyPair keyPair = CryptoUtil.generateKeyPair();
             privateKeys[i] = keyPair.getPrivate();
             publicKeys[i] = keyPair.getPublic();
-            blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(publicKeys[i]), "TestUser" + i);
+
+            if (i == 0) {
+                // First user - Genesis bootstrap
+                blockchain.createBootstrapAdmin(
+                    CryptoUtil.publicKeyToString(publicKeys[i]),
+                    "TestUser" + i
+                );
+            } else {
+                // Subsequent users - Created by first user
+                blockchain.addAuthorizedKey(
+                    CryptoUtil.publicKeyToString(publicKeys[i]),
+                    "TestUser" + i,
+                    new KeyPair(publicKeys[0], privateKeys[0]),  // First user is the caller
+                    UserRole.USER
+                );
+            }
         }
         logger.debug("Generated and authorized {} key pairs", NUM_THREADS);
         
@@ -176,15 +196,22 @@ public class SimpleThreadSafetyTest {
         logger.info("📝 Test 2: Concurrent Off-Chain Operations");
         
         cleanup();
-        
+
         Blockchain blockchain = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
         logger.debug("Blockchain initialized for off-chain operations test");
-        
+
         // Setup one key for this test
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         PrivateKey privateKey = keyPair.getPrivate();
         PublicKey publicKey = keyPair.getPublic();
-        blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(publicKey), "OffChainTestUser");
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(publicKey),
+            "OffChainTestUser"
+        );
         logger.debug("Key pair generated and authorized for off-chain test");
         
         ExecutorService executor = Executors.newFixedThreadPool(NUM_THREADS);
@@ -293,15 +320,23 @@ public class SimpleThreadSafetyTest {
         logger.info("📝 Test 3: Concurrent Validation Stress");
         
         // DON'T cleanup here - preserve off-chain data from Test 2 for validation
-        
+
         Blockchain blockchain = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        // Note: This clears the database but preserves off-chain files
+        blockchain.clearAndReinitialize();
+
         logger.debug("Blockchain initialized for validation stress test");
-        
+
         // Add some blocks first
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         PrivateKey privateKey = keyPair.getPrivate();
         PublicKey publicKey = keyPair.getPublic();
-        blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(publicKey), "ValidationTestUser");
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(publicKey),
+            "ValidationTestUser"
+        );
         
         for (int i = 0; i < 10; i++) {
             blockchain.addBlockAndReturn("Validation test block " + i, privateKey, publicKey);

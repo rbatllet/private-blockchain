@@ -108,7 +108,7 @@ Block lastBlock = blockRepository.getLastBlock(em); // ✅ Uses current transact
 ### Historical Context
 
 Previous ORDER BY queries were corrected project-wide for performance reasons:
-> "vam corregir-les perquè eren totalment ineficients" (we corrected them because they were totally inefficient)
+> "we corrected them because they were totally inefficient"
 
 This fix continues that optimization pattern.
 

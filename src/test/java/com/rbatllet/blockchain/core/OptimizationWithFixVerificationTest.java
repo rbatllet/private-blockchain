@@ -29,7 +29,7 @@ public class OptimizationWithFixVerificationTest {
     @BeforeEach
     void cleanDatabase() {
         blockchain.clearAndReinitialize();
-        blockchain.addAuthorizedKey(publicKeyStr, "TestUser");
+        blockchain.createBootstrapAdmin(publicKeyStr, "TestUser");
     }
 
     @Test
@@ -158,7 +158,7 @@ public class OptimizationWithFixVerificationTest {
 
         // Clear and reinitialize
         blockchain.clearAndReinitialize();
-        blockchain.addAuthorizedKey(publicKeyStr, "TestUser");
+        blockchain.createBootstrapAdmin(publicKeyStr, "TestUser");
 
         // Should be back to genesis only
         assertEquals(1, blockchain.getBlockCount());
@@ -174,7 +174,7 @@ public class OptimizationWithFixVerificationTest {
 
         // Clear again
         blockchain.clearAndReinitialize();
-        blockchain.addAuthorizedKey(publicKeyStr, "TestUser");
+        blockchain.createBootstrapAdmin(publicKeyStr, "TestUser");
 
         // Should be back to genesis only again
         assertEquals(1, blockchain.getBlockCount());

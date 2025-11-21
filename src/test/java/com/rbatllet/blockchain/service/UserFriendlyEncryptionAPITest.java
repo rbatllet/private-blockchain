@@ -2,6 +2,8 @@ package com.rbatllet.blockchain.service;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.*;
 
@@ -19,6 +21,7 @@ public class UserFriendlyEncryptionAPITest {
     private static Blockchain blockchain;
     private static UserFriendlyEncryptionAPI api;
     private static KeyPair userKeys;
+    private static KeyPair bootstrapKeyPair;
     private static String medicalPassword;
     private static String financialPassword;
     private static String secretPassword;
@@ -27,27 +30,43 @@ public class UserFriendlyEncryptionAPITest {
     private static Block secretBlock;
     
     @BeforeAll
-    static void setup() {
+    static void setup() throws Exception {
         System.out.println("\n=== Setting up User-Friendly Encryption API Tests ===");
         blockchain = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin first (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         api = new UserFriendlyEncryptionAPI(blockchain);
-        
-        // PRE-AUTHORIZATION REQUIRED (v1.0.6 security): 
+
+        // SECURITY FIX (v1.0.6): Pre-authorize admin before creating other users
         // 1. Generate admin keys to act as authorized creator
         KeyPair adminKeys = CryptoUtil.generateKeyPair();
         String adminPublicKey = CryptoUtil.publicKeyToString(adminKeys.getPublic());
-        blockchain.addAuthorizedKey(adminPublicKey, "Admin");
+        blockchain.addAuthorizedKey(adminPublicKey, "Admin", bootstrapKeyPair, UserRole.ADMIN);
         api.setDefaultCredentials("Admin", adminKeys);  // ✅ Authenticate as admin FIRST
-        
+
         // 2. Now admin can create the test user (generates new keys internally)
         userKeys = api.createUser("Test User");
         api.setDefaultCredentials("Test User", userKeys);  // ✅ Switch to test user credentials
-        
+
         // Generate deterministic passwords for consistent testing
         medicalPassword = "MedicalTest123!@";
         financialPassword = "FinancialTest123!";
         secretPassword = "SecretTest123!@#";
-        
+
         System.out.println("✅ Test setup completed");
     }
     
@@ -342,10 +361,18 @@ public class UserFriendlyEncryptionAPITest {
     @Order(10)
     void testCompleteWorkflow() {
         System.out.println("\n=== Testing Complete Workflow ===");
-        
-        // Test User (from setUp) is already authenticated and can create new users
-        // Complete workflow: Create user, store data, search, retrieve
+
+        // RBAC FIX (v1.0.6): Test User is USER role and cannot create other users
+        // Need to use admin credentials to create new user
+        KeyPair adminKeys = CryptoUtil.generateKeyPair();
+        String adminPublicKey = CryptoUtil.publicKeyToString(adminKeys.getPublic());
+        blockchain.addAuthorizedKey(adminPublicKey, "WorkflowAdmin", bootstrapKeyPair, UserRole.ADMIN);
+
+        // Temporarily switch to admin credentials to create new user
+        api.setDefaultCredentials("WorkflowAdmin", adminKeys);
         KeyPair newUserKeys = api.createUser("Workflow User");
+
+        // Switch to new user credentials for workflow test
         api.setDefaultCredentials("Workflow User", newUserKeys);
         
         // Store multiple types of data with explicit search terms

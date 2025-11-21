@@ -14,6 +14,8 @@ import org.slf4j.LoggerFactory;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.indexing.IndexingCoordinator;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.IndexingResult;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.SearchStats;
@@ -32,6 +34,7 @@ public class SearchStatisticsDiscrepancyTest {
     private static final Logger logger = LoggerFactory.getLogger(SearchStatisticsDiscrepancyTest.class);
     
     private Blockchain testBlockchain;
+    private KeyPair bootstrapKeyPair;
     private SearchSpecialistAPI specialistAPI;
     private SearchFrameworkEngine directEngine;
     private String testPassword;
@@ -42,13 +45,29 @@ public class SearchStatisticsDiscrepancyTest {
     void setUp() throws Exception {
         // Clear database before each test to ensure test isolation
         clearDatabase();
-        
+
         // CRITICAL: Enable test mode to skip time interval checks
         // This prevents the SearchFrameworkEngine from skipping indexing due to timing
         IndexingCoordinator.getInstance().enableTestMode();
-        
+
         // Initialize test environment
         testBlockchain = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        testBlockchain.clearAndReinitialize();
+
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (RBAC v1.0.6)
+        testBlockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         testPassword = "TestPassword123!";
 
         // Generate test key pair
@@ -90,7 +109,8 @@ public class SearchStatisticsDiscrepancyTest {
         boolean keyAuthorized = testBlockchain.addAuthorizedKey(
             publicKeyString,
             "TestUser",
-            null
+            bootstrapKeyPair,
+            UserRole.USER
         );
         if (!keyAuthorized) {
             throw new RuntimeException("Failed to authorize key for test");

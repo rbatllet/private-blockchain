@@ -37,9 +37,9 @@ public class CustomMetadataSearchTest {
 
         keyPair = CryptoUtil.generateKeyPair();
 
-        // SECURITY FIX (v1.0.6): Pre-authorize user before creating API
+        // SECURITY FIX (v1.0.6): Create genesis admin before creating API (RBAC v1.0.6)
         String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
-        blockchain.addAuthorizedKey(publicKeyString, "test_user");
+        blockchain.createBootstrapAdmin(publicKeyString, "test_user");
 
         api = new UserFriendlyEncryptionAPI(blockchain, "test_user", keyPair);
         jsonMapper = new ObjectMapper();

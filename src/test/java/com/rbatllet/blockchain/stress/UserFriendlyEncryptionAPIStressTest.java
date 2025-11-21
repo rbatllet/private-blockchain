@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import java.security.KeyPair;
@@ -32,15 +34,28 @@ public class UserFriendlyEncryptionAPIStressTest {
 
     private Blockchain blockchain;
     private UserFriendlyEncryptionAPI api;
+    private KeyPair bootstrapKeyPair;
     private ExecutorService executorService;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         blockchain = new Blockchain();
         blockchain.clearAndReinitialize(); // CRITICAL: Clear all data from previous tests
         // Clean up database before each test to ensure isolation
         // BlockRepository now package-private - use clearAndReinitialize();
         blockchain.getAuthorizedKeyDAO().cleanupTestData();
+
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
 
         api = new UserFriendlyEncryptionAPI(blockchain);
         executorService = Executors.newCachedThreadPool();
@@ -116,7 +131,9 @@ public class UserFriendlyEncryptionAPIStressTest {
                             try {
                                 blockchain.addAuthorizedKey(
                                     publicKeyString,
-                                    username
+                                    username,
+                                    bootstrapKeyPair,
+                                    UserRole.USER
                                 );
                             } catch (IllegalArgumentException e) {
                                 // Key already exists - this is acceptable in stress test
@@ -127,7 +144,9 @@ public class UserFriendlyEncryptionAPIStressTest {
                                 );
                                 blockchain.addAuthorizedKey(
                                     publicKeyString,
-                                    username + "_retry"
+                                    username + "_retry",
+                                    bootstrapKeyPair,
+                                    UserRole.USER
                                 );
                                 username = username + "_retry";
                             }
@@ -252,7 +271,7 @@ public class UserFriendlyEncryptionAPIStressTest {
         String publicKeyString = CryptoUtil.publicKeyToString(
             initialKeyPair.getPublic()
         );
-        boolean keyAdded = blockchain.addAuthorizedKey(publicKeyString, initialUsername);
+        boolean keyAdded = blockchain.addAuthorizedKey(publicKeyString, initialUsername, bootstrapKeyPair, UserRole.USER);
         if (!keyAdded) {
             throw new IllegalStateException("Failed to add initial user key - test setup failed");
         }
@@ -315,7 +334,7 @@ public class UserFriendlyEncryptionAPIStressTest {
                             );
 
                             // Handle case where key is already authorized (can happen in concurrent stress tests)
-                            boolean writerKeyAdded = blockchain.addAuthorizedKey(pubKeyString, username);
+                            boolean writerKeyAdded = blockchain.addAuthorizedKey(pubKeyString, username, bootstrapKeyPair, UserRole.USER);
                             if (!writerKeyAdded) {
                                 // Key already authorized - generate unique key
                                 keyPair = CryptoUtil.generateKeyPair();
@@ -323,7 +342,7 @@ public class UserFriendlyEncryptionAPIStressTest {
                                     keyPair.getPublic()
                                 );
                                 username = username + "_unique_" + System.nanoTime();
-                                writerKeyAdded = blockchain.addAuthorizedKey(pubKeyString, username);
+                                writerKeyAdded = blockchain.addAuthorizedKey(pubKeyString, username, bootstrapKeyPair, UserRole.USER);
 
                                 if (!writerKeyAdded) {
                                     // Skip this iteration if still can't add key
@@ -452,7 +471,9 @@ public class UserFriendlyEncryptionAPIStressTest {
                                     );
                                 blockchain.addAuthorizedKey(
                                     publicKeyString,
-                                    username
+                                    username,
+                                    bootstrapKeyPair,
+                                    UserRole.USER
                                 );
                                 api.setDefaultCredentials(username, keyPair);
                                 credentialChanges.incrementAndGet();

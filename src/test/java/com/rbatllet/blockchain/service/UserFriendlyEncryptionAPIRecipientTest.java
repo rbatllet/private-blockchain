@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockitoAnnotations;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import java.security.KeyPair;
 
@@ -18,6 +20,7 @@ class UserFriendlyEncryptionAPIRecipientTest {
 
     private Blockchain blockchain;
     private UserFriendlyEncryptionAPI api;
+    private KeyPair bootstrapKeyPair;
     private final String testUsername = "test-sender";
     private final String recipientUsername = "test-recipient";
 
@@ -28,16 +31,29 @@ class UserFriendlyEncryptionAPIRecipientTest {
         // Clean database before each test to ensure test isolation
         blockchain.clearAndReinitialize();
 
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         KeyPair defaultKeyPair = CryptoUtil.generateKeyPair();
 
         // SECURITY FIX (v1.0.6): Pre-authorize user before creating API
+        // RBAC FIX: testUsername needs to be ADMIN to create other users (createUser() requires ADMIN role)
         String publicKeyString = CryptoUtil.publicKeyToString(defaultKeyPair.getPublic());
-        blockchain.addAuthorizedKey(publicKeyString, testUsername);
+        blockchain.addAuthorizedKey(publicKeyString, testUsername, bootstrapKeyPair, UserRole.ADMIN);
 
         // Create API with pre-authorized keys (this constructor sets credentials automatically)
         api = new UserFriendlyEncryptionAPI(blockchain, testUsername, defaultKeyPair);
-        
-        // Note: testUsername is now authenticated and can create other users via createUser()
+
+        // Note: testUsername is now authenticated as ADMIN and can create other users via createUser()
     }
 
     @AfterEach

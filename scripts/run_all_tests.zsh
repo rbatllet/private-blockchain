@@ -1,8 +1,8 @@
 #!/usr/bin/env zsh
 
 # Comprehensive test runner for ALL Blockchain tests
-# Executes all 47 test classes in logical categories
-# Version: 2.0.0 - COMPLETE TEST COVERAGE
+# Executes all 46 test classes in logical categories (ML-DSA-87 post-quantum)
+# Version: 2.0.1 - COMPLETE TEST COVERAGE (Post-Quantum Migration)
 
 # Set script directory before changing directories
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -14,7 +14,8 @@ source "${SCRIPT_DIR}/lib/common_functions.zsh"
 cd "$SCRIPT_DIR/.."
 
 print_header "COMPREHENSIVE BLOCKCHAIN TEST RUNNER"
-print_info "This script runs ALL 47 available test classes in logical categories"
+print_info "This script runs ALL 46 available test classes in logical categories"
+print_info "Post-Quantum Migration: ML-DSA-87 (NIST FIPS 204)"
 print_info "Project directory: $(pwd)"
 
 # Check if we're in the correct directory
@@ -78,12 +79,11 @@ run_test_suite "Core Environment" "TestEnvironmentValidator" "Test environment v
 
 print_separator
 
-# 2. SECURITY & CRYPTOGRAPHY TESTS
+# 2. SECURITY & CRYPTOGRAPHY TESTS (ML-DSA-87 Post-Quantum)
 print_header "2. SECURITY & CRYPTOGRAPHY TESTS"
-run_test_suite "Crypto Utils" "CryptoUtilTest" "Cryptographic utility functions"
-run_test_suite "Key Derivation" "ECKeyDerivationTest,ECKeyDerivationThreadSafetyTest" "EC key derivation"
+run_test_suite "Crypto Utils" "CryptoUtilTest" "Cryptographic utility functions (ML-DSA-87)"
 run_test_suite "Password Utils" "PasswordUtilTest" "Password utility functions"
-run_test_suite "Key Storage" "SecureKeyStorageTest,SecureKeyStorageAdvancedTest" "Secure key storage"
+run_test_suite "Key Storage" "SecureKeyStorageTest,SecureKeyStorageAdvancedTest" "Secure key storage (AES-256-GCM)"
 run_test_suite "Key File Loader" "KeyFileLoaderTest" "Key file loading system"
 run_test_suite "Encryption Config" "EncryptionConfigTest" "Encryption configuration"
 
@@ -175,7 +175,7 @@ print_info "  Failed suites: $FAILED_SUITES"
 
 if [ $FAILED_SUITES -eq 0 ]; then
     print_success "🎉 ALL $TOTAL_SUITES TEST SUITES PASSED!"
-    print_success "Complete test coverage achieved - all 47 test classes executed"
+    print_success "Complete test coverage achieved - all 46 test classes executed (ML-DSA-87)"
 else
     print_error "❌ $FAILED_SUITES out of $TOTAL_SUITES test suites failed"
     print_info "Check the output above for detailed failure information"

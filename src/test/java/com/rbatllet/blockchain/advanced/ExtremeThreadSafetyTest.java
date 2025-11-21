@@ -2,6 +2,7 @@ package com.rbatllet.blockchain.advanced;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.*;
 
@@ -34,10 +35,17 @@ class ExtremeThreadSafetyTest {
         // Pre-generate keys to avoid delays during test execution
         testKeyPairs = new KeyPair[5];
         publicKeys = new String[5];
+
+        // RBAC FIX (v1.0.6): First user is bootstrap admin, rest are created by admin
         for (int i = 0; i < 5; i++) {
             testKeyPairs[i] = CryptoUtil.generateKeyPair();
             publicKeys[i] = CryptoUtil.publicKeyToString(testKeyPairs[i].getPublic());
-            blockchain.addAuthorizedKey(publicKeys[i], "TestUser" + i);
+
+            if (i == 0) {
+                blockchain.createBootstrapAdmin(publicKeys[i], "TestUser" + i);
+            } else {
+                blockchain.addAuthorizedKey(publicKeys[i], "TestUser" + i, testKeyPairs[0], UserRole.USER);
+            }
         }
     }
 
@@ -325,21 +333,33 @@ class ExtremeThreadSafetyTest {
                                     
                                 case 1: // Small rollback
                                     if (blockchain.getBlockCount() > 3) {
-                                        success = blockchain.rollbackBlocks(1L);
-                                        operationLog.offer("T" + threadId + ": ROLLBACK-1 " + (success ? "✅" : "❌"));
+                                        try {
+                                            success = blockchain.rollbackBlocks(1L);
+                                            operationLog.offer("T" + threadId + ": ROLLBACK-1 " + (success ? "✅" : "❌"));
+                                        } catch (IllegalArgumentException e) {
+                                            // Expected validation exception - treat as failed operation, not critical error
+                                            success = false;
+                                            operationLog.offer("T" + threadId + ": ROLLBACK-1 ❌ (validation)");
+                                        }
                                     } else {
                                         success = true; // Can't rollback, but not an error
                                     }
                                     break;
-                                    
+
                                 case 2: // Medium rollback
                                     long blockCount = blockchain.getBlockCount();
                                     if (blockCount > 5) {
-                                        long rollbackCount = ThreadLocalRandom.current().nextLong(2, 
+                                        long rollbackCount = ThreadLocalRandom.current().nextLong(2,
                                             Math.min(4, blockCount - 2));
-                                        success = blockchain.rollbackBlocks(rollbackCount);
-                                        operationLog.offer("T" + threadId + ": ROLLBACK-" + rollbackCount + 
-                                            " " + (success ? "✅" : "❌"));
+                                        try {
+                                            success = blockchain.rollbackBlocks(rollbackCount);
+                                            operationLog.offer("T" + threadId + ": ROLLBACK-" + rollbackCount +
+                                                " " + (success ? "✅" : "❌"));
+                                        } catch (IllegalArgumentException e) {
+                                            // Expected validation exception - treat as failed operation, not critical error
+                                            success = false;
+                                            operationLog.offer("T" + threadId + ": ROLLBACK-" + rollbackCount + " ❌ (validation)");
+                                        }
                                     } else {
                                         success = true;
                                     }
@@ -358,9 +378,15 @@ class ExtremeThreadSafetyTest {
                                     break;
                                     
                                 case 4: // Authorize new key
+                                    // RBAC FIX (v1.0.6): Use addAuthorizedKey instead of createBootstrapAdmin
                                     KeyPair newKey = CryptoUtil.generateKeyPair();
                                     String newPublicKey = CryptoUtil.publicKeyToString(newKey.getPublic());
-                                    success = blockchain.addAuthorizedKey(newPublicKey, "DynamicUser" + threadId + j);
+                                    try {
+                                        blockchain.addAuthorizedKey(newPublicKey, "DynamicUser" + threadId + j, testKeyPairs[0], UserRole.USER);
+                                        success = true;
+                                    } catch (Exception e) {
+                                        success = false;
+                                    }
                                     operationLog.offer("T" + threadId + ": ADD_KEY " + (success ? "✅" : "❌"));
                                     break;
                                     

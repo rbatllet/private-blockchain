@@ -174,10 +174,27 @@ public KeyPair createUser(String username) {
 Blockchain blockchain = new Blockchain();
 UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
 
-// STEP 1-2: Create and authorize admin
+// Load bootstrap admin keys (RBAC v1.0.6+)
+KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
+    "./keys/genesis-admin.private",
+    "./keys/genesis-admin.public"
+);
+
+// STEP 1: Register bootstrap admin in blockchain (REQUIRED!)
+blockchain.createBootstrapAdmin(
+    CryptoUtil.publicKeyToString(bootstrapKeys.getPublic()),
+    "BOOTSTRAP_ADMIN"
+);
+
+// STEP 2: Create and authorize admin
 KeyPair adminKeys = CryptoUtil.generateKeyPair();
 String adminPublicKey = CryptoUtil.publicKeyToString(adminKeys.getPublic());
-blockchain.addAuthorizedKey(adminPublicKey, "Admin");
+blockchain.addAuthorizedKey(
+    adminPublicKey,
+    "Admin",
+    bootstrapKeys,      // Caller credentials (bootstrap admin)
+    UserRole.ADMIN      // Target role
+);
 
 // STEP 3: Authenticate as admin (enables createUser)
 api.setDefaultCredentials("Admin", adminKeys);
@@ -198,18 +215,21 @@ KeyPair charlieKeys = api.createUser("charlie");
 ```java
 Blockchain blockchain = new Blockchain();
 
-// Load genesis admin keys (created during first blockchain init)
-PrivateKey genesisPrivateKey = KeyFileLoader.loadPrivateKey(
-    "./keys/genesis-admin.private"
-);
-PublicKey genesisPublicKey = KeyFileLoader.loadPublicKey(
+// Load genesis admin keys
+KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+    "./keys/genesis-admin.private",
     "./keys/genesis-admin.public"
 );
-KeyPair genesisKeys = new KeyPair(genesisPublicKey, genesisPrivateKey);
+
+// Register bootstrap admin in blockchain (REQUIRED!)
+blockchain.createBootstrapAdmin(
+    CryptoUtil.publicKeyToString(genesisKeys.getPublic()),
+    "BOOTSTRAP_ADMIN"
+);
 
 // Authenticate as genesis admin
 UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
-api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+api.setDefaultCredentials("BOOTSTRAP_ADMIN", genesisKeys);
 
 // Now can create users
 KeyPair userKeys = api.createUser("production-user");
@@ -219,9 +239,26 @@ KeyPair userKeys = api.createUser("production-user");
 
 ```java
 // Alternative: Use constructor that accepts keys directly
+// Load bootstrap admin keys (RBAC v1.0.6+)
+KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
+    "./keys/genesis-admin.private",
+    "./keys/genesis-admin.public"
+);
+
+// Register bootstrap admin in blockchain (REQUIRED!)
+blockchain.createBootstrapAdmin(
+    CryptoUtil.publicKeyToString(bootstrapKeys.getPublic()),
+    "BOOTSTRAP_ADMIN"
+);
+
 KeyPair adminKeys = CryptoUtil.generateKeyPair();
 String adminPublicKey = CryptoUtil.publicKeyToString(adminKeys.getPublic());
-blockchain.addAuthorizedKey(adminPublicKey, "Admin");
+blockchain.addAuthorizedKey(
+    adminPublicKey,
+    "Admin",
+    bootstrapKeys,      // Caller credentials (bootstrap admin)
+    UserRole.ADMIN      // Target role
+);
 
 // This constructor automatically calls setDefaultCredentials()
 UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(
@@ -251,10 +288,27 @@ void setUp() throws Exception {
     // ========================================================================
     // PRE-AUTHORIZATION WORKFLOW (v1.0.6 Security Model)
     // ========================================================================
-    // Step 1-2: Create and authorize admin
+    // Load bootstrap admin keys (RBAC v1.0.6+)
+    KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
+        "./keys/genesis-admin.private",
+        "./keys/genesis-admin.public"
+    );
+
+    // Step 1: Register bootstrap admin in blockchain (REQUIRED!)
+    blockchain.createBootstrapAdmin(
+        CryptoUtil.publicKeyToString(bootstrapKeys.getPublic()),
+        "BOOTSTRAP_ADMIN"
+    );
+
+    // Step 2: Create and authorize admin
     KeyPair adminKeys = CryptoUtil.generateKeyPair();
     String adminPublicKey = CryptoUtil.publicKeyToString(adminKeys.getPublic());
-    blockchain.addAuthorizedKey(adminPublicKey, "Admin");
+    blockchain.addAuthorizedKey(
+        adminPublicKey,
+        "Admin",
+        bootstrapKeys,      // Caller credentials (bootstrap admin)
+        UserRole.ADMIN      // Target role
+    );
     
     // Step 3: Authenticate as admin (enables createUser() calls)
     api.setDefaultCredentials("Admin", adminKeys);
@@ -299,22 +353,48 @@ KeyPair userKeys = api.createUser("test-user");
 
 **Error:**
 ```
-SecurityException: ❌ AUTHORIZATION REQUIRED: Must set authorized 
+SecurityException: ❌ AUTHORIZATION REQUIRED: Must set authorized
 credentials before creating users.
 
 Solution:
-  1. Load genesis admin keys: KeyFileLoader.loadPrivateKey("./keys/genesis-admin.private")
-  2. Set credentials: api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys)
-  3. Then create new users: api.createUser("newuser")
+  1. Load genesis admin keys:
+     KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+         "./keys/genesis-admin.private",
+         "./keys/genesis-admin.public"
+     );
+  2. Register bootstrap admin (REQUIRED!):
+     blockchain.createBootstrapAdmin(
+         CryptoUtil.publicKeyToString(genesisKeys.getPublic()),
+         "BOOTSTRAP_ADMIN"
+     );
+  3. Set credentials: api.setDefaultCredentials("BOOTSTRAP_ADMIN", genesisKeys)
+  4. Then create new users: api.createUser("newuser")
 ```
 
 ### ❌ Mistake 2: Authorizing Keys Without Authenticating
 
 ```java
 ❌ WRONG:
+// Load bootstrap admin keys (RBAC v1.0.6+)
+KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
+    "./keys/genesis-admin.private",
+    "./keys/genesis-admin.public"
+);
+
+// Register bootstrap admin in blockchain (REQUIRED!)
+blockchain.createBootstrapAdmin(
+    CryptoUtil.publicKeyToString(bootstrapKeys.getPublic()),
+    "BOOTSTRAP_ADMIN"
+);
+
 KeyPair tempKeys = CryptoUtil.generateKeyPair();
 String publicKey = CryptoUtil.publicKeyToString(tempKeys.getPublic());
-blockchain.addAuthorizedKey(publicKey, "Test User");
+blockchain.addAuthorizedKey(
+    publicKey,
+    "Test User",
+    bootstrapKeys,      // Caller credentials (bootstrap admin)
+    UserRole.USER       // Target role
+);
 
 // Missing: api.setDefaultCredentials("Test User", tempKeys);
 
@@ -328,7 +408,24 @@ KeyPair userKeys = api.createUser("Test User");  // ❌ SecurityException!
 ```java
 ❌ WRONG ASSUMPTION:
 // User thinks: "I authorized 'alice' so alice can create herself"
-blockchain.addAuthorizedKey(alicePublicKey, "alice");
+// Load bootstrap admin keys (RBAC v1.0.6+)
+KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
+    "./keys/genesis-admin.private",
+    "./keys/genesis-admin.public"
+);
+
+// Register bootstrap admin in blockchain (REQUIRED!)
+blockchain.createBootstrapAdmin(
+    CryptoUtil.publicKeyToString(bootstrapKeys.getPublic()),
+    "BOOTSTRAP_ADMIN"
+);
+
+blockchain.addAuthorizedKey(
+    alicePublicKey,
+    "alice",
+    bootstrapKeys,      // Caller credentials (bootstrap admin)
+    UserRole.USER       // Target role
+);
 
 // This will fail because NO ONE is authenticated yet
 KeyPair aliceKeys = api.createUser("alice");  // ❌ SecurityException!
@@ -355,8 +452,25 @@ api.setDefaultCredentials("admin", adminKeys);  // ← Add this before createUse
 
 **Solution:**
 ```java
+// Load bootstrap admin keys (RBAC v1.0.6+)
+KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
+    "./keys/genesis-admin.private",
+    "./keys/genesis-admin.public"
+);
+
+// Register bootstrap admin in blockchain (REQUIRED!)
+blockchain.createBootstrapAdmin(
+    CryptoUtil.publicKeyToString(bootstrapKeys.getPublic()),
+    "BOOTSTRAP_ADMIN"
+);
+
 String publicKey = CryptoUtil.publicKeyToString(adminKeys.getPublic());
-blockchain.addAuthorizedKey(publicKey, "admin");  // ← Authorize BEFORE authenticate
+blockchain.addAuthorizedKey(
+    publicKey,
+    "admin",
+    bootstrapKeys,      // Caller credentials (bootstrap admin)
+    UserRole.ADMIN      // Target role
+);  // ← Authorize BEFORE authenticate
 api.setDefaultCredentials("admin", adminKeys);
 ```
 

@@ -3,6 +3,8 @@ package com.rbatllet.blockchain.search;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.*;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.test.util.TestDatabaseUtils;
 import org.junit.jupiter.api.*;
@@ -38,6 +40,7 @@ public class SearchFrameworkExhaustiveTest {
     private SearchFrameworkEngine searchEngine;
     private SearchSpecialistAPI specialistAPI;
     private Blockchain testBlockchain;
+    private KeyPair bootstrapKeyPair;
     private String testPassword;
     private PrivateKey testPrivateKey;
     private PublicKey testPublicKey;
@@ -47,14 +50,31 @@ public class SearchFrameworkExhaustiveTest {
     void setUp() throws Exception {
         // Clean database and enable test mode before each test to ensure test isolation
         TestDatabaseUtils.setupTest();
-        
+
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
         // Use high security configuration for exhaustive testing
         highSecurityConfig = EncryptionConfig.createHighSecurityConfig();
+
+        testBlockchain = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        testBlockchain.clearAndReinitialize();
+
+        // Register bootstrap admin in blockchain (RBAC v1.0.6)
+        testBlockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         searchEngine = new SearchFrameworkEngine(highSecurityConfig);
         specialistAPI = new SearchSpecialistAPI(highSecurityConfig);
-        testBlockchain = new Blockchain();
         testPassword = "ExhaustiveTestPassword2024!SecureDemo";
-        
+
         // Generate test key pair
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         testPrivateKey = keyPair.getPrivate();
@@ -611,7 +631,8 @@ public class SearchFrameworkExhaustiveTest {
         boolean keyAuthorized = testBlockchain.addAuthorizedKey(
             publicKeyString,
             "ExhaustiveTestUser",
-            null
+            bootstrapKeyPair,
+            UserRole.USER
         );
         if (!keyAuthorized) {
             throw new RuntimeException("Failed to authorize test key for exhaustive blockchain creation");

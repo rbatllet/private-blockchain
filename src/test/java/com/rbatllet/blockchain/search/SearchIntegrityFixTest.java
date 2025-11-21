@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.indexing.IndexingCoordinator;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.EnhancedSearchResult;
@@ -22,14 +24,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * CRITICAL FIX: Corregeix el problema de discrepància entre indexació i cerca
- * 
- * Aquest test demostra i valida la solució al problema identificat:
- * - Keywords sense prefix "public:" no es poden cercar amb searchAll()
- * - Keywords amb prefix "public:" es poden cercar correctament
- * 
- * La solució és utilitzar el prefix "public:" per keywords que han de ser
- * searchables públicament (sense password).
+ * CRITICAL FIX: Corrects the discrepancy problem between indexing and search
+ *
+ * This test demonstrates and validates the solution to the identified problem:
+ * - Keywords without "public:" prefix cannot be searched with searchAll()
+ * - Keywords with "public:" prefix can be searched correctly
+ *
+ * The solution is to use the "public:" prefix for keywords that should be
+ * publicly searchable (without password).
  */
 @DisplayName("🔧 Search Integrity Fix Validation")
 class SearchIntegrityFixTest {
@@ -37,6 +39,7 @@ class SearchIntegrityFixTest {
     private static final Logger logger = LoggerFactory.getLogger(SearchIntegrityFixTest.class);
     
     private Blockchain blockchain;
+    private KeyPair bootstrapKeyPair;
     private UserFriendlyEncryptionAPI api;
     private KeyPair testKeyPair;
     private String testUsername = "searchFixUser";
@@ -48,11 +51,24 @@ class SearchIntegrityFixTest {
         blockchain = new Blockchain();
         // Clean database before each test to ensure test isolation
         blockchain.clearAndReinitialize();
+
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         testKeyPair = CryptoUtil.generateKeyPair();
 
-        // SECURITY FIX (v1.0.6): Pre-authorize user before creating API
+        // SECURITY FIX (v1.0.6 RBAC): Pre-authorize user before creating API
         String publicKeyString = CryptoUtil.publicKeyToString(testKeyPair.getPublic());
-        blockchain.addAuthorizedKey(publicKeyString, testUsername);
+        blockchain.addAuthorizedKey(publicKeyString, testUsername, bootstrapKeyPair, UserRole.USER);
 
         api = new UserFriendlyEncryptionAPI(blockchain, testUsername, testKeyPair);
 

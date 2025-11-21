@@ -283,7 +283,7 @@ List<Block> blocks = blockchain.batchRetrieveBlocksByHash(hashes);
 
 ### Version Compatibility
 
-- **v1.x**: Individual queries (deprecated pattern)
+- **v1.x**: Individual queries (removed pattern)
 - **v2.0.0**: Batch retrieval by block numbers
 - **v2.0.1+**: Hash-based batch retrieval (recommended for search)
 - **API Compatibility**: Fully backward compatible

@@ -1,5 +1,7 @@
 package com.rbatllet.blockchain.core;
 
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,8 +22,9 @@ import java.util.concurrent.*;
  * Validates concurrent access patterns and data integrity
  */
 public class ThreadSafeExportImportTest {
-    
+
     private Blockchain blockchain;
+    private KeyPair bootstrapKeyPair;
     private KeyPair keyPair;
     private PrivateKey privateKey;
     private PublicKey publicKey;
@@ -32,16 +35,30 @@ public class ThreadSafeExportImportTest {
     @BeforeEach
     void setUp() throws Exception {
         blockchain = new Blockchain();
+
+        // Ensure clean state
+        blockchain.clearAndReinitialize();
+
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         keyPair = CryptoUtil.generateKeyPair();
         privateKey = keyPair.getPrivate();
         publicKey = keyPair.getPublic();
         publicKeyString = CryptoUtil.publicKeyToString(publicKey);
         masterPassword = "ThreadSafePassword123!";
         executorService = Executors.newFixedThreadPool(10);
-        
-        // Ensure clean state
-        blockchain.clearAndReinitialize();
-        blockchain.addAuthorizedKey(publicKeyString, "TestUser");
+
+        blockchain.addAuthorizedKey(publicKeyString, "TestUser", bootstrapKeyPair, UserRole.USER);
     }
     
     @AfterEach
@@ -165,10 +182,17 @@ public class ThreadSafeExportImportTest {
                 try {
                     // Wait for all threads to be ready
                     startLatch.await(5, TimeUnit.SECONDS);
-                    
+
                     // Clear and import
                     blockchain.clearAndReinitialize();
-                    blockchain.addAuthorizedKey(publicKeyString, "TestUser");
+
+                    // RBAC FIX (v1.0.6): Re-create bootstrap admin after clearAndReinitialize()
+                    blockchain.createBootstrapAdmin(
+                        CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+                        "BOOTSTRAP_ADMIN"
+                    );
+
+                    blockchain.addAuthorizedKey(publicKeyString, "TestUser", bootstrapKeyPair, UserRole.USER);
                     return blockchain.importChain("concurrent-export.json");
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -238,9 +262,16 @@ public class ThreadSafeExportImportTest {
             try {
                 startLatch.await(5, TimeUnit.SECONDS);
                 Thread.sleep(100); // Let exports start first
-                
+
                 blockchain.clearAndReinitialize();
-                blockchain.addAuthorizedKey(publicKeyString, "TestUser");
+
+                // RBAC FIX (v1.0.6): Re-create bootstrap admin after clearAndReinitialize()
+                blockchain.createBootstrapAdmin(
+                    CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+                    "BOOTSTRAP_ADMIN"
+                );
+
+                blockchain.addAuthorizedKey(publicKeyString, "TestUser", bootstrapKeyPair, UserRole.USER);
                 return blockchain.importEncryptedChain("concurrent-export.json", masterPassword);
             } catch (Exception e) {
                 e.printStackTrace();

@@ -82,8 +82,8 @@ public class MemorySafetyDemo {
 
         keyPair = CryptoUtil.generateKeyPair();
         publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
-        blockchain.addAuthorizedKey(publicKeyString, "DemoUser");
-        System.out.println("  ✅ Authorized key added");
+        blockchain.createBootstrapAdmin(publicKeyString, "DemoUser");
+        System.out.println("  ✅ Bootstrap admin created");
         System.out.println();
     }
 

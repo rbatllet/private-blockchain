@@ -1,6 +1,8 @@
 package com.rbatllet.blockchain.core;
 
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,28 +22,42 @@ import java.util.List;
  * Validates that encrypted blocks and off-chain data can be properly exported and restored
  */
 public class EncryptedChainExportImportTest {
-    
+
     private Blockchain blockchain;
+    private KeyPair bootstrapKeyPair;
     private KeyPair keyPair;
     private PrivateKey privateKey;
     private PublicKey publicKey;
     private String publicKeyString;
     private String masterPassword;
-    
+
     @BeforeEach
     void setUp() throws Exception {
         blockchain = new Blockchain();
+
+        // Ensure clean state
+        blockchain.clearAndReinitialize();
+
+        // Load bootstrap admin keys (created automatically)
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         keyPair = CryptoUtil.generateKeyPair();
         privateKey = keyPair.getPrivate();
         publicKey = keyPair.getPublic();
         publicKeyString = CryptoUtil.publicKeyToString(publicKey);
         masterPassword = "TestPassword123!";
-        
-        // Ensure clean state
-        blockchain.clearAndReinitialize();
-        
+
         // Add authorized key
-        blockchain.addAuthorizedKey(publicKeyString, "TestUser");
+        blockchain.addAuthorizedKey(publicKeyString, "TestUser", bootstrapKeyPair, UserRole.USER);
     }
     
     @AfterEach
@@ -87,8 +103,13 @@ public class EncryptedChainExportImportTest {
         
         // Clear blockchain
         blockchain.clearAndReinitialize();
+        // Re-register bootstrap admin after clear (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
         // Add authorized key again after clear
-        blockchain.addAuthorizedKey(publicKeyString, "TestUser");
+        blockchain.addAuthorizedKey(publicKeyString, "TestUser", bootstrapKeyPair, UserRole.USER);
         assertEquals(1, blockchain.getBlockCount(), "Blockchain should only have genesis block after clear");
 
         // Import chain
@@ -134,13 +155,18 @@ public class EncryptedChainExportImportTest {
         // Add large block (should go to off-chain storage)
         Block largeBlock = blockchain.addBlockAndReturn(largeData.toString(), privateKey, publicKey);
         assertTrue(largeBlock.hasOffChainData(), "Large block should have off-chain data");
-        
+
         // Export and import
         String exportPath = "test-encrypted-export.json";
         assertTrue(blockchain.exportEncryptedChain(exportPath, masterPassword));
-        
+
         blockchain.clearAndReinitialize();
-        blockchain.addAuthorizedKey(publicKeyString, "TestUser"); // Re-add key after clear
+        // Re-register bootstrap admin after clear (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+        blockchain.addAuthorizedKey(publicKeyString, "TestUser", bootstrapKeyPair, UserRole.USER); // Re-add key after clear
         assertTrue(blockchain.importEncryptedChain(exportPath, masterPassword));
 
         // Find the block with off-chain data since block numbers may change during import
@@ -180,6 +206,11 @@ public class EncryptedChainExportImportTest {
         
         // Import with regular method should work but encryption context may be lost
         blockchain.clearAndReinitialize();
+        // Re-register bootstrap admin after clear (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
         boolean importSuccess = blockchain.importChain(exportPath);
         assertTrue(importSuccess, "Regular import should work");
 
@@ -199,7 +230,12 @@ public class EncryptedChainExportImportTest {
         assertTrue(blockchain.exportEncryptedChain(exportPath, masterPassword));
 
         blockchain.clearAndReinitialize();
-        blockchain.addAuthorizedKey(publicKeyString, "TestUser"); // Re-add key after clear
+        // Re-register bootstrap admin after clear (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+        blockchain.addAuthorizedKey(publicKeyString, "TestUser", bootstrapKeyPair, UserRole.USER); // Re-add key after clear
 
         // Try to import with wrong password
         boolean importSuccess = blockchain.importEncryptedChain(exportPath, "WrongPassword123!");
@@ -218,10 +254,15 @@ public class EncryptedChainExportImportTest {
         // Export with regular method
         String exportPath = "test-regular-export.json";
         assertTrue(blockchain.exportChain(exportPath));
-        
+
         blockchain.clearAndReinitialize();
-        blockchain.addAuthorizedKey(publicKeyString, "TestUser"); // Re-add key after clear
-        
+        // Re-register bootstrap admin after clear (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+        blockchain.addAuthorizedKey(publicKeyString, "TestUser", bootstrapKeyPair, UserRole.USER); // Re-add key after clear
+
         // Try to import with encrypted method
         boolean importSuccess = blockchain.importEncryptedChain(exportPath, masterPassword);
         assertFalse(importSuccess, "Encrypted import should fail for non-encrypted export");
@@ -233,15 +274,20 @@ public class EncryptedChainExportImportTest {
         // Create mixed content
         blockchain.addBlockAndReturn("Public data", privateKey, publicKey);
         blockchain.addEncryptedBlock("Private data", masterPassword, privateKey, publicKey);
-        
+
         // Export and import
         String exportPath = "test-encrypted-export.json";
         assertTrue(blockchain.exportEncryptedChain(exportPath, masterPassword));
-        
+
         blockchain.clearAndReinitialize();
-        blockchain.addAuthorizedKey(publicKeyString, "TestUser"); // Re-add key after clear
+        // Re-register bootstrap admin after clear (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+        blockchain.addAuthorizedKey(publicKeyString, "TestUser", bootstrapKeyPair, UserRole.USER); // Re-add key after clear
         assertTrue(blockchain.importEncryptedChain(exportPath, masterPassword));
-        
+
         // Validate chain integrity
         var validationResult = blockchain.validateChainDetailed();
         assertTrue(validationResult.isStructurallyIntact(), "Chain should be structurally intact");

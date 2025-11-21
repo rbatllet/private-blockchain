@@ -1,5 +1,7 @@
 # StampedLock Migration: Complete Deadlock History
 
+
+> **🔄 CODE UPDATE (v1.0.6+)**: Methods like `revokeAuthorizedKey()`, `rollbackToBlock()` now throw exceptions. See [Exception-Based Error Handling Guide](../security/EXCEPTION_BASED_ERROR_HANDLING_V1_0_6.md).
 **Document Version**: 1.0  
 **Last Updated**: 2025-10-04  
 **Migration Period**: September-October 2025

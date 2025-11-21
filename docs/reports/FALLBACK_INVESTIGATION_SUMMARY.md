@@ -42,7 +42,7 @@ The architectural investigation identified multiple critical fallback issues acr
 
 ## Objective
 
-Per request: _"trobar tots els fallback i investigar si aquests poden amagar bugs no identificats. Un fallback no hauria d'evitar MAI la implementació de l'arquitectura per comoditat."_
+Per request: _"find all fallbacks and investigate whether they may be hiding unidentified bugs. A fallback should NEVER avoid implementing the architecture for convenience."_
 
 ---
 
@@ -443,7 +443,7 @@ Fix typos to proper stream operation syntax.
 
 ## Architecture Validation
 
-The principle _"Un fallback no hauria d'evitar MAI la implementació de l'arquitectura per comoditat"_ was being violated by the triple-nested fallback:
+The principle _"A fallback should NEVER avoid implementing the architecture for convenience"_ was being violated by the triple-nested fallback:
 
 ### ❌ What Was Wrong (Comfort Over Architecture)
 - Cascading fallbacks to "ensure every block gets indexed somehow"
@@ -654,7 +654,7 @@ public class FallbackMetrics {
 
 ## Conclusion
 
-**Mission Accomplished (2025-11-04):** The architectural principle _"Un fallback no hauria d'evitar MAI la implementació de l'arquitectura per comoditat"_ is now **fully enforced**. **ALL CRITICAL ISSUES RESOLVED.**
+**Mission Accomplished (2025-11-04):** The architectural principle _"A fallback should NEVER avoid implementing the architecture for convenience"_ is now **fully enforced**. **ALL CRITICAL ISSUES RESOLVED.**
 
 ### All Critical Violations Fixed:
 

@@ -1,7 +1,8 @@
 # Async Write Queue Implementation - Impact Analysis
 
-> **📌 Historical Document Note**: This report analyzes the codebase state as of 2025-10-03.  
+> **📌 Historical Document Note**: This report analyzes the codebase state as of 2025-10-03.
 > **⚠️ UPDATE (v1.0.6)**: The `getLastBlock()` method mentioned in this analysis now has transaction-aware considerations. See [TRANSACTION_ISOLATION_FIX.md](../database/TRANSACTION_ISOLATION_FIX.md) for important usage guidelines.
+> **🔄 CODE UPDATE (v1.0.6+)**: Methods like `rollbackBlocks()`, `rollbackToBlock()`, `exportChain()`, `importChain()` now throw exceptions instead of returning `false`. See [Exception-Based Error Handling Guide](../security/EXCEPTION_BASED_ERROR_HANDLING_V1_0_6.md).
 
 ## 📊 Executive Summary
 

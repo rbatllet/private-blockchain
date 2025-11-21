@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.OffChainData;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.JPAUtil;
 import com.rbatllet.blockchain.validation.BlockValidationResult;
@@ -28,11 +30,12 @@ public class UserFriendlyEncryptionAPISecurityTest {
     private UserFriendlyEncryptionAPI api;
     private Blockchain realBlockchain;
     private KeyPair testKeyPair;
+    private KeyPair bootstrapKeyPair;
     private String testUsername = "securitytestuser";
     private String testPassword = "SecurePassword123!";
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         MockitoAnnotations.openMocks(this);
 
         // Generate test key pair
@@ -40,11 +43,26 @@ public class UserFriendlyEncryptionAPISecurityTest {
 
         // Initialize API with real blockchain
         realBlockchain = new Blockchain();
+        realBlockchain.clearAndReinitialize();
 
-        // Register authorized key
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (RBAC v1.0.6)
+        realBlockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
+        // SECURITY FIX (v1.0.6): Pre-authorize user before creating API
         realBlockchain.addAuthorizedKey(
             CryptoUtil.publicKeyToString(testKeyPair.getPublic()),
-            testUsername
+            testUsername,
+            bootstrapKeyPair,
+            UserRole.USER
         );
 
         api = new UserFriendlyEncryptionAPI(

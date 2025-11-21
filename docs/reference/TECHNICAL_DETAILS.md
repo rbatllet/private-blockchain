@@ -14,6 +14,12 @@ Comprehensive technical documentation covering database schema, off-chain storag
 - [Testing Architecture](#-testing-architecture)
 - [Script Implementation](#-script-implementation)
 
+---
+
+> **🔄 BREAKING CHANGE (v1.0.6+)**: Critical security and operational methods now throw **exceptions** instead of returning `false`. This fail-fast pattern ensures security violations cannot be silently ignored. See [Exception-Based Error Handling Guide](../security/EXCEPTION_BASED_ERROR_HANDLING_V1_0_6.md) for complete details.
+
+---
+
 ## 🏗️ Architecture Overview
 
 ### Project Classes
@@ -345,22 +351,46 @@ public class AuthorizedKey {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
+
     @Column(name = "public_key", columnDefinition = "TEXT", nullable = false)
     private String publicKey;
-    
+
     @Column(name = "owner_name", length = 100)
     private String ownerName;
-    
+
+    // RBAC support (v1.0.6+)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", length = 20, nullable = false)
+    private UserRole role = UserRole.USER;  // Default role
+
     @Column(name = "is_active", nullable = false)
     private boolean isActive = true;
-    
+
     @Column(name = "created_at")
     private java.time.LocalDateTime createdAt;
-    
+
     @Column(name = "revoked_at")
     private java.time.LocalDateTime revokedAt;
-    
+
+    // Username of who created this authorized key (v1.0.6+)
+    @Column(name = "created_by", length = 100)
+    private String createdBy;
+
+    // Constructors
+    public AuthorizedKey() {
+        // Default constructor for JPA
+    }
+
+    // Full constructor with RBAC support (v1.0.6+)
+    public AuthorizedKey(String publicKey, String ownerName, UserRole role,
+                        String createdBy, java.time.LocalDateTime createdAt) {
+        this.publicKey = publicKey;
+        this.ownerName = ownerName;
+        this.role = role;
+        this.createdBy = createdBy;
+        this.createdAt = createdAt;
+    }
+
     // Getters and setters...
 }
 
@@ -716,6 +746,13 @@ public boolean deleteAuthorizedKey(String publicKey)
 public boolean dangerouslyDeleteAuthorizedKey(String publicKey, boolean force, String reason, String adminSignature, String adminPublicKey)
 ```
 
+**Throws (v1.0.6+):**
+- `SecurityException` - Invalid admin authorization (signature verification fails)
+- `IllegalStateException` - Emergency backup creation fails or safety checks prevent deletion
+- `IllegalArgumentException` - Specified key does not exist
+
+**Note:** This method now throws exceptions instead of returning `false` on failure, ensuring security violations cannot be silently ignored.
+
 #### Security Guarantees
 
 **Safe Deletion (Level 2):**
@@ -730,6 +767,7 @@ public boolean dangerouslyDeleteAuthorizedKey(String publicKey, boolean force, S
 - ✅ Comprehensive audit logging with secure key hashing
 - ✅ Impact analysis before deletion
 - ✅ Emergency backup creation for rollback safety
+- ✅ **v1.0.6+:** Throws exceptions on failure instead of silent false returns
 
 **When `force=false`:**
 - ⚠️ Protected by safety checks - refuses deletion if blocks would be orphaned
@@ -1241,8 +1279,7 @@ The following test classes validate thread safety under various conditions:
 6. **DataIntegrityThreadSafetyTest**: Data consistency validation under concurrent access
 7. **EncryptedBlockThreadSafetyTest**: Encryption operations thread safety
 8. **BlockSequenceThreadSafetyTest**: Block numbering sequence thread safety
-9. **ECKeyDerivationThreadSafetyTest**: Cryptographic key generation thread safety
-10. **ThreadSafeExportImportTest**: Chain export/import operations thread safety
+9. **ThreadSafeExportImportTest**: Chain export/import operations thread safety
 
 **Test Coverage Areas:**
 - Concurrent block addition and validation
@@ -1640,16 +1677,10 @@ public class BlockchainTest {
     @BeforeAll
     static void setupTestEnvironment() {
         // Configure test-specific JPA settings
-        Map<String, Object> testProperties = new HashMap<>();
-        testProperties.put("jakarta.persistence.jdbc.url", "jdbc:sqlite:" + TEST_DB);
-        testProperties.put("jakarta.persistence.schema-generation.database.action", "drop-and-create");
-        testProperties.put("hibernate.show_sql", "true");
-        
-        // Create test EntityManagerFactory
-        EntityManagerFactory testEMF = Persistence.createEntityManagerFactory(
-            "blockchainPU", testProperties);
-        JPAUtil.setEntityManagerFactory(testEMF); // Test-only method
-        
+        // Initialize with H2 test database
+        DatabaseConfig h2Config = DatabaseConfig.createH2TestConfig();
+        JPAUtil.initialize(h2Config);
+
         blockchain = new Blockchain();
     }
     

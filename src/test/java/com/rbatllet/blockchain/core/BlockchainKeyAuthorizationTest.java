@@ -3,6 +3,7 @@ package com.rbatllet.blockchain.core;
 import com.rbatllet.blockchain.dao.AuthorizedKeyDAO;
 import com.rbatllet.blockchain.entity.AuthorizedKey;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.validation.ChainValidationResult;
 import com.rbatllet.blockchain.test.util.TestDatabaseUtils;
@@ -80,20 +81,28 @@ class BlockchainKeyAuthorizationTest {
     void testHistoricalBlockValidationAfterKeyRevocation() {
         // Create a fresh blockchain for this test
         Blockchain blockchain = new Blockchain();
-        
-        // Add authorized key for Alice
-        assertTrue(blockchain.addAuthorizedKey(alicePublicKey, "Alice"),
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
+        // Add authorized key for Alice (genesis admin - RBAC v1.0.6)
+        assertTrue(blockchain.createBootstrapAdmin(alicePublicKey, "Alice"),
                 "Alice's key should be authorized successfully");
-        
+
+        // RBAC v1.0.6: Create Bob as second SUPER_ADMIN to allow revoking Alice
+        // (Cannot revoke last SUPER_ADMIN due to system lockout protection)
+        assertTrue(blockchain.addAuthorizedKey(bobPublicKey, "Bob", aliceKeyPair, UserRole.SUPER_ADMIN),
+                "Bob should be authorized as SUPER_ADMIN");
+
         // Alice creates a block (should succeed)
         Block aliceBlock = blockchain.addBlockAndReturn("Alice's transaction", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic());
-        
+
         // Verify the block was created
         assertNotNull(aliceBlock, "Alice's block should exist");
         assertEquals("Alice's transaction", aliceBlock.getData(), "Block data should match");
         assertEquals(alicePublicKey, aliceBlock.getSignerPublicKey(), "Block should be signed by Alice");
-        
-        // Now revoke Alice's key
+
+        // Now revoke Alice's key (Bob remains as SUPER_ADMIN)
         assertTrue(blockchain.revokeAuthorizedKey(alicePublicKey),
                 "Alice's key should be revoked successfully");
         
@@ -118,7 +127,10 @@ class BlockchainKeyAuthorizationTest {
     void testUnauthorizedKeyBlockRejection() {
         // Create a fresh blockchain for this test
         Blockchain blockchain = new Blockchain();
-        
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
         // Try to create a block with an unauthorized key (should fail)
         assertFalse(blockchain.addBlock("Unauthorized transaction", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()),
                 "Should not be able to create block with unauthorized key");
@@ -127,8 +139,8 @@ class BlockchainKeyAuthorizationTest {
         long blockCount = blockchain.getBlockCount();
         assertEquals(1, blockCount, "Should still have only genesis block");
         
-        // Add the key now
-        assertTrue(blockchain.addAuthorizedKey(alicePublicKey, "Alice"),
+        // Add the key now (genesis admin - RBAC v1.0.6)
+        assertTrue(blockchain.createBootstrapAdmin(alicePublicKey, "Alice"),
                 "Alice's key should be authorized successfully");
         
         // Now Alice can create blocks
@@ -145,21 +157,24 @@ class BlockchainKeyAuthorizationTest {
     void testMultipleKeysWithRevocation() {
         // Create a fresh blockchain for this test
         Blockchain blockchain = new Blockchain();
-        
-        // 1. Authorize Alice
-        assertTrue(blockchain.addAuthorizedKey(alicePublicKey, "Alice"));
-        
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
+        // 1. Authorize Alice (genesis admin - RBAC v1.0.6)
+        assertTrue(blockchain.createBootstrapAdmin(alicePublicKey, "Alice"));
+
         // 2. Alice creates block
         assertTrue(blockchain.addBlock("Alice block 1", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()));
-        
-        // 3. Authorize Bob
-        assertTrue(blockchain.addAuthorizedKey(bobPublicKey, "Bob"));
-        
+
+        // 3. Authorize Bob as SUPER_ADMIN (RBAC v1.0.6: need another SUPER_ADMIN to allow revoking Alice)
+        assertTrue(blockchain.addAuthorizedKey(bobPublicKey, "Bob", aliceKeyPair, UserRole.SUPER_ADMIN));
+
         // 4. Both create blocks
         assertTrue(blockchain.addBlock("Alice block 2", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()));
         assertTrue(blockchain.addBlock("Bob block 1", bobKeyPair.getPrivate(), bobKeyPair.getPublic()));
-        
-        // 5. Revoke Alice
+
+        // 5. Revoke Alice (Bob remains as SUPER_ADMIN)
         assertTrue(blockchain.revokeAuthorizedKey(alicePublicKey));
         
         // 6. Bob creates another block (should work)
@@ -195,9 +210,12 @@ class BlockchainKeyAuthorizationTest {
     void testImportWithTimestampCorrections() throws Exception {
         // 1. Create original blockchain with specific timing
         Blockchain originalBlockchain = new Blockchain();
-        
-        // 2. Authorize Alice
-        assertTrue(originalBlockchain.addAuthorizedKey(alicePublicKey, "Alice"));
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        originalBlockchain.clearAndReinitialize();
+
+        // 2. Authorize Alice (genesis admin - RBAC v1.0.6)
+        assertTrue(originalBlockchain.createBootstrapAdmin(alicePublicKey, "Alice"));
         
         // 3. Wait to create clear time separation
         Thread.sleep(100);
@@ -213,6 +231,10 @@ class BlockchainKeyAuthorizationTest {
         
         // 6. Import into new blockchain
         Blockchain importedBlockchain = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before import to avoid "Existing users" error
+        importedBlockchain.clearAndReinitialize();
+
         boolean importResult = importedBlockchain.importChain(exportFile.getAbsolutePath());
         
         // 7. Log some debug info if import fails
@@ -262,16 +284,19 @@ class BlockchainKeyAuthorizationTest {
     @DisplayName("Test Integration: Historical Validation with Import")
     void testIntegrationHistoricalValidationWithImport() throws Exception {
         // This test validates the combination of historical validation and import functionality
-        
+
         // 1. Create original blockchain
         Blockchain originalBlockchain = new Blockchain();
-        
-        // 2. Authorize Alice, she creates blocks, then gets revoked
-        assertTrue(originalBlockchain.addAuthorizedKey(alicePublicKey, "Alice"));
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        originalBlockchain.clearAndReinitialize();
+
+        // 2. Authorize Alice, she creates blocks, then gets revoked (genesis admin - RBAC v1.0.6)
+        assertTrue(originalBlockchain.createBootstrapAdmin(alicePublicKey, "Alice"));
         assertTrue(originalBlockchain.addBlock("Alice historical block", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()));
-        
-        // 3. Authorize Bob
-        assertTrue(originalBlockchain.addAuthorizedKey(bobPublicKey, "Bob"));
+
+        // 3. Authorize Bob (created by Alice - RBAC v1.0.6)
+        assertTrue(originalBlockchain.addAuthorizedKey(bobPublicKey, "Bob", aliceKeyPair, UserRole.USER));
         assertTrue(originalBlockchain.addBlock("Bob block", bobKeyPair.getPrivate(), bobKeyPair.getPublic()));
         
         // Note: We won't revoke Alice here since that might complicate import validation
@@ -282,6 +307,10 @@ class BlockchainKeyAuthorizationTest {
         
         // 5. Import into new blockchain
         Blockchain importedBlockchain = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before import to avoid "Existing users" error
+        importedBlockchain.clearAndReinitialize();
+
         assertTrue(importedBlockchain.importChain(exportFile.getAbsolutePath()),
                 "Complex chain should import successfully");
         
@@ -327,28 +356,34 @@ class BlockchainKeyAuthorizationTest {
     @Order(6)
     @DisplayName("Test Historical Block Validation After Key Revocation")
     void testHistoricalBlockValidationAfterRevocation() {
-        
+
         // Create a fresh blockchain
         Blockchain blockchain = new Blockchain();
-        
-        // 1. Authorize Alice
-        assertTrue(blockchain.addAuthorizedKey(alicePublicKey, "Alice"));
-        
-        // 2. Alice creates multiple blocks
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
+        // 1. Authorize Alice (genesis admin - RBAC v1.0.6)
+        assertTrue(blockchain.createBootstrapAdmin(alicePublicKey, "Alice"));
+
+        // 2. RBAC v1.0.6: Create Bob as second SUPER_ADMIN to allow revoking Alice
+        assertTrue(blockchain.addAuthorizedKey(bobPublicKey, "Bob", aliceKeyPair, UserRole.SUPER_ADMIN));
+
+        // 3. Alice creates multiple blocks
         assertTrue(blockchain.addBlock("Alice block 1", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()));
         assertTrue(blockchain.addBlock("Alice block 2", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()));
 
-        // 3. Store Alice's blocks for validation
+        // 4. Store Alice's blocks for validation
         List<Block> allChainBlocks = new ArrayList<>();
         blockchain.processChainInBatches(batch -> allChainBlocks.addAll(batch), 1000);
 
         List<Block> aliceBlocks = allChainBlocks.stream()
                 .filter(block -> alicePublicKey.equals(block.getSignerPublicKey()))
                 .toList();
-        
+
         assertEquals(2, aliceBlocks.size(), "Alice should have created 2 blocks");
-        
-        // 4. Revoke Alice's key
+
+        // 5. Revoke Alice's key (Bob remains as SUPER_ADMIN)
         assertTrue(blockchain.revokeAuthorizedKey(alicePublicKey));
         
         // 5. Alice cannot create new blocks
@@ -406,22 +441,28 @@ class BlockchainKeyAuthorizationTest {
     void testKeyRevocationWithTemporalValidation() {
         // Create a fresh blockchain
         Blockchain blockchain = new Blockchain();
-        
-        // 1. Authorize Alice
-        assertTrue(blockchain.addAuthorizedKey(alicePublicKey, "Alice"));
-        
-        // 2. Alice creates a block - should be valid
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
+        // 1. Authorize Alice (genesis admin - RBAC v1.0.6)
+        assertTrue(blockchain.createBootstrapAdmin(alicePublicKey, "Alice"));
+
+        // 2. RBAC v1.0.6: Create Bob as second SUPER_ADMIN to allow revoking Alice
+        assertTrue(blockchain.addAuthorizedKey(bobPublicKey, "Bob", aliceKeyPair, UserRole.SUPER_ADMIN));
+
+        // 3. Alice creates a block - should be valid
         Block historicalBlock = blockchain.addBlockAndReturn("Historical block", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic());
         assertNotNull(historicalBlock);
-        
-        // 3. Wait a moment to ensure temporal separation
+
+        // 4. Wait a moment to ensure temporal separation
         try {
             Thread.sleep(10);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
-        
-        // 4. Revoke Alice
+
+        // 5. Revoke Alice (Bob remains as SUPER_ADMIN)
         assertTrue(blockchain.revokeAuthorizedKey(alicePublicKey));
         
         // 5. Alice tries to create a new block - should fail
@@ -444,41 +485,48 @@ class BlockchainKeyAuthorizationTest {
     void testReAuthorizationScenario() {
         // Create a fresh blockchain
         Blockchain blockchain = new Blockchain();
-        
-        // 1. Authorize, create block, revoke
-        assertTrue(blockchain.addAuthorizedKey(alicePublicKey, "Alice"));
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
+        // 1. Create Alice as genesis admin (RBAC v1.0.6)
+        assertTrue(blockchain.createBootstrapAdmin(alicePublicKey, "Alice"));
         assertTrue(blockchain.addBlock("First period", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()));
-        
+
+        // 2. Alice creates Bob as second SUPER_ADMIN (for re-authorization capability)
+        assertTrue(blockchain.addAuthorizedKey(bobPublicKey, "Bob", aliceKeyPair, UserRole.SUPER_ADMIN));
+
         // Wait for temporal separation
         try {
             Thread.sleep(50);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
-        
+
+        // 3. Revoke Alice (Bob remains as active SUPER_ADMIN)
         assertTrue(blockchain.revokeAuthorizedKey(alicePublicKey));
-        
+
         // Wait again
         try {
             Thread.sleep(50);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
-        
-        // 2. Re-authorize the same key
-        assertTrue(blockchain.addAuthorizedKey(alicePublicKey, "Alice-Reauthorized"));
-        
-        // 3. Alice can create new blocks
+
+        // 4. Bob re-authorizes Alice (RBAC v1.0.6 - requires active SUPER_ADMIN)
+        assertTrue(blockchain.addAuthorizedKey(alicePublicKey, "Alice-Reauthorized", bobKeyPair, UserRole.SUPER_ADMIN));
+
+        // 5. Alice can create new blocks after re-authorization
         assertTrue(blockchain.addBlock("Second period", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()));
-        
-        // 4. Both periods should be valid
+
+        // 6. Both periods should be valid
         ChainValidationResult reAuthResult = blockchain.validateChainDetailed();
         assertTrue(reAuthResult.isFullyCompliant(),
                 "Chain should be fully compliant after re-authorization");
         assertTrue(reAuthResult.isStructurallyIntact(),
                 "Chain should be structurally intact after re-authorization");
 
-        // 5. Verify all blocks individually
+        // 7. Verify all blocks individually
         List<Block> allBlocks = new ArrayList<>();
         blockchain.processChainInBatches(batch -> allBlocks.addAll(batch), 1000);
 
@@ -495,23 +543,30 @@ class BlockchainKeyAuthorizationTest {
     @DisplayName("Test Import Export with Complex Temporal History")
     void testImportExportWithComplexTemporalHistory() throws Exception {
         // Test that ensures import maintains temporal consistency
-        
+
         // 1. Create chain with complex temporal history
         Blockchain original = new Blockchain();
-        
-        // Simulate history: authorize -> create blocks -> revoke -> re-authorize
-        assertTrue(original.addAuthorizedKey(alicePublicKey, "Alice"));
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        original.clearAndReinitialize();
+
+        // Simulate history: authorize -> create blocks -> revoke -> re-authorize (RBAC v1.0.6)
+        // Alice is genesis admin, creates Bob as second SUPER_ADMIN
+        assertTrue(original.createBootstrapAdmin(alicePublicKey, "Alice"));
+        assertTrue(original.addAuthorizedKey(bobPublicKey, "Bob", aliceKeyPair, UserRole.SUPER_ADMIN));
         assertTrue(original.addBlock("Block 1", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()));
-        
+
         // Wait for temporal separation
         Thread.sleep(100);
-        
+
+        // Bob revokes Alice (Bob remains as active SUPER_ADMIN)
         assertTrue(original.revokeAuthorizedKey(alicePublicKey));
-        
+
         // Wait again
         Thread.sleep(100);
-        
-        assertTrue(original.addAuthorizedKey(alicePublicKey, "Alice-2"));
+
+        // Bob re-authorizes Alice
+        assertTrue(original.addAuthorizedKey(alicePublicKey, "Alice-2", bobKeyPair, UserRole.SUPER_ADMIN));
         assertTrue(original.addBlock("Block 2", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()));
         
         // 2. Verify original chain is valid
@@ -525,6 +580,10 @@ class BlockchainKeyAuthorizationTest {
         
         // 4. Import
         Blockchain imported = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before import to avoid "Existing users" error
+        imported.clearAndReinitialize();
+
         boolean importSuccess = imported.importChain(exportFile.getAbsolutePath());
         
         // 5. Import should succeed

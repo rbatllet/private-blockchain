@@ -26,6 +26,8 @@ This directory separates **analytical reports** from **developer guides** to imp
 
 | Document | Description | Date | Status |
 |----------|-------------|------|--------|
+| **[WRITE_THROUGHPUT_OPTIMIZATION_PROPOSALS.md](WRITE_THROUGHPUT_OPTIMIZATION_PROPOSALS.md)** | 🆕 **Write throughput optimization proposals (5 strategies, IDENTITY generator issue)** | 2025-10-29 | 🚨 Critical |
+| **[PERFORMANCE_BENCHMARK_REPORT.md](PERFORMANCE_BENCHMARK_REPORT.md)** | Performance benchmarks for memory safety refactoring (Phases A.1-A.8, B.1-B.2) | 2025-10-27 | ✅ Reference |
 | **[PERFORMANCE_OPTIMIZATION_PLAN.md](PERFORMANCE_OPTIMIZATION_PLAN.md)** | Performance optimization roadmap | 2025-10-03 | ℹ️ Planning |
 | **[PERFORMANCE_OPTIMIZATION_SUMMARY.md](PERFORMANCE_OPTIMIZATION_SUMMARY.md)** | Summary of performance improvements achieved | 2025-10-03 | ℹ️ Reference |
 
@@ -50,6 +52,9 @@ This directory separates **analytical reports** from **developer guides** to imp
 
 | Document | Description | Date | Status |
 |----------|-------------|------|--------|
+| **[FALLBACK_ANALYSIS_REPORT.md](FALLBACK_ANALYSIS_REPORT.md)** | Comprehensive fallback mechanisms analysis - all critical issues resolved | 2025-11-03 | ✅ Resolved |
+| **[FALLBACK_INVESTIGATION_SUMMARY.md](FALLBACK_INVESTIGATION_SUMMARY.md)** | Executive summary of fallback investigation and architectural fixes | 2025-11-03 | ✅ Resolved |
+| **[TECHNICAL_LIMITATIONS_AUDIT.md](TECHNICAL_LIMITATIONS_AUDIT.md)** | Comprehensive audit of technical limitations across all subsystems | 2025-10-29 | ℹ️ Reference |
 | **[FORMAT_UTIL_ROBUSTNESS_ANALYSIS.md](FORMAT_UTIL_ROBUSTNESS_ANALYSIS.md)** | Robustness analysis of FormatUtil class | 2025-09-10 | ✅ Validated |
 | **[FORMATUTIL_QUALITY_ASSESSMENT.md](FORMATUTIL_QUALITY_ASSESSMENT.md)** | Quality assessment of FormatUtil implementation | 2025-09-10 | ✅ Validated |
 | **[COMPRESSION_ANALYSIS_RESULT_ROBUSTNESS_GUIDE.md](COMPRESSION_ANALYSIS_RESULT_ROBUSTNESS_GUIDE.md)** | CompressionAnalysisResult robustness enhancements (v2.0) | 2025-09-17 | ✅ Implemented |
@@ -61,6 +66,8 @@ This directory separates **analytical reports** from **developer guides** to imp
 
 | Document | Description | Date | Status |
 |----------|-------------|------|--------|
+| **[SEARCHFRAMEWORK_REFACTOR_PLAN.md](SEARCHFRAMEWORK_REFACTOR_PLAN.md)** | SearchFrameworkEngine indexing strategy refactor (triple-nested fallback fix) | 2025-11-03 | ✅ Completed |
+| **[RETROACTIVE_ENCRYPTION_IMPLEMENTATION.md](RETROACTIVE_ENCRYPTION_IMPLEMENTATION.md)** | Retroactive encryption architecture maintaining blockchain hash integrity | 2025-10-05 | ✅ Implemented |
 | **[ADVANCED_LOGGING_IMPLEMENTATION_SUMMARY.md](ADVANCED_LOGGING_IMPLEMENTATION_SUMMARY.md)** | Advanced logging system implementation summary | 2025-07-17 | ℹ️ Reference |
 | **[MEMORY_MANAGEMENT_IMPLEMENTATION_SUMMARY.md](MEMORY_MANAGEMENT_IMPLEMENTATION_SUMMARY.md)** | Memory management implementation summary | 2025-07-17 | ℹ️ Reference |
 | **[HASH_TO_BLOCK_MAPPING_FIX_SUMMARY.md](HASH_TO_BLOCK_MAPPING_FIX_SUMMARY.md)** | Hash-to-block mapping fix implementation | 2025-09-13 | ✅ Fixed |
@@ -87,6 +94,7 @@ This directory separates **analytical reports** from **developer guides** to imp
 
 ### Most Important Reports (Start Here)
 
+1. **[WRITE_THROUGHPUT_OPTIMIZATION_PROPOSALS.md](WRITE_THROUGHPUT_OPTIMIZATION_PROPOSALS.md)** - 🆕 🚨 **CRITICAL: IDENTITY generator blocks JDBC batching (5-10x perf impact)**
 2. **[POST_QUANTUM_MIGRATION_PLAN.md](POST_QUANTUM_MIGRATION_PLAN.md)** - 🆕 🔐 **Post-quantum cryptography roadmap (ML-DSA hybrid signatures, NIST 2024)**
 3. **[MEMORY_STREAMING_OPTIMIZATIONS_PHASE_4.md](MEMORY_STREAMING_OPTIMIZATIONS_PHASE_4.md)** - 🆕 Phase 4 streaming optimizations (2-3GB savings)
 4. **[MEMORY_OPTIMIZATION_PRIORITIES_1_2_3.md](MEMORY_OPTIMIZATION_PRIORITIES_1_2_3.md)** - 🆕 Completed optimizations (4GB saved)
@@ -109,12 +117,12 @@ This directory separates **analytical reports** from **developer guides** to imp
 | Category | Reports | Total Pages (est.) |
 |----------|---------|-------------------|
 | Lock & Concurrency | 6 | ~100 pages |
-| Performance | 3 | ~30 pages |
+| Performance | 4 | ~50 pages |
 | Memory Optimization | 5 | ~170 pages |
-| Security & Cryptography | 1 | ~50 pages |
-| Robustness | 6 | ~60 pages |
-| Implementation | 4 | ~30 pages |
-| **TOTAL** | **25** | **~440 pages** |
+| Security & Cryptography | 2 | ~50 pages |
+| Robustness | 9 | ~100 pages |
+| Implementation | 6 | ~50 pages |
+| **TOTAL** | **32** | **~520 pages** |
 
 ## 🎯 Report Quality Standards
 
@@ -140,6 +148,6 @@ All reports in this directory follow these standards:
 ---
 
 **Directory Created**: 2025-10-04
-**Total Reports**: 26
+**Total Reports**: 32
 **Status**: Active - New reports added as needed
-**Last Updated**: 2025-10-30
+**Last Updated**: 2025-11-21

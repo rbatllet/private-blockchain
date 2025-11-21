@@ -80,7 +80,10 @@ public class TestOffChainValidation {
         publicKey = keyPair.getPublic();
         
         // Authorize the key
-        blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(publicKey), "TestUser");
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(publicKey),
+            "TestUser"
+        );
         
         System.out.println("✅ Test environment initialized");
         System.out.println();

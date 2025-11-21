@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI.EncryptionAnalysis;
 import com.rbatllet.blockchain.util.CryptoUtil;
@@ -34,6 +36,7 @@ public class EncryptionAnalysisTest {
     private Blockchain blockchain;
     private UserFriendlyEncryptionAPI api;
     private KeyPair testUserKeys;
+    private KeyPair bootstrapKeyPair;
     private String testPassword;
 
     @BeforeEach
@@ -44,14 +47,26 @@ public class EncryptionAnalysisTest {
         // BlockRepository now package-private - use clearAndReinitialize();
         blockchain.getAuthorizedKeyDAO().cleanupTestData();
 
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         api = new UserFriendlyEncryptionAPI(blockchain);
         testPassword = "TestPassword123!";
 
-        // PRE-AUTHORIZATION REQUIRED (v1.0.6 security): 
+        // PRE-AUTHORIZATION REQUIRED (v1.0.6 RBAC security):
         // 1. Create admin to act as authorized user creator
         KeyPair adminKeys = CryptoUtil.generateKeyPair();
         String adminPublicKey = CryptoUtil.publicKeyToString(adminKeys.getPublic());
-        blockchain.addAuthorizedKey(adminPublicKey, "Admin");
+        blockchain.addAuthorizedKey(adminPublicKey, "Admin", bootstrapKeyPair, UserRole.ADMIN);
         api.setDefaultCredentials("Admin", adminKeys);  // Authenticate as admin
 
         // 2. Now admin can create test user (generates new keys internally)

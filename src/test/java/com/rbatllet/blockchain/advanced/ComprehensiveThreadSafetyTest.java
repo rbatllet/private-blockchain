@@ -55,7 +55,7 @@ class ComprehensiveThreadSafetyTest {
         
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
-        blockchain.addAuthorizedKey(publicKeyString, "SequentialTestUser");
+        blockchain.createBootstrapAdmin(publicKeyString, "SequentialTestUser");
         
         int totalBlocks = 200;
         CountDownLatch startLatch = new CountDownLatch(1);
@@ -141,7 +141,7 @@ class ComprehensiveThreadSafetyTest {
 
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         String publicKey = CryptoUtil.publicKeyToString(keyPair.getPublic());
-        blockchain.addAuthorizedKey(publicKey, "UniquenessUser");
+        blockchain.createBootstrapAdmin(publicKey, "UniquenessUser");
 
         // EXTREME load: 200 threads each trying to add 5 blocks (1000 total)
         int threadCount = 200;

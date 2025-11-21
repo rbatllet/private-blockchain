@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.indexing.IndexingCoordinator;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import java.security.KeyPair;
 import java.security.PrivateKey;
@@ -28,6 +30,7 @@ import org.junit.jupiter.api.*;
 public class SearchSpecialistAPIValidationTest {
 
     private Blockchain testBlockchain;
+    private KeyPair bootstrapKeyPair;
     private String testPassword;
     private PrivateKey testPrivateKey;
     private PublicKey testPublicKey;
@@ -38,6 +41,22 @@ public class SearchSpecialistAPIValidationTest {
         IndexingCoordinator.getInstance().reset();
 
         testBlockchain = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        testBlockchain.clearAndReinitialize();
+
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (RBAC v1.0.6)
+        testBlockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         testPassword = "ValidationTestPassword123!";
 
         // Generate test key pair
@@ -50,7 +69,8 @@ public class SearchSpecialistAPIValidationTest {
         testBlockchain.addAuthorizedKey(
             publicKeyString,
             "ValidationTestUser",
-            null
+            bootstrapKeyPair,
+            UserRole.USER
         );
 
         // Add some test blocks

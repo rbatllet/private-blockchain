@@ -2,6 +2,7 @@ package demo;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 
 import org.apache.logging.log4j.LogManager;
@@ -107,9 +108,23 @@ public class ComprehensiveThreadSafetyTest {
             privateKeys[i] = keyPair.getPrivate();
             publicKeys[i] = keyPair.getPublic();
             publicKeyStrings[i] = CryptoUtil.publicKeyToString(publicKeys[i]);
-            
+
             // Authorize all keys
-            blockchain.addAuthorizedKey(publicKeyStrings[i], "TestUser" + i);
+            if (i == 0) {
+                // First user - Genesis bootstrap
+                blockchain.createBootstrapAdmin(
+                    publicKeyStrings[i],
+                    "TestUser" + i
+                );
+            } else {
+                // Subsequent users - Created by first user
+                blockchain.addAuthorizedKey(
+                    publicKeyStrings[i],
+                    "TestUser" + i,
+                    new KeyPair(publicKeys[0], privateKeys[0]),  // First user is the caller
+                    UserRole.USER
+                );
+            }
         }
         
         System.out.println("✅ Initialized " + NUM_THREADS + " key pairs and authorized them");
@@ -595,7 +610,12 @@ public class ComprehensiveThreadSafetyTest {
                     // Rapid authorize/revoke cycles
                     for (int j = 0; j < 5; j++) {
                         try {
-                            blockchain.addAuthorizedKey(publicKeyString + "_" + j, "EdgeTestUser" + threadId + "_" + j);
+                            blockchain.addAuthorizedKey(
+                                publicKeyString + "_" + j,
+                                "EdgeTestUser" + threadId + "_" + j,
+                                new KeyPair(publicKeys[0], privateKeys[0]),  // First user creates these
+                                UserRole.USER
+                            );
                             Thread.sleep(1); // Small delay to create potential race conditions
                             blockchain.revokeAuthorizedKey(publicKeyString + "_" + j);
                             successfulOperations.incrementAndGet();

@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.rbatllet.blockchain.config.MaintenanceConstants;
 import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.JPAUtil;
 import java.io.*;
@@ -53,6 +55,7 @@ class OffChainCleanupServiceTest {
 
     private OffChainCleanupService cleanupService;
     private Blockchain blockchain;
+    private KeyPair bootstrapKeyPair;
     private KeyPair testKeyPair;
     private String testPublicKey;
     private PrivateKey testPrivateKey;
@@ -83,12 +86,24 @@ class OffChainCleanupServiceTest {
         blockchain = new Blockchain();
         blockchain.clearAndReinitialize();
 
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         // Generate test credentials
         testKeyPair = CryptoUtil.generateKeyPair();
         testPublicKey = CryptoUtil.publicKeyToString(testKeyPair.getPublic());
         testPrivateKey = testKeyPair.getPrivate();
 
-        blockchain.addAuthorizedKey(testPublicKey, "TestUser");
+        blockchain.addAuthorizedKey(testPublicKey, "TestUser", bootstrapKeyPair, UserRole.USER);
 
         // Setup isolated test directory
         setupTestDirectory();

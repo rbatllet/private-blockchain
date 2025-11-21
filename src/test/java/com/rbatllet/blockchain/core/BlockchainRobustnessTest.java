@@ -61,7 +61,7 @@ public class BlockchainRobustnessTest {
         publicKey = keyPair.getPublic();
         publicKeyString = CryptoUtil.publicKeyToString(publicKey);
 
-        blockchain.addAuthorizedKey(publicKeyString, "TestUser");
+        blockchain.createBootstrapAdmin(publicKeyString, "TestUser");
         logger.info("✅ Test setup completed");
     }
 
@@ -769,14 +769,15 @@ public class BlockchainRobustnessTest {
             assertEquals(countBefore, countAfter, "If rollback to genesis fails, count should remain unchanged");
         }
 
-        // Test 3: Rollback to block > chain length - should fail
-        boolean invalidRollback = blockchain.rollbackToBlock(10000L);
-        assertFalse(invalidRollback, "Rollback to block beyond chain length should fail");
+        // Test 3: Rollback to block > chain length - should throw IllegalArgumentException
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.rollbackToBlock(10000L);
+        }, "Rollback to block beyond chain length should throw IllegalArgumentException");
 
-        // Test 4: Rollback to negative block - should fail
-        assertThrows(Exception.class, () -> {
+        // Test 4: Rollback to negative block - should throw IllegalArgumentException
+        assertThrows(IllegalArgumentException.class, () -> {
             blockchain.rollbackToBlock(-5L);
-        }, "Rollback to negative block should throw exception");
+        }, "Rollback to negative block should throw IllegalArgumentException");
 
         logger.info("✅ Rollback to block edge cases passed");
         logger.info("   Valid rollback: tested, Invalid rollback: tested");
@@ -795,9 +796,10 @@ public class BlockchainRobustnessTest {
 
         assertEquals(51, blockchain.getBlockCount(), "Should have 51 blocks");
 
-        // Test 1: Rollback 0 blocks - should be no-op
-        boolean rollback0 = blockchain.rollbackBlocks(0L);
-        assertTrue(rollback0 || !rollback0, "Rollback 0 blocks should succeed or be no-op");
+        // Test 1: Rollback 0 blocks - should throw IllegalArgumentException
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.rollbackBlocks(0L);
+        }, "Rollback 0 blocks should throw IllegalArgumentException");
         assertEquals(51, blockchain.getBlockCount(), "Count should remain 51");
 
         // Test 2: Rollback 20 blocks - valid operation
@@ -805,21 +807,17 @@ public class BlockchainRobustnessTest {
         assertTrue(rollback20, "Rollback 20 blocks should succeed");
         assertEquals(31, blockchain.getBlockCount(), "Should have 31 blocks after rollback");
 
-        // Test 3: Rollback more blocks than exist (except genesis)
-        boolean rollbackAll = blockchain.rollbackBlocks(1000L);
+        // Test 3: Rollback more blocks than exist (except genesis) - should throw IllegalArgumentException
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.rollbackBlocks(1000L);
+        }, "Rollback of more blocks than exist should throw IllegalArgumentException");
 
-        // RIGOROUS - Verify rollback behavior when requesting more blocks than exist
+        // RIGOROUS - Verify blockchain state after failed rollback
         long finalCount = blockchain.getBlockCount();
         assertTrue(finalCount >= 1, "Genesis block must always exist");
-        assertTrue(finalCount <= 31, "Count should decrease or stay at genesis");
+        assertEquals(31, finalCount, "Count should remain unchanged after failed rollback");
 
-        // If rollback succeeded, verify final state
-        if (rollbackAll) {
-            assertTrue(finalCount < 31, "If rollbackAll succeeded, should have fewer than 31 blocks");
-            logger.info("   Rollback succeeded: reduced from 31 to {} blocks", finalCount);
-        } else {
-            logger.info("   Rollback failed or partial: final count is {}", finalCount);
-        }
+        logger.info("   Rollback correctly rejected: count remains at {} blocks", finalCount);
 
         logger.info("✅ Rollback blocks edge cases passed");
         logger.info("   Final block count: {}", finalCount);
@@ -1334,9 +1332,10 @@ public class BlockchainRobustnessTest {
             blockchain.addBlock("Export error test " + i, privateKey, publicKey);
         }
 
-        // Test 1: Import non-existent file
-        boolean importNonExistent = blockchain.importChain("non_existent_file_xyz123.json");
-        assertFalse(importNonExistent, "Import should fail for non-existent file");
+        // Test 1: Import non-existent file - should throw IllegalArgumentException
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.importChain("non_existent_file_xyz123.json");
+        }, "Import should throw IllegalArgumentException for non-existent file");
 
         // Test 2: Export to valid path then import
         String validExportPath = "test_export_valid.json";
@@ -1359,7 +1358,7 @@ public class BlockchainRobustnessTest {
 
         // Test 4: Export empty chain (only genesis)
         blockchain.clearAndReinitialize();
-        blockchain.addAuthorizedKey(publicKeyString, "TestUser");
+        blockchain.createBootstrapAdmin(publicKeyString, "TestUser");
         String emptyChainPath = "test_export_empty.json";
         boolean exportedEmpty = blockchain.exportChain(emptyChainPath);
         assertTrue(exportedEmpty, "Should be able to export chain with only genesis");

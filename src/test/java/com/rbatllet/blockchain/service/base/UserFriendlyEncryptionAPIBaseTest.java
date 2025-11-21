@@ -2,6 +2,8 @@ package com.rbatllet.blockchain.service.base;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,7 +37,8 @@ public abstract class UserFriendlyEncryptionAPIBaseTest {
     protected UserFriendlyEncryptionAPI api;
     protected Blockchain blockchain;
     protected KeyPair testKeyPair;
-    
+    protected KeyPair bootstrapKeyPair;
+
     // Test execution tracking
     private static final AtomicInteger testCounter = new AtomicInteger(0);
     
@@ -51,12 +54,24 @@ public abstract class UserFriendlyEncryptionAPIBaseTest {
         blockchain = new Blockchain();
         blockchain.clearAndReinitialize();
 
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         // Generate test key pair
         testKeyPair = CryptoUtil.generateKeyPair();
 
         // SECURITY FIX (v1.0.6): Pre-authorize user before creating API
         String publicKeyString = CryptoUtil.publicKeyToString(testKeyPair.getPublic());
-        blockchain.addAuthorizedKey(publicKeyString, TEST_USERNAME);
+        blockchain.addAuthorizedKey(publicKeyString, TEST_USERNAME, bootstrapKeyPair, UserRole.USER);
 
         // Create API instance with test credentials
         api = new UserFriendlyEncryptionAPI(blockchain, TEST_USERNAME, testKeyPair);
@@ -117,7 +132,7 @@ public abstract class UserFriendlyEncryptionAPIBaseTest {
 
         // SECURITY FIX (v1.0.6): Pre-authorize secondary user before creating API
         String publicKeyString = CryptoUtil.publicKeyToString(userKeyPair.getPublic());
-        blockchain.addAuthorizedKey(publicKeyString, username);
+        blockchain.addAuthorizedKey(publicKeyString, username, bootstrapKeyPair, UserRole.USER);
 
         return new UserFriendlyEncryptionAPI(blockchain, username, userKeyPair);
     }

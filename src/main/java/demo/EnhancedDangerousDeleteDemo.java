@@ -4,6 +4,7 @@ import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.validation.ChainValidationResult;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.UserRole;
 
 import java.security.KeyPair;
 import java.util.List;
@@ -38,11 +39,31 @@ public class EnhancedDangerousDeleteDemo {
             // Scenario 1: Setup
             System.out.println("📋 SCENARIO 1: Initial setup");
             System.out.println("=============================");
-            
-            blockchain.addAuthorizedKey(adminPublicKey, "Administrator");
-            blockchain.addAuthorizedKey(publicKey1, "Alice - Active User");
-            blockchain.addAuthorizedKey(publicKey2, "Bob - Inactive User");
-            blockchain.addAuthorizedKey(publicKey3, "Charlie - Heavy User");
+
+            // First user (admin) - Genesis bootstrap
+            blockchain.createBootstrapAdmin(
+                adminPublicKey,
+                "Administrator"
+            );
+            // Subsequent users - Created by admin
+            blockchain.addAuthorizedKey(
+                publicKey1,
+                "Alice - Active User",
+                admin,  // Admin is the caller
+                UserRole.USER
+            );
+            blockchain.addAuthorizedKey(
+                publicKey2,
+                "Bob - Inactive User",
+                admin,  // Admin is the caller
+                UserRole.USER
+            );
+            blockchain.addAuthorizedKey(
+                publicKey3,
+                "Charlie - Heavy User",
+                admin,  // Admin is the caller
+                UserRole.USER
+            );
             
             // Add blocks with different signers
             blockchain.addBlock("Alice's first transaction", user1.getPrivate(), user1.getPublic());

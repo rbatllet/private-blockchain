@@ -2,6 +2,7 @@ package com.rbatllet.blockchain.integration;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.util.CryptoUtil;
 
@@ -40,6 +41,7 @@ public class ComplexMultiPasswordSearchTest {
     private String legalPassword;
     private String hrPassword;
 
+    private KeyPair corporateAdminKeys;
     private KeyPair medicalKeys;
     private KeyPair financeKeys;
     private KeyPair legalKeys;
@@ -59,23 +61,26 @@ public class ComplexMultiPasswordSearchTest {
         legalPassword = "LegalSecure2025!";
         hrPassword = "HRSecure2025!";
 
-        // Generate separate keys for each department
+        // Generate separate keys for corporate admin and each department
+        corporateAdminKeys = CryptoUtil.generateKeyPair();
         medicalKeys = CryptoUtil.generateKeyPair();
         financeKeys = CryptoUtil.generateKeyPair();
         legalKeys = CryptoUtil.generateKeyPair();
         hrKeys = CryptoUtil.generateKeyPair();
 
-        // Authorize all departments
-        blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(medicalKeys.getPublic()), "Medical_Dept");
-        blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(financeKeys.getPublic()), "Finance_Dept");
-        blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(legalKeys.getPublic()), "Legal_Dept");
-        blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(hrKeys.getPublic()), "HR_Dept");
+        // Authorize all departments (RBAC v1.0.6)
+        // Corporate Admin is the bootstrap admin that creates all departments
+        blockchain.createBootstrapAdmin(CryptoUtil.publicKeyToString(corporateAdminKeys.getPublic()), "Corporate_Admin");
+        blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(medicalKeys.getPublic()), "Medical_Dept", corporateAdminKeys, UserRole.USER);
+        blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(financeKeys.getPublic()), "Finance_Dept", corporateAdminKeys, UserRole.USER);
+        blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(legalKeys.getPublic()), "Legal_Dept", corporateAdminKeys, UserRole.USER);
+        blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(hrKeys.getPublic()), "HR_Dept", corporateAdminKeys, UserRole.USER);
 
-        // Create APIs for each department
-        medicalAPI = new UserFriendlyEncryptionAPI(blockchain, "medical_user", medicalKeys);
-        financeAPI = new UserFriendlyEncryptionAPI(blockchain, "finance_user", financeKeys);
-        legalAPI = new UserFriendlyEncryptionAPI(blockchain, "legal_user", legalKeys);
-        hrAPI = new UserFriendlyEncryptionAPI(blockchain, "hr_user", hrKeys);
+        // RBAC FIX (v1.0.6): Usernames must match key owner names registered with addAuthorizedKey()
+        medicalAPI = new UserFriendlyEncryptionAPI(blockchain, "Medical_Dept", medicalKeys);
+        financeAPI = new UserFriendlyEncryptionAPI(blockchain, "Finance_Dept", financeKeys);
+        legalAPI = new UserFriendlyEncryptionAPI(blockchain, "Legal_Dept", legalKeys);
+        hrAPI = new UserFriendlyEncryptionAPI(blockchain, "HR_Dept", hrKeys);
 
         // Initialize search with all passwords upfront for optimal performance
         blockchain.initializeAdvancedSearchWithMultiplePasswords(new String[]{

@@ -20,10 +20,10 @@ public class SimpleDemo {
             // 2. Generate key pair
             KeyPair keyPair = CryptoUtil.generateKeyPair();
             String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
-            
-            // 3. Add authorized key
-            blockchain.addAuthorizedKey(publicKeyString, "TestUser");
-            System.out.println("🔑 Key authorized");
+
+            // 3. Create bootstrap admin (RBAC v1.0.6)
+            blockchain.createBootstrapAdmin(publicKeyString, "TestUser");
+            System.out.println("🔑 Bootstrap admin created");
             
             // 4. Add one block
             boolean added = blockchain.addBlock("Test data", keyPair.getPrivate(), keyPair.getPublic());

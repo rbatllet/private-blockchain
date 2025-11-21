@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
@@ -35,39 +36,48 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.dao.AuthorizedKeyDAO;
+import com.rbatllet.blockchain.entity.AuthorizedKey;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.entity.OffChainData;
 import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.indexing.IndexingCoordinator.IndexingResult;
 import com.rbatllet.blockchain.search.SearchSpecialistAPI;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CustomMetadataUtil;
 import com.rbatllet.blockchain.util.CryptoUtil;
 
 /**
  * Comprehensive test suite for previously untested UserFriendlyEncryptionAPI methods
- * 
+ *
  * This test class provides RIGOROUS testing for critical methods that lacked test coverage:
  * - Cache rebuilding and fallback methods
- * - Metadata indexing and search operations  
+ * - Metadata indexing and search operations
  * - Off-chain storage operations
  * - Integrity validation methods
  * - Wildcard matching and advanced search
  * - Import/export functionality
- * 
+ *
  * Each test follows enterprise testing standards with:
  * - Edge case coverage
  * - Error condition testing
  * - Performance validation
  * - Security verification
  * - Concurrency safety checks
+ *
+ * THREAD SAFETY: Tests modify shared database, so must run sequentially.
  */
 @ExtendWith(MockitoExtension.class)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@Execution(ExecutionMode.SAME_THREAD)
 class UserFriendlyEncryptionAPIUntestedMethodsTest {
 
     @Mock
@@ -81,6 +91,7 @@ class UserFriendlyEncryptionAPIUntestedMethodsTest {
 
     private UserFriendlyEncryptionAPI api;
     private KeyPair testKeyPair;
+    private KeyPair bootstrapKeyPair;
     private EncryptionConfig testConfig;
 
     // Test data constants
@@ -127,6 +138,22 @@ class UserFriendlyEncryptionAPIUntestedMethodsTest {
         String publicKeyString = CryptoUtil.publicKeyToString(testKeyPair.getPublic());
         lenient().when(mockBlockchain.isKeyAuthorized(publicKeyString)).thenReturn(true);
 
+        // Mock getAuthorizedKeyDAO() to avoid NullPointerException
+        AuthorizedKeyDAO mockDAO = mock(AuthorizedKeyDAO.class);
+        lenient().when(mockBlockchain.getAuthorizedKeyDAO()).thenReturn(mockDAO);
+
+        // v1.0.6 Security Fix: Return a valid AuthorizedKey mock for any key lookup
+        // setDefaultCredentials() validates that keys are authorized in blockchain
+        AuthorizedKey mockAuthorizedKey = mock(AuthorizedKey.class);
+        lenient().when(mockAuthorizedKey.getPublicKey()).thenReturn(publicKeyString);
+        lenient().when(mockAuthorizedKey.getOwnerName()).thenReturn(TEST_USERNAME);
+        lenient().when(mockAuthorizedKey.isActive()).thenReturn(true);
+        lenient().when(mockAuthorizedKey.getRole()).thenReturn(UserRole.USER);
+
+        // Return mockAuthorizedKey for ANY public key lookup (not just the specific one)
+        // This allows tests to work regardless of which keys they generate
+        lenient().when(mockDAO.getAuthorizedKeyByPublicKey(anyString())).thenReturn(mockAuthorizedKey);
+
         // Initialize the API instance with mocked dependencies for tests that need it
         api = new UserFriendlyEncryptionAPI(mockBlockchain, TEST_USERNAME, testKeyPair, testConfig);
     }
@@ -151,14 +178,26 @@ class UserFriendlyEncryptionAPIUntestedMethodsTest {
     private UserFriendlyEncryptionAPI createApiWithRealBlockchain() throws Exception {
         // Create a real blockchain instance (like in integration tests)
         Blockchain realBlockchain = new Blockchain();
-        
+
         // Clear and reinitialize to ensure clean state for each test
         realBlockchain.clearAndReinitialize();
-        
-        // v1.0.6 Security: Authorize testKeyPair before creating API
+
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain
+        realBlockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
+        // SECURITY FIX (v1.0.6): Pre-authorize user before creating API
         String publicKeyString = CryptoUtil.publicKeyToString(testKeyPair.getPublic());
-        realBlockchain.addAuthorizedKey(publicKeyString, TEST_USERNAME);
-        
+        realBlockchain.addAuthorizedKey(publicKeyString, TEST_USERNAME, bootstrapKeyPair, UserRole.USER);
+
         // Initialize SearchSpecialistAPI properly (following stress test pattern)
         try {
             realBlockchain.initializeAdvancedSearch("testPassword123");
@@ -167,7 +206,7 @@ class UserFriendlyEncryptionAPIUntestedMethodsTest {
             // Log but don't fail - some tests may not need search functionality
             System.err.println("Warning: SearchSpecialistAPI initialization failed: " + e.getMessage());
         }
-        
+
         return new UserFriendlyEncryptionAPI(realBlockchain, TEST_USERNAME, testKeyPair, testConfig);
     }
 

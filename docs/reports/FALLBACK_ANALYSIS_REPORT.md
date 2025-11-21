@@ -539,7 +539,7 @@ if (popularTerms.isEmpty()) {
 - Hardcoded terms hide bugs in blockchain analysis
 - "payment", "transaction" may not match actual blockchain content (medical data? IoT data? other?)
 - Cache becomes inefficient without real popular terms
-- Violates principle: "Un fallback no hauria d'evitar MAI la implementació de l'arquitectura per comoditat"
+- Violates principle: "A fallback should NEVER avoid implementing the architecture for convenience"
 
 **Solution Implemented (2025-11-03):**
 ```java
@@ -791,7 +791,7 @@ Fix typos: "ToDo" → proper stream operation syntax
 **Status:** 📝 **TO BE FIXED** (Low priority - cosmetic issue)
 
 ---
-- Violates principle: "Un fallback no hauria d'evitar MAI la implementació de l'arquitectura per comoditat"
+- Violates principle: "A fallback should NEVER avoid implementing the architecture for convenience"
 
 **Status:** ⚠️ **Should be fixed in future work** (not critical for current refactoring)
 
@@ -827,7 +827,7 @@ Fix typos: "ToDo" → proper stream operation syntax
 - **Hidden Bug?:** YES - This is a cascading failure suppression mechanism
 
 **Problem Identified:**
-This is **exactly** what you warned about: "Un fallback no hauria d'evitar MAI la implementació de l'arquitectura per comoditat"
+This is **exactly** what you warned about: "A fallback should NEVER avoid implementing the architecture for convenience"
 
 **Cache warming failures indicate:**
 1. Search system might be broken
@@ -1352,7 +1352,7 @@ This analysis found **3 critical issues** and **8 high-risk fallbacks** that may
 3. Nested cache warm-up fallback (Lines 8360-8374)
 
 **Key Insight:**
-The principle "Un fallback no hauria d'evitar MAI la implementació de l'arquitectura per comoditat" is violated in multiple places. The most egregious is the memory-unsafe `getValidChain()` fallback, which directly contradicts the memory-efficient architecture documented in CLAUDE.md.
+The principle "A fallback should NEVER avoid implementing the architecture for convenience" is violated in multiple places. The most egregious is the memory-unsafe `getValidChain()` fallback, which directly contradicts the memory-efficient architecture documented in CLAUDE.md.
 
 **Recommended Priority:**
 1. Fix critical memory safety issue (2 hours)

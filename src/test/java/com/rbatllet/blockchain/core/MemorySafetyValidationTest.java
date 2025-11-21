@@ -1,6 +1,8 @@
 package com.rbatllet.blockchain.core;
 
 import com.rbatllet.blockchain.config.MemorySafetyConstants;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.JPAUtil;
 import com.rbatllet.blockchain.validation.ChainValidationResult;
@@ -28,6 +30,7 @@ public class MemorySafetyValidationTest {
     private static final Logger logger = LoggerFactory.getLogger(MemorySafetyValidationTest.class);
 
     private Blockchain blockchain;
+    private KeyPair bootstrapKeyPair;
     private KeyPair keyPair;
     private PrivateKey privateKey;
     private PublicKey publicKey;
@@ -45,12 +48,24 @@ public class MemorySafetyValidationTest {
         // Clean any existing data from previous tests
         blockchain.clearAndReinitialize();
 
+        // Load bootstrap admin keys (created automatically)
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         keyPair = CryptoUtil.generateKeyPair();
         privateKey = keyPair.getPrivate();
         publicKey = keyPair.getPublic();
 
         String publicKeyString = CryptoUtil.publicKeyToString(publicKey);
-        blockchain.addAuthorizedKey(publicKeyString, "TestUser");
+        blockchain.addAuthorizedKey(publicKeyString, "TestUser", bootstrapKeyPair, UserRole.USER);
 
         logger.info("🔧 Test setup completed");
     }

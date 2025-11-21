@@ -48,10 +48,11 @@ public class SecureKeyStorageDemo {
 
             System.out.println();
 
-            // Final cleanup
-            cleanupDemoKeys();
+            // Final cleanup - Commented out to keep demo keys visible
+            // cleanupDemoKeys();
 
             System.out.println("✅ Demo completed successfully!");
+            System.out.println("📁 Demo keys saved in 'private-keys/' directory for inspection");
 
         } catch (Exception e) {
             System.err.println("❌ Demo failed: " + e.getMessage());
@@ -216,10 +217,10 @@ public class SecureKeyStorageDemo {
         System.out.println("ℹ️  Each encryption uses a unique random 96-bit IV");
         System.out.println("✅ Prevents pattern analysis attacks");
 
-        // Cleanup test keys
-        SecureKeyStorage.deletePrivateKey(ownerName);
-        SecureKeyStorage.deletePrivateKey(ownerName + "1");
-        SecureKeyStorage.deletePrivateKey(ownerName + "2");
+        // Cleanup test keys - Commented out to keep keys visible for inspection
+        // SecureKeyStorage.deletePrivateKey(ownerName);
+        // SecureKeyStorage.deletePrivateKey(ownerName + "1");
+        // SecureKeyStorage.deletePrivateKey(ownerName + "2");
     }
 
     /**

@@ -4,6 +4,8 @@ import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.logging.AdvancedLoggingService;
 import com.rbatllet.blockchain.logging.LoggingManager;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,9 +18,10 @@ import java.util.*;
  * Shows comprehensive operation tracking, performance monitoring, and security logging
  */
 public class AdvancedLoggingDemo {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(AdvancedLoggingDemo.class);
     private static Blockchain blockchain;
+    private static KeyPair authorizedDemoKeys;
     
     public static void main(String[] args) {
         System.out.println("🔍 ADVANCED LOGGING SYSTEM DEMONSTRATION");
@@ -27,10 +30,30 @@ public class AdvancedLoggingDemo {
         try {
             // Initialize logging system
             initializeLoggingSystem();
-            
+
             // Initialize blockchain
             blockchain = new Blockchain();
-            
+
+            // EXPLICIT bootstrap admin creation (security best practice)
+            KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
+                "./keys/genesis-admin.private",
+                "./keys/genesis-admin.public"
+            );
+            blockchain.createBootstrapAdmin(
+                CryptoUtil.publicKeyToString(bootstrapKeys.getPublic()),
+                "BOOTSTRAP_ADMIN"
+            );
+
+            // Create and authorize demo user keys
+            authorizedDemoKeys = CryptoUtil.generateKeyPair();
+            blockchain.addAuthorizedKey(
+                CryptoUtil.publicKeyToString(authorizedDemoKeys.getPublic()),
+                "Demo-User",
+                bootstrapKeys,
+                UserRole.USER
+            );
+            System.out.println("✅ Blockchain initialized with authorized demo user");
+
             // Demonstrate different logging capabilities
             demonstrateBlockchainOperationLogging();
             demonstrateSearchOperationLogging();
@@ -75,8 +98,7 @@ public class AdvancedLoggingDemo {
                     1024L,
                     () -> {
                         String data = "Test block data " + blockNum;
-                        KeyPair keyPair = CryptoUtil.generateKeyPair();
-                        blockchain.addBlock(data, keyPair.getPrivate(), keyPair.getPublic());
+                        blockchain.addBlock(data, authorizedDemoKeys.getPrivate(), authorizedDemoKeys.getPublic());
                         return "Block " + blockNum + " created successfully";
                     }
                 );
@@ -128,8 +150,7 @@ public class AdvancedLoggingDemo {
             
             // Add real blocks to the blockchain
             for (int i = 0; i < testData.length; i++) {
-                KeyPair keyPair = CryptoUtil.generateKeyPair();
-                blockchain.addBlock(testData[i], keyPair.getPrivate(), keyPair.getPublic());
+                blockchain.addBlock(testData[i], authorizedDemoKeys.getPrivate(), authorizedDemoKeys.getPublic());
             }
             
             // Perform real search operations on the blockchain
@@ -410,8 +431,7 @@ public class AdvancedLoggingDemo {
                     2048L,
                     () -> {
                         // Create a real block and then corrupt its hash to force validation failure
-                        KeyPair keyPair = CryptoUtil.generateKeyPair();
-                        blockchain.addBlock("Original valid data", keyPair.getPrivate(), keyPair.getPublic());
+                        blockchain.addBlock("Original valid data", authorizedDemoKeys.getPrivate(), authorizedDemoKeys.getPublic());
 
                         // Get the last block and corrupt its hash
                         long lastBlockNum = blockchain.getBlockCount() - 1;

@@ -1,6 +1,7 @@
 package com.rbatllet.blockchain.advanced;
 
 import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -41,13 +42,19 @@ public class EdgeCaseThreadSafetyTest {
         // Setup multiple key pairs
         List<KeyPair> keyPairs = new ArrayList<>();
         List<String> publicKeyStrings = new ArrayList<>();
-        
+
+        // RBAC FIX (v1.0.6): First user is bootstrap admin, rest are created by admin
         for (int i = 0; i < 5; i++) {
             KeyPair keyPair = CryptoUtil.generateKeyPair();
             keyPairs.add(keyPair);
             String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
             publicKeyStrings.add(publicKeyString);
-            blockchain.addAuthorizedKey(publicKeyString, "StressUser-" + i);
+
+            if (i == 0) {
+                blockchain.createBootstrapAdmin(publicKeyString, "StressUser-" + i);
+            } else {
+                blockchain.addAuthorizedKey(publicKeyString, "StressUser-" + i, keyPairs.get(0), UserRole.USER);
+            }
         }
 
         CountDownLatch startLatch = new CountDownLatch(1);
@@ -139,7 +146,7 @@ public class EdgeCaseThreadSafetyTest {
     void testExtremeConcurrencyBurst() throws InterruptedException {
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
-        blockchain.addAuthorizedKey(publicKeyString, "BurstUser");
+        blockchain.createBootstrapAdmin(publicKeyString, "BurstUser");
 
         // Use more threads for extreme concurrency
         int EXTREME_THREAD_COUNT = 30;

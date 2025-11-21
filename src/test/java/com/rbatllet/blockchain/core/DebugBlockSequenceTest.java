@@ -1,6 +1,8 @@
 package com.rbatllet.blockchain.core;
 
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.JPAUtil;
 import org.junit.jupiter.api.*;
@@ -15,31 +17,50 @@ import static org.junit.jupiter.api.Assertions.*;
  * Debug test to understand the block sequence issue
  */
 public class DebugBlockSequenceTest {
-    
+
     private static Blockchain blockchain;
+    private static KeyPair bootstrapKeyPair;
     private static KeyPair authorizedKeyPair;
     private static final String ENCRYPTION_PASSWORD = "DebugTest123!@#";
-    
+
     @BeforeAll
-    static void setUpClass() {
+    static void setUpClass() throws Exception {
         blockchain = new Blockchain();
+
+        // Load bootstrap admin keys (created automatically)
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Generate test user keypair
         authorizedKeyPair = CryptoUtil.generateKeyPair();
+
+        // NOTE: createBootstrapAdmin() is called in @BeforeEach after clearAndReinitialize()
     }
-    
+
     @AfterAll
     static void tearDownClass() {
         JPAUtil.closeEntityManager();
     }
-    
+
     @BeforeEach
     void cleanDatabase() {
         // Clean database before each test to ensure isolation
         blockchain.clearAndReinitialize();
-        
+
+        // RBAC FIX (v1.0.6): Re-create bootstrap admin after clearAndReinitialize()
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         // Re-add authorized key after cleanup for test to work
         blockchain.addAuthorizedKey(
             CryptoUtil.publicKeyToString(authorizedKeyPair.getPublic()),
-            "Test User"
+            "Test User",
+            bootstrapKeyPair,
+            UserRole.USER
         );
     }
     

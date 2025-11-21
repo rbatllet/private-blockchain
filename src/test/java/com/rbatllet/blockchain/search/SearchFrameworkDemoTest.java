@@ -2,6 +2,8 @@ package com.rbatllet.blockchain.search;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.EnhancedSearchResult;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -28,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class SearchFrameworkDemoTest {
     
     private Blockchain blockchain;
+    private KeyPair bootstrapKeyPair;
     private SearchSpecialistAPI searchAPI;
     private String demoPassword;
     private PrivateKey privateKey;
@@ -35,14 +38,31 @@ public class SearchFrameworkDemoTest {
     
     @BeforeEach
     void setUp() throws Exception {
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
         // Demo password and crypto setup
         demoPassword = "SecureSearchDemo2024!";
-        
+
+        // Create blockchain first
+        blockchain = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
+        // Register bootstrap admin in blockchain (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         // Create demo blockchain with varied content
         DemoBlockchainResult demoResult = createDemoBlockchain();
         assertNotNull(demoResult, "Demo blockchain result should not be null");
-        
-        blockchain = demoResult.blockchain;
+
         privateKey = demoResult.privateKey;
         publicKey = demoResult.publicKey;
         
@@ -214,27 +234,24 @@ public class SearchFrameworkDemoTest {
     }
     
     private static class DemoBlockchainResult {
-        final Blockchain blockchain;
         final PrivateKey privateKey;
         final PublicKey publicKey;
-        
-        DemoBlockchainResult(Blockchain blockchain, PrivateKey privateKey, PublicKey publicKey) {
-            this.blockchain = blockchain;
+
+        DemoBlockchainResult(PrivateKey privateKey, PublicKey publicKey) {
             this.privateKey = privateKey;
             this.publicKey = publicKey;
         }
     }
     
     private DemoBlockchainResult createDemoBlockchain() throws Exception {
-        Blockchain blockchain = new Blockchain();
-        
         // Generate key pair for demo
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         PrivateKey privateKey = keyPair.getPrivate();
         PublicKey publicKey = keyPair.getPublic();
-        
+
         // Authorize the key for adding blocks
-        blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(publicKey), "SearchFrameworkDemoTest");
+        blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(publicKey), "SearchFrameworkDemoTest",
+                                   bootstrapKeyPair, UserRole.USER);
         
         // Add diverse blocks for comprehensive search testing
         
@@ -300,6 +317,6 @@ public class SearchFrameworkDemoTest {
                           "Wind speed 12 km/h, Pressure 1013.2 hPa. " +
                           "Air quality index: 42 (Good). Location: Barcelona, Spain.", privateKey, publicKey);
         
-        return new DemoBlockchainResult(blockchain, privateKey, publicKey);
+        return new DemoBlockchainResult(privateKey, publicKey);
     }
 }

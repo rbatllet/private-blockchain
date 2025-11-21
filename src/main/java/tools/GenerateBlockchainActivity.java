@@ -23,9 +23,9 @@ public class GenerateBlockchainActivity {
         try {
             Blockchain blockchain = new Blockchain();
             KeyPair keyPair = CryptoUtil.generateKeyPair();
-            
-            // Add authorized key
-            blockchain.addAuthorizedKey(
+
+            // Create genesis admin (simplified method - v1.0.6+)
+            blockchain.createBootstrapAdmin(
                 CryptoUtil.publicKeyToString(keyPair.getPublic()),
                 "ActivityGenerator"
             );

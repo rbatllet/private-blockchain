@@ -5,6 +5,7 @@ import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.search.metadata.TermVisibilityMap;
 import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
+import com.rbatllet.blockchain.util.CryptoUtil;
 
 import java.security.KeyPair;
 import java.util.List;
@@ -29,16 +30,22 @@ public class GranularTermVisibilityDemo {
             // Setup
             Blockchain blockchain = new Blockchain();
 
-            // Load genesis admin keys
-            KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+            // Load bootstrap admin keys
+            KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
                 "./keys/genesis-admin.private",
                 "./keys/genesis-admin.public"
             );
 
-            UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
-            api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+            // Register bootstrap admin in blockchain (REQUIRED!)
+            blockchain.createBootstrapAdmin(
+                CryptoUtil.publicKeyToString(bootstrapKeys.getPublic()),
+                "BOOTSTRAP_ADMIN"
+            );
 
-            // Create demo user (authorized by genesis admin)
+            UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+            api.setDefaultCredentials("BOOTSTRAP_ADMIN", bootstrapKeys);
+
+            // Create demo user (authorized by bootstrap admin)
             KeyPair keyPair = api.createUser("demo_user");
             api.setDefaultCredentials("demo_user", keyPair);
             String password = "demo_password_123";

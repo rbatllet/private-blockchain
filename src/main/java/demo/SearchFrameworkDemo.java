@@ -3,6 +3,7 @@ package demo;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
+import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.entity.Block;
 
 import java.security.KeyPair;
@@ -36,16 +37,22 @@ public class SearchFrameworkDemo {
             System.out.println("📊 Setting up demo blockchain with searchable content...");
             Blockchain blockchain = new Blockchain();
 
-            // Load genesis admin keys
-            KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+            // Load bootstrap admin keys
+            KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
                 "./keys/genesis-admin.private",
                 "./keys/genesis-admin.public"
+            );
+
+            // Register bootstrap admin in blockchain (REQUIRED!)
+            blockchain.createBootstrapAdmin(
+                CryptoUtil.publicKeyToString(bootstrapKeys.getPublic()),
+                "BOOTSTRAP_ADMIN"
             );
 
             // Initialize UserFriendlyEncryptionAPI - the ONE API for everything
             System.out.println("⚡ Initializing UserFriendlyEncryptionAPI...");
             UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
-            api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+            api.setDefaultCredentials("BOOTSTRAP_ADMIN", bootstrapKeys);
 
             // Set up default credentials (this is required!)
             System.out.println("🔑 Setting up default credentials...");

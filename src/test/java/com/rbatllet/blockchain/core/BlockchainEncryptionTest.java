@@ -57,8 +57,8 @@ public class BlockchainEncryptionTest {
         // BlockRepository now package-private - use clearAndReinitialize();
         blockchain.getAuthorizedKeyDAO().cleanupTestData();
         
-        // Re-add authorized key after cleanup for test to work
-        blockchain.addAuthorizedKey(
+        // Re-add authorized key after cleanup for test to work (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
             CryptoUtil.publicKeyToString(authorizedKeyPair.getPublic()),
             "Test User"
         );

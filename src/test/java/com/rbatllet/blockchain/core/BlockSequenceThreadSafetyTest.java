@@ -39,8 +39,8 @@ public class BlockSequenceThreadSafetyTest {
         // Clean database before each test to ensure isolation
         blockchain.clearAndReinitialize();
         
-        // Re-add authorized key after cleanup for test to work
-        blockchain.addAuthorizedKey(
+        // Re-add authorized key after cleanup for test to work (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
             CryptoUtil.publicKeyToString(authorizedKeyPair.getPublic()),
             "Test User"
         );

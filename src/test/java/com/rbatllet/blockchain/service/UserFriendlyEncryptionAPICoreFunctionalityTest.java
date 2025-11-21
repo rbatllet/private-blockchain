@@ -2,6 +2,8 @@ package com.rbatllet.blockchain.service;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,9 +26,10 @@ public class UserFriendlyEncryptionAPICoreFunctionalityTest {
     private UserFriendlyEncryptionAPI api;
     private Blockchain realBlockchain;
     private KeyPair defaultKeyPair;
+    private KeyPair bootstrapKeyPair;
     private String testUsername = "coreuser";
     private String testPassword = "CorePassword123!";
-    
+
     // Store the blocks created in setup to avoid finding old test data
     private Block testEncryptedBlock1;
     private Block testEncryptedBlock2;
@@ -36,14 +39,26 @@ public class UserFriendlyEncryptionAPICoreFunctionalityTest {
         // Create real blockchain (no mocks)
         realBlockchain = new Blockchain();
         realBlockchain.clearAndReinitialize(); // Clean DB before each test
-        
+
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (RBAC v1.0.6)
+        realBlockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         // Create API with default credentials
         defaultKeyPair = CryptoUtil.generateKeyPair();
-        
-        // Add authorized key for test user
+
+        // RBAC FIX (v1.0.6): testUsername needs ADMIN role to create other users via createUser()
         String publicKeyString = CryptoUtil.publicKeyToString(defaultKeyPair.getPublic());
-        realBlockchain.addAuthorizedKey(publicKeyString, testUsername);
-        
+        realBlockchain.addAuthorizedKey(publicKeyString, testUsername, bootstrapKeyPair, UserRole.ADMIN);
+
         api = new UserFriendlyEncryptionAPI(realBlockchain, testUsername, defaultKeyPair);
         
         // Initialize SearchSpecialistAPI before storing encrypted data
@@ -285,7 +300,11 @@ public class UserFriendlyEncryptionAPICoreFunctionalityTest {
             // Given
             String username = "defaultuser";
             KeyPair keyPair = CryptoUtil.generateKeyPair();
-            
+
+            // SECURITY FIX (v1.0.6): Pre-authorize user before setting credentials
+            String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
+            realBlockchain.addAuthorizedKey(publicKeyString, username, bootstrapKeyPair, UserRole.USER);
+
             // When & Then - Should not throw exception
             assertDoesNotThrow(() -> {
                 api.setDefaultCredentials(username, keyPair);

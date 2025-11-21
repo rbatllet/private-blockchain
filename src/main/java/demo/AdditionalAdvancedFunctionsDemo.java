@@ -2,6 +2,7 @@ package demo;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.validation.ChainValidationResult;
 
@@ -30,9 +31,19 @@ public class AdditionalAdvancedFunctionsDemo {
             
             String alicePublicKey = CryptoUtil.publicKeyToString(alice.getPublic());
             String bobPublicKey = CryptoUtil.publicKeyToString(bob.getPublic());
-            
-            blockchain.addAuthorizedKey(alicePublicKey, "Alice");
-            blockchain.addAuthorizedKey(bobPublicKey, "Bob");
+
+            // First user (Alice) - Genesis bootstrap
+            blockchain.createBootstrapAdmin(
+                alicePublicKey,
+                "Alice"
+            );
+            // Second user (Bob) - Created by Alice
+            blockchain.addAuthorizedKey(
+                bobPublicKey,
+                "Bob",
+                alice,  // Alice is the caller
+                UserRole.USER
+            );
             
             // Add some initial blocks
             blockchain.addBlock("Alice creates her account", alice.getPrivate(), alice.getPublic());

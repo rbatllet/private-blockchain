@@ -5,6 +5,7 @@ import com.rbatllet.blockchain.search.SearchSpecialistAPI;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.EnhancedSearchResult;
 import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
+import com.rbatllet.blockchain.util.CryptoUtil;
 import java.security.KeyPair;
 import java.util.List;
 
@@ -32,17 +33,23 @@ public class SearchSpecialistAPIErrorDemo {
         System.out.println("✅ Creating SearchSpecialistAPI with required parameters...");
 
         try {
-            // Create blockchain (auto-creates genesis admin)
+            // Create blockchain (auto-creates bootstrap admin)
             Blockchain blockchain = new Blockchain();
             String password = "DemoPassword123!";
 
-            // Load genesis admin keys
-            KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+            // Load bootstrap admin keys
+            KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
                 "./keys/genesis-admin.private",
                 "./keys/genesis-admin.public"
             );
 
-            SearchSpecialistAPI api = new SearchSpecialistAPI(blockchain, password, genesisKeys.getPrivate());
+            // Register bootstrap admin in blockchain (REQUIRED!)
+            blockchain.createBootstrapAdmin(
+                CryptoUtil.publicKeyToString(bootstrapKeys.getPublic()),
+                "BOOTSTRAP_ADMIN"
+            );
+
+            SearchSpecialistAPI api = new SearchSpecialistAPI(blockchain, password, bootstrapKeys.getPrivate());
             System.out.println("✅ Instance created and initialized automatically");
 
             System.out.println();
@@ -53,11 +60,11 @@ public class SearchSpecialistAPIErrorDemo {
             System.out.println();
             System.out.println("🔧 Adding some test data and searching again...");
 
-            // Set up some test data with genesis admin
+            // Set up some test data with bootstrap admin
             UserFriendlyEncryptionAPI dataAPI = new UserFriendlyEncryptionAPI(blockchain);
-            dataAPI.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+            dataAPI.setDefaultCredentials("BOOTSTRAP_ADMIN", bootstrapKeys);
 
-            // Create demo user (authorized by genesis admin)
+            // Create demo user (authorized by bootstrap admin)
             KeyPair userKeys = dataAPI.createUser("demo-user");
             dataAPI.setDefaultCredentials("demo-user", userKeys);
             dataAPI.storeSearchableData("Test searchable data", password, new String[]{"test", "demo"});

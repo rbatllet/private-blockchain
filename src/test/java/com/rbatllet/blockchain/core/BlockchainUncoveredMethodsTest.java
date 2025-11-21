@@ -1,6 +1,8 @@
 package com.rbatllet.blockchain.core;
 
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
@@ -24,25 +26,38 @@ class BlockchainUncoveredMethodsTest {
     private static final Logger logger = LoggerFactory.getLogger(BlockchainUncoveredMethodsTest.class);
 
     private Blockchain blockchain;
+    private KeyPair bootstrapKeyPair;
     private KeyPair authorizedKeyPair;
     private KeyPair adminKeyPair;
     private String authorizedPublicKey;
     private String adminPublicKey;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         blockchain = new Blockchain();
         blockchain.clearAndReinitialize();
+
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
 
         // Create admin keypair
         adminKeyPair = CryptoUtil.generateKeyPair();
         adminPublicKey = CryptoUtil.publicKeyToString(adminKeyPair.getPublic());
-        blockchain.addAuthorizedKey(adminPublicKey, "TestAdmin");
+        blockchain.addAuthorizedKey(adminPublicKey, "TestAdmin", bootstrapKeyPair, UserRole.ADMIN);
 
         // Create authorized keypair
         authorizedKeyPair = CryptoUtil.generateKeyPair();
         authorizedPublicKey = CryptoUtil.publicKeyToString(authorizedKeyPair.getPublic());
-        blockchain.addAuthorizedKey(authorizedPublicKey, "AuthorizedUser");
+        blockchain.addAuthorizedKey(authorizedPublicKey, "AuthorizedUser", bootstrapKeyPair, UserRole.USER);
     }
 
     @AfterEach

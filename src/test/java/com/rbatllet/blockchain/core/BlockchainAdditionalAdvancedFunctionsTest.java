@@ -3,6 +3,7 @@ package com.rbatllet.blockchain.core;
 import com.rbatllet.blockchain.entity.AuthorizedKey;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.dto.ChainExportData;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -76,10 +77,12 @@ class BlockchainAdditionalAdvancedFunctionsTest {
         bobPublicKey = bobKeyInfo.getPublicKeyEncoded();
         charliePublicKey = charlieKeyInfo.getPublicKeyEncoded();
         
-        // Add authorized keys
-        blockchain.addAuthorizedKey(alicePublicKey, "Alice");
-        blockchain.addAuthorizedKey(bobPublicKey, "Bob");
-        blockchain.addAuthorizedKey(charliePublicKey, "Charlie");
+        // Add authorized keys (RBAC v1.0.6)
+        // Alice - Genesis admin
+        blockchain.createBootstrapAdmin(alicePublicKey, "Alice");
+        // Bob and Charlie - Created by Alice (SUPER_ADMIN can create USERs)
+        blockchain.addAuthorizedKey(bobPublicKey, "Bob", aliceKeyPair, UserRole.USER);
+        blockchain.addAuthorizedKey(charliePublicKey, "Charlie", aliceKeyPair, UserRole.USER);
 
         // Add some test blocks
         blockchain.addBlock("Alice's first transaction", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic());
@@ -105,7 +108,7 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     void testValidBlockSizes() {
         // Clear blockchain for clean size validation testing
         blockchain.clearAndReinitialize();
-        blockchain.addAuthorizedKey(alicePublicKey, "Alice");
+        blockchain.createBootstrapAdmin(alicePublicKey, "Alice");
 
         // Test empty string - UPDATED: Should be rejected (matching BlockchainRobustnessTest standard)
         assertThrows(IllegalArgumentException.class, () -> {
@@ -132,7 +135,7 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     void testInvalidBlockSizes() {
         // Clear blockchain for clean size validation testing
         blockchain.clearAndReinitialize();
-        blockchain.addAuthorizedKey(alicePublicKey, "Alice");
+        blockchain.createBootstrapAdmin(alicePublicKey, "Alice");
 
         // Test null data - UPDATED: Should throw exception (matching Robustness standard)
         assertThrows(IllegalArgumentException.class, () -> {
@@ -199,10 +202,13 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @DisplayName("Test Chain Export to Invalid Path")
     void testChainExportInvalidPath() {
         // Try to export to an invalid/non-existent directory
-        // NOTE: This test intentionally causes an "Error exporting chain" message - this is expected behavior
+        // NOTE: This test intentionally throws an exception - this is expected behavior
         String invalidPath = "/non/existent/directory/export.json";
-        
-        assertFalse(blockchain.exportChain(invalidPath), "Export to invalid path should fail");
+
+        // Export to invalid path should throw IllegalStateException
+        assertThrows(IllegalStateException.class, () -> {
+            blockchain.exportChain(invalidPath);
+        }, "Export to invalid path should throw IllegalStateException");
     }
 
     @Test
@@ -270,11 +276,13 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @Order(8)
     @DisplayName("Test Chain Import from Non-existent File")
     void testChainImportNonexistentFile() {
-        // NOTE: This test intentionally causes an "Import file not found" message - this is expected behavior
+        // NOTE: This test intentionally throws an exception - this is expected behavior
         String nonExistentPath = tempDir.resolve("non_existent.json").toString();
-        
-        assertFalse(blockchain.importChain(nonExistentPath), 
-                "Import from non-existent file should fail");
+
+        // Import from non-existent file should throw IllegalArgumentException
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.importChain(nonExistentPath);
+        }, "Import from non-existent file should throw IllegalArgumentException");
     }
 
     @Test
@@ -356,16 +364,21 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @Order(12)
     @DisplayName("Test Block Rollback Edge Cases")
     void testBlockRollbackEdgeCases() {
-        // Test rollback with zero blocks
-        assertFalse(blockchain.rollbackBlocks(0L), "Rollback of 0 blocks should fail");
+        // Test rollback with zero blocks - should throw IllegalArgumentException
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.rollbackBlocks(0L);
+        }, "Rollback of 0 blocks should throw IllegalArgumentException");
 
-        // Test rollback with negative number
-        assertFalse(blockchain.rollbackBlocks(-1L), "Rollback of negative blocks should fail");
+        // Test rollback with negative number - should throw IllegalArgumentException
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.rollbackBlocks(-1L);
+        }, "Rollback of negative blocks should throw IllegalArgumentException");
 
         // Test rollback more blocks than available (excluding genesis)
         long currentBlocks = blockchain.getBlockCount();
-        assertFalse(blockchain.rollbackBlocks(currentBlocks), 
-                "Rollback of all blocks should fail (genesis protection)");
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.rollbackBlocks(currentBlocks);
+        }, "Rollback of all blocks should throw IllegalArgumentException (genesis protection)");
     }
 
     @Test
@@ -395,13 +408,14 @@ class BlockchainAdditionalAdvancedFunctionsTest {
             blockchain.rollbackToBlock(-1L);
         }, "Rollback to negative block should throw exception");
 
-        // Test rollback to non-existent block
+        // Test rollback to non-existent block - should throw IllegalArgumentException
         long maxBlock = blockchain.getBlockCount() - 1;
-        assertFalse(blockchain.rollbackToBlock(maxBlock + 10L), 
-                "Rollback to non-existent block should fail");
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.rollbackToBlock(maxBlock + 10L);
+        }, "Rollback to non-existent block should throw IllegalArgumentException");
 
         // Test rollback to current block (should be no-op)
-        assertTrue(blockchain.rollbackToBlock(maxBlock), 
+        assertTrue(blockchain.rollbackToBlock(maxBlock),
                 "Rollback to current block should succeed");
     }
 
@@ -615,14 +629,32 @@ class BlockchainAdditionalAdvancedFunctionsTest {
         assertThrows(IllegalArgumentException.class, () -> {
             blockchain.searchBlocksByContent(null);
         }, "searchBlocksByContent should throw exception for null search term");
-        
+
+        // Test exportChain with invalid parameters - should throw
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.exportChain("");
+        }, "exportChain should throw exception for empty path");
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.exportChain(null);
+        }, "exportChain should throw exception for null path");
+
+        // Test importChain with invalid parameters - should throw
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.importChain("");
+        }, "importChain should throw exception for empty path");
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.importChain(null);
+        }, "importChain should throw exception for null path");
+
+        // Test rollbackBlocks with invalid parameter - should throw
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.rollbackBlocks(-1L);
+        }, "rollbackBlocks should throw exception for negative value");
+
         // These methods should handle null gracefully (return null or empty)
         assertDoesNotThrow(() -> {
-            blockchain.exportChain("");
-            blockchain.exportChain(null);
-            blockchain.importChain("");
-            blockchain.importChain(null);
-            blockchain.rollbackBlocks(-1L);
             blockchain.getBlockByHash(null);
             blockchain.getBlocksByDateRange(null, null);
         }, "Some methods should handle errors gracefully without throwing exceptions");

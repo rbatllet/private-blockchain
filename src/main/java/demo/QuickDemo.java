@@ -14,8 +14,9 @@ public class QuickDemo {
             Blockchain blockchain = new Blockchain();
             KeyPair keyPair = CryptoUtil.generateKeyPair();
             String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
-            
-            blockchain.addAuthorizedKey(publicKeyString, "TestUser");
+
+            // RBAC v1.0.6: Create bootstrap admin (simplified method)
+            blockchain.createBootstrapAdmin(publicKeyString, "TestUser");
             boolean added = blockchain.addBlock("Test data", keyPair.getPrivate(), keyPair.getPublic());
             
             System.out.println("🧱 Block added: " + added);

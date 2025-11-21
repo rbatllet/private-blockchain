@@ -5,6 +5,7 @@ import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.service.AdvancedSearchResult;
+import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.validation.ChainValidationResult;
 
 import java.security.KeyPair;
@@ -29,23 +30,30 @@ public class MultilingualBlockchainDemo {
         System.out.println("========================================");
         System.out.println();
 
-        // Initialize blockchain (auto-creates genesis admin)
+        // Initialize blockchain
         Blockchain blockchain = new Blockchain();
-        System.out.println("✅ Blockchain initialized (genesis admin created)");
+        System.out.println("✅ Blockchain initialized");
 
-        // Load genesis admin keys
-        KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+        // Load bootstrap admin keys
+        KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
             "./keys/genesis-admin.private",
             "./keys/genesis-admin.public"
         );
-        System.out.println("✅ Genesis admin keys loaded");
+        System.out.println("✅ Bootstrap admin keys loaded");
 
-        // Create API with genesis admin credentials
+        // EXPLICIT bootstrap admin creation (security best practice - no auto-creation!)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeys.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+        System.out.println("✅ Bootstrap admin created explicitly");
+
+        // Create API with bootstrap admin credentials
         UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
-        api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
-        System.out.println("✅ API configured with genesis admin credentials");
+        api.setDefaultCredentials("BOOTSTRAP_ADMIN", bootstrapKeys);
+        System.out.println("✅ API configured with bootstrap admin credentials");
 
-        // Create the multilingual user (authorized by genesis admin)
+        // Create the multilingual user (authorized by bootstrap admin)
         KeyPair userKeys = api.createUser("multilingual-user");
         api.setDefaultCredentials("multilingual-user", userKeys);
         System.out.println("✅ User 'multilingual-user' created and authorized");

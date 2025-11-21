@@ -2,10 +2,11 @@
 
 Database-agnostic architecture and configuration guides.
 
-## 📚 Documents (7 files)
+## 📚 Documents (8 files)
 
 | Document | Description |
 |----------|-------------|
+| **[JPA_TRANSACTION_GUIDE.md](JPA_TRANSACTION_GUIDE.md)** | 🆕 **v1.0.6** JPA transaction isolation and getLastBlock() usage guide |
 | **[TRANSACTION_ISOLATION_FIX.md](TRANSACTION_ISOLATION_FIX.md)** | 🆕 Transaction isolation fix for getLastBlock() - constraint violation prevention |
 | **[GETLASTBLOCK_DOCUMENTATION_UPDATE.md](GETLASTBLOCK_DOCUMENTATION_UPDATE.md)** | 🆕 Documentation update summary - getLastBlock() usage guidance across all docs |
 | **[DATABASE_MIGRATION_STRATEGY.md](DATABASE_MIGRATION_STRATEGY.md)** | Comprehensive guide on hbm2ddl.auto vs DatabaseMigrator (when to use each) |
@@ -38,4 +39,4 @@ Database-agnostic architecture and configuration guides.
 - Backwards compatible - SQLite still supported
 
 ---
-**Directory**: `docs/database/` | **Files**: 7 | **Updated**: 2025-01-03
+**Directory**: `docs/database/` | **Files**: 8 | **Updated**: 2025-01-21

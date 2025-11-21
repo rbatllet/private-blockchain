@@ -749,7 +749,7 @@ If new implementation causes issues:
 
 ## Conclusion
 
-This refactor successfully addresses the core architectural concern: **"Un fallback no hauria d'evitar MAI la implementació de l'arquitectura per comoditat"**
+This refactor successfully addresses the core architectural concern: **"A fallback should NEVER avoid implementing the architecture for convenience"**
 
 ### Mission Accomplished ✅
 

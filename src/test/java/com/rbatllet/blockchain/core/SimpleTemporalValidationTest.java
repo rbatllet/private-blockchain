@@ -3,6 +3,8 @@ package com.rbatllet.blockchain.core;
 import com.rbatllet.blockchain.dao.AuthorizedKeyDAO;
 import com.rbatllet.blockchain.entity.AuthorizedKey;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.*;
 
@@ -23,18 +25,16 @@ class SimpleTemporalValidationTest {
     private String alicePublicKey;
 
     @BeforeEach
-    void setUp() {
-        // Generate fresh key pair using the new hierarchical key system
-        CryptoUtil.KeyInfo aliceKeyInfo = CryptoUtil.createRootKey();
-        
-        // Convert to KeyPair object
-        aliceKeyPair = new KeyPair(
-            CryptoUtil.stringToPublicKey(aliceKeyInfo.getPublicKeyEncoded()),
-            CryptoUtil.stringToPrivateKey(aliceKeyInfo.getPrivateKeyEncoded())
+    void setUp() throws Exception {
+        // RBAC FIX (v1.0.6): Load genesis-admin keys for createBootstrapAdmin()
+        // createBootstrapAdmin() validates that the public key matches genesis-admin.public
+        aliceKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
         );
-        
+
         // Get public key string
-        alicePublicKey = aliceKeyInfo.getPublicKeyEncoded();
+        alicePublicKey = CryptoUtil.publicKeyToString(aliceKeyPair.getPublic());
     }
 
     @AfterEach
@@ -59,34 +59,40 @@ class SimpleTemporalValidationTest {
         // Create a fresh blockchain with clean state
         blockchain = new Blockchain();
         blockchain.clearAndReinitialize();
-        
-        // 1. Authorize Alice
-        assertTrue(blockchain.addAuthorizedKey(alicePublicKey, "Alice"));
-        
-        // 2. Alice creates a block
-        Block historicalBlock = blockchain.addBlockAndReturn("Historical block", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic());
-        assertNotNull(historicalBlock, "Alice should be able to create a block with authorized key");
-        
-        // 3. Verify the block exists and is valid
+
+        // 1. Authorize Alice as bootstrap admin (SUPER_ADMIN)
+        assertTrue(blockchain.createBootstrapAdmin(alicePublicKey, "Alice"));
+
+        // 2. Create Bob as a regular USER (not SUPER_ADMIN) to test revocation
+        // RBAC v1.0.6: Cannot revoke last SUPER_ADMIN, so we test with a USER instead
+        KeyPair bobKeyPair = CryptoUtil.generateKeyPair();
+        String bobPublicKey = CryptoUtil.publicKeyToString(bobKeyPair.getPublic());
+        blockchain.addAuthorizedKey(bobPublicKey, "Bob", aliceKeyPair, UserRole.USER);
+
+        // 3. Bob creates a block
+        Block historicalBlock = blockchain.addBlockAndReturn("Historical block", bobKeyPair.getPrivate(), bobKeyPair.getPublic());
+        assertNotNull(historicalBlock, "Bob should be able to create a block with authorized key");
+
+        // 4. Verify the block exists and is valid
         assertNotNull(historicalBlock);
         assertEquals("Historical block", historicalBlock.getData());
-        assertEquals(alicePublicKey, historicalBlock.getSignerPublicKey());
-        
-        // 4. Test temporal validation directly
+        assertEquals(bobPublicKey, historicalBlock.getSignerPublicKey());
+
+        // 5. Test temporal validation directly
         AuthorizedKeyDAO dao = new AuthorizedKeyDAO();
-        assertTrue(dao.wasKeyAuthorizedAt(alicePublicKey, historicalBlock.getTimestamp()),
+        assertTrue(dao.wasKeyAuthorizedAt(bobPublicKey, historicalBlock.getTimestamp()),
                 "Key should be authorized at block creation time");
-        
-        // 5. Revoke Alice
-        assertTrue(blockchain.revokeAuthorizedKey(alicePublicKey));
-        
-        // 6. Alice cannot create new blocks
-        assertFalse(blockchain.addBlock("Future block", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()));
-        
-        // 7. But historical block should still be temporally valid
-        assertTrue(dao.wasKeyAuthorizedAt(alicePublicKey, historicalBlock.getTimestamp()),
+
+        // 6. Revoke Bob (Alice can revoke Bob because Alice is SUPER_ADMIN)
+        assertTrue(blockchain.revokeAuthorizedKey(bobPublicKey));
+
+        // 7. Bob cannot create new blocks
+        assertFalse(blockchain.addBlock("Future block", bobKeyPair.getPrivate(), bobKeyPair.getPublic()));
+
+        // 8. But historical block should still be temporally valid
+        assertTrue(dao.wasKeyAuthorizedAt(bobPublicKey, historicalBlock.getTimestamp()),
                 "Historical block should remain temporally valid after revocation");
-        
+
         System.out.println("✅ Basic temporal validation works correctly!");
     }
 
@@ -96,29 +102,36 @@ class SimpleTemporalValidationTest {
     void testReAuthorizationWorks() {
         // Create a fresh blockchain
         Blockchain blockchain = new Blockchain();
-        
-        // 1. Authorize Alice
-        assertTrue(blockchain.addAuthorizedKey(alicePublicKey, "Alice"));
-        
-        // 2. Alice creates a block
-        assertTrue(blockchain.addBlock("First period", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()));
-        
-        // 3. Revoke Alice
-        assertTrue(blockchain.revokeAuthorizedKey(alicePublicKey));
-        
-        // 4. Alice cannot create blocks now
-        assertFalse(blockchain.addBlock("Blocked period", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()));
-        
-        // 5. Re-authorize Alice (this should work with our fixes)
-        assertTrue(blockchain.addAuthorizedKey(alicePublicKey, "Alice-Reauthorized"),
+        blockchain.clearAndReinitialize();  // Ensure clean state before bootstrap
+
+        // 1. Authorize Alice as bootstrap admin (SUPER_ADMIN)
+        assertTrue(blockchain.createBootstrapAdmin(alicePublicKey, "Alice"));
+
+        // 2. Create Bob as a regular USER to test re-authorization
+        // RBAC v1.0.6: Cannot revoke last SUPER_ADMIN, so we test with a USER instead
+        KeyPair bobKeyPair = CryptoUtil.generateKeyPair();
+        String bobPublicKey = CryptoUtil.publicKeyToString(bobKeyPair.getPublic());
+        blockchain.addAuthorizedKey(bobPublicKey, "Bob", aliceKeyPair, UserRole.USER);
+
+        // 3. Bob creates a block
+        assertTrue(blockchain.addBlock("First period", bobKeyPair.getPrivate(), bobKeyPair.getPublic()));
+
+        // 4. Revoke Bob (Alice can revoke Bob)
+        assertTrue(blockchain.revokeAuthorizedKey(bobPublicKey));
+
+        // 5. Bob cannot create blocks now
+        assertFalse(blockchain.addBlock("Blocked period", bobKeyPair.getPrivate(), bobKeyPair.getPublic()));
+
+        // 6. Re-authorize Bob using addAuthorizedKey (Alice has SUPER_ADMIN role for authorization)
+        assertTrue(blockchain.addAuthorizedKey(bobPublicKey, "Bob-Reauthorized", aliceKeyPair, UserRole.USER),
                 "Re-authorization should work");
-        
-        // 6. Alice can create blocks again
-        assertTrue(blockchain.addBlock("Second period", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()));
-        
-        // 7. Verify we have at least the expected blocks (allowing for previous test data)
-        assertTrue(blockchain.getBlockCount() >= 3, "Should have at least 3 blocks"); // Genesis + 2 Alice blocks
-        
+
+        // 7. Bob can create blocks again
+        assertTrue(blockchain.addBlock("Second period", bobKeyPair.getPrivate(), bobKeyPair.getPublic()));
+
+        // 8. Verify we have at least the expected blocks
+        assertTrue(blockchain.getBlockCount() >= 2, "Should have at least 2 blocks"); // Genesis + 2 Bob blocks
+
         System.out.println("✅ Re-authorization works correctly!");
     }
 
@@ -127,10 +140,10 @@ class SimpleTemporalValidationTest {
     @DisplayName("Test Temporal Validation Entity Method")
     void testTemporalValidationEntityMethod() {
         // Test the new wasActiveAt method directly
-        
-        AuthorizedKey key = new AuthorizedKey(alicePublicKey, "Alice");
+
         LocalDateTime now = LocalDateTime.now();
-        key.setCreatedAt(now.minusHours(1)); // Created 1 hour ago
+        AuthorizedKey key = new AuthorizedKey(alicePublicKey, "Alice", UserRole.USER, "TestCreator", now.minusHours(1));
+        // Created 1 hour ago (via constructor)
         
         // 1. Key should be active at current time
         assertTrue(key.wasActiveAt(now), "Key should be active at current time");

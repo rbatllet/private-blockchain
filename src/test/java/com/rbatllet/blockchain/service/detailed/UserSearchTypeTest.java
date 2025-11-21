@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI.UserSearchType;
 import com.rbatllet.blockchain.util.CryptoUtil;
@@ -33,6 +35,7 @@ public class UserSearchTypeTest {
     private UserFriendlyEncryptionAPI api;
     private KeyPair testUserKeys;
     private KeyPair otherUserKeys;
+    private KeyPair bootstrapKeyPair;
     private String testPassword;
 
     @BeforeEach
@@ -43,14 +46,26 @@ public class UserSearchTypeTest {
         // BlockRepository now package-private - use clearAndReinitialize();
         blockchain.getAuthorizedKeyDAO().cleanupTestData();
 
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         api = new UserFriendlyEncryptionAPI(blockchain);
         testPassword = "TestPassword123!";
 
-        // PRE-AUTHORIZATION REQUIRED (v1.0.6 security): 
+        // PRE-AUTHORIZATION REQUIRED (v1.0.6 RBAC security):
         // 1. Create admin to act as authorized user creator
         KeyPair adminKeys = CryptoUtil.generateKeyPair();
         String adminPublicKey = CryptoUtil.publicKeyToString(adminKeys.getPublic());
-        blockchain.addAuthorizedKey(adminPublicKey, "Admin");
+        blockchain.addAuthorizedKey(adminPublicKey, "Admin", bootstrapKeyPair, UserRole.ADMIN);
         api.setDefaultCredentials("Admin", adminKeys);  // Authenticate as admin
 
         // 2. Now admin can create test users (generates new keys internally)
@@ -429,8 +444,14 @@ public class UserSearchTypeTest {
     void testFindBlocksByUserSpecialCharacters() throws Exception {
         // Create user with special characters
         String specialUser = "user@domain.com";
-        
-        // Admin is already authenticated from setUp, can create user directly
+
+        // RBAC FIX (v1.0.6): Need admin credentials to create new user
+        // setUp leaves us authenticated as test-user (USER), need to switch to admin
+        KeyPair adminKeys = CryptoUtil.generateKeyPair();
+        String adminPublicKey = CryptoUtil.publicKeyToString(adminKeys.getPublic());
+        blockchain.addAuthorizedKey(adminPublicKey, "SpecialAdmin", bootstrapKeyPair, UserRole.ADMIN);
+        api.setDefaultCredentials("SpecialAdmin", adminKeys);
+
         KeyPair specialKeys = api.createUser(specialUser);
         api.setDefaultCredentials(specialUser, specialKeys);
 

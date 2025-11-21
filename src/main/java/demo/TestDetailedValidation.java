@@ -2,6 +2,7 @@ package demo;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 
 import java.security.KeyPair;
@@ -33,8 +34,18 @@ public class TestDetailedValidation {
             String publicKeyString2 = CryptoUtil.publicKeyToString(publicKey2);
             
             // Authorize keys
-            blockchain.addAuthorizedKey(publicKeyString1, "TestUser1");
-            blockchain.addAuthorizedKey(publicKeyString2, "TestUser2");
+            // First user - Genesis bootstrap
+            blockchain.createBootstrapAdmin(
+                publicKeyString1,
+                "TestUser1"
+            );
+            // Second user - Created by first user
+            blockchain.addAuthorizedKey(
+                publicKeyString2,
+                "TestUser2",
+                keyPair1,  // TestUser1 is the caller
+                UserRole.USER
+            );
             
             // Add some regular blocks
             blockchain.addBlockAndReturn("Small block 1", privateKey1, publicKey1);

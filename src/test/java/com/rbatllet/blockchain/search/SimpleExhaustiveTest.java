@@ -21,6 +21,10 @@ public class SimpleExhaustiveTest {
         
         // Setup
         Blockchain blockchain = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
         SearchFrameworkEngine searchEngine = new SearchFrameworkEngine(
             EncryptionConfig.createHighSecurityConfig());
         
@@ -29,10 +33,10 @@ public class SimpleExhaustiveTest {
         PublicKey publicKey = keyPair.getPublic();
         String password = "TestPassword123!";
         
-        // Authorize key
+        // Create genesis admin
         String publicKeyString = CryptoUtil.publicKeyToString(publicKey);
-        boolean keyAuthorized = blockchain.addAuthorizedKey(publicKeyString, "TestUser", null);
-        System.out.println("🔑 Key authorized: " + keyAuthorized);
+        boolean keyAuthorized = blockchain.createBootstrapAdmin(publicKeyString, "TestUser");
+        System.out.println("🔑 Genesis admin created: " + keyAuthorized);
         
         // Create simple block
         boolean blockCreated = blockchain.addBlock(

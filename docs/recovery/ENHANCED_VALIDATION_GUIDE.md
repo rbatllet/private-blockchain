@@ -582,18 +582,12 @@ mvn test -Dtest=DataIntegrityThreadSafetyTest
 ./scripts/run_improved_rollback_test.zsh
 ```
 
-**run_eckeyderivation_tests.zsh**
-**Purpose**: Elliptic curve key derivation testing
-```bash
-./scripts/run_eckeyderivation_tests.zsh
-```
-> See [SECURITY_CLASSES_GUIDE.md](../security/SECURITY_CLASSES_GUIDE.md) for EC key derivation details
-
 **run_security_analysis.zsh**
-**Purpose**: Complete security analysis and validation
+**Purpose**: Complete security analysis and validation (ML-DSA-87 post-quantum)
 ```bash
 ./scripts/run_security_analysis.zsh
 ```
+> See [SECURITY_CLASSES_GUIDE.md](../security/SECURITY_CLASSES_GUIDE.md) for ML-DSA-87 cryptography details
 
 #### Utility Scripts
 

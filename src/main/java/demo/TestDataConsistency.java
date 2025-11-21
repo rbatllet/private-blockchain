@@ -28,7 +28,10 @@ public class TestDataConsistency {
         String publicKeyString = CryptoUtil.publicKeyToString(publicKey);
         
         // Add authorized key
-        blockchain.addAuthorizedKey(publicKeyString, "TestUser");
+        blockchain.createBootstrapAdmin(
+            publicKeyString,
+            "TestUser"
+        );
         System.out.println("2. ✅ Added authorized key for testing");
         
         // Generate large data for off-chain storage (600KB)

@@ -2,6 +2,8 @@ package com.rbatllet.blockchain.recovery;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.UserRole;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -187,12 +189,24 @@ public class ChainRecoveryManager {
             logger.info("🔑 Attempting to re-authorize deleted key...");
             
             // Re-add the key with recovery marker
-            String recoveryOwnerName = ownerName + " (RECOVERED-" + 
+            String recoveryOwnerName = ownerName + " (RECOVERED-" +
                 java.time.LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmm")) + ")";
-            
-            boolean reauthorized = calledWithinLock 
-                ? blockchain.addAuthorizedKeyWithoutLock(deletedPublicKey, recoveryOwnerName, null)
-                : blockchain.addAuthorizedKey(deletedPublicKey, recoveryOwnerName);
+
+            // RBAC v1.0.6: System recovery assigns USER role, createdBy = SYSTEM_RECOVERY
+            // Uses special system recovery method that bypasses RBAC validation
+            boolean reauthorized = calledWithinLock
+                ? blockchain.addAuthorizedKeyWithoutLock(
+                    deletedPublicKey,
+                    recoveryOwnerName,
+                    UserRole.USER,  // Default role for recovered keys
+                    "SYSTEM_RECOVERY"  // Indicates system recovery, not user creation
+                )
+                : blockchain.addAuthorizedKeySystemRecovery(
+                    deletedPublicKey,
+                    recoveryOwnerName,
+                    UserRole.USER,  // Default role for recovered keys
+                    "SYSTEM_RECOVERY"  // Indicates system recovery, not user creation
+                );
             
             if (!reauthorized) {
                 return new RecoveryResult(false, "RE_AUTHORIZATION", 

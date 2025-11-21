@@ -5,6 +5,7 @@ import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.entity.OffChainData;
 import com.rbatllet.blockchain.recovery.ChainRecoveryManager;
 import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.JPAUtil;
@@ -41,21 +42,26 @@ public class AdvancedZombieCodeDemo {
                 "1️⃣ Setting up advanced blockchain with exposed zombie code..."
             );
             Blockchain blockchain = new Blockchain();
-            System.out.println("✅ Blockchain initialized (genesis admin created)");
+            System.out.println("✅ Blockchain initialized (bootstrap admin created)");
 
-            // Load genesis admin keys
-            KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+            // Load bootstrap admin keys
+            KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
                 "./keys/genesis-admin.private",
                 "./keys/genesis-admin.public"
             );
-            System.out.println("✅ Genesis admin keys loaded");
+            System.out.println("✅ Bootstrap admin keys loaded");
 
-            // Create API with genesis admin credentials
+            blockchain.createBootstrapAdmin(
+                CryptoUtil.publicKeyToString(bootstrapKeys.getPublic()),
+                "BOOTSTRAP_ADMIN"
+            );
+
+            // Create API with bootstrap admin credentials
             UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
-            api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
-            System.out.println("✅ API configured with genesis admin credentials");
+            api.setDefaultCredentials("BOOTSTRAP_ADMIN", bootstrapKeys);
+            System.out.println("✅ API configured with bootstrap admin credentials");
 
-            // Create primary user (authorized by genesis admin)
+            // Create primary user (authorized by bootstrap admin)
             KeyPair userKeys = api.createUser("ZombieCodeExpert");
             api.setDefaultCredentials("ZombieCodeExpert", userKeys);
             System.out.println("✅ Primary user created: ZombieCodeExpert");
@@ -484,7 +490,7 @@ public class AdvancedZombieCodeDemo {
                 "   📁 KeyFileLoader - Multi-format key import (PEM, DER, Base64)"
             );
             System.out.println(
-                "   🔗 ECKeyDerivation - Advanced EC cryptographic operations"
+                "   🛡️ ML-DSA-87 - Post-quantum cryptographic operations (NIST FIPS 204)"
             );
             System.out.println(
                 "   🏥 ChainRecoveryManager - Multi-strategy disaster recovery"
@@ -503,7 +509,7 @@ public class AdvancedZombieCodeDemo {
                 "   🔍 BlockValidationUtil - Advanced integrity validation"
             );
             System.out.println(
-                "   ⚡ Advanced EC point mathematics and curve operations"
+                "   ⚡ Lattice-based post-quantum signatures (256-bit security)"
             );
             System.out.println(
                 "   🕐 Temporal authorization validation and audit trails"
@@ -754,7 +760,9 @@ public class AdvancedZombieCodeDemo {
             System.out.println("🔍 Debug: Adding FileStorageExpert to authorized keys...");
             boolean keyAdded = blockchain.addAuthorizedKey(
                 alternativeUserPublicKey,
-                "FileStorageExpert"
+                "FileStorageExpert",
+                bootstrapKeys,  // Bootstrap admin creates this user
+                UserRole.USER
             );
             System.out.println("🔍 Debug: FileStorageExpert key added: " + keyAdded);
 

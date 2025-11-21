@@ -2,6 +2,7 @@ package com.rbatllet.blockchain.core;
 
 import com.rbatllet.blockchain.entity.AuthorizedKey;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
@@ -43,7 +44,7 @@ class BlockchainComprehensiveSecurityTest {
         // Create authorized keypair
         authorizedKeyPair = CryptoUtil.generateKeyPair();
         authorizedPublicKey = CryptoUtil.publicKeyToString(authorizedKeyPair.getPublic());
-        blockchain.addAuthorizedKey(authorizedPublicKey, "AuthorizedUser");
+        blockchain.createBootstrapAdmin(authorizedPublicKey, "AuthorizedUser");
 
         // Create unauthorized keypair for security tests
         unauthorizedKeyPair = CryptoUtil.generateKeyPair();
@@ -256,7 +257,8 @@ class BlockchainComprehensiveSecurityTest {
             KeyPair newKeyPair = CryptoUtil.generateKeyPair();
             String newPublicKey = CryptoUtil.publicKeyToString(newKeyPair.getPublic());
             String ownerName = "TestOwner123";
-            boolean keyAdded = blockchain.addAuthorizedKey(newPublicKey, ownerName);
+            // Created by genesis admin (RBAC v1.0.6)
+            boolean keyAdded = blockchain.addAuthorizedKey(newPublicKey, ownerName, authorizedKeyPair, UserRole.USER);
             assertTrue(keyAdded, "Key should be added successfully");
 
             // Act
@@ -514,7 +516,8 @@ class BlockchainComprehensiveSecurityTest {
         @DisplayName("addBlock should validate null data properly")
         void testAddBlockNullDataValidation() {
             // Arrange: Add authorized key
-            blockchain.addAuthorizedKey(authorizedPublicKey, "TestUser");
+            // Create TestUser by genesis admin (RBAC v1.0.6)
+            blockchain.addAuthorizedKey(authorizedPublicKey, "TestUser", authorizedKeyPair, UserRole.USER);
 
             // Act & Assert: UPDATED - Null data should throw exception (matching Robustness standard)
             assertThrows(IllegalArgumentException.class, () -> {
@@ -527,7 +530,8 @@ class BlockchainComprehensiveSecurityTest {
         @DisplayName("addBlock should validate null private key")
         void testAddBlockNullPrivateKeyValidation() {
             // Arrange: Add authorized key
-            blockchain.addAuthorizedKey(authorizedPublicKey, "TestUser");
+            // Create TestUser by genesis admin (RBAC v1.0.6)
+            blockchain.addAuthorizedKey(authorizedPublicKey, "TestUser", authorizedKeyPair, UserRole.USER);
 
             // Act & Assert: UPDATED - Null private key should throw exception
             assertThrows(IllegalArgumentException.class, () -> {
@@ -540,7 +544,8 @@ class BlockchainComprehensiveSecurityTest {
         @DisplayName("addBlock should validate null public key")
         void testAddBlockNullPublicKeyValidation() {
             // Arrange: Add authorized key
-            blockchain.addAuthorizedKey(authorizedPublicKey, "TestUser");
+            // Create TestUser by genesis admin (RBAC v1.0.6)
+            blockchain.addAuthorizedKey(authorizedPublicKey, "TestUser", authorizedKeyPair, UserRole.USER);
 
             // Act & Assert: UPDATED - Null public key should throw exception
             assertThrows(IllegalArgumentException.class, () -> {
@@ -553,7 +558,8 @@ class BlockchainComprehensiveSecurityTest {
         @DisplayName("addBlock should validate mismatched key pairs")
         void testAddBlockMismatchedKeyPairs() {
             // Arrange: Add authorized key for first pair
-            blockchain.addAuthorizedKey(authorizedPublicKey, "TestUser");
+            // Create TestUser by genesis admin (RBAC v1.0.6)
+            blockchain.addAuthorizedKey(authorizedPublicKey, "TestUser", authorizedKeyPair, UserRole.USER);
 
             // Act & Assert: Mismatched private/public keys should be rejected
             KeyPair otherKeyPair = CryptoUtil.generateKeyPair();
@@ -566,7 +572,8 @@ class BlockchainComprehensiveSecurityTest {
         @DisplayName("addBlockAndReturn should validate inputs the same way")
         void testAddBlockAndReturnInputValidation() {
             // Arrange: Add authorized key
-            blockchain.addAuthorizedKey(authorizedPublicKey, "TestUser");
+            // Create TestUser by genesis admin (RBAC v1.0.6)
+            blockchain.addAuthorizedKey(authorizedPublicKey, "TestUser", authorizedKeyPair, UserRole.USER);
 
             // Act & Assert: UPDATED - Should throw exceptions (matching Robustness standard)
             assertThrows(IllegalArgumentException.class, () -> {
@@ -592,7 +599,8 @@ class BlockchainComprehensiveSecurityTest {
         @DisplayName("updateBlock should exist and handle basic validation")
         void testUpdateBlockBasicValidation() {
             // Arrange: Add a block to test updateBlock method
-            blockchain.addAuthorizedKey(authorizedPublicKey, "TestUser");
+            // Create TestUser by genesis admin (RBAC v1.0.6)
+            blockchain.addAuthorizedKey(authorizedPublicKey, "TestUser", authorizedKeyPair, UserRole.USER);
             Block originalBlock = blockchain.addBlockAndReturn("Original data",
                 authorizedKeyPair.getPrivate(), authorizedKeyPair.getPublic());
             assertNotNull(originalBlock, "Block should be added successfully");
@@ -611,7 +619,8 @@ class BlockchainComprehensiveSecurityTest {
         @DisplayName("updateBlock should reject critical field modifications")
         void testUpdateBlockRejectsCriticalModifications() {
             // Arrange: Add a block to attempt updating
-            blockchain.addAuthorizedKey(authorizedPublicKey, "TestUser");
+            // Create TestUser by genesis admin (RBAC v1.0.6)
+            blockchain.addAuthorizedKey(authorizedPublicKey, "TestUser", authorizedKeyPair, UserRole.USER);
             Block originalBlock = blockchain.addBlockAndReturn("Original data",
                 authorizedKeyPair.getPrivate(), authorizedKeyPair.getPublic());
             assertNotNull(originalBlock, "Block should be added successfully");

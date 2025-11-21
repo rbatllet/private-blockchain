@@ -1,5 +1,7 @@
 # StampedLock Migration Audit Report
 
+
+> **🔄 CODE UPDATE (v1.0.6+)**: Methods like `revokeAuthorizedKey()`, `rollbackToBlock()` now throw exceptions. See [Exception-Based Error Handling Guide](../security/EXCEPTION_BASED_ERROR_HANDLING_V1_0_6.md).
 > **📌 Historical Document Note**: This report describes the codebase state at the time of the StampedLock migration (2025-10-04).  
 > **⚠️ UPDATE (v1.0.6)**: The `getLastBlock()` method mentioned throughout this report now has transaction-aware considerations. See [TRANSACTION_ISOLATION_FIX.md](../database/TRANSACTION_ISOLATION_FIX.md) for important usage guidelines when working within JPA transactions.
 

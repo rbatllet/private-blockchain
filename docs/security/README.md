@@ -2,27 +2,39 @@
 
 This directory contains comprehensive security, encryption, and key management documentation for the Private Blockchain.
 
-## 📚 Documents in This Directory (8 files)
+## 📚 Documents in This Directory (16 files)
 
 ### 🎯 Essential Guides
 | Document | Description | Recommended For |
 |----------|-------------|-----------------|
 | **[SECURITY_GUIDE.md](SECURITY_GUIDE.md)** | Security best practices and guidelines | **START HERE** - All developers |
 | **[PRE_AUTHORIZATION_GUIDE.md](PRE_AUTHORIZATION_GUIDE.md)** | Pre-Authorization Security Model (v1.0.6+) | **REQUIRED** - User creation workflow |
+| **[ROLE_BASED_ACCESS_CONTROL.md](ROLE_BASED_ACCESS_CONTROL.md)** | 🆕 **v1.0.6** RBAC system with 4 roles (SUPER_ADMIN, ADMIN, USER, READ_ONLY) | Access control implementation |
 | **[ENCRYPTION_GUIDE.md](ENCRYPTION_GUIDE.md)** | Block encryption and metadata layer management | Encryption basics |
 | **[RETROACTIVE_ENCRYPTION_ARCHITECTURE.md](RETROACTIVE_ENCRYPTION_ARCHITECTURE.md)** | Retroactive encryption architecture and hash integrity | Advanced encryption |
 | **[KEY_MANAGEMENT_GUIDE.md](KEY_MANAGEMENT_GUIDE.md)** | Hierarchical key management with rotation | Key lifecycle |
+| **[BLOCKCHAIN_MASTER_ENCRYPTION_KEY.md](BLOCKCHAIN_MASTER_ENCRYPTION_KEY.md)** | 🆕 **v1.0.6** Blockchain Master Encryption Key (BMEK) architecture | Master key management |
 
 ### 🔧 Configuration & Integration
 | Document | Description | Recommended For |
 |----------|-------------|-----------------|
 | **[ENCRYPTION_CONFIG_INTEGRATION_GUIDE.md](ENCRYPTION_CONFIG_INTEGRATION_GUIDE.md)** | Encryption configuration integration | Configuration setup |
 | **[ENCRYPTED_EXPORT_IMPORT_GUIDE.md](ENCRYPTED_EXPORT_IMPORT_GUIDE.md)** | Encrypted chain export/import procedures | Data portability |
+| **[EXCEPTION_BASED_ERROR_HANDLING_V1_0_6.md](EXCEPTION_BASED_ERROR_HANDLING_V1_0_6.md)** | 🆕 **v1.0.6** Exception-based error handling (breaking change) | Error handling migration |
 
-### 📖 Reference
+### 📖 Reference & Quick Guides
 | Document | Description | Recommended For |
 |----------|-------------|-----------------|
 | **[SECURITY_CLASSES_GUIDE.md](SECURITY_CLASSES_GUIDE.md)** | Security classes reference documentation | API reference |
+| **[RETROACTIVE_ENCRYPTION_QUICK_REFERENCE.md](RETROACTIVE_ENCRYPTION_QUICK_REFERENCE.md)** | Quick reference for retroactive encryption | Quick lookup |
+| **[CALLER_IDENTIFICATION_PROPOSAL.md](CALLER_IDENTIFICATION_PROPOSAL.md)** | 🆕 **v1.0.6** Caller identification for RBAC implementation | Architecture reference |
+
+### 🚨 Vulnerability Reports & Security Fixes
+| Document | Description | Status |
+|----------|-------------|--------|
+| **[VULNERABILITY_REPORT_CVE_addAuthorizedKey.md](VULNERABILITY_REPORT_CVE_addAuthorizedKey.md)** | 🔴 **CRITICAL** Unauthorized self-authorization vulnerability (CVSS 9.8) | ✅ Fixed v1.0.6 |
+| **[VULNERABILITY_REPORT_HIERARCHICAL_KEY_RBAC.md](VULNERABILITY_REPORT_HIERARCHICAL_KEY_RBAC.md)** | 🔴 **CRITICAL** Hierarchical key RBAC bypass (6 vulnerabilities, CVSS 9.1) | ✅ Fixed v1.0.6 |
+| **[AUTO_AUTHORIZATION_SECURITY_FIX_PLAN.md](AUTO_AUTHORIZATION_SECURITY_FIX_PLAN.md)** | Auto-authorization security fix completion report (6 attack vectors) | ✅ Completed 2025-11-02 |
 
 ## 🚀 Recommended Reading Order
 
@@ -100,9 +112,14 @@ boolean success = blockchain.encryptExistingBlock(blockNumber, "secure-password"
 ### Manage Keys
 ```java
 // See: KEY_MANAGEMENT_GUIDE.md
-ECKeyDerivation keyDerivation = new ECKeyDerivation();
-KeyPair rootKey = keyDerivation.generateMasterKeyPair();
-KeyPair operationalKey = keyDerivation.deriveChildKey(rootKey, 1);
+
+// ML-DSA-87 post-quantum: Generate independent key pairs (no derivation)
+KeyPair rootKey = CryptoUtil.generateKeyPair();  // ML-DSA-87
+KeyPair operationalKey = CryptoUtil.generateKeyPair();  // Independent key
+
+// Save both keys together (ML-DSA-87 requires saving public + private)
+SecureKeyStorage.saveKeyPair("root-key", rootKey, masterPassword);
+SecureKeyStorage.saveKeyPair("operational-key", operationalKey, operationalPassword);
 ```
 
 ### Export Encrypted Chain
@@ -169,11 +186,14 @@ UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, config
 
 ## ⚠️ Security Notices
 
-### Critical Security Updates
+### Critical Security Updates (v1.0.6)
+- **2025-11-14**: 🔴 **CRITICAL** Fixed hierarchical key RBAC bypass (6 vulnerabilities, CVSS 9.1)
+- **2025-11-04**: 🔴 **CRITICAL** Fixed unauthorized self-authorization (CVSS 9.8)
+- **2025-11-02**: ✅ Auto-authorization security fix completed (6 attack vectors)
 - **2025-10-04**: StampedLock migration (thread-safety improvements)
 - **2025-10-04**: AtomicReference atomicity fixes (credential protection)
 
-**See**: [../reports/](../reports/) for audit reports
+**See**: [Vulnerability Reports](#-vulnerability-reports--security-fixes) above and [../reports/](../reports/) for audit reports
 
 ### Vulnerability Reporting
 If you discover a security vulnerability, please report it to the project maintainers immediately. Do not disclose publicly until a fix is available.
@@ -181,5 +201,5 @@ If you discover a security vulnerability, please report it to the project mainta
 ---
 
 **Directory**: `docs/security/`
-**Files**: 6
-**Last Updated**: 2025-10-04
+**Files**: 16
+**Last Updated**: 2025-11-21

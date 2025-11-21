@@ -11,6 +11,110 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.6] - 2025-11-14
+
+### 🔒 Security - CRITICAL Hierarchical Key RBAC Fixes
+
+**Fixed 6 critical vulnerabilities (CVE-2025-001 through CVE-2025-006)** that allowed unauthorized creation and rotation of privileged cryptographic keys, completely bypassing role-based access control.
+
+**CVSS Score**: 9.1 (CRITICAL)
+
+#### Vulnerabilities Fixed
+
+1. **CVE-2025-001**: Unauthorized ROOT key creation via `setupHierarchicalKeys()`
+2. **CVE-2025-002**: Unauthorized ROOT key generation via `generateHierarchicalKey(depth=1)`
+3. **CVE-2025-003**: Unauthorized INTERMEDIATE key generation via `generateHierarchicalKey(depth=2)`
+4. **CVE-2025-004**: Unauthorized ROOT key rotation in `rotateHierarchicalKeys()`
+5. **CVE-2025-005**: Unauthorized INTERMEDIATE key rotation in `rotateHierarchicalKeys()`
+6. **CVE-2025-006**: Auto-creation security vulnerability (missing hierarchy validation)
+
+**Additional Fixes**:
+- Fixed 3 NullPointerException bugs when creating keys without proper parent hierarchy
+
+#### Breaking Changes
+
+**⚠️ All hierarchical key operations now enforce RBAC and throw `SecurityException` for unauthorized access.**
+
+**Permission Matrix**:
+
+| Operation | SUPER_ADMIN | ADMIN | USER | READ_ONLY |
+|-----------|:-----------:|:-----:|:----:|:---------:|
+| `setupHierarchicalKeys()` | ✅ | ❌ | ❌ | ❌ |
+| Create ROOT keys (depth=1) | ✅ | ❌ | ❌ | ❌ |
+| Create INTERMEDIATE keys (depth=2) | ✅ | ✅ | ❌ | ❌ |
+| Create OPERATIONAL keys (depth=3+) | ✅ | ✅ | ✅ | ❌ |
+| Rotate ROOT keys | ✅ | ❌ | ❌ | ❌ |
+| Rotate INTERMEDIATE keys | ✅ | ✅ | ❌ | ❌ |
+| Rotate OPERATIONAL keys | ✅ | ✅ | ✅ | ❌ |
+
+**Affected Methods**:
+- `setupHierarchicalKeys(String masterPassword)` - Now throws `SecurityException` if caller is not SUPER_ADMIN
+- `generateHierarchicalKey(String purpose, int depth, Map<String, Object> options)` - Now validates role based on depth
+- `rotateHierarchicalKeys(String keyId, Map<String, Object> options)` - Now validates role based on key type
+
+**Migration Required**:
+
+```java
+// ❌ OLD (vulnerable - will throw SecurityException):
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, "regularUser", userKeys);
+KeyManagementResult result = api.setupHierarchicalKeys("password");
+// Throws: SecurityException - requires SUPER_ADMIN
+
+// ✅ NEW (secure - use appropriate role):
+// For ROOT/INTERMEDIATE operations, use SUPER_ADMIN credentials
+KeyPair superAdminKeys = KeyFileLoader.loadKeyPairFromFiles(
+    "./keys/genesis-admin.private",
+    "./keys/genesis-admin.public"
+);
+
+// Register bootstrap admin in blockchain (REQUIRED!)
+blockchain.createBootstrapAdmin(
+    CryptoUtil.publicKeyToString(superAdminKeys.getPublic()),
+    "BOOTSTRAP_ADMIN"
+);
+
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+api.setDefaultCredentials("BOOTSTRAP_ADMIN", superAdminKeys);
+
+// Now hierarchical setup works
+KeyManagementResult result = api.setupHierarchicalKeys("password");
+```
+
+#### Added
+
+- ✅ Implemented `validateCallerHasRole(UserRole... allowedRoles)` RBAC helper method
+- ✅ Added comprehensive RBAC permission matrix for hierarchical keys
+- ✅ Security exceptions now propagate correctly (not converted to `KeyManagementResult`)
+- ✅ Created `UserFriendlyEncryptionAPIHierarchicalKeySecurityTest` with 14 RBAC tests (100% passing)
+- ✅ Added strict validation for key hierarchy (prevents auto-creation of privileged keys)
+
+#### Security Documentation
+
+- ✅ Created [VULNERABILITY_REPORT_HIERARCHICAL_KEY_RBAC.md](docs/security/VULNERABILITY_REPORT_HIERARCHICAL_KEY_RBAC.md)
+- ✅ Updated [KEY_MANAGEMENT_GUIDE.md](docs/security/KEY_MANAGEMENT_GUIDE.md) with RBAC section
+- ✅ Updated [ROLE_BASED_ACCESS_CONTROL.md](docs/security/ROLE_BASED_ACCESS_CONTROL.md)
+
+#### Verification
+
+Run security test suite to verify fixes:
+```bash
+mvn test -Dtest=UserFriendlyEncryptionAPIHierarchicalKeySecurityTest
+```
+
+Expected: `Tests run: 14, Failures: 0, Errors: 0` ✅
+
+#### Impact
+
+**CRITICAL** - These vulnerabilities are fixed in v1.0.6. If using earlier versions:
+1. **Upgrade immediately** to v1.0.6
+2. **Audit existing keys** for unauthorized creation
+3. **Rotate compromised keys** using SUPER_ADMIN credentials
+4. **Review access logs** for suspicious key operations
+
+See [VULNERABILITY_REPORT_HIERARCHICAL_KEY_RBAC.md](docs/security/VULNERABILITY_REPORT_HIERARCHICAL_KEY_RBAC.md) for complete remediation steps.
+
+---
+
 ## [1.0.6] - 2025-11-02
 
 ### 🔒 Security - CRITICAL Authorization Fixes
@@ -35,20 +139,26 @@ All user creation and credential management methods now require **pre-authorizat
 UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain, "user", keys, config);
 
 // ✅ NEW (secure - mandatory pattern):
-// 1. Create blockchain (auto-creates genesis admin on first run)
+// 1. Create blockchain
 Blockchain blockchain = new Blockchain();
 
 // 2. Load genesis admin keys
 KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
-    "./keys/genesis-admin.private", 
+    "./keys/genesis-admin.private",
     "./keys/genesis-admin.public"
 );
 
-// 3. Authenticate with genesis admin
-UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
-api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+// 3. Register bootstrap admin in blockchain (REQUIRED!)
+blockchain.createBootstrapAdmin(
+    CryptoUtil.publicKeyToString(genesisKeys.getPublic()),
+    "BOOTSTRAP_ADMIN"
+);
 
-// 4. Create regular users (authorized by genesis admin)
+// 4. Authenticate with genesis admin
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+api.setDefaultCredentials("BOOTSTRAP_ADMIN", genesisKeys);
+
+// 5. Create regular users (authorized by genesis admin)
 KeyPair userKeys = api.createUser("username");
 api.setDefaultCredentials("username", userKeys);
 ```

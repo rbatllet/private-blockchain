@@ -84,10 +84,16 @@ void setUp() {
         "./keys/genesis-admin.private",
         "./keys/genesis-admin.public"
     );
-    
-    // Authenticate with genesis admin
+
+    // Register bootstrap admin in blockchain (REQUIRED!)
+    blockchain.createBootstrapAdmin(
+        CryptoUtil.publicKeyToString(genesisKeys.getPublic()),
+        "BOOTSTRAP_ADMIN"
+    );
+
+    // Authenticate with bootstrap admin
     api = new UserFriendlyEncryptionAPI(blockchain);
-    api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+    api.setDefaultCredentials("BOOTSTRAP_ADMIN", genesisKeys);
     
     // Create test user (authorized by genesis admin)
     testUserKeys = api.createUser("testuser");
@@ -102,17 +108,9 @@ void setUp() {
 - **Blockchain Core**: 15+ test classes
 - **UserFriendlyEncryptionAPI**: **7+ dedicated test classes** with **46+ tests each**
 - **DAO Layer**: 5+ test classes
-- **Security Module**: 8+ test classes
-- **Recovery Module**: 4+ test classes  
+- **Security Module**: 8+ test classes (post-quantum ML-DSA-87)
+- **Recovery Module**: 4+ test classes
 - **Search Module**: 3+ test classes (SearchFunctionalityTest + UserFriendlyEncryptionAPI search tests)
-
-#### New ECKeyDerivation Tests
-- **Basic Key Derivation**: 5+ test cases
-- **Input Validation**: 4+ test cases
-- **Thread Safety**: 3+ test cases
-- **Edge Cases**: 3+ test cases
-- **Performance**: 2+ test cases
-- **Validation**: 3+ test classes
 
 #### Test Types
 - **Unit Tests**: **828+ individual test cases** (added 33 comprehensive security tests)
@@ -574,60 +572,16 @@ void setUp() {
 **Coverage**: Configuration validation, presets, and builder pattern
 
 #### 1.9 Improved Rollback Strategy Test Suite
-**File**: `ImprovedRollbackStrategyTest.java`  
-**Tests**: Enhanced rollback strategy tests  
+**File**: `ImprovedRollbackStrategyTest.java`
+**Tests**: Enhanced rollback strategy tests
 **Coverage**: Intelligent rollback analysis, security-first approach, hash chain integrity verification
 
-#### 1.10 EC Key Derivation Test Suite
-**File**: `ECKeyDerivationTest.java` and `ECKeyDerivationThreadSafetyTest.java`  
-**Tests**: Comprehensive validation of elliptic curve key derivation  
-**Key Features Tested**:
-- Basic key derivation from private keys
-- Input validation and error conditions
-- Thread safety under concurrent access
-- Cryptographic correctness
-- Performance characteristics  
-**Coverage**: 95%+ line and branch coverage
-
-**Test Cases**:
-
-1. **Basic Key Derivation**
-   - Derives valid public key from EC private key
-   - Verifies derived key matches original key pair
-   - Ensures consistent derivation results across multiple runs
-   - Validates key pair verification
-   - Tests with different key sizes and curves
-
-2. **Input Validation**
-   - Handles null private key input
-   - Validates curve parameters
-   - Rejects invalid key formats
-   - Validates point on curve checks
-
-3. **Thread Safety**
-   - Concurrent key derivation (10+ threads)
-   - Thread-local resource management
-   - No race conditions in provider initialization
-   - Consistent results under high concurrency
-
-4. **Edge Cases**
-   - Handles key at infinity
-   - Validates boundary values for curve parameters
-   - Recovers from temporary resource constraints
-   - Graceful handling of invalid states
-
-5. **Performance**
-   - Meets throughput requirements (1000+ ops/sec)
-   - Minimal memory overhead
-   - Efficient caching of curve parameters
-   - Linear scaling with thread count
-
-#### 1.11 Format Utility Test Suite
-**File**: `FormatUtilTest.java`  
-**Tests**: String formatting and display utility tests  
+#### 1.10 Format Utility Test Suite
+**File**: `FormatUtilTest.java`
+**Tests**: String formatting and display utility tests
 **Coverage**: Hash truncation, fixed-width formatting, timestamp formatting, block information display
 
-#### 1.12 OffChainFileSearch Robustness Test Suite ⭐ **NEW**
+#### 1.11 OffChainFileSearch Robustness Test Suite ⭐ **NEW**
 **File**: `OffChainFileSearchRobustnessTest.java`  
 **Tests**: 24 comprehensive defensive programming tests  
 **Coverage**: Off-chain file search with advanced error handling and thread safety
@@ -1071,11 +1025,28 @@ Measured: ~50-200ms for typical searches
 public class PerformanceTest {
     public static void main(String[] args) {
         Blockchain blockchain = new Blockchain();
-        
+
+        // Load bootstrap admin keys (RBAC v1.0.6+)
+        KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (REQUIRED!)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeys.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         // Setup
         KeyPair testKeys = CryptoUtil.generateKeyPair();
         String publicKey = CryptoUtil.publicKeyToString(testKeys.getPublic());
-        blockchain.addAuthorizedKey(publicKey, "PerfTestUser");
+        blockchain.addAuthorizedKey(
+            publicKey,
+            "PerfTestUser",
+            bootstrapKeys,      // Caller credentials (bootstrap admin)
+            UserRole.USER       // Target role
+        );
         
         // Performance test: Add 1000 blocks
         long startTime = System.currentTimeMillis();
@@ -1916,7 +1887,24 @@ Memory Safety optimizations in v1.0.5 introduce new breaking changes and streami
 @Test
 @DisplayName("Search methods reject maxResults ≤ 0")
 void testMaxResultsValidation() {
-    blockchain.addAuthorizedKey(testPublicKey, "TestUser");
+    // Load bootstrap admin keys (RBAC v1.0.6+)
+    KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
+        "./keys/genesis-admin.private",
+        "./keys/genesis-admin.public"
+    );
+
+    // Register bootstrap admin in blockchain (REQUIRED!)
+    blockchain.createBootstrapAdmin(
+        CryptoUtil.publicKeyToString(bootstrapKeys.getPublic()),
+        "BOOTSTRAP_ADMIN"
+    );
+
+    blockchain.addAuthorizedKey(
+        testPublicKey,
+        "TestUser",
+        bootstrapKeys,      // Caller credentials (bootstrap admin)
+        UserRole.USER       // Target role
+    );
     blockchain.addBlock("test data", testKeyPair.getPrivate(), testKeyPair.getPublic());
 
     // ✅ Valid: positive maxResults

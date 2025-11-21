@@ -201,8 +201,8 @@ public class DatabaseConfigDemo {
             KeyPair keys = CryptoUtil.generateKeyPair();
             String publicKeyStr = CryptoUtil.publicKeyToString(keys.getPublic());
 
-            // Add authorized key
-            blockchain.addAuthorizedKey(publicKeyStr, "TestUser");
+            // Create bootstrap admin
+            blockchain.createBootstrapAdmin(publicKeyStr, "TestUser");
 
             // Add a test block
             String testData = "Test data - " + System.currentTimeMillis();

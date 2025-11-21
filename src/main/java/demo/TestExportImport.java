@@ -28,7 +28,10 @@ public class TestExportImport {
         String publicKeyString = CryptoUtil.publicKeyToString(publicKey);
         
         // Add authorized key
-        blockchain.addAuthorizedKey(publicKeyString, "TestUser");
+        blockchain.createBootstrapAdmin(
+            publicKeyString,
+            "TestUser"
+        );
         System.out.println("2. ✅ Added authorized key");
         
         // Add small block (on-chain)

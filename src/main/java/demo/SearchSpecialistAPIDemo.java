@@ -5,6 +5,7 @@ import com.rbatllet.blockchain.search.SearchSpecialistAPI;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.EnhancedSearchResult;
 import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
+import com.rbatllet.blockchain.util.CryptoUtil;
 
 import java.security.KeyPair;
 import java.util.List;
@@ -37,18 +38,24 @@ public class SearchSpecialistAPIDemo {
             System.out.println("📊 Setting up specialized search environment...");
             Blockchain blockchain = new Blockchain();
 
-            // Load genesis admin keys
-            KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+            // Load bootstrap admin keys
+            KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
                 "./keys/genesis-admin.private",
                 "./keys/genesis-admin.public"
+            );
+
+            // Register bootstrap admin in blockchain (REQUIRED!)
+            blockchain.createBootstrapAdmin(
+                CryptoUtil.publicKeyToString(bootstrapKeys.getPublic()),
+                "BOOTSTRAP_ADMIN"
             );
 
             // Set up test data using UserFriendlyEncryptionAPI for convenience
             System.out.println("🔍 Setting up demo environment...");
             UserFriendlyEncryptionAPI dataAPI = new UserFriendlyEncryptionAPI(blockchain);
-            dataAPI.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+            dataAPI.setDefaultCredentials("BOOTSTRAP_ADMIN", bootstrapKeys);
 
-            // Create search specialist user (authorized by genesis admin)
+            // Create search specialist user (authorized by bootstrap admin)
             KeyPair demoKeys = dataAPI.createUser("search-specialist");
             dataAPI.setDefaultCredentials("search-specialist", demoKeys);
             

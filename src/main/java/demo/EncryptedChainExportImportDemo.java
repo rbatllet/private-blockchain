@@ -29,7 +29,10 @@ public class EncryptedChainExportImportDemo {
         String publicKeyString = CryptoUtil.publicKeyToString(publicKey);
         
         // Add authorized key
-        blockchain.addAuthorizedKey(publicKeyString, "TestUser");
+        blockchain.createBootstrapAdmin(
+            publicKeyString,
+            "TestUser"
+        );
         System.out.println("1. ✅ Added authorized key");
         
         // Add regular unencrypted block

@@ -8,6 +8,8 @@ Comprehensive guide to the Private Blockchain API, core functions, off-chain sto
 
 > **⚠️ ARCHITECTURE NOTE**: `BlockRepository` is a **package-private** internal class located in `com.rbatllet.blockchain.core`. It is **NOT** accessible outside the `core` package. All database operations **MUST** go through the public `Blockchain` API, which provides thread-safe access via `GLOBAL_BLOCKCHAIN_LOCK`. Direct instantiation of `BlockRepository` is prevented by the compiler to ensure thread-safety and proper synchronization.
 
+> **🔄 BREAKING CHANGE (v1.0.6+)**: Critical security and operational methods now throw **exceptions** instead of returning `false`. This fail-fast pattern ensures security violations cannot be silently ignored. Affected methods: `revokeAuthorizedKey()`, `deleteAuthorizedKey()`, `rollbackBlocks()`, `rollbackToBlock()`, `exportChain()`, `importChain()`. See [Exception-Based Error Handling Guide](../security/EXCEPTION_BASED_ERROR_HANDLING_V1_0_6.md) for migration details and examples.
+
 ## 📋 Table of Contents
 
 - [Secure Initialization & Authorization](#-secure-initialization--authorization) **← v1.0.6 Security Update**
@@ -41,7 +43,7 @@ import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.util.CryptoUtil;
 
-// 1. Create blockchain (auto-creates genesis admin on first run)
+// 1. Create blockchain (only genesis block is automatic)
 Blockchain blockchain = new Blockchain();
 
 // 2. Load genesis admin keys
@@ -50,18 +52,24 @@ KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
     "./keys/genesis-admin.public"
 );
 
-// 3. Create API instance with genesis admin credentials
+// 3. Register bootstrap admin in blockchain (REQUIRED!)
+blockchain.createBootstrapAdmin(
+    CryptoUtil.publicKeyToString(genesisKeys.getPublic()),
+    "BOOTSTRAP_ADMIN"
+);
+
+// 4. Create API instance with bootstrap admin credentials
 UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
-api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+api.setDefaultCredentials("BOOTSTRAP_ADMIN", genesisKeys);
 
-// 4. Create regular users (only authorized users can create new users)
-KeyPair aliceKeys = api.createUser("alice");  // Genesis admin creates alice
-KeyPair bobKeys = api.createUser("bob");      // Genesis admin creates bob
+// 5. Create regular users (only authorized users can create new users)
+KeyPair aliceKeys = api.createUser("alice");  // Bootstrap admin creates alice
+KeyPair bobKeys = api.createUser("bob");      // Bootstrap admin creates bob
 
-// 5. Switch to regular user for operations
+// 6. Switch to regular user for operations
 api.setDefaultCredentials("alice", aliceKeys);
 
-// 6. Now use API normally
+// 7. Now use API normally
 Block block = api.storeEncryptedData("data", "password");
 ```
 
@@ -87,18 +95,20 @@ If you attempt to use the API without proper authorization, you'll receive:
 Keys must be pre-authorized before creating UserFriendlyEncryptionAPI.
 
 Solution:
-  1. Load genesis admin keys: ./keys/genesis-admin.private
-  2. Authorize user: blockchain.addAuthorizedKey(publicKey, username)
+  1. Load bootstrap admin keys: ./keys/genesis-admin.private
+  2. Authorize user: blockchain.addAuthorizedKey(publicKey, username, bootstrapKeyPair, UserRole.USER)
   3. Then create API instance
 ```
 
 ### Genesis Admin Bootstrap
 
-The blockchain automatically creates a **genesis admin** on first initialization:
-- Genesis admin keys are stored at `./keys/genesis-admin.{private,public}`
-- Only one genesis admin exists per blockchain
-- Genesis admin can create and authorize other users
-- Genesis admin keys should be securely backed up
+The blockchain requires **explicit bootstrap admin creation** for security:
+- Applications MUST call `blockchain.createBootstrapAdmin()` with pre-loaded keys
+- Bootstrap admin keys are stored at `./keys/genesis-admin.{private,public}`
+- Only one bootstrap admin can be created per blockchain (when 0 users exist)
+- Bootstrap admin can create and authorize other users
+- Bootstrap admin keys should be securely backed up
+- **Security**: No automatic admin creation - all authorizations are explicit and controlled
 
 ---
 
@@ -1411,13 +1421,30 @@ public class Block {
 
 #### Initialize and Setup
 ```java
-// Create blockchain (automatic genesis block)
+// Create blockchain (only genesis block is automatic)
 Blockchain blockchain = new Blockchain();
 
-// Add authorized users
+// Load bootstrap admin keys (RBAC v1.0.6+)
+KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
+    "./keys/genesis-admin.private",
+    "./keys/genesis-admin.public"
+);
+
+// EXPLICIT bootstrap admin creation (REQUIRED for security!)
+blockchain.createBootstrapAdmin(
+    CryptoUtil.publicKeyToString(bootstrapKeys.getPublic()),
+    "BOOTSTRAP_ADMIN"
+);
+
+// Add authorized users with RBAC
 KeyPair alice = CryptoUtil.generateKeyPair();
 String alicePublicKey = CryptoUtil.publicKeyToString(alice.getPublic());
-blockchain.addAuthorizedKey(alicePublicKey, "Alice");
+blockchain.addAuthorizedKey(
+    alicePublicKey,
+    "Alice",
+    bootstrapKeys,      // Caller: bootstrap admin
+    UserRole.USER       // Target role
+);
 ```
 
 #### Add Blocks
@@ -1721,23 +1748,45 @@ public class BlockchainExample {
         try {
             // 1. Initialize blockchain
             Blockchain blockchain = new Blockchain();
-            
-            // 2. Add users
+
+            // 2. Load bootstrap admin keys (RBAC v1.0.6+)
+            KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
+                "./keys/genesis-admin.private",
+                "./keys/genesis-admin.public"
+            );
+
+            // 3. Register bootstrap admin in blockchain (REQUIRED!)
+            blockchain.createBootstrapAdmin(
+                CryptoUtil.publicKeyToString(bootstrapKeys.getPublic()),
+                "BOOTSTRAP_ADMIN"
+            );
+
+            // 4. Add users with RBAC
             KeyPair alice = CryptoUtil.generateKeyPair();
             KeyPair bob = CryptoUtil.generateKeyPair();
-            
+
             String aliceKey = CryptoUtil.publicKeyToString(alice.getPublic());
             String bobKey = CryptoUtil.publicKeyToString(bob.getPublic());
-            
-            blockchain.addAuthorizedKey(aliceKey, "Alice");
-            blockchain.addAuthorizedKey(bobKey, "Bob");
-            
-            // 3. Add blocks
+
+            blockchain.addAuthorizedKey(
+                aliceKey,
+                "Alice",
+                bootstrapKeys,      // Caller: bootstrap admin
+                UserRole.USER
+            );
+            blockchain.addAuthorizedKey(
+                bobKey,
+                "Bob",
+                bootstrapKeys,      // Caller: bootstrap admin
+                UserRole.USER
+            );
+
+            // 4. Add blocks
             blockchain.addBlock("Alice registers", alice.getPrivate(), alice.getPublic());
             blockchain.addBlock("Bob joins network", bob.getPrivate(), bob.getPublic());
             blockchain.addBlock("Alice sends payment", alice.getPrivate(), alice.getPublic());
-            
-            // 4. Search and validate
+
+            // 5. Search and validate
             List<Block> payments = blockchain.searchBlocksByContent("payment");
             System.out.println("Payment blocks found: " + payments.size());
             
@@ -1781,8 +1830,30 @@ int maxChars = blockchain.getMaxBlockDataLength();
 
 #### Key Management
 ```java
-// Add/remove authorized keys
-boolean added = blockchain.addAuthorizedKey(publicKeyString, "User Name");
+// Create bootstrap admin (v1.0.6+) - REQUIRED first step
+boolean created = blockchain.createBootstrapAdmin(
+    publicKeyString,
+    "BOOTSTRAP_ADMIN"
+);
+
+// Add authorized keys (RBAC v1.0.6+)
+boolean added = blockchain.addAuthorizedKey(
+    publicKeyString,
+    "User Name",
+    callerKeyPair,      // Must be authorized ADMIN or SUPER_ADMIN
+    UserRole.USER       // Target role
+);
+
+// System recovery: Add key bypassing RBAC (v1.0.6+)
+// 🔒 SECURITY WARNING: Only for ChainRecoveryManager automated recovery
+boolean recovered = blockchain.addAuthorizedKeySystemRecovery(
+    publicKeyString,
+    "Recovered_User",
+    UserRole.USER,
+    "SYSTEM_RECOVERY"
+);
+
+// Revoke keys
 boolean revoked = blockchain.revokeAuthorizedKey(publicKeyString);
 
 // Get authorized keys
@@ -1867,6 +1938,12 @@ public boolean wasKeyAuthorizedAt(String publicKey, LocalDateTime timestamp) {
 // Find an authorized key by owner name
 public AuthorizedKey getAuthorizedKeyByOwner(String ownerName) {
     // Returns the most recent active authorization for the given owner
+}
+
+// Get an authorized key by its public key (v1.0.6+)
+public AuthorizedKey getAuthorizedKeyByPublicKey(String publicKey) {
+    // Returns the most recent authorization record for the given public key
+    // Used for RBAC validation and caller identification
 }
 
 // Delete a specific authorized key by public key
@@ -1989,9 +2066,6 @@ public boolean updateBlock(Block block) {
     //   - Thread-safe when used with proper locking (caller responsibility)
     // Use Cases: Custom metadata updates, block property modifications, test scenarios
 }
-
-// Add authorized key with specific timestamp (for CLI operations)
-boolean added = blockchain.addAuthorizedKey(publicKeyString, "User Name", specificTimestamp);
 
 // List authorized keys
 List<AuthorizedKey> activeKeys = blockchain.getAuthorizedKeys();
@@ -2171,6 +2245,8 @@ boolean success = blockchain.addBlockWithKeywords(data, manualKeywords, category
 public Blockchain()
 ```
 Creates a new blockchain instance. Automatically creates the genesis block if this is the first time running.
+
+**Note:** Bootstrap admin is NOT automatically created. Applications must explicitly call `createBootstrapAdmin()` for security.
 
 #### Block Management Methods
 
@@ -2625,24 +2701,23 @@ public Block getBlock(long blockNumber)
 
 #### Key Management Methods
 
-```java
-public boolean addAuthorizedKey(String publicKey, String ownerName)
-```
-- **Parameters:**
-  - `publicKey`: Base64-encoded public key string
-  - `ownerName`: Human-readable name for the key owner
-- **Returns:** `true` if key was added, `false` if it already exists
-- **Description:** Adds a public key to the list of authorized signers
+> **⚠️ RBAC Security (v1.0.6+):** All key authorization methods now require caller credentials and role specification to prevent unauthorized self-authorization attacks.
 
 ```java
-public boolean addAuthorizedKey(String publicKey, String ownerName, LocalDateTime timestamp)
+public boolean addAuthorizedKey(String publicKey,
+                                String ownerName,
+                                KeyPair callerKeyPair,
+                                UserRole targetRole)
 ```
 - **Parameters:**
-  - `publicKey`: Base64-encoded public key string
+  - `publicKey`: Base64-encoded public key string to authorize
   - `ownerName`: Human-readable name for the key owner
-  - `timestamp`: Specific creation timestamp (for import/CLI operations)
+  - `callerKeyPair`: Credentials of the caller (must be authorized ADMIN or SUPER_ADMIN)
+  - `targetRole`: Role to assign (`UserRole.USER`, `UserRole.ADMIN`, `UserRole.SUPER_ADMIN`, `UserRole.READ_ONLY`)
 - **Returns:** `true` if key was added successfully
-- **Description:** Adds key with specific timestamp for temporal consistency
+- **Throws:** `SecurityException` if caller lacks permission for target role
+- **Description:** Adds a public key to the authorized signers with role-based validation. Only SUPER_ADMIN can create ADMIN users, ADMIN/SUPER_ADMIN can create USER/READ_ONLY.
+- **Since:** v1.0.6 (replaces old signatures without RBAC)
 
 ```java
 public boolean revokeAuthorizedKey(String publicKey)
@@ -2676,8 +2751,12 @@ public boolean dangerouslyDeleteAuthorizedKey(String publicKey, boolean force, S
   - `reason`: Reason for deletion (for audit logging)
   - `adminSignature`: Cryptographic signature from authorized administrator
   - `adminPublicKey`: Public key of the administrator authorizing the operation
-- **Returns:** `true` if key was deleted with valid authorization, `false` if deletion failed or unauthorized
-- **Description:** **🔐 SECURE DANGEROUS DELETION** - Multi-level authorization system that requires valid administrator signature. Can permanently remove keys even if they signed historical blocks when `force=true`. ⚠️ **WARNING**: Using `force=true` will break blockchain validation for affected blocks. This operation is **IRREVERSIBLE**. Only use for GDPR compliance, security incidents, or emergency situations.
+- **Returns:** `true` if key was deleted successfully
+- **Throws:**
+  - `SecurityException` - If admin authorization is invalid (signature verification fails)
+  - `IllegalStateException` - If emergency backup creation fails or safety checks prevent deletion
+  - `IllegalArgumentException` - If the specified key does not exist
+- **Description:** **🔐 SECURE DANGEROUS DELETION** - Multi-level authorization system that requires valid administrator signature. Can permanently remove keys even if they signed historical blocks when `force=true`. ⚠️ **WARNING**: Using `force=true` will break blockchain validation for affected blocks. This operation is **IRREVERSIBLE**. Only use for GDPR compliance, security incidents, or emergency situations. **v1.0.6+:** This method now throws exceptions instead of returning `false` on failure, ensuring security violations cannot be silently ignored.
 - **Safety Features:**
   - Creates emergency backup before deletion (in `emergency-backups/` directory)
   - **Backup contains:** Complete blockchain state (database only)
@@ -3106,11 +3185,24 @@ String adminSignature = CryptoUtil.createAdminSignature(
     adminPrivateKey
 );
 
-// Use the signature for authorized operation
-boolean deleted = blockchain.dangerouslyDeleteAuthorizedKey(
-    userPublicKey, true, "GDPR compliance request",
-    adminSignature, adminPublicKey
-);
+// Use the signature for authorized operation (v1.0.6+: throws exceptions on failure)
+try {
+    boolean deleted = blockchain.dangerouslyDeleteAuthorizedKey(
+        userPublicKey, true, "GDPR compliance request",
+        adminSignature, adminPublicKey
+    );
+    // Deletion succeeded
+    logger.info("Key successfully deleted");
+} catch (SecurityException e) {
+    // Invalid admin authorization
+    logger.error("Security violation: {}", e.getMessage());
+} catch (IllegalStateException e) {
+    // Backup failed or safety check prevented deletion
+    logger.error("Deletion blocked: {}", e.getMessage());
+} catch (IllegalArgumentException e) {
+    // Key does not exist
+    logger.error("Invalid key: {}", e.getMessage());
+}
 ```
 
 ### Block Class
@@ -3886,8 +3978,13 @@ if (blockchain.isKeyAuthorized(publicKeyString)) {
     blockchain.addBlock(data, privateKey, publicKey);
 }
 
-// ✅ GOOD: Key rotation
-blockchain.addAuthorizedKey(newPublicKey, "User (Rotated)");
+// ✅ GOOD: Key rotation (RBAC v1.0.6+)
+blockchain.addAuthorizedKey(
+    newPublicKey,
+    "User (Rotated)",
+    adminKeyPair,       // Requires ADMIN credentials
+    UserRole.USER
+);
 Thread.sleep(transitionPeriod); // Allow overlap
 blockchain.revokeAuthorizedKey(oldPublicKey);
 ```
@@ -4483,7 +4580,7 @@ The UserFriendlyEncryptionAPI provides a comprehensive, simplified interface for
 
 ```java
 // v1.0.6+ Secure initialization (REQUIRED)
-// 1. Create blockchain (auto-creates genesis admin)
+// 1. Create blockchain (only genesis block is automatic)
 Blockchain blockchain = new Blockchain();
 
 // 2. Load genesis admin keys
@@ -4492,11 +4589,17 @@ KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
     "./keys/genesis-admin.public"
 );
 
-// 3. Create API with genesis admin credentials
-UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
-api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+// 3. Register bootstrap admin in blockchain (REQUIRED!)
+blockchain.createBootstrapAdmin(
+    CryptoUtil.publicKeyToString(genesisKeys.getPublic()),
+    "BOOTSTRAP_ADMIN"
+);
 
-// 4. Create user for operations
+// 4. Create API with bootstrap admin credentials
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+api.setDefaultCredentials("BOOTSTRAP_ADMIN", genesisKeys);
+
+// 5. Create user for operations
 KeyPair userKeys = api.createUser("username");
 api.setDefaultCredentials("username", userKeys);
 ```
@@ -4763,13 +4866,27 @@ CompletableFuture.allOf(metricsTask, realtimeTask).thenRun(() -> {
 ### 🔑 Security and Key Management
 
 #### Key Management Operations
+
+**🔒 RBAC Security (v1.0.6+)**: Hierarchical key operations enforce role-based permissions.
+
 ```java
-// Hierarchical key setup
+// Hierarchical key setup (🔐 SUPER_ADMIN only)
 KeyManagementResult setupHierarchicalKeys(String masterPassword)
 
 // Key generation and validation
-KeyManagementResult generateHierarchicalKey(String purpose, int depth, 
+// 🔐 RBAC enforced based on depth:
+//   - depth=1 (ROOT): SUPER_ADMIN only
+//   - depth=2 (INTERMEDIATE): SUPER_ADMIN or ADMIN
+//   - depth=3+ (OPERATIONAL): SUPER_ADMIN, ADMIN, or USER
+KeyManagementResult generateHierarchicalKey(String purpose, int depth,
                                           Map<String, Object> options)
+
+// Key rotation (🔐 RBAC enforced based on key type)
+//   - ROOT keys: SUPER_ADMIN only
+//   - INTERMEDIATE keys: SUPER_ADMIN or ADMIN
+//   - OPERATIONAL keys: SUPER_ADMIN, ADMIN, or USER
+KeyManagementResult rotateHierarchicalKeys(String keyId, Map<String, Object> options)
+
 ValidationReport validateKeyHierarchy(String keyId)
 ValidationReport validateKeyManagement(Map<String, Object> options)
 

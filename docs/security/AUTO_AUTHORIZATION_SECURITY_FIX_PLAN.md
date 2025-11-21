@@ -21,7 +21,7 @@ A **critical security vulnerability** was discovered in the `UserFriendlyEncrypt
 6. **importAndSetDefaultUser() auto-authorization** (discovered during security audit) ✅ FIXED + VERIFIED
 
 **Solution:** ✅ **FULLY IMPLEMENTED AND VERIFIED**
-- Genesis admin bootstrap for first user ✅
+- Bootstrap admin bootstrap for first user ✅
 - Remove auto-authorization from all 6 vulnerable methods ✅
 - All 8 security tests passing (100% success rate) ✅
 - All 11 demo files updated with secure pattern ✅
@@ -40,12 +40,13 @@ A **critical security vulnerability** was discovered in the `UserFriendlyEncrypt
 
 ```java
 // ❌ VULNERABLE CODE (REMOVED):
+// ⚠️ NOTE: addAuthorizedKey() with 2 parameters was REMOVED in v1.0.6
 // Auto-register the user if not already registered
 try {
     String publicKeyString = CryptoUtil.publicKeyToString(
         getDefaultKeyPair().getPublic()
     );
-    blockchain.addAuthorizedKey(publicKeyString, defaultUsername);  // ⚠️ NO ADMIN CHECK!
+    blockchain.addAuthorizedKey(publicKeyString, defaultUsername);  // Method no longer exists (REMOVED in v1.0.6)
 } catch (IllegalArgumentException e) {
     logger.debug("User key already registered: {}", defaultUsername);
 }
@@ -72,10 +73,11 @@ UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(
 
 ```java
 // ❌ VULNERABLE CODE (REMOVED):
+// ⚠️ NOTE: addAuthorizedKey() with 2 parameters was REMOVED in v1.0.6
 // Auto-register the user if not already registered
 try {
     String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
-    blockchain.addAuthorizedKey(publicKeyString, username);  // ⚠️ NO ADMIN CHECK!
+    blockchain.addAuthorizedKey(publicKeyString, username);  // Method no longer exists (REMOVED in v1.0.6)
 } catch (IllegalArgumentException e) {
     logger.debug("User key already registered during credential setup: {}", username);
 }
@@ -93,10 +95,11 @@ try {
 
 ```java
 // ❌ VULNERABLE CODE (REMOVED):
+// ⚠️ NOTE: addAuthorizedKey() with 2 parameters was REMOVED in v1.0.6
 public KeyPair createUser(String username) {
     KeyPair keyPair = CryptoUtil.generateKeyPair();
     String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
-    blockchain.addAuthorizedKey(publicKeyString, username);  // ⚠️ NO AUTHORIZATION CHECK!
+    blockchain.addAuthorizedKey(publicKeyString, username);  // Method no longer exists (REMOVED in v1.0.6)
     return keyPair;
 }
 ```
@@ -113,12 +116,13 @@ public KeyPair createUser(String username) {
 
 ```java
 // ❌ VULNERABLE CODE (REMOVED):
+// ⚠️ NOTE: addAuthorizedKey() with 2 parameters was REMOVED in v1.0.6
 public boolean loadUserCredentials(String username, String password) {
     KeyPair keyPair = SecureKeyStorage.loadKeyPair(username, password);
     if (keyPair != null) {
         // ❌ AUTO-AUTHORIZATION!
         String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
-        blockchain.addAuthorizedKey(publicKeyString, username);  // ⚠️ NO ADMIN CHECK!
+        blockchain.addAuthorizedKey(publicKeyString, username);  // Method no longer exists (REMOVED in v1.0.6)
         return true;
     }
     return false;
@@ -137,11 +141,12 @@ public boolean loadUserCredentials(String username, String password) {
 
 ```java
 // ❌ VULNERABLE CODE (REMOVED):
+// ⚠️ NOTE: addAuthorizedKey() with 2 parameters was REMOVED in v1.0.6
 public boolean importAndRegisterUser(String username, String keyPairPath) {
     KeyPair keyPair = importKeyPairFromFile(keyPairPath);
     // ❌ AUTO-AUTHORIZATION!
     String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
-    return blockchain.addAuthorizedKey(publicKeyString, username);  // ⚠️ NO ADMIN CHECK!
+    return blockchain.addAuthorizedKey(publicKeyString, username);  // Method no longer exists (REMOVED in v1.0.6)
 }
 ```
 
@@ -157,11 +162,12 @@ public boolean importAndRegisterUser(String username, String keyPairPath) {
 
 ```java
 // ❌ VULNERABLE CODE (REMOVED):
+// ⚠️ NOTE: addAuthorizedKey() with 2 parameters was REMOVED in v1.0.6
 public boolean importAndSetDefaultUser(String username, String keyPairPath) {
     KeyPair keyPair = importKeyPairFromFile(keyPairPath);
     // ❌ AUTO-AUTHORIZATION!
     String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
-    boolean registered = blockchain.addAuthorizedKey(publicKeyString, username);  // ⚠️ NO ADMIN CHECK!
+    boolean registered = blockchain.addAuthorizedKey(publicKeyString, username);  // Method no longer exists (REMOVED in v1.0.6)
     if (registered) {
         setDefaultCredentials(username, keyPair);  // Also sets as default!
         return true;
@@ -217,7 +223,7 @@ public boolean importAndSetDefaultUser(String username, String keyPairPath) {
    - ✅ All tests updated with pre-authorization pattern
 
 3. **Demo Applications Impact:**
-   - ✅ 11/11 demo files updated with genesis admin pattern
+   - ✅ 11/11 demo files updated with bootstrap admin pattern
    - ✅ All demos compile and run successfully
    - ✅ All demos demonstrate secure usage
 
@@ -231,7 +237,7 @@ public boolean importAndSetDefaultUser(String username, String keyPairPath) {
 
 ### 3.1 Solution Overview
 
-✅ **Genesis Admin Bootstrap** (Phase 1) - COMPLETED
+✅ **Bootstrap Admin Creation** (Phase 1) - COMPLETED
 ✅ **Remove Auto-Authorization from Constructor** (Phase 2a) - COMPLETED
 ✅ **Remove Auto-Authorization from setDefaultCredentials()** (Phase 2b) - COMPLETED
 ✅ **Secure createUser() Method** (Phase 2c) - COMPLETED
@@ -257,9 +263,9 @@ if (!blockchain.isKeyAuthorized(publicKeyString)) {
     throw new SecurityException(
         "❌ AUTHORIZATION REQUIRED: User '" + defaultUsername + "' is not authorized.\n" +
         "Keys must be pre-authorized before creating UserFriendlyEncryptionAPI.\n\n" +
-        "Solution:\n" +
-        "  1. Load genesis admin keys (if first user): ./keys/genesis-admin.private\n" +
-        "  2. Authorize user: blockchain.addAuthorizedKey(publicKey, username)\n" +
+        "Solution (RBAC v1.0.6+):\n" +
+        "  1. Load bootstrap admin keys (if first user): ./keys/genesis-admin.private\n" +
+        "  2. Authorize user: blockchain.addAuthorizedKey(publicKey, username, callerKeyPair, UserRole.USER)\n" +
         "  3. Then create API instance\n\n" +
         "Public key: " + publicKeyString.substring(0, Math.min(50, publicKeyString.length())) + "..."
     );
@@ -312,7 +318,8 @@ public KeyPair createUser(String username) {
     // Now create and authorize the new user
     KeyPair keyPair = CryptoUtil.generateKeyPair();
     String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
-    blockchain.addAuthorizedKey(publicKeyString, username);
+    // ⚠️ NOTE: Method signature changed in v1.0.6 to RBAC 4-parameter version
+    blockchain.addAuthorizedKey(publicKeyString, username, defaultKeyPair.get(), UserRole.USER);
     logger.info("✅ User '{}' created and authorized by '{}'", username, defaultUsername.get());
     return keyPair;
 }
@@ -349,7 +356,8 @@ public boolean loadUserCredentials(String username, String password) {
     if (keyPair != null) {
         try {
             String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
-            boolean registered = blockchain.addAuthorizedKey(publicKeyString, username);
+            // ⚠️ NOTE: Method signature changed in v1.0.6 to RBAC 4-parameter version
+            boolean registered = blockchain.addAuthorizedKey(publicKeyString, username, defaultKeyPair.get(), UserRole.USER);
 
             if (registered) {
                 synchronized (credentialsLock) {
@@ -399,7 +407,8 @@ public boolean importAndRegisterUser(String username, String keyPairPath) {
         }
 
         String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
-        boolean registered = blockchain.addAuthorizedKey(publicKeyString, username);
+        // ⚠️ NOTE: Method signature changed in v1.0.6 to RBAC 4-parameter version
+        boolean registered = blockchain.addAuthorizedKey(publicKeyString, username, defaultKeyPair.get(), UserRole.USER);
 
         if (registered) {
             logger.info("✅ User '{}' imported and authorized by '{}'", username, defaultUsername.get());
@@ -444,7 +453,8 @@ public boolean importAndSetDefaultUser(String username, String keyPairPath) {
         }
 
         String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
-        boolean registered = blockchain.addAuthorizedKey(publicKeyString, username);
+        // ⚠️ NOTE: Method signature changed in v1.0.6 to RBAC 4-parameter version
+        boolean registered = blockchain.addAuthorizedKey(publicKeyString, username, defaultKeyPair.get(), UserRole.USER);
 
         if (registered) {
             setDefaultCredentials(username, keyPair);
@@ -463,16 +473,22 @@ public boolean importAndSetDefaultUser(String username, String keyPairPath) {
 
 ## 4. Implementation Status (COMPLETED - All Phases Done)
 
-### Phase 1: Genesis Admin Bootstrap ✅ COMPLETED
+### Phase 1: Bootstrap Admin Creation ✅ COMPLETED (v1.0.6, security hardened v1.0.6+)
 
-**Files Created:**
-- `src/main/java/com/rbatllet/blockchain/security/GenesisAdminInfo.java`
+**Files Created (v1.0.6):**
+- `src/main/java/com/rbatllet/blockchain/security/GenesisAdminInfo.java` ← **REMOVED v1.0.6**: Eliminated, replaced with direct `AuthorizedKey` usage
 
 **Files Modified:**
 - `src/main/java/com/rbatllet/blockchain/dao/AuthorizedKeyDAO.java` - Added `getAuthorizedKeyCount()`
-- `src/main/java/com/rbatllet/blockchain/core/Blockchain.java` - Added `initializeGenesisAdminIfNeeded()`, `isKeyAuthorized()`, `getAuthorizedKeyCount()`
+- `src/main/java/com/rbatllet/blockchain/core/Blockchain.java` - Bootstrap admin creation
 
-**Result:** Genesis admin auto-created on first blockchain initialization, keys stored at `./keys/genesis-admin.{private,public}`
+**v1.0.6+ Security Update:**
+- ❌ **REMOVED**: `initializeBootstrapAdminIfNeeded()` automatic creation (security risk - violated explicit authorization principle)
+- ✅ **NOW**: Applications MUST call `createBootstrapAdmin()` explicitly with pre-loaded keys
+- ✅ **RESULT**: All admin authorizations are now explicit and controlled (no hidden auto-creation)
+- 🔐 **SECURITY**: Enforces RBAC principle - roles control WHO gives authorizations explicitly
+
+**Current Implementation:** Bootstrap admin requires explicit `blockchain.createBootstrapAdmin()` call with keys from `./keys/genesis-admin.{private,public}`. No automatic creation ensures full authorization control.
 
 ### Phase 2a-g: All Security Fixes ✅ COMPLETED
 
@@ -502,7 +518,7 @@ public boolean importAndSetDefaultUser(String username, String keyPairPath) {
 10. ✅ GranularTermVisibilityDemo.java
 11. ✅ EncryptionConfigDemo.java
 
-**Result:** All demos use secure genesis admin pattern
+**Result:** All demos use secure bootstrap admin pattern
 
 ### Phase 4a: Update Test Files ✅ COMPLETED (11/11)
 
@@ -526,8 +542,8 @@ public boolean importAndSetDefaultUser(String username, String keyPairPath) {
 **File Created:** `src/test/java/com/rbatllet/blockchain/security/AuthorizationSecurityTest.java`
 
 **All Tests Passing:**
-1. ✅ `testGenesisAdminCreated` - Verifies genesis admin bootstrap
-2. ✅ `testGenesisAdminCreatedOnce` - Verifies single genesis admin
+1. ✅ `testBootstrapAdminCreated` - Verifies bootstrap admin bootstrap
+2. ✅ `testBootstrapAdminCreatedOnce` - Verifies single bootstrap admin
 3. ✅ `testSelfAuthorizationBlocked` - Verifies vulnerability #1 fixed
 4. ✅ `testPreAuthorizedWorks` - Verifies secure flow works
 5. ✅ `testMultipleUsersAuthorized` - Verifies multi-user authorization
@@ -604,21 +620,21 @@ api.importAndSetDefaultUser("attacker", "/tmp/attack.pem");
 - [x] ✅ Self-authorization via loadUserCredentials() is impossible
 - [x] ✅ Self-authorization via importAndRegisterUser() is impossible
 - [x] ✅ Self-authorization via importAndSetDefaultUser() is impossible
-- [x] ✅ Genesis admin is created securely on first init
-- [x] ✅ Genesis admin keys stored in ./keys/ with restrictive permissions
+- [x] ✅ Bootstrap admin is created securely on first init
+- [x] ✅ Bootstrap admin keys stored in ./keys/ with restrictive permissions
 - [x] ✅ Clear error messages for all unauthorized access attempts
 - [x] ✅ Only authorized users can create new users
 
 ### Functional Goals ✅ ALL COMPLETED
 - [x] ✅ AuthorizationSecurityTest passes (8/8 tests)
-- [x] ✅ All demos updated with genesis admin pattern (11/11 done)
+- [x] ✅ All demos updated with bootstrap admin pattern (11/11 done)
 - [x] ✅ All integration tests verified/fixed (11/11 done)
 - [x] ✅ 85+ tests passing (100% success rate)
 - [x] ✅ Documentation updated
 
 ### Performance Goals ✅ COMPLETED
 - [x] ✅ No performance regression (authorization check is O(1) database query)
-- [x] ✅ Genesis admin creation adds <100ms to first init
+- [x] ✅ Bootstrap admin creation adds <100ms to first init
 
 ---
 
@@ -640,7 +656,7 @@ api.importAndSetDefaultUser("attacker", "/tmp/attack.pem");
 ## 8. Lessons Learned
 
 ### What Went Well ✅
-- Genesis admin bootstrap elegantly solved first-user problem
+- Bootstrap admin bootstrap elegantly solved first-user problem
 - Security tests caught vulnerabilities immediately
 - Thorough security audit found all 6 vulnerabilities before production
 - Clear error messages guide users to correct authorization flow
@@ -668,7 +684,7 @@ api.importAndSetDefaultUser("attacker", "/tmp/attack.pem");
 - Add rate limiting to `addAuthorizedKey()` to prevent admin key abuse
 - Consider admin roles (super-admin vs regular admin)
 - Add audit logging for all authorization changes
-- Consider HSM integration for genesis admin keys
+- Consider HSM integration for bootstrap admin keys
 
 ---
 
@@ -676,7 +692,7 @@ api.importAndSetDefaultUser("attacker", "/tmp/attack.pem");
 
 | Phase | Task | Planned | Actual | Status |
 |-------|------|---------|--------|--------|
-| **Phase 1** | Genesis admin bootstrap | 1 hour | 1.5 hours | ✅ Done |
+| **Phase 1** | Bootstrap admin bootstrap | 1 hour | 1.5 hours | ✅ Done |
 | **Phase 2a** | Remove constructor auto-auth | 30 min | 30 min | ✅ Done |
 | **Phase 2b** | Remove setDefaultCredentials auto-auth | - | 30 min | ✅ Done |
 | **Phase 2c** | Secure createUser() method | - | 45 min | ✅ Done |
@@ -701,20 +717,26 @@ api.importAndSetDefaultUser("attacker", "/tmp/attack.pem");
 All applications **must** follow this pattern:
 
 ```java
-// 1. Create blockchain (auto-creates genesis admin on first run)
+// 1. Create blockchain (only genesis block is automatic)
 Blockchain blockchain = new Blockchain();
 
-// 2. Load genesis admin keys
-KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+// 2. Load bootstrap admin keys
+KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
     "./keys/genesis-admin.private",
     "./keys/genesis-admin.public"
 );
 
-// 3. Create API with genesis admin credentials
-UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
-api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+// 3. EXPLICIT bootstrap admin creation (REQUIRED for security!)
+blockchain.createBootstrapAdmin(
+    CryptoUtil.publicKeyToString(bootstrapKeys.getPublic()),
+    "BOOTSTRAP_ADMIN"
+);
 
-// 4. Create regular users (authorized by genesis admin)
+// 4. Create API with bootstrap admin credentials
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+api.setDefaultCredentials("BOOTSTRAP_ADMIN", bootstrapKeys);
+
+// 4. Create regular users (authorized by bootstrap admin)
 KeyPair userKeys = api.createUser("username");
 
 // 5. Switch to regular user for operations

@@ -5,6 +5,7 @@ import com.rbatllet.blockchain.search.SearchSpecialistAPI;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.EnhancedSearchResult;
 import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
+import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import java.security.KeyPair;
 import java.util.List;
@@ -22,18 +23,28 @@ public class SearchConfigurationDemo {
         try {
             // Setup blockchain and data
             Blockchain blockchain = new Blockchain();
+
+            // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+            blockchain.clearAndReinitialize();
+
             String password = "ConfigDemo2024!";
 
-            // Load genesis admin keys
-            KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+            // Load bootstrap admin keys
+            KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
                 "./keys/genesis-admin.private",
                 "./keys/genesis-admin.public"
             );
 
-            UserFriendlyEncryptionAPI dataAPI = new UserFriendlyEncryptionAPI(blockchain);
-            dataAPI.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+            // Register bootstrap admin in blockchain (REQUIRED!)
+            blockchain.createBootstrapAdmin(
+                CryptoUtil.publicKeyToString(bootstrapKeys.getPublic()),
+                "BOOTSTRAP_ADMIN"
+            );
 
-            // Create user and store test data (authorized by genesis admin)
+            UserFriendlyEncryptionAPI dataAPI = new UserFriendlyEncryptionAPI(blockchain);
+            dataAPI.setDefaultCredentials("BOOTSTRAP_ADMIN", bootstrapKeys);
+
+            // Create user and store test data (authorized by bootstrap admin)
             KeyPair userKeys = dataAPI.createUser("config-demo-user");
             dataAPI.setDefaultCredentials("config-demo-user", userKeys);
             

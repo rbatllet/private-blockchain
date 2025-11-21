@@ -4,6 +4,8 @@
 
 This document establishes comprehensive thread safety standards for the Private Blockchain project. Following these guidelines ensures robust, concurrent-safe code that maintains data integrity under high-load conditions.
 
+> **🔄 CODE UPDATE (v1.0.6+)**: Methods like `revokeAuthorizedKey()`, `rollbackToBlock()` now throw exceptions instead of returning `false`. Update test assertions accordingly. See [Exception-Based Error Handling Guide](../security/EXCEPTION_BASED_ERROR_HANDLING_V1_0_6.md).
+
 ---
 
 ## 🎯 Core Principles
@@ -526,28 +528,32 @@ Unlike `ReentrantReadWriteLock`, `StampedLock` **does not** support nested lock 
 For methods that need to call blockchain operations while holding a lock:
 
 ```java
-// Public method with lock (normal external use)
-public boolean addAuthorizedKey(String publicKey, String owner, LocalDateTime time) {
+// Public method with lock (normal external use) - RBAC v1.0.6+
+public boolean addAuthorizedKey(String publicKey, String owner,
+                                KeyPair callerKeyPair, UserRole role) {
     long stamp = GLOBAL_BLOCKCHAIN_LOCK.writeLock();
     try {
-        return addAuthorizedKeyInternal(publicKey, owner, time);
+        // RBAC validation happens here
+        return addAuthorizedKeyInternal(publicKey, owner, role, createdBy);
     } finally {
         GLOBAL_BLOCKCHAIN_LOCK.unlockWrite(stamp);
     }
 }
 
-// Private internal method (single source of truth)
-private boolean addAuthorizedKeyInternal(String publicKey, String owner, LocalDateTime time) {
+// Private internal method (single source of truth) - RBAC v1.0.6+
+private boolean addAuthorizedKeyInternal(String publicKey, String owner,
+                                        UserRole role, String createdBy) {
     // Actual implementation here - NO LOCK
     return JPAUtil.executeInTransaction(em -> {
         // ... business logic ...
     });
 }
 
-// Public method WITHOUT lock (for calling from within existing lock)
-public boolean addAuthorizedKeyWithoutLock(String publicKey, String owner, LocalDateTime time) {
+// Public method WITHOUT lock (for calling from within existing lock) - RBAC v1.0.6+
+public boolean addAuthorizedKeyWithoutLock(String publicKey, String owner,
+                                          UserRole role, String createdBy) {
     // ⚠️ WARNING: Only call this from within an existing lock!
-    return addAuthorizedKeyInternal(publicKey, owner, time);
+    return addAuthorizedKeyInternal(publicKey, owner, role, createdBy);
 }
 ```
 

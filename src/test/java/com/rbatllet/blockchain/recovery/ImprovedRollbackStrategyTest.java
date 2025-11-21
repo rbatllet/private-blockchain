@@ -2,6 +2,8 @@ package com.rbatllet.blockchain.recovery;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,6 +24,7 @@ class ImprovedRollbackStrategyTest {
 
     private Blockchain blockchain;
     private ChainRecoveryManager recoveryManager;
+    private KeyPair bootstrapKeyPair;
     private KeyPair adminKeyPair;
     private String adminPublicKey;
 
@@ -31,10 +34,22 @@ class ImprovedRollbackStrategyTest {
         blockchain.clearAndReinitialize();
         recoveryManager = new ChainRecoveryManager(blockchain);
 
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         // Setup admin
         adminKeyPair = CryptoUtil.generateKeyPair();
         adminPublicKey = CryptoUtil.publicKeyToString(adminKeyPair.getPublic());
-        blockchain.addAuthorizedKey(adminPublicKey, "Test Admin");
+        blockchain.addAuthorizedKey(adminPublicKey, "Test Admin", bootstrapKeyPair, UserRole.ADMIN);
     }
 
     @AfterEach
@@ -61,10 +76,10 @@ class ImprovedRollbackStrategyTest {
             
             String user1Key = CryptoUtil.publicKeyToString(user1.getPublic());
             String user2Key = CryptoUtil.publicKeyToString(user2.getPublic());
-            
+
             // Add users
-            blockchain.addAuthorizedKey(user1Key, "User 1");
-            blockchain.addAuthorizedKey(user2Key, "User 2");
+            blockchain.addAuthorizedKey(user1Key, "User 1", adminKeyPair, UserRole.USER);
+            blockchain.addAuthorizedKey(user2Key, "User 2", adminKeyPair, UserRole.USER);
             
             // Create interleaved pattern
             blockchain.addBlock("User1-Block1", user1.getPrivate(), user1.getPublic()); // #1 - Will corrupt
@@ -162,10 +177,10 @@ class ImprovedRollbackStrategyTest {
             
             String validKey = CryptoUtil.publicKeyToString(validUser.getPublic());
             String corruptKey = CryptoUtil.publicKeyToString(corruptUser.getPublic());
-            
+
             // Add users
-            blockchain.addAuthorizedKey(validKey, "Valid User");
-            blockchain.addAuthorizedKey(corruptKey, "Corrupt User");
+            blockchain.addAuthorizedKey(validKey, "Valid User", adminKeyPair, UserRole.USER);
+            blockchain.addAuthorizedKey(corruptKey, "Corrupt User", adminKeyPair, UserRole.USER);
             
             // Create pattern with corruption at end
             blockchain.addBlock("Valid-1", validUser.getPrivate(), validUser.getPublic());    // #1 - Should preserve
@@ -237,8 +252,8 @@ class ImprovedRollbackStrategyTest {
             // Create a simple corruption scenario
             KeyPair user = CryptoUtil.generateKeyPair();
             String userKey = CryptoUtil.publicKeyToString(user.getPublic());
-            
-            blockchain.addAuthorizedKey(userKey, "Test User");
+
+            blockchain.addAuthorizedKey(userKey, "Test User", adminKeyPair, UserRole.USER);
             blockchain.addBlock("Test Block", user.getPrivate(), user.getPublic());
             
             var initialValidation = blockchain.validateChainDetailed();
@@ -309,9 +324,9 @@ class ImprovedRollbackStrategyTest {
             
             String user1Key = CryptoUtil.publicKeyToString(user1.getPublic());
             String user2Key = CryptoUtil.publicKeyToString(user2.getPublic());
-            
-            blockchain.addAuthorizedKey(user1Key, "User 1");
-            blockchain.addAuthorizedKey(user2Key, "User 2");
+
+            blockchain.addAuthorizedKey(user1Key, "User 1", adminKeyPair, UserRole.USER);
+            blockchain.addAuthorizedKey(user2Key, "User 2", adminKeyPair, UserRole.USER);
             
             blockchain.addBlock("Block-1", user1.getPrivate(), user1.getPublic());
             blockchain.addBlock("Block-2", user2.getPrivate(), user2.getPublic());
@@ -349,8 +364,8 @@ class ImprovedRollbackStrategyTest {
             // Test 1: Empty chain (only genesis)
             KeyPair user = CryptoUtil.generateKeyPair();
             String userKey = CryptoUtil.publicKeyToString(user.getPublic());
-            
-            blockchain.addAuthorizedKey(userKey, "Test User");
+
+            blockchain.addAuthorizedKey(userKey, "Test User", adminKeyPair, UserRole.USER);
             blockchain.revokeAuthorizedKey(userKey); // Safe deletion
             
             // This should fail since key was safely deleted, not dangerously
@@ -362,8 +377,15 @@ class ImprovedRollbackStrategyTest {
             
             // Test 2: Very short chain with corruption
             blockchain.clearAndReinitialize();
-            blockchain.addAuthorizedKey(adminPublicKey, "Test Admin");
-            blockchain.addAuthorizedKey(userKey, "Test User");
+
+            // RBAC FIX (v1.0.6): Re-create bootstrap admin after clearAndReinitialize()
+            blockchain.createBootstrapAdmin(
+                CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+                "BOOTSTRAP_ADMIN"
+            );
+
+            blockchain.addAuthorizedKey(adminPublicKey, "Test Admin", bootstrapKeyPair, UserRole.ADMIN);
+            blockchain.addAuthorizedKey(userKey, "Test User", adminKeyPair, UserRole.USER);
             blockchain.addBlock("Only Block", user.getPrivate(), user.getPublic());
             String edgeReason = "Edge case test";
             String edgeAdminSignature = CryptoUtil.createAdminSignature(userKey, true, edgeReason, adminKeyPair.getPrivate());

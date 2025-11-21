@@ -38,6 +38,12 @@ echo ""
 # Create logs directory if it doesn't exist
 mkdir -p logs
 
+# Clean up previous alert logs to avoid accumulation
+if [[ -f "logs/structured-alerts.log" ]]; then
+    echo "🧹 Cleaning up previous alert logs..."
+    rm -f logs/structured-alerts.log
+fi
+
 echo "🚀 Starting Structured Alerts Demo..."
 echo ""
 echo "📊 This demo will generate various types of alerts:"
@@ -69,7 +75,9 @@ echo "🎬 Running demo..."
 
 # Run the structured alerts demo - use java directly to avoid Maven exec issues
 # Add system property to skip sleep delays in demo
+# Specify log4j2 configuration file explicitly
 java -cp "target/classes:$(mvn -q dependency:build-classpath -Dmdep.outputFile=/dev/stdout)" \
+    -Dlog4j.configurationFile=file:src/main/resources/log4j2-core.xml \
     -Ddemo.skip.sleep=true \
     demo.StructuredAlertsDemo
 

@@ -2,6 +2,8 @@ package com.rbatllet.blockchain.search;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.*;
 import com.rbatllet.blockchain.test.util.TestDatabaseUtils;
@@ -29,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class SearchCompatibilityTest {
     
     private Blockchain blockchain;
+    private KeyPair bootstrapKeyPair;
     private UserFriendlyEncryptionAPI api;
     private SearchSpecialistAPI searchAPI;
     private String testPassword;
@@ -38,30 +41,48 @@ public class SearchCompatibilityTest {
     void setUp() throws Exception {
         // Clean database and enable test mode before each test to ensure test isolation
         TestDatabaseUtils.setupTest();
-        
+
         blockchain = new Blockchain();
+        blockchain.clearAndReinitialize();  // Ensure clean state before bootstrap
+
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         api = new UserFriendlyEncryptionAPI(blockchain);
         testPassword = "CompatibilityTest123!";
-        
+
         // ========================================================================
-        // PRE-AUTHORIZATION WORKFLOW (v1.0.6 Security Model)
+        // PRE-AUTHORIZATION WORKFLOW (v1.0.6 RBAC Security Model)
         // ========================================================================
         // ARCHITECTURE: api.createUser() requires authenticated admin credentials
         // REASON: Prevents unauthorized user creation attacks (security requirement)
         // WORKFLOW:
-        //   Step 1: Generate admin keypair
-        //   Step 2: Authorize admin's public key in blockchain
+        //   Step 0: Load bootstrap admin keys from genesis-admin files
+        //   Step 1: Generate new admin keypair
+        //   Step 2: Authorize admin using bootstrap keys with ADMIN role
         //   Step 3: Authenticate as admin via setDefaultCredentials() ← CRITICAL!
         //   Step 4: Now admin can create new users (createUser validates caller)
-        // 
+        //
         // IMPORTANT: createUser() internally generates NEW keys for the created user
         // (the admin keys are only used for authorization, not for the new user)
+        //
+        // RBAC ROLES: SUPER_ADMIN > ADMIN > USER > READ_ONLY
+        // Bootstrap admin (SUPER_ADMIN) can create other admins/users
         // ========================================================================
-        
+
         // Step 1-2: Create and authorize admin
         KeyPair adminKeys = CryptoUtil.generateKeyPair();
         String adminPublicKey = CryptoUtil.publicKeyToString(adminKeys.getPublic());
-        blockchain.addAuthorizedKey(adminPublicKey, "Admin");
+        blockchain.addAuthorizedKey(adminPublicKey, "Admin", bootstrapKeyPair, UserRole.ADMIN);
         
         // Step 3: Authenticate as admin (enables createUser() calls)
         api.setDefaultCredentials("Admin", adminKeys);

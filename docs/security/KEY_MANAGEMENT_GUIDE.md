@@ -15,7 +15,7 @@ The UserFriendlyEncryptionAPI provides enterprise-grade hierarchical key managem
 Before using any key management features, initialize the API:
 
 ```java
-// 1. Create blockchain (auto-creates genesis admin)
+// 1. Create blockchain (only genesis block is automatic)
 Blockchain blockchain = new Blockchain();
 
 // 2. Load genesis admin keys
@@ -24,15 +24,75 @@ KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
     "./keys/genesis-admin.public"
 );
 
-// 3. Create API with genesis admin credentials
-UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
-api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+// 3. Register bootstrap admin in blockchain (REQUIRED!)
+blockchain.createBootstrapAdmin(
+    CryptoUtil.publicKeyToString(genesisKeys.getPublic()),
+    "BOOTSTRAP_ADMIN"
+);
 
-// 4. Now you can create and manage keys
+// 4. Create API with genesis admin credentials
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+api.setDefaultCredentials("BOOTSTRAP_ADMIN", genesisKeys);
+
+// 5. Now you can create and manage keys
 KeyPair userKeys = api.createUser("username");
 ```
 
 > **⚠️ NOTE**: All code examples in this guide assume you have already initialized the API with authorized credentials. See [API_GUIDE.md](../reference/API_GUIDE.md#-secure-initialization--authorization) for complete initialization details.
+
+---
+
+## 🔒 RBAC FOR HIERARCHICAL KEYS (v1.0.6)
+
+> **CRITICAL SECURITY UPDATE**: v1.0.6 introduces mandatory Role-Based Access Control (RBAC) for hierarchical key operations.
+
+### Permission Matrix
+
+Hierarchical key operations now enforce strict role-based permissions:
+
+| Operation | SUPER_ADMIN | ADMIN | USER | READ_ONLY |
+|-----------|:-----------:|:-----:|:----:|:---------:|
+| `setupHierarchicalKeys()` | ✅ | ❌ | ❌ | ❌ |
+| Create ROOT keys (depth=1) | ✅ | ❌ | ❌ | ❌ |
+| Create INTERMEDIATE keys (depth=2) | ✅ | ✅ | ❌ | ❌ |
+| Create OPERATIONAL keys (depth=3+) | ✅ | ✅ | ✅ | ❌ |
+| Rotate ROOT keys | ✅ | ❌ | ❌ | ❌ |
+| Rotate INTERMEDIATE keys | ✅ | ✅ | ❌ | ❌ |
+| Rotate OPERATIONAL keys | ✅ | ✅ | ✅ | ❌ |
+
+### Security Enforcement
+
+**All hierarchical key methods now throw `SecurityException` for unauthorized access**:
+
+```java
+// ❌ This will throw SecurityException if caller is not SUPER_ADMIN:
+UserFriendlyEncryptionAPI userApi = new UserFriendlyEncryptionAPI(blockchain, "regularUser", userKeys);
+try {
+    KeyManagementResult result = userApi.setupHierarchicalKeys("password");
+} catch (SecurityException e) {
+    // Expected: "❌ PERMISSION DENIED: This operation requires ... SUPER_ADMIN"
+    System.err.println(e.getMessage());
+}
+
+// ✅ Correct: Use SUPER_ADMIN credentials
+UserFriendlyEncryptionAPI adminApi = new UserFriendlyEncryptionAPI(blockchain, "superadmin", superAdminKeys);
+KeyManagementResult result = adminApi.setupHierarchicalKeys("password");  // Success!
+```
+
+### Breaking Changes in v1.0.6
+
+⚠️ **IMPORTANT**: If you upgrade from pre-v1.0.6, you **must** use appropriate role credentials:
+
+1. **ROOT key operations** → SUPER_ADMIN credentials required
+2. **INTERMEDIATE key operations** → SUPER_ADMIN or ADMIN credentials required
+3. **OPERATIONAL key operations** → Any authorized user (USER or higher)
+
+### Vulnerability Report
+
+Six critical vulnerabilities were fixed in v1.0.6 that allowed unauthorized key creation:
+- CVE-2025-001 through CVE-2025-006
+
+See [VULNERABILITY_REPORT_HIERARCHICAL_KEY_RBAC.md](VULNERABILITY_REPORT_HIERARCHICAL_KEY_RBAC.md) for complete details.
 
 ---
 
@@ -80,21 +140,44 @@ System.out.println("✅ Credentials configured: " + hasCredentials);
 
 For enterprise environments requiring advanced key management:
 
-```java
-// Setup hierarchical key management
-String masterPassword = api.generateValidatedPassword(32, true);
-KeyManagementResult result = api.setupHierarchicalKeys(masterPassword);
+⚠️ **v1.0.6+ SECURITY REQUIREMENT**: Hierarchical key setup requires **SUPER_ADMIN** credentials.
 
-if (result.isSuccess()) {
-    System.out.println("✅ Hierarchical keys established");
-    System.out.println("🔑 Root Key ID: " + result.getRootKeyId());
-    System.out.println("🔑 Intermediate Key ID: " + result.getIntermediateKeyId());
-    System.out.println("🔑 Operational Key ID: " + result.getOperationalKeyId());
-    
-    // Save key management configuration
-    saveKeyConfiguration(result);
-} else {
-    System.err.println("❌ Key setup failed: " + result.getErrorMessage());
+```java
+// ✅ STEP 1: Initialize API with SUPER_ADMIN credentials
+KeyPair superAdminKeys = KeyFileLoader.loadKeyPairFromFiles(
+    "./keys/genesis-admin.private",
+    "./keys/genesis-admin.public"
+);
+
+// Register bootstrap admin in blockchain (REQUIRED!)
+blockchain.createBootstrapAdmin(
+    CryptoUtil.publicKeyToString(superAdminKeys.getPublic()),
+    "BOOTSTRAP_ADMIN"
+);
+
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+api.setDefaultCredentials("BOOTSTRAP_ADMIN", superAdminKeys);
+
+// ✅ STEP 2: Setup hierarchical key management (requires SUPER_ADMIN)
+String masterPassword = api.generateValidatedPassword(32, true);
+
+try {
+    KeyManagementResult result = api.setupHierarchicalKeys(masterPassword);
+
+    if (result.isSuccess()) {
+        System.out.println("✅ Hierarchical keys established");
+        System.out.println("🔑 Root Key ID: " + result.getRootKeyId());
+        System.out.println("🔑 Intermediate Key ID: " + result.getIntermediateKeyId());
+        System.out.println("🔑 Operational Key ID: " + result.getOperationalKeyId());
+
+        // Save key management configuration
+        saveKeyConfiguration(result);
+    } else {
+        System.err.println("❌ Key setup failed: " + result.getErrorMessage());
+    }
+} catch (SecurityException e) {
+    System.err.println("❌ PERMISSION DENIED: " + e.getMessage());
+    System.err.println("⚠️  Hierarchical key setup requires SUPER_ADMIN role");
 }
 ```
 
@@ -245,75 +328,129 @@ public class ManualKeyRotation {
 }
 ```
 
-## 🛡️ Key Derivation and Categories
+## 🛡️ Category-Specific Key Management (ML-DSA-87)
 
-### Category-Specific Keys
+> **⚠️ IMPORTANT**: ML-DSA-87 (post-quantum) does NOT support public key derivation from private keys. Always generate complete KeyPairs and save both public + private keys together.
+
+### Category-Specific Keys with ML-DSA-87
+
+With ML-DSA-87, each category requires independent key pair generation (no derivation):
 
 ```java
-import com.rbatllet.blockchain.security.ECKeyDerivation;
+import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.security.SecureKeyStorage;
 
 public class CategoryKeyManager {
-    private final ECKeyDerivation keyDerivation;
-    
-    public CategoryKeyManager() {
-        this.keyDerivation = new ECKeyDerivation();
+    private final UserFriendlyEncryptionAPI api;
+
+    public CategoryKeyManager(UserFriendlyEncryptionAPI api) {
+        this.api = api;
     }
-    
-    public String deriveCategoryPassword(String masterPassword, String category) {
-        // Derive category-specific passwords from master password
-        return keyDerivation.derivePassword(masterPassword, category);
-    }
-    
-    public void setupCategoryKeys(String masterPassword) {
-        // Medical data keys
-        String medicalPassword = deriveCategoryPassword(masterPassword, "medical");
+
+    public void setupCategoryKeys() {
+        // Generate independent ML-DSA-87 key pairs for each category
+        // (No key derivation with post-quantum crypto)
+
+        // Medical data keys (ML-DSA-87)
         KeyPair medicalKeys = api.createUser("medical-system");
-        
-        // Financial data keys
-        String financialPassword = deriveCategoryPassword(masterPassword, "financial");
+        String medicalPassword = api.generateValidatedPassword(24, true);
+        SecureKeyStorage.saveKeyPair("medical-system", medicalKeys, medicalPassword);
+
+        // Financial data keys (ML-DSA-87)
         KeyPair financialKeys = api.createUser("financial-system");
-        
-        // Research data keys
-        String researchPassword = deriveCategoryPassword(masterPassword, "research");
+        String financialPassword = api.generateValidatedPassword(24, true);
+        SecureKeyStorage.saveKeyPair("financial-system", financialKeys, financialPassword);
+
+        // Research data keys (ML-DSA-87)
         KeyPair researchKeys = api.createUser("research-system");
-        
-        // Store category mappings
-        saveCategoryMapping("medical", medicalKeys, medicalPassword);
-        saveCategoryMapping("financial", financialKeys, financialPassword);
-        saveCategoryMapping("research", researchKeys, researchPassword);
+        String researchPassword = api.generateValidatedPassword(24, true);
+        SecureKeyStorage.saveKeyPair("research-system", researchKeys, researchPassword);
+
+        // Store category mappings with independent passwords
+        saveCategoryMapping("medical", medicalPassword);
+        saveCategoryMapping("financial", financialPassword);
+        saveCategoryMapping("research", researchPassword);
+    }
+
+    private void saveCategoryMapping(String category, String password) {
+        // Store category→password mapping securely
+        // (Implementation depends on your secure configuration storage)
     }
 }
 ```
 
-### Advanced Key Derivation
+### Password Derivation for Categories (Separate from Key Pairs)
+
+While ML-DSA-87 keys cannot be derived, you can still derive **passwords** from a master password:
 
 ```java
-public class AdvancedKeyDerivation {
-    
-    public Map<String, String> deriveMultipleKeys(String masterPassword, int count) {
-        Map<String, String> derivedKeys = new HashMap<>();
-        
-        for (int i = 0; i < count; i++) {
-            String keyId = "key-" + (i + 1);
-            String derivedKey = keyDerivation.deriveKey(masterPassword, keyId, 256);
-            derivedKeys.put(keyId, derivedKey);
+import com.rbatllet.blockchain.util.CryptoUtil;
+
+public class PasswordDerivationManager {
+
+    /**
+     * Derive category-specific passwords from master password
+     * (Note: This derives PASSWORDS, not cryptographic keys)
+     */
+    public String deriveCategoryPassword(String masterPassword, String category) {
+        // Use CryptoUtil password derivation (PBKDF2 with SHA3-256)
+        String salt = "category-" + category;
+        return CryptoUtil.deriveKeyFromPassword(masterPassword, salt);
+    }
+
+    public Map<String, String> deriveMultiplePasswords(String masterPassword, String[] categories) {
+        Map<String, String> derivedPasswords = new HashMap<>();
+
+        for (String category : categories) {
+            String password = deriveCategoryPassword(masterPassword, category);
+            derivedPasswords.put(category, password);
         }
-        
-        return derivedKeys;
+
+        return derivedPasswords;
     }
-    
-    public String deriveTimeBasedKey(String masterPassword) {
-        // Create time-based key that changes daily
+
+    public String deriveTimeBasedPassword(String masterPassword) {
+        // Create time-based password that changes daily
         LocalDate today = LocalDate.now();
-        String timeSalt = today.toString();
-        
-        return keyDerivation.deriveKey(masterPassword, timeSalt, 256);
+        String timeSalt = "daily-" + today.toString();
+
+        return CryptoUtil.deriveKeyFromPassword(masterPassword, timeSalt);
     }
-    
-    public String deriveUserSpecificKey(String masterPassword, String userId, String purpose) {
-        // Create user and purpose specific key
-        String derivationInput = userId + ":" + purpose;
-        return keyDerivation.deriveKey(masterPassword, derivationInput, 256);
+
+    public String deriveUserSpecificPassword(String masterPassword, String userId, String purpose) {
+        // Create user and purpose specific password
+        String salt = "user-" + userId + "-" + purpose;
+        return CryptoUtil.deriveKeyFromPassword(masterPassword, salt);
+    }
+}
+```
+
+### Complete Category Setup Example
+
+```java
+public class CompleteCategorySetup {
+
+    public void setupCategoriesWithDerivedPasswords(String masterPassword) {
+        // Derive category-specific passwords from master password
+        PasswordDerivationManager passwordManager = new PasswordDerivationManager();
+
+        String medicalPassword = passwordManager.deriveCategoryPassword(masterPassword, "medical");
+        String financialPassword = passwordManager.deriveCategoryPassword(masterPassword, "financial");
+        String researchPassword = passwordManager.deriveCategoryPassword(masterPassword, "research");
+
+        // Generate independent ML-DSA-87 key pairs (NOT derived)
+        KeyPair medicalKeys = api.createUser("medical-system");
+        KeyPair financialKeys = api.createUser("financial-system");
+        KeyPair researchKeys = api.createUser("research-system");
+
+        // Save keys with derived passwords
+        SecureKeyStorage.saveKeyPair("medical-system", medicalKeys, medicalPassword);
+        SecureKeyStorage.saveKeyPair("financial-system", financialKeys, financialPassword);
+        SecureKeyStorage.saveKeyPair("research-system", researchKeys, researchPassword);
+
+        System.out.println("✅ Category keys generated (ML-DSA-87)");
+        System.out.println("✅ Passwords derived from master password");
+        System.out.println("⚠️  Remember: Keys are NOT derived (ML-DSA-87 limitation)");
     }
 }
 ```

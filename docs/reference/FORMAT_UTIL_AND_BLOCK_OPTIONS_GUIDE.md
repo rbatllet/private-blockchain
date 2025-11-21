@@ -369,8 +369,15 @@ void setUp() throws Exception {
         "./keys/genesis-admin.private",
         "./keys/genesis-admin.public"
     );
+
+    // Register bootstrap admin in blockchain (REQUIRED!)
+    blockchain.createBootstrapAdmin(
+        CryptoUtil.publicKeyToString(genesisKeys.getPublic()),
+        "BOOTSTRAP_ADMIN"
+    );
+
     api = new UserFriendlyEncryptionAPI(blockchain);
-    api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+    api.setDefaultCredentials("BOOTSTRAP_ADMIN", genesisKeys);
 
     // Create test user
     KeyPair defaultKeyPair = api.createUser(testUsername);

@@ -2,6 +2,8 @@ package com.rbatllet.blockchain.performance;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,23 +22,38 @@ import static org.junit.jupiter.api.Assertions.*;
 public class PaginationPerformanceTest {
     
     private static final Logger logger = LoggerFactory.getLogger(PaginationPerformanceTest.class);
-    
+
     private Blockchain blockchain;
     private UserFriendlyEncryptionAPI api;
+    private KeyPair bootstrapKeyPair;
     private KeyPair keyPair;
     private String password;
     
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         blockchain = new Blockchain();
+        blockchain.clearAndReinitialize();
+
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         api = new UserFriendlyEncryptionAPI(blockchain);
         keyPair = CryptoUtil.generateKeyPair();
         password = "testPassword123";
-        
+
         // SECURITY FIX (v1.0.6): Pre-authorize user before operations
         String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
-        blockchain.addAuthorizedKey(publicKeyString, "TestUser");
-        
+        blockchain.addAuthorizedKey(publicKeyString, "TestUser", bootstrapKeyPair, UserRole.USER);
+
         // Set up default credentials
         api.setDefaultCredentials("TestUser", keyPair);
         

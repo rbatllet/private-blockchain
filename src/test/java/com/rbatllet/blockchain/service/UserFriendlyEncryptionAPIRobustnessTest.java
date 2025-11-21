@@ -5,7 +5,9 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.entity.OffChainData;
+import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.security.PasswordUtil;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import java.security.KeyPair;
 import java.util.*;
@@ -30,19 +32,36 @@ public class UserFriendlyEncryptionAPIRobustnessTest {
     private UserFriendlyEncryptionAPI api;
     private Blockchain blockchain;
     private KeyPair testKeyPair;
+    private KeyPair bootstrapKeyPair;
     private static final String TEST_USERNAME = "testuser";
     private static final String TEST_PASSWORD = "SecurePassword123!";
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         // Create real blockchain for integration testing
         blockchain = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin first (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         testKeyPair = CryptoUtil.generateKeyPair();
-        
+
         // SECURITY FIX (v1.0.6): Pre-authorize user before creating API
         String publicKeyString = CryptoUtil.publicKeyToString(testKeyPair.getPublic());
-        blockchain.addAuthorizedKey(publicKeyString, TEST_USERNAME);
-        
+        blockchain.addAuthorizedKey(publicKeyString, TEST_USERNAME, bootstrapKeyPair, UserRole.ADMIN);
+
         api = new UserFriendlyEncryptionAPI(
             blockchain,
             TEST_USERNAME,
@@ -460,6 +479,18 @@ public class UserFriendlyEncryptionAPIRobustnessTest {
         void testIdentifyCorruptedBlocksWithEmptyBlockchain() throws Exception {
             // Create a fresh API with empty blockchain
             Blockchain emptyBlockchain = new Blockchain();
+
+            // RBAC FIX (v1.0.6): Clear database and setup bootstrap admin
+            emptyBlockchain.clearAndReinitialize();
+            emptyBlockchain.createBootstrapAdmin(
+                CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+                "BOOTSTRAP_ADMIN"
+            );
+
+            // Pre-authorize TEST_USERNAME for API creation
+            String publicKeyString = CryptoUtil.publicKeyToString(testKeyPair.getPublic());
+            emptyBlockchain.addAuthorizedKey(publicKeyString, TEST_USERNAME, bootstrapKeyPair, UserRole.ADMIN);
+
             UserFriendlyEncryptionAPI emptyApi = new UserFriendlyEncryptionAPI(
                 emptyBlockchain,
                 TEST_USERNAME,

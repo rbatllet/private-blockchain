@@ -15,23 +15,29 @@ import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.security.KeyFileLoader;
 
-// Step 1: Create blockchain (auto-creates genesis admin on first run)
+// Step 1: Create blockchain (only genesis block is automatic)
 Blockchain blockchain = new Blockchain();
 
-// Step 2: Load genesis admin keys
+// Step 2: Load bootstrap admin keys
 KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
     "./keys/genesis-admin.private",
     "./keys/genesis-admin.public"
 );
 
-// Step 3: Create API with genesis admin credentials
-UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
-api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+// Step 3: EXPLICIT bootstrap admin creation (REQUIRED for security!)
+blockchain.createBootstrapAdmin(
+    CryptoUtil.publicKeyToString(genesisKeys.getPublic()),
+    "BOOTSTRAP_ADMIN"
+);
 
-// Step 4: Create your user (authorized by genesis admin)
+// Step 4: Create API with bootstrap admin credentials
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+api.setDefaultCredentials("BOOTSTRAP_ADMIN", genesisKeys);
+
+// Step 5: Create your user (authorized by bootstrap admin)
 KeyPair yourKeys = api.createUser("your-username");
 
-// Step 5: Switch to your user for daily operations
+// Step 6: Switch to your user for daily operations
 api.setDefaultCredentials("your-username", yourKeys);
 
 // ✅ Now you're ready to use the API securely!

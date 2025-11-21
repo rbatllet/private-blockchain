@@ -3,6 +3,7 @@ package com.rbatllet.blockchain.advanced;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.AuthorizedKey;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.validation.ChainValidationResult;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,6 +28,7 @@ public class AdvancedThreadSafetyTest {
 
     private Blockchain blockchain;
     private ExecutorService executorService;
+    private KeyPair testBootstrapKeyPair; // RBAC FIX (v1.0.6): Shared bootstrap admin for helper methods
     private final int THREAD_COUNT = 20;
     private final int OPERATIONS_PER_THREAD = 10;
 
@@ -35,6 +37,11 @@ public class AdvancedThreadSafetyTest {
         blockchain = new Blockchain();
         blockchain.clearAndReinitialize();
         executorService = Executors.newFixedThreadPool(THREAD_COUNT);
+
+        // RBAC FIX (v1.0.6): Create bootstrap admin for tests
+        testBootstrapKeyPair = CryptoUtil.generateKeyPair();
+        String bootstrapPublicKey = CryptoUtil.publicKeyToString(testBootstrapKeyPair.getPublic());
+        blockchain.createBootstrapAdmin(bootstrapPublicKey, "TestBootstrapAdmin");
     }
 
     @Test
@@ -134,10 +141,10 @@ public class AdvancedThreadSafetyTest {
     @DisplayName("⚡ High-Speed Block Creation Race")
     @Timeout(30)
     void testHighSpeedBlockCreationRace() throws InterruptedException {
-        // Create a single key pair for all threads to fight over
+        // RBAC FIX (v1.0.6): Use existing bootstrap admin to authorize race test user
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
-        blockchain.addAuthorizedKey(publicKeyString, "RaceTestUser");
+        blockchain.addAuthorizedKey(publicKeyString, "RaceTestUser", testBootstrapKeyPair, UserRole.USER);
         
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch endLatch = new CountDownLatch(THREAD_COUNT);
@@ -206,47 +213,50 @@ public class AdvancedThreadSafetyTest {
     @DisplayName("🔀 Key Lifecycle Stress Test")
     @Timeout(45)
     void testKeyLifecycleStress() throws InterruptedException {
+        // RBAC FIX (v1.0.6): Use existing bootstrap admin from setUp()
+        // Bootstrap admin was already created in setUp(), don't create it again
+
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch endLatch = new CountDownLatch(THREAD_COUNT);
-        
+
         AtomicInteger keyOperations = new AtomicInteger(0);
         AtomicInteger blockOperations = new AtomicInteger(0);
         ConcurrentLinkedQueue<String> operationLog = new ConcurrentLinkedQueue<>();
-        
+
         for (int i = 0; i < THREAD_COUNT; i++) {
             final int threadId = i;
             executorService.submit(() -> {
                 try {
                     startLatch.await();
                     Random random = new Random(threadId);
-                    
+
                     for (int cycle = 0; cycle < 3; cycle++) {
                         // Create a key
                         KeyPair keyPair = CryptoUtil.generateKeyPair();
                         String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
                         String owner = "StressUser-" + threadId + "-" + cycle;
-                        
-                        if (blockchain.addAuthorizedKey(publicKeyString, owner)) {
-                            keyOperations.incrementAndGet();
-                            operationLog.offer("T" + threadId + ": Added key " + owner);
-                            
-                            // Use the key immediately to add blocks
-                            for (int b = 0; b < 2; b++) {
-                                String data = "StressBlock-" + owner + "-" + b;
-                                if (blockchain.addBlock(data, keyPair.getPrivate(), keyPair.getPublic())) {
-                                    blockOperations.incrementAndGet();
-                                    operationLog.offer("T" + threadId + ": Added block with " + owner);
-                                }
-                                
-                                // Small random delay
-                                Thread.sleep(random.nextInt(10));
+
+                        // RBAC FIX (v1.0.6): Use testBootstrapKeyPair from setUp()
+                        blockchain.addAuthorizedKey(publicKeyString, owner, testBootstrapKeyPair, UserRole.USER);
+                        keyOperations.incrementAndGet();
+                        operationLog.offer("T" + threadId + ": Added key " + owner);
+
+                        // Use the key immediately to add blocks
+                        for (int b = 0; b < 2; b++) {
+                            String data = "StressBlock-" + owner + "-" + b;
+                            if (blockchain.addBlock(data, keyPair.getPrivate(), keyPair.getPublic())) {
+                                blockOperations.incrementAndGet();
+                                operationLog.offer("T" + threadId + ": Added block with " + owner);
                             }
-                            
-                            // Sometimes revoke the key immediately after use
-                            if (random.nextBoolean()) {
-                                if (blockchain.revokeAuthorizedKey(publicKeyString)) {
-                                    operationLog.offer("T" + threadId + ": Revoked key " + owner);
-                                }
+
+                            // Small random delay
+                            Thread.sleep(random.nextInt(10));
+                        }
+
+                        // Sometimes revoke the key immediately after use
+                        if (random.nextBoolean()) {
+                            if (blockchain.revokeAuthorizedKey(publicKeyString)) {
+                                operationLog.offer("T" + threadId + ": Revoked key " + owner);
                             }
                         }
                         
@@ -287,10 +297,10 @@ public class AdvancedThreadSafetyTest {
     @DisplayName("🌊 Validation Flood Test")
     @Timeout(45)
     void testValidationFlood() throws InterruptedException {
-        // Pre-populate with some blocks
+        // RBAC FIX (v1.0.6): Use existing bootstrap admin to authorize validation user
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
-        blockchain.addAuthorizedKey(publicKeyString, "ValidationUser");
+        blockchain.addAuthorizedKey(publicKeyString, "ValidationUser", testBootstrapKeyPair, UserRole.USER);
         
         // Add several blocks to validate
         for (int i = 0; i < 10; i++) {
@@ -381,16 +391,19 @@ public class AdvancedThreadSafetyTest {
     
     private Map<String, KeyPair> prepareInitialKeys(int count) {
         Map<String, KeyPair> keyPairs = new HashMap<>();
-        
+
+        // RBAC FIX (v1.0.6): Use existing bootstrap admin from setUp() to authorize users
+        // Bootstrap admin was already created in setUp(), don't create it again
         for (int i = 0; i < count; i++) {
             KeyPair keyPair = CryptoUtil.generateKeyPair();
             String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
             String owner = "InitialUser-" + i;
-            
-            blockchain.addAuthorizedKey(publicKeyString, owner);
+
+            // All users created by bootstrap admin
+            blockchain.addAuthorizedKey(publicKeyString, owner, testBootstrapKeyPair, UserRole.USER);
             keyPairs.put(owner, keyPair);
         }
-        
+
         return keyPairs;
     }
     
@@ -418,7 +431,8 @@ public class AdvancedThreadSafetyTest {
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
         String owner = "DynamicUser-T" + threadId + "-" + op;
-        blockchain.addAuthorizedKey(publicKeyString, owner);
+        // RBAC FIX (v1.0.6): Use addAuthorizedKey with bootstrap admin credentials
+        blockchain.addAuthorizedKey(publicKeyString, owner, testBootstrapKeyPair, UserRole.USER);
     }
     
     private void revokeRandomKey(int threadId) {

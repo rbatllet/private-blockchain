@@ -46,7 +46,10 @@ if mvn -q exec:java -Dexec.mainClass="${MAIN_CLASS}" -Dexec.cleanupDaemonThreads
     if [[ -d "private-keys" ]]; then
         echo
         print_info "Private keys directory contents:"
-        ls -lh private-keys/
+        ls -lh private-keys/ | grep -v "^total"
+        echo
+        TOTAL_SIZE=$(du -sh private-keys/ | cut -f1)
+        print_info "Total directory size: ${TOTAL_SIZE}"
     fi
 
     exit 0

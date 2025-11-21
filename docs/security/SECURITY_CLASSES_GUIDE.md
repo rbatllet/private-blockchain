@@ -235,9 +235,6 @@ public static String readPassword(String prompt)
 
 // Validates that a password meets security requirements
 public static boolean isValidPassword(String password)
-
-// Gets a detailed error message if the password is not valid
-public static String getPasswordValidationError(String password)
 ```
 
 ### Password Requirements
@@ -263,8 +260,8 @@ String password = PasswordUtil.readPassword("Enter your password: ");
 if (PasswordUtil.isValidPassword(password)) {
     System.out.println("Valid password!");
 } else {
-    String error = PasswordUtil.getPasswordValidationError(password);
-    System.out.println("Error: " + error);
+    System.out.println("Error: Password does not meet security requirements");
+    System.out.println("Required: 8-128 characters with uppercase, lowercase, digit, and special character");
 }
 ```
 
@@ -276,17 +273,17 @@ if (PasswordUtil.isValidPassword(password)) {
 ### Main Methods
 
 ```java
-// Load a public key from a file
-public static PublicKey loadPublicKey(String filePath)
+// Load a public key from a file (PEM/DER/Base64 formats)
+public static PublicKey loadPublicKeyFromFile(String filePath)
 
-// Load a private key from a file
-public static PrivateKey loadPrivateKey(String filePath, String password)
+// Load a private key from a file (PEM/DER/Base64 formats, unencrypted)
+public static PrivateKey loadPrivateKeyFromFile(String filePath)
 
-// Save a public key to a file
-public static void savePublicKey(PublicKey key, String filePath)
+// Load a complete KeyPair from two separate files (required for ML-DSA-87)
+public static KeyPair loadKeyPairFromFiles(String privateKeyPath, String publicKeyPath)
 
-// Save a private key to a file (encrypted with password)
-public static void savePrivateKey(PrivateKey key, String filePath, String password)
+// Save a complete KeyPair to two separate files (PEM format)
+public static boolean saveKeyPairToFiles(KeyPair keyPair, String privateKeyPath, String publicKeyPath)
 ```
 
 ### Usage Example
@@ -303,17 +300,25 @@ KeyPair keyPair = CryptoUtil.generateKeyPair();
 PrivateKey privateKey = keyPair.getPrivate();
 PublicKey publicKey = keyPair.getPublic();
 
-// Save the keys to files
+// Option 1: Save to files WITHOUT password (KeyFileLoader)
 String privateKeyPath = "alice_private.key";
 String publicKeyPath = "alice_public.key";
+
+KeyFileLoader.saveKeyPairToFiles(keyPair, privateKeyPath, publicKeyPath);
+
+// Load from files WITHOUT password
+KeyPair loadedKeyPair = KeyFileLoader.loadKeyPairFromFiles(privateKeyPath, publicKeyPath);
+
+// Option 2: Save WITH password protection (SecureKeyStorage)
+String ownerName = "alice";
 String password = "SecureP@ssw0rd";
 
-KeyFileLoader.savePrivateKey(privateKey, privateKeyPath, password);
-KeyFileLoader.savePublicKey(publicKey, publicKeyPath);
+SecureKeyStorage.saveKeyPair(ownerName, keyPair, password);
 
-// Load the keys from files
-PrivateKey loadedPrivateKey = KeyFileLoader.loadPrivateKey(privateKeyPath, password);
-PublicKey loadedPublicKey = KeyFileLoader.loadPublicKey(publicKeyPath);
+// Load WITH password (complete KeyPair)
+KeyPair loadedKeyPair = SecureKeyStorage.loadKeyPair(ownerName, password);
+PrivateKey loadedPrivateKey = loadedKeyPair.getPrivate();
+PublicKey loadedPublicKey = loadedKeyPair.getPublic();
 ```
 
 ## 📝 Usage Examples
@@ -335,30 +340,27 @@ public class SecurityExample {
         do {
             password = PasswordUtil.readPassword("Enter a secure password: ");
             if (!PasswordUtil.isValidPassword(password)) {
-                System.out.println("Error: " + PasswordUtil.getPasswordValidationError(password));
+                System.out.println("Error: Password does not meet security requirements");
+                System.out.println("Required: 8-128 characters with uppercase, lowercase, digit, and special character");
             }
         } while (!PasswordUtil.isValidPassword(password));
         
-        // 3. Store the private key securely
+        // 3. Store the keys securely
         String ownerName = "Alice";
-        SecureKeyStorage.savePrivateKey(ownerName, keyPair.getPrivate(), password);
-        
-        // 4. Save the public key to a file
-        KeyFileLoader.savePublicKey(keyPair.getPublic(), ownerName + "_public.key");
-        
-        // 5. List stored keys
+        SecureKeyStorage.saveKeyPair(ownerName, keyPair, password);
+
+        // 4. List stored keys
         System.out.println("Stored keys:");
         for (String key : SecureKeyStorage.listStoredKeys()) {
             System.out.println(" - " + key);
         }
         
-        // 6. Load the private key when needed
-        PrivateKey privateKey = SecureKeyStorage.loadPrivateKey(ownerName, password);
-        
-        // 7. Load the public key from file
-        PublicKey publicKey = KeyFileLoader.loadPublicKey(ownerName + "_public.key");
-        
-        // 8. Use the keys for cryptographic operations
+        // 5. Load the KeyPair when needed
+        KeyPair loadedKeyPair = SecureKeyStorage.loadKeyPair(ownerName, password);
+        PrivateKey privateKey = loadedKeyPair.getPrivate();
+        PublicKey publicKey = loadedKeyPair.getPublic();
+
+        // 6. Use the keys for cryptographic operations
         // (sign blocks, verify signatures, etc.)
     }
 }

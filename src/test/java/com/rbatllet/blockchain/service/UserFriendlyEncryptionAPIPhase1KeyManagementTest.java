@@ -1,6 +1,8 @@
 package com.rbatllet.blockchain.service;
 
 import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.dao.AuthorizedKeyDAO;
+import com.rbatllet.blockchain.entity.AuthorizedKey;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,14 +36,27 @@ public class UserFriendlyEncryptionAPIPhase1KeyManagementTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        
+
         // Generate test key pair
         testKeyPair = CryptoUtil.generateKeyPair();
-        
+
         // SECURITY FIX (v1.0.6): Mock authorization check for constructor
         String publicKeyString = CryptoUtil.publicKeyToString(testKeyPair.getPublic());
         lenient().when(mockBlockchain.isKeyAuthorized(publicKeyString)).thenReturn(true);
-        
+
+        // RBAC FIX (v1.0.6): Mock getAuthorizedKeyDAO() to avoid NullPointerException
+        AuthorizedKeyDAO mockKeyDAO = mock(AuthorizedKeyDAO.class);
+        AuthorizedKey mockAuthKey = new AuthorizedKey();
+        mockAuthKey.setPublicKey(publicKeyString);
+        mockAuthKey.setOwnerName(testUsername);
+        when(mockBlockchain.getAuthorizedKeyDAO()).thenReturn(mockKeyDAO);
+        lenient().when(mockKeyDAO.getAuthorizedKeyByPublicKey(publicKeyString)).thenReturn(mockAuthKey);
+
+        // RBAC FIX (v1.0.6): Mock getUserRole() for hierarchical key security validation
+        // Tests need SUPER_ADMIN role to create/rotate ROOT and INTERMEDIATE keys
+        lenient().when(mockBlockchain.getUserRole(publicKeyString))
+            .thenReturn(com.rbatllet.blockchain.security.UserRole.SUPER_ADMIN);
+
         // Initialize API with mock blockchain
         api = new UserFriendlyEncryptionAPI(mockBlockchain, testUsername, testKeyPair);
     }
@@ -356,10 +371,14 @@ public class UserFriendlyEncryptionAPIPhase1KeyManagementTest {
         @Test
         @DisplayName("Should perform complete key lifecycle: generate -> validate -> rotate")
         void shouldPerformCompleteKeyLifecycle() {
-            // Step 1: Generate
+            // Step 0: Create root key first (required for hierarchy)
+            KeyManagementResult rootResult = api.generateHierarchicalKey("LIFECYCLE_ROOT", 1, null);
+            assertTrue(rootResult.isSuccess(), "Root key generation should succeed");
+
+            // Step 1: Generate intermediate key
             Map<String, Object> generateOptions = new HashMap<>();
             generateOptions.put("keySize", 256);
-            
+
             KeyManagementResult generateResult = api.generateHierarchicalKey("LIFECYCLE_TEST", 2, generateOptions);
             assertTrue(generateResult.isSuccess(), "Key generation should succeed");
             String keyId = generateResult.getGeneratedKeyId();

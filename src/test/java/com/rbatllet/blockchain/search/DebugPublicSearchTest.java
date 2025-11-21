@@ -1,20 +1,24 @@
 package com.rbatllet.blockchain.search;
 
 import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.AfterEach;
 
+import java.security.KeyPair;
 import java.util.List;
 
 /**
  * Debug test to understand how public search works
  */
 public class DebugPublicSearchTest {
-    
+
     private Blockchain blockchain;
+    private KeyPair bootstrapKeyPair;
     private UserFriendlyEncryptionAPI encryptionAPI;
     private SearchSpecialistAPI searchAPI;
 
@@ -22,15 +26,27 @@ public class DebugPublicSearchTest {
     public void setUp() {
         blockchain = new Blockchain();
         blockchain.clearAndReinitialize();
-        
+
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         // Set up encryption credentials
         encryptionAPI = new UserFriendlyEncryptionAPI(blockchain);
-        
-        // PRE-AUTHORIZATION REQUIRED (v1.0.6 security): 
+
+        // PRE-AUTHORIZATION REQUIRED (v1.0.6 security):
         // 1. Create admin to act as authorized user creator
-        java.security.KeyPair adminKeys = CryptoUtil.generateKeyPair();
+        KeyPair adminKeys = CryptoUtil.generateKeyPair();
         String adminPublicKey = CryptoUtil.publicKeyToString(adminKeys.getPublic());
-        blockchain.addAuthorizedKey(adminPublicKey, "Admin");
+        blockchain.addAuthorizedKey(adminPublicKey, "Admin", bootstrapKeyPair, UserRole.ADMIN);
         encryptionAPI.setDefaultCredentials("Admin", adminKeys);  // Authenticate as admin
         
         // 2. Now admin can create test user (generates new keys internally)
@@ -81,6 +97,6 @@ public class DebugPublicSearchTest {
         List<SearchFrameworkEngine.EnhancedSearchResult> results5 = searchAPI.searchSecure("hypertension", "testPassword");
         System.out.println("🔍 SearchSecure 'hypertension': " + results5.size() + " results");
         
-        System.out.println("\n🔍 DEBUG: Amb l'opció B, searchAll hauria de trobar TOTS els termes (públics i privats)");
+        System.out.println("\n🔍 DEBUG: With option B, searchAll should find ALL terms (public and private)");
     }
 }

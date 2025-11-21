@@ -57,7 +57,10 @@ public class ExhaustiveSearchDemo {
             
             // CRITICAL: Authorize the key before adding blocks
             String publicKeyString = CryptoUtil.publicKeyToString(publicKey);
-            boolean keyAuthorized = blockchain.addAuthorizedKey(publicKeyString, "DemoUser", null);
+            boolean keyAuthorized = blockchain.createBootstrapAdmin(
+                publicKeyString,
+                "DemoUser"
+            );
             if (!keyAuthorized) {
                 System.err.println("❌ Failed to authorize key for demo");
                 return;

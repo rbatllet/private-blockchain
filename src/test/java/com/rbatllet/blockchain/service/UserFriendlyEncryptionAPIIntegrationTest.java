@@ -12,6 +12,8 @@ import org.junit.jupiter.api.Test;
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 
 /**
@@ -20,10 +22,11 @@ import com.rbatllet.blockchain.util.CryptoUtil;
  * These tests use real instances but are slower and more complex to configure
  */
 class UserFriendlyEncryptionAPIIntegrationTest {
-    
+
     private UserFriendlyEncryptionAPI api;
     private Blockchain blockchain;
     private KeyPair testKeyPair;
+    private KeyPair bootstrapKeyPair;
     private EncryptionConfig testConfig;
     
     @BeforeEach
@@ -32,13 +35,25 @@ class UserFriendlyEncryptionAPIIntegrationTest {
         blockchain = new Blockchain();
         blockchain.clearAndReinitialize();
 
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         // BUGFIX: Generate ML-DSA-87 keys using CryptoUtil (blockchain uses post-quantum crypto)
         // Previously used EC keys which are incompatible with ML-DSA-87 validation
         testKeyPair = CryptoUtil.generateKeyPair();
 
         // SECURITY FIX (v1.0.6): Pre-authorize user before creating API
         String publicKeyString = CryptoUtil.publicKeyToString(testKeyPair.getPublic());
-        blockchain.addAuthorizedKey(publicKeyString, "testuser");
+        blockchain.addAuthorizedKey(publicKeyString, "testuser", bootstrapKeyPair, UserRole.USER);
 
         // Real configuration
         testConfig = new EncryptionConfig();

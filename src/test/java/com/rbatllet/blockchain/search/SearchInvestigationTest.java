@@ -3,6 +3,8 @@ package com.rbatllet.blockchain.search;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,20 +22,37 @@ import static org.junit.jupiter.api.Assertions.*;
 public class SearchInvestigationTest {
     
     private Blockchain blockchain;
+    private KeyPair bootstrapKeyPair;
     private UserFriendlyEncryptionAPI api;
     private String testPassword;
     
     @BeforeEach
     void setUp() throws Exception {
         blockchain = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // SECURITY (v1.0.6): Register bootstrap admin in blockchain (REQUIRED!)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         api = new UserFriendlyEncryptionAPI(blockchain);
         testPassword = "TestPassword123!";
-        
-        // PRE-AUTHORIZATION REQUIRED (v1.0.6 security): 
+
+        // PRE-AUTHORIZATION REQUIRED (v1.0.6 RBAC security):
         // 1. Create admin to act as authorized user creator
         KeyPair adminKeys = CryptoUtil.generateKeyPair();
         String adminPublicKey = CryptoUtil.publicKeyToString(adminKeys.getPublic());
-        blockchain.addAuthorizedKey(adminPublicKey, "Admin");
+        blockchain.addAuthorizedKey(adminPublicKey, "Admin", bootstrapKeyPair, UserRole.ADMIN);
         api.setDefaultCredentials("Admin", adminKeys);  // Authenticate as admin
         
         // 2. Now admin can create test user (generates new keys internally)

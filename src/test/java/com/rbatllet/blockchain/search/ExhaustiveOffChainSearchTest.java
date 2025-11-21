@@ -8,6 +8,8 @@ import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.entity.OffChainData;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.*;
 import com.rbatllet.blockchain.search.strategy.SearchStrategyRouter;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.service.OffChainStorageService;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import java.io.File;
@@ -41,6 +43,7 @@ public class ExhaustiveOffChainSearchTest {
 
     private SearchFrameworkEngine searchEngine;
     private Blockchain blockchain;
+    private KeyPair bootstrapKeyPair;
     private OffChainStorageService offChainService;
     private String testPassword;
     private PrivateKey testPrivateKey;
@@ -76,7 +79,20 @@ public class ExhaustiveOffChainSearchTest {
         testConfig = EncryptionConfig.createHighSecurityConfig();
         searchEngine = new SearchFrameworkEngine(testConfig);
         blockchain = new Blockchain();
+        blockchain.clearAndReinitialize();  // Ensure clean state before bootstrap
         offChainService = new OffChainStorageService();
+
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
 
         // Generate test keys
         KeyPair keyPair = CryptoUtil.generateKeyPair();
@@ -89,7 +105,8 @@ public class ExhaustiveOffChainSearchTest {
         boolean keyAuthorized = blockchain.addAuthorizedKey(
             publicKeyString,
             "TestUser",
-            null
+            bootstrapKeyPair,
+            UserRole.USER
         );
         if (!keyAuthorized) {
             throw new RuntimeException("Failed to authorize key for test");

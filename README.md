@@ -34,6 +34,12 @@ This is a **post-quantum secure private blockchain** for controlled environments
 - **Full Control**: Complete control over participants and data
 - **Quantum-Resistant**: Protected against future quantum computer attacks with ML-DSA-87 (256-bit security)
 
+---
+
+> **🔄 BREAKING CHANGE (v1.0.6+)**: Critical security and operational methods now throw **exceptions** instead of returning `false`. This fail-fast pattern ensures security violations cannot be silently ignored. Affected methods: `revokeAuthorizedKey()`, `deleteAuthorizedKey()`, `rollbackBlocks()`, `rollbackToBlock()`, `exportChain()`, `importChain()`. See [Exception-Based Error Handling Guide](docs/security/EXCEPTION_BASED_ERROR_HANDLING_V1_0_6.md) for migration details.
+
+---
+
 ## 🎯 Key Features
 
 ### Core Blockchain Features
@@ -311,11 +317,29 @@ Blockchain blockchain = new Blockchain();
 // Creates genesis block automatically
 ```
 
-### Step 2: Add Authorized Users
+### Step 2: Add Authorized Users (RBAC v1.0.6+)
 ```java
+// Load bootstrap admin keys (auto-created at first initialization)
+KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
+    "./keys/genesis-admin.private",
+    "./keys/genesis-admin.public"
+);
+
+// Register bootstrap admin in blockchain (REQUIRED!)
+blockchain.createBootstrapAdmin(
+    CryptoUtil.publicKeyToString(bootstrapKeys.getPublic()),
+    "BOOTSTRAP_ADMIN"
+);
+
+// Create new user with USER role (requires bootstrap admin credentials)
 KeyPair userKeys = CryptoUtil.generateKeyPair();
 String publicKey = CryptoUtil.publicKeyToString(userKeys.getPublic());
-blockchain.addAuthorizedKey(publicKey, "UserName");
+blockchain.addAuthorizedKey(
+    publicKey,
+    "UserName",
+    bootstrapKeys,      // Caller credentials (bootstrap admin)
+    UserRole.USER       // Target role
+);
 ```
 
 ### Step 3: Add Blocks
@@ -381,15 +405,21 @@ KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
     "./keys/genesis-admin.public"
 );
 
-// 3. Create API with genesis admin credentials
-UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
-api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+// 3. Register bootstrap admin in blockchain (REQUIRED!)
+blockchain.createBootstrapAdmin(
+    CryptoUtil.publicKeyToString(genesisKeys.getPublic()),
+    "BOOTSTRAP_ADMIN"
+);
 
-// 4. Create regular user (requires authorized caller - genesis admin in this case)
+// 4. Create API with bootstrap admin credentials
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+api.setDefaultCredentials("BOOTSTRAP_ADMIN", genesisKeys);
+
+// 5. Create regular user (requires authorized caller - bootstrap admin in this case)
 KeyPair aliceKeys = api.createUser("alice");
 api.setDefaultCredentials("alice", aliceKeys);
 
-// 5. Store encrypted data with automatic keyword extraction
+// 6. Store encrypted data with automatic keyword extraction
 Block block = api.storeEncryptedData("Medical record: Patient exhibits normal symptoms", "secure123");
 
 // Search encrypted content (password required)
@@ -1070,10 +1100,9 @@ src/main/java/com/rbatllet/blockchain/
 │   ├── ChainRecoveryManager.java               # Handles blockchain recovery operations
 │   └── RecoveryConfig.java                      # Configuration for recovery processes
 ├── security/
-│   ├── ECKeyDerivation.java                    # Elliptic Curve key derivation utilities
-│   ├── KeyFileLoader.java                       # Secure key file loading
+│   ├── KeyFileLoader.java                       # Secure key file loading (ML-DSA-87)
 │   ├── PasswordUtil.java                        # Password hashing and verification
-│   └── SecureKeyStorage.java                    # Secure storage for cryptographic keys
+│   └── SecureKeyStorage.java                    # Secure storage for cryptographic keys (AES-256-GCM)
 ├── util/
 │   ├── CryptoUtil.java                          # Cryptographic utilities
 │   ├── ExitUtil.java                            # Exit handling utilities
@@ -1127,8 +1156,7 @@ Configuration & Scripts:
 ├── run_recovery_tests.zsh                        # Recovery tests runner
 ├── run_improved_rollback_test.zsh                # Improved rollback tests
 ├── run_security_analysis.zsh                     # Security analysis tests
-├── run_security_tests.zsh                        # Security tests runner
-├── run_eckeyderivation_tests.zsh                 # Elliptic curve key derivation tests
+├── run_security_tests.zsh                        # Security tests runner (ML-DSA-87 post-quantum)
 ├── run_search_framework_demo.zsh               # ✨ NEW: Search framework system demonstration script
 ├── test_race_condition_fix.zsh                   # Race condition testing
 ├── test_thread_safety_full.zsh                  # ✨ ENHANCED: Comprehensive thread safety (production)
@@ -1260,26 +1288,40 @@ The security module provides essential cryptographic operations and secure key m
 
 ### Key Components
 
-1. **ECKeyDerivation**
-   - Generates secure EC key pairs using Bouncy Castle provider
-   - Thread-safe implementation with proper provider registration
-   - Supports standard EC curves (secp256k1, prime256v1)
+1. **CryptoUtil (ML-DSA-87 Post-Quantum)**
+   - Generates post-quantum ML-DSA-87 key pairs (NIST FIPS 204)
+   - 256-bit quantum-resistant security (lattice-based cryptography)
+   - Thread-safe implementation with OpenJDK 25 native support
+   - Complete KeyPair storage required (no key derivation)
    - Example usage:
      ```java
-     KeyPair keyPair = ECKeyDerivation.generateKeyPair();
+     KeyPair keyPair = CryptoUtil.generateKeyPair();  // ML-DSA-87
+     String signature = CryptoUtil.signData(data, keyPair.getPrivate());
+     boolean valid = CryptoUtil.verifySignature(data, signature, keyPair.getPublic());
      ```
 
 2. **KeyFileLoader**
-   - Loads cryptographic keys from various file formats (PEM, DER, raw Base64)
-   - Supports both private and public keys
-   - Handles different key encodings and formats
+   - Loads ML-DSA-87 key pairs from files
+   - Supports both public and private keys in X.509/PKCS#8 formats
+   - Handles Base64 encoding for key storage
    - Example usage:
      ```java
-     PrivateKey privateKey = KeyFileLoader.loadPrivateKey("private.pem");
-     PublicKey publicKey = KeyFileLoader.loadPublicKey("public.pem");
+     KeyPair keys = KeyFileLoader.loadKeyPairFromFiles("private.key", "public.key");
+     KeyFileLoader.saveKeyPairToFiles(keys, "private.key", "public.key");
      ```
 
-3. **PasswordUtil**
+3. **SecureKeyStorage (AES-256-GCM)**
+   - Stores ML-DSA-87 key pairs with password protection
+   - AES-256-GCM authenticated encryption with random IV
+   - 128-bit authentication tag for tamper detection
+   - Example usage:
+     ```java
+     SecureKeyStorage.saveKeyPair("user", keyPair, password);
+     PrivateKey privateKey = SecureKeyStorage.loadPrivateKey("user", password);
+     PublicKey publicKey = SecureKeyStorage.loadPublicKey("user", password);
+     ```
+
+4. **PasswordUtil**
    - Secure password input handling
    - Works in both console and IDE environments
    - Password strength validation
@@ -1462,13 +1504,31 @@ System.out.println("Impact: " + impact);
 // 🟡 LEVEL 2: Safe Deletion (blocks dangerous operations)
 boolean safe = blockchain.deleteAuthorizedKey(publicKey);
 
-// 🟠 LEVEL 3: Secure Admin-Authorized Deletion (requires cryptographic signature)
+// 🟠 LEVEL 3: Secure Admin-Authorized Deletion (v1.0.6+: throws exceptions)
 String adminSignature = CryptoUtil.createAdminSignature(publicKey, false, "GDPR compliance", adminPrivateKey);
-boolean dangerous = blockchain.dangerouslyDeleteAuthorizedKey(publicKey, false, "GDPR compliance", adminSignature, adminPublicKey);
+try {
+    boolean dangerous = blockchain.dangerouslyDeleteAuthorizedKey(publicKey, false, "GDPR compliance", adminSignature, adminPublicKey);
+    System.out.println("✅ Key deleted successfully");
+} catch (SecurityException e) {
+    System.err.println("❌ Invalid admin authorization: " + e.getMessage());
+} catch (IllegalStateException e) {
+    System.err.println("❌ Deletion blocked: " + e.getMessage());
+} catch (IllegalArgumentException e) {
+    System.err.println("❌ Key not found: " + e.getMessage());
+}
 
-// 🔴 LEVEL 4: Nuclear Option (breaks validation - emergency use only)
+// 🔴 LEVEL 4: Nuclear Option (v1.0.6+: throws exceptions, breaks validation)
 String forceSignature = CryptoUtil.createAdminSignature(publicKey, true, "Security incident", adminPrivateKey);
-boolean forced = blockchain.dangerouslyDeleteAuthorizedKey(publicKey, true, "Security incident", forceSignature, adminPublicKey);
+try {
+    boolean forced = blockchain.dangerouslyDeleteAuthorizedKey(publicKey, true, "Security incident", forceSignature, adminPublicKey);
+    System.out.println("⚠️ Key forcefully deleted - validation may be broken!");
+} catch (SecurityException e) {
+    System.err.println("❌ Invalid admin authorization: " + e.getMessage());
+} catch (IllegalStateException e) {
+    System.err.println("❌ Deletion blocked: " + e.getMessage());
+} catch (IllegalArgumentException e) {
+    System.err.println("❌ Key not found: " + e.getMessage());
+}
 ```
 
 ### Safe Usage Pattern
@@ -1484,9 +1544,14 @@ public void safeKeyDeletionWorkflow(String publicKey, String reason) {
         blockchain.deleteAuthorizedKey(publicKey);  // Safe deletion
     } else {
         System.out.println("⚠️ Key has " + impact.getAffectedBlocks() + " blocks");
-        // Only use dangerous deletion in emergencies:
+        // Only use dangerous deletion in emergencies (v1.0.6+: throws exceptions):
         // String adminSignature = CryptoUtil.createAdminSignature(publicKey, true, reason, adminPrivateKey);
-        // blockchain.dangerouslyDeleteAuthorizedKey(publicKey, true, reason, adminSignature, adminPublicKey);
+        // try {
+        //     blockchain.dangerouslyDeleteAuthorizedKey(publicKey, true, reason, adminSignature, adminPublicKey);
+        //     System.out.println("✅ Forced deletion completed");
+        // } catch (SecurityException | IllegalStateException | IllegalArgumentException e) {
+        //     System.err.println("❌ Deletion failed: " + e.getMessage());
+        // }
     }
 }
 ```
@@ -1502,26 +1567,43 @@ public void safeKeyDeletionWorkflow(String publicKey, String reason) {
 // 1. Initialize blockchain
 Blockchain blockchain = new Blockchain();
 
-// 2. Add authorized users
+// 2. Load bootstrap admin keys (RBAC v1.0.6+)
+KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
+    "./keys/genesis-admin.private",
+    "./keys/genesis-admin.public"
+);
+
+// 3. Register bootstrap admin in blockchain (REQUIRED!)
+blockchain.createBootstrapAdmin(
+    CryptoUtil.publicKeyToString(bootstrapKeys.getPublic()),
+    "BOOTSTRAP_ADMIN"
+);
+
+// 4. Add authorized users
 KeyPair alice = CryptoUtil.generateKeyPair();
 String alicePublicKey = CryptoUtil.publicKeyToString(alice.getPublic());
-blockchain.addAuthorizedKey(alicePublicKey, "Alice");
+blockchain.addAuthorizedKey(
+    alicePublicKey,
+    "Alice",
+    bootstrapKeys,      // Caller: bootstrap admin
+    UserRole.USER       // Target role
+);
 
-// 3. Add blocks
-blockchain.addBlock("Transaction: Payment to Bob", 
+// 5. Add blocks
+blockchain.addBlock("Transaction: Payment to Bob",
                    alice.getPrivate(), alice.getPublic());
 
-// 4. Validate chain with detailed information
+// 6. Validate chain with detailed information
 ChainValidationResult result = blockchain.validateChainDetailed();
 boolean isStructurallyIntact = result.isStructurallyIntact();
 boolean isFullyCompliant = result.isFullyCompliant();
 System.out.println("Blockchain is structurally intact: " + isStructurallyIntact);
 System.out.println("Blockchain is fully compliant: " + isFullyCompliant);
 
-// 5. Search blocks
+// 7. Search blocks
 List<Block> results = blockchain.searchBlocksByContent("Payment");
 
-// 6. Export for backup
+// 8. Export for backup
 blockchain.exportChain("backup.json");
 ```
 
@@ -1533,23 +1615,45 @@ public class BlockchainExample {
         try {
             // 1. Initialize blockchain
             Blockchain blockchain = new Blockchain();
-            
-            // 2. Add users
+
+            // 2. Load bootstrap admin keys (RBAC v1.0.6+)
+            KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
+                "./keys/genesis-admin.private",
+                "./keys/genesis-admin.public"
+            );
+
+            // 3. Register bootstrap admin in blockchain (REQUIRED!)
+            blockchain.createBootstrapAdmin(
+                CryptoUtil.publicKeyToString(bootstrapKeys.getPublic()),
+                "BOOTSTRAP_ADMIN"
+            );
+
+            // 4. Add users with RBAC
             KeyPair alice = CryptoUtil.generateKeyPair();
             KeyPair bob = CryptoUtil.generateKeyPair();
-            
+
             String aliceKey = CryptoUtil.publicKeyToString(alice.getPublic());
             String bobKey = CryptoUtil.publicKeyToString(bob.getPublic());
-            
-            blockchain.addAuthorizedKey(aliceKey, "Alice");
-            blockchain.addAuthorizedKey(bobKey, "Bob");
-            
-            // 3. Add blocks
+
+            blockchain.addAuthorizedKey(
+                aliceKey,
+                "Alice",
+                bootstrapKeys,      // Caller: bootstrap admin
+                UserRole.USER
+            );
+            blockchain.addAuthorizedKey(
+                bobKey,
+                "Bob",
+                bootstrapKeys,      // Caller: bootstrap admin
+                UserRole.USER
+            );
+
+            // 5. Add blocks
             blockchain.addBlock("Alice registers", alice.getPrivate(), alice.getPublic());
             blockchain.addBlock("Bob joins network", bob.getPrivate(), bob.getPublic());
             blockchain.addBlock("Alice sends payment", alice.getPrivate(), alice.getPublic());
-            
-            // 4. Search and validate
+
+            // 5. Search and validate
             List<Block> payments = blockchain.searchBlocksByContent("payment");
             System.out.println("Payment blocks found: " + payments.size());
             
@@ -1568,8 +1672,8 @@ public class BlockchainExample {
             if (!isFullyCompliant) {
                 System.out.println("Revoked blocks detected: " + result.getRevokedBlocks());
             }
-            
-            // 5. Backup
+
+            // 6. Backup
             blockchain.exportChain("blockchain_backup.json");
             System.out.println("Blockchain backed up successfully!");
             

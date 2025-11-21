@@ -1,6 +1,7 @@
 package com.rbatllet.blockchain.service;
 
 import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.dao.AuthorizedKeyDAO;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.entity.AuthorizedKey;
 import com.rbatllet.blockchain.util.CryptoUtil;
@@ -37,14 +38,22 @@ public class UserFriendlyEncryptionAPIPhase1ValidationTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        
+
         // Generate test key pair
         testKeyPair = CryptoUtil.generateKeyPair();
-        
+
         // SECURITY FIX (v1.0.6): Mock authorization check for constructor
         String publicKeyString = CryptoUtil.publicKeyToString(testKeyPair.getPublic());
         lenient().when(mockBlockchain.isKeyAuthorized(publicKeyString)).thenReturn(true);
-        
+
+        // RBAC FIX (v1.0.6): Mock getAuthorizedKeyDAO() to avoid NullPointerException
+        AuthorizedKeyDAO mockKeyDAO = mock(AuthorizedKeyDAO.class);
+        AuthorizedKey mockAuthKey = new AuthorizedKey();
+        mockAuthKey.setPublicKey(publicKeyString);
+        mockAuthKey.setOwnerName(testUsername);
+        when(mockBlockchain.getAuthorizedKeyDAO()).thenReturn(mockKeyDAO);
+        lenient().when(mockKeyDAO.getAuthorizedKeyByPublicKey(publicKeyString)).thenReturn(mockAuthKey);
+
         // Initialize API with mock blockchain
         api = new UserFriendlyEncryptionAPI(mockBlockchain, testUsername, testKeyPair);
         

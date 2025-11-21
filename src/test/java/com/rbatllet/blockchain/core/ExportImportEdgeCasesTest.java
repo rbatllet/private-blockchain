@@ -1,6 +1,8 @@
 package com.rbatllet.blockchain.core;
 
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,26 +22,41 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Tests boundary conditions, error handling, and recovery scenarios
  */
 public class ExportImportEdgeCasesTest {
-    
+
     private Blockchain blockchain;
+    private KeyPair bootstrapKeyPair;
     private KeyPair keyPair;
     private PrivateKey privateKey;
     private PublicKey publicKey;
     private String publicKeyString;
     private String masterPassword;
-    
+
     @BeforeEach
     void setUp() throws Exception {
         blockchain = new Blockchain();
+
+        // Ensure clean state
+        blockchain.clearAndReinitialize();
+
+        // Load bootstrap admin keys (created automatically)
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         keyPair = CryptoUtil.generateKeyPair();
         privateKey = keyPair.getPrivate();
         publicKey = keyPair.getPublic();
         publicKeyString = CryptoUtil.publicKeyToString(publicKey);
         masterPassword = "EdgeCasePassword123!";
-        
-        // Ensure clean state
-        blockchain.clearAndReinitialize();
-        blockchain.addAuthorizedKey(publicKeyString, "TestUser");
+
+        blockchain.addAuthorizedKey(publicKeyString, "TestUser", bootstrapKeyPair, UserRole.USER);
     }
     
     @AfterEach
@@ -63,7 +80,12 @@ public class ExportImportEdgeCasesTest {
     void testExportEmptyBlockchain() throws Exception {
         // Clear all blocks except genesis
         blockchain.clearAndReinitialize();
-        blockchain.addAuthorizedKey(publicKeyString, "TestUser");
+        // Re-register bootstrap admin after clear (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+        blockchain.addAuthorizedKey(publicKeyString, "TestUser", bootstrapKeyPair, UserRole.USER);
         
         // Export empty chain
         assertTrue(blockchain.exportChain("empty-export.json"));
@@ -72,10 +94,15 @@ public class ExportImportEdgeCasesTest {
         File exportFile = new File("empty-export.json");
         assertTrue(exportFile.exists());
         assertTrue(exportFile.length() > 0);
-        
+
         // Import and verify
         blockchain.clearAndReinitialize();
-        blockchain.addAuthorizedKey(publicKeyString, "TestUser");
+        // Re-register bootstrap admin after clear (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+        blockchain.addAuthorizedKey(publicKeyString, "TestUser", bootstrapKeyPair, UserRole.USER);
         assertTrue(blockchain.importChain("empty-export.json"));
 
         // Should have at least genesis block
@@ -86,22 +113,43 @@ public class ExportImportEdgeCasesTest {
     @DisplayName("Export to invalid file path should fail gracefully")
     void testExportToInvalidPath() throws Exception {
         blockchain.addBlockAndReturn("Test data", privateKey, publicKey);
-        
-        // Try to export to invalid paths
-        assertFalse(blockchain.exportChain("/root/nonexistent/path/export.json"));
-        assertFalse(blockchain.exportChain(""));
-        assertFalse(blockchain.exportChain("   "));
-        
-        // Try encrypted export to invalid paths
-        assertFalse(blockchain.exportEncryptedChain("/root/nonexistent/path/export.json", masterPassword));
-        assertFalse(blockchain.exportEncryptedChain("", masterPassword));
+
+        // Try to export to invalid paths - should throw IllegalStateException for nonexistent directory
+        assertThrows(IllegalStateException.class, () -> {
+            blockchain.exportChain("/root/nonexistent/path/export.json");
+        }, "Should throw IllegalStateException for nonexistent directory");
+
+        // Try to export to empty/blank paths - should throw IllegalArgumentException
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.exportChain("");
+        }, "Should throw IllegalArgumentException for empty path");
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.exportChain("   ");
+        }, "Should throw IllegalArgumentException for blank path");
+
+        // RBAC FIX (v1.0.6): Encrypted export now throws exceptions like non-encrypted export
+        assertThrows(IllegalStateException.class, () -> {
+            blockchain.exportEncryptedChain("/root/nonexistent/path/export.json", masterPassword);
+        }, "Should throw IllegalStateException for nonexistent directory");
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.exportEncryptedChain("", masterPassword);
+        }, "Should throw IllegalArgumentException for empty path");
     }
     
     @Test
     @DisplayName("Import nonexistent file should fail gracefully")
     void testImportNonexistentFile() throws Exception {
-        assertFalse(blockchain.importChain("nonexistent-file.json"));
-        assertFalse(blockchain.importEncryptedChain("nonexistent-file.json", masterPassword));
+        // Import of nonexistent file should throw IllegalArgumentException
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.importChain("nonexistent-file.json");
+        }, "Should throw IllegalArgumentException for nonexistent file");
+
+        // RBAC FIX (v1.0.6): Encrypted import now throws exceptions like non-encrypted import
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.importEncryptedChain("nonexistent-file.json", masterPassword);
+        }, "Should throw IllegalArgumentException for nonexistent file");
     }
     
     @Test
@@ -138,9 +186,14 @@ public class ExportImportEdgeCasesTest {
         
         // Export and import
         assertTrue(blockchain.exportEncryptedChain("unicode-export.json", masterPassword));
-        
+
         blockchain.clearAndReinitialize();
-        blockchain.addAuthorizedKey(publicKeyString, "TestUser");
+        // Re-register bootstrap admin after clear (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+        blockchain.addAuthorizedKey(publicKeyString, "TestUser", bootstrapKeyPair, UserRole.USER);
         assertTrue(blockchain.importEncryptedChain("unicode-export.json", masterPassword));
 
         // Verify Unicode content is preserved
@@ -167,7 +220,12 @@ public class ExportImportEdgeCasesTest {
         assertTrue(blockchain.exportEncryptedChain("special-chars-export.json", masterPassword));
 
         blockchain.clearAndReinitialize();
-        blockchain.addAuthorizedKey(publicKeyString, "TestUser");
+        // Re-register bootstrap admin after clear (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+        blockchain.addAuthorizedKey(publicKeyString, "TestUser", bootstrapKeyPair, UserRole.USER);
         assertTrue(blockchain.importEncryptedChain("special-chars-export.json", masterPassword));
 
         // Verify special characters are preserved
@@ -232,10 +290,15 @@ public class ExportImportEdgeCasesTest {
                 }
             }
         }
-        
+
         // Import should handle missing off-chain data gracefully
         blockchain.clearAndReinitialize();
-        blockchain.addAuthorizedKey(publicKeyString, "TestUser");
+        // Re-register bootstrap admin after clear (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+        blockchain.addAuthorizedKey(publicKeyString, "TestUser", bootstrapKeyPair, UserRole.USER);
         boolean importResult = blockchain.importChain("missing-offchain-export.json");
 
         // Import should succeed but off-chain data should be removed
@@ -251,21 +314,33 @@ public class ExportImportEdgeCasesTest {
     @DisplayName("Encrypted export with null/empty master password")
     void testEncryptedExportInvalidPassword() throws Exception {
         blockchain.addEncryptedBlock("Test encrypted data", masterPassword, privateKey, publicKey);
-        
-        // Test null password
-        assertFalse(blockchain.exportEncryptedChain("test-export.json", null));
-        
-        // Test empty password
-        assertFalse(blockchain.exportEncryptedChain("test-export.json", ""));
-        
-        // Test whitespace-only password
-        assertFalse(blockchain.exportEncryptedChain("test-export.json", "   "));
-        
+
+        // RBAC FIX (v1.0.6): Invalid passwords now throw IllegalArgumentException
+
+        // Test null password for export
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.exportEncryptedChain("test-export.json", null);
+        }, "Should throw IllegalArgumentException for null password");
+
+        // Test empty password for export
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.exportEncryptedChain("test-export.json", "");
+        }, "Should throw IllegalArgumentException for empty password");
+
+        // Test whitespace-only password for export
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.exportEncryptedChain("test-export.json", "   ");
+        }, "Should throw IllegalArgumentException for whitespace-only password");
+
         // Test null password for import
-        assertFalse(blockchain.importEncryptedChain("test-export.json", null));
-        
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.importEncryptedChain("test-export.json", null);
+        }, "Should throw IllegalArgumentException for null password");
+
         // Test empty password for import
-        assertFalse(blockchain.importEncryptedChain("test-export.json", ""));
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.importEncryptedChain("test-export.json", "");
+        }, "Should throw IllegalArgumentException for empty password");
     }
     
     @Test
@@ -277,7 +352,7 @@ public class ExportImportEdgeCasesTest {
         // Generate second key pair
         KeyPair keyPair2 = CryptoUtil.generateKeyPair();
         String publicKey2String = CryptoUtil.publicKeyToString(keyPair2.getPublic());
-        blockchain.addAuthorizedKey(publicKey2String, "TestUser2");
+        blockchain.addAuthorizedKey(publicKey2String, "TestUser2", bootstrapKeyPair, UserRole.USER);
         
         blockchain.addBlockAndReturn("Block with second key", keyPair2.getPrivate(), keyPair2.getPublic());
         
@@ -314,12 +389,17 @@ public class ExportImportEdgeCasesTest {
             String exportFile = "cycle-" + cycle + "-export.json";
             
             // Export
-            assertTrue(blockchain.exportEncryptedChain(exportFile, masterPassword), 
+            assertTrue(blockchain.exportEncryptedChain(exportFile, masterPassword),
                 "Export cycle " + cycle + " should succeed");
-            
+
             // Clear and import
             blockchain.clearAndReinitialize();
-            blockchain.addAuthorizedKey(publicKeyString, "TestUser");
+            // Re-register bootstrap admin after clear (RBAC v1.0.6)
+            blockchain.createBootstrapAdmin(
+                CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+                "BOOTSTRAP_ADMIN"
+            );
+            blockchain.addAuthorizedKey(publicKeyString, "TestUser", bootstrapKeyPair, UserRole.USER);
             assertTrue(blockchain.importEncryptedChain(exportFile, masterPassword),
                 "Import cycle " + cycle + " should succeed");
 

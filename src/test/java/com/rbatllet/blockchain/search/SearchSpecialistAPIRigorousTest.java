@@ -6,6 +6,8 @@ import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.search.BlockPasswordRegistry.RegistryStats;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.*;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.service.SecureBlockEncryptionService;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.Test;
@@ -28,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class SearchSpecialistAPIRigorousTest {
     
     private Blockchain blockchain;
+    private KeyPair bootstrapKeyPair;
     private UserFriendlyEncryptionAPI api;
     private SearchSpecialistAPI searchAPI;
     private String testPassword;
@@ -36,14 +39,30 @@ public class SearchSpecialistAPIRigorousTest {
     @BeforeEach
     void setUp() throws Exception {
         blockchain = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         api = new UserFriendlyEncryptionAPI(blockchain);
         testPassword = "RigorousTest123!";
 
-        // PRE-AUTHORIZATION REQUIRED (v1.0.6 security): 
+        // PRE-AUTHORIZATION REQUIRED (v1.0.6 RBAC security):
         // 1. Create admin to act as authorized user creator
         KeyPair adminKeys = CryptoUtil.generateKeyPair();
         String adminPublicKey = CryptoUtil.publicKeyToString(adminKeys.getPublic());
-        blockchain.addAuthorizedKey(adminPublicKey, "Admin");
+        blockchain.addAuthorizedKey(adminPublicKey, "Admin", bootstrapKeyPair, UserRole.ADMIN);
         api.setDefaultCredentials("Admin", adminKeys);  // Authenticate as admin
 
         // 2. Now admin can create test user (generates new keys internally)
@@ -72,12 +91,19 @@ public class SearchSpecialistAPIRigorousTest {
     @DisplayName("Test 1: SearchSpecialistAPI Initialization State")
     void testSearchSpecialistAPIInitialization() throws Exception {
         System.out.println("=== TEST 1: INITIALIZATION STATE ===");
-        
+
         // Use new improved constructor that requires blockchain, password, and private key
         System.out.println("🔑 Creating SearchSpecialistAPI with improved constructor...");
-        
-        // User already created in setUp, just get new keys for this test
+
+        // RBAC FIX (v1.0.6): Need admin credentials to create new user
+        KeyPair adminKeys = CryptoUtil.generateKeyPair();
+        String adminPublicKey = CryptoUtil.publicKeyToString(adminKeys.getPublic());
+        blockchain.addAuthorizedKey(adminPublicKey, "TestAdmin", bootstrapKeyPair, UserRole.ADMIN);
+        api.setDefaultCredentials("TestAdmin", adminKeys);
+
         KeyPair userKeys = api.createUser("rigorous-test-user-2");
+        api.setDefaultCredentials("rigorous-test-user-2", userKeys);  // Switch back to user
+
         searchAPI = new SearchSpecialistAPI(blockchain, testPassword, userKeys.getPrivate());
         
         // After initialization

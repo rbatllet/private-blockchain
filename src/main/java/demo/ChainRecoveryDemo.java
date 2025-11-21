@@ -2,6 +2,7 @@ package demo;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.recovery.ChainRecoveryManager;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.validation.ChainValidationResult;
 
@@ -105,13 +106,31 @@ public class ChainRecoveryDemo {
         System.out.println("===================================");
         
         try {
-            // Add admin user first
-            blockchain.addAuthorizedKey(adminPublicKey, "System Admin");
+            // Add admin user first - Genesis bootstrap
+            blockchain.createBootstrapAdmin(
+                adminPublicKey,
+                "System Admin"
+            );
 
-            // Add authorized users
-            blockchain.addAuthorizedKey(aliceKey, "Alice Johnson");
-            blockchain.addAuthorizedKey(bobKey, "Bob Smith");
-            blockchain.addAuthorizedKey(charlieKey, "Charlie Brown");
+            // Add authorized users - Created by admin
+            blockchain.addAuthorizedKey(
+                aliceKey,
+                "Alice Johnson",
+                adminKeyPair,  // Admin is the caller
+                UserRole.USER
+            );
+            blockchain.addAuthorizedKey(
+                bobKey,
+                "Bob Smith",
+                adminKeyPair,  // Admin is the caller
+                UserRole.USER
+            );
+            blockchain.addAuthorizedKey(
+                charlieKey,
+                "Charlie Brown",
+                adminKeyPair,  // Admin is the caller
+                UserRole.USER
+            );
             
             // Create meaningful blocks
             blockchain.addBlock("Alice's important contract v1.0", alice.getPrivate(), alice.getPublic());

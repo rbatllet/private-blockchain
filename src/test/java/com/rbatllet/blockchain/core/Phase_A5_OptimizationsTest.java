@@ -2,6 +2,8 @@ package com.rbatllet.blockchain.core;
 
 import com.rbatllet.blockchain.config.MemorySafetyConstants;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -37,6 +39,7 @@ public class Phase_A5_OptimizationsTest {
 
     private Blockchain blockchain;
     private BlockRepository blockRepository;
+    private KeyPair bootstrapKeyPair;
     private KeyPair keyPair;
     private String databaseType = "H2 (default)";
     private static final boolean POSTGRESQL_ENV_CONFIGURED = isPostgreSQLConfigured();
@@ -66,11 +69,24 @@ public class Phase_A5_OptimizationsTest {
         blockchain = new Blockchain();
         blockchain.clearAndReinitialize();
         blockRepository = new BlockRepository();
+
+        // Load bootstrap admin keys (created automatically)
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         keyPair = CryptoUtil.generateKeyPair();
 
         // ✅ CRITICAL: Authorize the key BEFORE adding blocks
         String publicKeyStr = CryptoUtil.publicKeyToString(keyPair.getPublic());
-        blockchain.addAuthorizedKey(publicKeyStr, "TestUser");
+        blockchain.addAuthorizedKey(publicKeyStr, "TestUser", bootstrapKeyPair, UserRole.USER);
 
         System.out.println("✅ " + databaseType + " Connection Established");
     }

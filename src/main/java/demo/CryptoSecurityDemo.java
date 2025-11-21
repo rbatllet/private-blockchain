@@ -1,6 +1,7 @@
 package demo;
 
 import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.CryptoUtil.KeyInfo;
 import com.rbatllet.blockchain.util.CryptoUtil.KeyType;
@@ -46,6 +47,16 @@ public class CryptoSecurityDemo {
             // Clean up the database using Blockchain API
             Blockchain blockchain = new Blockchain();
             blockchain.clearAndReinitialize();
+
+            // EXPLICIT bootstrap admin creation after reset (security best practice)
+            KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
+                "./keys/genesis-admin.private",
+                "./keys/genesis-admin.public"
+            );
+            blockchain.createBootstrapAdmin(
+                CryptoUtil.publicKeyToString(bootstrapKeys.getPublic()),
+                "BOOTSTRAP_ADMIN"
+            );
 
             System.out.println("🗑️ Reset database state completed");
         } catch (Exception e) {

@@ -9,6 +9,8 @@ import org.junit.jupiter.api.DisplayName;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.config.EncryptionConfig;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import java.security.KeyPair;
 import java.util.Map;
@@ -22,6 +24,7 @@ import java.util.HashSet;
 class MetadataExtractionMethodsTest {
 
     private Blockchain blockchain;
+    private KeyPair bootstrapKeyPair;
     private MetadataLayerManager metadataManager;
     private KeyPair testKeyPair;
     private EncryptionConfig encryptionConfig;
@@ -31,16 +34,28 @@ class MetadataExtractionMethodsTest {
     void setUp() throws Exception {
         blockchain = new Blockchain();
         blockchain.clearAndReinitialize();
-        
+
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         metadataManager = new MetadataLayerManager();
         testKeyPair = CryptoUtil.generateKeyPair();
-        
+
         // Create encryption config with default settings
         encryptionConfig = new EncryptionConfig();
-        
+
         // Authorize the test key pair
         String publicKeyString = CryptoUtil.publicKeyToString(testKeyPair.getPublic());
-        blockchain.addAuthorizedKey(publicKeyString, "test-user");
+        blockchain.addAuthorizedKey(publicKeyString, "test-user", bootstrapKeyPair, UserRole.USER);
     }
 
     @AfterEach

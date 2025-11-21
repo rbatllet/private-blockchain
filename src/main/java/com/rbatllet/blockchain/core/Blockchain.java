@@ -11,11 +11,13 @@ import com.rbatllet.blockchain.dto.EncryptionExportData;
 import com.rbatllet.blockchain.entity.AuthorizedKey;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.entity.OffChainData;
+import com.rbatllet.blockchain.exception.BlockValidationException;
+import com.rbatllet.blockchain.exception.UnauthorizedKeyException;
 import com.rbatllet.blockchain.recovery.ChainRecoveryManager;
 import com.rbatllet.blockchain.recovery.ChainRecoveryManager.ChainDiagnostic;
 import com.rbatllet.blockchain.recovery.ChainRecoveryManager.RecoveryResult;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine;
-import com.rbatllet.blockchain.security.GenesisAdminInfo;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.EnhancedSearchResult;
 import com.rbatllet.blockchain.search.SearchSpecialistAPI;
 import com.rbatllet.blockchain.service.OffChainStorageService;
@@ -31,10 +33,6 @@ import com.rbatllet.blockchain.validation.EncryptedBlockValidator;
 import jakarta.persistence.EntityManager;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.attribute.PosixFilePermissions;
 import java.security.KeyPair;
 import java.security.MessageDigest;
 import java.security.PrivateKey;
@@ -109,8 +107,9 @@ public class Blockchain {
 
         initializeGenesisBlock();
 
-        // Genesis admin bootstrap: Create first admin if no authorized keys exist
-        initializeGenesisAdminIfNeeded();
+        // Note: Bootstrap admin creation is now EXPLICIT via createBootstrapAdmin()
+        // This ensures proper security control - no automatic admin creation!
+        // Applications/demos/tests MUST call createBootstrapAdmin() explicitly.
 
         // Note: Advanced Search is initialized on-demand when blocks are created
         // This prevents conflicts with per-block password management
@@ -161,91 +160,6 @@ public class Blockchain {
             blockRepository.synchronizeBlockSequence();
 
             logger.info("✅ Genesis block created successfully!");
-        }
-    }
-
-    /**
-     * Initialize genesis admin on first blockchain creation.
-     *
-     * <p>This creates the first authorized admin with full privileges, solving the
-     * "bootstrap problem" of how to create the first admin without already having an admin.</p>
-     *
-     * <p><strong>SECURITY:</strong> Genesis admin keypair is stored in:</p>
-     * <ul>
-     *   <li>Private key: {@code ./keys/genesis-admin.private} (owner read/write only)</li>
-     *   <li>Public key: {@code ./keys/genesis-admin.public} (plaintext for verification)</li>
-     * </ul>
-     *
-     * <p>This method only runs if ZERO authorized keys exist in the database.</p>
-     *
-     * @return GenesisAdminInfo with keys and storage location, or null if admin already exists
-     * @since 1.0.6
-     */
-    private GenesisAdminInfo initializeGenesisAdminIfNeeded() {
-        long stamp = GLOBAL_BLOCKCHAIN_LOCK.writeLock();
-        try {
-            // Only run if no authorized keys exist (bootstrap problem)
-            long authorizedCount = authorizedKeyDAO.getAuthorizedKeyCount();
-            if (authorizedCount > 0) {
-                logger.debug("ℹ️  {} authorized keys exist, skipping genesis admin creation", authorizedCount);
-                return null;
-            }
-
-            logger.warn("🔐 No authorized keys found. Creating genesis admin...");
-
-            // Generate genesis admin keypair
-            KeyPair genesisAdminKeys = CryptoUtil.generateKeyPair();
-            String publicKeyString = CryptoUtil.publicKeyToString(genesisAdminKeys.getPublic());
-            String privateKeyString = CryptoUtil.privateKeyToString(genesisAdminKeys.getPrivate());
-
-            // Store keys using filesystem
-            Path keysDir = Paths.get("./keys");
-            if (!Files.exists(keysDir)) {
-                Files.createDirectories(keysDir);
-            }
-
-            // Save to files
-            Path privateKeyPath = keysDir.resolve("genesis-admin.private");
-            Path publicKeyPath = keysDir.resolve("genesis-admin.public");
-
-            Files.writeString(privateKeyPath, privateKeyString);
-            Files.writeString(publicKeyPath, publicKeyString);
-
-            // Set restrictive permissions (owner read/write only)
-            if (!System.getProperty("os.name").toLowerCase().contains("win")) {
-                Files.setPosixFilePermissions(privateKeyPath,
-                    PosixFilePermissions.fromString("rw-------"));
-            }
-
-            // Add to authorized keys (SPECIAL CASE: no admin approval needed for genesis)
-            boolean success = addAuthorizedKeyInternal(publicKeyString, "GENESIS_ADMIN", null);
-
-            if (!success) {
-                logger.error("❌ Failed to add genesis admin to authorized keys");
-                return null;
-            }
-
-            GenesisAdminInfo adminInfo = new GenesisAdminInfo(
-                publicKeyString,
-                privateKeyPath.toString(),
-                "GENESIS_ADMIN"
-            );
-
-            logger.warn("✅ Genesis admin created successfully!");
-            logger.warn("📋 Username: GENESIS_ADMIN");
-            logger.warn("📋 Public Key: {}...", publicKeyString.substring(0, Math.min(50, publicKeyString.length())));
-            logger.warn("📁 Private key: {}", privateKeyPath);
-            logger.warn("📁 Public key: {}", publicKeyPath);
-            logger.warn("⚠️  IMPORTANT: Backup genesis admin keys immediately!");
-            logger.warn("⚠️  Store keys in a secure location (password manager, HSM, etc.)");
-
-            return adminInfo;
-
-        } catch (Exception e) {
-            logger.error("❌ Failed to initialize genesis admin", e);
-            return null;
-        } finally {
-            GLOBAL_BLOCKCHAIN_LOCK.unlockWrite(stamp);
         }
     }
 
@@ -565,16 +479,28 @@ public class Blockchain {
 
     /**
      * ENHANCED: Add a new block with keywords and category
-     * THREAD-SAFE: Enhanced version with search functionality
-     * DEADLOCK FIX: Moved indexBlockchain() call OUTSIDE writeLock scope to prevent deadlock
-     * 
+     *
+     * <p><strong>THREAD-SAFE:</strong> Enhanced version with search functionality</p>
+     * <p><strong>DEADLOCK FIX:</strong> Moved indexBlockchain() call OUTSIDE writeLock scope to prevent deadlock</p>
+     *
+     * <p><strong>SECURITY (v1.0.6):</strong> This method throws exceptions for critical
+     * security violations instead of returning null. All keys must be pre-authorized
+     * via {@link #addAuthorizedKey} before they can add blocks.</p>
+     *
      * @param data The data to store in the block (cannot be null or empty)
      * @param manualKeywords Optional keywords for search indexing
      * @param category Optional category for classification
      * @param signerPrivateKey Private key for signing (cannot be null)
      * @param signerPublicKey Public key for verification (cannot be null)
-     * @return The created block, or null if creation failed
+     * @return The created block if successful, or null if a non-critical error occurs
      * @throws IllegalArgumentException if data is null or empty, or if signerPrivateKey or signerPublicKey is null
+     * @throws UnauthorizedKeyException if the signer key is not authorized at the time of
+     *         block creation (operation: ADD_BLOCK)
+     * @throws BlockValidationException if validation fails due to:
+     *         <ul>
+     *           <li>DATA_SIZE - Block data exceeds maximum allowed size</li>
+     *           <li>SEQUENCE - Inconsistent state (no genesis block but sequence number is not zero)</li>
+     *         </ul>
      */
     public Block addBlockWithKeywords(
         String data,
@@ -607,7 +533,11 @@ public class Blockchain {
                     int storageDecision = validateAndDetermineStorage(data);
                     if (storageDecision == 0) {
                         logger.error("❌ Block data validation failed");
-                        return null;
+                        throw new BlockValidationException(
+                            "Block data validation failed: data size exceeds maximum allowed",
+                            null,
+                            "DATA_SIZE"
+                        );
                     }
 
                     // 2. Verify that the key is authorized at the time of block creation
@@ -622,7 +552,12 @@ public class Blockchain {
                         )
                     ) {
                         logger.error("❌ Unauthorized key attempting to add block");
-                        return null;
+                        throw new UnauthorizedKeyException(
+                            "Unauthorized key attempting to add block",
+                            publicKeyString,
+                            "ADD_BLOCK",
+                            blockTimestamp
+                        );
                     }
 
                     // 3. Get the last block for previous hash (MUST BE CALLED BEFORE getNextBlockNumberAtomic!)
@@ -638,7 +573,11 @@ public class Blockchain {
                             "❌ Inconsistent state: no genesis block but number is {}",
                             nextBlockNumber
                         );
-                        return null;
+                        throw new BlockValidationException(
+                            String.format("Inconsistent state: no genesis block but sequence number is %d", nextBlockNumber),
+                            nextBlockNumber,
+                            "SEQUENCE"
+                        );
                     }
 
                     // 5. Handle off-chain storage if needed
@@ -778,9 +717,22 @@ public class Blockchain {
 
     /**
      * CORE FUNCTION: Add a new block to the chain (with size validation)
-     * FIXED: Complete thread-safety with atomic block number generation
-     * RACE CONDITION FIX: Now uses getNextBlockNumberAtomic() to prevent duplicate block numbers
-     * under high-concurrency scenarios (30+ simultaneous threads)
+     *
+     * <p><strong>FIXED:</strong> Complete thread-safety with atomic block number generation</p>
+     * <p><strong>RACE CONDITION FIX:</strong> Now uses getNextBlockNumberAtomic() to prevent
+     * duplicate block numbers under high-concurrency scenarios (30+ simultaneous threads)</p>
+     *
+     * <p><strong>SECURITY (v1.0.6):</strong> All keys must be pre-authorized before they can
+     * add blocks. This method throws exceptions for critical security violations.</p>
+     *
+     * @param data The data to store in the block (cannot be null or empty)
+     * @param signerPrivateKey Private key for signing the block (cannot be null)
+     * @param signerPublicKey Public key for verification (cannot be null)
+     * @return true if the block was successfully added, false if a non-critical error occurs
+     * @throws IllegalArgumentException if data is null or empty, or if keys are null
+     * @throws UnauthorizedKeyException if the signer key is not authorized (operation: ADD_BLOCK)
+     * @throws BlockValidationException if validation fails (DATA_SIZE, SEQUENCE, or validation errors)
+     * @see #addBlockWithKeywords for the underlying implementation with keyword support
      */
     public boolean addBlock(
         String data,
@@ -798,13 +750,27 @@ public class Blockchain {
 
     /**
      * Add an encrypted block to the chain
-     * The data will be encrypted using enterprise-grade AES-256-GCM encryption
      *
-     * @param data The sensitive data to encrypt and store
-     * @param encryptionPassword The password for encryption
-     * @param signerPrivateKey Private key for signing
-     * @param signerPublicKey Public key for verification
-     * @return The created encrypted block, or null if failed
+     * <p>The data will be encrypted using enterprise-grade AES-256-GCM encryption
+     * before being stored in the blockchain.</p>
+     *
+     * <p><strong>SECURITY (v1.0.6):</strong> This method throws exceptions for critical
+     * security violations. All keys must be pre-authorized before they can add encrypted blocks.</p>
+     *
+     * @param data The sensitive data to encrypt and store (cannot be null or empty)
+     * @param encryptionPassword The password for encryption (cannot be null or empty)
+     * @param signerPrivateKey Private key for signing (cannot be null)
+     * @param signerPublicKey Public key for verification (cannot be null)
+     * @return The created encrypted block if successful, or null if a non-critical error occurs
+     * @throws IllegalArgumentException if encryptionPassword is null or empty
+     * @throws UnauthorizedKeyException if the signer key is not authorized at the time of
+     *         block creation (operation: ADD_ENCRYPTED_BLOCK)
+     * @throws BlockValidationException if validation fails due to:
+     *         <ul>
+     *           <li>ENCRYPTION - Failed to encrypt block data</li>
+     *           <li>ENCRYPTED_DATA_SIZE - Encrypted data exceeds maximum block size limits</li>
+     *         </ul>
+     * @see #addEncryptedBlockWithKeywords for advanced version with keyword support
      */
     public Block addEncryptedBlock(
         String data,
@@ -825,13 +791,28 @@ public class Blockchain {
     /**
      * Add an encrypted block with keywords and category
      *
-     * @param data The sensitive data to encrypt and store
-     * @param encryptionPassword The password for encryption
-     * @param manualKeywords Manual keywords for search (will also be encrypted)
-     * @param category Content category (e.g., "MEDICAL", "FINANCIAL", "LEGAL")
-     * @param signerPrivateKey Private key for signing
-     * @param signerPublicKey Public key for verification
-     * @return The created encrypted block, or null if failed
+     * <p>The data will be encrypted using enterprise-grade AES-256-GCM encryption.
+     * Keywords and category metadata are also encrypted for privacy.</p>
+     *
+     * <p><strong>SECURITY (v1.0.6):</strong> This method throws exceptions for critical
+     * security violations instead of returning null. All keys must be pre-authorized
+     * before they can add encrypted blocks.</p>
+     *
+     * @param data The sensitive data to encrypt and store (cannot be null or empty)
+     * @param encryptionPassword The password for encryption (cannot be null or empty)
+     * @param manualKeywords Manual keywords for search (will also be encrypted), can be null
+     * @param category Content category (e.g., "MEDICAL", "FINANCIAL", "LEGAL"), can be null
+     * @param signerPrivateKey Private key for signing (cannot be null)
+     * @param signerPublicKey Public key for verification (cannot be null)
+     * @return The created encrypted block if successful, or null if a non-critical error occurs
+     * @throws IllegalArgumentException if encryptionPassword is null or empty
+     * @throws UnauthorizedKeyException if the signer key is not authorized at the time of
+     *         block creation (operation: ADD_ENCRYPTED_BLOCK)
+     * @throws BlockValidationException if validation fails due to:
+     *         <ul>
+     *           <li>ENCRYPTION - Failed to encrypt block data</li>
+     *           <li>ENCRYPTED_DATA_SIZE - Encrypted data exceeds maximum block size limits</li>
+     *         </ul>
      */
     public Block addEncryptedBlockWithKeywords(
         String data,
@@ -868,7 +849,12 @@ public class Blockchain {
                         )
                     ) {
                         logger.error("❌ Unauthorized public key");
-                        return null;
+                        throw new UnauthorizedKeyException(
+                            "Unauthorized key attempting to add encrypted block",
+                            publicKeyString,
+                            "ADD_ENCRYPTED_BLOCK",
+                            blockTimestamp
+                        );
                     }
 
                     // 3. Encrypt the data BEFORE size validation
@@ -881,7 +867,12 @@ public class Blockchain {
                             );
                     } catch (Exception e) {
                         logger.error("❌ Failed to encrypt block data", e);
-                        return null;
+                        throw new BlockValidationException(
+                            "Failed to encrypt block data: " + e.getMessage(),
+                            null,
+                            "ENCRYPTION",
+                            e
+                        );
                     }
 
                     // 4. Validate encrypted data size
@@ -889,7 +880,11 @@ public class Blockchain {
                         logger.error(
                             "❌ Encrypted data exceeds maximum block size limits"
                         );
-                        return null;
+                        throw new BlockValidationException(
+                            "Encrypted data exceeds maximum block size limits",
+                            null,
+                            "ENCRYPTED_DATA_SIZE"
+                        );
                     }
 
                     // 5. Get last block and generate next block number atomically
@@ -1503,14 +1498,14 @@ public class Blockchain {
         String[] manualKeywords,
         String category
     ) {
-        // 1. Keywords manuals
+        // 1. Manual keywords
         if (manualKeywords != null && manualKeywords.length > 0) {
             block.setManualKeywords(
                 String.join(" ", manualKeywords).toLowerCase()
             );
         }
 
-        // 2. Categoria
+        // 2. Category
         if (category != null && !category.trim().isEmpty()) {
             block.setContentCategory(category.toUpperCase());
         }
@@ -1565,11 +1560,33 @@ public class Blockchain {
     }
 
     /**
-     * CORE FUNCTION: Validate an individual block
-     */
-    /**
-     * Valida un bloque individual contra el bloque anterior
-     * ENHANCED: Added detailed logging to detect integrity failures
+     * CORE FUNCTION: Validate an individual block against the previous block
+     *
+     * <p>Performs comprehensive validation including:</p>
+     * <ul>
+     *   <li>Previous hash integrity verification</li>
+     *   <li>Block number sequence validation</li>
+     *   <li>Hash integrity check (SHA3-256)</li>
+     *   <li>Digital signature verification (ML-DSA-87)</li>
+     *   <li>Authorization verification (RBAC v1.0.6)</li>
+     * </ul>
+     *
+     * <p><strong>SECURITY (v1.0.6):</strong> This method now throws exceptions instead of
+     * returning false for critical security violations. This ensures that validation failures
+     * cannot be silently ignored.</p>
+     *
+     * @param block The block to validate
+     * @param previousBlock The previous block in the chain (null for genesis block)
+     * @return true if the block is valid and all checks pass
+     * @throws BlockValidationException if validation fails due to:
+     *         <ul>
+     *           <li>PREVIOUS_HASH - Previous hash mismatch detected</li>
+     *           <li>BLOCK_NUMBER - Block number sequence error</li>
+     *           <li>HASH - Block hash integrity check failed</li>
+     *           <li>SIGNATURE - Digital signature verification failed</li>
+     *         </ul>
+     * @throws UnauthorizedKeyException if the block is signed by a key that was not
+     *         authorized at the time of block creation (operation: SIGN_BLOCK)
      */
     public boolean validateBlock(Block block, Block previousBlock) {
         String threadName = Thread.currentThread().getName();
@@ -1602,7 +1619,12 @@ public class Blockchain {
                 );
                 logger.error("🔍 Expected: {}", previousBlock.getHash());
                 logger.error("🔍 Got: {}", block.getPreviousHash());
-                return false;
+                throw new BlockValidationException(
+                    String.format("Previous hash mismatch. Expected: %s, Got: %s",
+                        previousBlock.getHash(), block.getPreviousHash()),
+                    block.getBlockNumber(),
+                    "PREVIOUS_HASH"
+                );
             }
 
             // 2. Verify that the block number is sequential
@@ -1627,12 +1649,17 @@ public class Blockchain {
                     "🔍 Expected: {}",
                     (previousBlock.getBlockNumber() + 1L)
                 );
-                return false;
+                throw new BlockValidationException(
+                    String.format("Block number sequence error. Expected: %d, Got: %d",
+                        previousBlock.getBlockNumber() + 1L, block.getBlockNumber()),
+                    block.getBlockNumber(),
+                    "BLOCK_NUMBER"
+                );
             }
 
             // 3. Verify hash integrity
             // Use appropriate content building method based on encryption status
-            String blockContent = block.isDataEncrypted() ? 
+            String blockContent = block.isDataEncrypted() ?
                 buildBlockContentForEncrypted(block) : buildBlockContent(block);
             String calculatedHash = CryptoUtil.calculateHash(blockContent);
             if (!block.getHash().equals(calculatedHash)) {
@@ -1645,7 +1672,12 @@ public class Blockchain {
                 logger.error("🔍 Calculated hash: {}", calculatedHash);
                 logger.error("🔍 Block content: {}", blockContent);
                 logger.error("🔍 Is encrypted: {}", block.isDataEncrypted());
-                return false;
+                throw new BlockValidationException(
+                    String.format("Block hash integrity check failed. Stored: %s, Calculated: %s",
+                        block.getHash(), calculatedHash),
+                    block.getBlockNumber(),
+                    "HASH"
+                );
             }
 
             // 4. Verify digital signature
@@ -1653,7 +1685,7 @@ public class Blockchain {
                 block.getSignerPublicKey()
             );
             // Use the same content building method as for hash calculation
-            String signatureContent = block.isDataEncrypted() ? 
+            String signatureContent = block.isDataEncrypted() ?
                 buildBlockContentForEncrypted(block) : buildBlockContent(block);
             if (
                 !CryptoUtil.verifySignature(
@@ -1674,7 +1706,12 @@ public class Blockchain {
                     block.getSignerPublicKey()
                 );
                 logger.error("🔍 Is encrypted: {}", block.isDataEncrypted());
-                return false;
+                throw new BlockValidationException(
+                    String.format("Block signature verification failed (signer: %s...)",
+                        block.getSignerPublicKey().substring(0, Math.min(50, block.getSignerPublicKey().length()))),
+                    block.getBlockNumber(),
+                    "SIGNATURE"
+                );
             }
 
             // 5. Verify that the key was authorized at the time of block creation
@@ -1691,7 +1728,12 @@ public class Blockchain {
                 );
                 logger.error("🔍 Signer: {}", block.getSignerPublicKey());
                 logger.error("🔍 Block timestamp: {}", block.getTimestamp());
-                return false;
+                throw new UnauthorizedKeyException(
+                    "Block signed by key that was not authorized at time of block creation",
+                    block.getSignerPublicKey(),
+                    "SIGN_BLOCK",
+                    block.getTimestamp()
+                );
             }
 
             logger.info(
@@ -2591,12 +2633,12 @@ public class Blockchain {
 
     /**
      * CORE FUNCTION: Build block content for hashing and signing (without signature)
-     */
-    /**
-     * Construye el contenido del bloque para verificación de hash y firma
      *
-     * @param block El bloque del que construir el contenido
-     * @return El contenido del bloque como string
+     * <p>Constructs the canonical block content string used for both hash calculation
+     * and digital signature verification.</p>
+     *
+     * @param block The block from which to build the content
+     * @return The block content as a string
      */
     public String buildBlockContent(Block block) {
         // Use epoch seconds for timestamp to ensure consistency
@@ -2665,114 +2707,333 @@ public class Blockchain {
     }
 
     /**
-     * CORE FUNCTION: Add an authorized key
-     * IMPROVED: Now allows re-authorization of previously revoked keys
-     * FIXED: Added global synchronization and consistent timestamps
+     * Creates the bootstrap SUPER_ADMIN user (simplified bootstrap method).
+     *
+     * <p><strong>🔒 SECURITY:</strong> This method is ONLY valid when the blockchain has no users
+     * (bootstrap state). It automatically creates the first user with SUPER_ADMIN role.</p>
+     *
+     * <p><strong>Use Case:</strong> Single-user demos and initial blockchain setup.</p>
+     *
+     * <p><strong>Example:</strong></p>
+     * <pre>{@code
+     * Blockchain blockchain = new Blockchain();
+     * KeyPair adminKeys = CryptoUtil.generateKeyPair();
+     * blockchain.createBootstrapAdmin(
+     *     CryptoUtil.publicKeyToString(adminKeys.getPublic()),
+     *     "BootstrapAdmin"
+     * );
+     * }</pre>
+     *
+     * @param publicKeyString Public key of the bootstrap admin
+     * @param ownerName Name of the bootstrap admin
+     * @return true if bootstrap admin created successfully
+     * @throws SecurityException if blockchain already has users
+     * @throws IllegalArgumentException if publicKeyString or ownerName is invalid
+     * @since 1.0.6
      */
-    public boolean addAuthorizedKey(String publicKeyString, String ownerName) {
-        return addAuthorizedKey(publicKeyString, ownerName, null);
+    public boolean createBootstrapAdmin(String publicKeyString, String ownerName) {
+        return addAuthorizedKey(publicKeyString, ownerName, null, UserRole.SUPER_ADMIN);
     }
 
     /**
-     * CORE FUNCTION: Add an authorized key with specific timestamp (for CLI operations)
-     * FIXED: Thread-safe with global transaction and consistent timestamps
+     * Add an authorized key with role-based validation (RBAC v1.0.6+).
+     *
+     * <p><strong>🔒 Security (v1.0.6+):</strong> Validates caller has permission to create
+     * users with the specified target role.</p>
+     *
+     * <p><strong>Bootstrap Mode:</strong> For genesis admin creation ONLY, pass {@code callerKeyPair = null}.
+     * After genesis admin exists, ALL operations require caller credentials.</p>
+     *
+     * <p><strong>Permission Matrix:</strong></p>
+     * <ul>
+     *   <li><strong>SUPER_ADMIN</strong> can create: ADMIN, USER, READ_ONLY</li>
+     *   <li><strong>ADMIN</strong> can create: USER, READ_ONLY (cannot create ADMIN)</li>
+     *   <li><strong>USER</strong> cannot create users</li>
+     * </ul>
+     *
+     * @param publicKeyString The public key to authorize
+     * @param ownerName The username
+     * @param callerKeyPair The caller's credentials (null ONLY for genesis admin bootstrap)
+     * @param targetRole The role to assign to the new user
+     * @return true if successful
+     * @throws SecurityException if caller lacks permission or callerKeyPair=null after bootstrap
+     * @throws IllegalArgumentException if parameters are invalid
+     * @since 1.0.6
      */
     public boolean addAuthorizedKey(
         String publicKeyString,
         String ownerName,
-        LocalDateTime creationTime
+        java.security.KeyPair callerKeyPair,
+        com.rbatllet.blockchain.security.UserRole targetRole
     ) {
+        // Input validation
+        if (publicKeyString == null || publicKeyString.trim().isEmpty()) {
+            throw new IllegalArgumentException("Public key cannot be null or empty");
+        }
+        if (publicKeyString.length() > 10000) {
+            throw new IllegalArgumentException("Public key size cannot exceed 10KB (DoS protection)");
+        }
+        if (ownerName == null || ownerName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Owner name cannot be null or empty");
+        }
+        if (ownerName.length() > 256) {
+            throw new IllegalArgumentException("Owner name cannot exceed 256 characters");
+        }
+        if (targetRole == null) {
+            throw new IllegalArgumentException("Target role cannot be null");
+        }
+
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.writeLock();
         try {
-            return addAuthorizedKeyInternal(publicKeyString, ownerName, creationTime);
+            // Bootstrap mode: Allow genesis admin creation without caller
+            if (callerKeyPair == null) {
+                long existingUsers = authorizedKeyDAO.getAuthorizedKeyCount();
+                if (existingUsers > 0) {
+                    throw new SecurityException(
+                        "❌ SECURITY VIOLATION: callerKeyPair=null only allowed for genesis admin bootstrap.\n" +
+                        "Existing users: " + existingUsers + "\n" +
+                        "After bootstrap, ALL operations require caller credentials for RBAC validation."
+                    );
+                }
+
+                // Genesis admin creation - MUST be SUPER_ADMIN role (security requirement)
+                if (targetRole != com.rbatllet.blockchain.security.UserRole.SUPER_ADMIN) {
+                    throw new SecurityException(
+                        "❌ SECURITY VIOLATION: Genesis bootstrap ONLY allows SUPER_ADMIN role.\n" +
+                        "Requested role: " + targetRole + "\n" +
+                        "Genesis bootstrap (callerKeyPair=null) is reserved EXCLUSIVELY for creating the single SUPER_ADMIN.\n" +
+                        "To create ADMIN/USER/READ_ONLY users, use SUPER_ADMIN credentials as caller."
+                    );
+                }
+
+                logger.info("🔑 BOOTSTRAP: Creating genesis admin '{}' with SUPER_ADMIN role", ownerName);
+                return addAuthorizedKeyInternal(publicKeyString, ownerName, com.rbatllet.blockchain.security.UserRole.SUPER_ADMIN, null);
+            }
+
+            // Normal mode: Validate caller has permission
+            String callerPublicKey = com.rbatllet.blockchain.util.CryptoUtil.publicKeyToString(callerKeyPair.getPublic());
+            com.rbatllet.blockchain.entity.AuthorizedKey caller = authorizedKeyDAO.getAuthorizedKeyByPublicKey(callerPublicKey);
+
+            if (caller == null || !caller.isActive()) {
+                throw new SecurityException(
+                    "❌ AUTHORIZATION REQUIRED: Caller is not authorized.\n" +
+                    "Public key: " + callerPublicKey.substring(0, Math.min(50, callerPublicKey.length())) + "..."
+                );
+            }
+
+            com.rbatllet.blockchain.security.UserRole callerRole = caller.getRole();
+
+            // Check if caller can create target role
+            if (!callerRole.canCreateRole(targetRole)) {
+                throw new SecurityException(
+                    "❌ PERMISSION DENIED: Role '" + callerRole + "' cannot create users with role '" + targetRole + "'.\n" +
+                    "Caller: " + caller.getOwnerName() + "\n" +
+                    "Target user: " + ownerName + "\n" +
+                    "See docs/security/ROLE_BASED_ACCESS_CONTROL.md for permission matrix."
+                );
+            }
+
+            logger.info("✅ User '{}' (role: {}) creating new user '{}' with role {}",
+                        caller.getOwnerName(), callerRole, ownerName, targetRole);
+
+            return addAuthorizedKeyInternal(publicKeyString, ownerName, targetRole, caller.getOwnerName());
+
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.unlockWrite(stamp);
         }
     }
 
     /**
-     * INTERNAL: Add authorized key logic without lock
-     * This is the single source of truth for adding authorized keys
+     * INTERNAL: Add authorized key logic without lock (RBAC v1.0.6+).
+     * This is the single source of truth for adding authorized keys.
+     *
+     * @param publicKeyString The public key
+     * @param ownerName The username
+     * @param role The role to assign
+     * @param createdBy Who created this user (null for genesis admin)
+     * @return true if successful
+     * @throws IllegalArgumentException if parameters are invalid or key validation fails
+     * @since 1.0.6
      */
     private boolean addAuthorizedKeyInternal(
         String publicKeyString,
         String ownerName,
-        LocalDateTime creationTime
+        com.rbatllet.blockchain.security.UserRole role,
+        String createdBy
     ) {
         return JPAUtil.executeInTransaction(em -> {
+            // Validate input parameters (defensive - should already be validated by public wrapper)
+            if (publicKeyString == null || publicKeyString.trim().isEmpty()) {
+                logger.error("❌ Public key cannot be null or empty");
+                throw new IllegalArgumentException("Public key cannot be null or empty");
+            }
+            if (ownerName == null || ownerName.trim().isEmpty()) {
+                logger.error("❌ Owner name cannot be null or empty");
+                throw new IllegalArgumentException("Owner name cannot be null or empty");
+            }
+
+            // Enhanced key validation using CryptoUtil
+            PublicKey testKey;
             try {
-                // Validate input parameters
-                if (
-                    publicKeyString == null ||
-                    publicKeyString.trim().isEmpty()
-                ) {
-                    logger.error("❌ Public key cannot be null or empty");
-                    return false;
+                // Validate key format and cryptographic validity
+                testKey = CryptoUtil.stringToPublicKey(publicKeyString);
+                if (testKey == null) {
+                    logger.error("❌ Invalid public key format");
+                    throw new IllegalArgumentException("Invalid public key format");
                 }
-                if (ownerName == null || ownerName.trim().isEmpty()) {
-                    logger.error("❌ Owner name cannot be null or empty");
-                    return false;
-                }
-
-                // Enhanced key validation using CryptoUtil
-                try {
-                    // Validate key format and cryptographic validity
-                    PublicKey testKey = CryptoUtil.stringToPublicKey(
-                        publicKeyString
-                    );
-                    if (testKey == null) {
-                        logger.error("❌ Invalid public key format");
-                        return false;
-                    }
-
-                    // Check if key is currently authorized
-                    if (authorizedKeyDAO.isKeyAuthorized(publicKeyString)) {
-                        logger.debug("ℹ️ Key already authorized (not an error - expected in concurrent operations)");
-                        return false;
-                    }
-                } catch (Exception e) {
-                    logger.error("❌ Key validation failed", e);
-                    return false;
-                }
-
-                // Use consistent timestamp
-                LocalDateTime timestamp = creationTime != null
-                    ? creationTime
-                    : LocalDateTime.now();
-
-                // Allow re-authorization: create new authorization record
-                AuthorizedKey authorizedKey = new AuthorizedKey(
-                    publicKeyString,
-                    ownerName,
-                    timestamp
-                );
-
-                authorizedKeyDAO.saveAuthorizedKey(authorizedKey);
-                logger.info("🔑 Authorized key added for: {}", ownerName);
-                return true;
+            } catch (IllegalArgumentException e) {
+                // Re-throw IllegalArgumentException as-is
+                throw e;
             } catch (Exception e) {
-                logger.error("❌ Error adding authorized key", e);
+                // Wrap other exceptions
+                logger.error("❌ Key validation failed", e);
+                throw new IllegalArgumentException("Key validation failed: " + e.getMessage(), e);
+            }
+
+            // Check if key is currently authorized (benign case - return false)
+            if (authorizedKeyDAO.isKeyAuthorized(publicKeyString)) {
+                logger.debug("ℹ️ Key already authorized (not an error - expected in concurrent operations)");
                 return false;
             }
+
+            // Allow re-authorization: create new authorization record (RBAC v1.0.6+)
+            AuthorizedKey authorizedKey = new AuthorizedKey(
+                publicKeyString,
+                ownerName,
+                role,
+                createdBy,
+                LocalDateTime.now()
+            );
+
+            authorizedKeyDAO.saveAuthorizedKey(authorizedKey);
+            logger.info("🔑 Authorized key added for: {} (role: {}, created by: {})",
+                ownerName, role, createdBy != null ? createdBy : "SYSTEM");
+            return true;
         });
     }
 
     /**
-     * PUBLIC: Add authorized key WITHOUT acquiring lock
+     * Add authorized key for system recovery (bypasses RBAC validation).
+     *
+     * <p><strong>🔒 SECURITY WARNING:</strong> This method bypasses RBAC validation and should
+     * ONLY be used by ChainRecoveryManager for automatic recovery operations. DO NOT use
+     * for regular user creation.</p>
+     *
+     * <p>This method allows the system to re-authorize keys that were deleted and caused
+     * blockchain corruption. The recovered keys are assigned USER role by default and
+     * createdBy is set to "SYSTEM_RECOVERY" for audit trail.</p>
+     *
+     * @param publicKeyString The public key to re-authorize
+     * @param ownerName The owner name (usually includes "(RECOVERED-timestamp)" suffix)
+     * @param role The role to assign (typically USER for recovered keys)
+     * @param createdBy The creator identifier (typically "SYSTEM_RECOVERY")
+     * @return true if successful
+     * @throws IllegalArgumentException if parameters are invalid
+     * @since 1.0.6
+     */
+    public boolean addAuthorizedKeySystemRecovery(
+        String publicKeyString,
+        String ownerName,
+        com.rbatllet.blockchain.security.UserRole role,
+        String createdBy
+    ) {
+        // Input validation (same as normal addAuthorizedKey)
+        if (publicKeyString == null || publicKeyString.trim().isEmpty()) {
+            throw new IllegalArgumentException("Public key cannot be null or empty");
+        }
+        if (publicKeyString.length() > 10000) {
+            throw new IllegalArgumentException("Public key size cannot exceed 10KB (DoS protection)");
+        }
+        if (ownerName == null || ownerName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Owner name cannot be null or empty");
+        }
+        if (ownerName.length() > 256) {
+            throw new IllegalArgumentException("Owner name cannot exceed 256 characters");
+        }
+        if (role == null) {
+            throw new IllegalArgumentException("Target role cannot be null");
+        }
+
+        long stamp = GLOBAL_BLOCKCHAIN_LOCK.writeLock();
+        try {
+            logger.warn("⚠️  SYSTEM RECOVERY: Re-authorizing key '{}' with role {} (createdBy: {})",
+                ownerName, role, createdBy);
+            return addAuthorizedKeyInternal(publicKeyString, ownerName, role, createdBy);
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.unlockWrite(stamp);
+        }
+    }
+
+    /**
+     * PUBLIC: Add authorized key WITHOUT acquiring lock (RBAC v1.0.6+).
      * WARNING: Only call this method from within an existing lock context!
-     * This is used by ChainRecoveryManager when already holding a writeLock
+     * This is used by ChainRecoveryManager when already holding a writeLock.
+     *
+     * @param publicKeyString The public key
+     * @param ownerName The username
+     * @param role The role to assign
+     * @param createdBy Who created this user (null for system operations)
+     * @return true if successful
+     * @since 1.0.6
      */
     public boolean addAuthorizedKeyWithoutLock(
         String publicKeyString,
         String ownerName,
-        LocalDateTime creationTime
+        com.rbatllet.blockchain.security.UserRole role,
+        String createdBy
     ) {
-        return addAuthorizedKeyInternal(publicKeyString, ownerName, creationTime);
+        return addAuthorizedKeyInternal(publicKeyString, ownerName, role, createdBy);
+    }
+
+    /**
+     * Get the role of a user by their public key (RBAC v1.0.6+).
+     *
+     * @param publicKey The user's public key
+     * @return The user's role, or null if not authorized or inactive
+     * @since 1.0.6
+     */
+    public com.rbatllet.blockchain.security.UserRole getUserRole(String publicKey) {
+        long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
+        try {
+            com.rbatllet.blockchain.entity.AuthorizedKey key = authorizedKeyDAO.getAuthorizedKeyByPublicKey(publicKey);
+            return (key != null && key.isActive()) ? key.getRole() : null;
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
+        }
+    }
+
+    /**
+     * Check if a user has a specific role or higher (RBAC v1.0.6+).
+     *
+     * <p>Uses privilege level comparison:
+     * SUPER_ADMIN (100) &gt; ADMIN (50) &gt; USER (10) &gt; READ_ONLY (1)</p>
+     *
+     * <p><strong>Example:</strong></p>
+     * <pre>
+     * if (blockchain.hasRole(publicKey, UserRole.ADMIN)) {
+     *     // User is ADMIN or SUPER_ADMIN
+     * }
+     * </pre>
+     *
+     * @param publicKey The user's public key
+     * @param requiredRole The required role
+     * @return true if the user has the required role or higher privilege level
+     * @since 1.0.6
+     */
+    public boolean hasRole(String publicKey, com.rbatllet.blockchain.security.UserRole requiredRole) {
+        com.rbatllet.blockchain.security.UserRole userRole = getUserRole(publicKey);
+        return userRole != null && userRole.getPrivilegeLevel() >= requiredRole.getPrivilegeLevel();
     }
 
     /**
      * CORE FUNCTION: Revoke an authorized key
      * FIXED: Added global synchronization for thread safety
+     *
+     * @param publicKeyString The public key to revoke
+     * @return true if revocation was successful
+     * @throws IllegalArgumentException if publicKeyString is null/empty or key not found
+     * @throws IllegalStateException if attempting to revoke the last active SUPER_ADMIN (system lockout protection)
+     * @since 1.0.6
      */
     public boolean revokeAuthorizedKey(String publicKeyString) {
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.writeLock();
@@ -2786,31 +3047,49 @@ public class Blockchain {
     /**
      * INTERNAL: Revoke authorized key logic without lock
      * This is the single source of truth for revoking authorized keys
+     *
+     * @param publicKeyString The public key to revoke
+     * @return true if revocation was successful
+     * @throws IllegalArgumentException if publicKeyString is null/empty or key not found
+     * @throws IllegalStateException if attempting to revoke the last active SUPER_ADMIN (system lockout protection)
+     * @since 1.0.6
      */
     private boolean revokeAuthorizedKeyInternal(String publicKeyString) {
         return JPAUtil.executeInTransaction(em -> {
-            try {
-                // Validate input parameter
-                if (
-                    publicKeyString == null ||
-                    publicKeyString.trim().isEmpty()
-                ) {
-                    logger.error("❌ Public key cannot be null or empty");
-                    return false;
-                }
-
-                if (!authorizedKeyDAO.isKeyAuthorized(publicKeyString)) {
-                    logger.error("❌ Key not found or already inactive");
-                    return false;
-                }
-
-                authorizedKeyDAO.revokeAuthorizedKey(publicKeyString);
-                logger.info("✅ Key revoked successfully");
-                return true;
-            } catch (Exception e) {
-                logger.error("❌ Error revoking key", e);
-                return false;
+            // Validate input parameter
+            if (publicKeyString == null || publicKeyString.trim().isEmpty()) {
+                logger.error("❌ Public key cannot be null or empty");
+                throw new IllegalArgumentException("Public key cannot be null or empty");
             }
+
+            if (!authorizedKeyDAO.isKeyAuthorized(publicKeyString)) {
+                logger.error("❌ Key not found or already inactive");
+                throw new IllegalArgumentException("Key not found or already inactive: " +
+                    publicKeyString.substring(0, Math.min(50, publicKeyString.length())) + "...");
+            }
+
+            // RBAC v1.0.6: Check if revoking last active SUPER_ADMIN (system protection)
+            AuthorizedKey keyToRevoke = authorizedKeyDAO.getAuthorizedKeyByPublicKey(publicKeyString);
+            if (keyToRevoke != null && keyToRevoke.getRole() == com.rbatllet.blockchain.security.UserRole.SUPER_ADMIN) {
+                // Count active SUPER_ADMINs
+                long activeSuperAdminCount = authorizedKeyDAO.countActiveSuperAdmins();
+
+                if (activeSuperAdminCount <= 1) {
+                    logger.error("❌ Cannot revoke the last active SUPER_ADMIN (system lockout protection)");
+                    logger.error("   Create another SUPER_ADMIN before revoking this one");
+                    throw new IllegalStateException(
+                        "SYSTEM LOCKOUT PROTECTION: Cannot revoke the last active SUPER_ADMIN. " +
+                        "Create another SUPER_ADMIN before revoking '" + keyToRevoke.getOwnerName() + "'"
+                    );
+                }
+
+                logger.warn("⚠️ Revoking SUPER_ADMIN '{}' ({} active SUPER_ADMINs remaining)",
+                           keyToRevoke.getOwnerName(), activeSuperAdminCount - 1);
+            }
+
+            authorizedKeyDAO.revokeAuthorizedKey(publicKeyString);
+            logger.info("✅ Key revoked successfully");
+            return true;
         });
     }
 
@@ -2818,6 +3097,12 @@ public class Blockchain {
      * PUBLIC: Revoke authorized key WITHOUT acquiring lock
      * WARNING: Only call this method from within an existing lock context!
      * This is used by ChainRecoveryManager when already holding a writeLock
+     *
+     * @param publicKeyString The public key to revoke
+     * @return true if revocation was successful
+     * @throws IllegalArgumentException if publicKeyString is null/empty or key not found
+     * @throws IllegalStateException if attempting to revoke the last active SUPER_ADMIN (system lockout protection)
+     * @since 1.0.6
      */
     public boolean revokeAuthorizedKeyWithoutLock(String publicKeyString) {
         return revokeAuthorizedKeyInternal(publicKeyString);
@@ -3149,18 +3434,21 @@ public class Blockchain {
     }
 
     /**
-     * SECURITY: Validate file path for export/import operations
-     * Prevents path traversal attacks and ensures safe file operations
+     * Validate file path for security and accessibility
+     * SECURITY: Prevents path traversal attacks and ensures safe file operations
      *
      * @param filePath The file path to validate
-     * @param operation Description of the operation (for logging)
-     * @return true if path is safe, false otherwise
+     * @param operation The operation being performed ("export" or "import")
+     * @throws IllegalArgumentException if filePath is null/empty or has invalid extension
+     * @throws SecurityException if path traversal attempt detected
+     * @throws IllegalStateException if directory creation fails or file not accessible
+     * @since 1.0.6
      */
-    private boolean isValidFilePath(String filePath, String operation) {
+    private void isValidFilePath(String filePath, String operation) {
         // Fast validation checks first
         if (filePath == null || filePath.trim().isEmpty()) {
             logger.error("❌ {} file path cannot be null or empty", operation);
-            return false;
+            throw new IllegalArgumentException(operation + " file path cannot be null or empty");
         }
 
         // SECURITY: Comprehensive path traversal prevention
@@ -3168,14 +3456,18 @@ public class Blockchain {
             filePath.contains("%252e%252e") || filePath.contains("\\..") ||
             filePath.contains("/..")) {
             logger.error("❌ SECURITY: Path traversal attempt detected in {}: {}", operation, filePath);
-            return false;
+            throw new SecurityException(
+                "SECURITY: Path traversal attempt detected in " + operation + ": " + filePath
+            );
         }
 
         // Fast extension check for export/import
         boolean isExportImport = "export".equals(operation) || "import".equals(operation);
         if (isExportImport && !filePath.endsWith(".json")) {
             logger.error("❌ SECURITY: {} only allowed for .json files: {}", operation, filePath);
-            return false;
+            throw new IllegalArgumentException(
+                "SECURITY: " + operation + " only allowed for .json files: " + filePath
+            );
         }
 
         // Additional security: normalize path and verify it doesn't escape
@@ -3186,7 +3478,9 @@ public class Blockchain {
             // Double-check that normalization didn't reveal traversal
             if (normalizedString.contains("..")) {
                 logger.error("❌ SECURITY: Path normalization revealed traversal in {}: {}", operation, filePath);
-                return false;
+                throw new SecurityException(
+                    "SECURITY: Path normalization revealed traversal in " + operation + ": " + filePath
+                );
             }
 
             File file = new File(filePath);
@@ -3196,24 +3490,27 @@ public class Blockchain {
                 if (parentDir != null && !parentDir.exists()) {
                     if (!parentDir.mkdirs()) {
                         logger.error("❌ Cannot create directory for {}: {}", operation, parentDir);
-                        return false;
+                        throw new IllegalStateException(
+                            "Cannot create directory for " + operation + ": " + parentDir
+                        );
                     }
                 }
             } else if ("import".equals(operation)) {
                 if (!file.exists()) {
                     logger.error("❌ Import file does not exist: {}", filePath);
-                    return false;
+                    throw new IllegalArgumentException("Import file does not exist: " + filePath);
                 }
                 if (!file.canRead()) {
                     logger.error("❌ No read permission for import file: {}", filePath);
-                    return false;
+                    throw new IllegalStateException("No read permission for import file: " + filePath);
                 }
             }
-
-            return true;
-        } catch (SecurityException e) {
-            logger.error("❌ Security error validating {} path: {}", operation, e.getMessage());
-            return false;
+        } catch (IllegalArgumentException | SecurityException | IllegalStateException e) {
+            // Re-throw our custom exceptions
+            throw e;
+        } catch (Exception e) {
+            logger.error("❌ Error validating {} path: {}", operation, e.getMessage());
+            throw new IllegalStateException("Error validating " + operation + " path: " + e.getMessage(), e);
         }
     }
 
@@ -3233,13 +3530,15 @@ public class Blockchain {
      *
      * @param filePath Path to export the blockchain JSON
      * @param includeOffChainFiles Whether to export off-chain files (false for temporary backups)
-     * @return true if export was successful, false otherwise
+     * @return true if export was successful
+     * @throws IllegalArgumentException if filePath is invalid
+     * @throws SecurityException if path traversal attempt detected
+     * @throws IllegalStateException if directory creation fails
+     * @since 1.0.6
      */
     public boolean exportChain(String filePath, boolean includeOffChainFiles) {
-        // SECURITY FIX: Validate file path for security
-        if (!isValidFilePath(filePath, "export")) {
-            return false;
-        }
+        // SECURITY FIX: Validate file path for security (throws exceptions if invalid)
+        isValidFilePath(filePath, "export");
 
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
         try {
@@ -3419,12 +3718,17 @@ public class Blockchain {
      * CORE FUNCTION 3: Chain Import - Restore blockchain from file
      * FIXED: Added thread-safety with write lock and global transaction
      * DEADLOCK FIX: Validation moved outside writeLock to prevent nested lock acquisition
+     *
+     * @param filePath Path to the JSON file to import
+     * @return true if import was successful
+     * @throws IllegalArgumentException if filePath is invalid or file does not exist
+     * @throws SecurityException if path traversal attempt detected
+     * @throws IllegalStateException if file is not readable
+     * @since 1.0.6
      */
     public boolean importChain(String filePath) {
-        // SECURITY FIX: Validate file path for security
-        if (!isValidFilePath(filePath, "import")) {
-            return false;
-        }
+        // SECURITY FIX: Validate file path for security (throws exceptions if invalid)
+        isValidFilePath(filePath, "import");
 
         boolean importSuccess = false;
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.writeLock();
@@ -3768,30 +4072,38 @@ public class Blockchain {
     /**
      * CORE FUNCTION 4: Block Rollback - Remove last N blocks
      * FIXED: Added thread-safety with write lock and global transaction
+     *
+     * @param numberOfBlocks Number of blocks to remove from the end of the chain
+     * @return true if rollback was successful
+     * @throws IllegalArgumentException if numberOfBlocks is invalid (<=0 or >= total blocks)
+     * @since 1.0.6
      */
     public boolean rollbackBlocks(Long numberOfBlocks) {
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.writeLock();
         try {
             return JPAUtil.executeInTransaction(em -> {
+                if (numberOfBlocks <= 0) {
+                    logger.error("❌ Number of blocks to rollback must be positive");
+                    throw new IllegalArgumentException(
+                        "Number of blocks to rollback must be positive (got: " + numberOfBlocks + ")"
+                    );
+                }
+
+                long currentBlockCount = blockRepository.getBlockCount();
+                if (numberOfBlocks >= currentBlockCount) {
+                    logger.error(
+                        "❌ Cannot rollback {} blocks. Only {} blocks exist (including genesis)",
+                        numberOfBlocks,
+                        currentBlockCount
+                    );
+                    throw new IllegalArgumentException(
+                        "Cannot rollback " + numberOfBlocks + " blocks. Only " + currentBlockCount +
+                        " blocks exist (including genesis). Maximum rollback: " + (currentBlockCount - 1)
+                    );
+                }
+
+                // MEMORY SAFETY: Process rollback in batches without loading all blocks
                 try {
-                    if (numberOfBlocks <= 0) {
-                        logger.error(
-                            "❌ Number of blocks to rollback must be positive"
-                        );
-                        return false;
-                    }
-
-                    long currentBlockCount = blockRepository.getBlockCount();
-                    if (numberOfBlocks >= currentBlockCount) {
-                        logger.error(
-                            "❌ Cannot rollback {} blocks. Only {} blocks exist (including genesis)",
-                            numberOfBlocks,
-                            currentBlockCount
-                        );
-                        return false;
-                    }
-
-                    // MEMORY SAFETY: Process rollback in batches without loading all blocks
                     // Calculate the starting offset for the last N blocks
                     long startBlockNumber = currentBlockCount - numberOfBlocks;
 
@@ -3922,27 +4234,36 @@ public class Blockchain {
     /**
      * INTERNAL: Rollback to block logic without lock
      * This is the single source of truth for rollback operations
+     *
+     * @param targetBlockNumber The block number to rollback to
+     * @return true if rollback was successful
+     * @throws IllegalArgumentException if targetBlockNumber is invalid
+     * @since 1.0.6
      */
     private boolean rollbackToBlockInternal(Long targetBlockNumber) {
         return JPAUtil.executeInTransaction(em -> {
+            // Defensive validation (should already be validated by public wrapper)
+            if (targetBlockNumber == null || targetBlockNumber < 0L) {
+                logger.error("❌ Target block number cannot be null or negative");
+                throw new IllegalArgumentException(
+                    "Target block number cannot be null or negative (got: " + targetBlockNumber + ")"
+                );
+            }
+
+            long currentBlockCount = blockRepository.getBlockCount();
+            if (targetBlockNumber >= currentBlockCount) {
+                logger.error(
+                    "❌ Target block {} does not exist. Current max block: {}",
+                    targetBlockNumber,
+                    (currentBlockCount - 1)
+                );
+                throw new IllegalArgumentException(
+                    "Target block " + targetBlockNumber + " does not exist. Current max block: " +
+                    (currentBlockCount - 1)
+                );
+            }
+
             try {
-                if (targetBlockNumber == null || targetBlockNumber < 0L) {
-                    logger.error(
-                        "❌ Target block number cannot be negative"
-                    );
-                    return false;
-                }
-
-                long currentBlockCount = blockRepository.getBlockCount();
-                if (targetBlockNumber >= currentBlockCount) {
-                    logger.error(
-                        "❌ Target block {} does not exist. Current max block: {}",
-                        targetBlockNumber,
-                        (currentBlockCount - 1)
-                    );
-                    return false;
-                }
-
                 int blocksToRemove = (int) (currentBlockCount -
                     targetBlockNumber -
                     1L);
@@ -4052,6 +4373,11 @@ public class Blockchain {
      * PUBLIC: Rollback to block WITHOUT acquiring lock
      * WARNING: Only call this method from within an existing lock context!
      * This is used by ChainRecoveryManager when already holding a writeLock
+     *
+     * @param targetBlockNumber The block number to rollback to
+     * @return true if rollback was successful
+     * @throws IllegalArgumentException if targetBlockNumber is invalid
+     * @since 1.0.6
      */
     public boolean rollbackToBlockWithoutLock(Long targetBlockNumber) {
         return rollbackToBlockInternal(targetBlockNumber);
@@ -4726,16 +5052,16 @@ public class Blockchain {
     }
 
     /**
-     * Verifica si una clave estaba autorizada en un momento específico
-     * 
-     * DEADLOCK FIX #4: StampedLock is NOT reentrant!
-     * This method is called from validateChainDetailed() which already holds readLock.
-     * Attempting to acquire another readLock while already holding one causes DEADLOCK.
-     * SOLUTION: Remove lock from this method - caller already holds appropriate lock.
+     * Verifies if a key was authorized at a specific point in time
      *
-     * @param publicKeyString La clave pública a verificar
-     * @param timestamp El momento en el que se quiere verificar la autorización
-     * @return true si la clave estaba autorizada en ese momento, false en caso contrario
+     * <p><strong>DEADLOCK FIX #4:</strong> StampedLock is NOT reentrant!</p>
+     * <p>This method is called from validateChainDetailed() which already holds readLock.
+     * Attempting to acquire another readLock while already holding one causes DEADLOCK.</p>
+     * <p><strong>SOLUTION:</strong> Remove lock from this method - caller already holds appropriate lock.</p>
+     *
+     * @param publicKeyString The public key to verify
+     * @param timestamp The point in time at which to verify authorization
+     * @return true if the key was authorized at that time, false otherwise
      */
     public boolean wasKeyAuthorizedAt(
         String publicKeyString,
@@ -5224,7 +5550,10 @@ public class Blockchain {
      * @param reason Reason for deletion (for audit logging)
      * @param adminSignature Base64 encoded signature by authorized admin
      * @param adminPublicKey Public key of the administrator authorizing this operation
-     * @return true if key was deleted, false otherwise
+     * @return true if key was deleted successfully
+     * @throws SecurityException if admin authorization is invalid
+     * @throws IllegalStateException if emergency backup creation fails or safety checks prevent deletion
+     * @throws IllegalArgumentException if the key does not exist
      */
     public boolean dangerouslyDeleteAuthorizedKey(
         String publicKey,
@@ -5237,14 +5566,14 @@ public class Blockchain {
         String signedMessage = publicKey + "|" + force + "|" + reason + "|" + System.currentTimeMillis() / 1000;
         if (!verifyAdminSignature(adminSignature, signedMessage, adminPublicKey)) {
             logger.error("❌ SECURITY VIOLATION: Dangerous key deletion attempt without proper authorization");
-            return false;
+            throw new SecurityException("SECURITY VIOLATION: Invalid admin authorization for key deletion. Admin signature verification failed.");
         }
 
         // SECURITY: Create emergency backup before dangerous operation
         String backupId = createEmergencyBackup("key-deletion");
         if (backupId == null) {
             logger.error("❌ Cannot proceed with dangerous operation: backup creation failed");
-            return false;
+            throw new IllegalStateException("Cannot proceed with dangerous key deletion: emergency backup creation failed");
         }
 
         // DEADLOCK FIX: Check deletion impact BEFORE acquiring writeLock
@@ -5252,7 +5581,7 @@ public class Blockchain {
         KeyDeletionImpact impact = canDeleteAuthorizedKey(publicKey);
         if (!impact.keyExists()) {
             logger.error("❌ {}", impact.getMessage());
-            return false;
+            throw new IllegalArgumentException("Key deletion failed: " + impact.getMessage());
         }
 
         // 2. Safety check for historical blocks
@@ -5271,7 +5600,10 @@ public class Blockchain {
                 "📊 Impact details: {}",
                 impact.getMessage()
             );
-            return false;
+            throw new IllegalStateException(
+                "SAFETY BLOCK: Cannot delete key that signed " + impact.getAffectedBlocks() +
+                " historical blocks. Use force=true to override (WARNING: will break validation)"
+            );
         }
 
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.writeLock();
@@ -5424,8 +5756,12 @@ public class Blockchain {
      * Expose the regular deleteAuthorizedKey method referenced in documentation
      * This is a safe wrapper that only deletes keys with no historical impact
      * FIXED: Added thread-safety with read lock for impact check
+     *
      * @param publicKey The public key to delete
-     * @return true if key was safely deleted, false otherwise
+     * @return true if key was safely deleted
+     * @throws IllegalArgumentException if the key does not exist
+     * @throws IllegalStateException if the key has severe impact (historical blocks affected)
+     * @since 1.0.6
      */
     public boolean deleteAuthorizedKey(String publicKey) {
         long readStamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
@@ -5438,7 +5774,7 @@ public class Blockchain {
 
         if (!impact.keyExists()) {
             logger.error("❌ Cannot delete key: {}", impact.getMessage());
-            return false;
+            throw new IllegalArgumentException("Cannot delete key: " + impact.getMessage());
         }
 
         if (impact.isSevereImpact()) {
@@ -5446,7 +5782,11 @@ public class Blockchain {
             logger.error(
                 "Use dangerouslyDeleteAuthorizedKey() with force=true if deletion is absolutely necessary"
             );
-            return false;
+            throw new IllegalStateException(
+                "SAFETY BLOCK: " + impact.getMessage() + ". " +
+                "Key signed " + impact.getAffectedBlocks() + " historical blocks. " +
+                "Use dangerouslyDeleteAuthorizedKey() with force=true if deletion is absolutely necessary"
+            );
         }
 
         // Safe to delete - no historical blocks affected
@@ -6075,21 +6415,26 @@ public class Blockchain {
      * Enhanced export for encrypted chains with encryption key management
      * Exports blockchain data with encryption keys for proper restoration
      * MEMORY SAFETY: Validates blockchain size before export (max 500K blocks)
+     *
+     * @param filePath Path to export the encrypted blockchain JSON
+     * @param masterPassword Master password for encrypting the export data
+     * @return true if export was successful
+     * @throws IllegalArgumentException if filePath or masterPassword is invalid
+     * @throws SecurityException if path traversal attempt detected
+     * @throws IllegalStateException if directory creation fails
      */
     public boolean exportEncryptedChain(
         String filePath,
         String masterPassword
     ) {
-        // Validate input parameters
-        if (filePath == null || filePath.trim().isEmpty()) {
-            logger.error("❌ Export file path cannot be null or empty");
-            return false;
-        }
+        // SECURITY FIX: Validate file path for security (throws exceptions if invalid)
+        isValidFilePath(filePath, "export");
+
+        // Validate master password
         if (masterPassword == null || masterPassword.trim().isEmpty()) {
-            logger.error(
-                "❌ Master password required for encrypted chain export"
+            throw new IllegalArgumentException(
+                "Master password required for encrypted chain export"
             );
-            return false;
         }
 
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
@@ -6196,16 +6541,25 @@ public class Blockchain {
     /**
      * Enhanced import for encrypted chains with encryption key restoration
      * Imports blockchain data and restores encryption keys for proper decryption
+     *
+     * @param filePath Path to the encrypted blockchain JSON file
+     * @param masterPassword Master password for decrypting the import data
+     * @return true if import was successful
+     * @throws IllegalArgumentException if filePath or masterPassword is invalid, or file doesn't exist
+     * @throws SecurityException if path traversal attempt detected
      */
     public boolean importEncryptedChain(
         String filePath,
         String masterPassword
     ) {
+        // SECURITY FIX: Validate file path for security (throws exceptions if invalid)
+        isValidFilePath(filePath, "import");
+
+        // Validate master password
         if (masterPassword == null || masterPassword.trim().isEmpty()) {
-            logger.error(
-                "❌ Master password required for encrypted chain import"
+            throw new IllegalArgumentException(
+                "Master password required for encrypted chain import"
             );
-            return false;
         }
 
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.writeLock();
@@ -6217,10 +6571,7 @@ public class Blockchain {
                     mapper.registerModule(new JavaTimeModule());
 
                     File file = new File(filePath);
-                    if (!file.exists()) {
-                        logger.error("❌ Import file not found: {}", filePath);
-                        return false;
-                    }
+                    // Note: File existence already validated in isValidFilePath
 
                     ChainExportData importData = mapper.readValue(
                         file,

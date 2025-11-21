@@ -15,7 +15,7 @@ This guide covers security best practices for using UserFriendlyEncryptionAPI in
 All users **MUST** be pre-authorized before using the API. The following pattern is now **mandatory**:
 
 ```java
-// 1. Create blockchain (auto-creates genesis admin on first run)
+// 1. Create blockchain (only genesis block is automatic)
 Blockchain blockchain = new Blockchain();
 
 // 2. Load genesis admin keys
@@ -24,11 +24,17 @@ KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
     "./keys/genesis-admin.public"
 );
 
-// 3. Create API with genesis admin credentials
-UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
-api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+// 3. Register bootstrap admin in blockchain (REQUIRED!)
+blockchain.createBootstrapAdmin(
+    CryptoUtil.publicKeyToString(genesisKeys.getPublic()),
+    "BOOTSTRAP_ADMIN"
+);
 
-// 4. Create and authorize regular users
+// 4. Create API with genesis admin credentials
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+api.setDefaultCredentials("BOOTSTRAP_ADMIN", genesisKeys);
+
+// 5. Create and authorize regular users
 KeyPair userKeys = api.createUser("username");
 api.setDefaultCredentials("username", userKeys);
 
@@ -458,8 +464,11 @@ Block financialBlock = api.storeDataWithIdentifier(
 ```
 
 ### Secure Key Rotation
+
+**🔒 v1.0.6+**: setupHierarchicalKeys() requires **SUPER_ADMIN** role.
+
 ```java
-// Hierarchical key management for enterprise security
+// Hierarchical key management for enterprise security (requires SUPER_ADMIN)
 String masterPassword = api.generateValidatedPassword(32, true);
 KeyManagementResult keySetup = api.setupHierarchicalKeys(masterPassword);
 
@@ -625,8 +634,14 @@ public class ProductionSecurityConfig {
             "./keys/genesis-admin.public"
         );
 
+        // Register bootstrap admin in blockchain (REQUIRED!)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(genesisKeys.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
-        api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+        api.setDefaultCredentials("BOOTSTRAP_ADMIN", genesisKeys);
 
         // Create production user with loaded keys
         KeyPair keys = loadProductionKeys(keystorePath, masterPassword);

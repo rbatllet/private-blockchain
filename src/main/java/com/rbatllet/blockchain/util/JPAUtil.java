@@ -20,27 +20,53 @@ public class JPAUtil {
 
     private static final Logger logger = LoggerFactory.getLogger(JPAUtil.class);
 
-    private static EntityManagerFactory entityManagerFactory;
-    private static DatabaseConfig currentConfig;
+    private static volatile EntityManagerFactory entityManagerFactory;
+    private static volatile DatabaseConfig currentConfig;
     private static final ReentrantLock initLock = new ReentrantLock();
-    
+    private static volatile boolean shutdownHookRegistered = false;
+
     // Thread-local storage for EntityManager to ensure each thread has its own
     private static final ThreadLocal<EntityManager> threadLocalEntityManager = new ThreadLocal<>();
     private static final ThreadLocal<EntityTransaction> threadLocalTransaction = new ThreadLocal<>();
-    
-    static {
-        try {
-            // Create the EntityManagerFactory with default SQLite configuration
-            initializeDefault();
 
-            // Add shutdown hook to clean up ThreadLocal variables
+    // FIXED: Lazy initialization instead of static block to prevent ExceptionInInitializerError
+    // This ensures that JPAUtil can recover from initialization failures in tests
+    static {
+        // Register shutdown hook once (but don't initialize yet)
+        registerShutdownHookOnce();
+    }
+
+    private static void registerShutdownHookOnce() {
+        if (!shutdownHookRegistered) {
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                cleanupThreadLocals();
-                shutdown();
+                try {
+                    cleanupThreadLocals();
+                    shutdown();
+                } catch (Exception e) {
+                    logger.debug("Exception during shutdown", e);
+                }
             }));
-        } catch (Throwable ex) {
-            logger.error("Initial EntityManagerFactory creation failed", ex);
-            throw new ExceptionInInitializerError(ex);
+            shutdownHookRegistered = true;
+        }
+    }
+
+    /**
+     * Ensures EntityManagerFactory is initialized (lazy initialization)
+     */
+    private static void ensureInitialized() {
+        if (entityManagerFactory == null || !entityManagerFactory.isOpen()) {
+            initLock.lock();
+            try {
+                // Double-check after acquiring lock
+                if (entityManagerFactory == null || !entityManagerFactory.isOpen()) {
+                    initializeDefault();
+                }
+            } catch (Exception e) {
+                logger.error("Failed to initialize EntityManagerFactory", e);
+                throw new RuntimeException("Database initialization failed", e);
+            } finally {
+                initLock.unlock();
+            }
         }
     }
 
@@ -209,6 +235,7 @@ public class JPAUtil {
     }
     
     public static EntityManagerFactory getEntityManagerFactory() {
+        ensureInitialized();
         return entityManagerFactory;
     }
     
@@ -217,6 +244,7 @@ public class JPAUtil {
      * Creates a new one if none exists for this thread
      */
     public static EntityManager getEntityManager() {
+        ensureInitialized();
         EntityManager em = threadLocalEntityManager.get();
         if (em == null || !em.isOpen()) {
             em = entityManagerFactory.createEntityManager();
@@ -311,7 +339,16 @@ public class JPAUtil {
             }
 
             return result;
+        } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
+            // Preserve validation exceptions - don't wrap them
+            if (shouldManageTransaction) {
+                logger.warn("❌ Rolling back transaction due to validation exception: {}", e.getMessage());
+                rollbackTransaction();
+                logger.debug("❌ Transaction rolled back");
+            }
+            throw e;
         } catch (Exception e) {
+            // Wrap other exceptions in RuntimeException
             if (shouldManageTransaction) {
                 logger.warn("❌ Rolling back transaction due to exception: {}", e.getMessage());
                 rollbackTransaction();
@@ -443,6 +480,8 @@ public class JPAUtil {
             if (entityManagerFactory != null && entityManagerFactory.isOpen()) {
                 entityManagerFactory.close();
             }
+            // RBAC v1.0.6 FIX: Clear currentConfig to prevent tests from accessing stale configuration
+            currentConfig = null;
         } finally {
             initLock.unlock();
         }

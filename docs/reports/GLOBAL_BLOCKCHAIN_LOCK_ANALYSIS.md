@@ -1,5 +1,7 @@
 # GLOBAL_BLOCKCHAIN_LOCK Analysis
 
+> **🔄 CODE UPDATE (v1.0.6+)**: Methods like `revokeAuthorizedKey()`, `rollbackToBlock()` now throw exceptions. See [Exception-Based Error Handling Guide](../security/EXCEPTION_BASED_ERROR_HANDLING_V1_0_6.md).
+
 ## 📊 Current Architecture
 
 ### **Lock Implementation**

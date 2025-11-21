@@ -40,7 +40,7 @@ public class RaceConditionFixTest {
         // Setup: Create a key for all threads to use
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
-        blockchain.addAuthorizedKey(publicKeyString, "RaceFixTestUser");
+        blockchain.createBootstrapAdmin(publicKeyString, "RaceFixTestUser");
 
         // Test configuration for maximum race condition potential
         int EXTREME_THREAD_COUNT = 50;
@@ -159,7 +159,7 @@ public class RaceConditionFixTest {
         // Test that the fix doesn't significantly impact performance
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
-        blockchain.addAuthorizedKey(publicKeyString, "PerformanceTestUser");
+        blockchain.createBootstrapAdmin(publicKeyString, "PerformanceTestUser");
 
         int THREAD_COUNT = 10;
         int BLOCKS_PER_THREAD = 5;

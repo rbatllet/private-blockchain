@@ -5,6 +5,7 @@ import com.rbatllet.blockchain.search.SearchSpecialistAPI;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.EnhancedSearchResult;
 import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
+import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import java.security.KeyPair;
 import java.util.List;
@@ -46,19 +47,29 @@ public class MultiAPIConfigurationDemo {
         System.out.println("===================================");
 
         Blockchain blockchain = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
         String password = "UserFriendlyDemo2024!";
 
-        // Load genesis admin keys
-        KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+        // Load bootstrap admin keys
+        KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
             "./keys/genesis-admin.private",
             "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (REQUIRED!)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeys.getPublic()),
+            "BOOTSTRAP_ADMIN"
         );
 
         // High Security Configuration
         System.out.println("🔒 High Security Configuration:");
         EncryptionConfig highSecConfig = EncryptionConfig.createHighSecurityConfig();
         UserFriendlyEncryptionAPI highSecAPI = new UserFriendlyEncryptionAPI(blockchain, highSecConfig);
-        highSecAPI.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+        highSecAPI.setDefaultCredentials("BOOTSTRAP_ADMIN", bootstrapKeys);
 
         KeyPair userKeys = highSecAPI.createUser("high-sec-user");
         highSecAPI.setDefaultCredentials("high-sec-user", userKeys);
@@ -80,7 +91,7 @@ public class MultiAPIConfigurationDemo {
         System.out.println("🚀 Performance Configuration:");
         EncryptionConfig perfConfig = EncryptionConfig.createPerformanceConfig();
         UserFriendlyEncryptionAPI perfAPI = new UserFriendlyEncryptionAPI(blockchain, perfConfig);
-        perfAPI.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
+        perfAPI.setDefaultCredentials("BOOTSTRAP_ADMIN", bootstrapKeys);
 
         KeyPair perfKeys = perfAPI.createUser("perf-user");
         perfAPI.setDefaultCredentials("perf-user", perfKeys);
@@ -99,12 +110,30 @@ public class MultiAPIConfigurationDemo {
     private static void demonstrateSearchSpecialistAPIConfigurations() throws Exception {
         System.out.println("🔍 SEARCH SPECIALIST API CONFIGURATIONS");
         System.out.println("======================================");
-        
+
         Blockchain blockchain = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
         String password = "SearchSpecialistDemo2024!";
-        
+
+        // Load bootstrap admin keys
+        KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (REQUIRED!)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeys.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         // Setup test data
         UserFriendlyEncryptionAPI dataAPI = new UserFriendlyEncryptionAPI(blockchain);
+        dataAPI.setDefaultCredentials("BOOTSTRAP_ADMIN", bootstrapKeys);
+
         KeyPair userKeys = dataAPI.createUser("search-user");
         dataAPI.setDefaultCredentials("search-user", userKeys);
         
@@ -177,13 +206,31 @@ public class MultiAPIConfigurationDemo {
         System.out.println("   🛡️ Metadata Encryption: " + (unifiedConfig.isMetadataEncryptionEnabled() ? "Enabled" : "Disabled"));
         System.out.println("   🔍 Corruption Detection: " + (unifiedConfig.isCorruptionDetectionEnabled() ? "Enabled" : "Disabled"));
         System.out.println();
-        
+
         // Step 1: Create blockchain and APIs with unified config
         Blockchain blockchain = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
         String password = "UnifiedDemo2024!";
-        
+
+        // Load bootstrap admin keys
+        KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (REQUIRED!)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeys.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         // UserFriendlyEncryptionAPI with unified config
         UserFriendlyEncryptionAPI dataAPI = new UserFriendlyEncryptionAPI(blockchain, unifiedConfig);
+        dataAPI.setDefaultCredentials("BOOTSTRAP_ADMIN", bootstrapKeys);
+
         KeyPair userKeys = dataAPI.createUser("unified-user");
         dataAPI.setDefaultCredentials("unified-user", userKeys);
         

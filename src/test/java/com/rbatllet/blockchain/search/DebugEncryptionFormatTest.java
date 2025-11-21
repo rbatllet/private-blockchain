@@ -2,6 +2,8 @@ package com.rbatllet.blockchain.search;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.JPAUtil;
 import org.junit.jupiter.api.*;
@@ -13,14 +15,22 @@ import java.security.KeyPair;
  * Debug test to understand encryption metadata format
  */
 public class DebugEncryptionFormatTest {
-    
+
     private static Blockchain blockchain;
+    private static KeyPair bootstrapKeyPair;
     private static KeyPair authorizedKeyPair;
     private static final String ENCRYPTION_PASSWORD = "DebugFormat123!@#";
-    
+
     @BeforeAll
     static void setUpClass() {
         blockchain = new Blockchain();
+
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
         authorizedKeyPair = CryptoUtil.generateKeyPair();
     }
     
@@ -34,11 +44,19 @@ public class DebugEncryptionFormatTest {
         // Clean database before each test to ensure isolation - using thread-safe DAO method
         // BlockRepository now package-private - use clearAndReinitialize();
         blockchain.getAuthorizedKeyDAO().cleanupTestData();
-        
+
+        // Register bootstrap admin in blockchain (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         // Re-add authorized key after cleanup for test to work
         blockchain.addAuthorizedKey(
             CryptoUtil.publicKeyToString(authorizedKeyPair.getPublic()),
-            "Test User"
+            "Test User",
+            bootstrapKeyPair,
+            UserRole.USER
         );
     }
     

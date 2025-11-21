@@ -1,5 +1,7 @@
 package com.rbatllet.blockchain.core;
 
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.validation.ChainValidationResult;
 import com.rbatllet.blockchain.test.util.TestDatabaseUtils;
@@ -17,12 +19,13 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Test de consistència de la blockchain - Verificació d'inconsistències críticas
+ * Blockchain consistency test - Verification of critical inconsistencies
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @DisplayName("Critical Blockchain Consistency Tests")
 class CriticalConsistencyTest {
 
+    private KeyPair bootstrapKeyPair;
     private KeyPair aliceKeyPair;
     private KeyPair bobKeyPair;
     private String alicePublicKey;
@@ -32,15 +35,21 @@ class CriticalConsistencyTest {
     Path tempDir;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
+        // Clean database and enable test mode before each test to ensure test isolation
+        TestDatabaseUtils.setupTest();
+
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
         // The generateKeyPair() method now uses the new hierarchical key system internally
         aliceKeyPair = CryptoUtil.generateKeyPair();
         bobKeyPair = CryptoUtil.generateKeyPair();
         alicePublicKey = CryptoUtil.publicKeyToString(aliceKeyPair.getPublic());
         bobPublicKey = CryptoUtil.publicKeyToString(bobKeyPair.getPublic());
-        
-        // Clean database and enable test mode before each test to ensure test isolation
-        TestDatabaseUtils.setupTest();
     }
     
     @AfterEach
@@ -54,17 +63,27 @@ class CriticalConsistencyTest {
     @DisplayName("🔥 Test Concurrency Issues")
     void testConcurrencyIssues() throws Exception {
         Blockchain blockchain = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
+        // Register bootstrap admin first (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         ExecutorService executor = Executors.newFixedThreadPool(3);
-        
+
         try {
-            assertTrue(blockchain.addAuthorizedKey(alicePublicKey, "Alice"));
+            assertTrue(blockchain.addAuthorizedKey(alicePublicKey, "Alice", bootstrapKeyPair, UserRole.USER));
             
             // Test concurrent operations
             CompletableFuture<Boolean> future1 = CompletableFuture.supplyAsync(() -> 
                 blockchain.addBlock("Block 1", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()), executor);
             
             CompletableFuture<Boolean> future2 = CompletableFuture.supplyAsync(() -> 
-                blockchain.addAuthorizedKey(bobPublicKey, "Bob"), executor);
+                blockchain.addAuthorizedKey(bobPublicKey, "Bob", bootstrapKeyPair, UserRole.USER), executor);
             
             CompletableFuture<Boolean> future3 = CompletableFuture.supplyAsync(() -> 
                 blockchain.addBlock("Block 2", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()), executor);
@@ -95,10 +114,19 @@ class CriticalConsistencyTest {
     @DisplayName("🔥 Test Rapid Key Cycles")
     void testRapidKeyCycles() {
         Blockchain blockchain = new Blockchain();
-        
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
+        // Register bootstrap admin first (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         // Rapid authorization/revocation cycles
         for (int i = 0; i < 10; i++) {
-            assertTrue(blockchain.addAuthorizedKey(alicePublicKey, "Alice-" + i));
+            assertTrue(blockchain.addAuthorizedKey(alicePublicKey, "Alice-" + i, bootstrapKeyPair, UserRole.USER));
             assertTrue(blockchain.addBlock("Cycle " + i, aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()));
             assertTrue(blockchain.revokeAuthorizedKey(alicePublicKey));
             assertFalse(blockchain.addBlock("Should fail " + i, aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()));
@@ -115,19 +143,32 @@ class CriticalConsistencyTest {
     @DisplayName("🔥 Test Import/Export Edge Cases")
     void testImportExportEdgeCases() throws Exception {
         Blockchain original = new Blockchain();
-        
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        original.clearAndReinitialize();
+
+        // Register bootstrap admin first (RBAC v1.0.6)
+        original.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         // Create complex scenario
-        assertTrue(original.addAuthorizedKey(alicePublicKey, "Alice"));
+        assertTrue(original.addAuthorizedKey(alicePublicKey, "Alice", bootstrapKeyPair, UserRole.USER));
         assertTrue(original.addBlock("Block 1", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()));
         assertTrue(original.revokeAuthorizedKey(alicePublicKey));
-        assertTrue(original.addAuthorizedKey(alicePublicKey, "Alice-Reauth"));
+        assertTrue(original.addAuthorizedKey(alicePublicKey, "Alice-Reauth", bootstrapKeyPair, UserRole.USER));
         assertTrue(original.addBlock("Block 2", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()));
         
         // Export/Import
         File exportFile = tempDir.resolve("edge_test.json").toFile();
         assertTrue(original.exportChain(exportFile.getAbsolutePath()));
-        
+
         Blockchain imported = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before import to avoid "Existing users" error
+        imported.clearAndReinitialize();
+
         assertTrue(imported.importChain(exportFile.getAbsolutePath()));
         
         // CRITICAL: Imported chain must be consistent
@@ -144,9 +185,18 @@ class CriticalConsistencyTest {
     @DisplayName("🔥 Test Rollback Consistency")
     void testRollbackConsistency() {
         Blockchain blockchain = new Blockchain();
-        
-        assertTrue(blockchain.addAuthorizedKey(alicePublicKey, "Alice"));
-        assertTrue(blockchain.addAuthorizedKey(bobPublicKey, "Bob"));
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
+        // Register bootstrap admin first (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
+        assertTrue(blockchain.addAuthorizedKey(alicePublicKey, "Alice", bootstrapKeyPair, UserRole.USER));
+        assertTrue(blockchain.addAuthorizedKey(bobPublicKey, "Bob", bootstrapKeyPair, UserRole.USER));
         
         // Create blocks
         for (int i = 0; i < 10; i++) {
@@ -175,7 +225,17 @@ class CriticalConsistencyTest {
     @DisplayName("🔥 Test Mass Operations")
     void testMassOperations() {
         Blockchain blockchain = new Blockchain();
-        assertTrue(blockchain.addAuthorizedKey(alicePublicKey, "Alice"));
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
+        // Register bootstrap admin first (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
+        assertTrue(blockchain.addAuthorizedKey(alicePublicKey, "Alice", bootstrapKeyPair, UserRole.USER));
         
         // Create many blocks
         for (int i = 0; i < 50; i++) {
@@ -201,15 +261,30 @@ class CriticalConsistencyTest {
     @DisplayName("🔥 Test Error State Recovery")
     void testErrorStateRecovery() {
         Blockchain blockchain = new Blockchain();
-        
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
+        // Register bootstrap admin first (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         long initialBlocks = blockchain.getBlockCount();
         int initialKeys = blockchain.getAuthorizedKeys().size();
-        
+
         // Try operations that should fail
         assertFalse(blockchain.addBlock("No auth", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()));
-        assertFalse(blockchain.revokeAuthorizedKey("non-existent"));
-        assertFalse(blockchain.addAuthorizedKey(null, "Invalid"));
-        
+
+        // RBAC FIX (v1.0.6): revokeAuthorizedKey() now throws IllegalArgumentException instead of returning false
+        assertThrows(IllegalArgumentException.class, () ->
+            blockchain.revokeAuthorizedKey("non-existent"));
+
+        // RBAC FIX (v1.0.6): addAuthorizedKey() now throws IllegalArgumentException instead of returning false
+        assertThrows(IllegalArgumentException.class, () ->
+            blockchain.addAuthorizedKey(null, "Invalid", bootstrapKeyPair, UserRole.USER));
+
         // State should be unchanged
         assertEquals(initialBlocks, blockchain.getBlockCount());
         assertEquals(initialKeys, blockchain.getAuthorizedKeys().size());
@@ -225,12 +300,21 @@ class CriticalConsistencyTest {
     @DisplayName("🏁 Final Comprehensive Test")
     void testFinalComprehensive() throws Exception {
         System.out.println("🔍 Running final comprehensive consistency test...");
-        
+
         Blockchain blockchain = new Blockchain();
-        
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
+        // Register bootstrap admin first (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         // Complex scenario combining all operations
-        assertTrue(blockchain.addAuthorizedKey(alicePublicKey, "Alice"));
-        assertTrue(blockchain.addAuthorizedKey(bobPublicKey, "Bob"));
+        assertTrue(blockchain.addAuthorizedKey(alicePublicKey, "Alice", bootstrapKeyPair, UserRole.USER));
+        assertTrue(blockchain.addAuthorizedKey(bobPublicKey, "Bob", bootstrapKeyPair, UserRole.USER));
         
         // Interleaved blocks
         for (int i = 0; i < 5; i++) {
@@ -245,8 +329,12 @@ class CriticalConsistencyTest {
         // Export/Import
         File exportFile = tempDir.resolve("final_test.json").toFile();
         assertTrue(blockchain.exportChain(exportFile.getAbsolutePath()));
-        
+
         Blockchain imported = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before import to avoid "Existing users" error
+        imported.clearAndReinitialize();
+
         assertTrue(imported.importChain(exportFile.getAbsolutePath()));
         
         // Operations on imported chain
@@ -255,9 +343,9 @@ class CriticalConsistencyTest {
         
         // Rollback
         assertTrue(imported.rollbackBlocks(2L));
-        
+
         // Re-authorization
-        assertTrue(imported.addAuthorizedKey(alicePublicKey, "Alice-Reauth"));
+        assertTrue(imported.addAuthorizedKey(alicePublicKey, "Alice-Reauth", bootstrapKeyPair, UserRole.USER));
         assertTrue(imported.addBlock("Alice works again", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()));
         
         // FINAL CRITICAL VALIDATION

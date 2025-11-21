@@ -2,6 +2,8 @@ package com.rbatllet.blockchain.core;
 
 import com.rbatllet.blockchain.config.DatabaseConfig;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.JPAUtil;
 import org.junit.jupiter.api.*;
@@ -44,6 +46,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class Phase_A7_PerformanceBenchmarkTest {
 
     private Blockchain blockchain;
+    private KeyPair bootstrapKeyPair;
     private KeyPair keyPair;
     private static final int BENCHMARK_SIZE = 10_000; // Reduced for faster execution (use -Dgroups=slow for larger benchmarks)
 
@@ -55,9 +58,21 @@ public class Phase_A7_PerformanceBenchmarkTest {
         blockchain = new Blockchain();
         blockchain.clearAndReinitialize();
 
+        // Load bootstrap admin keys (created automatically)
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         keyPair = CryptoUtil.generateKeyPair();
         String publicKeyStr = CryptoUtil.publicKeyToString(keyPair.getPublic());
-        blockchain.addAuthorizedKey(publicKeyStr, "TestUser");
+        blockchain.addAuthorizedKey(publicKeyStr, "TestUser", bootstrapKeyPair, UserRole.USER);
     }
 
     @AfterEach

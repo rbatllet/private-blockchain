@@ -78,7 +78,7 @@ public class StreamingApisDemo {
 
         keyPair = CryptoUtil.generateKeyPair();
         publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
-        blockchain.addAuthorizedKey(publicKeyString, "DemoUser");
+        blockchain.createBootstrapAdmin(publicKeyString, "DemoUser");
         System.out.println("  ✅ Authorized key added for DemoUser");
         System.out.println();
     }

@@ -2,7 +2,8 @@ package com.rbatllet.blockchain.service;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
-import com.rbatllet.blockchain.entity.OffChainData;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -12,11 +13,9 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.security.KeyPair;
-import java.time.LocalDateTime;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
 /**
  * Comprehensive tests for UserFriendlyEncryptionAPI Phase 3 methods
@@ -27,94 +26,62 @@ public class UserFriendlyEncryptionAPIPhase3Test {
 
     @Mock
     private Blockchain mockBlockchain;
-    
+
     private UserFriendlyEncryptionAPI api;
     private KeyPair testKeyPair;
+    private KeyPair bootstrapKeyPair;
     private String testUsername = "testuser";
-    private List<Block> mockBlocks;
     private String testPassword = "TestPassword123!";
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        
+
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
         // Generate test key pair
         testKeyPair = CryptoUtil.generateKeyPair();
-        
+
         // Initialize API with real blockchain for better test stability
         Blockchain realBlockchain = new Blockchain();
-        
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        realBlockchain.clearAndReinitialize();
+
+        // Register bootstrap admin first (RBAC v1.0.6)
+        realBlockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
         // SECURITY FIX (v1.0.6): Pre-authorize user before creating API
         String publicKeyString = CryptoUtil.publicKeyToString(testKeyPair.getPublic());
-        realBlockchain.addAuthorizedKey(publicKeyString, testUsername);
-        
+        realBlockchain.addAuthorizedKey(publicKeyString, testUsername, bootstrapKeyPair, UserRole.USER);
+
         api = new UserFriendlyEncryptionAPI(realBlockchain, testUsername, testKeyPair);
-        
+
         // Setup mock blockchain data
         setupMockBlockchainData();
     }
 
     private void setupMockBlockchainData() {
-        mockBlocks = new ArrayList<>();
-        
-        // Block 0: Small text data suitable for hot storage
-        Block block0 = new Block();
-        block0.setBlockNumber(0L);
-        block0.setId(0L);
-        block0.setData("Small text data for hot tier");
-        block0.setHash("hash_0");
-        block0.setPreviousHash("genesis");
-        block0.setTimestamp(LocalDateTime.now().minusDays(1));
-        block0.setContentCategory("text");
-        mockBlocks.add(block0);
-        
-        // Block 1: Large data suitable for cold storage
-        Block block1 = new Block();
-        block1.setBlockNumber(1L);
-        block1.setId(1L);
-        block1.setData("Large archival data ".repeat(100)); // Simulate large data
-        block1.setHash("hash_1");
-        block1.setPreviousHash("hash_0");
-        block1.setTimestamp(LocalDateTime.now().minusDays(30));
-        block1.setContentCategory("archive");
-        mockBlocks.add(block1);
-        
-        // Block 2: Medium data with off-chain reference
-        Block block2 = new Block();
-        block2.setBlockNumber(2L);
-        block2.setId(2L);
-        block2.setData("Medium data with off-chain reference");
-        block2.setHash("hash_2");
-        block2.setPreviousHash("hash_1");
-        block2.setTimestamp(LocalDateTime.now().minusDays(7));
-        block2.setContentCategory("hybrid");
-        
-        // Add off-chain data
-        OffChainData offChainData = new OffChainData();
-        offChainData.setFilePath("/mock/path/data.bin");
-        offChainData.setDataHash("mock_hash");
-        offChainData.setFileSize(5120L);
-        offChainData.setContentType("application/octet-stream");
-        block2.setOffChainData(offChainData);
-        mockBlocks.add(block2);
-        
-        // Setup blockchain mock behavior
-        when(mockBlockchain.getValidChain()).thenReturn(mockBlocks);
-        when(mockBlockchain.getBlockCount()).thenReturn((long) mockBlocks.size());
-        when(mockBlockchain.getBlock(anyLong())).thenAnswer(invocation -> {
-            Long blockNumber = invocation.getArgument(0);
-            if (blockNumber >= 0 && blockNumber < mockBlocks.size()) {
-                return mockBlocks.get(blockNumber.intValue());
-            }
-            return null;
-        });
-        when(mockBlockchain.getBlock(anyLong())).thenAnswer(invocation -> {
-            Long blockNumber = invocation.getArgument(0);
-            return mockBlocks.stream()
-                .filter(block -> block.getBlockNumber().equals(blockNumber))
-                .findFirst()
-                .orElse(null);
-        });
+        // BUG FIX: Add REAL blocks to the real blockchain instead of creating unused mocks
+        // The test uses realBlockchain, so we need to add real blocks
+
+        Blockchain blockchain = api.getBlockchain();
+
+        // Block 1: Small text data (genesis is block 0)
+        blockchain.addBlock("Small text data for hot tier", testKeyPair.getPrivate(), testKeyPair.getPublic());
+
+        // Block 2: Large archival data
+        blockchain.addBlock("Large archival data ".repeat(100), testKeyPair.getPrivate(), testKeyPair.getPublic());
+
+        // Block 3: Medium data
+        blockchain.addBlock("Medium data for testing", testKeyPair.getPrivate(), testKeyPair.getPublic());
     }
 
     @Nested
@@ -584,34 +551,13 @@ public class UserFriendlyEncryptionAPIPhase3Test {
         @Test
         @DisplayName("Should handle large-scale storage optimization")
         void shouldHandleLargeScaleStorageOptimization() {
-            // Given - Large blockchain simulation
-            List<Block> largeBlockset = new ArrayList<>();
-            for (int i = 100; i < 200; i++) {
-                Block block = new Block();
-                block.setBlockNumber((long) i);
-                block.setId((long) i);
-                block.setData("Large scale test data " + i + " ".repeat(100));
-                block.setHash("hash_" + i);
-                block.setPreviousHash(i > 100 ? "hash_" + (i-1) : "hash_99");
-                block.setTimestamp(LocalDateTime.now().minusDays(i % 30));
-                largeBlockset.add(block);
-            }
-            when(mockBlockchain.getBlockCount()).thenReturn((long) largeBlockset.size());
-            when(mockBlockchain.getBlock(anyLong())).thenAnswer(invocation -> {
-                Long blockNumber = invocation.getArgument(0);
-                if (blockNumber >= 0 && blockNumber < largeBlockset.size()) {
-                    return largeBlockset.get(blockNumber.intValue());
-                }
-                return null;
-            });
-
-            // When
+            // When - Optimize storage tiers on existing blockchain
             long startTime = System.currentTimeMillis();
             StorageTieringManager.TieringReport report = api.optimizeStorageTiers();
             long endTime = System.currentTimeMillis();
 
             // Then
-            assertNotNull(report, "Should optimize large blockchain");
+            assertNotNull(report, "Should optimize blockchain");
             assertTrue(report.getBlocksAnalyzed() >= 0, "Should analyze blocks");
             assertTrue((endTime - startTime) < 10000, "Should complete within 10 seconds");
             assertNotNull(report.getSummary(), "Should provide summary");

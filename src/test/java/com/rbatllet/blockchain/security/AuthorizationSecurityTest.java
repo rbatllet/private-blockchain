@@ -25,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class AuthorizationSecurityTest {
 
     private Blockchain blockchain;
+    private KeyPair bootstrapKeyPair;
 
     @BeforeAll
     void setupOnce() {
@@ -34,8 +35,21 @@ class AuthorizationSecurityTest {
     @BeforeEach
     void setup() {
         blockchain = new Blockchain();
-        blockchain.completeCleanupForTestsWithBackups();
-        blockchain = new Blockchain(); // Fresh instance with genesis admin
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
+        // Load bootstrap admin keys
+        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (RBAC v1.0.6)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
     }
 
     @Test
@@ -77,8 +91,9 @@ class AuthorizationSecurityTest {
             );
         });
 
-        assertTrue(exception.getMessage().contains("AUTHORIZATION REQUIRED"),
-            "Exception should mention authorization requirement");
+        // SECURITY FIX (v1.0.6): setDefaultCredentials() validates authorization and throws "UNAUTHORIZED"
+        assertTrue(exception.getMessage().contains("UNAUTHORIZED"),
+            "Exception should indicate keys are not authorized");
     }
 
     @Test
@@ -89,7 +104,7 @@ class AuthorizationSecurityTest {
         String publicKey = CryptoUtil.publicKeyToString(userKeys.getPublic());
 
         // Pre-authorize user
-        blockchain.addAuthorizedKey(publicKey, "Alice");
+        blockchain.addAuthorizedKey(publicKey, "Alice", bootstrapKeyPair, UserRole.USER);
 
         // Create API (should work)
         assertDoesNotThrow(() -> {
@@ -112,9 +127,9 @@ class AuthorizationSecurityTest {
         KeyPair charlie = CryptoUtil.generateKeyPair();
 
         // Authorize all users
-        blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(alice.getPublic()), "Alice");
-        blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(bob.getPublic()), "Bob");
-        blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(charlie.getPublic()), "Charlie");
+        blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(alice.getPublic()), "Alice", bootstrapKeyPair, UserRole.USER);
+        blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(bob.getPublic()), "Bob", bootstrapKeyPair, UserRole.USER);
+        blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(charlie.getPublic()), "Charlie", bootstrapKeyPair, UserRole.USER);
 
         // Create APIs for all users (should all work)
         assertDoesNotThrow(() -> {

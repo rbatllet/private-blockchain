@@ -298,7 +298,37 @@ public class AuthorizedKeyDAO {
             }
         }
     }
-    
+
+    /**
+     * Get an authorized key by its public key (RBAC v1.0.6+).
+     * Returns the most recent authorization record for the given public key.
+     *
+     * @param publicKey The public key to search for
+     * @return The AuthorizedKey entity, or null if not found
+     * @since 1.0.6
+     */
+    public AuthorizedKey getAuthorizedKeyByPublicKey(String publicKey) {
+        if (publicKey == null || publicKey.trim().isEmpty()) {
+            throw new IllegalArgumentException("Public key cannot be null or empty");
+        }
+
+        EntityManager em = JPAUtil.getEntityManager();
+        try {
+            TypedQuery<AuthorizedKey> query = em.createQuery(
+                "SELECT ak FROM AuthorizedKey ak WHERE ak.publicKey = :publicKey ORDER BY ak.createdAt DESC",
+                AuthorizedKey.class);
+            query.setParameter("publicKey", publicKey);
+            query.setMaxResults(1);
+
+            List<AuthorizedKey> results = query.getResultList();
+            return results.isEmpty() ? null : results.get(0);
+        } finally {
+            if (!JPAUtil.hasActiveTransaction()) {
+                em.close();
+            }
+        }
+    }
+
     /**
      * Check if a public key was authorized at a specific time
      * This is used for validating historical blocks that may have been signed
@@ -391,6 +421,34 @@ public class AuthorizedKeyDAO {
             TypedQuery<Long> query = em.createQuery(
                 "SELECT COUNT(ak) FROM AuthorizedKey ak", Long.class
             );
+            return query.getSingleResult();
+        } finally {
+            if (!JPAUtil.hasActiveTransaction()) {
+                em.close();
+            }
+        }
+    }
+
+    /**
+     * Count active SUPER_ADMIN users.
+     *
+     * <p>This method is used to enforce the security protection that prevents
+     * revoking the last active SUPER_ADMIN (system lockout protection).</p>
+     *
+     * <p><strong>Use case:</strong> Before revoking a SUPER_ADMIN, check if there
+     * are at least 2 active SUPER_ADMINs. If only 1 exists, revocation must be blocked.</p>
+     *
+     * @return Number of active SUPER_ADMIN users
+     * @since 1.0.6
+     */
+    public long countActiveSuperAdmins() {
+        EntityManager em = JPAUtil.getEntityManager();
+        try {
+            TypedQuery<Long> query = em.createQuery(
+                "SELECT COUNT(ak) FROM AuthorizedKey ak WHERE ak.role = :role AND ak.isActive = true",
+                Long.class
+            );
+            query.setParameter("role", com.rbatllet.blockchain.security.UserRole.SUPER_ADMIN);
             return query.getSingleResult();
         } finally {
             if (!JPAUtil.hasActiveTransaction()) {

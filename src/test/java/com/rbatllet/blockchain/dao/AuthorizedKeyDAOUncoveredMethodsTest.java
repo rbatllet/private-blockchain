@@ -1,6 +1,7 @@
 package com.rbatllet.blockchain.dao;
 
 import com.rbatllet.blockchain.entity.AuthorizedKey;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.JPAUtil;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityTransaction;
@@ -77,9 +78,10 @@ class AuthorizedKeyDAOUncoveredMethodsTest {
         void shouldDeleteAllKeysAndReturnCorrectCount() {
             logger.debug("Testing deleteAllAuthorizedKeys with multiple keys");
             // Add multiple keys
-            AuthorizedKey key1 = new AuthorizedKey("public-key-1", "owner1", LocalDateTime.now());
-            AuthorizedKey key2 = new AuthorizedKey("public-key-2", "owner2", LocalDateTime.now().plusMinutes(1));
-            AuthorizedKey key3 = new AuthorizedKey("public-key-3", "owner3", LocalDateTime.now().plusMinutes(2));
+            LocalDateTime now = LocalDateTime.now();
+            AuthorizedKey key1 = new AuthorizedKey("public-key-1", "owner1", UserRole.USER, "TestCreator", now);
+            AuthorizedKey key2 = new AuthorizedKey("public-key-2", "owner2", UserRole.USER, "TestCreator", now.plusMinutes(1));
+            AuthorizedKey key3 = new AuthorizedKey("public-key-3", "owner3", UserRole.USER, "TestCreator", now.plusMinutes(2));
 
             keyDAO.saveAuthorizedKey(key1);
             keyDAO.saveAuthorizedKey(key2);
@@ -106,8 +108,9 @@ class AuthorizedKeyDAOUncoveredMethodsTest {
         @DisplayName("Should delete both active and revoked keys")
         void shouldDeleteBothActiveAndRevokedKeys() {
             // Add keys and revoke one
-            AuthorizedKey activeKey = new AuthorizedKey("active-key", "activeOwner", LocalDateTime.now());
-            AuthorizedKey revokedKey = new AuthorizedKey("revoked-key", "revokedOwner", LocalDateTime.now().plusMinutes(1));
+            LocalDateTime now = LocalDateTime.now();
+            AuthorizedKey activeKey = new AuthorizedKey("active-key", "activeOwner", UserRole.USER, "TestCreator", now);
+            AuthorizedKey revokedKey = new AuthorizedKey("revoked-key", "revokedOwner", UserRole.USER, "TestCreator", now.plusMinutes(1));
 
             keyDAO.saveAuthorizedKey(activeKey);
             keyDAO.saveAuthorizedKey(revokedKey);
@@ -170,7 +173,7 @@ class AuthorizedKeyDAOUncoveredMethodsTest {
             String testOwner = "testOwner";
             LocalDateTime now = LocalDateTime.now();
 
-            AuthorizedKey key = new AuthorizedKey(testPublicKey, testOwner, now);
+            AuthorizedKey key = new AuthorizedKey(testPublicKey, testOwner, UserRole.USER, "TestCreator", now);
 
             // Save the key
             assertDoesNotThrow(() -> {
@@ -193,8 +196,8 @@ class AuthorizedKeyDAOUncoveredMethodsTest {
             String publicKey = "duplicate-public-key";
             LocalDateTime now = LocalDateTime.now();
 
-            AuthorizedKey key1 = new AuthorizedKey(publicKey, "owner1", now);
-            AuthorizedKey key2 = new AuthorizedKey(publicKey, "owner2", now.plusMinutes(1));
+            AuthorizedKey key1 = new AuthorizedKey(publicKey, "owner1", UserRole.USER, "TestCreator", now);
+            AuthorizedKey key2 = new AuthorizedKey(publicKey, "owner2", UserRole.USER, "TestCreator", now.plusMinutes(1));
 
             // Save both keys
             assertDoesNotThrow(() -> {
@@ -285,7 +288,7 @@ class AuthorizedKeyDAOUncoveredMethodsTest {
         @DisplayName("Should return true and delete existing key")
         void shouldReturnTrueAndDeleteExistingKey() {
             String testKey = "test-delete-key-67890";
-            AuthorizedKey key = new AuthorizedKey(testKey, "testOwner", LocalDateTime.now());
+            AuthorizedKey key = new AuthorizedKey(testKey, "testOwner", UserRole.USER, "TestCreator", LocalDateTime.now());
 
             // Save the key first
             keyDAO.saveAuthorizedKey(key);
@@ -306,8 +309,8 @@ class AuthorizedKeyDAOUncoveredMethodsTest {
             LocalDateTime now = LocalDateTime.now();
 
             // Create multiple records with same public key
-            AuthorizedKey key1 = new AuthorizedKey(publicKey, "owner1", now);
-            AuthorizedKey key2 = new AuthorizedKey(publicKey, "owner2", now.plusMinutes(1));
+            AuthorizedKey key1 = new AuthorizedKey(publicKey, "owner1", UserRole.USER, "TestCreator", now);
+            AuthorizedKey key2 = new AuthorizedKey(publicKey, "owner2", UserRole.USER, "TestCreator", now.plusMinutes(1));
 
             keyDAO.saveAuthorizedKey(key1);
             keyDAO.saveAuthorizedKey(key2);
@@ -390,7 +393,7 @@ class AuthorizedKeyDAOUncoveredMethodsTest {
         @DisplayName("Should revoke active key successfully")
         void shouldRevokeActiveKeySuccessfully() {
             String testKey = "test-revoke-key-active";
-            AuthorizedKey key = new AuthorizedKey(testKey, "testOwner", LocalDateTime.now());
+            AuthorizedKey key = new AuthorizedKey(testKey, "testOwner", UserRole.USER, "TestCreator", LocalDateTime.now());
 
             // Save the key
             keyDAO.saveAuthorizedKey(key);
@@ -424,7 +427,7 @@ class AuthorizedKeyDAOUncoveredMethodsTest {
             LocalDateTime now = LocalDateTime.now();
 
             // Create a single authorization first
-            AuthorizedKey singleAuth = new AuthorizedKey(publicKey, "singleOwner", now);
+            AuthorizedKey singleAuth = new AuthorizedKey(publicKey, "singleOwner", UserRole.USER, "TestCreator", now);
             keyDAO.saveAuthorizedKey(singleAuth);
 
             // Verify key is authorized
@@ -454,7 +457,7 @@ class AuthorizedKeyDAOUncoveredMethodsTest {
         @DisplayName("Should complete silently when key already revoked")
         void shouldCompleteSilentlyWhenKeyAlreadyRevoked() {
             String testKey = "already-revoked-key";
-            AuthorizedKey key = new AuthorizedKey(testKey, "testOwner", LocalDateTime.now());
+            AuthorizedKey key = new AuthorizedKey(testKey, "testOwner", UserRole.USER, "TestCreator", LocalDateTime.now());
 
             // Save and revoke the key
             keyDAO.saveAuthorizedKey(key);
@@ -493,9 +496,10 @@ class AuthorizedKeyDAOUncoveredMethodsTest {
         @DisplayName("Should delete all test data successfully")
         void shouldDeleteAllTestDataSuccessfully() {
             // Add test data
-            AuthorizedKey key1 = new AuthorizedKey("cleanup-key-1", "owner1", LocalDateTime.now());
-            AuthorizedKey key2 = new AuthorizedKey("cleanup-key-2", "owner2", LocalDateTime.now().plusMinutes(1));
-            AuthorizedKey key3 = new AuthorizedKey("cleanup-key-3", "owner3", LocalDateTime.now().plusMinutes(2));
+            LocalDateTime now = LocalDateTime.now();
+            AuthorizedKey key1 = new AuthorizedKey("cleanup-key-1", "owner1", UserRole.USER, "TestCreator", now);
+            AuthorizedKey key2 = new AuthorizedKey("cleanup-key-2", "owner2", UserRole.USER, "TestCreator", now.plusMinutes(1));
+            AuthorizedKey key3 = new AuthorizedKey("cleanup-key-3", "owner3", UserRole.USER, "TestCreator", now.plusMinutes(2));
 
             keyDAO.saveAuthorizedKey(key1);
             keyDAO.saveAuthorizedKey(key2);
@@ -520,8 +524,9 @@ class AuthorizedKeyDAOUncoveredMethodsTest {
         @DisplayName("Should clear both active and revoked keys")
         void shouldClearBothActiveAndRevokedKeys() {
             // Add active and revoked keys
-            AuthorizedKey activeKey = new AuthorizedKey("cleanup-active", "activeOwner", LocalDateTime.now());
-            AuthorizedKey revokedKey = new AuthorizedKey("cleanup-revoked", "revokedOwner", LocalDateTime.now().plusMinutes(1));
+            LocalDateTime now = LocalDateTime.now();
+            AuthorizedKey activeKey = new AuthorizedKey("cleanup-active", "activeOwner", UserRole.USER, "TestCreator", now);
+            AuthorizedKey revokedKey = new AuthorizedKey("cleanup-revoked", "revokedOwner", UserRole.USER, "TestCreator", now.plusMinutes(1));
 
             keyDAO.saveAuthorizedKey(activeKey);
             keyDAO.saveAuthorizedKey(revokedKey);
@@ -553,10 +558,10 @@ class AuthorizedKeyDAOUncoveredMethodsTest {
         void shouldHandleCleanupWithComplexDataScenarios() {
             LocalDateTime now = LocalDateTime.now();
 
-            // Create complex scenario: multiple keys with same public key, revocations, etc.
-            AuthorizedKey key1v1 = new AuthorizedKey("complex-key", "owner1", now);
-            AuthorizedKey key1v2 = new AuthorizedKey("complex-key", "owner2", now.plusMinutes(1));
-            AuthorizedKey key2 = new AuthorizedKey("another-key", "owner3", now.plusMinutes(2));
+            // Create complex scenario: multiple keys with same public key, revocations, etc. (RBAC v1.0.6)
+            AuthorizedKey key1v1 = new AuthorizedKey("complex-key", "owner1", UserRole.USER, null, now);
+            AuthorizedKey key1v2 = new AuthorizedKey("complex-key", "owner2", UserRole.USER, null, now.plusMinutes(1));
+            AuthorizedKey key2 = new AuthorizedKey("another-key", "owner3", UserRole.USER, null, now.plusMinutes(2));
 
             keyDAO.saveAuthorizedKey(key1v1);
             keyDAO.saveAuthorizedKey(key1v2);

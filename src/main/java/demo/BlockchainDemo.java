@@ -1,6 +1,8 @@
 package demo;
 
 import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.validation.ChainValidationResult;
 
@@ -18,19 +20,52 @@ public class BlockchainDemo {
         try {
             // 1. Create blockchain instance
             Blockchain blockchain = new Blockchain();
-            
-            // 2. Generate key pairs for two users
-            System.out.println("🔐 Generating key pairs...");
+
+            // 2. Load bootstrap admin keys (RBAC v1.0.6: Production pattern)
+            System.out.println("🔐 Loading bootstrap admin credentials...");
+            KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
+                "./keys/genesis-admin.private",
+                "./keys/genesis-admin.public"
+            );
+            System.out.println("✅ Bootstrap admin keys loaded");
+
+            // 3. Register bootstrap admin in blockchain (REQUIRED!)
+            System.out.println("🔑 Registering bootstrap admin in blockchain...");
+            blockchain.createBootstrapAdmin(
+                CryptoUtil.publicKeyToString(bootstrapKeys.getPublic()),
+                "BOOTSTRAP_ADMIN"
+            );
+            System.out.println("✅ Bootstrap admin registered (SUPER_ADMIN)");
+
+            // 4. Generate key pairs for demo users
+            System.out.println("\n🔐 Generating key pairs for Alice and Bob...");
             KeyPair userAlice = CryptoUtil.generateKeyPair();
             KeyPair userBob = CryptoUtil.generateKeyPair();
-            
-            // 3. Authorize the keys
-            System.out.println("\n🔑 Authorizing keys...");
+
+            // 5. Create users with proper RBAC hierarchy
+            System.out.println("\n🔑 Creating users with RBAC roles...");
             String alicePublicKey = CryptoUtil.publicKeyToString(userAlice.getPublic());
             String bobPublicKey = CryptoUtil.publicKeyToString(userBob.getPublic());
-            
-            blockchain.addAuthorizedKey(alicePublicKey, "Alice");
-            blockchain.addAuthorizedKey(bobPublicKey, "Bob");
+
+            // Alice - ADMIN created by SUPER_ADMIN (genesis)
+            System.out.println("   Creating Alice as ADMIN (by SUPER_ADMIN)...");
+            blockchain.addAuthorizedKey(
+                alicePublicKey,
+                "Alice",
+                bootstrapKeys,  // Caller: genesis SUPER_ADMIN
+                UserRole.ADMIN
+            );
+            System.out.println("   ✅ Alice created with ADMIN role");
+
+            // Bob - USER created by ADMIN (Alice)
+            System.out.println("   Creating Bob as USER (by ADMIN Alice)...");
+            blockchain.addAuthorizedKey(
+                bobPublicKey,
+                "Bob",
+                userAlice,  // Caller: Alice (ADMIN)
+                UserRole.USER
+            );
+            System.out.println("   ✅ Bob created with USER role");
             
             // 4. Add some blocks to the chain
             System.out.println("\n🧱 Adding blocks to blockchain...");

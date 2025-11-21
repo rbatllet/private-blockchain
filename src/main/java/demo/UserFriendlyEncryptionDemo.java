@@ -4,6 +4,7 @@ import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
+import com.rbatllet.blockchain.util.CryptoUtil;
 import java.security.KeyPair;
 import java.util.List;
 
@@ -17,35 +18,43 @@ public class UserFriendlyEncryptionDemo {
         System.out.println("=== 🔐 USER-FRIENDLY ENCRYPTION API DEMO ===\n");
 
         try {
-            // 1. Setup - Create blockchain (auto-creates genesis admin)
+            // 1. Setup - Create blockchain
             System.out.println(
                 "1️⃣ Setting up blockchain and user-friendly API..."
             );
             Blockchain blockchain = new Blockchain();
-            System.out.println("✅ Blockchain initialized (genesis admin created)");
+            System.out.println("✅ Blockchain initialized");
 
-            // 2. Load genesis admin keys to authorize user creation
-            System.out.println("2️⃣ Loading genesis admin credentials...");
-            KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+            // 2. Load bootstrap admin keys to authorize user creation
+            System.out.println("2️⃣ Loading bootstrap admin credentials...");
+            KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
                 "./keys/genesis-admin.private",
                 "./keys/genesis-admin.public"
             );
-            System.out.println("✅ Genesis admin keys loaded");
+            System.out.println("✅ Bootstrap admin keys loaded");
 
-            // 3. Create API with genesis admin credentials
+            // 3. Register bootstrap admin in blockchain (REQUIRED!)
+            System.out.println("3️⃣ Registering bootstrap admin in blockchain...");
+            blockchain.createBootstrapAdmin(
+                CryptoUtil.publicKeyToString(bootstrapKeys.getPublic()),
+                "BOOTSTRAP_ADMIN"
+            );
+            System.out.println("✅ Bootstrap admin registered");
+
+            // 4. Create API with bootstrap admin credentials
             UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
-            api.setDefaultCredentials("GENESIS_ADMIN", genesisKeys);
-            System.out.println("✅ API configured with genesis admin credentials");
+            api.setDefaultCredentials("BOOTSTRAP_ADMIN", bootstrapKeys);
+            System.out.println("✅ API configured with bootstrap admin credentials");
 
-            // 4. Now create a regular user (authorized by genesis admin)
-            System.out.println("3️⃣ Creating user 'Dr. Alice'...");
+            // 5. Now create a regular user (authorized by bootstrap admin)
+            System.out.println("5️⃣ Creating user 'Dr. Alice'...");
             KeyPair userKeys = api.createUser("Dr. Alice");
             api.setDefaultCredentials("Dr. Alice", userKeys);
-            System.out.println("✅ User 'Dr. Alice' created and authorized by GENESIS_ADMIN");
+            System.out.println("✅ User 'Dr. Alice' created and authorized by BOOTSTRAP_ADMIN");
             System.out.println("✅ API now operating as 'Dr. Alice'\n");
 
-            // 5. Initialize advanced search system BEFORE storing data
-            System.out.println("4️⃣ Initializing advanced search system...");
+            // 6. Initialize advanced search system BEFORE storing data
+            System.out.println("6️⃣ Initializing advanced search system...");
 
             // Generate realistic department-specific passwords (enterprise scenario)
             String medicalPassword = "Medical_Dept_2024!SecureKey_" + api.generateSecurePassword(12);
