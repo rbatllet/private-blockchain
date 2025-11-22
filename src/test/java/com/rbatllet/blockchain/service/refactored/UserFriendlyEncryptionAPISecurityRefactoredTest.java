@@ -91,9 +91,9 @@ class UserFriendlyEncryptionAPISecurityRefactoredTest extends UserFriendlyEncryp
         @DisplayName("Should prevent unauthorized data access")
         void shouldPreventUnauthorizedDataAccess() {
             Block block = createTestBlock(MEDIUM_DATA);
-            
+
             // Try to access with wrong password - should return null or throw exception
-            String result = api.retrieveSecret(block.getId(), "wrongPassword");
+            String result = api.retrieveSecret(block.getBlockNumber(), "wrongPassword");
             assertNull(result, "Should not be able to decrypt with wrong password");
         }
         

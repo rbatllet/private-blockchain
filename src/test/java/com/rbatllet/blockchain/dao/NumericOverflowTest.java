@@ -61,9 +61,9 @@ class NumericOverflowTest {
     }
 
     @Test
-    @DisplayName("Block sequence increment should check overflow")
+    @DisplayName("Block number increment should check overflow")
     void testSequenceIncrementOverflow() {
-        // Simulate what happens in BlockRepository.getNextBlockNumberAtomic()
+        // Simulate block number increment overflow (now handled by Hibernate SEQUENCE)
         long currentValue = Long.MAX_VALUE - 1;
 
         // This is what the current code does:

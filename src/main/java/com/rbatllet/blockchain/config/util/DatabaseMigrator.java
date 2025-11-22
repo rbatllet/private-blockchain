@@ -64,11 +64,11 @@ import java.util.*;
  *
  * DatabaseMigrator migrator = new DatabaseMigrator(config);
  *
- * // Register migrations
+ * // Register migrations (Phase 5.0: blocks uses block_number as PK)
  * migrator.addMigration(Migration.builder()
  *     .version("V1")
  *     .description("Create blocks table")
- *     .sql("CREATE TABLE blocks (id INT PRIMARY KEY, data VARCHAR(1000))")
+ *     .sql("CREATE TABLE blocks (block_number BIGINT PRIMARY KEY, data VARCHAR(1000))")
  *     .build());
  *
  * migrator.addMigration(Migration.builder()

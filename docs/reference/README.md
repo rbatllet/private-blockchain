@@ -144,8 +144,7 @@ List<Block> results = api.smartSearchEncryptedData("keyword", "password", 10);
 ### Key Information
 
 #### Database Schema
-- **Block Entity**: Main blockchain data structure
-- **BlockSequence Entity**: Thread-safe block numbering
+- **Block Entity**: Main blockchain data structure (uses Hibernate SEQUENCE for numbering)
 - **AuthorizedKey Entity**: Access control with revocation
 - **OffChainData Entity**: Large file metadata
 

@@ -1093,9 +1093,9 @@ src/main/java/com/rbatllet/blockchain/
 ├── dao/
 │   └── AuthorizedKeyDAO.java                    # Database operations for keys
 ├── entity/
-│   ├── Block.java                               # Block data model
+│   ├── Block.java                               # Block data model (uses Hibernate SEQUENCE)
 │   ├── AuthorizedKey.java                       # Authorized key data model
-│   └── BlockSequence.java                       # Atomic block numbering entity
+│   └── OffChainData.java                        # Off-chain data references
 ├── recovery/
 │   ├── ChainRecoveryManager.java               # Handles blockchain recovery operations
 │   └── RecoveryConfig.java                      # Configuration for recovery processes

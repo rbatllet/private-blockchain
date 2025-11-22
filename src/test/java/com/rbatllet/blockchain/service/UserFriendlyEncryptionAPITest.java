@@ -342,9 +342,9 @@ public class UserFriendlyEncryptionAPITest {
             "Should require default credentials");
         
         // Test invalid inputs
-        assertThrows(IllegalArgumentException.class, () -> 
-            api.retrieveSecret(null, "password"), 
-            "Should reject null block ID");
+        assertThrows(IllegalArgumentException.class, () ->
+            api.retrieveSecret(null, "password"),
+            "Should reject null block number");
         
         assertThrows(IllegalArgumentException.class, () -> 
             api.retrieveSecret(1L, null), 

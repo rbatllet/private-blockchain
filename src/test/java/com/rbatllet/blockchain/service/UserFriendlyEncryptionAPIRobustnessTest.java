@@ -436,22 +436,22 @@ public class UserFriendlyEncryptionAPIRobustnessTest {
     class DataValidationRobustnessTest {
 
         @Test
-        @DisplayName("validateOffChainData should handle null blockId")
-        void testValidateOffChainDataWithNullBlockId() {
+        @DisplayName("validateOffChainData should handle null blockNumber")
+        void testValidateOffChainDataWithNullBlockNumber() {
             boolean result = api.validateOffChainData(null);
-            assertFalse(result, "Should return false for null blockId");
+            assertFalse(result, "Should return false for null blockNumber");
         }
 
         @Test
-        @DisplayName("validateOffChainData should handle non-existent blockId")
-        void testValidateOffChainDataWithNonExistentBlockId() {
+        @DisplayName("validateOffChainData should handle non-existent blockNumber")
+        void testValidateOffChainDataWithNonExistentBlockNumber() {
             boolean result = api.validateOffChainData(999999L);
-            assertFalse(result, "Should return false for non-existent blockId");
+            assertFalse(result, "Should return false for non-existent blockNumber");
         }
 
         @Test
-        @DisplayName("validateOffChainData should handle existing blockId")
-        void testValidateOffChainDataWithValidBlockId() {
+        @DisplayName("validateOffChainData should handle existing blockNumber")
+        void testValidateOffChainDataWithValidBlockNumber() {
             // Create a test block first
             Block testBlock = api.storeSecret(
                 "Test data for validation",
@@ -703,7 +703,7 @@ public class UserFriendlyEncryptionAPIRobustnessTest {
     class PerformanceOperationsRobustnessTest {
 
         @Test
-        @DisplayName("performQuickIntegrityCheck should handle null blockId")
+        @DisplayName("performQuickIntegrityCheck should handle null blockNumber")
         void testPerformQuickIntegrityCheckWithNull() throws Exception {
             var method = UserFriendlyEncryptionAPI.class.getDeclaredMethod(
                 "performQuickIntegrityCheck",
@@ -712,7 +712,7 @@ public class UserFriendlyEncryptionAPIRobustnessTest {
             method.setAccessible(true);
 
             boolean result = (boolean) method.invoke(api, (Long) null);
-            assertFalse(result, "Should return false for null blockId");
+            assertFalse(result, "Should return false for null blockNumber");
         }
 
 

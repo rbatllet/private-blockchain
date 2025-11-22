@@ -230,8 +230,9 @@ public Block addBlockWithKeywords(...) {
     // 5. ONLY NOW acquire lock for DB write
     GLOBAL_BLOCKCHAIN_LOCK.writeLock().lock();
     try {
-        // Get next block number
-        Long nextBlockNumber = blockchain.getNextBlockNumberAtomic();
+        // Phase 5.0: Get next block number from last block
+        Block lastBlock = blockRepository.getLastBlockWithLock();
+        Long nextBlockNumber = (lastBlock == null) ? 0L : lastBlock.getBlockNumber() + 1;
 
         // Create and save block
         Block newBlock = new Block();

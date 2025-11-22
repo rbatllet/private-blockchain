@@ -1708,7 +1708,7 @@ org.opentest4j.AssertionFailedError: expected: <true> but was: <false>
 
 **Example Case (October 2025):**
 - **Test:** `BlockchainAdditionalAdvancedFunctionsTest`
-- **Issue:** `completeCleanupForTests()` was only cleaning `Block` and `BlockSequence` tables
+- **Issue:** `completeCleanupForTests()` was only cleaning `Block` table
 - **Missing:** Did NOT clean `AuthorizedKey` table
 - **Result:** Keys from Test A remained in database, causing Test B to fail with duplicate key errors
 
@@ -1716,7 +1716,7 @@ org.opentest4j.AssertionFailedError: expected: <true> but was: <false>
 ```java
 // Blockchain.java - completeCleanupForTests()
 public void completeCleanupForTests() {
-    blockchain.completeCleanupTestData();      // ✅ Cleans blocks & sequences
+    blockchain.completeCleanupTestData();      // ✅ Cleans blocks
     authorizedKeyDAO.cleanupTestData();      // ✅ ADDED: Cleans authorized keys
     // Note: Does NOT clean off-chain files (use clearAndReinitialize() for full cleanup)
 }

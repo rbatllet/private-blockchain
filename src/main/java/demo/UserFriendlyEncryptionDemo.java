@@ -378,7 +378,7 @@ public class UserFriendlyEncryptionDemo {
 
             // Medical Department: Retrieve with medical password
             String retrievedMedical = api.retrieveSecret(
-                medicalBlock.getId(),
+                medicalBlock.getBlockNumber(),
                 medicalPassword
             );
             System.out.println(
@@ -394,7 +394,7 @@ public class UserFriendlyEncryptionDemo {
 
             // Finance Department: Retrieve with financial password
             String retrievedFinancial = api.retrieveSecret(
-                financialBlock.getId(),
+                financialBlock.getBlockNumber(),
                 financialPassword
             );
             System.out.println(
@@ -410,7 +410,7 @@ public class UserFriendlyEncryptionDemo {
 
             // Security test: Try to access medical data with finance password (should fail)
             String crossDepartmentAccess = api.retrieveSecret(
-                medicalBlock.getId(),
+                medicalBlock.getBlockNumber(),
                 financialPassword
             );
             System.out.println(
@@ -422,7 +422,7 @@ public class UserFriendlyEncryptionDemo {
 
             // Try with completely wrong password (should fail)
             String wrongPasswordResult = api.retrieveSecret(
-                secretBlock.getId(),
+                secretBlock.getBlockNumber(),
                 "wrongpassword"
             );
             System.out.println(

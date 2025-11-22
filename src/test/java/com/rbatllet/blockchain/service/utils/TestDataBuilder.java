@@ -31,19 +31,18 @@ public class TestDataBuilder {
     
     /**
      * Create a mock block with realistic test data
-     * @param id Block ID
+     * @param blockNumber Block number
      * @param data Block data content
      * @return Mock block
      */
-    public static Block createMockBlock(Long id, String data) {
+    public static Block createMockBlock(Long blockNumber, String data) {
         Block mockBlock = Mockito.mock(Block.class);
-        
-        Mockito.when(mockBlock.getId()).thenReturn(id);
-        Mockito.when(mockBlock.getBlockNumber()).thenReturn(id);
+
+        Mockito.when(mockBlock.getBlockNumber()).thenReturn(blockNumber);
         Mockito.when(mockBlock.getData()).thenReturn(data);
-        Mockito.when(mockBlock.getHash()).thenReturn("hash_" + id);
-        Mockito.when(mockBlock.getPreviousHash()).thenReturn(id > 1 ? "hash_" + (id - 1) : "genesis");
-        Mockito.when(mockBlock.getTimestamp()).thenReturn(LocalDateTime.now().minusMinutes(id));
+        Mockito.when(mockBlock.getHash()).thenReturn("hash_" + blockNumber);
+        Mockito.when(mockBlock.getPreviousHash()).thenReturn(blockNumber > 1 ? "hash_" + (blockNumber - 1) : "genesis");
+        Mockito.when(mockBlock.getTimestamp()).thenReturn(LocalDateTime.now().minusMinutes(blockNumber));
         Mockito.when(mockBlock.isDataEncrypted()).thenReturn(true);
         Mockito.when(mockBlock.getSignerPublicKey()).thenReturn("test_public_key");
         Mockito.when(mockBlock.getContentCategory()).thenReturn("general");

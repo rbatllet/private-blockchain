@@ -89,7 +89,7 @@ mvn exec:java -Dexec.mainClass="demo.BlockchainDemo" -Pproduction
 private static final Logger logger = LoggerFactory.getLogger(MyClass.class);
 
 // Standard application logging
-logger.info("Processing block {}", blockId);
+logger.info("Processing block {}", blockNumber);
 logger.error("Failed to validate block", exception);  // ⚠️ Goes to errors.log
 
 // Specialized loggers

@@ -63,7 +63,7 @@ public String getBlockByNumberWithDecryption(Long blockNumber, String password) 
 /**
  * Clean interface layer that provides block number-based decryption
  */
-public String getDecryptedBlockDataByNumber(Long blockNumber, String password) {
+public String getDecryptedBlockData(Long blockNumber, String password) {
     // Delegates to DAO's block number-based method
     return blockchain.getBlockByNumberWithDecryption(blockNumber, password);
 }
@@ -85,7 +85,7 @@ public String retrieveSecret(Long blockNumber, String password) {
     logger.debug("🔓 DEBUG: retrieveSecret called for block #{}", blockNumber);
     
     // NEW: Uses block number-based decryption method
-    String decryptedData = blockchain.getDecryptedBlockDataByNumber(blockNumber, password);
+    String decryptedData = blockchain.getDecryptedBlockData(blockNumber, password);
     
     logger.info("🔓 DEBUG: Block #{} decrypted successfully. Content: '{}'", 
                blockNumber, decryptedData != null && decryptedData.length() > 100 
@@ -96,7 +96,7 @@ public String retrieveSecret(Long blockNumber, String password) {
 ```
 
 **Key Features**:
-- Now calls `getDecryptedBlockDataByNumber()` instead of `getDecryptedBlockData()`
+- Now calls `getDecryptedBlockData()` instead of `getDecryptedBlockData()`
 - Maintains backward compatibility - API signature unchanged
 - Enhanced debug logging for user troubleshooting
 
@@ -128,7 +128,7 @@ public String retrieveSecret(Long blockNumber, String password) {
 ### 1. Clear Separation of Concerns
 ```
 API Layer (UserFriendlyEncryptionAPI)
-    ↓ calls getDecryptedBlockDataByNumber()
+    ↓ calls getDecryptedBlockData()
 Business Layer (Blockchain)  
     ↓ calls getBlockByNumberWithDecryption()
 Data Layer (BlockRepository)
@@ -168,7 +168,7 @@ Data Layer (BlockRepository)
 ```java
 // Robust error handling at each layer
 try {
-    String decryptedData = blockchain.getDecryptedBlockDataByNumber(blockNumber, password);
+    String decryptedData = blockchain.getDecryptedBlockData(blockNumber, password);
     return decryptedData;
 } catch (Exception e) {
     logger.error("🔓 ERROR: Failed to decrypt block #{}: {}", blockNumber, e.getMessage());

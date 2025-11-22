@@ -162,10 +162,12 @@ if (!candidateBlockNumbers.isEmpty()) {
 
 ### JPA Query Optimization
 
+**Phase 5.0:** block_number is now the PRIMARY KEY (no separate id field).
+
 ```sql
 -- Generated optimized SQL:
-SELECT b.id, b.block_number, b.data, b.encrypted, /* ... all columns */
-FROM blocks b 
+SELECT b.block_number, b.data, b.encrypted, /* ... all columns */
+FROM blocks b
 WHERE b.block_number IN (1, 5, 10, 15, 20, /* ... */)
 ORDER BY b.block_number ASC
 ```

@@ -72,7 +72,6 @@ public class UserFriendlyEncryptionAPIPhase1Test {
         for (int i = 0; i < 5; i++) {
             Block block = new Block();
             block.setBlockNumber((long) i);
-            block.setId((long) i);
             block.setData("Test data for block " + i);
             block.setHash("hash_" + i + "_" + System.currentTimeMillis());
             block.setPreviousHash(i > 0 ? "hash_" + (i-1) + "_" + System.currentTimeMillis() : "genesis");
@@ -364,7 +363,6 @@ public class UserFriendlyEncryptionAPIPhase1Test {
             for (int i = 0; i < 1000; i++) {
                 Block block = new Block();
                 block.setBlockNumber((long) i);
-                block.setId((long) i);
                 block.setData("Large data block " + i + " with substantial content for testing");
                 block.setHash("hash_" + i + "_large");
                 block.setPreviousHash(i > 0 ? "hash_" + (i-1) + "_large" : "genesis");

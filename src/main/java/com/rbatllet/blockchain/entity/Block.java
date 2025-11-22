@@ -61,13 +61,15 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 @Entity
 @Table(name = "blocks")
 public class Block {
-    
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    
+
     // ========== IMMUTABLE FIELDS (Hash-Critical) - updatable=false ==========
-    
+
+    /**
+     * Block number (position in the chain).
+     * Phase 5.0: Manually assigned before persist() to allow hash calculation.
+     * JDBC batching enabled via persistence.xml configuration.
+     */
+    @Id
     @Column(name = "block_number", unique = true, nullable = false, updatable = false)
     private Long blockNumber;
     
@@ -143,9 +145,6 @@ public class Block {
     }
 
     // Getters and Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-
     public Long getBlockNumber() { return blockNumber; }
     public void setBlockNumber(Long blockNumber) { this.blockNumber = blockNumber; }
 
@@ -289,8 +288,7 @@ public class Block {
             : "null";
             
         return "Block{" +
-                "id=" + id +
-                ", blockNumber=" + blockNumber +
+                "blockNumber=" + blockNumber +
                 ", previousHash='" + previousHash + '\'' +
                 ", data='" + dataPreview + '\'' +
                 ", timestamp=" + timestamp +

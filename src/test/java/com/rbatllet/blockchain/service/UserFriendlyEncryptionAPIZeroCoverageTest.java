@@ -203,11 +203,11 @@ class UserFriendlyEncryptionAPIZeroCoverageTest {
         @DisplayName("Should detect data tampering")
         void shouldDetectDataTampering() {
             // Given
-            Long blockId = 1L;
-            
+            Long blockNumber = 1L;
+
             // When
-            boolean hasTampering = api.detectDataTampering(blockId);
-            
+            boolean hasTampering = api.detectDataTampering(blockNumber);
+
             // Then - Empty blockchain might report tampering, just check it doesn't crash
             assertTrue(hasTampering || !hasTampering, "Should return boolean result without crashing");
         }
@@ -216,11 +216,11 @@ class UserFriendlyEncryptionAPIZeroCoverageTest {
         @DisplayName("Should check if off-chain files exist")
         void shouldCheckIfOffChainFilesExist() {
             // Given
-            Long blockId = 1L;
-            
+            Long blockNumber = 1L;
+
             // When
-            boolean filesExist = api.offChainFilesExist(blockId);
-            
+            boolean filesExist = api.offChainFilesExist(blockNumber);
+
             // Then
             assertTrue(filesExist || !filesExist, "Should return boolean result");
         }
@@ -449,12 +449,12 @@ class UserFriendlyEncryptionAPIZeroCoverageTest {
         }
 
         @Test
-        @DisplayName("Should handle invalid block IDs")
-        void shouldHandleInvalidBlockIds() {
-            // Test with invalid block ID
+        @DisplayName("Should handle invalid block numbers")
+        void shouldHandleInvalidBlockNumbers() {
+            // Test with invalid block number
             assertDoesNotThrow(() -> {
                 api.detectDataTampering(-1L);
-            }, "Should handle invalid block IDs gracefully");
+            }, "Should handle invalid block numbers gracefully");
         }
 
         @Test

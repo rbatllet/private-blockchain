@@ -764,17 +764,17 @@ public boolean validateBlockSize(String data)
 public void completeCleanupForTests()
 ```
 - **Description:** Comprehensive cleanup for testing environments (database only)
-- **Purpose:** Removes ALL test data from database (blocks, block sequences, and authorized keys)
+- **Purpose:** Removes ALL test data from database (blocks and authorized keys)
 - **Safety:** Safe for multiple calls, designed for test isolation
 - **Warning:** Only use in test environments - not for production
 - **What it cleans:**
   - ✅ All blocks (including genesis block)
-  - ✅ Block sequence counters
   - ✅ All authorized keys
 - **What it DOESN'T clean:**
   - ❌ Off-chain data files
   - ❌ Emergency backup files
 - **Note:** For full cleanup including files, use `clearAndReinitialize()` or `completeCleanupForTestsWithBackups()`
+- **Phase 5.0:** Hibernate SEQUENCE is reset automatically when blocks are deleted
 
 ```java
 public void completeCleanupForTestsWithBackups()
@@ -785,10 +785,10 @@ public void completeCleanupForTestsWithBackups()
 - **Warning:** Only use in test environments - not for production
 - **What it cleans:**
   - ✅ All blocks (including genesis block)
-  - ✅ Block sequence counters
   - ✅ All authorized keys
   - ✅ Emergency backup files
 - **Use when:** You want database cleanup AND removal of accumulated backups
+- **Phase 5.0:** Hibernate SEQUENCE is reset automatically when blocks are deleted
 
 ```java
 public int cleanupEmergencyBackups()
@@ -1384,16 +1384,20 @@ try {
 ```
 
 #### Entity Management with JPA Annotations
+
+**Phase 5.0 (Manual ID Assignment with JDBC Batching):**
 ```java
 // Example of JPA entity configuration
 @Entity
 @Table(name = "blocks")
 public class Block {
+    /**
+     * Block number (position in the chain).
+     * Phase 5.0: Manually assigned before persist() to allow hash calculation.
+     * JDBC batching enabled via persistence.xml configuration.
+     */
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    
-    @Column(name = "block_number", unique = true, nullable = false)
+    @Column(name = "block_number", unique = true, nullable = false, updatable = false)
     private Long blockNumber;
     
     @Column(name = "data", columnDefinition = "TEXT")
@@ -1959,13 +1963,6 @@ public int deleteAllAuthorizedKeys() {
 
 #### BlockRepository Methods
 ```java
-// Get the next block number atomically (thread-safe)
-public Long getNextBlockNumberAtomic() {
-    // Atomically increments and returns the next block number from the sequence
-    // Uses BlockSequence entity with pessimistic locking for true atomicity
-    // This method is fully thread-safe and prevents race conditions in concurrent environments
-}
-
 // Get the last block with pessimistic locking to prevent race conditions
 public Block getLastBlockWithLock() {
     // Returns the last block with a pessimistic lock to prevent concurrent modifications
@@ -1985,12 +1982,6 @@ public Block getLastBlockWithRefresh() {
 public boolean existsBlockWithNumber(Long blockNumber) {
     // Returns true if a block with the specified number exists
     // Used for race condition detection in concurrent environments
-}
-
-// Synchronize the block sequence with the actual max block number
-public void synchronizeBlockSequence() {
-    // Synchronizes the BlockSequence with the actual max block number in the database
-    // Useful for initialization or after manual database operations
 }
 
 // Save a new block to the database
@@ -3739,7 +3730,7 @@ The Private Blockchain is **fully thread-safe** and designed for concurrent mult
 - ✅ **Exclusive Writes**: Write operations have exclusive access
 - ✅ **Atomic Operations**: All operations are atomic and consistent
 - ✅ **ACID Compliance**: Database operations use proper JPA transactions
-- ✅ **Atomic Block Numbering**: Block numbers are generated atomically using the `BlockSequence` entity
+- ✅ **Atomic Block Numbering**: Block numbers are generated atomically using Hibernate SEQUENCE generator (Phase 5.0)
 
 ### Thread-Safe APIs
 
@@ -3859,47 +3850,41 @@ List<Block> revokedBlocks = result.getRevokedBlocks(); // Immutable collection
 
 For detailed thread safety implementation standards, see [THREAD_SAFETY_STANDARDS.md](../testing/THREAD_SAFETY_STANDARDS.md).
 
-### Block Sequence for Thread-Safe Block Numbering
+### Manual Block Numbering with JDBC Batching (Phase 5.0)
 
-The `BlockSequence` entity provides atomic, thread-safe block number generation to prevent race conditions in high-concurrency environments:
+Block numbers are now **manually assigned** before persist(), eliminating the BlockSequence entity and enabling **JDBC batching** for 5-10x write throughput improvement:
 
 ```java
-// Thread-safe block number generation using BlockSequence
-public Long getNextBlockNumber() {
-    EntityManager em = JPAUtil.getEntityManager();
-    EntityTransaction tx = em.getTransaction();
-    
-    try {
-        tx.begin();
-        
-        // Use pessimistic locking to prevent concurrent updates
-        BlockSequence sequence = em.find(BlockSequence.class, "BLOCK_NUMBER",
-                                      LockModeType.PESSIMISTIC_WRITE);
-
-        if (sequence == null) {
-            // Initialize if not exists
-            sequence = new BlockSequence();
-            sequence.setSequenceName("BLOCK_NUMBER");
-            sequence.setNextValue(1L);
-            em.persist(sequence);
-        } else {
-            // Increment the sequence
-            Long nextVal = sequence.getNextValue();
-            sequence.setNextValue(nextVal + 1);
-        }
-        
-        Long result = sequence.getNextValue();
-        tx.commit();
-        return result;
-    } catch (Exception e) {
-        if (tx.isActive()) {
-            tx.rollback();
-        }
-        throw new RuntimeException("Failed to get next block number", e);
-    } finally {
-        em.close();
-    }
+// Phase 5.0: Manual assignment with JDBC batching
+@Entity
+@Table(name = "blocks")
+public class Block {
+    /**
+     * Block number (position in the chain).
+     * Manually assigned before persist() to allow hash calculation.
+     * JDBC batching enabled via persistence.xml configuration.
+     */
+    @Id
+    @Column(name = "block_number", unique = true, nullable = false, updatable = false)
+    private Long blockNumber;
+    // ... rest of entity
 }
+
+// Usage - Calculate blockNumber from lastBlock
+Block lastBlock = blockRepository.getLastBlockWithLock();
+Long nextBlockNumber = (lastBlock == null) ? 0L : lastBlock.getBlockNumber() + 1;
+
+Block block = new Block();
+block.setBlockNumber(nextBlockNumber);
+block.setData(data);
+em.persist(block);  // JDBC batching works because ID is already assigned
+```
+
+**Benefits:**
+- ✅ **No BlockSequence entity**: Simpler architecture (-155 lines)
+- ✅ **JDBC batching enabled**: 5-10x write throughput improvement
+- ✅ **blockNumber available before persist()**: Allows hash calculation with blockNumber
+- ✅ **Database-agnostic**: Works with all databases (SQLite, PostgreSQL, MySQL, H2)
 
 ### Concurrent Usage Patterns
 

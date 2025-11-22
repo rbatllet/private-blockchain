@@ -426,8 +426,8 @@ public class UserFriendlyEncryptionAPI {
      * }
      * }</pre>
      *
-     * @param blockId The unique ID (block number) of the encrypted block to retrieve.
-     *                Must correspond to an existing block in the blockchain.
+     * @param blockNumber The unique block number of the encrypted block to retrieve.
+     *                    Must correspond to an existing block in the blockchain.
      * @param password The password used for decryption. Must match the password used
      *                 during encryption, including case sensitivity.
      * @return The decrypted data as a String, or {@code null} if decryption failed due to:
@@ -437,7 +437,7 @@ public class UserFriendlyEncryptionAPI {
      *           <li>Data corruption or tampering</li>
      *           <li>Missing off-chain data files</li>
      *         </ul>
-     * @throws IllegalArgumentException if blockId is null or password is null/empty
+     * @throws IllegalArgumentException if blockNumber is null or password is null/empty
      * @see #storeSecret(String, String)
      * @see #isBlockEncrypted(Long)
      * @see #findAndDecryptData(String, String)
@@ -457,13 +457,13 @@ public class UserFriendlyEncryptionAPI {
      *
      * <p><strong>Usage Example:</strong></p>
      * <pre>{@code
-     * Long blockId = 5L;
-     * if (api.isBlockEncrypted(blockId)) {
+     * Long blockNumber = 5L;
+     * if (api.isBlockEncrypted(blockNumber)) {
      *     // Block is encrypted - need password to read
-     *     String data = api.retrieveSecret(blockId, password);
+     *     String data = api.retrieveSecret(blockNumber, password);
      * } else {
      *     // Block is plain-text - can read directly
-     *     Block block = blockchain.getBlock(blockId);
+     *     Block block = blockchain.getBlock(blockNumber);
      *     String data = block.getData();
      * }
      * }</pre>
@@ -1858,7 +1858,7 @@ public class UserFriendlyEncryptionAPI {
      *
      * // Now operations are simplified - no need to pass keys
      * Block block = api.storeSecret("Confidential patient data", "encryptPassword");
-     * String retrieved = api.retrieveSecret(block.getId(), "encryptPassword");
+     * String retrieved = api.retrieveSecret(block.getBlockNumber(), "encryptPassword");
      *
      * // Check if credentials are set
      * if (api.hasDefaultCredentials()) {
@@ -4680,7 +4680,7 @@ public class UserFriendlyEncryptionAPI {
             
             try {
                 String decryptedData = blockchain.getDecryptedBlockData(
-                    block.getId(),
+                    block.getBlockNumber(),
                     password
                 );
                 if (decryptedData != null) {
@@ -4694,7 +4694,7 @@ public class UserFriendlyEncryptionAPI {
             } catch (Exception e) {
                 logger.warn(
                     "⚠️ Warning: Could not decrypt block {}: {}",
-                    block.getId(),
+                    block.getBlockNumber(),
                     e.getMessage()
                 );
                 // Include the encrypted block anyway
@@ -4854,7 +4854,6 @@ public class UserFriendlyEncryptionAPI {
         String decryptedData
     ) {
         Block copy = new Block();
-        copy.setId(originalBlock.getId());
         copy.setBlockNumber(originalBlock.getBlockNumber());
         copy.setPreviousHash(originalBlock.getPreviousHash());
         copy.setData(decryptedData); // Show decrypted data
@@ -5487,7 +5486,7 @@ public class UserFriendlyEncryptionAPI {
                                 report.addIssue(
                                     "OFF_CHAIN",
                                     "Block " +
-                                    block.getId() +
+                                    block.getBlockNumber() +
                                     " has corrupt off-chain data",
                                     "WARNING"
                                 );
@@ -5497,7 +5496,7 @@ public class UserFriendlyEncryptionAPI {
                         invalidBlocks++;
                         report.addIssue(
                             "BLOCK_VALIDATION",
-                            "Block " + block.getId() + " failed validation",
+                            "Block " + block.getBlockNumber() + " failed validation",
                             "ERROR"
                         );
                     }
@@ -5506,7 +5505,7 @@ public class UserFriendlyEncryptionAPI {
                     report.addIssue(
                         "BLOCK_ERROR",
                         "Block " +
-                        block.getId() +
+                        block.getBlockNumber() +
                         " validation error: " +
                         e.getMessage(),
                         "ERROR"
@@ -6490,7 +6489,7 @@ public class UserFriendlyEncryptionAPI {
                                 report.addIssue(
                                     "TIMESTAMP",
                                     "Block " +
-                                    block.getId() +
+                                    block.getBlockNumber() +
                                     " has future timestamp",
                                     "WARNING"
                                 );
@@ -6508,7 +6507,7 @@ public class UserFriendlyEncryptionAPI {
                                 report.addIssue(
                                     "DATA_INTEGRITY",
                                     "Block " +
-                                    block.getId() +
+                                    block.getBlockNumber() +
                                     " has empty data",
                                     "WARNING"
                                 );
@@ -6535,7 +6534,7 @@ public class UserFriendlyEncryptionAPI {
                                 report.addIssue(
                                     "OFF_CHAIN",
                                     "Block " +
-                                    block.getId() +
+                                    block.getBlockNumber() +
                                     " has corrupt off-chain data",
                                     "WARNING"
                                 );
@@ -6548,7 +6547,7 @@ public class UserFriendlyEncryptionAPI {
                         errorCount++;
                         report.addIssue(
                             "BLOCK_VALIDATION",
-                            "Block " + block.getId() + " failed validation",
+                            "Block " + block.getBlockNumber() + " failed validation",
                             "ERROR"
                         );
                     }
@@ -6559,7 +6558,7 @@ public class UserFriendlyEncryptionAPI {
                     report.addIssue(
                         "BLOCK_ERROR",
                         "Block " +
-                        block.getId() +
+                        block.getBlockNumber() +
                         " validation error: " +
                         e.getMessage(),
                         "ERROR"
@@ -11688,12 +11687,12 @@ public class UserFriendlyEncryptionAPI {
      */
     private boolean isRepairSafe(Block currentBlock, Block previousBlock) {
         try {
-            // Check block sequence integrity
+            // Check block number sequence integrity
             if (
                 previousBlock.getBlockNumber() >= currentBlock.getBlockNumber()
             ) {
                 logger.error(
-                    "Invalid block sequence: previous block #{} >= current block #{}",
+                    "Invalid block number sequence: previous block #{} >= current block #{}",
                     previousBlock.getBlockNumber(),
                     currentBlock.getBlockNumber()
                 );
@@ -13186,7 +13185,7 @@ public class UserFriendlyEncryptionAPI {
                     return JPAUtil.executeInTransaction(em -> {
                         Block managedBlock = em.find(
                             Block.class,
-                            encryptedBlock.getId()
+                            encryptedBlock.getBlockNumber()
                         );
                         if (managedBlock != null) {
                             if (
@@ -13263,7 +13262,7 @@ public class UserFriendlyEncryptionAPI {
                     return JPAUtil.executeInTransaction(em -> {
                         Block managedBlock = em.find(
                             Block.class,
-                            regularBlock.getId()
+                            regularBlock.getBlockNumber()
                         );
                         if (managedBlock != null) {
                             // Validate and serialize custom metadata
@@ -13378,7 +13377,7 @@ public class UserFriendlyEncryptionAPI {
                 final Block updatedBlock = JPAUtil.executeInTransaction(em -> {
                     Block managedBlock = em.find(
                         Block.class,
-                        encryptedBlock.getId()
+                        encryptedBlock.getBlockNumber()
                     );
                     if (managedBlock != null) {
                         managedBlock.setIsEncrypted(true);
@@ -14977,9 +14976,9 @@ public class UserFriendlyEncryptionAPI {
         }
         
         try {
-            // CRITICAL FIX: Use getDecryptedBlockDataByNumber() for block NUMBERS (not IDs)
-            // Tests pass block.getBlockNumber(), not block.getId()
-            String decryptedData = blockchain.getDecryptedBlockDataByNumber(blockNumber, password);
+            // CRITICAL: getDecryptedBlockData() now accepts block NUMBERS (not IDs)
+            // Tests pass block.getBlockNumber()
+            String decryptedData = blockchain.getDecryptedBlockData(blockNumber, password);
             logger.info("🔓 DEBUG: Block number #{} decrypted successfully. Content: '{}'", 
                        blockNumber, 
                        decryptedData != null && decryptedData.length() > 100 

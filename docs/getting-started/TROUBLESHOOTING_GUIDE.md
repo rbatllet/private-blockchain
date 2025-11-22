@@ -202,15 +202,15 @@ IllegalArgumentException: Invalid password or corrupted data
 **Diagnosis:**
 ```java
 // Check if block exists and is encrypted
-public void diagnoseRetrievalIssue(String blockId, String password) {
-    Block block = blockchain.getBlockById(blockId);
-    
+public void diagnoseRetrievalIssue(Long blockNumber, String password) {
+    Block block = blockchain.getBlock(blockNumber);
+
     if (block == null) {
-        logger.error("❌ Block not found: " + blockId);
+        logger.error("❌ Block not found: " + blockNumber);
         return;
     }
-    
-    logger.info("📦 Block found - ID: " + blockId);
+
+    logger.info("📦 Block found - Number: " + blockNumber);
     logger.info("🔐 Encrypted: " + block.isDataEncrypted());
     logger.info("📅 Created: " + block.getTimestamp());
     logger.info("💾 Data length: " + block.getData().length());
@@ -229,7 +229,7 @@ public void diagnoseRetrievalIssue(String blockId, String password) {
 
 ```java
 // ✅ Solution 1: Try password variations
-public String tryPasswordVariations(String blockId, String basePassword) {
+public String tryPasswordVariations(Long blockNumber, String basePassword) {
     String[] variations = {
         basePassword,
         basePassword.toLowerCase(),
@@ -238,10 +238,10 @@ public String tryPasswordVariations(String blockId, String basePassword) {
         basePassword + "!",
         basePassword + "123"
     };
-    
+
     for (String password : variations) {
         try {
-            String result = api.retrieveSecret(blockId, password);
+            String result = api.retrieveSecret(blockNumber, password);
             if (result != null) {
                 logger.info("✅ Password variation successful: " + password);
                 return result;
@@ -250,33 +250,33 @@ public String tryPasswordVariations(String blockId, String basePassword) {
             logger.debug("Password variation failed: " + password);
         }
     }
-    
+
     logger.error("❌ All password variations failed");
     return null;
 }
 
 // ✅ Solution 2: Check for data corruption
-public boolean verifyBlockIntegrity(String blockId) {
+public boolean verifyBlockIntegrity(Long blockNumber) {
     try {
         ValidationReport report = api.performComprehensiveValidation();
-        
+
         if (!report.isValid()) {
             logger.error("❌ Blockchain integrity issues: " + report.getIssues());
             return false;
         }
-        
+
         // Additional block-specific validation
-        Block block = blockchain.getBlockById(blockId);
+        Block block = blockchain.getBlock(blockNumber);
         String computedHash = block.calculateHash();
-        
+
         if (!computedHash.equals(block.getHash())) {
             logger.error("❌ Block hash mismatch - data may be corrupted");
             return false;
         }
-        
+
         logger.info("✅ Block integrity verified");
         return true;
-        
+
     } catch (Exception e) {
         logger.error("❌ Integrity verification failed", e);
         return false;
@@ -284,26 +284,26 @@ public boolean verifyBlockIntegrity(String blockId) {
 }
 
 // ✅ Solution 3: Recovery from backup or checkpoint
-public String recoverDataFromBackup(String blockId) {
+public String recoverDataFromBackup(Long blockNumber) {
     try {
         // Look for recovery checkpoints
         List<RecoveryCheckpoint> checkpoints = api.listRecoveryCheckpoints();
-        
+
         for (RecoveryCheckpoint checkpoint : checkpoints) {
-            if (checkpoint.containsBlock(blockId)) {
+            if (checkpoint.containsBlock(blockNumber)) {
                 logger.info("🔄 Found block in checkpoint: " + checkpoint.getCheckpointId());
-                
+
                 ChainRecoveryResult recovery = api.recoverFromCheckpoint(checkpoint.getCheckpointId());
                 if (recovery.isSuccess()) {
                     logger.info("✅ Successfully recovered from checkpoint");
-                    return api.retrieveSecret(blockId, originalPassword);
+                    return api.retrieveSecret(blockNumber, originalPassword);
                 }
             }
         }
-        
-        logger.warn("⚠️  No valid checkpoints found containing block: " + blockId);
+
+        logger.warn("⚠️  No valid checkpoints found containing block: " + blockNumber);
         return null;
-        
+
     } catch (Exception e) {
         logger.error("❌ Recovery attempt failed", e);
         return null;

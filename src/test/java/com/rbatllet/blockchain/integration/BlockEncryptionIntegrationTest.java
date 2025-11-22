@@ -137,7 +137,7 @@ public class BlockEncryptionIntegrationTest {
 
         // RIGOROUS validation - Block creation
         assertNotNull(medicalBlock, "Medical block should be created");
-        assertNotNull(medicalBlock.getId(), "Block should have database ID");
+        assertNotNull(medicalBlock.getBlockNumber(), "Block should have database ID");
         assertTrue(medicalBlock.getBlockNumber() > 0, "Block should have valid block number > 0");
         assertNotNull(medicalBlock.getTimestamp(), "Block should have timestamp");
         assertNotNull(medicalBlock.getHash(), "Block should have hash");
@@ -170,9 +170,9 @@ public class BlockEncryptionIntegrationTest {
         // RIGOROUS validation - Block should be persisted in blockchain
         Block retrievedBlock = blockchain.getBlock(medicalBlock.getBlockNumber());
         assertNotNull(retrievedBlock, "Block should be retrievable from blockchain");
-        assertEquals(medicalBlock.getId(), retrievedBlock.getId(), "Retrieved block ID should match");
+        assertEquals(medicalBlock.getBlockNumber(), retrievedBlock.getBlockNumber(), "Retrieved block number should match");
 
-        System.out.println("✅ Medical block saved with RIGOROUS encryption validation - ID: " + medicalBlock.getId());
+        System.out.println("✅ Medical block saved with RIGOROUS encryption validation - ID: " + medicalBlock.getBlockNumber());
         System.out.println("   Block Number: " + medicalBlock.getBlockNumber());
         System.out.println("   Encryption metadata length: " + medicalBlock.getEncryptionMetadata().length());
         System.out.println("   Hash: " + medicalBlock.getHash().substring(0, 20) + "...");
@@ -188,7 +188,7 @@ public class BlockEncryptionIntegrationTest {
 
         // RIGOROUS validation - Block creation
         assertNotNull(financialBlock, "Financial block should be created");
-        assertNotNull(financialBlock.getId(), "Block should have database ID");
+        assertNotNull(financialBlock.getBlockNumber(), "Block should have database ID");
         assertTrue(financialBlock.getBlockNumber() > 0, "Block should have valid block number > 0");
         assertNotNull(financialBlock.getTimestamp(), "Block should have timestamp");
         assertNotNull(financialBlock.getHash(), "Block should have hash");
@@ -221,13 +221,13 @@ public class BlockEncryptionIntegrationTest {
         // RIGOROUS validation - Block should be persisted in blockchain
         Block retrievedBlock = blockchain.getBlock(financialBlock.getBlockNumber());
         assertNotNull(retrievedBlock, "Block should be retrievable from blockchain");
-        assertEquals(financialBlock.getId(), retrievedBlock.getId(), "Retrieved block ID should match");
+        assertEquals(financialBlock.getBlockNumber(), retrievedBlock.getBlockNumber(), "Retrieved block number should match");
 
         // RIGOROUS validation - Blocks should have different encryption metadata
         assertNotEquals(medicalBlock.getEncryptionMetadata(), financialBlock.getEncryptionMetadata(),
             "Different data should produce different encryption metadata");
 
-        System.out.println("✅ Financial block saved with RIGOROUS encryption validation - ID: " + financialBlock.getId());
+        System.out.println("✅ Financial block saved with RIGOROUS encryption validation - ID: " + financialBlock.getBlockNumber());
         System.out.println("   Block Number: " + financialBlock.getBlockNumber());
         System.out.println("   Encryption metadata length: " + financialBlock.getEncryptionMetadata().length());
         System.out.println("   Hash: " + financialBlock.getHash().substring(0, 20) + "...");
@@ -393,19 +393,19 @@ public class BlockEncryptionIntegrationTest {
 
         // RIGOROUS validation - Initial unencrypted state
         assertNotNull(unencryptedBlock, "Block should exist");
-        assertNotNull(unencryptedBlock.getId(), "Block should have ID");
+        assertNotNull(unencryptedBlock.getBlockNumber(), "Block should have ID");
         assertFalse(unencryptedBlock.isDataEncrypted(), "Block should NOT be encrypted initially");
         assertEquals(unencryptedData, unencryptedBlock.getData(), "Data should be plaintext initially");
         assertNull(unencryptedBlock.getEncryptionMetadata(), "Encryption metadata should be null initially");
 
         // RIGOROUS validation - Store original block properties for comparison
-        Long originalId = unencryptedBlock.getId();
+        Long originalId = unencryptedBlock.getBlockNumber();
         Long originalBlockNumber = unencryptedBlock.getBlockNumber();
         String originalHash = unencryptedBlock.getHash();
         String originalSignature = unencryptedBlock.getSignature();
 
         // Now encrypt the existing block
-        boolean encrypted = blockchain.encryptExistingBlock(unencryptedBlock.getId(), testPassword);
+        boolean encrypted = blockchain.encryptExistingBlock(unencryptedBlock.getBlockNumber(), testPassword);
         assertTrue(encrypted, "Encryption should succeed");
 
         // RIGOROUS validation - Encrypted state
@@ -423,7 +423,7 @@ public class BlockEncryptionIntegrationTest {
         assertFalse(encryptedBlock.getEncryptionMetadata().isEmpty(), "Encryption metadata should not be empty");
 
         // RIGOROUS validation - Block identity and cryptographic properties preserved
-        assertEquals(originalId, encryptedBlock.getId(), "Block ID should remain same after encryption");
+        assertEquals(originalId, encryptedBlock.getBlockNumber(), "Block number should remain same after encryption");
         assertEquals(originalBlockNumber, encryptedBlock.getBlockNumber(), "Block number should remain same");
         assertNotNull(encryptedBlock.getHash(), "Hash should still exist after encryption");
         assertNotNull(encryptedBlock.getSignature(), "Signature should still exist after encryption");
@@ -457,7 +457,7 @@ public class BlockEncryptionIntegrationTest {
 
         System.out.println("✅ Retroactive encryption RIGOROUSLY validated");
         System.out.println("   Original data: " + unencryptedData);
-        System.out.println("   Block ID preserved: " + originalId);
+        System.out.println("   Block number preserved: " + originalId);
         System.out.println("   Encrypted and decrypted successfully ✅");
         System.out.println("   Chain integrity maintained ✅");
     }
@@ -560,7 +560,7 @@ public class BlockEncryptionIntegrationTest {
             // RIGOROUS - Verify each block individually
             assertNotNull(performanceBlocks[i], "Block " + i + " should be created");
             assertTrue(performanceBlocks[i].isDataEncrypted(), "Block " + i + " should be encrypted");
-            assertNotNull(performanceBlocks[i].getId(), "Block " + i + " should have ID");
+            assertNotNull(performanceBlocks[i].getBlockNumber(), "Block " + i + " should have ID");
             assertTrue(performanceBlocks[i].getBlockNumber() > 0, "Block " + i + " should have valid block number");
             assertNotNull(performanceBlocks[i].getEncryptionMetadata(), "Block " + i + " should have encryption metadata");
         }
@@ -593,7 +593,7 @@ public class BlockEncryptionIntegrationTest {
         for (int i = 0; i < 10; i++) {
             Block retrieved = blockchain.getBlock(performanceBlocks[i].getBlockNumber());
             assertNotNull(retrieved, "Block " + i + " should be retrievable from blockchain");
-            assertEquals(performanceBlocks[i].getId(), retrieved.getId(), "Block " + i + " ID should match");
+            assertEquals(performanceBlocks[i].getBlockNumber(), retrieved.getBlockNumber(), "Block " + i + " ID should match");
             assertTrue(retrieved.isDataEncrypted(), "Block " + i + " should still be marked as encrypted");
         }
 
@@ -634,12 +634,12 @@ public class BlockEncryptionIntegrationTest {
         Block medicalFromChain = blockchain.getBlock(medicalBlock.getBlockNumber());
         assertNotNull(medicalFromChain, "Medical block should still exist in chain");
         assertTrue(medicalFromChain.isDataEncrypted(), "Medical block should still be encrypted");
-        assertEquals(medicalBlock.getId(), medicalFromChain.getId(), "Medical block ID should match");
+        assertEquals(medicalBlock.getBlockNumber(), medicalFromChain.getBlockNumber(), "Medical block number should match");
 
         Block financialFromChain = blockchain.getBlock(financialBlock.getBlockNumber());
         assertNotNull(financialFromChain, "Financial block should still exist in chain");
         assertTrue(financialFromChain.isDataEncrypted(), "Financial block should still be encrypted");
-        assertEquals(financialBlock.getId(), financialFromChain.getId(), "Financial block ID should match");
+        assertEquals(financialBlock.getBlockNumber(), financialFromChain.getBlockNumber(), "Financial block number should match");
 
         // RIGOROUS - Verify encrypted blocks can still be decrypted after validation
         String medicalDecrypted = api.retrieveSecret(medicalBlock.getBlockNumber(), testPassword);
@@ -674,13 +674,13 @@ public class BlockEncryptionIntegrationTest {
         for (Block block : medicalResults) {
             assertTrue(block.isDataEncrypted(), "All found medical blocks should be encrypted");
             assertNotNull(block.getEncryptionMetadata(), "All found blocks should have encryption metadata");
-            assertNotNull(block.getId(), "All found blocks should have ID");
+            assertNotNull(block.getBlockNumber(), "All found blocks should have ID");
             assertNotNull(block.getHash(), "All found blocks should have hash");
         }
 
         // RIGOROUS - Verify our medical block is in the results
         boolean foundMedicalBlock = medicalResults.stream()
-            .anyMatch(b -> b.getId().equals(medicalBlock.getId()));
+            .anyMatch(b -> b.getBlockNumber().equals(medicalBlock.getBlockNumber()));
         assertTrue(foundMedicalBlock, "Our medical block should be found in search results");
 
         // Test 2: Search for financial encrypted data
@@ -697,7 +697,7 @@ public class BlockEncryptionIntegrationTest {
             // Try to decrypt - should work if we have the password
             String decrypted = api.retrieveSecret(firstResult.getBlockNumber(), testPassword);
             // If this is our medical block, it should decrypt
-            if (firstResult.getId().equals(medicalBlock.getId())) {
+            if (firstResult.getBlockNumber().equals(medicalBlock.getBlockNumber())) {
                 assertNotNull(decrypted, "Our medical block should decrypt");
                 assertEquals(MEDICAL_DATA, decrypted, "Decrypted data should match original");
             }
@@ -732,7 +732,7 @@ public class BlockEncryptionIntegrationTest {
         // RIGOROUS - Verify new block was created (not updated)
         long blockCountAfter = blockchain.getBlockCount();
         assertEquals(blockCountBefore + 1, blockCountAfter, "Should create new block, not update existing");
-        assertNotEquals(medicalBlock.getId(), reEncryptedBlock.getId(), "New block should have different ID");
+        assertNotEquals(medicalBlock.getBlockNumber(), reEncryptedBlock.getBlockNumber(), "New block should have different ID");
         assertNotEquals(medicalBlock.getBlockNumber(), reEncryptedBlock.getBlockNumber(), "New block should have different block number");
 
         // RIGOROUS - Old password should STILL work for original block

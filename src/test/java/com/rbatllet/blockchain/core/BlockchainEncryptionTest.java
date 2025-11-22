@@ -78,8 +78,8 @@ public class BlockchainEncryptionTest {
         assertFalse(publicBlock.isDataEncrypted());
         assertEquals(PUBLIC_DATA, publicBlock.getData());
         assertNull(publicBlock.getEncryptionMetadata());
-        
-        System.out.println("✅ Public block added successfully - ID: " + publicBlock.getId());
+
+        System.out.println("✅ Public block added successfully - ID: " + publicBlock.getBlockNumber());
     }
     
     @Test
@@ -103,8 +103,8 @@ public class BlockchainEncryptionTest {
         assertFalse(encryptedBlock.getEncryptionMetadata().contains("John Doe"));
         assertFalse(encryptedBlock.getEncryptionMetadata().contains("123-45-6789"));
         assertFalse(encryptedBlock.getEncryptionMetadata().contains("Hypertension"));
-        
-        System.out.println("✅ Encrypted block added successfully - ID: " + encryptedBlock.getId());
+
+        System.out.println("✅ Encrypted block added successfully - ID: " + encryptedBlock.getBlockNumber());
     }
     
     @Test
@@ -132,11 +132,11 @@ public class BlockchainEncryptionTest {
         // Auto keywords should be encrypted too
         assertNotNull(encryptedBlock.getAutoKeywords());
         assertFalse(encryptedBlock.getAutoKeywords().contains("John")); // Should be encrypted
-        
+
         // Searchable content should be empty for privacy
         assertTrue(encryptedBlock.getSearchableContent().isEmpty());
-        
-        System.out.println("✅ Encrypted block with keywords added successfully - ID: " + encryptedBlock.getId());
+
+        System.out.println("✅ Encrypted block with keywords added successfully - ID: " + encryptedBlock.getBlockNumber());
     }
     
     @Test
@@ -151,10 +151,10 @@ public class BlockchainEncryptionTest {
         );
         
         assertNotNull(encryptedBlock);
-        
+
         // Now decrypt it
         String decryptedData = blockchain.getDecryptedBlockData(
-            encryptedBlock.getId(),
+            encryptedBlock.getBlockNumber(),
             ENCRYPTION_PASSWORD
         );
         
@@ -176,10 +176,10 @@ public class BlockchainEncryptionTest {
         );
         
         assertNotNull(encryptedBlock);
-        
+
         // Try to decrypt with wrong password
         String decryptedData = blockchain.getDecryptedBlockData(
-            encryptedBlock.getId(),
+            encryptedBlock.getBlockNumber(),
             "WrongPassword123"
         );
         
@@ -264,10 +264,10 @@ public class BlockchainEncryptionTest {
         assertNotNull(encryptedBlock2.getData());
         assertTrue(encryptedBlock1.isDataEncrypted());
         assertTrue(encryptedBlock2.isDataEncrypted());
-        
+
         // Verify encrypted data can be decrypted
-        String decrypted1 = blockchain.getDecryptedBlockData(encryptedBlock1.getId(), ENCRYPTION_PASSWORD);
-        String decrypted2 = blockchain.getDecryptedBlockData(encryptedBlock2.getId(), ENCRYPTION_PASSWORD);
+        String decrypted1 = blockchain.getDecryptedBlockData(encryptedBlock1.getBlockNumber(), ENCRYPTION_PASSWORD);
+        String decrypted2 = blockchain.getDecryptedBlockData(encryptedBlock2.getBlockNumber(), ENCRYPTION_PASSWORD);
         
         assertEquals("Secret financial data: Budget $1M", decrypted1);
         assertEquals("Confidential HR data: Employee evaluations", decrypted2);
@@ -321,8 +321,8 @@ public class BlockchainEncryptionTest {
                 authorizedKeyPair.getPublic()
             );
         });
-        
-        // Test decryption with invalid block ID
+
+        // Test decryption with invalid block number
         String result = blockchain.getDecryptedBlockData(999999L, ENCRYPTION_PASSWORD);
         assertNull(result);
         

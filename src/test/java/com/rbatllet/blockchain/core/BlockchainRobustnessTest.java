@@ -363,14 +363,14 @@ public class BlockchainRobustnessTest {
 
     @Test
     @Order(18)
-    @DisplayName("encryptExistingBlock should validate null block ID")
+    @DisplayName("encryptExistingBlock should validate null block number")
     void testEncryptExistingBlockNullId() {
-        logTestContext("encryptExistingBlock", "null block ID");
+        logTestContext("encryptExistingBlock", "null block number");
 
         assertFalse(blockchain.encryptExistingBlock(null, "password"),
-            "Should return false for null block ID");
+            "Should return false for null block number");
 
-        logger.info("✅ encryptExistingBlock validates null block ID");
+        logger.info("✅ encryptExistingBlock validates null block number");
     }
 
     @Test
@@ -411,7 +411,7 @@ public class BlockchainRobustnessTest {
         assertNull(block.getEncryptionMetadata(), "Block should not be encrypted initially");
 
         // Encrypt the block
-        boolean result = blockchain.encryptExistingBlock(block.getId(), "securePassword123");
+        boolean result = blockchain.encryptExistingBlock(block.getBlockNumber(), "securePassword123");
 
         assertTrue(result, "Encryption should succeed");
 
@@ -1005,7 +1005,6 @@ public class BlockchainRobustnessTest {
 
         // Test 3: Update non-existent block (create new block with invalid ID)
         Block fakeBlock = new Block();
-        fakeBlock.setId(99999L);
         fakeBlock.setBlockNumber(99999L);
         fakeBlock.setData("Fake data");
         fakeBlock.setTimestamp(LocalDateTime.now());

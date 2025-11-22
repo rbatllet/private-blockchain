@@ -533,7 +533,7 @@ if (retrievalTime > 1000) { // 1 second threshold
 #### Database Optimization
 ```sql
 -- Ensure proper indexing for pagination queries
-CREATE INDEX idx_block_number ON Block(blockNumber);
+-- Note: idx_block_number not needed (PRIMARY KEY creates automatic index)
 CREATE INDEX idx_block_timestamp ON Block(timestamp);
 ```
 

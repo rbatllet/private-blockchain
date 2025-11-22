@@ -288,7 +288,7 @@ public class DataIntegrityThreadSafetyTest {
 
         startLatch.countDown();
         boolean completed = endLatch.await(20, TimeUnit.SECONDS);
-        assertTrue(completed, "Block sequence test should complete within timeout");
+        assertTrue(completed, "Block numbering test should complete within timeout");
 
         // Show detailed validation after concurrent operations
         System.out.println("🔍 Detailed validation after concurrent block number sequence operations:");
@@ -310,7 +310,7 @@ public class DataIntegrityThreadSafetyTest {
             }
         }
 
-        System.out.println("🔢 Block Sequence Results:");
+        System.out.println("🔢 Block Numbering Results:");
         System.out.println("   - Successful blocks: " + successfulBlocks.get());
         System.out.println("   - Observed unique numbers: " + observedBlockNumbers.size());
         System.out.println("   - Sequence gaps: " + sequenceGaps);

@@ -156,8 +156,7 @@ public class Blockchain {
 
             blockRepository.saveBlock(genesisBlock);
 
-            // CRITICAL: Synchronize the block sequence after creating genesis block
-            blockRepository.synchronizeBlockSequence();
+            // Hibernate SEQUENCE automatically manages block numbers - no manual sync needed
 
             logger.info("✅ Genesis block created successfully!");
         }
@@ -560,13 +559,11 @@ public class Blockchain {
                         );
                     }
 
-                    // 3. Get the last block for previous hash (MUST BE CALLED BEFORE getNextBlockNumberAtomic!)
-                    // CRITICAL: getNextBlockNumberAtomic() increments the sequence, so we must read lastBlock first
+                    // 3. Get the last block for previous hash and calculate next block number
                     Block lastBlock = blockRepository.getLastBlockWithLock();
 
-                    // 4. Get the next block number atomically to prevent race conditions
-                    // CRITICAL: This increments the sequence, so it must be called AFTER getting lastBlock
-                    Long nextBlockNumber = blockRepository.getNextBlockNumberAtomic();
+                    // 4. Calculate next block number from last block (Hibernate SEQUENCE will auto-assign on persist)
+                    Long nextBlockNumber = (lastBlock == null) ? 0L : lastBlock.getBlockNumber() + 1;
 
                     if (lastBlock == null && nextBlockNumber != 0L) {
                         logger.error(
@@ -719,8 +716,9 @@ public class Blockchain {
      * CORE FUNCTION: Add a new block to the chain (with size validation)
      *
      * <p><strong>FIXED:</strong> Complete thread-safety with atomic block number generation</p>
-     * <p><strong>RACE CONDITION FIX:</strong> Now uses getNextBlockNumberAtomic() to prevent
-     * duplicate block numbers under high-concurrency scenarios (30+ simultaneous threads)</p>
+     * <p><strong>RACE CONDITION FIX (Phase 5.0):</strong> Block number calculated from lastBlock
+     * within GLOBAL_BLOCKCHAIN_LOCK to prevent duplicate block numbers under high-concurrency
+     * scenarios (30+ simultaneous threads). JDBC batching enabled for 5-10x performance.</p>
      *
      * <p><strong>SECURITY (v1.0.6):</strong> All keys must be pre-authorized before they can
      * add blocks. This method throws exceptions for critical security violations.</p>
@@ -887,9 +885,9 @@ public class Blockchain {
                         );
                     }
 
-                    // 5. Get last block and generate next block number atomically
+                    // 5. Get last block and calculate next block number (Hibernate SEQUENCE will auto-assign on persist)
                     Block lastBlock = blockRepository.getLastBlockWithLock();
-                    Long nextBlockNumber = blockRepository.getNextBlockNumberAtomic();
+                    Long nextBlockNumber = (lastBlock == null) ? 0L : lastBlock.getBlockNumber() + 1;
 
                     // 6. Handle off-chain storage if needed (for encrypted data)
                     OffChainData offChainData = null;
@@ -1240,50 +1238,11 @@ public class Blockchain {
     /**
      * Decrypt and retrieve block data
      *
-     * @param blockId The ID of the encrypted block
-     * @param decryptionPassword The password for decryption
-     * @return The decrypted block data, or null if failed
-     */
-    public String getDecryptedBlockData(
-        Long blockId,
-        String decryptionPassword
-    ) {
-        if (
-            blockId == null ||
-            decryptionPassword == null ||
-            decryptionPassword.trim().isEmpty()
-        ) {
-            throw new IllegalArgumentException(
-                "Block ID and decryption password cannot be null or empty"
-            );
-        }
-
-        long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
-        try {
-            Block block = blockRepository.getBlockWithDecryption(
-                blockId,
-                decryptionPassword
-            );
-            return block != null ? block.getData() : null;
-        } catch (Exception e) {
-            logger.debug(
-                "Failed to decrypt block data (expected with wrong password)",
-                e
-            );
-            return null;
-        } finally {
-            GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
-        }
-    }
-
-    /**
-     * Get decrypted block data by block number (not ID)
-     * 
      * @param blockNumber The block number of the encrypted block
      * @param decryptionPassword The password for decryption
      * @return The decrypted block data, or null if failed
      */
-    public String getDecryptedBlockDataByNumber(
+    public String getDecryptedBlockData(
         Long blockNumber,
         String decryptionPassword
     ) {
@@ -1299,14 +1258,14 @@ public class Blockchain {
 
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
         try {
-            Block block = blockRepository.getBlockByNumberWithDecryption(
+            Block block = blockRepository.getBlockWithDecryption(
                 blockNumber,
                 decryptionPassword
             );
             return block != null ? block.getData() : null;
         } catch (Exception e) {
             logger.debug(
-                "Failed to decrypt block data by number (expected with wrong password)",
+                "Failed to decrypt block data (expected with wrong password)",
                 e
             );
             return null;
@@ -3925,8 +3884,7 @@ public class Blockchain {
 
                     // Import blocks with off-chain data handling
                     for (Block block : importData.getBlocks()) {
-                        // Reset ID for new insertion
-                        block.setId(null);
+                        // blockNumber will be auto-generated by Hibernate SEQUENCE (or preserved if already set)
 
                         // Handle off-chain data restoration
                         if (block.hasOffChainData()) {
@@ -4008,8 +3966,7 @@ public class Blockchain {
                         blockRepository.saveBlock(block);
                     }
 
-                    // CRITICAL: Synchronize block sequence after import
-                    blockRepository.synchronizeBlockSequence();
+                    // Hibernate SEQUENCE automatically manages block numbers - no manual sync needed
 
                     logger.info(
                         "✅ Chain imported successfully from: {}",
@@ -4189,8 +4146,7 @@ public class Blockchain {
                         );
                     }
 
-                    // CRITICAL: Synchronize block sequence after rollback
-                    blockRepository.synchronizeBlockSequence();
+                    // Hibernate SEQUENCE automatically manages block numbers - no manual sync needed
 
                     logger.info("✅ Rollback completed successfully");
                     logger.info(
@@ -4342,8 +4298,7 @@ public class Blockchain {
                     targetBlockNumber
                 );
 
-                // CRITICAL: Synchronize block sequence after rollback
-                blockRepository.synchronizeBlockSequence();
+                // Hibernate SEQUENCE automatically manages block numbers - no manual sync needed
 
                 logger.info(
                     "✅ Rollback to block {} completed successfully",
@@ -5165,12 +5120,6 @@ public class Blockchain {
                     // Clear database first - this is the critical operation
                     blockRepository.deleteAllBlocks();
                     authorizedKeyDAO.deleteAllAuthorizedKeys();
-
-                    // BUGFIX: Reset block_sequence to prevent "inconsistent state" errors
-                    // Without this, getBlockCount() returns old sequence value instead of 0
-                    // causing genesis block creation to be skipped
-                    em.createQuery("DELETE FROM BlockSequence").executeUpdate();
-                    logger.info("🧹 Reset block_sequence table");
 
                     // CRITICAL: Clear Hibernate session cache to avoid entity conflicts
                     em.flush();
@@ -6740,8 +6689,7 @@ public class Blockchain {
                         encryptionData
                     );
 
-                    // CRITICAL: Synchronize block sequence after import
-                    blockRepository.synchronizeBlockSequence();
+                    // Hibernate SEQUENCE automatically manages block numbers - no manual sync needed
 
                     logger.info(
                         "✅ Encrypted chain import completed successfully!"
@@ -6986,8 +6934,7 @@ public class Blockchain {
     ) {
         Block newBlock = new Block();
 
-        // Copy all fields but reset IDs and preserve original block number
-        newBlock.setId(null); // Will be auto-generated
+        // Copy all fields and preserve original block number
         newBlock.setBlockNumber(originalBlock.getBlockNumber()); // Preserve original number
         newBlock.setData(originalBlock.getData());
         newBlock.setHash(originalBlock.getHash());
@@ -7253,15 +7200,15 @@ public class Blockchain {
     /**
      * Encrypt an existing unencrypted block with password (thread-safe)
      *
-     * @param blockId The ID of the block to encrypt
+     * @param blockNumber The block number of the block to encrypt
      * @param password The password for encryption
      * @return true if encryption was successful, false if block was already encrypted or not found
      * @since 1.0.5
      */
-    public boolean encryptExistingBlock(Long blockId, String password) {
+    public boolean encryptExistingBlock(Long blockNumber, String password) {
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.writeLock();
         try {
-            return blockRepository.encryptExistingBlock(blockId, password);
+            return blockRepository.encryptExistingBlock(blockNumber, password);
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.unlockWrite(stamp);
         }

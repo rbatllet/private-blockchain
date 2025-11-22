@@ -82,7 +82,7 @@ BlockRepository blockRepository = blockchain;
 String content = blockchain.getBlockByNumberWithDecryption(1L, "password123");
 ```
 
-### 2. Blockchain.getDecryptedBlockDataByNumber()
+### 2. Blockchain.getDecryptedBlockData()
 
 **Purpose**: Clean interface layer method that provides block number-based decryption.
 
@@ -90,7 +90,7 @@ String content = blockchain.getBlockByNumberWithDecryption(1L, "password123");
 
 **Method Signature**:
 ```java
-public String getDecryptedBlockDataByNumber(Long blockNumber, String password)
+public String getDecryptedBlockData(Long blockNumber, String password)
 ```
 
 **Implementation Details**:
@@ -103,7 +103,7 @@ public String getDecryptedBlockDataByNumber(Long blockNumber, String password)
 ```java
 // Blockchain layer usage
 Blockchain blockchain = new Blockchain();
-String decryptedData = blockchain.getDecryptedBlockDataByNumber(1L, "password123");
+String decryptedData = blockchain.getDecryptedBlockData(1L, "password123");
 ```
 
 ### 3. UserFriendlyEncryptionAPI.retrieveSecret() (Updated)
@@ -118,7 +118,7 @@ public String retrieveSecret(Long blockNumber, String password)
 ```
 
 **Implementation Details**:
-- Now calls `blockchain.getDecryptedBlockDataByNumber()` instead of `getDecryptedBlockData()`
+- Now calls `blockchain.getDecryptedBlockData()` instead of `getDecryptedBlockData()`
 - Provides comprehensive debug logging for user troubleshooting
 - Uses consistent block number parameter naming throughout
 - Enhanced error handling with detailed logging
@@ -212,7 +212,7 @@ for (Block block : encryptedBlocks) {
 
 ### 1. Clear Separation of Concerns
 - **Database Layer**: `BlockRepository.getBlockByNumberWithDecryption()` handles database queries
-- **Business Logic**: `Blockchain.getDecryptedBlockDataByNumber()` provides clean interface
+- **Business Logic**: `Blockchain.getDecryptedBlockData()` provides clean interface
 - **User API**: `UserFriendlyEncryptionAPI.retrieveSecret()` offers intuitive access
 
 ### 2. Consistent Block Number Usage

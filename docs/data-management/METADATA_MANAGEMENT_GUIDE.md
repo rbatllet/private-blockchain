@@ -847,8 +847,8 @@ public class RobustMetadataProcessor {
                         }
                     } catch (Exception e) {
                         result.addFailure(update, e.getMessage());
-                        System.err.println("❌ Critical error processing update for block " + 
-                                         update.getBlockId() + ": " + e.getMessage());
+                        System.err.println("❌ Critical error processing update for block " +
+                                         update.getBlockNumber() + ": " + e.getMessage());
                     }
                 }
                 
@@ -869,35 +869,33 @@ public class RobustMetadataProcessor {
     
     private boolean processUpdateWithRetry(MetadataUpdate update) {
         Exception lastException = null;
-        
+
         for (int attempt = 1; attempt <= maxRetries; attempt++) {
             try {
                 // Find the block to update
-                List<Block> blocks = api.getEncryptedBlocksOnly(update.getBlockId());
-                if (blocks.isEmpty()) {
-                    throw new IllegalArgumentException("Block not found: " + update.getBlockId());
+                Block block = api.getBlock(update.getBlockNumber());
+                if (block == null) {
+                    throw new IllegalArgumentException("Block not found: " + update.getBlockNumber());
                 }
-                
-                Block block = blocks.get(0);
-                
+
                 // Apply the update
                 applyUpdate(block, update);
-                
+
                 // Perform the metadata update
                 boolean success = api.updateBlockMetadata(block);
-                
+
                 if (success) {
-                    System.out.println("✅ Updated block " + update.getBlockId() + 
+                    System.out.println("✅ Updated block " + update.getBlockNumber() +
                                      " (attempt " + attempt + ")");
                     return true;
                 } else {
                     throw new RuntimeException("Metadata update returned false");
                 }
-                
+
             } catch (Exception e) {
                 lastException = e;
-                System.err.println("⚠️ Attempt " + attempt + " failed for block " + 
-                                 update.getBlockId() + ": " + e.getMessage());
+                System.err.println("⚠️ Attempt " + attempt + " failed for block " +
+                                 update.getBlockNumber() + ": " + e.getMessage());
                 
                 if (attempt < maxRetries) {
                     // Exponential backoff
@@ -910,12 +908,12 @@ public class RobustMetadataProcessor {
                 }
             }
         }
-        
-        System.err.println("❌ All " + maxRetries + " attempts failed for block " + update.getBlockId());
+
+        System.err.println("❌ All " + maxRetries + " attempts failed for block " + update.getBlockNumber());
         if (lastException != null) {
             System.err.println("Last error: " + lastException.getMessage());
         }
-        
+
         return false;
     }
     
@@ -992,20 +990,20 @@ public class RobustMetadataProcessor {
     
     // Supporting classes
     public static class MetadataUpdate {
-        private String blockId;
+        private Long blockNumber;
         private String newCategory;
         private String newKeywords;
         private boolean appendKeywords = false;
         private String newSearchableContent;
         private boolean appendContent = false;
         private Map<String, Object> customMetadata;
-        
+
         // Constructors and getters...
-        public MetadataUpdate(String blockId) {
-            this.blockId = blockId;
+        public MetadataUpdate(Long blockNumber) {
+            this.blockNumber = blockNumber;
         }
-        
-        public String getBlockId() { return blockId; }
+
+        public Long getBlockNumber() { return blockNumber; }
         public String getNewCategory() { return newCategory; }
         public String getNewKeywords() { return newKeywords; }
         public boolean isAppendKeywords() { return appendKeywords; }
@@ -1066,7 +1064,7 @@ public class RobustMetadataProcessor {
             if (!failed.isEmpty()) {
                 System.out.println("\n❌ Failed Updates:");
                 failed.forEach((update, reason) -> {
-                    System.out.println("  - Block " + update.getBlockId() + ": " + reason);
+                    System.out.println("  - Block " + update.getBlockNumber() + ": " + reason);
                 });
             }
         }

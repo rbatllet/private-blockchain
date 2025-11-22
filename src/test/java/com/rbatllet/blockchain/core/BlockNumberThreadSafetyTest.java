@@ -14,10 +14,10 @@ import java.util.concurrent.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Test thread-safety of block sequence generation
+ * Test thread-safety of block number assignment using Hibernate SEQUENCE generator
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class BlockSequenceThreadSafetyTest {
+public class BlockNumberThreadSafetyTest {
     
     private static Blockchain blockchain;
     private static KeyPair authorizedKeyPair;
@@ -64,8 +64,8 @@ public class BlockSequenceThreadSafetyTest {
             assertNotNull(block, "Block #" + i + " should not be null");
             assertEquals(Long.valueOf(i), block.getBlockNumber(), "Block number should be " + i);
             blocks.add(block);
-            
-            System.out.println("✅ Block #" + i + " created successfully with ID: " + block.getId());
+
+            System.out.println("✅ Block #" + i + " created successfully with block number: " + block.getBlockNumber());
         }
         
         // Verify all blocks have sequential numbers
@@ -96,8 +96,8 @@ public class BlockSequenceThreadSafetyTest {
             assertEquals(Long.valueOf(i), block.getBlockNumber(), "Block number should be " + i);
             assertTrue(block.isDataEncrypted(), "Block should be encrypted");
             blocks.add(block);
-            
-            System.out.println("✅ Encrypted Block #" + i + " created successfully with ID: " + block.getId());
+
+            System.out.println("✅ Encrypted Block #" + i + " created successfully with block number: " + block.getBlockNumber());
         }
         
         System.out.println("✅ Sequential encrypted block creation test passed");

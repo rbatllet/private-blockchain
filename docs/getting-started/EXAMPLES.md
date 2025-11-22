@@ -1664,14 +1664,17 @@ try {
 #### Entity Configuration with JPA Annotations
 ```java
 // Example of JPA entity annotations and lifecycle callbacks
+// Phase 5.0: Manual ID assignment with JDBC batching
 @Entity
 @Table(name = "blocks")
 public class Block {
+    /**
+     * Block number (position in the chain).
+     * Phase 5.0: Manually assigned before persist() to allow hash calculation.
+     * JDBC batching enabled via persistence.xml configuration.
+     */
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    
-    @Column(name = "block_number", unique = true, nullable = false)
+    @Column(name = "block_number", unique = true, nullable = false, updatable = false)
     private Long blockNumber;
     
     @Column(name = "data", columnDefinition = "TEXT")

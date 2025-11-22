@@ -39,7 +39,7 @@ public class ApiAssertions {
      */
     public static void assertBlockCreated(Block block) {
         assertNotNull(block, "Block should be created");
-        assertNotNull(block.getId(), "Block should have ID");
+        assertNotNull(block.getBlockNumber(), "Block should have block number");
         assertNotNull(block.getHash(), "Block should have hash");
         assertNotNull(block.getData(), "Block should have data");
         assertNotNull(block.getTimestamp(), "Block should have timestamp");
@@ -89,7 +89,7 @@ public class ApiAssertions {
         // Validate each result block
         for (Block block : results) {
             assertNotNull(block, "Search result block should not be null");
-            assertNotNull(block.getId(), "Search result should have valid ID");
+            assertNotNull(block.getBlockNumber(), "Search result should have valid block number");
         }
     }
     

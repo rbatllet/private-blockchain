@@ -124,7 +124,6 @@ public class EncryptedBlockValidationTest {
         
         // 1. Test missing encryption metadata
         Block corruptedBlock1 = new Block();
-        corruptedBlock1.setId(999L);
         corruptedBlock1.setBlockNumber(999L);
         corruptedBlock1.setData("Original data preserved"); // Data field unchanged (correct architecture)
         corruptedBlock1.setIsEncrypted(true);
@@ -141,7 +140,6 @@ public class EncryptedBlockValidationTest {
         // UPDATED: Data field is NOT validated anymore (maintains hash integrity)
         // Only encryptionMetadata format is validated
         Block corruptedBlock2 = new Block();
-        corruptedBlock2.setId(998L);
         corruptedBlock2.setBlockNumber(998L);
         corruptedBlock2.setData("Original data preserved"); // Data field unchanged (correct)
         corruptedBlock2.setIsEncrypted(true);
@@ -155,7 +153,6 @@ public class EncryptedBlockValidationTest {
         
         // 3. Test corruption detection
         Block corruptedBlock3 = new Block();
-        corruptedBlock3.setId(997L);
         corruptedBlock3.setBlockNumber(997L);
         corruptedBlock3.setData("Original data"); // Data unchanged
         corruptedBlock3.setIsEncrypted(true);

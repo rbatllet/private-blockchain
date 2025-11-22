@@ -62,18 +62,20 @@ Are you in DEVELOPMENT?
 
 ### Example: When hbm2ddl="update"
 
+**Note:** Examples simplified for clarity. Actual Block entity uses `blockNumber` as `@Id` with SEQUENCE generator (Phase 5.0).
+
 ```java
-// Entity definition
+// Simplified entity definition
 @Entity
 public class Block {
-    @Id private Long id;
+    @Id private Long blockNumber;
     private String data;
 }
 
 // Change entity
 @Entity
 public class Block {
-    @Id private Long id;
+    @Id private Long blockNumber;
     private String data;
     private String newField;  // ← Added field
 }
@@ -132,16 +134,18 @@ public class Block {
 
 ### Example: Migration Files
 
+**Note:** Phase 5.0 - blocks table uses block_number as PRIMARY KEY.
+
 ```sql
 -- V1__create_initial_schema.sql
 CREATE TABLE blocks (
-    id BIGINT PRIMARY KEY,
+    block_number BIGINT PRIMARY KEY,
     data VARCHAR(4000),
     created_at TIMESTAMP,
     hash VARCHAR(128) UNIQUE
 );
 
-CREATE INDEX idx_blocks_hash ON blocks(hash);
+-- Note: block_number index automatic via PRIMARY KEY
 ```
 
 ```sql
@@ -272,12 +276,13 @@ ALTER TABLE blocks ADD COLUMN auth_token VARCHAR(500);
 ```sql
 -- V7__add_new_table.sql
 -- Forward: Create new table
+-- Note: Phase 5.0 - blocks table uses block_number as PRIMARY KEY
 CREATE TABLE block_metadata (
     id BIGINT PRIMARY KEY,
-    block_id BIGINT,
+    block_number BIGINT,
     key VARCHAR(255),
     value TEXT,
-    FOREIGN KEY (block_id) REFERENCES blocks(id)
+    FOREIGN KEY (block_number) REFERENCES blocks(block_number)
 );
 
 -- Rollback (commented for reference, not executed):

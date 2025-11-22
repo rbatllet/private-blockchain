@@ -1,8 +1,8 @@
 #!/usr/bin/env zsh
 
 # Comprehensive test runner for ALL Blockchain tests
-# Executes all 46 test classes in logical categories (ML-DSA-87 post-quantum)
-# Version: 2.0.1 - COMPLETE TEST COVERAGE (Post-Quantum Migration)
+# Executes all 45 test classes in logical categories (ML-DSA-87 post-quantum)
+# Version: 2.0.2 - COMPLETE TEST COVERAGE (Post-Quantum Migration + Phase 5.0 SEQUENCE)
 
 # Set script directory before changing directories
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -14,7 +14,7 @@ source "${SCRIPT_DIR}/lib/common_functions.zsh"
 cd "$SCRIPT_DIR/.."
 
 print_header "COMPREHENSIVE BLOCKCHAIN TEST RUNNER"
-print_info "This script runs ALL 46 available test classes in logical categories"
+print_info "This script runs ALL 45 available test classes in logical categories"
 print_info "Post-Quantum Migration: ML-DSA-87 (NIST FIPS 204)"
 print_info "Project directory: $(pwd)"
 
@@ -124,7 +124,7 @@ run_test_suite "Comprehensive Thread Safety" "ComprehensiveThreadSafetyTest" "Co
 run_test_suite "Advanced Thread Safety" "AdvancedThreadSafetyTest" "Advanced thread safety"
 run_test_suite "Extreme Thread Safety" "ExtremeThreadSafetyTest" "Extreme thread safety"
 run_test_suite "Edge Case Thread Safety" "EdgeCaseThreadSafetyTest" "Edge case thread safety"
-run_test_suite "Block Sequence Thread Safety" "BlockSequenceThreadSafetyTest" "Block sequence thread safety"
+run_test_suite "Block Number Thread Safety" "BlockNumberThreadSafetyTest" "Block number thread safety (Hibernate SEQUENCE)"
 run_test_suite "Encrypted Block Thread Safety" "EncryptedBlockThreadSafetyTest" "Encrypted block thread safety"
 run_test_suite "Data Integrity Thread Safety" "DataIntegrityThreadSafetyTest" "Data integrity thread safety"
 run_test_suite "Thread Safe Export/Import" "ThreadSafeExportImportTest" "Thread-safe export/import"
@@ -159,12 +159,6 @@ run_test_suite "Exit Utils" "ExitUtilTest" "Exit utility functions"
 
 print_separator
 
-# 10. DEBUG & DEVELOPMENT TESTS
-print_header "10. DEBUG & DEVELOPMENT TESTS"
-run_test_suite "Debug Block Sequence" "DebugBlockSequenceTest" "Debug block sequence"
-
-print_separator
-
 # FINAL SUMMARY
 print_header "COMPLETE TEST EXECUTION SUMMARY"
 
@@ -175,7 +169,7 @@ print_info "  Failed suites: $FAILED_SUITES"
 
 if [ $FAILED_SUITES -eq 0 ]; then
     print_success "🎉 ALL $TOTAL_SUITES TEST SUITES PASSED!"
-    print_success "Complete test coverage achieved - all 46 test classes executed (ML-DSA-87)"
+    print_success "Complete test coverage achieved - all 45 test classes executed (ML-DSA-87 + Phase 5.0)"
 else
     print_error "❌ $FAILED_SUITES out of $TOTAL_SUITES test suites failed"
     print_info "Check the output above for detailed failure information"

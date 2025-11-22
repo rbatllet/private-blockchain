@@ -335,7 +335,7 @@ mvn test -Dtest=DataIntegrityThreadSafetyTest
 **Enhanced Features**:
 - Detailed validation after concurrent block number sequence operations
 - Data integrity under concurrent access
-- Block sequence integrity verification
+- Block numbering integrity verification
 
 **Expected Output**:
 ```

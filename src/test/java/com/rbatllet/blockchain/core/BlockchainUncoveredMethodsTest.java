@@ -499,10 +499,10 @@ class BlockchainUncoveredMethodsTest {
 
         @Test
         @Order(31)
-        @DisplayName("getDecryptedBlockDataByNumber should throw exception for null block number")
-        void getDecryptedBlockDataByNumberShouldThrowExceptionForNullBlockNumber() {
+        @DisplayName("getDecryptedBlockData should throw exception for null block number")
+        void getDecryptedBlockDataShouldThrowExceptionForNullBlockNumber() {
             IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-                blockchain.getDecryptedBlockDataByNumber(null, "password");
+                blockchain.getDecryptedBlockData(null, "password");
             });
 
             assertTrue(exception.getMessage().contains("Block number"),
@@ -511,10 +511,10 @@ class BlockchainUncoveredMethodsTest {
 
         @Test
         @Order(32)
-        @DisplayName("getDecryptedBlockDataByNumber should throw exception for null password")
-        void getDecryptedBlockDataByNumberShouldThrowExceptionForNullPassword() {
+        @DisplayName("getDecryptedBlockData should throw exception for null password")
+        void getDecryptedBlockDataShouldThrowExceptionForNullPassword() {
             IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-                blockchain.getDecryptedBlockDataByNumber(1L, null);
+                blockchain.getDecryptedBlockData(1L, null);
             });
 
             assertTrue(exception.getMessage().contains("password"),
@@ -523,10 +523,10 @@ class BlockchainUncoveredMethodsTest {
 
         @Test
         @Order(33)
-        @DisplayName("getDecryptedBlockDataByNumber should throw exception for empty password")
-        void getDecryptedBlockDataByNumberShouldThrowExceptionForEmptyPassword() {
+        @DisplayName("getDecryptedBlockData should throw exception for empty password")
+        void getDecryptedBlockDataShouldThrowExceptionForEmptyPassword() {
             IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-                blockchain.getDecryptedBlockDataByNumber(1L, "");
+                blockchain.getDecryptedBlockData(1L, "");
             });
 
             assertTrue(exception.getMessage().contains("password"),
@@ -535,10 +535,10 @@ class BlockchainUncoveredMethodsTest {
 
         @Test
         @Order(34)
-        @DisplayName("getDecryptedBlockDataByNumber should throw exception for whitespace-only password")
-        void getDecryptedBlockDataByNumberShouldThrowExceptionForWhitespaceOnlyPassword() {
+        @DisplayName("getDecryptedBlockData should throw exception for whitespace-only password")
+        void getDecryptedBlockDataShouldThrowExceptionForWhitespaceOnlyPassword() {
             IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-                blockchain.getDecryptedBlockDataByNumber(1L, "   \t\n   ");
+                blockchain.getDecryptedBlockData(1L, "   \t\n   ");
             });
 
             assertTrue(exception.getMessage().contains("password"),
@@ -547,9 +547,9 @@ class BlockchainUncoveredMethodsTest {
 
         @Test
         @Order(35)
-        @DisplayName("getDecryptedBlockDataByNumber should return null for non-existent block")
-        void getDecryptedBlockDataByNumberShouldReturnNullForNonExistentBlock() {
-            String result = blockchain.getDecryptedBlockDataByNumber(99999L, "password");
+        @DisplayName("getDecryptedBlockData should return null for non-existent block")
+        void getDecryptedBlockDataShouldReturnNullForNonExistentBlock() {
+            String result = blockchain.getDecryptedBlockData(99999L, "password");
 
             assertNull(result, "Should return null for non-existent block");
         }

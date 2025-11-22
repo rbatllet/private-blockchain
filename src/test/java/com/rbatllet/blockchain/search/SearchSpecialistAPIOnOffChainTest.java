@@ -90,7 +90,7 @@ public class SearchSpecialistAPIOnOffChainTest {
             testPassword, 
             onChainKeywords
         );
-        System.out.println("✅ Created on-chain encrypted block: " + onChainEncryptedBlock.getId());
+        System.out.println("✅ Created on-chain encrypted block: " + onChainEncryptedBlock.getBlockNumber());
         
         // 2. ON-CHAIN PUBLIC BLOCK (using minimal encryption for testing)
         String[] publicKeywords = {"public", "announcement", "onchain", "news"};
@@ -99,7 +99,7 @@ public class SearchSpecialistAPIOnOffChainTest {
             testPassword, 
             publicKeywords
         );
-        System.out.println("✅ Created on-chain public block: " + onChainPublicBlock.getId());
+        System.out.println("✅ Created on-chain public block: " + onChainPublicBlock.getBlockNumber());
         
         // 3. OFF-CHAIN ENCRYPTED DATA
         byte[] encryptedFileData = "Encrypted document stored off-chain with sensitive financial data".getBytes();

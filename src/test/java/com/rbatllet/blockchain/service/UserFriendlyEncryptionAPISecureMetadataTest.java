@@ -143,7 +143,6 @@ public class UserFriendlyEncryptionAPISecureMetadataTest {
             
             // When: Attempt to create a modified version (simulating unsafe update)
             Block modifiedBlock = new Block();
-            modifiedBlock.setId(originalBlock.getId());
             modifiedBlock.setBlockNumber(originalBlock.getBlockNumber());
             
             // Copy original data but modify timestamp (hash-critical field)

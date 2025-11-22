@@ -389,17 +389,17 @@ public class UserFriendlyEncryptionAPICoreFunctionalityTest {
     class EdgeCasesTests {
 
         @Test
-        @DisplayName("Should handle invalid block IDs gracefully")
-        void shouldHandleInvalidBlockIdsGracefully() {
-            // Test retrieveSecret with invalid block ID
+        @DisplayName("Should handle invalid block numbers gracefully")
+        void shouldHandleInvalidBlockNumbersGracefully() {
+            // Test retrieveSecret with invalid block number
             assertDoesNotThrow(() -> {
                 api.retrieveSecret(-1L, testPassword);
-            }, "Should handle invalid block ID gracefully");
-            
-            // Test isBlockEncrypted with invalid block ID
+            }, "Should handle invalid block number gracefully");
+
+            // Test isBlockEncrypted with invalid block number
             assertDoesNotThrow(() -> {
                 api.isBlockEncrypted(999L);
-            }, "Should handle invalid block ID gracefully");
+            }, "Should handle invalid block number gracefully");
         }
 
         @Test

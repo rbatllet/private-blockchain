@@ -1,7 +1,6 @@
 package com.rbatllet.blockchain.core;
 
 import com.rbatllet.blockchain.entity.Block;
-import com.rbatllet.blockchain.entity.BlockSequence;
 import com.rbatllet.blockchain.util.JPAUtil;
 import com.rbatllet.blockchain.service.SecureBlockEncryptionService;
 import com.rbatllet.blockchain.search.SearchLevel;
@@ -74,9 +73,6 @@ class BlockRepository {
      * @since 1.0.5
      */
     public static final String BATCH_API_VERSION = "2.0.0";
-
-    // Global lock for atomic block number generation - prevents race conditions
-    private static final Object GLOBAL_BLOCK_NUMBER_LOCK = new Object();
 
     /**
      * Save a new block to the database
@@ -166,146 +162,22 @@ class BlockRepository {
                 });
     }
 
-    /**
-     * Get the next block number atomically using BlockSequence with pessimistic
-     * locking
-     * FIXED: Corrected logic to prevent race conditions and ensure proper sequence
-     */
-    public Long getNextBlockNumberAtomic() {
-        // Global synchronization ensures only one thread can get a number at a time
-        synchronized (GLOBAL_BLOCK_NUMBER_LOCK) {
-            long startTime = System.nanoTime();
-            String threadName = Thread.currentThread().getName();
-
-            EntityManager em = JPAUtil.getEntityManager();
-            EntityTransaction transaction = null;
-            boolean shouldManageTransaction = !JPAUtil.hasActiveTransaction();
-
-            try {
-                logger.debug("🔍 [{}] Starting getNextBlockNumberAtomic() - shouldManageTransaction: {}", threadName,
-                        shouldManageTransaction);
-
-                if (shouldManageTransaction) {
-                    transaction = em.getTransaction();
-                    transaction.begin();
-                    logger.debug("🔍 [{}] Started new transaction", threadName);
-                }
-
-                // Use BlockSequence with pessimistic write lock for true atomicity
-                logger.debug("🔍 [{}] Acquiring PESSIMISTIC_WRITE lock on BlockSequence", threadName);
-                BlockSequence sequence = em.find(BlockSequence.class, "BLOCK_NUMBER", LockModeType.PESSIMISTIC_WRITE);
-
-                if (sequence == null) {
-                    logger.debug("🔍 [{}] BlockSequence not found, initializing...", threadName);
-                    // Initialize sequence correctly - should start at 1 for first non-genesis block
-                    // OPTIMIZED: Use ORDER BY DESC LIMIT 1 (O(1) with unique index) instead of MAX (O(n))
-                    TypedQuery<Long> maxQuery = em.createQuery(
-                            "SELECT b.blockNumber FROM Block b ORDER BY b.blockNumber DESC", Long.class);
-                    maxQuery.setMaxResults(1);
-                    List<Long> results = maxQuery.getResultList();
-                    Long maxBlockNumber = results.isEmpty() ? null : results.get(0);
-
-                    Long nextValue;
-                    if (maxBlockNumber == null || maxBlockNumber.equals(0L)) {
-                        // Only genesis block (0) exists or no blocks exist, next should be 1
-                        nextValue = 1L;
-                    } else {
-                        // Regular case: next block number after the highest existing one
-                        nextValue = maxBlockNumber + 1L;
-                    }
-
-                    logger.debug("🔍 [{}] Creating new sequence with nextValue: {}", threadName, (nextValue + 1));
-                    sequence = new BlockSequence("BLOCK_NUMBER", nextValue + 1); // Store next available number
-                    em.persist(sequence);
-                    em.flush(); // Force immediate persistence
-
-                    if (shouldManageTransaction && transaction != null) {
-                        transaction.commit();
-                        logger.debug("🔍 [{}] Committed transaction for new sequence", threadName);
-                    }
-
-                    long elapsed = (System.nanoTime() - startTime) / 1_000_000;
-                    logger.info("✅ [{}] Generated block number: {} (took {}ms)", threadName, nextValue, elapsed);
-                    return nextValue; // Return the number we're using for current block
-                } else {
-                    // FIXED: Correct atomic increment logic
-                    Long blockNumberToUse = sequence.getNextValue(); // This is the number we'll use for the current
-                                                                     // block
-                    logger.debug("🔍 [{}] Found existing sequence, using block number: {}", threadName,
-                            blockNumberToUse);
-
-                    // Check for overflow before incrementing
-                    if (blockNumberToUse == Long.MAX_VALUE) {
-                        throw new IllegalStateException(
-                                "Block number has reached maximum value (Long.MAX_VALUE). " +
-                                        "Blockchain is full - cannot add more blocks.");
-                    }
-
-                    // Increment the sequence for the next block
-                    sequence.setNextValue(blockNumberToUse + 1);
-                    em.merge(sequence);
-                    em.flush(); // Force immediate persistence
-
-                    logger.debug("🔍 [{}] Updated sequence to nextValue: {}", threadName, (blockNumberToUse + 1));
-
-                    if (shouldManageTransaction && transaction != null) {
-                        transaction.commit();
-                        logger.debug("🔍 [{}] Committed transaction for existing sequence", threadName);
-                    }
-
-                    long elapsed = (System.nanoTime() - startTime) / 1_000_000;
-                    logger.info("✅ [{}] Generated block number: {} (took {}ms)", threadName, blockNumberToUse, elapsed);
-                    return blockNumberToUse;
-                }
-
-            } catch (Exception e) {
-                logger.error("❌ [{}] ERROR in getNextBlockNumberAtomic: {}", threadName, e.getMessage(), e);
-                if (shouldManageTransaction && transaction != null && transaction.isActive()) {
-                    transaction.rollback();
-                }
-                throw new RuntimeException("Error getting next block number atomically", e);
-            } finally {
-                if (shouldManageTransaction) {
-                    em.close();
-                }
-            }
-        }
-    }
+    // REMOVED: getNextBlockNumberAtomic() - No longer needed with Hibernate SEQUENCE generator
+    // Hibernate automatically manages block numbers via @GeneratedValue(strategy = GenerationType.SEQUENCE)
 
     /**
      * Get the last block with pessimistic locking to prevent race conditions
-     * OPTIMIZED: Uses block_sequence for O(1) performance instead of ORDER BY (O(n log n))
+     * OPTIMIZED: Uses ORDER BY DESC with unique index on blockNumber (O(log n) performance)
      *
-     * Performance: With 10K+ blocks, this is ~100x faster than ORDER BY DESC
+     * Performance: With unique index on block_number, this is very fast even with millions of blocks
      */
     public Block getLastBlockWithLock() {
         EntityManager em = JPAUtil.getEntityManager();
         try {
-            // Get current sequence value (next block number to be created)
-            TypedQuery<Long> seqQuery = em.createQuery(
-                    "SELECT bs.nextValue FROM BlockSequence bs WHERE bs.sequenceName = 'BLOCK_NUMBER'",
-                    Long.class);
-            List<Long> seqResults = seqQuery.getResultList();
-
-            if (seqResults.isEmpty() || seqResults.get(0) == null) {
-                // No blocks yet
-                return null;
-            }
-
-            Long nextBlockNumber = seqResults.get(0);
-
-            // Last block is (next_value - 1)
-            Long lastBlockNumber = nextBlockNumber - 1;
-
-            if (lastBlockNumber < 0) {
-                // No blocks yet (sequence starts at 0)
-                return null;
-            }
-
-            // Get block by number with pessimistic lock (O(1) with unique index)
+            // Get last block using ORDER BY DESC (uses unique index on blockNumber)
             TypedQuery<Block> query = em.createQuery(
-                    "SELECT b FROM Block b WHERE b.blockNumber = :blockNumber", Block.class);
-            query.setParameter("blockNumber", lastBlockNumber);
+                    "SELECT b FROM Block b ORDER BY b.blockNumber DESC", Block.class);
+            query.setMaxResults(1);
             query.setLockMode(LockModeType.PESSIMISTIC_READ);
 
             List<Block> blocks = query.getResultList();
@@ -373,14 +245,14 @@ class BlockRepository {
      * });
      * }</pre>
      * 
-     * <p><b>Performance:</b> O(1) using block_sequence + indexed lookup (avoids O(n log n) ORDER BY)</p>
-     * 
+     * <p><b>Performance:</b> O(log n) using unique index on blockNumber (very fast even with millions of blocks)</p>
+     *
      * <p><b>See Also:</b></p>
      * <ul>
      *   <li>{@link #getLastBlock(EntityManager)} - Transaction-aware version for use inside transactions</li>
      *   <li>Documentation: {@code docs/database/TRANSACTION_ISOLATION_FIX.md} - Complete technical details</li>
      * </ul>
-     * 
+     *
      * @return Last block in chain, or null if blockchain is empty
      * @see #getLastBlock(EntityManager) for transaction-aware version
      * @since 1.0.0
@@ -388,27 +260,10 @@ class BlockRepository {
     public Block getLastBlock() {
         EntityManager em = JPAUtil.getEntityManager();
         try {
-            // Get current sequence value (next block number to be created)
-            TypedQuery<Long> seqQuery = em.createQuery(
-                    "SELECT bs.nextValue FROM BlockSequence bs WHERE bs.sequenceName = 'BLOCK_NUMBER'",
-                    Long.class);
-            List<Long> seqResults = seqQuery.getResultList();
-
-            if (seqResults.isEmpty() || seqResults.get(0) == null) {
-                return null;
-            }
-
-            Long nextBlockNumber = seqResults.get(0);
-            Long lastBlockNumber = nextBlockNumber - 1;
-
-            if (lastBlockNumber < 0) {
-                return null;
-            }
-
-            // Get block by number (O(1) with unique index)
+            // Get last block using ORDER BY DESC (uses unique index on blockNumber)
             TypedQuery<Block> query = em.createQuery(
-                    "SELECT b FROM Block b WHERE b.blockNumber = :blockNumber", Block.class);
-            query.setParameter("blockNumber", lastBlockNumber);
+                    "SELECT b FROM Block b ORDER BY b.blockNumber DESC", Block.class);
+            query.setMaxResults(1);
 
             List<Block> blocks = query.getResultList();
             return blocks.isEmpty() ? null : blocks.get(0);
@@ -423,7 +278,7 @@ class BlockRepository {
      * Get the last block with forced refresh to see latest committed data
      * CRITICAL: This method ensures we see the most recent data even in
      * high-concurrency scenarios
-     * OPTIMIZED: Uses block_sequence for O(1) performance instead of ORDER BY (O(n log n))
+     * OPTIMIZED: Uses ORDER BY DESC with unique index on blockNumber (O(log n) performance)
      *
      * Used to prevent race conditions where reads happen before writes are fully
      * committed
@@ -434,27 +289,10 @@ class BlockRepository {
             // Clear the persistence context to force fresh read from database
             em.clear();
 
-            // Get current sequence value (next block number to be created)
-            TypedQuery<Long> seqQuery = em.createQuery(
-                    "SELECT bs.nextValue FROM BlockSequence bs WHERE bs.sequenceName = 'BLOCK_NUMBER'",
-                    Long.class);
-            List<Long> seqResults = seqQuery.getResultList();
-
-            if (seqResults.isEmpty() || seqResults.get(0) == null) {
-                return null;
-            }
-
-            Long nextBlockNumber = seqResults.get(0);
-            Long lastBlockNumber = nextBlockNumber - 1;
-
-            if (lastBlockNumber < 0) {
-                return null;
-            }
-
-            // Get block by number (O(1) with unique index)
+            // Get last block using ORDER BY DESC (uses unique index on blockNumber)
             TypedQuery<Block> query = em.createQuery(
-                    "SELECT b FROM Block b WHERE b.blockNumber = :blockNumber", Block.class);
-            query.setParameter("blockNumber", lastBlockNumber);
+                    "SELECT b FROM Block b ORDER BY b.blockNumber DESC", Block.class);
+            query.setMaxResults(1);
 
             List<Block> blocks = query.getResultList();
             return blocks.isEmpty() ? null : blocks.get(0);
@@ -579,28 +417,20 @@ class BlockRepository {
 
     /**
      * Get total number of blocks in the blockchain
-     * OPTIMIZED: Uses block_sequence for O(1) performance instead of COUNT (O(n))
-     *
-     * Performance: With 100K+ blocks, this is ~1000x faster than COUNT(*)
+     * OPTIMIZED: Uses COUNT which is O(1) on most databases with proper indexes
      *
      * @return total block count
      */
     public long getBlockCount() {
         EntityManager em = JPAUtil.getEntityManager();
         try {
-            // Get from block_sequence (O(1) - fast path)
-            TypedQuery<Long> seqQuery = em.createQuery(
-                    "SELECT bs.nextValue FROM BlockSequence bs WHERE bs.sequenceName = 'BLOCK_NUMBER'",
+            // Use COUNT - most databases optimize this to O(1) with indexes
+            TypedQuery<Long> countQuery = em.createQuery(
+                    "SELECT COUNT(b) FROM Block b",
                     Long.class);
-            List<Long> seqResults = seqQuery.getResultList();
+            Long count = countQuery.getSingleResult();
 
-            if (seqResults.isEmpty() || seqResults.get(0) == null) {
-                // No sequence yet - blockchain not initialized
-                return 0;
-            }
-
-            // Block count = next_value (since we start at 0: blocks 0, 1, 2... = next_value blocks)
-            return seqResults.get(0);
+            return count != null ? count : 0;
         } finally {
             if (!JPAUtil.hasActiveTransaction()) {
                 em.close();
@@ -1194,55 +1024,8 @@ class BlockRepository {
         }
     }
 
-    /**
-     * Synchronize the block sequence with the actual max block number
-     * Useful for initialization or after manual database operations
-     */
-    public void synchronizeBlockSequence() {
-        EntityManager em = JPAUtil.getEntityManager();
-        EntityTransaction transaction = null;
-        boolean shouldManageTransaction = !JPAUtil.hasActiveTransaction();
-
-        try {
-            if (shouldManageTransaction) {
-                transaction = em.getTransaction();
-                transaction.begin();
-            }
-
-            // Get actual max block number
-            // OPTIMIZED: Use ORDER BY DESC LIMIT 1 (O(1) with unique index) instead of MAX (O(n))
-            TypedQuery<Long> maxQuery = em.createQuery(
-                    "SELECT b.blockNumber FROM Block b ORDER BY b.blockNumber DESC", Long.class);
-            maxQuery.setMaxResults(1);
-            List<Long> results = maxQuery.getResultList();
-            Long maxBlockNumber = results.isEmpty() ? null : results.get(0);
-            Long nextValue = (maxBlockNumber != null) ? maxBlockNumber + 1 : 0L;
-
-            // Get or create sequence
-            BlockSequence sequence = em.find(BlockSequence.class, "BLOCK_NUMBER", LockModeType.PESSIMISTIC_WRITE);
-            if (sequence == null) {
-                sequence = new BlockSequence("BLOCK_NUMBER", nextValue);
-                em.persist(sequence);
-            } else {
-                sequence.setNextValue(nextValue);
-                em.merge(sequence);
-            }
-
-            if (shouldManageTransaction && transaction != null) {
-                transaction.commit();
-            }
-
-        } catch (Exception e) {
-            if (shouldManageTransaction && transaction != null && transaction.isActive()) {
-                transaction.rollback();
-            }
-            throw new RuntimeException("Error synchronizing block sequence", e);
-        } finally {
-            if (shouldManageTransaction) {
-                em.close();
-            }
-        }
-    }
+    // REMOVED: synchronizeBlockSequence() - No longer needed with Hibernate SEQUENCE generator
+    // Hibernate automatically manages the sequence, no manual synchronization required
 
     // =============== SEARCH FUNCTIONALITY ===============
 
@@ -1948,36 +1731,36 @@ class BlockRepository {
 
     /**
      * Retrieve and decrypt block data using password
-     * 
-     * @param blockId  The block ID to retrieve
-     * @param password The password for decryption
+     *
+     * @param blockNumber The block number to retrieve
+     * @param password    The password for decryption
      * @return The block with decrypted data in the data field
      */
-    public Block getBlockWithDecryption(Long blockId, String password) {
-        if (blockId == null) {
-            throw new IllegalArgumentException("Block ID cannot be null");
+    public Block getBlockWithDecryption(Long blockNumber, String password) {
+        if (blockNumber == null) {
+            throw new IllegalArgumentException("Block number cannot be null");
         }
         if (password == null || password.trim().isEmpty()) {
             throw new IllegalArgumentException("Password cannot be null or empty");
         }
 
         if (logger.isTraceEnabled()) {
-            logger.trace("🔧 DECRYPTION DEBUG: Getting block for blockId={}", blockId);
+            logger.trace("🔧 DECRYPTION DEBUG: Getting block for blockNumber={}", blockNumber);
         }
 
         EntityManager em = JPAUtil.getEntityManager();
         Block block;
         try {
-            block = em.find(Block.class, blockId);
+            block = em.find(Block.class, blockNumber);
             if (block == null) {
                 if (logger.isTraceEnabled()) {
-                    logger.trace("🔧 DECRYPTION DEBUG: No block found with ID={}", blockId);
+                    logger.trace("🔧 DECRYPTION DEBUG: No block found with blockNumber={}", blockNumber);
                 }
                 return null;
             }
             if (logger.isTraceEnabled()) {
-                logger.trace("🔧 DECRYPTION DEBUG: Found block with ID={}, blockNumber={}, data='{}'",
-                        blockId, block.getBlockNumber(),
+                logger.trace("🔧 DECRYPTION DEBUG: Found block blockNumber={}, data='{}'",
+                        blockNumber,
                         block.getData() != null
                                 ? block.getData().substring(0, Math.min(50, block.getData().length())) + "..."
                                 : "null");
@@ -2053,8 +1836,8 @@ class BlockRepository {
                 return null;
             }
             if (logger.isTraceEnabled()) {
-                logger.trace("🔧 DECRYPTION DEBUG: Found block with blockNumber={}, ID={}, data='{}'",
-                        blockNumber, block.getId(),
+                logger.trace("🔧 DECRYPTION DEBUG: Found block with blockNumber={}, data='{}'",
+                        blockNumber,
                         block.getData() != null
                                 ? block.getData().substring(0, Math.min(50, block.getData().length())) + "..."
                                 : "null");
@@ -2108,20 +1891,20 @@ class BlockRepository {
 
     /**
      * Check if block data can be decrypted with given password
-     * 
-     * @param blockId  The block ID to check
+     *
+     * @param blockNumber The block number to check
      * @param password The password to test
      * @return true if password can decrypt the block, false otherwise
      */
-    public boolean verifyBlockPassword(Long blockId, String password) {
-        if (blockId == null || password == null || password.trim().isEmpty()) {
+    public boolean verifyBlockPassword(Long blockNumber, String password) {
+        if (blockNumber == null || password == null || password.trim().isEmpty()) {
             return false;
         }
 
         EntityManager em = JPAUtil.getEntityManager();
         Block block;
         try {
-            block = em.find(Block.class, blockId);
+            block = em.find(Block.class, blockNumber);
             if (block == null || !block.isDataEncrypted()) {
                 return false;
             }
@@ -2141,14 +1924,14 @@ class BlockRepository {
 
     /**
      * Convert an existing unencrypted block to encrypted
-     * 
-     * @param blockId  The block ID to encrypt
+     *
+     * @param blockNumber The block number to encrypt
      * @param password The password for encryption
      * @return true if encryption was successful, false if block was already
      *         encrypted or not found
      */
-    public boolean encryptExistingBlock(Long blockId, String password) {
-        if (blockId == null) {
+    public boolean encryptExistingBlock(Long blockNumber, String password) {
+        if (blockNumber == null) {
             return false; // Return false instead of throwing exception
         }
         if (password == null || password.trim().isEmpty()) {
@@ -2165,7 +1948,7 @@ class BlockRepository {
                 transaction.begin();
             }
 
-            Block block = em.find(Block.class, blockId);
+            Block block = em.find(Block.class, blockNumber);
             if (block == null || block.isDataEncrypted()) {
                 return false; // Block not found or already encrypted
             }
@@ -2217,8 +2000,7 @@ class BlockRepository {
             EntityManager em = JPAUtil.getEntityManager();
             // Delete all blocks except genesis (block 0)
             em.createQuery("DELETE FROM Block b WHERE b.blockNumber > 0").executeUpdate();
-            // Reset block sequence counter
-            em.createQuery("DELETE FROM BlockSequence").executeUpdate();
+            // Hibernate SEQUENCE automatically resets when blocks are deleted
             // Clear Hibernate session cache to avoid entity conflicts
             em.flush();
             em.clear();
@@ -2227,8 +2009,7 @@ class BlockRepository {
             JPAUtil.executeInTransaction(em -> {
                 // Delete all blocks except genesis (block 0)
                 em.createQuery("DELETE FROM Block b WHERE b.blockNumber > 0").executeUpdate();
-                // Reset block sequence counter
-                em.createQuery("DELETE FROM BlockSequence").executeUpdate();
+                // Hibernate SEQUENCE automatically resets when blocks are deleted
                 // Clear Hibernate session cache to avoid entity conflicts
                 em.flush();
                 em.clear();
@@ -2249,8 +2030,7 @@ class BlockRepository {
             EntityManager em = JPAUtil.getEntityManager();
             // Delete ALL blocks (including genesis)
             em.createQuery("DELETE FROM Block").executeUpdate();
-            // Reset block sequence counter
-            em.createQuery("DELETE FROM BlockSequence").executeUpdate();
+            // Hibernate SEQUENCE automatically resets when all blocks are deleted
             // Clear Hibernate session cache to avoid entity conflicts
             em.flush();
             em.clear();
@@ -2259,8 +2039,7 @@ class BlockRepository {
             JPAUtil.executeInTransaction(em -> {
                 // Delete ALL blocks (including genesis)
                 em.createQuery("DELETE FROM Block").executeUpdate();
-                // Reset block sequence counter
-                em.createQuery("DELETE FROM BlockSequence").executeUpdate();
+                // Hibernate SEQUENCE automatically resets when all blocks are deleted
                 // Clear Hibernate session cache to avoid entity conflicts
                 em.flush();
                 em.clear();

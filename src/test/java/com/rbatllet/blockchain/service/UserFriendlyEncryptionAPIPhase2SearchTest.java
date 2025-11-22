@@ -99,7 +99,7 @@ public class UserFriendlyEncryptionAPIPhase2SearchTest {
         block2.setContentCategory("security");
         blockchain.updateBlock(block2);
         // Encrypt the block with password
-        blockchain.encryptExistingBlock(block2.getId(), testPassword);
+        blockchain.encryptExistingBlock(block2.getBlockNumber(), testPassword);
 
         // Block 3: Low relevance - contains only one keyword
         blockchain.addBlock(

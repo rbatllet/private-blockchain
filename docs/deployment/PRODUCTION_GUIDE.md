@@ -314,26 +314,16 @@ DB_SIZE=$(stat -c%s "$DB_FILE")
 DB_SIZE_MB=$((DB_SIZE / 1024 / 1024))
 BLOCK_COUNT=$(sqlite3 "$DB_FILE" "SELECT COUNT(*) FROM blocks;")
 KEY_COUNT=$(sqlite3 "$DB_FILE" "SELECT COUNT(*) FROM authorized_keys;")
-SEQ_VALUE=$(sqlite3 "$DB_FILE" "SELECT next_value FROM block_sequence WHERE sequence_name='BLOCK_NUMBER';")
 
 echo "📊 Database statistics:"
 echo "  Size: ${DB_SIZE_MB}MB"
 echo "  Blocks: $BLOCK_COUNT"
 echo "  Keys: $KEY_COUNT"
-echo "  Next Block Number: $SEQ_VALUE"
 
-# Verify sequence integrity
-if [ "$BLOCK_COUNT" -gt 0 ]; then
-    MAX_BLOCK_NUM=$(sqlite3 "$DB_FILE" "SELECT MAX(block_number) FROM blocks;")
-    if [ "$SEQ_VALUE" -le "$MAX_BLOCK_NUM" ]; then
-        echo "⚠️ Warning: Block sequence value ($SEQ_VALUE) is not greater than max block number ($MAX_BLOCK_NUM)"
-        echo "   Fixing sequence value..."
-        sqlite3 "$DB_FILE" "UPDATE block_sequence SET next_value = $((MAX_BLOCK_NUM + 1)) WHERE sequence_name='BLOCK_NUMBER';"
-        echo "✅ Sequence fixed: next_value set to $((MAX_BLOCK_NUM + 1))"
-    else
-        echo "✅ Block sequence integrity verified"
-    fi
-fi
+# Note: Phase 5.0 removed manual block_sequence table
+# Block numbering is now handled automatically by Hibernate SEQUENCE generator
+# No manual sequence verification/fixing needed
+echo "✅ Block numbering: Managed automatically by Hibernate SEQUENCE (Phase 5.0)"
 
 echo "✅ Database maintenance completed"
 ```

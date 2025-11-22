@@ -165,7 +165,7 @@ visibilityMap.addPrivateTerm("diagnosis-code");
 visibilityMap.addPrivateTerm("treatment-plan");
 
 // Store block with visibility control
-String blockId = blockchain.addBlockWithVisibility(
+Block block = blockchain.addBlockWithVisibility(
     data, privateKey, publicKey, visibilityMap);
 ```
 

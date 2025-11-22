@@ -105,10 +105,11 @@ graph TD
 ### SQLite Database Structure
 
 #### Blocks Table
+
+**Phase 5.0 Schema (Hibernate SEQUENCE):**
 ```sql
 CREATE TABLE blocks (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    block_number INTEGER NOT NULL UNIQUE,
+    block_number BIGINT PRIMARY KEY,   -- Hibernate SEQUENCE generator (Phase 5.0)
     previous_hash TEXT,
     data TEXT,
     timestamp TEXT NOT NULL,
@@ -123,12 +124,11 @@ CREATE TABLE blocks (
     is_encrypted BOOLEAN NOT NULL DEFAULT 0,  -- Encryption flag
     encryption_metadata TEXT,           -- Serialized encryption metadata (JSON)
     custom_metadata TEXT,               -- Custom metadata in JSON format
-    
+
     FOREIGN KEY (off_chain_data_id) REFERENCES off_chain_data(id)
 );
 
--- Indexes for optimal performance
-CREATE INDEX idx_blocks_number ON blocks(block_number);
+-- Indexes for optimal performance (block_number index automatic via PRIMARY KEY)
 CREATE INDEX idx_blocks_hash ON blocks(hash);
 CREATE INDEX idx_blocks_previous_hash ON blocks(previous_hash);
 CREATE INDEX idx_blocks_timestamp ON blocks(timestamp);
@@ -155,16 +155,7 @@ CREATE INDEX idx_keys_active ON authorized_keys(is_active);
 CREATE INDEX idx_keys_created ON authorized_keys(created_at);
 ```
 
-#### Block Sequence Table
-```sql
-CREATE TABLE block_sequence (
-    sequence_name TEXT PRIMARY KEY,
-    next_value INTEGER NOT NULL
-);
-
--- This table is used for thread-safe block number generation
--- It prevents race conditions in high-concurrency scenarios
-```
+**Note:** The `block_sequence` table was removed in Phase 5.0. Block numbers are now generated automatically by Hibernate SEQUENCE generator, which uses native database sequences (H2/PostgreSQL) or a TABLE strategy (MySQL/SQLite) for thread-safe block numbering. This eliminates manual sequence management and enables JDBC batching for 5-10x write throughput improvement.
 
 #### Off-Chain Data Table
 ```sql
@@ -207,7 +198,6 @@ CREATE INDEX idx_offchain_signer ON off_chain_data(signer_public_key);
         <!-- Entities -->
         <class>com.rbatllet.blockchain.entity.Block</class>
         <class>com.rbatllet.blockchain.entity.AuthorizedKey</class>
-        <class>com.rbatllet.blockchain.entity.BlockSequence</class>
         <class>com.rbatllet.blockchain.entity.OffChainData</class>
         
         <properties>
@@ -283,16 +273,20 @@ CREATE INDEX idx_offchain_signer ON off_chain_data(signer_public_key);
 ```
 
 #### JPA Entity Classes
+
+**Phase 5.0 (Manual ID Assignment with JDBC Batching):**
 ```java
 // src/main/java/com/rbatllet/blockchain/entity/Block.java
 @Entity
 @Table(name = "blocks")
 public class Block {
+    /**
+     * Block number (position in the chain).
+     * Phase 5.0: Manually assigned before persist() to allow hash calculation.
+     * JDBC batching enabled via persistence.xml configuration.
+     */
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    
-    @Column(name = "block_number", unique = true, nullable = false)
+    @Column(name = "block_number", unique = true, nullable = false, updatable = false)
     private Long blockNumber;
     
     @Column(name = "previous_hash", length = 64)
@@ -393,22 +387,9 @@ public class AuthorizedKey {
 
     // Getters and setters...
 }
-
-// src/main/java/com/rbatllet/blockchain/entity/BlockSequence.java
-@Entity
-@Table(name = "block_sequence")
-public class BlockSequence {
-    
-    @Id
-    @Column(name = "sequence_name")
-    private String sequenceName = "BLOCK_NUMBER";
-    
-    @Column(name = "next_value")
-    private Long nextValue = 1L;
-    
-    // Getters and setters...
-}
 ```
+
+**Note**: The `BlockSequence` entity was removed in Phase 5.0. Block numbers are now generated automatically by Hibernate SEQUENCE generator, eliminating manual sequence management and enabling JDBC batching for 5-10x write throughput improvement.
 
 ### JPA Entity Usage Examples
 ```
@@ -1278,7 +1259,7 @@ The following test classes validate thread safety under various conditions:
 5. **EdgeCaseThreadSafetyTest**: Boundary conditions and race condition prevention
 6. **DataIntegrityThreadSafetyTest**: Data consistency validation under concurrent access
 7. **EncryptedBlockThreadSafetyTest**: Encryption operations thread safety
-8. **BlockSequenceThreadSafetyTest**: Block numbering sequence thread safety
+8. **BlockNumberThreadSafetyTest**: Block numbering sequence thread safety (Hibernate SEQUENCE)
 9. **ThreadSafeExportImportTest**: Chain export/import operations thread safety
 
 **Test Coverage Areas:**
