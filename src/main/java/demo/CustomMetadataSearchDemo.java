@@ -2,6 +2,7 @@ package demo;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.util.CryptoUtil;
@@ -103,6 +104,11 @@ public class CustomMetadataSearchDemo {
         block2.setCustomMetadata(jsonMapper.writeValueAsString(metadata2));
         blockchain.updateBlock(block2);
         System.out.println("✅ Stored neurology block #" + block2.getBlockNumber());
+
+        // Wait for background indexing to complete
+        System.out.println("\n⏳ Waiting for background indexing to complete...");
+        IndexingCoordinator.getInstance().waitForCompletion();
+        System.out.println("✅ Background indexing completed - all blocks indexed\n");
 
         // Search by substring
         System.out.println("\n🔍 Searching for 'cardiology'...");

@@ -58,12 +58,20 @@ public class FastIndexSearch {
         }
         
         // Index keywords
-        logger.debug("🔍 FastIndexSearch.indexBlock: block={}, keywords={}", 
+        logger.debug("🔍 FastIndexSearch.indexBlock: block={}, keywords={}",
             blockHash, publicLayer.getGeneralKeywords());
         for (String keyword : publicLayer.getGeneralKeywords()) {
-            logger.debug("🔍 FastIndexSearch.indexBlock: adding keyword='{}' for block={}", 
-                keyword.toLowerCase(), blockHash);
-            keywordIndex.computeIfAbsent(keyword.toLowerCase(), k -> ConcurrentHashMap.newKeySet())
+            // Phase 5.4 FIX: Strip "public:" prefix for intuitive searching
+            // Blocks are stored with "public:medical" but users search for "medical"
+            // This allows users to search naturally without knowing about internal prefixes
+            String indexableKeyword = keyword.toLowerCase();
+            if (indexableKeyword.startsWith("public:")) {
+                indexableKeyword = indexableKeyword.substring("public:".length());
+            }
+
+            logger.debug("🔍 FastIndexSearch.indexBlock: adding keyword='{}' (original: '{}') for block={}",
+                indexableKeyword, keyword.toLowerCase(), blockHash);
+            keywordIndex.computeIfAbsent(indexableKeyword, k -> ConcurrentHashMap.newKeySet())
                        .add(blockHash);
         }
         

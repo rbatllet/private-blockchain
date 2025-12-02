@@ -15,7 +15,7 @@ This directory contains comprehensive testing guides, thread-safety standards, a
 |----------|-------------|-----------------|
 | **[THREAD_SAFETY_TESTS.md](THREAD_SAFETY_TESTS.md)** | Thread-safety testing guide | Concurrent testing |
 | **[SHARED_STATE_TESTING_PATTERNS.md](SHARED_STATE_TESTING_PATTERNS.md)** | Testing static/singleton shared state | Complex test scenarios |
-| **[ATOMIC_PROTECTION_MULTI_INSTANCE_GUIDE.md](ATOMIC_PROTECTION_MULTI_INSTANCE_GUIDE.md)** | Multi-instance coordination patterns | Concurrent instances |
+| **[Thread Safety & Semaphores](../development/SEMAPHORE_INDEXING_IMPLEMENTATION.md)** | Per-block semaphore coordination | Concurrent indexing |
 
 ## 🚀 Recommended Reading Order
 
@@ -27,7 +27,7 @@ This directory contains comprehensive testing guides, thread-safety standards, a
 ### For Code Reviewers
 1. **[THREAD_SAFETY_STANDARDS.md](THREAD_SAFETY_STANDARDS.md)** - Review concurrency patterns
 2. **[SHARED_STATE_TESTING_PATTERNS.md](SHARED_STATE_TESTING_PATTERNS.md)** - Validate test isolation
-3. **[ATOMIC_PROTECTION_MULTI_INSTANCE_GUIDE.md](ATOMIC_PROTECTION_MULTI_INSTANCE_GUIDE.md)** - Check multi-instance safety
+3. **[Thread Safety & Concurrent Indexing](../monitoring/INDEXING_COORDINATOR_EXAMPLES.md#thread-safety--concurrent-indexing)** - Check concurrent indexing safety
 
 ## 📊 Test Suite Overview
 
@@ -155,7 +155,7 @@ class SharedStateTest {
 
 ### Multi-Instance Coordination
 ```java
-// See: ATOMIC_PROTECTION_MULTI_INSTANCE_GUIDE.md
+// See: Thread Safety & Concurrent Indexing in INDEXING_COORDINATOR_EXAMPLES.md
 SearchFrameworkEngine instance1 = new SearchFrameworkEngine(blockchain);
 SearchFrameworkEngine instance2 = new SearchFrameworkEngine(blockchain);
 

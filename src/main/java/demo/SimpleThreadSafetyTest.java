@@ -30,6 +30,11 @@ public class SimpleThreadSafetyTest {
     private static final int NUM_THREADS = 10;
     private static final int OPERATIONS_PER_THREAD = 5;
     
+    // Statistics counters
+    private static int totalBlocksCreated = 0;
+    private static int totalOffChainBlocks = 0;
+    private static int totalValidations = 0;
+    
     public static void main(String[] args) {
         // Mostrar header tant a logs com a pantalla
         System.out.println("=== 🔒 SIMPLIFIED THREAD SAFETY TEST ===");
@@ -47,6 +52,14 @@ public class SimpleThreadSafetyTest {
             System.out.println("✅ ALL SIMPLIFIED THREAD SAFETY TESTS PASSED!");
             logger.info("✅ ALL SIMPLIFIED THREAD SAFETY TESTS PASSED!");
             
+            // Print statistics summary for script parsing
+            System.out.println();
+            System.out.println("STATS_SUMMARY_START");
+            System.out.println("BLOCKS_CREATED=" + totalBlocksCreated);
+            System.out.println("OFFCHAIN_BLOCKS=" + totalOffChainBlocks);
+            System.out.println("VALIDATIONS=" + totalValidations);
+            System.out.println("STATS_SUMMARY_END");
+            
         } catch (Exception e) {
             System.err.println("❌ Thread safety test failed: " + e.getMessage());
             logger.error("❌ Thread safety test failed: {}", e.getMessage(), e);
@@ -58,9 +71,6 @@ public class SimpleThreadSafetyTest {
     private static void testConcurrentBlockCreation() throws Exception {
         System.out.println("📝 Test 1: Concurrent Block Creation");
         logger.info("📝 Test 1: Concurrent Block Creation");
-        
-        // Clean up
-        cleanup();
 
         Blockchain blockchain = new Blockchain();
 
@@ -153,6 +163,9 @@ public class SimpleThreadSafetyTest {
         int expectedBlocks = NUM_THREADS * OPERATIONS_PER_THREAD;
         long actualChainLength = blockchain.getBlockCount() - 1; // Exclude genesis
         boolean chainValid = blockchain.validateChainDetailed().isValid();
+        
+        // Update statistics
+        totalBlocksCreated = successCount.get();
         
         System.out.println("   Block Creation Test Results:");
         System.out.println("     Expected blocks: " + expectedBlocks);
@@ -285,6 +298,9 @@ public class SimpleThreadSafetyTest {
         var validationResult = blockchain.validateChainDetailed();
         boolean chainValid = validationResult.isValid();
         
+        // Update statistics
+        totalOffChainBlocks = offChainBlocksCreated.get();
+        
         System.out.println("   Off-Chain Operations Test Results:");
         System.out.println("     Off-chain blocks created: " + offChainBlocksCreated.get());
         System.out.println("     Expected: " + NUM_THREADS);
@@ -319,12 +335,13 @@ public class SimpleThreadSafetyTest {
         System.out.println("📝 Test 3: Concurrent Validation Stress");
         logger.info("📝 Test 3: Concurrent Validation Stress");
         
-        // DON'T cleanup here - preserve off-chain data from Test 2 for validation
+        // Cleanup off-chain files to prevent orphaned file deletion errors
+        logger.debug("Cleaning up off-chain files before Test 3");
+        cleanupOffChainFiles();
 
         Blockchain blockchain = new Blockchain();
 
         // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
-        // Note: This clears the database but preserves off-chain files
         blockchain.clearAndReinitialize();
 
         logger.debug("Blockchain initialized for validation stress test");
@@ -394,6 +411,9 @@ public class SimpleThreadSafetyTest {
         
         int expectedValidations = NUM_THREADS * OPERATIONS_PER_THREAD * 2;
         
+        // Update statistics
+        totalValidations = successfulValidations.get();
+        
         System.out.println("   Concurrent Validation Test Results:");
         System.out.println("     Total validations: " + validationCount.get());
         System.out.println("     Successful validations: " + successfulValidations.get());
@@ -460,6 +480,18 @@ public class SimpleThreadSafetyTest {
         File file = new File(fileName);
         if (file.exists()) {
             file.delete();
+        }
+    }
+    
+    private static void cleanupOffChainFiles() {
+        try {
+            File offChainDir = new File("off-chain-data");
+            if (offChainDir.exists()) {
+                deleteDirectory(offChainDir);
+                logger.debug("Cleaned up off-chain files");
+            }
+        } catch (Exception e) {
+            logger.warn("Could not clean up off-chain files: {}", e.getMessage());
         }
     }
     

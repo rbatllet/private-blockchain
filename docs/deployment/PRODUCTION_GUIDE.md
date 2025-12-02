@@ -321,9 +321,9 @@ echo "  Blocks: $BLOCK_COUNT"
 echo "  Keys: $KEY_COUNT"
 
 # Note: Phase 5.0 removed manual block_sequence table
-# Block numbering is now handled automatically by Hibernate SEQUENCE generator
+# Block numbering is now handled manually before persist() call
 # No manual sequence verification/fixing needed
-echo "✅ Block numbering: Managed automatically by Hibernate SEQUENCE (Phase 5.0)"
+echo "✅ Block numbering: Manual assignment within writeLock (Phase 5.0, enables JDBC batching)"
 
 echo "✅ Database maintenance completed"
 ```
@@ -417,7 +417,7 @@ ValidationSummary summary = blockchain.validateChainStreaming(
             }
         });
     },
-    1000  // Batch size
+    MemorySafetyConstants.DEFAULT_BATCH_SIZE  // Batch size (1000)
 );
 
 System.out.println("📊 Streaming Validation Complete");
@@ -964,7 +964,7 @@ if (!result.isStructurallyIntact()) {
    Blockchain blockchain = new Blockchain();
    ValidationSummary summary = blockchain.validateChainStreaming(
        batchResults -> { /* Process batches */ },
-       1000  // Batch size
+       MemorySafetyConstants.DEFAULT_BATCH_SIZE  // Batch size (1000)
    );
    // Much faster and memory-efficient for large chains
    ```

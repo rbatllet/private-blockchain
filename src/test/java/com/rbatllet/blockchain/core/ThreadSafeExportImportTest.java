@@ -2,6 +2,7 @@ package com.rbatllet.blockchain.core;
 
 import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.security.UserRole;
+import com.rbatllet.blockchain.testutil.BaseBlockchainTest;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,7 +22,7 @@ import java.util.concurrent.*;
  * Thread safety tests for blockchain export/import operations
  * Validates concurrent access patterns and data integrity
  */
-public class ThreadSafeExportImportTest {
+public class ThreadSafeExportImportTest extends BaseBlockchainTest {
 
     private Blockchain blockchain;
     private KeyPair bootstrapKeyPair;

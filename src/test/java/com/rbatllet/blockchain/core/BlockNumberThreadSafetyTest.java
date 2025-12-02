@@ -14,7 +14,7 @@ import java.util.concurrent.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Test thread-safety of block number assignment using Hibernate SEQUENCE generator
+ * Test thread-safety of block number assignment using manual assignment within write lock (Phase 5.0)
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class BlockNumberThreadSafetyTest {

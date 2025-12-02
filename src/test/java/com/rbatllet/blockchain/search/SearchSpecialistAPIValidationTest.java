@@ -83,6 +83,9 @@ public class SearchSpecialistAPIValidationTest {
             "Another test block for comprehensive validation",            testPrivateKey,
             testPublicKey
         );
+        
+        // Wait for background indexing to complete
+        IndexingCoordinator.getInstance().waitForCompletion();
     }
 
     // ===== CONSTRUCTOR VALIDATION TESTS =====

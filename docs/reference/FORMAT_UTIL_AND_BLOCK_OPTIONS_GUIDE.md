@@ -365,6 +365,7 @@ void setUp() throws Exception {
     blockchain.clearAndReinitialize(); // Clean database before each test
 
     // ⚠️ v1.0.6+: Use secure initialization pattern even in tests
+    // Load genesis admin keys (generated via ./tools/generate_genesis_keys.zsh)
     KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
         "./keys/genesis-admin.private",
         "./keys/genesis-admin.public"

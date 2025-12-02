@@ -6,6 +6,28 @@ The UserFriendlyEncryptionAPI provides a simplified interface for blockchain ope
 
 > **⚠️ SECURITY UPDATE (v1.0.6)**: The API now requires **mandatory pre-authorization** of all users. Follow the secure initialization pattern below.
 
+## 🔑 Prerequisites: Generate Genesis Admin Keys
+
+**Before starting**, you need to generate the genesis-admin keys required for bootstrap authorization.
+
+### For Production/Development
+
+```bash
+./tools/generate_genesis_keys.zsh
+```
+
+This creates:
+- `./keys/genesis-admin.private` (6.6KB Dilithium ML-DSA-87 private key)
+- `./keys/genesis-admin.public` (3.5KB Dilithium ML-DSA-87 public key)
+
+> **🔐 IMPORTANT**: Backup these keys to a secure location! If lost, you cannot create new users.
+
+### For Tests
+
+Tests automatically generate genesis keys if they don't exist. See [AUTO_GENESIS_KEY_GENERATION.md](../testing/AUTO_GENESIS_KEY_GENERATION.md) for details.
+
+> **⚠️ WARNING**: Never delete `./keys/genesis-admin.*` in production - you'll lose access to user management!
+
 ## 🚀 Quick Start
 
 ### 1. Secure Initialization (REQUIRED)
@@ -43,7 +65,7 @@ api.setDefaultCredentials("your-username", yourKeys);
 // ✅ Now you're ready to use the API securely!
 ```
 
-> **💡 TIP**: The genesis admin keys are created automatically the first time you run the blockchain. Store them securely as they're required for all user management operations.
+> **💡 TIP**: The genesis admin keys (`./keys/genesis-admin.*`) are required for all user management operations. Make sure to backup them securely!
 
 ### 2. Store Your First Secret
 

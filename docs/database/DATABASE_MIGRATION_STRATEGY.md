@@ -62,7 +62,7 @@ Are you in DEVELOPMENT?
 
 ### Example: When hbm2ddl="update"
 
-**Note:** Examples simplified for clarity. Actual Block entity uses `blockNumber` as `@Id` with SEQUENCE generator (Phase 5.0).
+**Note:** Examples simplified for clarity. Actual Block entity uses `blockNumber` as `@Id` with manual assignment (Phase 5.0).
 
 ```java
 // Simplified entity definition
@@ -134,7 +134,7 @@ public class Block {
 
 ### Example: Migration Files
 
-**Note:** Phase 5.0 - blocks table uses block_number as PRIMARY KEY.
+**Note:** Phase 5.0 - `block_number` is PRIMARY KEY with manual assignment (no separate `id` field).
 
 ```sql
 -- V1__create_initial_schema.sql
@@ -276,7 +276,7 @@ ALTER TABLE blocks ADD COLUMN auth_token VARCHAR(500);
 ```sql
 -- V7__add_new_table.sql
 -- Forward: Create new table
--- Note: Phase 5.0 - blocks table uses block_number as PRIMARY KEY
+-- Note: Phase 5.0 - block_number is PRIMARY KEY with manual assignment
 CREATE TABLE block_metadata (
     id BIGINT PRIMARY KEY,
     block_number BIGINT,

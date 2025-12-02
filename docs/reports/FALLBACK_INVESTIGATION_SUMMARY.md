@@ -92,7 +92,7 @@ List<Block> allBlocks = blockchain.getValidChain(); // Loads entire chain!
 **Solution:**
 ```java
 // ✅ AFTER - Memory-safe paginated search
-int batchSize = 1000;
+int batchSize = MemorySafetyConstants.DEFAULT_BATCH_SIZE;
 for (long offset = blockCount - batchSize; offset >= 0; offset -= batchSize) {
     List<Block> batch = blockchain.getBlocksPaginated(offset, batchSize);
     // Search within batch...

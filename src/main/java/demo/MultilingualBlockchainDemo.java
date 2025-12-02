@@ -2,6 +2,7 @@ package demo;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.service.AdvancedSearchResult;
@@ -124,11 +125,16 @@ public class MultilingualBlockchainDemo {
         );
         System.out.println("✅ Portuguese academic record stored in block #" + portugueseBlock.getBlockNumber());
         
+        // CRITICAL: Wait for async/background indexing to complete
+        System.out.println("\n⏳ Waiting for background indexing to complete...");
+        IndexingCoordinator.getInstance().waitForCompletion();
+        System.out.println("✅ Background indexing completed - all blocks indexed");
+        
         // Test language-independent search
         System.out.println("\n🔍 Testing language-independent search capabilities...");
         
-        // Search for identifiers (language-independent)
-        List<Block> medicalRecords = api.findRecordsByIdentifier("pacient:cat-001");
+        // Search for identifiers (language-independent) with password for encrypted blocks
+        List<Block> medicalRecords = api.findRecordsByIdentifier("pacient:cat-001", password);
         System.out.println("📋 Found " + medicalRecords.size() + " medical records by identifier");
         
         // Search by terms in different languages

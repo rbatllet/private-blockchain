@@ -87,9 +87,9 @@
         <class>com.rbatllet.blockchain.entity.ConfigurationAuditEntity</class>
 
         <properties>
-            <!-- PostgreSQL connection settings -->
+            <!-- PostgreSQL connection settings with batch optimization -->
             <property name="jakarta.persistence.jdbc.driver" value="org.postgresql.Driver"/>
-            <property name="jakarta.persistence.jdbc.url" value="jdbc:postgresql://localhost:5432/blockchain"/>
+            <property name="jakarta.persistence.jdbc.url" value="jdbc:postgresql://localhost:5432/blockchain?reWriteBatchedInserts=true"/>
             <property name="jakarta.persistence.jdbc.user" value="blockchain_user"/>
             <property name="jakarta.persistence.jdbc.password" value=""/>
 
@@ -153,9 +153,9 @@
         <class>com.rbatllet.blockchain.entity.ConfigurationAuditEntity</class>
 
         <properties>
-            <!-- MySQL connection settings -->
+            <!-- MySQL connection settings with batch optimization -->
             <property name="jakarta.persistence.jdbc.driver" value="com.mysql.cj.jdbc.Driver"/>
-            <property name="jakarta.persistence.jdbc.url" value="jdbc:mysql://localhost:3306/blockchain?useSSL=false&amp;allowPublicKeyRetrieval=true"/>
+            <property name="jakarta.persistence.jdbc.url" value="jdbc:mysql://localhost:3306/blockchain?useSSL=false&amp;allowPublicKeyRetrieval=true&amp;rewriteBatchedStatements=true&amp;cachePrepStmts=true&amp;useServerPrepStmts=true"/>
             <property name="jakarta.persistence.jdbc.user" value="blockchain_user"/>
             <property name="jakarta.persistence.jdbc.password" value=""/>
 
@@ -227,8 +227,15 @@
 
             <!-- Hibernate specific settings -->
             <property name="hibernate.hbm2ddl.auto" value="create-drop"/>
-            <property name="hibernate.show_sql" value="false"/>
-            <property name="hibernate.format_sql" value="false"/>
+            <property name="hibernate.show_sql" value="true"/>
+            <property name="hibernate.format_sql" value="true"/>
+
+            <!-- Additional SQL logging -->
+            <property name="hibernate.use_sql_comments" value="true"/>
+            <property name="hibernate.jdbc.batch_size" value="50"/>
+
+            <!-- Enable logging for batch operations -->
+            <property name="hibernate.generate_statistics" value="true"/>
 
             <!-- HikariCP Connection Pool Configuration -->
             <property name="hibernate.connection.provider_class" value="org.hibernate.hikaricp.internal.HikariCPConnectionProvider"/>

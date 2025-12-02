@@ -12,6 +12,8 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
+
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.service.SearchMetrics.PerformanceStats;
 
 /**
@@ -237,6 +239,11 @@ public class SearchMetricsTest {
             
             assertTrue(completionLatch.await(25, TimeUnit.SECONDS), 
                       "Concurrent reads and writes should complete within timeout");
+            
+            // CRITICAL: Wait for async indexing to complete before validating
+            logger.info("⏳ Waiting for background indexing to complete...");
+            IndexingCoordinator.getInstance().waitForCompletion();
+            logger.info("✅ Background indexing completed");
             
             // Validate results - NO TOLERANCE! We want to detect real issues
             int expectedWrites = NUM_WRITER_THREADS * OPERATIONS_PER_THREAD;

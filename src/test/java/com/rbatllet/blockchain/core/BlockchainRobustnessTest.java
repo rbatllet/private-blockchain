@@ -577,7 +577,7 @@ public class BlockchainRobustnessTest {
         }
 
         // Validate chain should pass for valid chain
-        com.rbatllet.blockchain.validation.ChainValidationResult result = blockchain.validateChainDetailed();
+        ChainValidationResult result = blockchain.validateChainDetailed();
         assertTrue(result.isValid(), "Valid chain should pass validation");
 
         logger.info("✅ validateChainDetailed correctly validates chain");

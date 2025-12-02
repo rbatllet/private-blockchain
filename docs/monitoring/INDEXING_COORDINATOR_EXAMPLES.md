@@ -2,11 +2,34 @@
 
 ---
 
+## ⚠️ IMPORTANT: Manual Indexing Tests Only (Phase 5.4 Update)
+
+> **NOTICE**: This document shows examples for **MANUAL indexing control** using `enableTestMode()`.
+>
+> **For Phase 5.4 ASYNC indexing tests**, use the patterns in [PHASE_5_4_TEST_ISOLATION_GUIDE.md](../testing/PHASE_5_4_TEST_ISOLATION_GUIDE.md) instead:
+> - ❌ DO NOT use `enableTestMode()` in Phase 5.4 tests
+> - ✅ Use `clearShutdownFlag()` in tearDown()
+> - ✅ Use `clearIndexes()` instead of `clearAll()`
+> - ✅ Use `waitForCompletion()` before assertions
+>
+> **Use this document only if:**
+> - You need to manually control when indexing happens
+> - You want to benchmark indexing performance separately
+> - You're testing IndexingCoordinator internals
+
+---
+
 ## ⚠️ SECURITY UPDATE (v1.0.6)
 
 > **CRITICAL**: All UserFriendlyEncryptionAPI usage now requires **mandatory pre-authorization**. Users must be authorized before performing any operations.
 
 ### Required Secure Initialization
+
+> **🔑 PREREQUISITE**: Generate genesis-admin keys first:
+> ```bash
+> ./tools/generate_genesis_keys.zsh
+> ```
+> This creates `./keys/genesis-admin.*` required for all examples below. **Backup securely!**
 
 All code examples assume this initialization pattern:
 
@@ -14,7 +37,7 @@ All code examples assume this initialization pattern:
 // 1. Create blockchain (only genesis block is automatic)
 Blockchain blockchain = new Blockchain();
 
-// 2. Load genesis admin keys
+// 2. Load genesis admin keys (generated via ./tools/generate_genesis_keys.zsh)
 KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
     "./keys/genesis-admin.private",
     "./keys/genesis-admin.public"
@@ -44,11 +67,180 @@ api.setDefaultCredentials("username", userKeys);
 The `IndexingCoordinator` is a powerful component that prevents infinite indexing loops and coordinates all blockchain indexing operations. This document provides practical examples for different use cases.
 
 ## Table of Contents
+- [Thread Safety & Concurrent Indexing](#thread-safety--concurrent-indexing)
 - [Basic Usage](#basic-usage)
 - [Test Environment Setup](#test-environment-setup)
 - [Advanced Configuration](#advanced-configuration)
 - [Production Scenarios](#production-scenarios)
 - [Troubleshooting](#troubleshooting)
+
+---
+
+## Thread Safety & Concurrent Indexing
+
+### 🔒 Semaphore-Based Block Indexing Coordination
+
+**Since v1.0.6**, `SearchFrameworkEngine` uses **per-block semaphores** to ensure thread-safe indexing in highly concurrent environments. This prevents race conditions and duplicate indexing when multiple threads attempt to index the same block simultaneously.
+
+#### The Problem (Before Semaphores)
+
+In concurrent scenarios (e.g., multiple threads creating encrypted blocks), race conditions occurred:
+
+```
+Thread 1: Check if block #274 indexed → NO → Start indexing
+Thread 2: Check if block #274 indexed → NO → Start indexing  ❌ DUPLICATE!
+Thread 1: putIfAbsent() → SUCCESS
+Thread 2: putIfAbsent() → FAILS (already exists) → Returns without indexing
+Result: indexed = 0, RuntimeException thrown ❌
+```
+
+**Issues:**
+- ❌ Multiple threads competed to index the same block
+- ❌ `putIfAbsent()` race condition caused `indexed == 0` errors
+- ❌ Spurious "Indexing failed: 0 blocks indexed" exceptions
+- ❌ Confusing logs with concurrent attempts
+
+#### The Solution (Semaphore Coordination)
+
+Each block hash has its own **fair semaphore** (`Semaphore(1, true)`) that coordinates exclusive access:
+
+```java
+// Inside SearchFrameworkEngine.indexBlock()
+Semaphore semaphore = blockIndexingSemaphores.computeIfAbsent(
+    blockHash, 
+    k -> new Semaphore(1, true)  // 1 permit = exclusive access, fair = FIFO
+);
+
+try {
+    semaphore.acquire();  // Wait if another thread is indexing
+    
+    // Double-check after acquiring lock
+    if (globalProcessingMap.get(blockHash) != null) {
+        logger.info("⏭️ [{}] Already indexed, skipping", shortHash);
+        return;  // Another thread completed while we waited
+    }
+    
+    // Mark as processing
+    globalProcessingMap.put(blockHash, PROCESSING_PLACEHOLDER);
+    
+    // Generate and store metadata
+    BlockMetadataLayers metadata = metadataManager.generateMetadataLayers(...);
+    blockMetadataIndex.put(blockHash, metadata);
+    globalProcessingMap.put(blockHash, metadata);
+    
+} finally {
+    semaphore.release();  // Always release
+}
+```
+
+**Benefits:**
+- ✅ **Zero race conditions**: Only one thread indexes each block
+- ✅ **Fair scheduling**: Threads wait in FIFO order (no starvation)
+- ✅ **Double-check optimization**: After acquiring lock, verify if still needed
+- ✅ **Guaranteed cleanup**: `finally` block always releases semaphore
+- ✅ **Clean logs**: Clear `[hash] Waiting → Acquired → Released` messages
+
+#### Concurrent Indexing Flow
+
+```
+Time  Thread 1           Thread 2           Thread 3
+----  -----------------  -----------------  -----------------
+T1    indexBlock(#274)   indexBlock(#274)   indexBlock(#275)
+      acquire() ✅        acquire() ⏳       acquire() ✅
+      
+T2    [Indexing #274]    [WAITING]          [Indexing #275]
+      generateMetadata   (blocked)          generateMetadata
+      
+T3    release() 🔓       acquire() ✅        release() 🔓
+                         check: indexed? ✓
+                         
+T4                       release() 🔓
+                         (skipped, already done)
+
+Result: ✅ Both blocks indexed exactly once, no errors
+```
+
+#### Integration with Blockchain.indexBlocksRange()
+
+The `Blockchain.indexBlocksRange()` method relies on semaphores for thread safety:
+
+```java
+for (Block block : blocks) {
+    try {
+        // SearchFrameworkEngine uses semaphores internally
+        // Only one thread will actually index each block
+        searchFrameworkEngine.indexBlock(block, password, privateKey, config);
+        indexed++;
+        
+    } catch (Exception e) {
+        // Individual failures don't stop the batch
+        logger.warn("⚠️ Failed to index block {}: {}", 
+            block.getBlockNumber(), e.getMessage());
+        skipped++;
+    }
+}
+```
+
+**Key Points:**
+- No need to check `isBlockIndexed()` beforehand - semaphores handle it
+- Failures are logged but don't fail the entire batch
+- `indexed == 0` is acceptable (blocks already indexed by other threads)
+
+#### Testing Thread Safety
+
+Tests with **high concurrency** (10+ writer threads, 15+ reader threads) validate:
+
+```java
+@Test
+void testConcurrentBlockIndexing() {
+    ExecutorService executor = Executors.newFixedThreadPool(25);
+    CountDownLatch startLatch = new CountDownLatch(1);
+    
+    // 10 threads creating encrypted blocks concurrently
+    for (int i = 0; i < 10; i++) {
+        executor.submit(() -> {
+            startLatch.await();
+            Block block = blockchain.addEncryptedBlockWithKeywords(
+                "data", 
+                "password-" + threadId,  // Different passwords per thread
+                keywords, 
+                category, 
+                privateKey, 
+                publicKey
+            );
+            // Background indexing coordinated by semaphores ✅
+        });
+    }
+    
+    startLatch.countDown();  // Start all threads simultaneously
+    
+    // Wait for background indexing to complete
+    IndexingCoordinator.getInstance().waitForCompletion();
+    
+    // Verify: All blocks indexed exactly once, no duplicates
+    assertEquals(10, searchFrameworkEngine.getIndexedBlockCount());
+}
+```
+
+**Results:**
+- ✅ 2287 tests pass (including high-concurrency tests)
+- ✅ Zero "0 blocks indexed" errors
+- ✅ Clean shutdown with proper semaphore cleanup
+
+#### Performance Characteristics
+
+- **Overhead**: Minimal (~1-2ms per semaphore acquire/release)
+- **Scalability**: Excellent - each block has its own semaphore (no global bottleneck)
+- **Fairness**: FIFO ordering prevents thread starvation
+- **Memory**: One semaphore per unique block hash (cleaned up automatically)
+
+#### Best Practices
+
+1. **Let semaphores do their job**: Don't add extra synchronization
+2. **Trust the double-check**: After acquiring lock, check if work is still needed
+3. **Accept `indexed == 0`**: Normal in concurrent scenarios
+4. **Use `waitForCompletion()`**: In tests, wait for background indexing before assertions
+5. **Clean up in tests**: Call `clearGlobalProcessingMapForTesting()` in tearDown
 
 ---
 
@@ -417,20 +609,29 @@ public class ProductionBlockchainService {
         coordinator.registerIndexer("PRODUCTION_METADATA_INDEX", request -> {
             logger.info("🔄 Starting production metadata indexing");
             
-            try {
-                // Batch processing for large datasets
-                List<Block> blocks = request.getBlocks();
-                if (blocks != null && blocks.size() > 1000) {
-                    processBatches(blocks, 100); // 100 blocks per batch
-                } else {
-                    processStandardIndexing(blocks);
+            int indexed = 0;
+            int failed = 0;
+            
+            // Batch processing for large datasets
+            List<Block> blocks = request.getBlocks();
+            if (blocks != null && blocks.size() > 1000) {
+                for (Block block : blocks) {
+                    try {
+                        processBlock(block);
+                        indexed++;
+                    } catch (Exception e) {
+                        // Individual failures don't stop batch processing
+                        logger.warn("⚠️ Failed to index block {}: {}", 
+                            block.getBlockNumber(), e.getMessage());
+                        failed++;
+                    }
                 }
-                
-                logger.info("✅ Production metadata indexing completed");
-            } catch (Exception e) {
-                logger.error("❌ Production indexing failed", e);
-                throw new RuntimeException("Indexing failed", e);
+            } else {
+                processStandardIndexing(blocks);
             }
+            
+            logger.info("✅ Production metadata indexing completed: {} indexed, {} failed", 
+                indexed, failed);
         });
     }
     
@@ -782,7 +983,7 @@ coordinator.registerIndexer("RECIPIENT_INDEX_REBUILD", request -> {
 
 ## 🔗 Related Documentation
 
-- **[Atomic Protection & Multi-Instance Coordination](../testing/ATOMIC_PROTECTION_MULTI_INSTANCE_GUIDE.md)** - Thread-safe multi-instance operations and global protection systems
+- **[Semaphore-Based Block Indexing Implementation](../development/SEMAPHORE_INDEXING_IMPLEMENTATION.md)** - Complete technical guide on per-block semaphores for thread-safe concurrent indexing
 - **[Search Framework Guide](../search/SEARCH_FRAMEWORK_GUIDE.md)** - Advanced search engine with indexing coordination
 - **[Thread Safety Standards](../testing/THREAD_SAFETY_STANDARDS.md)** - General thread safety guidelines and best practices
 - **[Performance Optimization](../reports/PERFORMANCE_OPTIMIZATION_SUMMARY.md)** - Performance tuning for indexing and search operations

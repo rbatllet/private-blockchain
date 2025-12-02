@@ -456,7 +456,7 @@ Lines: 967-1034
 public List<Block> findSimilarContent(String contentReference, double minimumSimilarity) {
     // OPTIMIZED: Process blocks in batches to avoid loading all blocks at once
     List<Block> similarBlocks = new java.util.ArrayList<>();  // ❌ UNBOUNDED LIST
-    final int BATCH_SIZE = 100;
+    final int BATCH_SIZE = MemorySafetyConstants.FALLBACK_BATCH_SIZE;
     long totalBlocks = blockchain.getBlockCount();
 
     // ... extract keywords from reference ...
@@ -519,7 +519,7 @@ public List<Block> findSimilarContent(String contentReference, double minimumSim
     }
 
     List<Block> similarBlocks = new ArrayList<>();  // ✅ Now bounded
-    final int BATCH_SIZE = 100;
+    final int BATCH_SIZE = MemorySafetyConstants.FALLBACK_BATCH_SIZE;
     long totalBlocks = blockchain.getBlockCount();
 
     // ... extract keywords from reference ...

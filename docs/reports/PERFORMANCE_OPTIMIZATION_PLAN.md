@@ -35,7 +35,7 @@ blockchain.processChainInBatches(batch -> {
         // Process each block
         analyzeBlock(block);
     }
-}, 1000); // 1000 blocks per batch
+}, MemorySafetyConstants.DEFAULT_BATCH_SIZE); // 1000 blocks per batch
 ```
 
 **Best For**:
@@ -223,9 +223,9 @@ public List<Block> searchByContent(String keyword) {
 int batchSize;
 
 if (Runtime.getRuntime().maxMemory() < 512 * 1024 * 1024) {
-    batchSize = 100;  // Low memory systems
+    batchSize = MemorySafetyConstants.FALLBACK_BATCH_SIZE;  // Low memory systems (100)
 } else if (Runtime.getRuntime().maxMemory() < 2 * 1024 * 1024 * 1024) {
-    batchSize = 1000; // Standard systems
+    batchSize = MemorySafetyConstants.DEFAULT_BATCH_SIZE; // Standard systems (1000)
 } else {
     batchSize = 5000; // High-performance systems
 }

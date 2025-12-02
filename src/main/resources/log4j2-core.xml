@@ -100,13 +100,31 @@
             <AppenderRef ref="Console"/>
             <AppenderRef ref="AppLogFile"/>
         </Logger>
-        
-        <!-- SQL statements visible in development -->
-        <Logger name="org.hibernate.SQL" level="DEBUG" additivity="false">
+
+        <!-- SQL statements visible in development (Hibernate 7 format) -->
+        <Logger name="org.hibernate.SQL" level="WARN" additivity="false">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="AppLogFile"/>
         </Logger>
-        
+
+        <!-- JDBC Batch Operations - CRITICAL (Hibernate 7 format) -->
+        <Logger name="org.hibernate.orm.jdbc.batch" level="TRACE" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="AppLogFile"/>
+        </Logger>
+
+        <!-- JDBC parameter binding (Hibernate 7 format) - WARN to reduce noise -->
+        <Logger name="org.hibernate.orm.jdbc.bind" level="WARN" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="AppLogFile"/>
+        </Logger>
+
+        <!-- JDBC result set extraction (Hibernate 7 format) - WARN to reduce noise -->
+        <Logger name="org.hibernate.orm.jdbc.extract" level="WARN" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="AppLogFile"/>
+        </Logger>
+
         <!-- HikariCP - info level for development -->
         <Logger name="com.zaxxer.hikari" level="INFO" additivity="false">
             <AppenderRef ref="Console"/>

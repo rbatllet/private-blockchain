@@ -5,8 +5,11 @@ import com.rbatllet.blockchain.entity.Block;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
@@ -43,6 +46,34 @@ public class IndexingCoordinator {
         new ConcurrentHashMap<>();
     private final AtomicBoolean testMode = new AtomicBoolean(false);
     private final AtomicBoolean shutdownRequested = new AtomicBoolean(false);
+    
+    /**
+     * Dedicated executor for async indexing operations.
+     * Ensures indexing always runs on a separate thread, never on caller thread.
+     * Uses single thread to maintain sequential indexing semantics.
+     */
+    private final ExecutorService asyncExecutor = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "IndexingCoordinator-Async");
+        t.setDaemon(true);
+        return t;
+    });
+
+    /**
+     * Phase 5.4 FIX: Track active async indexing tasks to prevent race condition in waitForCompletion().
+     *
+     * <p><strong>Problem:</strong> Original implementation checked {@code indexingSemaphore.availablePermits()}
+     * which could return immediately if checked before async task acquired the semaphore, causing
+     * {@code waitForCompletion()} to return before indexing started.</p>
+     *
+     * <p><strong>Solution:</strong> This counter is incremented BEFORE launching async task and
+     * decremented in finally block when task completes, providing deterministic signal for
+     * {@code waitForCompletion()} to wait on.</p>
+     *
+     * @see #waitForCompletion()
+     * @see #coordinateIndexing(IndexingRequest)
+     * @since 1.0.6 (Phase 5.4.1)
+     */
+    private final AtomicInteger activeIndexingTasks = new AtomicInteger(0);
 
     // Indexing strategies
     private final ConcurrentHashMap<
@@ -100,7 +131,24 @@ public class IndexingCoordinator {
     }
 
     /**
-     * IMPROVED: Main indexing coordination method with enhanced shutdown safety
+     * Main indexing coordination method with enhanced shutdown safety and race condition prevention.
+     *
+     * <p><strong>Phase 5.4.1 Race Condition Fix:</strong> Increments {@link #activeIndexingTasks}
+     * BEFORE launching async task, ensuring {@link #waitForCompletion()} sees the task even if
+     * called immediately. Counter is decremented in finally block when task completes.</p>
+     *
+     * <p><strong>Features:</strong>
+     * <ul>
+     *   <li>Shutdown safety checks before execution</li>
+     *   <li>Test mode support (skips if not force execution)</li>
+     *   <li>Semaphore-based concurrency control (one major indexing at a time)</li>
+     *   <li>Deterministic async tracking for test reliability</li>
+     * </ul>
+     *
+     * @param request The indexing request to coordinate
+     * @return CompletableFuture that completes when indexing finishes
+     * @see #activeIndexingTasks
+     * @see #waitForCompletion()
      */
     public CompletableFuture<IndexingResult> coordinateIndexing(
         IndexingRequest request
@@ -108,7 +156,9 @@ public class IndexingCoordinator {
         // IMPROVED: Check both shutdown flags for better coordination
         if (!isSafeToExecute()) {
             String reason = shutdownRequested.get() ? "Shutdown requested" : "Shutdown in progress";
-            logger.debug("Rejecting indexing request '{}': {}", request.getOperation(), reason);
+            logger.warn("❌ REJECTING indexing request '{}': {} | shutdownRequested={}, gracefulShutdownInProgress={}",
+                       request.getOperation(), reason, shutdownRequested.get(), gracefulShutdownInProgress.get());
+            logger.warn("📍 Rejection call stack:", new Exception("Indexing rejection stack trace"));
             return CompletableFuture.completedFuture(
                 IndexingResult.cancelled(reason)
             );
@@ -125,38 +175,52 @@ public class IndexingCoordinator {
             );
         }
 
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                // Acquire indexing semaphore to prevent concurrent major operations
-                if (!indexingSemaphore.tryAcquire()) {
-                    if (request.isCanWait()) {
-                        indexingSemaphore.acquire();
-                    } else {
-                        return IndexingResult.failed(
-                            "Another indexing operation in progress"
-                        );
-                    }
-                }
+        // Phase 5.4 FIX: Increment active task counter BEFORE launching async task
+        // This prevents race condition in waitForCompletion() where it might check
+        // before the async task starts
+        activeIndexingTasks.incrementAndGet();
 
+        // Use dedicated executor to GUARANTEE execution on different thread
+        return CompletableFuture.supplyAsync(() -> {
+            logger.info("🧵 [{}] Async indexing lambda STARTED (thread ID: {})", 
+                Thread.currentThread().getName(), Thread.currentThread().threadId());
+            try {
                 try {
-                    masterLock.writeLock().lock();
-                    return executeIndexing(request);
-                } finally {
-                    masterLock.writeLock().unlock();
-                    indexingSemaphore.release();
+                    // Acquire indexing semaphore to prevent concurrent major operations
+                    if (!indexingSemaphore.tryAcquire()) {
+                        if (request.isCanWait()) {
+                            indexingSemaphore.acquire();
+                        } else {
+                            return IndexingResult.failed(
+                                "Another indexing operation in progress"
+                            );
+                        }
+                    }
+
+                    try {
+                        masterLock.writeLock().lock();
+                        return executeIndexing(request);
+                    } finally {
+                        masterLock.writeLock().unlock();
+                        indexingSemaphore.release();
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return IndexingResult.cancelled("Interrupted");
+                } catch (Exception e) {
+                    logger.error(
+                        "❌ Error during coordinated indexing: {}",
+                        e.getMessage(),
+                        e
+                    );
+                    return IndexingResult.failed(e.getMessage());
                 }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                return IndexingResult.cancelled("Interrupted");
-            } catch (Exception e) {
-                logger.error(
-                    "❌ Error during coordinated indexing: {}",
-                    e.getMessage(),
-                    e
-                );
-                return IndexingResult.failed(e.getMessage());
+            } finally {
+                // Phase 5.4 FIX: Decrement active task counter when async task completes
+                // This allows waitForCompletion() to detect when all tasks are done
+                activeIndexingTasks.decrementAndGet();
             }
-        });
+        }, asyncExecutor); // Use dedicated executor to guarantee async execution
     }
 
     private IndexingResult executeIndexing(IndexingRequest request) {
@@ -241,13 +305,15 @@ public class IndexingCoordinator {
                 logger.debug("Shutdown already requested");
                 return;
             }
-            
+
             if (!gracefulShutdownInProgress.compareAndSet(false, true)) {
                 logger.debug("Graceful shutdown already in progress");
                 return;
             }
-            
+
             logger.info("🛑 IndexingCoordinator graceful shutdown initiated");
+            // Log stack trace to see WHO is calling shutdown
+            logger.info("📍 Shutdown called from:", new Exception("Shutdown call stack trace"));
             
             try {
                 // Phase 1: Stop accepting new operations (done by setting shutdownRequested)
@@ -300,6 +366,10 @@ public class IndexingCoordinator {
     public void forceShutdown() {
         shutdownRequested.set(true);
         logger.info("🛑 IndexingCoordinator force shutdown requested");
+        
+        // NOTE: We do NOT shutdown asyncExecutor because IndexingCoordinator is a singleton
+        // and the executor should live as long as the JVM. The shutdownRequested flag
+        // will prevent new tasks from being accepted.
     }
 
     /**
@@ -311,6 +381,103 @@ public class IndexingCoordinator {
         indexers.clear();
         indexingProgress.clear();
         logger.info("🔄 IndexingCoordinator reset completed in test mode");
+    }
+
+    /**
+     * Phase 5.4 FIX: Clear shutdown flag to allow indexing in next test.
+     *
+     * <p>Unlike {@link #reset()}, this does NOT enable test mode, allowing normal async indexing.
+     * This is critical for Phase 5.4 async indexing tests to prevent singleton state contamination
+     * between tests.</p>
+     *
+     * <p><strong>What it does:</strong>
+     * <ul>
+     *   <li>Clears {@code shutdownRequested} flag to re-enable indexing</li>
+     *   <li>Clears {@code indexingProgress} to ensure clean state between tests</li>
+     *   <li>Does NOT clear {@code indexers} (registered dynamically per operation)</li>
+     *   <li>Does NOT enable test mode (allows async indexing to work)</li>
+     * </ul>
+     *
+     * @see #reset()
+     * @see #forceShutdown()
+     * @since 1.0.6 (Phase 5.4)
+     */
+    public void clearShutdownFlag() {
+        shutdownRequested.set(false);
+        indexingProgress.clear();  // Clear progress tracking
+        logger.info("🔄 IndexingCoordinator shutdown flag cleared - async indexing re-enabled");
+    }
+
+    /**
+     * Wait for all pending indexing operations to complete.
+     *
+     * <p><strong>Phase 5.4 FIX (v1.0.6):</strong> Test support for async indexing</p>
+     *
+     * <p>This method blocks the calling thread until all currently executing indexing
+     * operations complete. This is essential for tests that need to verify search results
+     * after creating blocks with async indexing.</p>
+     *
+     * <p><strong>Phase 5.4.1 Race Condition Fix:</strong> Uses {@link #activeIndexingTasks}
+     * counter instead of semaphore to prevent race condition where method could return
+     * before async task started (when debug logs were removed, timing changed causing tests
+     * to fail with 0 results).</p>
+     *
+     * <p><strong>Use Case:</strong>
+     * <pre>{@code
+     * // Create blocks (triggers async indexing)
+     * blockchain.addBlockWithKeywords(data, keywords, privateKey, publicKey);
+     *
+     * // Wait for indexing to complete before searching
+     * IndexingCoordinator.getInstance().waitForCompletion();
+     *
+     * // Now search will find the indexed blocks
+     * List<Block> results = searchAPI.searchAll("keyword");
+     * }</pre>
+     *
+     * @param timeoutMs Maximum time to wait in milliseconds (0 = wait forever)
+     * @return true if all operations completed, false if timeout reached
+     * @throws InterruptedException if the calling thread is interrupted while waiting
+     * @since 1.0.6
+     * @see #activeIndexingTasks
+     */
+    public boolean waitForCompletion(long timeoutMs) throws InterruptedException {
+        long startTime = System.currentTimeMillis();
+
+        logger.debug("⏳ Waiting for indexing completion (timeout: {}ms, active tasks: {})",
+                    timeoutMs, activeIndexingTasks.get());
+
+        // Phase 5.4 FIX: Wait for active tasks counter instead of semaphore
+        // This prevents race condition where we check before async task increments counter
+        while (activeIndexingTasks.get() > 0) {
+            if (timeoutMs > 0) {
+                long elapsed = System.currentTimeMillis() - startTime;
+                if (elapsed > timeoutMs) {
+                    logger.warn("⏱️ Timeout reached waiting for indexing completion ({}ms, {} tasks still active)",
+                               elapsed, activeIndexingTasks.get());
+                    return false;
+                }
+            }
+
+            Thread.sleep(50);  // Check every 50ms
+        }
+
+        long duration = System.currentTimeMillis() - startTime;
+        logger.debug("✅ Indexing completion confirmed (waited {}ms)", duration);
+        return true;
+    }
+
+    /**
+     * Wait for all pending indexing operations to complete (default 30 second timeout).
+     *
+     * <p>Convenience method that uses a default timeout of 30 seconds.</p>
+     *
+     * @return true if all operations completed, false if timeout reached
+     * @throws InterruptedException if the calling thread is interrupted while waiting
+     * @since 1.0.6
+     * @see #waitForCompletion(long)
+     */
+    public boolean waitForCompletion() throws InterruptedException {
+        return waitForCompletion(30000);  // 30 second default timeout
     }
 
     /**
@@ -356,7 +523,20 @@ public class IndexingCoordinator {
      * Returns true if it's safe to start new operations
      */
     public boolean isSafeToExecute() {
-        return !shutdownRequested.get() && !gracefulShutdownInProgress.get();
+        boolean shutdownReq = shutdownRequested.get();
+        boolean gracefulShutdown = gracefulShutdownInProgress.get();
+        boolean safe = !shutdownReq && !gracefulShutdown;
+
+        if (!safe) {
+            logger.warn("🚫 isSafeToExecute() = false | shutdownRequested={}, gracefulShutdownInProgress={}",
+                       shutdownReq, gracefulShutdown);
+            // Log stack trace to see who's checking during shutdown
+            if (logger.isDebugEnabled()) {
+                logger.debug("Stack trace for unsafe execution check:", new Exception("Stack trace"));
+            }
+        }
+
+        return safe;
     }
 
     // Inner classes for request/response

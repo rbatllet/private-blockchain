@@ -176,7 +176,38 @@ public class SearchSpecialistAPI {
         if (config == null) {
             throw new IllegalArgumentException("EncryptionConfig cannot be null");
         }
-        
+
+        // PHASE 5.4 FIX: Validate that blockchain has blocks before initializing search
+        // This prevents the common mistake of initializing SearchSpecialistAPI on an empty blockchain,
+        // which would result in 0 indexed blocks and subsequent search failures.
+        long blockCount = blockchain.getBlockCount();
+        if (blockCount == 0) {
+            String errorMsg = "⚠️ SearchSpecialistAPI initialization ERROR: Blockchain is empty (0 blocks).\n" +
+                            "\n" +
+                            "🔧 SOLUTION: Create blocks BEFORE initializing SearchSpecialistAPI:\n" +
+                            "   1. Add blocks to blockchain first: blockchain.addBlock(...)\n" +
+                            "   2. Wait for async indexing to complete (if applicable)\n" +
+                            "   3. Then initialize SearchSpecialistAPI\n" +
+                            "\n" +
+                            "📝 EXAMPLE:\n" +
+                            "   // Step 1: Create blocks\n" +
+                            "   blockchain.addBlockWithKeywords(data, keywords, privateKey, publicKey);\n" +
+                            "   \n" +
+                            "   // Step 2: Wait for async indexing\n" +
+                            "   IndexingCoordinator.getInstance().waitForCompletion();\n" +
+                            "   \n" +
+                            "   // Step 3: Initialize search\n" +
+                            "   SearchSpecialistAPI api = new SearchSpecialistAPI(blockchain, password, privateKey);\n" +
+                            "\n" +
+                            "⚡ WHY: Async indexing of blocks added AFTER SearchSpecialistAPI initialization\n" +
+                            "   may not be properly indexed for search operations, causing search failures.";
+
+            logger.error(errorMsg);
+            throw new IllegalStateException(errorMsg);
+        }
+
+        logger.info("✅ Blockchain validation passed: {} blocks available for indexing", blockCount);
+
         // Use the existing SearchFrameworkEngine from the blockchain
         this.searchEngine = blockchain.getSearchFrameworkEngine();
         this.passwordRegistry = new BlockPasswordRegistry();
@@ -265,23 +296,34 @@ public class SearchSpecialistAPI {
     // ===== SIMPLE SEARCH METHODS =====
     
     /**
-     * Performs a fast search using only public metadata (non-encrypted data).
-     * 
-     * <p>This method provides convenient search access by searching through both
-     * public and private content using the default credentials. It's ideal for:</p>
+     * Performs an intelligent adaptive search using default credentials.
+     *
+     * <p><strong>Phase 5.4 Update:</strong> This method is now ADAPTIVE based on default password:</p>
+     * <ul>
+     *   <li><strong>If defaultPassword is NULL:</strong> Searches ONLY public metadata (fast, &lt;50ms)</li>
+     *   <li><strong>If defaultPassword is NOT NULL:</strong> Searches BOTH public and private content</li>
+     * </ul>
+     *
+     * <p>This adaptive behavior makes the API intelligent and intuitive:
+     * <ul>
+     *   <li>When initialized without password → fast public-only search</li>
+     *   <li>When initialized with password → comprehensive public+private search</li>
+     * </ul>
+     *
+     * <p><strong>Use Cases:</strong></p>
      * <ul>
      *   <li>General content discovery</li>
      *   <li>Comprehensive searches without credential management</li>
      *   <li>Applications where users have default access</li>
-     *   <li>Simplified search functionality</li>
+     *   <li>Simplified search functionality with automatic public/private layer selection</li>
      * </ul>
-     * 
-     * <p><strong>Performance:</strong> This method uses standard search with default password
-     * and typically completes in under 200ms for datasets with millions of blocks.</p>
-     * 
-     * <p><strong>Security:</strong> Searches both public and private content using
-     * the default password set during API initialization.</p>
-     * 
+     *
+     * <p><strong>Performance:</strong>
+     * <ul>
+     *   <li>Public-only (password=null): &lt;50ms</li>
+     *   <li>Hybrid (password!=null): &lt;200ms</li>
+     * </ul>
+     *
      * @param query the search terms to look for. Must not be null or empty.
      *              Supports space-separated keywords, quotes for exact phrases,
      *              and basic wildcards.
@@ -297,27 +339,38 @@ public class SearchSpecialistAPI {
     }
     
     /**
-     * Performs a convenient search using default credentials with a custom result limit.
-     * 
-     * <p>This method provides convenient search access by searching through both
-     * public and private content using the default password. This allows accessing
-     * all indexed content without manually providing credentials.</p>
-     * 
+     * Performs an intelligent adaptive search using default credentials with a custom result limit.
+     *
+     * <p><strong>Phase 5.4 Update:</strong> This method is now ADAPTIVE based on default password:</p>
+     * <ul>
+     *   <li><strong>If defaultPassword is NULL:</strong> Searches ONLY public metadata (fast, &lt;50ms)</li>
+     *   <li><strong>If defaultPassword is NOT NULL:</strong> Searches BOTH public and private content</li>
+     * </ul>
+     *
+     * <p>This adaptive behavior makes the API intelligent and intuitive:
+     * <ul>
+     *   <li>When initialized without password → fast public-only search</li>
+     *   <li>When initialized with password → comprehensive public+private search</li>
+     * </ul>
+     *
      * <p><strong>Performance Considerations:</strong></p>
      * <ul>
-     *   <li><strong>Small limits (1-50):</strong> Optimal performance, &lt;50ms</li>
-     *   <li><strong>Medium limits (51-500):</strong> Good performance, &lt;200ms</li>
+     *   <li><strong>Public-only (password=null):</strong> &lt;50ms (fast index search)</li>
+     *   <li><strong>Hybrid (password!=null):</strong> &lt;200ms (public + private layers)</li>
+     *   <li><strong>Small limits (1-50):</strong> Optimal performance</li>
+     *   <li><strong>Medium limits (51-500):</strong> Good performance</li>
      *   <li><strong>Large limits (501+):</strong> May impact performance, consider pagination</li>
      * </ul>
-     * 
+     *
      * <p><strong>Use Cases:</strong></p>
      * <ul>
      *   <li>Search result pagination</li>
      *   <li>Performance-tuned applications</li>
      *   <li>Search analytics and metrics</li>
      *   <li>Bulk data discovery</li>
+     *   <li>Adaptive public/private search scenarios</li>
      * </ul>
-     * 
+     *
      * @param query the search terms to look for. Must not be null or empty.
      *              Supports keywords, exact phrases (in quotes), and wildcards.
      * @param maxResults the maximum number of results to return. Must be positive.
@@ -331,7 +384,7 @@ public class SearchSpecialistAPI {
      */
     public List<SearchFrameworkEngine.EnhancedSearchResult> searchAll(String query, int maxResults) {
         // No need to check initialization since constructor always initializes properly
-        
+
         // Validate query parameter
         if (query == null) {
             throw new IllegalArgumentException("Query cannot be null");
@@ -339,12 +392,12 @@ public class SearchSpecialistAPI {
         if (query.trim().isEmpty()) {
             throw new IllegalArgumentException("Query cannot be empty or contain only whitespace");
         }
-        
+
         // Validate maxResults parameter
         if (maxResults <= 0) {
             throw new IllegalArgumentException("Maximum results must be positive");
         }
-        
+
         // Check for direct instantiation and warn
         if (isDirectlyInstantiated && !isInitialized) {
             logger.error("❌ SearchSpecialistAPI was created directly and is not initialized. " +
@@ -354,9 +407,11 @@ public class SearchSpecialistAPI {
             System.err.println("⚠️ WARNING: SearchSpecialistAPI created directly without proper initialization. " +
                               "Expected results: 0. Use blockchain.getSearchSpecialistAPI() instead.");
         }
-        
-        // REVERTED: searchAll searches with default password (OPCIÓ B)
-        // This allows searchAll to find both public and private content using default credentials
+
+        // Phase 5.4 ADAPTIVE SEARCH: Behavior depends on defaultPassword
+        // - If defaultPassword is NULL → searches ONLY public metadata (fast)
+        // - If defaultPassword is NOT NULL → searches BOTH public AND private content (comprehensive)
+        // This makes searchAll() intelligent and adaptive to initialization context
         SearchFrameworkEngine.SearchResult result = searchEngine.search(query, defaultPassword, maxResults);
         return result.getResults();
     }
@@ -1446,8 +1501,15 @@ public class SearchSpecialistAPI {
      * @see #initializeWithBlockchain for re-initialization after cache clearing
      * @see #shutdown() for permanent shutdown without intent to restart
      */
+    /**
+     * Clear search caches and password registry without shutting down the search engine.
+     * Use this for test cleanup or database reinitialization.
+     *
+     * <p>Unlike {@link #shutdown()}, this method does NOT shut down the executor service,
+     * allowing the search engine to continue operating after cache cleanup.</p>
+     */
     public void clearCache() {
-        searchEngine.clearAll();
+        searchEngine.clearIndexes();  // Phase 5.4 FIX: Use clearIndexes() instead of clearAll()
         passwordRegistry.clearAll();
         isInitialized = false;
     }

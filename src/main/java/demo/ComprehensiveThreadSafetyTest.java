@@ -827,7 +827,7 @@ public class ComprehensiveThreadSafetyTest {
             if (processedBlockNumbers.size() < successfulOperations.get()) {
                 System.out.println("   🔧 Check block number generation synchronization");
                 System.out.println("   🔧 Verify GLOBAL_BLOCKCHAIN_LOCK is being used correctly");
-                System.out.println("   🔧 Review Hibernate SEQUENCE generator configuration");
+                System.out.println("   🔧 Review manual block number assignment within write lock (Phase 5.0)");
             }
             if (!chainValidation.isStructurallyIntact()) {
                 System.out.println("   🔧 Check hash chain integrity");

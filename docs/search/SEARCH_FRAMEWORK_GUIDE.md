@@ -63,16 +63,70 @@ The Search Framework Engine automatically selects the optimal strategy:
 
 ## 🔍 Basic Usage
 
-### Quick Start with SearchSpecialistAPI
+### ⚠️ Phase 5.4 Initialization Pattern (IMPORTANT!)
+
+**CRITICAL:** With Phase 5.4 (Async/Background Indexing), you MUST follow this initialization order:
 
 ```java
-// Initialize the API
-SearchSpecialistAPI searchAPI = new SearchSpecialistAPI();
+import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.api.UserFriendlyEncryptionAPI;
+import com.rbatllet.blockchain.search.SearchSpecialistAPI;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
+import java.security.KeyPair;
 
+// Step 1: Setup blockchain and user
+Blockchain blockchain = new Blockchain();
+UserFriendlyEncryptionAPI dataAPI = new UserFriendlyEncryptionAPI(blockchain);
+KeyPair userKeys = dataAPI.createUser("search-user");
+dataAPI.setDefaultCredentials("search-user", userKeys);
+
+// Step 2: Store searchable data (triggers async indexing in background)
+String password = "SearchPassword123!";
+String[] keywords = {"medical", "patient", "diagnosis"};
+dataAPI.storeSearchableData("Medical record data", password, keywords);
+
+// Step 3: ⚡ CRITICAL - Wait for async indexing to complete
+System.out.println("⏳ Waiting for async indexing...");
+IndexingCoordinator.getInstance().waitForCompletion();
+System.out.println("✅ Async indexing completed");
+
+// Step 4: NOW initialize SearchSpecialistAPI (blockchain has indexed blocks)
+SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(
+    blockchain, password, userKeys.getPrivate());
+
+// Step 5: Search works correctly
+List<EnhancedSearchResult> results = searchAPI.searchAll("medical");
+System.out.println("Found " + results.size() + " results");
+```
+
+**Key Points (Phase 5.4):**
+- ✅ **Create blocks FIRST** with `storeSearchableData()`
+- ✅ **Wait for indexing** using `IndexingCoordinator.getInstance().waitForCompletion()`
+- ✅ **Initialize SearchSpecialistAPI AFTER** blocks are indexed
+- ❌ **DO NOT** initialize SearchSpecialistAPI on empty blockchain (throws IllegalStateException)
+- ❌ **DO NOT** skip `waitForCompletion()` - you'll get 0 search results
+
+**Common Mistake:**
+```java
+// ❌ WRONG - Empty blockchain
+Blockchain blockchain = new Blockchain();  // Only genesis block
+SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(blockchain, pass, key);
+// Throws: IllegalStateException: "Blockchain is empty (0 blocks)"
+```
+
+**See Also:**
+- [SearchSpecialistAPI Initialization Guide](SEARCHSPECIALISTAPI_INITIALIZATION_GUIDE.md)
+- [SearchSpecialistAPI Initialization Order Issue](../reports/SEARCHSPECIALISTAPI_INITIALIZATION_ORDER_ISSUE.md)
+
+### Quick Start with SearchSpecialistAPI
+
+Once properly initialized (see Phase 5.4 pattern above), use these search methods:
+
+```java
 // Fast public-only search (sub-50ms)
 List<EnhancedSearchResult> publicResults = searchAPI.searchPublic("medical records");
 
-// Hybrid search (public + private with default password)  
+// Hybrid search (public + private with default password)
 List<EnhancedSearchResult> hybridResults = searchAPI.searchAll("patient data");
 
 // Encrypted-only search with explicit password
@@ -652,7 +706,8 @@ try {
 ## 🔗 Related Documentation
 
 - [API Guide](../reference/API_GUIDE.md) - Complete API reference
-- [Atomic Protection & Multi-Instance Coordination](../testing/ATOMIC_PROTECTION_MULTI_INSTANCE_GUIDE.md) - Thread-safe multi-instance operations
+- [Thread Safety & Concurrent Indexing](../monitoring/INDEXING_COORDINATOR_EXAMPLES.md#thread-safety--concurrent-indexing) - Per-block semaphore coordination
+- [Semaphore-Based Block Indexing Implementation](../development/SEMAPHORE_INDEXING_IMPLEMENTATION.md) - Complete technical guide
 - [IndexingCoordinator Examples](../monitoring/INDEXING_COORDINATOR_EXAMPLES.md) - Practical examples for indexing coordination and loop prevention
 - [Granular Term Visibility Demo](../scripts/run_granular_term_visibility_demo.zsh) - Interactive demonstration
 - [Search Comparison](SEARCH_COMPARISON.md) - Performance benchmarks

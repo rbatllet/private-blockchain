@@ -463,7 +463,7 @@ private Block findBlockByHashSafe(String blockHash) {
             blockHash.substring(0, 8));
         
         long blockCount = blockchain.getBlockCount();
-        int batchSize = 1000;
+        int batchSize = MemorySafetyConstants.DEFAULT_BATCH_SIZE;
         
         // Search in batches from newest to oldest (most queries are for recent blocks)
         for (long offset = blockCount - batchSize; offset >= 0; offset -= batchSize) {

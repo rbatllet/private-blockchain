@@ -2,6 +2,7 @@ package com.rbatllet.blockchain.core;
 
 import com.rbatllet.blockchain.config.DatabaseConfig;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
@@ -52,6 +53,9 @@ public class Phase_A7_PerformanceBenchmarkTest {
 
     @BeforeEach
     void setUp() throws Exception {
+        // Reset IndexingCoordinator to clear shutdown state
+        IndexingCoordinator.getInstance().reset();
+
         DatabaseConfig h2Config = DatabaseConfig.createH2TestConfig();
         JPAUtil.initialize(h2Config);
 
@@ -123,12 +127,17 @@ public class Phase_A7_PerformanceBenchmarkTest {
 
     private void generateBlocks(int count) throws Exception {
         System.out.println("📝 Generating " + count + " benchmark blocks...");
+        // Use batch write with skipIndexing for performance benchmarks
+        List<Blockchain.BlockWriteRequest> requests = new java.util.ArrayList<>();
         for (int i = 0; i < count; i++) {
-            blockchain.addBlock("Benchmark block " + i, keyPair.getPrivate(), keyPair.getPublic());
-            if ((i + 1) % 10000 == 0) {
-                System.out.println("  ✅ " + (i + 1) + " blocks");
-            }
+            requests.add(new Blockchain.BlockWriteRequest(
+                "Benchmark block " + i,
+                keyPair.getPrivate(),
+                keyPair.getPublic()
+            ));
         }
+        blockchain.addBlocksBatch(requests, true);  // skipIndexing=true for performance benchmark
+        System.out.println("  ✅ " + count + " blocks");
     }
 
     // ==================== TEST 1: PROCESSCHAINBATCHES VS PAGINATED ====================

@@ -2,6 +2,7 @@ package demo;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.search.metadata.TermVisibilityMap;
 import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
@@ -68,7 +69,7 @@ public class GranularTermVisibilityDemo {
     }
     
     private static void demonstrateBasicGranularControl(UserFriendlyEncryptionAPI api, String password) {
-        System.out.println("\\n📋 DEMO 1: BASIC GRANULAR CONTROL");
+        System.out.println("\n📋 DEMO 1: BASIC GRANULAR CONTROL");
         System.out.println("==================================");
         
         // Create a visibility map
@@ -86,13 +87,13 @@ public class GranularTermVisibilityDemo {
         Block block = api.storeDataWithGranularTermControl(medicalData, password, allTerms, visibility);
         
         if (block != null) {
-            System.out.printf("✅ Stored block %s with granular term control\\n", 
+            System.out.printf("✅ Stored block %s with granular term control\n", 
                             block.getHash().substring(0, 8));
         }
     }
     
     private static void demonstrateMedicalRecordExample(UserFriendlyEncryptionAPI api, String password) {
-        System.out.println("\\n🏥 DEMO 2: MEDICAL RECORD PRIVACY");
+        System.out.println("\n🏥 DEMO 2: MEDICAL RECORD PRIVACY");
         System.out.println("==================================");
         
         String medicalRecord = "Dr. Sarah Johnson examined patient Maria Rodriguez for chronic diabetes. " +
@@ -108,14 +109,14 @@ public class GranularTermVisibilityDemo {
         Block block = api.storeDataWithSeparatedTerms(medicalRecord, password, publicTerms, privateTerms);
         
         if (block != null) {
-            System.out.printf("✅ Medical record stored: %s\\n", block.getHash().substring(0, 8));
+            System.out.printf("✅ Medical record stored: %s\n", block.getHash().substring(0, 8));
             System.out.println("   📋 Anyone can search for 'diabetes' or 'insulin'");
             System.out.println("   🔐 Only authorized users can search for 'Maria Rodriguez'");
         }
     }
     
     private static void demonstrateFinancialDataExample(UserFriendlyEncryptionAPI api, String password) {
-        System.out.println("\\n💰 DEMO 3: FINANCIAL DATA PRIVACY");
+        System.out.println("\n💰 DEMO 3: FINANCIAL DATA PRIVACY");
         System.out.println("==================================");
         
         String financialData = "SWIFT transfer of $50,000 from account 123-456-789 to John Smith. " +
@@ -135,15 +136,20 @@ public class GranularTermVisibilityDemo {
         Block block = api.storeDataWithGranularTermControl(financialData, password, allTerms, visibility);
         
         if (block != null) {
-            System.out.printf("✅ Financial record stored: %s\\n", block.getHash().substring(0, 8));
+            System.out.printf("✅ Financial record stored: %s\n", block.getHash().substring(0, 8));
             System.out.println("   📋 Public: Can search for 'swift transfer' or 'real estate'");
             System.out.println("   🔐 Private: Amounts, account numbers, names need password");
         }
     }
     
-    private static void demonstrateSearchBehavior(UserFriendlyEncryptionAPI api, String password, Blockchain blockchain) {
-        System.out.println("\\n🔍 DEMO 4: SEARCH BEHAVIOR WITH GRANULAR CONTROL");
+    private static void demonstrateSearchBehavior(UserFriendlyEncryptionAPI api, String password, Blockchain blockchain) throws InterruptedException {
+        System.out.println("\n🔍 DEMO 4: SEARCH BEHAVIOR WITH GRANULAR CONTROL");
         System.out.println("================================================");
+        
+        // Wait for background indexing to complete
+        System.out.println("\n⏳ Waiting for background indexing to complete...");
+        IndexingCoordinator.getInstance().waitForCompletion();
+        System.out.println("✅ Background indexing completed - all blocks indexed\n");
         
         // Ensure indexing is complete by checking search readiness
         System.out.println("🔍 Verifying search system readiness...");
@@ -172,29 +178,29 @@ public class GranularTermVisibilityDemo {
         System.out.println("🌍 PUBLIC SEARCHES (no password required):");
         
         List<Block> publicResults = api.searchByTerms(new String[]{"patient", "diagnosis"}, null, 10);
-        System.out.printf("   'patient diagnosis': %d results\\n", publicResults.size());
+        System.out.printf("   'patient diagnosis': %d results\n", publicResults.size());
         
         publicResults = api.searchByTerms(new String[]{"swift", "transfer"}, null, 10);
-        System.out.printf("   'swift transfer': %d results\\n", publicResults.size());
+        System.out.printf("   'swift transfer': %d results\n", publicResults.size());
         
         publicResults = api.searchByTerms(new String[]{"real", "estate"}, null, 10);
-        System.out.printf("   'real estate': %d results\\n", publicResults.size());
+        System.out.printf("   'real estate': %d results\n", publicResults.size());
         
         // Test searches that should require password
-        System.out.println("\\n🔐 PRIVATE SEARCHES (password protected):");
+        System.out.println("\n🔐 PRIVATE SEARCHES (password protected):");
         
         publicResults = api.searchByTerms(new String[]{"john", "smith"}, null, 10);
-        System.out.printf("   'john smith' (no password): %d results\\n", publicResults.size());
+        System.out.printf("   'john smith' (no password): %d results\n", publicResults.size());
         
         List<Block> privateResults = api.searchAndDecryptByTerms(new String[]{"john", "smith"}, password, 10);
-        System.out.printf("   'john smith' (with password): %d results\\n", privateResults.size());
+        System.out.printf("   'john smith' (with password): %d results\n", privateResults.size());
         
         privateResults = api.searchAndDecryptByTerms(new String[]{"cancer"}, password, 10);
-        System.out.printf("   'cancer' (with password): %d results\\n", privateResults.size());
+        System.out.printf("   'cancer' (with password): %d results\n", privateResults.size());
         
         privateResults = api.searchAndDecryptByTerms(new String[]{"50000"}, password, 10);
-        System.out.printf("   '50000' (with password): %d results\\n", privateResults.size());
+        System.out.printf("   '50000' (with password): %d results\n", privateResults.size());
         
-        System.out.println("\\n💡 Notice how sensitive terms require password authentication!");
+        System.out.println("\n💡 Notice how sensitive terms require password authentication!");
     }
 }

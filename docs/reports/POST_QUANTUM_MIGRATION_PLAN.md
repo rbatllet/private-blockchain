@@ -692,7 +692,7 @@ Document the PQC migration:
 - With ML-DSA: ~250-300 blocks/sec
 - **Reduction**: ~40-50%
 
-**Mitigation**: Phase 5.0 (IDENTITY → SEQUENCE) + Phase 5.1 (JDBC batching) will improve baseline to 2,500-5,000 blocks/sec, so ML-DSA will achieve 1,250-2,500 blocks/sec (2-5x better than current ECDSA).
+**Mitigation**: Phase 5.0 (IDENTITY → Manual Assignment) + JDBC batching improved baseline to 370-407 blocks/sec (H2), 580-700 blocks/sec expected (PostgreSQL), so ML-DSA overhead is acceptable.
 
 ---
 

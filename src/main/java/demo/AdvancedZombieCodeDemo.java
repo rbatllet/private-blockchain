@@ -3,6 +3,7 @@ package demo;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.entity.OffChainData;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.recovery.ChainRecoveryManager;
 import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.security.UserRole;
@@ -290,6 +291,11 @@ public class AdvancedZombieCodeDemo {
                 "✅ Medical record stored: Block #" +
                 medicalBlock.getBlockNumber()
             );
+
+            // Wait for background indexing to complete
+            System.out.println("\n⏳ Waiting for background indexing to complete...");
+            IndexingCoordinator.getInstance().waitForCompletion();
+            System.out.println("✅ Background indexing completed - all blocks indexed\n");
 
             // 7. Advanced Search with Keyword Extraction
             System.out.println(
@@ -858,15 +864,15 @@ public class AdvancedZombieCodeDemo {
             System.out.println("   🔍 Debug: Total blocks in chain: " + blockchain.getBlockCount());
             System.out.println("   🔍 Debug: Analyzing blocks for off-chain data...");
 
-            // Debug: Direct SQL query to see what's in the database
-            System.out.println("   🔍 Debug: Direct SQL query results:");
+            // Debug: JPQL query to see what's in the database (database-agnostic)
+            System.out.println("   🔍 Debug: JPQL query results:");
             JPAUtil.executeInTransaction(em -> {
-                var query = em.createNativeQuery(
-                    "SELECT block_number, off_chain_data_id FROM blocks ORDER BY block_number"
+                // Using JPQL instead of native SQL for database portability
+                var query = em.createQuery(
+                    "SELECT b.blockNumber, b.offChainData.id FROM Block b", Object[].class
                 );
                 var results = query.getResultList();
-                for (Object row : results) {
-                    Object[] cols = (Object[]) row;
+                for (Object[] cols : results) {
                     System.out.println("      Block #" + cols[0] + " - off_chain_data_id: " + cols[1]);
                 }
                 return null;

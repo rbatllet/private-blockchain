@@ -81,22 +81,30 @@
             <AppenderRef ref="Console"/>
             <AppenderRef ref="FileAppender"/>
         </Logger>
-        
-        <!-- SQL statements - only to file to avoid console saturation -->
+
+        <!-- SQL statements - TO CONSOLE for SQL debugging (Hibernate 7 format) -->
         <Logger name="org.hibernate.SQL" level="DEBUG" additivity="false">
+            <AppenderRef ref="Console"/>
             <AppenderRef ref="FileAppender"/>
         </Logger>
-        
-        <!-- JDBC bind parameters - WARNING: may show sensitive data -->
-        <!-- Uncomment only if you need to debug parameters -->
-        <!--
+
+        <!-- JDBC Batch Operations - CRITICAL for investigating batching (Hibernate 7) -->
+        <Logger name="org.hibernate.orm.jdbc.batch" level="TRACE" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="FileAppender"/>
+        </Logger>
+
+        <!-- JDBC parameter binding (Hibernate 7 format) -->
         <Logger name="org.hibernate.orm.jdbc.bind" level="TRACE" additivity="false">
             <AppenderRef ref="Console"/>
+            <AppenderRef ref="FileAppender"/>
         </Logger>
+
+        <!-- JDBC result set extraction (Hibernate 7 format) -->
         <Logger name="org.hibernate.orm.jdbc.extract" level="TRACE" additivity="false">
             <AppenderRef ref="Console"/>
+            <AppenderRef ref="FileAppender"/>
         </Logger>
-        -->
         
         <!-- HikariCP (connection pool) -->
         <Logger name="com.zaxxer.hikari" level="INFO" additivity="false">

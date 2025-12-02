@@ -3,6 +3,7 @@ package demo;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.entity.OffChainData;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.SearchResult;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.EnhancedSearchResult;
@@ -86,6 +87,11 @@ public class ExhaustiveSearchDemo {
             System.out.printf("✅ Blockchain indexed in %.2f ms\n", indexTimeMs);
             System.out.printf("📊 Total blocks: %d\n", blockchain.getBlockCount());
             System.out.println();
+            
+            // Wait for background indexing to complete
+            System.out.println("\n⏳ Waiting for background indexing to complete...");
+            IndexingCoordinator.getInstance().waitForCompletion();
+            System.out.println("✅ Background indexing completed - all blocks indexed\n");
             
             // Demo 3: Exhaustive search demonstrations
             System.out.println("🔍 STEP 3: Exhaustive Search Demonstrations");

@@ -106,10 +106,10 @@ graph TD
 
 #### Blocks Table
 
-**Phase 5.0 Schema (Hibernate SEQUENCE):**
+**Phase 5.0 Schema (Manual Assignment):**
 ```sql
 CREATE TABLE blocks (
-    block_number BIGINT PRIMARY KEY,   -- Hibernate SEQUENCE generator (Phase 5.0)
+    block_number BIGINT PRIMARY KEY,   -- Manual assignment (Phase 5.0, enables JDBC batching)
     previous_hash TEXT,
     data TEXT,
     timestamp TEXT NOT NULL,
@@ -155,7 +155,7 @@ CREATE INDEX idx_keys_active ON authorized_keys(is_active);
 CREATE INDEX idx_keys_created ON authorized_keys(created_at);
 ```
 
-**Note:** The `block_sequence` table was removed in Phase 5.0. Block numbers are now generated automatically by Hibernate SEQUENCE generator, which uses native database sequences (H2/PostgreSQL) or a TABLE strategy (MySQL/SQLite) for thread-safe block numbering. This eliminates manual sequence management and enables JDBC batching for 5-10x write throughput improvement.
+**Note:** The `block_sequence` table was removed in Phase 5.0. Block numbers are now assigned manually before `persist()` within the write lock, enabling JDBC batching. The `blockNumber` field is the PRIMARY KEY (@Id), and manual assignment allows hash calculation before database insertion. This eliminates automatic ID generation overhead and enables JDBC batching for 5-10x write throughput improvement.
 
 #### Off-Chain Data Table
 ```sql
@@ -389,7 +389,7 @@ public class AuthorizedKey {
 }
 ```
 
-**Note**: The `BlockSequence` entity was removed in Phase 5.0. Block numbers are now generated automatically by Hibernate SEQUENCE generator, eliminating manual sequence management and enabling JDBC batching for 5-10x write throughput improvement.
+**Note**: The `BlockSequence` entity was removed in Phase 5.0. Block numbers are now assigned manually before `persist()` within the write lock, eliminating automatic ID generation overhead and enabling JDBC batching for 5-10x write throughput improvement.
 
 ### JPA Entity Usage Examples
 ```
@@ -1259,7 +1259,7 @@ The following test classes validate thread safety under various conditions:
 5. **EdgeCaseThreadSafetyTest**: Boundary conditions and race condition prevention
 6. **DataIntegrityThreadSafetyTest**: Data consistency validation under concurrent access
 7. **EncryptedBlockThreadSafetyTest**: Encryption operations thread safety
-8. **BlockNumberThreadSafetyTest**: Block numbering sequence thread safety (Hibernate SEQUENCE)
+8. **BlockNumberThreadSafetyTest**: Block numbering sequence thread safety (manual assignment within write lock)
 9. **ThreadSafeExportImportTest**: Chain export/import operations thread safety
 
 **Test Coverage Areas:**
@@ -1771,7 +1771,7 @@ for (Block block : blocksToDelete) {
 **rollbackToBlock(targetBlockNumber)**
 ```java
 // Clean up off-chain data for blocks after target using memory-efficient batch processing
-final int BATCH_SIZE = 1000;
+final int BATCH_SIZE = MemorySafetyConstants.DEFAULT_BATCH_SIZE;
 long offset = 0;
 boolean hasMore = true;
 

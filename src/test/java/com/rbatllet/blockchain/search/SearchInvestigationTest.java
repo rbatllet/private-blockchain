@@ -1,11 +1,13 @@
 package com.rbatllet.blockchain.search;
 
 import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -59,7 +61,27 @@ public class SearchInvestigationTest {
         KeyPair userKeys = api.createUser("test-user");
         api.setDefaultCredentials("test-user", userKeys);
     }
-    
+
+    @AfterEach
+    void tearDown() throws InterruptedException {
+        // Phase 5.4 FIX: Wait for async indexing to complete before cleanup
+        IndexingCoordinator.getInstance().waitForCompletion();
+
+        // CRITICAL: Clear database + search indexes to prevent state contamination
+        if (blockchain != null) {
+            blockchain.clearAndReinitialize();  // Also calls clearIndexes() + clearCache()
+        }
+
+        // Reset IndexingCoordinator singleton state
+        IndexingCoordinator.getInstance().forceShutdown();
+        IndexingCoordinator.getInstance().clearShutdownFlag();
+        IndexingCoordinator.getInstance().disableTestMode();
+
+        if (blockchain != null) {
+            blockchain.shutdown();
+        }
+    }
+
     @Test
     @DisplayName("Deep investigation: smartSearchWithPassword vs searchAndDecryptByTerms")
     void testSearchInvestigation() throws Exception {
@@ -74,6 +96,9 @@ public class SearchInvestigationTest {
         Block storedBlock = api.storeSearchableData("Test financial data for investigation", testPassword, keywords);
         
         System.out.println("✅ Stored block #" + storedBlock.getBlockNumber() + " with keywords: " + String.join(", ", keywords));
+        
+        // CRITICAL: Wait for async indexing to complete before searching
+        IndexingCoordinator.getInstance().waitForCompletion();
         
         // 3. Test both search methods with identical parameters
         System.out.println("\n🔍 Comparing search methods:");
@@ -174,6 +199,9 @@ public class SearchInvestigationTest {
         // Now store data with SearchSpecialistAPI properly initialized
         String[] simpleKeywords = {"test"};
         api.storeSearchableData("Simple test data", testPassword, simpleKeywords);
+        
+        // CRITICAL: Wait for async indexing to complete before searching
+        IndexingCoordinator.getInstance().waitForCompletion();
         
         // Test both methods on identical simple data
         List<Block> smartResults = api.smartSearchWithPassword("test", testPassword);

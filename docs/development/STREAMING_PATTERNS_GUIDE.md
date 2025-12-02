@@ -19,7 +19,7 @@ blockchain.processChainInBatches(batch -> {
             handleMatch(block);
         }
     }
-}, 1000); // Batch size of 1000 blocks
+}, MemorySafetyConstants.DEFAULT_BATCH_SIZE); // Batch size of 1000 blocks
 ```
 
 **Advantages:**
@@ -72,7 +72,7 @@ blockchain.validateChainStreaming(block -> {
 // Use for searches that need to return results
 // Combine with memory limits for safety
 long offset = 0;
-int limit = 1000; // Per-page batch size
+int limit = MemorySafetyConstants.DEFAULT_BATCH_SIZE; // Per-page batch size (1000)
 List<Block> allResults = new ArrayList<>();
 List<Block> batch;
 

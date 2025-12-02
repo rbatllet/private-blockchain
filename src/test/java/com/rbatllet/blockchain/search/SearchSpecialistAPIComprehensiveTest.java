@@ -1,12 +1,14 @@
 package com.rbatllet.blockchain.search;
 
 import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.*;
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -72,8 +74,31 @@ public class SearchSpecialistAPIComprehensiveTest {
         
         // Create test data AFTER SearchSpecialistAPI is initialized
         createTestData();
+        
+        // CRITICAL: Wait for async indexing to complete before running tests
+        IndexingCoordinator.getInstance().waitForCompletion();
     }
-    
+
+    @AfterEach
+    void tearDown() throws InterruptedException {
+        // Phase 5.4 FIX: Wait for async indexing to complete before cleanup
+        IndexingCoordinator.getInstance().waitForCompletion();
+
+        // CRITICAL: Clear database + search indexes to prevent state contamination
+        if (blockchain != null) {
+            blockchain.clearAndReinitialize();  // Also calls clearIndexes() + clearCache()
+        }
+
+        // Reset IndexingCoordinator singleton state
+        IndexingCoordinator.getInstance().forceShutdown();
+        IndexingCoordinator.getInstance().clearShutdownFlag();
+        IndexingCoordinator.getInstance().disableTestMode();
+
+        if (blockchain != null) {
+            blockchain.shutdown();
+        }
+    }
+
     private void createTestData() throws Exception {
         // Create encrypted block with searchable keywords
         String[] encryptedKeywords = {"financial", "healthcare", "confidential", "report"};

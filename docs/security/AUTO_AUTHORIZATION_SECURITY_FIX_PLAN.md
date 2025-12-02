@@ -714,13 +714,19 @@ api.importAndSetDefaultUser("attacker", "/tmp/attack.pem");
 
 ## 10. Secure Usage Pattern (Mandatory for v1.0.6+)
 
+> **🔑 PREREQUISITE**: Generate genesis-admin keys first:
+> ```bash
+> ./tools/generate_genesis_keys.zsh
+> ```
+> This creates `./keys/genesis-admin.*` required for the secure pattern below. **Backup securely!**
+
 All applications **must** follow this pattern:
 
 ```java
 // 1. Create blockchain (only genesis block is automatic)
 Blockchain blockchain = new Blockchain();
 
-// 2. Load bootstrap admin keys
+// 2. Load bootstrap admin keys (generated via ./tools/generate_genesis_keys.zsh)
 KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
     "./keys/genesis-admin.private",
     "./keys/genesis-admin.public"

@@ -76,7 +76,8 @@ Tested `processChainInBatches()` with 1M blocks, measuring:
 ```java
 // OLD: Pagination-based (all databases)
 for (long offset = 0; offset < totalBlocks; offset += batchSize) {
-    List<Block> batch = em.createQuery("SELECT b FROM Block b ORDER BY b.blockNumber", Block.class)
+    List<Block> batch = em.createQuery("SELECT b FROM Block b", Block.class)
+        // Note: blockNumber ordering is automatic (PRIMARY KEY index guarantees ASC order)
         .setFirstResult((int) offset)
         .setMaxResults(batchSize)
         .getResultList();
@@ -627,7 +628,7 @@ java -Xms2g -Xmx8g -XX:+UseG1GC -jar blockchain.jar
 ### 4. Database Indexes
 
 **Critical Indexes** (automatically created):
-- `blockNumber` (primary key, clustered)
+- `blockNumber` (PRIMARY KEY, automatically indexed)
 - `hash` (unique, for lookups)
 - `timestamp` (for temporal queries)
 - `isEncrypted` (for encryption queries)

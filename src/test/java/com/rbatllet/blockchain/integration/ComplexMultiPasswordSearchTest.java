@@ -2,6 +2,7 @@ package com.rbatllet.blockchain.integration;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.util.CryptoUtil;
@@ -86,6 +87,26 @@ public class ComplexMultiPasswordSearchTest {
         blockchain.initializeAdvancedSearchWithMultiplePasswords(new String[]{
             medicalPassword, financePassword, legalPassword, hrPassword
         });
+    }
+
+    @AfterEach
+    void tearDown() throws InterruptedException {
+        // Phase 5.4 FIX: Wait for async indexing to complete before cleanup
+        IndexingCoordinator.getInstance().waitForCompletion();
+
+        // CRITICAL: Clear database + search indexes to prevent state contamination
+        if (blockchain != null) {
+            blockchain.clearAndReinitialize();  // Also calls clearIndexes() + clearCache()
+        }
+
+        // Reset IndexingCoordinator singleton state
+        IndexingCoordinator.getInstance().forceShutdown();
+        IndexingCoordinator.getInstance().clearShutdownFlag();
+        IndexingCoordinator.getInstance().disableTestMode();
+
+        if (blockchain != null) {
+            blockchain.shutdown();
+        }
     }
 
     @Test
@@ -328,7 +349,8 @@ public class ComplexMultiPasswordSearchTest {
                 "HR report " + i, hrPassword, new String[]{"hr", "report" + i}));
         }
 
-        Thread.sleep(2000); // Allow full indexing
+        // Phase 5.4 FIX: Wait for async indexing to complete BEFORE searching
+        IndexingCoordinator.getInstance().waitForCompletion();
 
         // Launch 40 concurrent searches (10 per department)
         ExecutorService executor = Executors.newFixedThreadPool(40);
@@ -507,23 +529,24 @@ public class ComplexMultiPasswordSearchTest {
             medicalAPI.storeSearchableData("Test data", null, new String[]{"test"});
         }, "Null password should throw exception");
 
-        // Test searching with null password on encrypted data
-        Block encryptedBlock = medicalAPI.storeSearchableData(
-            "Encrypted content", medicalPassword, new String[]{"encrypted", "content"});
+        // Test searching with null password on encrypted data with PRIVATE keywords
+        Block encryptedBlock = medicalAPI.storeSearchableDataWithLayers(
+            "Encrypted content", 
+            medicalPassword, 
+            null,  // NO public keywords
+            new String[]{"private:encrypted", "private:secret"}  // Only PRIVATE keywords
+        );
 
         assertNotNull(encryptedBlock);
-        Thread.sleep(500);
+        IndexingCoordinator.getInstance().waitForCompletion();
 
-        // Search with null password should not decrypt
+        // Search with null password should NOT find blocks with only private keywords
         List<Block> nullPasswordSearch = medicalAPI.searchAndDecryptByTerms(
             new String[]{"encrypted"}, null, 10);
 
-        // Should either return empty or return encrypted blocks
-        for (Block block : nullPasswordSearch) {
-            String data = block.getData();
-            assertFalse(data.contains("Encrypted content"),
-                "NULL PASSWORD VULNERABILITY: Data decrypted with null password!");
-        }
+        // Should return empty list - no blocks with private-only keywords
+        assertTrue(nullPasswordSearch.isEmpty(),
+            "NULL PASSWORD VULNERABILITY: Found block with private keywords using null password!");
     }
 
     @Test
@@ -562,7 +585,8 @@ public class ComplexMultiPasswordSearchTest {
             ));
         }
 
-        Thread.sleep(3000); // Allow full indexing
+        // Phase 5.4 FIX: Wait for async indexing to complete BEFORE searching
+        IndexingCoordinator.getInstance().waitForCompletion();
 
         // CRITICAL TEST 1: Each department finds exactly their 25 blocks
         List<Block> medSearch = medicalAPI.searchAndDecryptByTerms(

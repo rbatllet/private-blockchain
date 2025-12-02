@@ -1,6 +1,8 @@
 package com.rbatllet.blockchain.search;
 
 import com.rbatllet.blockchain.config.EncryptionConfig;
+import com.rbatllet.blockchain.config.MemorySafetyConstants;
+import com.rbatllet.blockchain.config.SearchConstants;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.indexing.IndexingCoordinator;
@@ -16,6 +18,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -132,7 +137,7 @@ public class SearchFrameworkEngine {
     private final OnChainContentSearch onChainContentSearch;
 
     // Reference to blockchain for block hash lookups (for EXHAUSTIVE_OFFCHAIN search)
-    private com.rbatllet.blockchain.core.Blockchain blockchain;
+    private Blockchain blockchain;
     
     // 🔍 RACE CONDITION DEBUGGING: Instance identification
     private final String instanceId;
@@ -140,6 +145,10 @@ public class SearchFrameworkEngine {
     
     // 🔒 GLOBAL ATOMIC PROTECTION: Shared across ALL instances to prevent cross-instance race conditions
     private static final ConcurrentHashMap<String, BlockMetadataLayers> globalProcessingMap = new ConcurrentHashMap<>();
+    
+    // 🔒 SEMAPHORE COORDINATION: One semaphore per block hash to ensure exclusive indexing
+    // Each semaphore has 1 permit, meaning only ONE thread can index a block at a time
+    private static final ConcurrentHashMap<String, Semaphore> blockIndexingSemaphores = new ConcurrentHashMap<>();
 
     /**
      * Clears the global processing map for testing purposes.
@@ -148,7 +157,8 @@ public class SearchFrameworkEngine {
      */
     public static void clearGlobalProcessingMapForTesting() {
         globalProcessingMap.clear();
-        logger.info("🧪 TESTING: Global processing map cleared");
+        blockIndexingSemaphores.clear();
+        logger.info("🧪 TESTING: Global processing map and semaphores cleared");
     }
 
     private static final Logger logger = LoggerFactory.getLogger(
@@ -675,12 +685,12 @@ public class SearchFrameworkEngine {
 
         try {
             // ✅ STRICT VALIDATION: Reject maxResults > 10K
-            if (maxResults <= 0 || maxResults > com.rbatllet.blockchain.config.MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS) {
+            if (maxResults <= 0 || maxResults > MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS) {
                 throw new IllegalArgumentException(
                     String.format(
                         "maxResults must be between 1 and %d. Received: %d. " +
                         "This limit prevents OutOfMemoryError on large blockchains.",
-                        com.rbatllet.blockchain.config.MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS,
+                        MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS,
                         maxResults
                     )
                 );
@@ -701,7 +711,7 @@ public class SearchFrameworkEngine {
 
             // ✅ PRIORITY QUEUE: Keep only top N results (min-heap)
             final int BUFFER_SIZE = maxResults * 2;
-            final java.util.PriorityQueue<EnhancedSearchResult> topResults = new java.util.PriorityQueue<>(
+            final PriorityQueue<EnhancedSearchResult> topResults = new PriorityQueue<>(
                 BUFFER_SIZE,
                 java.util.Comparator.comparingDouble(EnhancedSearchResult::getRelevanceScore)  // Min-heap
             );
@@ -712,12 +722,10 @@ public class SearchFrameworkEngine {
             }
 
             // MEMORY SAFETY: Process blocks in batches WITHOUT accumulating all in memory
-            final java.util.concurrent.atomic.AtomicInteger totalProcessed = new java.util.concurrent.atomic.AtomicInteger(0);
-            final java.util.concurrent.atomic.AtomicBoolean shouldStop = new java.util.concurrent.atomic.AtomicBoolean(false);
+            final AtomicInteger totalProcessed = new AtomicInteger(0);
+            final AtomicBoolean shouldStop = new AtomicBoolean(false);
 
             if (blockchain != null) {
-                final int BATCH_SIZE = 1000;
-
                 // ✅ OPTIMIZED: Separate on-chain and off-chain searches (Phase B.2 optimization)
                 // 1. Search on-chain content using processChainInBatches() (all blocks)
                 blockchain.processChainInBatches(batchBlocks -> {
@@ -728,7 +736,7 @@ public class SearchFrameworkEngine {
 
                     int processed = totalProcessed.addAndGet(batchBlocks.size());
 
-                    if (processed > com.rbatllet.blockchain.config.MemorySafetyConstants.SAFE_EXPORT_LIMIT) {
+                    if (processed > MemorySafetyConstants.SAFE_EXPORT_LIMIT) {
                         logger.warn(
                             "Exhaustive search stopped after {} blocks. " +
                             "Consider using more specific search terms.",
@@ -752,7 +760,7 @@ public class SearchFrameworkEngine {
                     for (EnhancedSearchResult result : convertOnChainToEnhancedResults(batchOnChainResults, password)) {
                         addToTopResults(topResults, result, BUFFER_SIZE);
                     }
-                }, BATCH_SIZE);
+                }, MemorySafetyConstants.DEFAULT_BATCH_SIZE);
 
                 // 2. Search off-chain content using streamBlocksWithOffChainData() (only blocks with off-chain)
                 // ✅ OPTIMIZED: This reduces processing by ~80% (only processes blocks with off-chain data)
@@ -1046,7 +1054,7 @@ public class SearchFrameworkEngine {
             // Create enhanced result with on-chain source
             EnhancedSearchResult enhancedResult = new EnhancedSearchResult(
                 blockHash,
-                match.getRelevanceScore() + 15.0, // On-chain content bonus
+                match.getRelevanceScore() + SearchConstants.ON_CHAIN_BONUS,
                 SearchStrategyRouter.SearchResultSource.ENCRYPTED_CONTENT, // Uses encrypted content source
                 contextBuilder.toString(),
                 0.0, // Search time already accounted for
@@ -1096,7 +1104,7 @@ public class SearchFrameworkEngine {
             }
 
             // Boost relevance score for off-chain matches
-            double boostedRelevance = match.getRelevanceScore() + 20.0; // Off-chain bonus
+            double boostedRelevance = match.getRelevanceScore() + SearchConstants.OFF_CHAIN_BONUS;
 
             // Get private metadata if available and password provided
             PrivateMetadata privateMetadata = null;
@@ -1358,6 +1366,31 @@ public class SearchFrameworkEngine {
     }
 
     /**
+     * Check if a block is already indexed in the search framework.
+     * 
+     * <p>This method checks both the global processing map and the instance metadata index
+     * to determine if a block has already been indexed. It returns true if:
+     * <ul>
+     *   <li>The block exists in globalProcessingMap AND is not a processing placeholder</li>
+     *   <li>This indicates the block has been fully indexed with real metadata</li>
+     * </ul>
+     * 
+     * @param blockHash The hash of the block to check
+     * @return true if the block is fully indexed, false otherwise
+     */
+    public boolean isBlockIndexed(String blockHash) {
+        if (blockHash == null || blockHash.trim().isEmpty()) {
+            return false;
+        }
+        
+        BlockMetadataLayers metadata = globalProcessingMap.get(blockHash);
+        
+        // Block is indexed if it exists and is NOT a placeholder
+        // Placeholders indicate indexing in progress, not completed indexing
+        return metadata != null && !metadata.isProcessingPlaceholder();
+    }
+
+    /**
      * Index a single block for advanced search
      */
     public void indexBlock(
@@ -1370,119 +1403,65 @@ public class SearchFrameworkEngine {
             return;
         }
 
-        // Atomic check-and-reserve to prevent race conditions
         String blockHash = block.getHash();
         String shortHash = blockHash.substring(0, Math.min(8, blockHash.length()));
         
-        // Get caller information for detailed tracking
-        StackTraceElement[] stack = Thread.currentThread().getStackTrace();
-        String callerInfo = "UNKNOWN";
-        for (int i = 2; i < Math.min(stack.length, 6); i++) {
-            StackTraceElement element = stack[i];
-            if (!element.getMethodName().equals("indexBlock")) {
-                callerInfo = element.getClassName() + "." + element.getMethodName() + ":" + element.getLineNumber();
-                break;
-            }
-        }
+        // Get or create a semaphore for this block (1 permit = only 1 thread can index at a time)
+        Semaphore semaphore = blockIndexingSemaphores.computeIfAbsent(
+            blockHash, 
+            k -> new Semaphore(1, true) // fair semaphore
+        );
         
-        // 🔍 ENHANCED RACE CONDITION DEBUGGING
-        logger.info("🟦 INDEX BLOCK ATTEMPT: {} | Instance: {} | Map: {} | MapSize: {} | Thread: {} | Caller: {}", 
-            shortHash, 
-            this.instanceId,
-            System.identityHashCode(this.blockMetadataIndex),
-            this.blockMetadataIndex.size(),
-            Thread.currentThread().getName(),
-            callerInfo);
-        
-        // 🔍 DEBUG: Check current map state before putIfAbsent
-        BlockMetadataLayers existingValue = globalProcessingMap.get(blockHash);
-        logger.info("🔍 PRE-ATOMIC CHECK: {} | Existing: {} | IsPlaceholder: {} | Instance: {}", 
-            shortHash,
-            existingValue != null ? "EXISTS" : "NULL",
-            existingValue != null ? existingValue.isProcessingPlaceholder() : "N/A",
-            this.instanceId);
-        
-        // Use putIfAbsent for atomic check-and-reserve
-        BlockMetadataLayers putResult = globalProcessingMap.putIfAbsent(blockHash, BlockMetadataLayers.PROCESSING_PLACEHOLDER);
-        
-        // 🔍 DEBUG: Detailed putIfAbsent result logging
-        logger.info("🔒 ATOMIC OPERATION RESULT: {} | PutIfAbsent returned: {} | Expected: NULL for success | Instance: {} | MapSize: {}", 
-            shortHash,
-            putResult != null ? (putResult.isProcessingPlaceholder() ? "PLACEHOLDER" : "REAL_METADATA") : "NULL",
-            this.instanceId,
-            globalProcessingMap.size());
-            
-        if (putResult != null) {
-            logger.info("⏭️ SKIPPED (already indexed/processing): {} | Instance: {} | Thread: {} | Caller: {} | Existing: {}", 
-                shortHash, 
-                this.instanceId,
-                Thread.currentThread().getName(),
-                callerInfo,
-                putResult.isProcessingPlaceholder() ? "PLACEHOLDER" : "REAL_METADATA");
-            return;
-        }
-        
-        logger.info("🔒 RESERVED for processing: {} | Instance: {} | Thread: {} | Caller: {} | MapSize: {}", 
-            shortHash, 
-            this.instanceId,
-            Thread.currentThread().getName(),
-            callerInfo,
-            globalProcessingMap.size());
-
+        // Try to acquire the semaphore - if another thread is indexing, wait
         try {
-            // 🔍 DEBUG: Verify placeholder is still there before processing
-            BlockMetadataLayers verifyPlaceholder = globalProcessingMap.get(blockHash);
-            logger.info("🔍 PLACEHOLDER VERIFICATION: {} | Current: {} | IsPlaceholder: {} | Instance: {}", 
-                shortHash,
-                verifyPlaceholder != null ? "EXISTS" : "NULL",
-                verifyPlaceholder != null ? verifyPlaceholder.isProcessingPlaceholder() : "N/A",
-                this.instanceId);
-                
-            // Generate complete metadata layers
-            BlockMetadataLayers metadata =
-                metadataManager.generateMetadataLayers(
+            logger.debug("🔒 [{}] Waiting to acquire indexing lock...", shortHash);
+            semaphore.acquire();
+            logger.debug("✅ [{}] Acquired indexing lock", shortHash);
+            
+            // Double-check if already indexed after acquiring lock
+            BlockMetadataLayers existing = globalProcessingMap.get(blockHash);
+            if (existing != null && !existing.isProcessingPlaceholder()) {
+                logger.info("⏭️ [{}] Already indexed (detected after lock acquisition), skipping", shortHash);
+                return;
+            }
+            
+            // Mark as processing
+            globalProcessingMap.put(blockHash, BlockMetadataLayers.PROCESSING_PLACEHOLDER);
+            
+            try {
+                // Generate metadata
+                BlockMetadataLayers metadata = metadataManager.generateMetadataLayers(
                     block,
                     config,
                     password,
                     privateKey
                 );
 
-            // Replace placeholder with actual metadata in BOTH maps
-            blockMetadataIndex.put(blockHash, metadata);  // Instance map for data storage
-            globalProcessingMap.put(blockHash, metadata); // Global map for coordination
+                // Store metadata
+                blockMetadataIndex.put(blockHash, metadata);
+                globalProcessingMap.put(blockHash, metadata);
+                
+                // Index in strategy router
+                strategyRouter.indexBlock(block.getHash(), metadata);
+                
+                logger.info("✅ [{}] Successfully indexed", shortHash);
+                
+            } catch (Exception e) {
+                // Remove placeholder on failure
+                blockMetadataIndex.remove(blockHash);
+                globalProcessingMap.remove(blockHash);
+                logger.error("❌ [{}] Failed to index: {}", shortHash, e.getMessage(), e);
+                throw new RuntimeException("Failed to index block " + blockHash, e);
+            }
             
-            // 🔍 DEBUG: Verify replacement was successful
-            BlockMetadataLayers verifyReplacement = this.blockMetadataIndex.get(blockHash);
-            logger.info("🔍 REPLACEMENT VERIFICATION: {} | IsPlaceholder: {} | Instance: {} | MapSize: {}", 
-                shortHash,
-                verifyReplacement != null ? verifyReplacement.isProcessingPlaceholder() : "NULL",
-                this.instanceId,
-                globalProcessingMap.size());
-            
-            logger.info("✅ SUCCESSFULLY INDEXED: {} | Instance: {} | Thread: {} | Caller: {} | MapSize: {}", 
-                shortHash, 
-                this.instanceId,
-                Thread.currentThread().getName(),
-                callerInfo,
-                this.blockMetadataIndex.size());
-
-            // Index in search strategy router
-            strategyRouter.indexBlock(block.getHash(), metadata);
-        } catch (Exception e) {
-            // Remove placeholder on failure to allow retry
-            BlockMetadataLayers removedValue = blockMetadataIndex.remove(blockHash);
-            logger.error("❌ FAILED to index: {} | Instance: {} | Thread: {} | Caller: {} | Removed: {} | MapSize: {} | Error: {}", 
-                shortHash, 
-                this.instanceId,
-                Thread.currentThread().getName(),
-                callerInfo,
-                removedValue != null ? (removedValue.isProcessingPlaceholder() ? "PLACEHOLDER" : "REAL_METADATA") : "NULL",
-                this.blockMetadataIndex.size(),
-                e.getMessage(), e);
-            throw new RuntimeException(
-                "Failed to index block " + block.getHash(),
-                e
-            );
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.error("❌ [{}] Interrupted while waiting for indexing lock", shortHash);
+            throw new RuntimeException("Interrupted while waiting to index block " + blockHash, e);
+        } finally {
+            // Always release the semaphore
+            semaphore.release();
+            logger.debug("🔓 [{}] Released indexing lock", shortHash);
         }
     }
 
@@ -1543,14 +1522,14 @@ public class SearchFrameworkEngine {
         BlockMetadataLayers putResult = globalProcessingMap.putIfAbsent(blockHash, BlockMetadataLayers.PROCESSING_PLACEHOLDER);
         
         // 🔍 DEBUG: Detailed putIfAbsent result logging
-        logger.info("🔒 ATOMIC OPERATION RESULT (USER TERMS): {} | PutIfAbsent returned: {} | Instance: {} | MapSize: {}", 
+        logger.debug("🔒 ATOMIC OPERATION RESULT (USER TERMS): {} | PutIfAbsent returned: {} | Instance: {} | MapSize: {}", 
             shortHash,
             putResult != null ? (putResult.isProcessingPlaceholder() ? "PLACEHOLDER" : "REAL_METADATA") : "NULL",
             this.instanceId,
             globalProcessingMap.size());
             
         if (putResult != null) {
-            logger.info("⏭️ SKIPPED user terms block (already indexed/processing): {} | Instance: {} | Thread: {} | Caller: {}", 
+            logger.debug("⏭️ SKIPPED user terms block (already indexed/processing): {} | Instance: {} | Thread: {} | Caller: {}", 
                 shortHash,
                 this.instanceId,
                 Thread.currentThread().getName(),
@@ -1558,7 +1537,7 @@ public class SearchFrameworkEngine {
             return;
         }
         
-        logger.info("🔒 RESERVED user terms block for processing: {} | Instance: {} | Thread: {} | Caller: {}", 
+        logger.debug("🔒 RESERVED user terms block for processing: {} | Instance: {} | Thread: {} | Caller: {}", 
             shortHash,
             this.instanceId,
             Thread.currentThread().getName(),
@@ -1862,20 +1841,20 @@ public class SearchFrameworkEngine {
         // Atomic check-and-reserve to prevent race conditions
         BlockMetadataLayers putResult = globalProcessingMap.putIfAbsent(blockHash, BlockMetadataLayers.PROCESSING_PLACEHOLDER);
         
-        logger.info("🔒 ATOMIC OPERATION RESULT (EXPLICIT): {} | PutIfAbsent returned: {} | Instance: {}", 
+        logger.debug("🔒 ATOMIC OPERATION RESULT (EXPLICIT): {} | PutIfAbsent returned: {} | Instance: {}", 
             shortHash,
             putResult != null ? (putResult.isProcessingPlaceholder() ? "PLACEHOLDER" : "REAL_METADATA") : "NULL",
             this.instanceId);
             
         if (putResult != null) {
-            logger.info("⏭️ SKIPPED block (already indexed/processing): {} | Instance: {} | Thread: {}", 
+            logger.debug("⏭️ SKIPPED block (already indexed/processing): {} | Instance: {} | Thread: {}", 
                 shortHash,
                 this.instanceId,
                 Thread.currentThread().getName());
             return;
         }
         
-        logger.info("🔒 RESERVED block for processing: {} | Instance: {} | Thread: {}", 
+        logger.debug("🔒 RESERVED block for processing: {} | Instance: {} | Thread: {}", 
             shortHash,
             this.instanceId,
             Thread.currentThread().getName());
@@ -1965,6 +1944,18 @@ public class SearchFrameworkEngine {
     /**
      * Clear all search indexes and caches
      */
+    /**
+     * Clear all search indexes without shutting down the search engine.
+     * Use this for test cleanup or database reinitialization.
+     *
+     * <p>Unlike {@link #clearAll()}, this method does NOT shut down the executor service,
+     * allowing the search engine to continue operating after index cleanup.</p>
+     */
+    public void clearIndexes() {
+        blockMetadataIndex.clear();
+        strategyRouter.clearIndexes();
+    }
+
     public void clearAll() {
         blockMetadataIndex.clear();
         strategyRouter.shutdown();

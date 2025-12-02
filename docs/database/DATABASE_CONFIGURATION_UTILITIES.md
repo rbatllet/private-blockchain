@@ -640,7 +640,7 @@ import com.rbatllet.blockchain.config.util.DatabaseMigrator.MigrationResult;
 DatabaseMigrator migrator = new DatabaseMigrator(config);
 
 // Register migrations
-// Note: Phase 5.0 - blocks table uses block_number as PRIMARY KEY
+// Note: Phase 5.0 - block_number is PRIMARY KEY with manual assignment
 migrator.addMigration(Migration.builder()
     .version("V1")
     .description("Create blocks table")

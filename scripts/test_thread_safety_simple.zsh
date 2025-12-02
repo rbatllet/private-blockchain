@@ -95,41 +95,43 @@ main() {
 
     # Check test result
     local TEST_RESULT=$?
+    
+    # Extract key statistics from STATS_SUMMARY block in the log
+    local BLOCKS_CREATED="00"
+    local OFF_CHAIN="00"
+    local VALIDATIONS="00"
+    local ERRORS="0"
+    
+    if [ -f logs/simple-thread-safety-test.log ]; then
+        # Parse STATS_SUMMARY block
+        local blocks=$(sed -n '/STATS_SUMMARY_START/,/STATS_SUMMARY_END/p' logs/simple-thread-safety-test.log 2>/dev/null | grep "BLOCKS_CREATED=" | cut -d'=' -f2)
+        if [[ "$blocks" =~ ^[0-9]+$ ]] && [ "$blocks" -gt 0 ]; then
+            BLOCKS_CREATED=$(printf "%02d" "$blocks")
+        fi
+
+        local offchain=$(sed -n '/STATS_SUMMARY_START/,/STATS_SUMMARY_END/p' logs/simple-thread-safety-test.log 2>/dev/null | grep "OFFCHAIN_BLOCKS=" | cut -d'=' -f2)
+        if [[ "$offchain" =~ ^[0-9]+$ ]] && [ "$offchain" -gt 0 ]; then
+            OFF_CHAIN=$(printf "%02d" "$offchain")
+        fi
+
+        local validations=$(sed -n '/STATS_SUMMARY_START/,/STATS_SUMMARY_END/p' logs/simple-thread-safety-test.log 2>/dev/null | grep "VALIDATIONS=" | cut -d'=' -f2)
+        if [[ "$validations" =~ ^[0-9]+$ ]] && [ "$validations" -gt 0 ]; then
+            VALIDATIONS=$(printf "%02d" "$validations")
+        fi
+
+        # Check for errors (exclude Log4j2 configuration errors)
+        ERRORS=$(grep "ERROR" logs/simple-thread-safety-test.log 2>/dev/null | grep -v "Reconfiguration failed" | grep -v "No configuration found" | wc -l | tr -d ' ' || echo "0")
+    fi
+    
     if [ $TEST_RESULT -eq 0 ]; then
         print_success "Simple thread safety test completed successfully!"
 
-        # Extract key statistics from the log
+        # Show statistics (already extracted above)
         print_info "📊 Test Statistics:"
-
-        # Count blocks created (look for "Block #X added successfully!")
-        local BLOCKS_CREATED=$(grep -c "Block #[0-9]* added successfully" logs/simple-thread-safety-test.log 2>/dev/null || echo "0")
-        # Clean the variable to ensure it's a valid integer
-        BLOCKS_CREATED=$(echo "$BLOCKS_CREATED" | tr -d '\n' | tr -d ' ' | head -1)
-        BLOCKS_CREATED=$(printf "%02d" "$BLOCKS_CREATED" 2>/dev/null || echo "00")
         print_info "• Blocks created: $BLOCKS_CREATED"
-
-        # Count off-chain operations (look for off-chain in validation results)
-        local OFF_CHAIN=$(grep -c "✅ Valid off-chain blocks:" logs/simple-thread-safety-test.log 2>/dev/null || echo "0")
-        # Clean the variable to ensure it's a valid integer (remove newlines and spaces)
-        OFF_CHAIN=$(echo "$OFF_CHAIN" | tr -d '\n' | tr -d ' ' | head -1)
-        if [[ "$OFF_CHAIN" =~ ^[0-9]+$ ]] && [ "$OFF_CHAIN" -gt 0 ]; then
-            OFF_CHAIN=$(grep "Blocks with off-chain data:" logs/simple-thread-safety-test.log 2>/dev/null | grep -o "[0-9]*/[0-9]*" | cut -d'/' -f1 | tail -1 || echo "0")
-            OFF_CHAIN=$(echo "$OFF_CHAIN" | tr -d '\n' | tr -d ' ' | head -1)
-        fi
-        OFF_CHAIN=$(printf "%02d" "$OFF_CHAIN" 2>/dev/null || echo "00")
         print_info "• Off-chain blocks: $OFF_CHAIN"
-
-        # Count validations performed (look for "Block #X validation passed")
-        local VALIDATIONS=$(grep -c "Block #[0-9]* validation passed" logs/simple-thread-safety-test.log 2>/dev/null || echo "0")
-        # Clean the variable to ensure it's a valid integer
-        VALIDATIONS=$(echo "$VALIDATIONS" | tr -d '\n' | tr -d ' ' | head -1)
-        VALIDATIONS=$(printf "%02d" "$VALIDATIONS" 2>/dev/null || echo "00")
         print_info "• Validations performed: $VALIDATIONS"
-
-        # Check for any errors
-        local ERRORS=$(grep -c "ERROR\|Exception\|Failed" logs/simple-thread-safety-test.log 2>/dev/null || echo "0")
-        # Clean the variable to ensure it's a valid integer
-        ERRORS=$(echo "$ERRORS" | tr -d '\n' | tr -d ' ' | head -1)
+        
         if [[ "$ERRORS" =~ ^[0-9]+$ ]] && [ "$ERRORS" -gt 0 ]; then
             print_warning "Warnings/Errors found: $ERRORS"
             print_info "Check logs/simple-thread-safety-test.log for details"
@@ -163,8 +165,11 @@ main() {
     print_separator
     print_info "📝 Next steps:"
     print_info "1. Run 'scripts/test_thread_safety_full.zsh' for comprehensive thread safety testing"
-    print_info "2. Check logs/simple-thread-safety-test.log for detailed execution trace"
-    print_info "3. Run with KEEP_LOGS=true to preserve log files"
+    if [[ "${KEEP_LOGS:-false}" == "true" ]]; then
+        print_info "2. Check logs/simple-thread-safety-test.log for detailed execution trace"
+    else
+        print_info "2. Run with KEEP_LOGS=true to preserve log files for detailed analysis"
+    fi
 
     exit 0
 }

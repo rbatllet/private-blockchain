@@ -212,10 +212,16 @@ KeyPair charlieKeys = api.createUser("charlie");
 
 ### Example 2: Using Genesis Admin (Recommended)
 
+> **🔑 PREREQUISITE**: Generate genesis-admin keys first:
+> ```bash
+> ./tools/generate_genesis_keys.zsh
+> ```
+> This creates `./keys/genesis-admin.*` required for bootstrap authorization. **Backup securely!**
+
 ```java
 Blockchain blockchain = new Blockchain();
 
-// Load genesis admin keys
+// Load genesis admin keys (generated via ./tools/generate_genesis_keys.zsh)
 KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
     "./keys/genesis-admin.private",
     "./keys/genesis-admin.public"

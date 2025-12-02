@@ -628,7 +628,7 @@ public void addAuthorizedKey(String publicKey, String ownerName, UserRole role, 
  *
  * <p><strong>Example:</strong></p>
  * <pre>
- * // Load bootstrap admin keys
+ * // Load bootstrap admin keys (generated via ./tools/generate_genesis_keys.zsh)
  * KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
  *     "./keys/genesis-admin.private",
  *     "./keys/genesis-admin.public"
@@ -772,7 +772,7 @@ void testCreateUser() {
 All demos must use the secure pattern:
 
 ```java
-// Load bootstrap admin credentials
+// Load bootstrap admin credentials (generated via ./tools/generate_genesis_keys.zsh)
 KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
     "./keys/genesis-admin.private",
     "./keys/genesis-admin.public"
@@ -1011,7 +1011,7 @@ if (!callerRole.canCreateRole(targetRole)) {
 ### Production Usage Pattern
 
 ```java
-// 1. Load bootstrap admin keys (automatically created at initialization)
+// 1. Load bootstrap admin keys (generated via ./tools/generate_genesis_keys.zsh)
 KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
     "./keys/genesis-admin.private",
     "./keys/genesis-admin.public"

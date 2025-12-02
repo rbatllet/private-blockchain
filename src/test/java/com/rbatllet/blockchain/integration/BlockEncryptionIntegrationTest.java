@@ -2,6 +2,7 @@ package com.rbatllet.blockchain.integration;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.JPAUtil;
@@ -121,19 +122,31 @@ public class BlockEncryptionIntegrationTest {
     }
 
     @AfterAll
-    static void tearDownClass() {
+    static void tearDownClass() throws InterruptedException {
+        // Phase 5.4 FIX: Wait for async indexing to complete before cleanup
+        IndexingCoordinator.getInstance().waitForCompletion();
+
+        // CRITICAL: Clear database + search indexes to prevent state contamination
         if (blockchain != null) {
-            blockchain.clearAndReinitialize();
+            blockchain.clearAndReinitialize();  // Also calls clearIndexes() + clearCache()
             JPAUtil.cleanupThreadLocals();
         }
+
+        // Reset IndexingCoordinator singleton state
+        IndexingCoordinator.getInstance().forceShutdown();
+        IndexingCoordinator.getInstance().clearShutdownFlag();
+        IndexingCoordinator.getInstance().disableTestMode();
     }
 
     @Test
     @Order(1)
     @DisplayName("Test save encrypted medical block")
-    void testSaveEncryptedMedicalBlock() {
-        // Store medical data with encryption
-        medicalBlock = api.storeSecret(MEDICAL_DATA, testPassword);
+    void testSaveEncryptedMedicalBlock() throws InterruptedException {
+        // Store medical data with encryption AND searchable keywords for test #10
+        medicalBlock = api.storeSearchableData(MEDICAL_DATA, testPassword, new String[]{"medical", "patient", "healthcare"});
+
+        // CRITICAL: Wait for async indexing to complete before other tests search
+        IndexingCoordinator.getInstance().waitForCompletion();
 
         // RIGOROUS validation - Block creation
         assertNotNull(medicalBlock, "Medical block should be created");
@@ -182,9 +195,12 @@ public class BlockEncryptionIntegrationTest {
     @Test
     @Order(2)
     @DisplayName("Test save encrypted financial block")
-    void testSaveEncryptedFinancialBlock() {
-        // Store financial data with encryption
-        financialBlock = api.storeSecret(FINANCIAL_DATA, testPassword);
+    void testSaveEncryptedFinancialBlock() throws InterruptedException {
+        // Store financial data with encryption AND searchable keywords for test #10
+        financialBlock = api.storeSearchableData(FINANCIAL_DATA, testPassword, new String[]{"financial", "transaction", "payment"});
+
+        // CRITICAL: Wait for async indexing to complete before other tests search
+        IndexingCoordinator.getInstance().waitForCompletion();
 
         // RIGOROUS validation - Block creation
         assertNotNull(financialBlock, "Financial block should be created");
@@ -665,8 +681,8 @@ public class BlockEncryptionIntegrationTest {
     void testSearchEncryptedData() {
         // RIGOROUS validation - Search functionality for encrypted data
 
-        // Test 1: Search for medical encrypted data
-        List<Block> medicalResults = api.findEncryptedData("medical");
+        // Test 1: Search for medical encrypted data WITH PASSWORD (data is encrypted)
+        List<Block> medicalResults = api.findAndDecryptData("medical", testPassword);
         assertNotNull(medicalResults, "Medical search results should not be null");
         assertTrue(medicalResults.size() > 0, "Should find at least one encrypted medical block");
 
@@ -683,8 +699,8 @@ public class BlockEncryptionIntegrationTest {
             .anyMatch(b -> b.getBlockNumber().equals(medicalBlock.getBlockNumber()));
         assertTrue(foundMedicalBlock, "Our medical block should be found in search results");
 
-        // Test 2: Search for financial encrypted data
-        List<Block> financialResults = api.findEncryptedData("financial");
+        // Test 2: Search for financial encrypted data WITH PASSWORD (data is encrypted)
+        List<Block> financialResults = api.findAndDecryptData("financial", testPassword);
         assertNotNull(financialResults, "Financial search results should not be null");
 
         // Test 3: Search for non-existent keyword

@@ -3,6 +3,7 @@ package com.rbatllet.blockchain.service;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.dao.AuthorizedKeyDAO;
 import com.rbatllet.blockchain.entity.AuthorizedKey;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -55,7 +56,7 @@ public class UserFriendlyEncryptionAPIPhase1KeyManagementTest {
         // RBAC FIX (v1.0.6): Mock getUserRole() for hierarchical key security validation
         // Tests need SUPER_ADMIN role to create/rotate ROOT and INTERMEDIATE keys
         lenient().when(mockBlockchain.getUserRole(publicKeyString))
-            .thenReturn(com.rbatllet.blockchain.security.UserRole.SUPER_ADMIN);
+            .thenReturn(UserRole.SUPER_ADMIN);
 
         // Initialize API with mock blockchain
         api = new UserFriendlyEncryptionAPI(mockBlockchain, testUsername, testKeyPair);

@@ -80,8 +80,10 @@ blockchain.addAuthorizedKey(
 
 **Correct Production Pattern:**
 
+> **🔑 PREREQUISITE**: Generate genesis-admin keys first: `./tools/generate_genesis_keys.zsh`
+
 ```java
-// 1. Load bootstrap admin keys (created automatically at first init)
+// 1. Load bootstrap admin keys (generated via ./tools/generate_genesis_keys.zsh)
 KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
     "./keys/genesis-admin.private",
     "./keys/genesis-admin.public"

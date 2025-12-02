@@ -2,6 +2,7 @@ package com.rbatllet.blockchain.service;
 
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.config.MemorySafetyConstants;
+import com.rbatllet.blockchain.config.SearchConstants;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.AuthorizedKey;
 import com.rbatllet.blockchain.entity.Block;
@@ -716,6 +717,7 @@ public class UserFriendlyEncryptionAPI {
      *         identifier. Returns empty list if no matches found. Content may be encrypted
      *         and require separate decryption using password-based methods.
      * @throws IllegalArgumentException if identifier is null or empty
+     * @see #findRecordsByIdentifier(String, String)
      * @see #searchByTerms(String[], String, int)
      * @see #retrieveSecret(Long, String)
      * @see #searchEverything(String)
@@ -726,6 +728,86 @@ public class UserFriendlyEncryptionAPI {
             return Collections.emptyList();
         }
         return searchByTerms(new String[] { identifier }, null, 50);
+    }
+
+    /**
+     * Find blockchain records by unique identifier with password for encrypted blocks.
+     *
+     * <p>This is the password-enabled version of {@link #findRecordsByIdentifier(String)}.
+     * Use this method when searching for identifiers in encrypted blocks where the keywords
+     * (including identifiers) were encrypted with a password.</p>
+     *
+     * <p><strong>Key Features:</strong></p>
+     * <ul>
+     *   <li><strong>Encrypted Identifier Search:</strong> Can find identifiers in encrypted block keywords</li>
+     *   <li><strong>Password-Protected:</strong> Searches using the same password used for block encryption</li>
+     *   <li><strong>Fast Lookup:</strong> Optimized for quick identifier-based retrieval</li>
+     *   <li><strong>Category-Agnostic:</strong> Works across all content categories (medical, financial, legal, etc.)</li>
+     * </ul>
+     *
+     * <p><strong>Common Use Cases:</strong></p>
+     * <ul>
+     *   <li>Medical records: Find patient records by encrypted patient ID</li>
+     *   <li>Financial transactions: Locate transactions by encrypted transaction reference</li>
+     *   <li>Legal documents: Retrieve contracts by encrypted contract number</li>
+     *   <li>Supply chain: Track products by encrypted product identifier</li>
+     * </ul>
+     *
+     * <p><strong>Usage Examples:</strong></p>
+     * <pre>{@code
+     * // Find encrypted medical record by patient identifier
+     * List<Block> patientRecords = api.findRecordsByIdentifier(
+     *     "patient:P-001234", 
+     *     "medicalPassword123"
+     * );
+     *
+     * // Search for encrypted financial transaction
+     * List<Block> transactions = api.findRecordsByIdentifier(
+     *     "transaction:TXN-2024-789012",
+     *     "financeKey"
+     * );
+     *
+     * // Search for encrypted legal document
+     * List<Block> documents = api.findRecordsByIdentifier(
+     *     "contract:CONTRACT-ABC-2024",
+     *     "legalPass"
+     * );
+     *
+     * // Process results (content already decrypted if password correct)
+     * for (Block block : patientRecords) {
+     *     System.out.println("Found record in block #" + block.getBlockNumber());
+     *     if (block.isDataEncrypted()) {
+     *         // Content was decrypted with provided password
+     *         System.out.println("Decrypted data: " + block.getData());
+     *     }
+     * }
+     * }</pre>
+     *
+     * @param identifier The unique identifier to search for. Must not be null or empty.
+     *                  Common formats include alphanumeric codes, UUID strings, or
+     *                  business-specific identifier patterns with optional category prefix
+     *                  (e.g., "patient:ID", "transaction:REF", "contract:NUM").
+     * @param password The password used to encrypt the block keywords. Must not be null or empty.
+     *                Must match the password used when the block was created with 
+     *                {@link #storeDataWithIdentifier(String, String, String)}.
+     * @return A {@link List} of {@link Block} objects containing records with the specified
+     *         identifier. Encrypted content is decrypted if password is correct. Returns empty
+     *         list if no matches found or if password is incorrect for encrypted blocks.
+     * @throws IllegalArgumentException if identifier is null/empty or password is null/empty
+     * @see #findRecordsByIdentifier(String)
+     * @see #storeDataWithIdentifier(String, String, String)
+     * @see #searchByTerms(String[], String, int)
+     * @see #retrieveSecret(Long, String)
+     * @since 1.0.6
+     */
+    public List<Block> findRecordsByIdentifier(String identifier, String password) {
+        if (identifier == null || identifier.trim().isEmpty()) {
+            throw new IllegalArgumentException("Identifier cannot be null or empty");
+        }
+        if (password == null || password.trim().isEmpty()) {
+            throw new IllegalArgumentException("Password cannot be null or empty");
+        }
+        return searchByTerms(new String[] { identifier }, password, 50);
     }
 
     // ===== ADVANCED SEARCH OPERATIONS =====
@@ -936,13 +1018,12 @@ public class UserFriendlyEncryptionAPI {
             .split("\\s+");
 
         Set<String> terms = new HashSet<>();
-        final int MAX_WORD_LENGTH = 50; // Prevent single huge words from causing overflow
         
         for (String word : words) {
             if (word.length() > 2 && terms.size() < maxTerms) {
                 // Limit individual word length to prevent overflow
                 // If word is too long, skip it entirely (it's not a useful search term anyway)
-                if (word.length() <= MAX_WORD_LENGTH) {
+                if (word.length() <= SearchConstants.MAX_SEARCH_WORD_LENGTH) {
                     terms.add(word);
                 } else {
                     // Silently skip overly long "words" (likely garbage data like "aaaaaaa...")
@@ -1078,13 +1159,13 @@ public class UserFriendlyEncryptionAPI {
 
         // OPTIMIZED (Priority 2): Process blocks in batches with early termination
         List<Block> similarBlocks = new ArrayList<>();
-        final int BATCH_SIZE = 100;
+        
         long totalBlocks = blockchain.getBlockCount();
 
-        for (long offset = 0; offset < totalBlocks && similarBlocks.size() < maxResults; offset += BATCH_SIZE) {
+        for (long offset = 0; offset < totalBlocks && similarBlocks.size() < maxResults; offset += MemorySafetyConstants.FALLBACK_BATCH_SIZE) {
             List<Block> batchBlocks = blockchain.getBlocksPaginated(
                 offset,
-                BATCH_SIZE
+                MemorySafetyConstants.FALLBACK_BATCH_SIZE
             );
 
             for (Block block : batchBlocks) {
@@ -3247,62 +3328,62 @@ public class UserFriendlyEncryptionAPI {
             var diagnostic = diagnoseChainHealth();
             StringBuilder sb = new StringBuilder();
 
-            sb.append("🏥 BLOCKCHAIN RECOVERY CAPABILITY REPORT\\n");
-            sb.append("═".repeat(50)).append("\\n\\n");
+            sb.append("🏥 BLOCKCHAIN RECOVERY CAPABILITY REPORT\n");
+            sb.append("═".repeat(50)).append("\n\n");
 
-            sb.append("📊 Current Status:\\n");
+            sb.append("📊 Current Status:\n");
             sb
                 .append("   📝 Total Blocks: ")
                 .append(diagnostic.getTotalBlocks())
-                .append("\\n");
+                .append("\n");
             sb
                 .append("   ✅ Valid Blocks: ")
                 .append(diagnostic.getValidBlocks())
-                .append("\\n");
+                .append("\n");
             sb
                 .append("   ❌ Corrupted Blocks: ")
                 .append(diagnostic.getCorruptedBlocks())
-                .append("\\n");
+                .append("\n");
             sb
                 .append("   💚 Chain Health: ")
                 .append(diagnostic.isHealthy() ? "HEALTHY" : "CORRUPTED")
-                .append("\\n\\n");
+                .append("\n\n");
 
             if (diagnostic.isHealthy()) {
                 sb.append(
-                    "🎉 STATUS: Blockchain is healthy, no recovery needed\\n\\n"
+                    "🎉 STATUS: Blockchain is healthy, no recovery needed\n\n"
                 );
-                sb.append("🛡️ Available Recovery Features:\\n");
-                sb.append("   • Secure key storage and import/export\\n");
-                sb.append("   • Key pair validation and derivation\\n");
-                sb.append("   • Preventive corruption detection\\n");
+                sb.append("🛡️ Available Recovery Features:\n");
+                sb.append("   • Secure key storage and import/export\n");
+                sb.append("   • Key pair validation and derivation\n");
+                sb.append("   • Preventive corruption detection\n");
             } else {
-                sb.append("🚨 STATUS: Blockchain corruption detected\\n\\n");
-                sb.append("🔧 Available Recovery Strategies:\\n");
+                sb.append("🚨 STATUS: Blockchain corruption detected\n\n");
+                sb.append("🔧 Available Recovery Strategies:\n");
                 sb.append(
-                    "   1. Re-authorization recovery (least disruptive)\\n"
+                    "   1. Re-authorization recovery (least disruptive)\n"
                 );
                 sb.append(
-                    "   2. Intelligent rollback with data preservation\\n"
+                    "   2. Intelligent rollback with data preservation\n"
                 );
                 sb.append(
-                    "   3. Export valid portion for manual recovery\\n\\n"
+                    "   3. Export valid portion for manual recovery\n\n"
                 );
 
-                sb.append("💡 Recommended Actions:\\n");
+                sb.append("💡 Recommended Actions:\n");
                 sb.append(
-                    "   • Use 'recoverFromCorruption()' to attempt automatic recovery\\n"
+                    "   • Use 'recoverFromCorruption()' to attempt automatic recovery\n"
                 );
                 sb.append(
-                    "   • Ensure deleted user keys are available for re-authorization\\n"
+                    "   • Ensure deleted user keys are available for re-authorization\n"
                 );
                 sb.append(
-                    "   • Consider exporting valid data before attempting recovery\\n"
+                    "   • Consider exporting valid data before attempting recovery\n"
                 );
             }
 
             sb.append(
-                "\\n🔄 Recovery Success Rate: High (multiple strategies available)"
+                "\n🔄 Recovery Success Rate: High (multiple strategies available)"
             );
 
             return sb.toString();
@@ -4262,10 +4343,16 @@ public class UserFriendlyEncryptionAPI {
 
     /**
      * Store searchable data with user-defined search terms
-     * All terms will be encrypted and stored in private metadata for maximum privacy
+     * <p><strong>Phase 5.4 Update:</strong> All terms are now PUBLIC by default (intuitive behavior).
+     * The method name "storeSearchableData" implies the data is publicly searchable.
+     * Terms are automatically prefixed with "public:" to make them searchable without a password.</p>
+     *
+     * <p>For private terms, use {@link #storeSearchableDataWithLayers(String, String, String[], String[])}
+     * to explicitly control which terms are public vs private.</p>
+     *
      * @param data The data to encrypt and store
      * @param password The password for encryption
-     * @param searchTerms Array of user-defined search terms
+     * @param searchTerms Array of user-defined search terms (will be made PUBLIC by default)
      * @return The created block, or null if failed
      */
     public Block storeSearchableData(
@@ -4274,10 +4361,27 @@ public class UserFriendlyEncryptionAPI {
         String[] searchTerms
     ) {
         validateKeyPair();
+
+        // Phase 5.4 FIX: Make keywords public by default (add "public:" prefix)
+        // This makes storeSearchableData() intuitive - "searchable" implies publicly searchable
+        // If terms already have "public:" prefix, don't duplicate it
+        String[] publicKeywords = null;
+        if (searchTerms != null && searchTerms.length > 0) {
+            publicKeywords = new String[searchTerms.length];
+            for (int i = 0; i < searchTerms.length; i++) {
+                String term = searchTerms[i];
+                if (term != null && !term.toLowerCase().startsWith("public:")) {
+                    publicKeywords[i] = "public:" + term;
+                } else {
+                    publicKeywords[i] = term;
+                }
+            }
+        }
+
         return blockchain.addEncryptedBlockWithKeywords(
             data,
             password,
-            searchTerms,
+            publicKeywords,
             null,
             getDefaultKeyPair().getPrivate(),
             getDefaultKeyPair().getPublic()
@@ -7464,10 +7568,9 @@ public class UserFriendlyEncryptionAPI {
             }
 
             // Search in batches from newest to oldest (most queries are for recent blocks)
-            int batchSize = 1000;
-            for (long offset = blockCount - batchSize; offset >= 0; offset -= batchSize) {
+            for (long offset = blockCount - MemorySafetyConstants.DEFAULT_BATCH_SIZE; offset >= 0; offset -= MemorySafetyConstants.DEFAULT_BATCH_SIZE) {
                 // Calculate actual batch size (avoid negative on last batch)
-                long actualBatchSize = Math.min(batchSize, blockCount - offset);
+                long actualBatchSize = Math.min(MemorySafetyConstants.DEFAULT_BATCH_SIZE, blockCount - offset);
                 
                 List<Block> batch = blockchain.getBlocksPaginated(offset, (int) actualBatchSize);
 
@@ -10506,19 +10609,18 @@ public class UserFriendlyEncryptionAPI {
         try {
             final int[] repairedLinks = {0};
             final int[] totalChecked = {0};
-            final int BATCH_SIZE = 1000;
 
             // MEMORY SAFETY: Process chain repair in batches instead of loading all blocks
             long totalBlocks = endBlock - startBlock + 1;
-            logger.info("🔗 Processing {} blocks for chain repair in batches of {}", totalBlocks, BATCH_SIZE);
+            logger.info("🔗 Processing {} blocks for chain repair in batches of {}", totalBlocks, MemorySafetyConstants.DEFAULT_BATCH_SIZE);
 
             Block previousBlock = null;
             if (startBlock > 0) {
                 previousBlock = blockchain.getBlock(startBlock - 1);
             }
 
-            for (long batchStart = startBlock; batchStart <= endBlock; batchStart += BATCH_SIZE) {
-                long batchEnd = Math.min(batchStart + BATCH_SIZE - 1, endBlock);
+            for (long batchStart = startBlock; batchStart <= endBlock; batchStart += MemorySafetyConstants.DEFAULT_BATCH_SIZE) {
+                long batchEnd = Math.min(batchStart + MemorySafetyConstants.DEFAULT_BATCH_SIZE - 1, endBlock);
 
                 // Create batch of block numbers
                 List<Long> batchBlockNumbers = new ArrayList<>();
@@ -12614,11 +12716,11 @@ public class UserFriendlyEncryptionAPI {
                         logger.error("❌ Batch optimization failed for encrypted blocks, falling back to chunked retrieval", batchEx);
                         
                         // OPTIMIZED FALLBACK: Use batch processing even in fallback (chunks of 100)
-                        final int FALLBACK_BATCH_SIZE = 100;
+                        
                         List<Long> blockNumbersList = new ArrayList<>(encryptedBlocksCache);
                         
-                        for (int i = 0; i < blockNumbersList.size(); i += FALLBACK_BATCH_SIZE) {
-                            int endIdx = Math.min(i + FALLBACK_BATCH_SIZE, blockNumbersList.size());
+                        for (int i = 0; i < blockNumbersList.size(); i += MemorySafetyConstants.FALLBACK_BATCH_SIZE) {
+                            int endIdx = Math.min(i + MemorySafetyConstants.FALLBACK_BATCH_SIZE, blockNumbersList.size());
                             List<Long> chunk = blockNumbersList.subList(i, endIdx);
                             
                             try {
@@ -13591,11 +13693,11 @@ public class UserFriendlyEncryptionAPI {
                     logger.error("❌ Batch optimization failed for recipient blocks, falling back to chunked retrieval", batchEx);
                     
                     // OPTIMIZED FALLBACK: Use batch processing even in fallback (chunks of 100)
-                    final int FALLBACK_BATCH_SIZE = 100;
+                    
                     List<Long> blockNumbersList = new ArrayList<>(blockNumbers);
                     
-                    for (int i = 0; i < blockNumbersList.size(); i += FALLBACK_BATCH_SIZE) {
-                        int endIdx = Math.min(i + FALLBACK_BATCH_SIZE, blockNumbersList.size());
+                    for (int i = 0; i < blockNumbersList.size(); i += MemorySafetyConstants.FALLBACK_BATCH_SIZE) {
+                        int endIdx = Math.min(i + MemorySafetyConstants.FALLBACK_BATCH_SIZE, blockNumbersList.size());
                         List<Long> chunk = blockNumbersList.subList(i, endIdx);
                         
                         try {
@@ -13950,11 +14052,11 @@ public class UserFriendlyEncryptionAPI {
                         );
                         
                         // OPTIMIZED FALLBACK: Use batch processing even in fallback (chunks of 100)
-                        final int FALLBACK_BATCH_SIZE = 100;
+                        
                         List<Long> blockNumbersList = new ArrayList<>(candidateBlockNumbers);
                         
-                        for (int i = 0; i < blockNumbersList.size(); i += FALLBACK_BATCH_SIZE) {
-                            int endIdx = Math.min(i + FALLBACK_BATCH_SIZE, blockNumbersList.size());
+                        for (int i = 0; i < blockNumbersList.size(); i += MemorySafetyConstants.FALLBACK_BATCH_SIZE) {
+                            int endIdx = Math.min(i + MemorySafetyConstants.FALLBACK_BATCH_SIZE, blockNumbersList.size());
                             List<Long> chunk = blockNumbersList.subList(i, endIdx);
                             
                             try {
@@ -14378,12 +14480,12 @@ public class UserFriendlyEncryptionAPI {
             logger.warn("❌ Batch retrieval failed in parallel search, using chunked fallback: {}", e.getMessage());
             
             // OPTIMIZED FALLBACK: Use batch processing in chunks instead of individual queries
-            final int FALLBACK_BATCH_SIZE = 100;
+            
             List<Long> blockNumbersList = new ArrayList<>(blockNumbers);
             List<Block> allBlocks = new ArrayList<>();
             
-            for (int i = 0; i < blockNumbersList.size(); i += FALLBACK_BATCH_SIZE) {
-                int endIdx = Math.min(i + FALLBACK_BATCH_SIZE, blockNumbersList.size());
+            for (int i = 0; i < blockNumbersList.size(); i += MemorySafetyConstants.FALLBACK_BATCH_SIZE) {
+                int endIdx = Math.min(i + MemorySafetyConstants.FALLBACK_BATCH_SIZE, blockNumbersList.size());
                 List<Long> chunk = blockNumbersList.subList(i, endIdx);
                 
                 try {
@@ -14430,11 +14532,11 @@ public class UserFriendlyEncryptionAPI {
             logger.error("❌ Batch optimization failed for sequential search, falling back to chunked retrieval", batchEx);
             
             // OPTIMIZED FALLBACK: Use batch processing even in fallback (chunks of 100)
-            final int FALLBACK_BATCH_SIZE = 100;
+            
             List<Long> blockNumbersList = new ArrayList<>(blockNumbers);
             
-            for (int i = 0; i < blockNumbersList.size(); i += FALLBACK_BATCH_SIZE) {
-                int endIdx = Math.min(i + FALLBACK_BATCH_SIZE, blockNumbersList.size());
+            for (int i = 0; i < blockNumbersList.size(); i += MemorySafetyConstants.FALLBACK_BATCH_SIZE) {
+                int endIdx = Math.min(i + MemorySafetyConstants.FALLBACK_BATCH_SIZE, blockNumbersList.size());
                 List<Long> chunk = blockNumbersList.subList(i, endIdx);
                 
                 try {

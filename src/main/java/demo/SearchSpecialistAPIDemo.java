@@ -1,6 +1,8 @@
 package demo;
 
+import com.rbatllet.blockchain.config.SearchConstants;
 import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.search.SearchSpecialistAPI;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.EnhancedSearchResult;
 import com.rbatllet.blockchain.security.KeyFileLoader;
@@ -116,6 +118,15 @@ public class SearchSpecialistAPIDemo {
         // Create another encrypted block with different keywords (exactly like the test)
         api.storeSearchableData("Public announcement data", password, new String[]{"public", "announcement"});
         
+        // Wait for background indexing to complete
+        try {
+            System.out.println("\n⏳ Waiting for background indexing to complete...");
+            IndexingCoordinator.getInstance().waitForCompletion();
+            System.out.println("✅ Background indexing completed - all blocks indexed\n");
+        } catch (InterruptedException e) {
+            System.err.println("⚠️ Indexing wait interrupted: " + e.getMessage());
+        }
+        
         System.out.println("✅ Stored test data matching working test configuration");
     }
     
@@ -214,9 +225,9 @@ public class SearchSpecialistAPIDemo {
                 // Show search quality metrics
                 if (!results.isEmpty()) {
                     EnhancedSearchResult result = results.get(0);
-                    System.out.printf("   🔐 Block: %s | Relevance: %.2f | Quality: %s%n", 
+                    System.out.printf("   🔐 Block: %s | Relevance: %.2f | Quality: %s%n",
                                     result.getBlockHash(), result.getRelevanceScore(),
-                                    result.getRelevanceScore() > 0.7 ? "High" : "Medium");
+                                    result.getRelevanceScore() > SearchConstants.MIN_QUALITY_SCORE ? "High" : "Medium");
                 }
                 break; // Only test first limit for demo brevity
             }

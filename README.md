@@ -317,9 +317,15 @@ Blockchain blockchain = new Blockchain();
 // Creates genesis block automatically
 ```
 
+> **🔑 PREREQUISITE**: Before Step 2, generate genesis-admin keys:
+> ```bash
+> ./tools/generate_genesis_keys.zsh
+> ```
+> This creates `./keys/genesis-admin.*` required for user management. **Backup these keys securely!**
+
 ### Step 2: Add Authorized Users (RBAC v1.0.6+)
 ```java
-// Load bootstrap admin keys (auto-created at first initialization)
+// Load bootstrap admin keys (generated via ./tools/generate_genesis_keys.zsh)
 KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
     "./keys/genesis-admin.private",
     "./keys/genesis-admin.public"
@@ -396,10 +402,10 @@ import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.security.KeyFileLoader;
 
-// 1. Create blockchain (auto-creates genesis admin on first run)
+// 1. Create blockchain (creates genesis block automatically)
 Blockchain blockchain = new Blockchain();
 
-// 2. Load genesis admin keys
+// 2. Load genesis admin keys (generate first via ./tools/generate_genesis_keys.zsh)
 KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
     "./keys/genesis-admin.private",
     "./keys/genesis-admin.public"
@@ -1093,7 +1099,7 @@ src/main/java/com/rbatllet/blockchain/
 ├── dao/
 │   └── AuthorizedKeyDAO.java                    # Database operations for keys
 ├── entity/
-│   ├── Block.java                               # Block data model (uses Hibernate SEQUENCE)
+│   ├── Block.java                               # Block data model (Phase 5.0: manual assignment)
 │   ├── AuthorizedKey.java                       # Authorized key data model
 │   └── OffChainData.java                        # Off-chain data references
 ├── recovery/
@@ -1695,7 +1701,7 @@ This project includes 65+ comprehensive documentation files organized into **11 
 | **🚀 Getting Started** | [getting-started/](docs/getting-started/) | 3 | Quick start, examples, troubleshooting |
 | **🔍 Search** | [search/](docs/search/) | 9 | All search APIs and implementations |
 | **🔐 Security** | [security/](docs/security/) | 6 | Encryption, key management, security |
-| **🧪 Testing** | [testing/](docs/testing/) | 5 | Thread-safety, testing patterns, standards |
+| **🧪 Testing** | [testing/](docs/testing/) | 6 | Thread-safety, testing patterns, Phase 5.4 isolation |
 | **📚 Reference** | [reference/](docs/reference/) | 4 | API reference (192 KB), technical details |
 | **🗄️ Database** | [database/](docs/database/) | 3 | SQLite/PostgreSQL/MySQL/H2 configuration |
 | **📊 Data Management** | [data-management/](docs/data-management/) | 6 | Pagination, batching, metadata |
@@ -1756,7 +1762,7 @@ This project includes 65+ comprehensive documentation files organized into **11 
 | Run comprehensive tests (828+ tests, 72% coverage) | **README.md - Testing section** |
 | Run tests and troubleshoot issues | [Testing Guide](docs/testing/TESTING.md) |
 | **Test components with shared static state** | [Shared State Testing](docs/testing/SHARED_STATE_TESTING_PATTERNS.md) |
-| **Implement thread-safe multi-instance operations** | [Atomic Protection](docs/testing/ATOMIC_PROTECTION_MULTI_INSTANCE_GUIDE.md) |
+| **Implement thread-safe multi-instance operations** | [Thread Safety & Semaphores](docs/development/SEMAPHORE_INDEXING_IMPLEMENTATION.md) |
 | Understand technical implementation | [Technical Details](docs/reference/TECHNICAL_DETAILS.md) |
 | Deploy to production | [Production Guide](docs/deployment/PRODUCTION_GUIDE.md) |
 | Set up encryption and security | [Encryption Guide](docs/security/ENCRYPTION_GUIDE.md) |

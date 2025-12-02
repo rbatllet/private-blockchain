@@ -26,6 +26,18 @@ Comprehensive real-world examples and practical use cases for the Private Blockc
 
 > **CRITICAL**: All examples in this document have been updated to reflect the new **mandatory pre-authorization** security model introduced in v1.0.6.
 
+### 🔑 Prerequisites
+
+**Before running any examples**, generate genesis-admin keys:
+
+```bash
+./tools/generate_genesis_keys.zsh
+```
+
+This creates `./keys/genesis-admin.*` required for bootstrap authorization. **Backup these keys securely!**
+
+> **For tests only**: Tests auto-generate keys if missing. See [AUTO_GENESIS_KEY_GENERATION.md](../testing/AUTO_GENESIS_KEY_GENERATION.md).
+
 ### Required Initialization Pattern
 
 All code examples now require this initialization pattern:
@@ -34,7 +46,7 @@ All code examples now require this initialization pattern:
 // 1. Create blockchain (only genesis block is automatic)
 Blockchain blockchain = new Blockchain();
 
-// 2. Load genesis admin keys
+// 2. Load genesis admin keys (generated via ./tools/generate_genesis_keys.zsh)
 KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
     "./keys/genesis-admin.private",
     "./keys/genesis-admin.public"
@@ -1035,7 +1047,7 @@ public class LargeBlockchainValidation {
                                      revokedInBatch + " revoked");
                 }
             },
-            1000 // Process 1000 blocks per batch
+            MemorySafetyConstants.DEFAULT_BATCH_SIZE // Process 1000 blocks per batch
         );
         
         // Print final validation summary
@@ -1642,8 +1654,9 @@ EntityManager em = JPAUtil.getEntityManager();
 try {
     // Find blocks within date range
     TypedQuery<Block> query = em.createQuery(
-        "SELECT b FROM Block b WHERE b.timestamp BETWEEN :startTime AND :endTime ORDER BY b.blockNumber ASC", 
+        "SELECT b FROM Block b WHERE b.timestamp BETWEEN :startTime AND :endTime",
         Block.class);
+    // Note: blockNumber ordering is automatic (PRIMARY KEY creates unique index, ASC order guaranteed)
     query.setParameter("startTime", startTime);
     query.setParameter("endTime", endTime);
     

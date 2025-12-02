@@ -8,13 +8,19 @@
 
 ### Required Secure Initialization
 
+> **🔑 PREREQUISITE**: Generate genesis-admin keys first:
+> ```bash
+> ./tools/generate_genesis_keys.zsh
+> ```
+> This creates `./keys/genesis-admin.*` required for all examples below. **Backup securely!**
+
 Before using any API with EncryptionConfig:
 
 ```java
 // 1. Create blockchain (only genesis block is automatic)
 Blockchain blockchain = new Blockchain();
 
-// 2. Load genesis admin keys
+// 2. Load genesis admin keys (generated via ./tools/generate_genesis_keys.zsh)
 KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
     "./keys/genesis-admin.private",
     "./keys/genesis-admin.public"

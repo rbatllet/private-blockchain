@@ -38,7 +38,7 @@ public List<Block> getBlocksWithOffChainDataPaginated(long offset, int limit)
 Blockchain blockchain = new Blockchain();
 
 // Process all blocks with off-chain data in batches of 100
-int batchSize = 100;
+int batchSize = MemorySafetyConstants.FALLBACK_BATCH_SIZE;
 long offset = 0;  // ⚠️ Use long to prevent overflow with large blockchains
 List<Block> batch;
 
@@ -142,7 +142,7 @@ System.out.println("Total encrypted blocks: " + totalEncrypted);
  * Uses pagination to avoid memory exhaustion
  */
 public void reencryptAllBlocks(Blockchain blockchain, String oldPassword, String newPassword) {
-    int batchSize = 100;
+    int batchSize = MemorySafetyConstants.FALLBACK_BATCH_SIZE;
     long offset = 0;  // ⚠️ Use long to prevent overflow with large blockchains
     int processedCount = 0;
     List<Block> batch;
@@ -253,7 +253,7 @@ When working with large blockchain datasets, always use pagination to avoid memo
 ```java
 Blockchain blockchain = new Blockchain();
 long offset = 0;  // ⚠️ Use long to prevent overflow with large blockchains
-int batchSize = 100;
+int batchSize = MemorySafetyConstants.FALLBACK_BATCH_SIZE;
 List<Block> batch;
 
 do {

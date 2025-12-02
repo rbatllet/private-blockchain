@@ -1,12 +1,20 @@
 package com.rbatllet.blockchain.dao;
 
 import com.rbatllet.blockchain.entity.AuthorizedKey;
+import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.JPAUtil;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityTransaction;
 import jakarta.persistence.TypedQuery;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * DAO for AuthorizedKey operations
@@ -448,8 +456,73 @@ public class AuthorizedKeyDAO {
                 "SELECT COUNT(ak) FROM AuthorizedKey ak WHERE ak.role = :role AND ak.isActive = true",
                 Long.class
             );
-            query.setParameter("role", com.rbatllet.blockchain.security.UserRole.SUPER_ADMIN);
+            query.setParameter("role", UserRole.SUPER_ADMIN);
             return query.getSingleResult();
+        } finally {
+            if (!JPAUtil.hasActiveTransaction()) {
+                em.close();
+            }
+        }
+    }
+
+    /**
+     * Batch validation: Check which keys from a set were authorized at a specific time.
+     * This method performs ONE SINGLE query instead of N individual queries.
+     *
+     * <p><strong>Performance:</strong> For batch operations with 100 blocks, this reduces
+     * database queries from 100 individual queries to 1 single query (100x improvement).</p>
+     *
+     * @param publicKeys Set of public keys to validate
+     * @param timestamp The point in time at which to verify authorization
+     * @return Set of public keys that were authorized at the given timestamp
+     * @since 1.0.6 (Phase 5.2 - Batch Write API optimization)
+     */
+    public Set<String> getAuthorizedKeysAt(Set<String> publicKeys, LocalDateTime timestamp) {
+        if (publicKeys == null || publicKeys.isEmpty()) {
+            return Collections.emptySet();
+        }
+        if (timestamp == null) {
+            throw new IllegalArgumentException("Timestamp cannot be null");
+        }
+
+        EntityManager em = JPAUtil.getEntityManager();
+        try {
+            // ONE SINGLE query with IN clause to fetch all authorizations for the given keys
+            TypedQuery<AuthorizedKey> query = em.createQuery(
+                "SELECT ak FROM AuthorizedKey ak WHERE ak.publicKey IN :publicKeys ORDER BY ak.createdAt ASC",
+                AuthorizedKey.class);
+            query.setParameter("publicKeys", publicKeys);
+
+            List<AuthorizedKey> allKeys = query.getResultList();
+
+            // Group by public key and validate each one
+            Map<String, List<AuthorizedKey>> keysByPublicKey = new HashMap<>();
+            for (AuthorizedKey key : allKeys) {
+                keysByPublicKey.computeIfAbsent(key.getPublicKey(), k -> new ArrayList<>()).add(key);
+            }
+
+            // Check which keys were authorized at the given timestamp
+            Set<String> authorizedKeys = new HashSet<>();
+            for (Map.Entry<String, List<AuthorizedKey>> entry : keysByPublicKey.entrySet()) {
+                String publicKey = entry.getKey();
+                List<AuthorizedKey> keys = entry.getValue();
+
+                // Find the authorization that was valid at the given timestamp
+                AuthorizedKey validKey = null;
+                for (AuthorizedKey key : keys) {
+                    if (key.getCreatedAt() != null && !timestamp.isBefore(key.getCreatedAt())) {
+                        validKey = key; // This key could be valid
+                    } else {
+                        break; // Keys are ordered by creation, so we can stop here
+                    }
+                }
+
+                if (validKey != null && validKey.wasActiveAt(timestamp)) {
+                    authorizedKeys.add(publicKey);
+                }
+            }
+
+            return authorizedKeys;
         } finally {
             if (!JPAUtil.hasActiveTransaction()) {
                 em.close();

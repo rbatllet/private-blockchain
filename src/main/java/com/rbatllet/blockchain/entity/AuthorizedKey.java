@@ -12,7 +12,9 @@ import jakarta.persistence.*;
  * @since 1.0.0
  */
 @Entity
-@Table(name = "authorized_keys")
+@Table(name = "authorized_keys", indexes = {
+    @Index(name = "idx_authorized_keys_created_at", columnList = "created_at")
+})
 public class AuthorizedKey {
 
     @Id

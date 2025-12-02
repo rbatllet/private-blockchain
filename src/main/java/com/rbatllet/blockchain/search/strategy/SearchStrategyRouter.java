@@ -79,6 +79,11 @@ public class SearchStrategyRouter {
         QueryAnalysis analysis = analyzeQuery(query, password, config);
         SearchStrategy chosenStrategy = analysis.getRecommendedStrategy();
         
+        // DEBUG: Log strategy selection
+        logger.info("🎯 SEARCH ROUTING: query='{}' | hasPassword={} | complexity={} | strategy={}",
+            query, (password != null && !password.trim().isEmpty()), 
+            analysis.getComplexity(), chosenStrategy);
+        
         try {
             AdvancedSearchResult result;
             
@@ -194,13 +199,21 @@ public class SearchStrategyRouter {
                                                   boolean hasPassword, 
                                                   SecurityLevel securityLevel) {
         
-        if (securityLevel == SecurityLevel.MAXIMUM && hasPassword) {
-            return SearchStrategy.ENCRYPTED_CONTENT;
+        // CRITICAL FIX: Simple queries WITH password should use HYBRID_CASCADE
+        // This allows searchAll() with password to find both public AND private keywords
+        // This must be checked FIRST, before SecurityLevel.MAXIMUM check
+        if (complexity == QueryComplexity.SIMPLE && hasPassword) {
+            return SearchStrategy.HYBRID_CASCADE;
         }
         
         // Complex queries with password: Use hybrid cascade
         if (complexity == QueryComplexity.COMPLEX && hasPassword) {
             return SearchStrategy.HYBRID_CASCADE;
+        }
+        
+        // Maximum security with medium complexity: Use encrypted content search
+        if (securityLevel == SecurityLevel.MAXIMUM && complexity == QueryComplexity.MEDIUM && hasPassword) {
+            return SearchStrategy.ENCRYPTED_CONTENT;
         }
         
         // Medium complexity with password: Use encrypted content search
@@ -213,7 +226,7 @@ public class SearchStrategyRouter {
             return SearchStrategy.PARALLEL_MULTI;
         }
         
-        // Simple queries or no password: Use fast public search
+        // Simple queries WITHOUT password: Use fast public search
         return SearchStrategy.FAST_PUBLIC;
     }
     
@@ -223,7 +236,9 @@ public class SearchStrategyRouter {
      * Execute fast public metadata search
      */
     private AdvancedSearchResult executePublicSearch(String query, int maxResults, QueryAnalysis analysis) {
+        logger.info("⚡ FAST PUBLIC: Searching for query='{}' with maxResults={}", query, maxResults);
         List<FastIndexSearch.FastSearchResult> fastResults = fastIndexSearch.searchFast(query, maxResults);
+        logger.info("⚡ FAST PUBLIC: Found {} results from FastIndexSearch", fastResults.size());
         
         List<SearchResultItem> items = fastResults.stream()
             .map(result -> new SearchResultItem(
@@ -236,6 +251,7 @@ public class SearchStrategyRouter {
             ))
             .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
         
+        logger.info("⚡ FAST PUBLIC: Returning {} search result items", items.size());
         return new AdvancedSearchResult(items, SearchLevel.FAST_ONLY, 
                                      fastResults.isEmpty() ? 0.0 : fastResults.get(0).getSearchTimeMs());
     }
@@ -268,12 +284,17 @@ public class SearchStrategyRouter {
      */
     private AdvancedSearchResult executeHybridCascadeSearch(String query, String password, 
                                                          int maxResults, QueryAnalysis analysis) {
+        logger.info("🔄 HYBRID CASCADE: Starting cascade search for query='{}'", query);
+        
         // Start with fast search
         AdvancedSearchResult fastResults = executePublicSearch(query, maxResults, analysis);
+        logger.info("🔄 HYBRID CASCADE: Fast search returned {} results", fastResults.getResults().size());
         
         // If fast search doesn't provide enough results, escalate to encrypted search
         if (fastResults.getResults().size() < maxResults / 2) {
+            logger.info("🔄 HYBRID CASCADE: Escalating to encrypted search (threshold: {})", maxResults / 2);
             AdvancedSearchResult encryptedResults = executeEncryptedSearch(query, password, maxResults, analysis);
+            logger.info("🔄 HYBRID CASCADE: Encrypted search returned {} results", encryptedResults.getResults().size());
             
             // Merge results and deduplicate - use thread-safe collections
             Set<String> seenHashes = ConcurrentHashMap.newKeySet();
@@ -422,6 +443,15 @@ public class SearchStrategyRouter {
     /**
      * Shutdown the router and clean up resources
      */
+    /**
+     * Clear all search indexes without shutting down the executor service.
+     * Use this for test cleanup or database reinitialization.
+     */
+    public void clearIndexes() {
+        fastIndexSearch.clearAll();
+        encryptedContentSearch.clearAll();
+    }
+
     public void shutdown() {
         executorService.shutdown();
         fastIndexSearch.clearAll();

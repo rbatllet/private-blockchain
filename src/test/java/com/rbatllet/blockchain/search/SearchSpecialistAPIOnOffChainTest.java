@@ -4,6 +4,7 @@ import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.entity.OffChainData;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.*;
 import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.security.UserRole;
@@ -14,6 +15,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.MethodOrderer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.security.KeyPair;
 import java.util.List;
@@ -26,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class SearchSpecialistAPIOnOffChainTest {
+    private static final Logger logger = LoggerFactory.getLogger(SearchSpecialistAPIOnOffChainTest.class);
     
     private Blockchain blockchain;
     private KeyPair bootstrapKeyPair;
@@ -72,34 +76,42 @@ public class SearchSpecialistAPIOnOffChainTest {
         // 2. Now admin can create test user (generates new keys internally)
         userKeys = api.createUser("onoffchain-test-user");
         api.setDefaultCredentials("onoffchain-test-user", userKeys);
-        
-        // Initialize search API FIRST
-        initializeSearchAPI();
-        
-        // Create comprehensive test data AFTER initialization
+
+        // PHASE 5.4 FIX: Create test data BEFORE initializing SearchSpecialistAPI
+        // This ensures blocks are indexed during SearchSpecialistAPI initialization
         createComprehensiveTestData();
+
+        // Initialize search API AFTER creating blocks
+        initializeSearchAPI();
     }
     
     private void createComprehensiveTestData() throws Exception {
-        System.out.println("🔧 Creating comprehensive test data...");
+        logger.info("🔧 Creating comprehensive test data...");
+        logger.info("📋 Test password: {}", testPassword);
         
         // 1. ON-CHAIN ENCRYPTED BLOCK
         String[] onChainKeywords = {"blockchain", "encrypted", "onchain", "financial"};
+        logger.info("📝 Creating block with keywords: {}", String.join(", ", onChainKeywords));
         onChainEncryptedBlock = api.storeSearchableData(
             "Encrypted financial blockchain data stored on-chain", 
             testPassword, 
             onChainKeywords
         );
-        System.out.println("✅ Created on-chain encrypted block: " + onChainEncryptedBlock.getBlockNumber());
+        logger.info("✅ Created on-chain encrypted block: {}", onChainEncryptedBlock.getBlockNumber());
+        logger.info("   Block hash: {}", onChainEncryptedBlock.getHash());
+        logger.info("   Manual keywords stored: {}", onChainEncryptedBlock.getManualKeywords());
         
         // 2. ON-CHAIN PUBLIC BLOCK (using minimal encryption for testing)
         String[] publicKeywords = {"public", "announcement", "onchain", "news"};
+        logger.info("📝 Creating block with keywords: {}", String.join(", ", publicKeywords));
         onChainPublicBlock = api.storeSearchableData(
             "Public announcement stored on-chain", 
             testPassword, 
             publicKeywords
         );
-        System.out.println("✅ Created on-chain public block: " + onChainPublicBlock.getBlockNumber());
+        logger.info("✅ Created on-chain public block: {}", onChainPublicBlock.getBlockNumber());
+        logger.info("   Block hash: {}", onChainPublicBlock.getHash());
+        logger.info("   Manual keywords stored: {}", onChainPublicBlock.getManualKeywords());
         
         // 3. OFF-CHAIN ENCRYPTED DATA
         byte[] encryptedFileData = "Encrypted document stored off-chain with sensitive financial data".getBytes();
@@ -108,7 +120,7 @@ public class SearchSpecialistAPIOnOffChainTest {
             testPassword, 
             "text/plain"
         );
-        System.out.println("✅ Created off-chain encrypted data: " + offChainEncryptedData.getId());
+        logger.info("✅ Created off-chain encrypted data: {}", offChainEncryptedData.getId());
         
         // 4. OFF-CHAIN PUBLIC DATA
         String publicDocumentContent = "Public document available off-chain with general information";
@@ -117,39 +129,86 @@ public class SearchSpecialistAPIOnOffChainTest {
             testPassword, 
             "public-doc.txt"
         );
-        System.out.println("✅ Created off-chain public data: " + offChainPublicData.getId());
-        
-        System.out.println("🎯 Test data creation completed!");
+        logger.info("✅ Created off-chain public data: {}", offChainPublicData.getId());
+
+        logger.info("🎯 Test data creation completed!");
+        logger.info("📊 Total blocks in blockchain: {}", blockchain.getBlockCount());
+        logger.info("📊 Test blocks created: 2 on-chain blocks + genesis");
+
+        // PHASE 5.4 FIX: Wait for async indexing to complete before tests run
+        logger.info("⏳ Waiting for async indexing to complete...");
+        IndexingCoordinator.getInstance().waitForCompletion();
+        logger.info("✅ Async indexing completed - tests can now proceed");
+        logger.info("📊 Blocks after indexing: {}", blockchain.getBlockCount());
     }
     
     private void initializeSearchAPI() throws Exception {
+        logger.info("\n🔧 Initializing SearchSpecialistAPI...");
+        logger.info("📊 Blocks before initialization: {}", blockchain.getBlockCount());
+        
         blockchain.initializeAdvancedSearch(testPassword);
+        logger.info("✅ initializeAdvancedSearch() completed");
+        
         blockchain.getSearchSpecialistAPI().initializeWithBlockchain(blockchain, testPassword, userKeys.getPrivate());
+        logger.info("✅ initializeWithBlockchain() completed");
+        
         searchAPI = blockchain.getSearchSpecialistAPI();
+        logger.info("📊 SearchAPI ready status: {}", searchAPI.isReady());
         
         if (!searchAPI.isReady()) {
+            logger.warn("⚠️  SearchAPI not ready, re-initializing...");
             searchAPI.initializeWithBlockchain(blockchain, testPassword, userKeys.getPrivate());
         }
         
         assertTrue(searchAPI.isReady(), "SearchSpecialistAPI should be ready after initialization");
-        System.out.println("✅ SearchSpecialistAPI initialized and ready");
+        logger.info("✅ SearchSpecialistAPI initialized and ready");
+        logger.info("📊 Blocks after initialization: {}", blockchain.getBlockCount());
     }
     
     @Test
     @Order(1)
     @DisplayName("Test 1: On-chain search capabilities")
     void testOnChainSearch() throws Exception {
-        System.out.println("\n=== TEST 1: ON-CHAIN SEARCH CAPABILITIES ===");
+        logger.info("\n=== TEST 1: ON-CHAIN SEARCH CAPABILITIES ===");
+        
+        // DEBUG: Check what keywords were actually stored
+        logger.info("\n🔍 DEBUG: Checking stored keywords:");
+        logger.info("  On-chain encrypted block keywords: {}", onChainEncryptedBlock.getManualKeywords());
+        logger.info("  On-chain public block keywords: {}", onChainPublicBlock.getManualKeywords());
+        logger.info("  Total blocks in blockchain: {}", blockchain.getBlockCount());
+        logger.info("  SearchAPI ready: {}", searchAPI.isReady());
         
         // Search for on-chain specific terms
+        logger.info("\n🔍 Searching for 'blockchain'...");
         List<EnhancedSearchResult> blockchainResults = searchAPI.searchAll("blockchain");
-        List<EnhancedSearchResult> onchainResults = searchAPI.searchAll("onchain");
-        List<EnhancedSearchResult> financialResults = searchAPI.searchAll("financial");
+        logger.info("  Results: {}", blockchainResults.size());
+        for (EnhancedSearchResult result : blockchainResults) {
+            logger.info("    - Block: {}", result.getBlockHash());
+        }
         
-        System.out.println("📊 On-chain search results:");
-        System.out.println("  'blockchain': " + blockchainResults.size() + " results");
-        System.out.println("  'onchain': " + onchainResults.size() + " results");
-        System.out.println("  'financial': " + financialResults.size() + " results");
+        logger.info("\n🔍 Searching for 'onchain'...");
+        List<EnhancedSearchResult> onchainResults = searchAPI.searchAll("onchain");
+        logger.info("  Results: {}", onchainResults.size());
+        for (EnhancedSearchResult result : onchainResults) {
+            logger.info("    - Block: {}", result.getBlockHash());
+        }
+        
+        logger.info("\n🔍 Searching for 'financial'...");
+        List<EnhancedSearchResult> financialResults = searchAPI.searchAll("financial");
+        logger.info("  Results: {}", financialResults.size());
+        for (EnhancedSearchResult result : financialResults) {
+            logger.info("    - Block: {}", result.getBlockHash());
+        }
+        
+        logger.info("\n📊 On-chain search results summary:");
+        logger.info("  'blockchain': {} results", blockchainResults.size());
+        logger.info("  'onchain': {} results", onchainResults.size());
+        logger.info("  'financial': {} results", financialResults.size());
+        
+        // DEBUG: Try searching with prefix
+        logger.info("\n🔍 Searching for 'public:blockchain'...");
+        List<EnhancedSearchResult> publicBlockchainResults = searchAPI.searchAll("public:blockchain");
+        logger.info("  'public:blockchain': {} results", publicBlockchainResults.size());
         
         // Verify we find on-chain data
         assertTrue(blockchainResults.size() > 0, "Should find blockchain-related on-chain data");
@@ -162,7 +221,7 @@ public class SearchSpecialistAPIOnOffChainTest {
         
         assertTrue(foundEncryptedBlock, "Should find our encrypted on-chain block");
         
-        System.out.println("✅ On-chain search validation completed");
+        logger.info("✅ On-chain search validation completed");
     }
     
     @Test

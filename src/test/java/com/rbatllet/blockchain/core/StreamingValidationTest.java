@@ -1,5 +1,6 @@
 package com.rbatllet.blockchain.core;
 
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
@@ -43,6 +44,9 @@ public class StreamingValidationTest {
 
     @BeforeEach
     void setUp() throws Exception {
+        // Reset IndexingCoordinator to clear shutdown state from previous tests
+        IndexingCoordinator.getInstance().reset();
+
         blockchain = new Blockchain();
 
         // Clean any existing data from previous tests
@@ -72,11 +76,21 @@ public class StreamingValidationTest {
     }
 
     @AfterEach
-    void tearDown() {
+    void tearDown() throws InterruptedException {
+        // Phase 5.4 FIX: Wait for async indexing to complete before cleanup
+        IndexingCoordinator.getInstance().waitForCompletion();
+
+        // CRITICAL: Clear database + search indexes to prevent state contamination
         if (blockchain != null) {
-            blockchain.clearAndReinitialize();
+            blockchain.clearAndReinitialize();  // Also calls clearIndexes() + clearCache()
             JPAUtil.cleanupThreadLocals();
         }
+
+        // Reset IndexingCoordinator singleton state
+        IndexingCoordinator.getInstance().forceShutdown();
+        IndexingCoordinator.getInstance().clearShutdownFlag();
+        IndexingCoordinator.getInstance().disableTestMode();
+
         logger.info("🧹 Test cleanup completed");
     }
 
@@ -124,10 +138,15 @@ public class StreamingValidationTest {
     void testLargeChainStreamingValidation() {
         logger.info("🧪 Testing streaming validation with large chain...");
 
-        // Add 2500 blocks (will require 3 batches with batch size 1000)
+        // Phase 5.2: Use batch write API for faster test execution (2500 blocks)
+        // skipIndexing=true: This test doesn't need search functionality
+        List<Blockchain.BlockWriteRequest> requests = new ArrayList<>();
         for (int i = 0; i < 2500; i++) {
-            blockchain.addBlock("Data block " + i, privateKey1, publicKey1);
+            requests.add(new Blockchain.BlockWriteRequest(
+                "Data block " + i, privateKey1, publicKey1
+            ));
         }
+        blockchain.addBlocksBatch(requests, true);
 
         final List<Integer> batchSizes = new ArrayList<>();
         final AtomicInteger totalProcessed = new AtomicInteger(0);
@@ -139,8 +158,13 @@ public class StreamingValidationTest {
 
                 // Verify all results in batch are valid
                 for (BlockValidationResult result : batchResults) {
+                    if (!result.isValid()) {
+                        logger.error("❌ Block #{} validation failed: {}", 
+                            result.getBlock().getBlockNumber(), 
+                            result.getErrorMessage());
+                    }
                     assertTrue(result.isValid(),
-                        "Block #" + result.getBlock().getBlockNumber() + " should be valid");
+                        "Block #" + result.getBlock().getBlockNumber() + " should be valid. Error: " + result.getErrorMessage());
                 }
             },
             1000

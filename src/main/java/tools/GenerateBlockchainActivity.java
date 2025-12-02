@@ -7,19 +7,23 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.security.KeyPair;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.*;
 
 /**
  * Generates blockchain activity to test the dashboard
  * Creates blocks, searches, and validations to populate logs
+ *
+ * Uses batch write API (Phase 5.2) for improved throughput
  */
 public class GenerateBlockchainActivity {
-    
+
     private static final Logger logger = LogManager.getLogger(GenerateBlockchainActivity.class);
-    
+
     public static void main(String[] args) {
         logger.info("🚀 Starting blockchain activity generator...");
-        
+
         try {
             Blockchain blockchain = new Blockchain();
             KeyPair keyPair = CryptoUtil.generateKeyPair();
@@ -29,40 +33,47 @@ public class GenerateBlockchainActivity {
                 CryptoUtil.publicKeyToString(keyPair.getPublic()),
                 "ActivityGenerator"
             );
-            
+
             logger.info("📊 Generating blockchain activity for dashboard testing...");
-            
-            // Generate various types of operations
+
+            // Use batch write for initial regular blocks (Phase 5.2)
+            logger.info("🔄 Creating 20 regular blocks using batch API...");
+            List<Blockchain.BlockWriteRequest> regularBlocks = new ArrayList<>();
             for (int i = 0; i < 20; i++) {
-                // Regular block
-                blockchain.addBlockAndReturn(
+                regularBlocks.add(new Blockchain.BlockWriteRequest(
                     "Test block " + i + " - Regular data",
                     keyPair.getPrivate(),
                     keyPair.getPublic()
-                );
-                
-                Thread.sleep(100);
-                
-                // Encrypted block
-                if (i % 3 == 0) {
-                    blockchain.addEncryptedBlock(
-                        "Encrypted data " + i,
-                        "password123",
-                        keyPair.getPrivate(),
-                        keyPair.getPublic()
-                    );
-                }
-                
-                // Search operation
-                if (i % 2 == 0) {
-                    blockchain.searchBlocks("test");
-                }
-                
-                // Validation
-                if (i % 5 == 0) {
-                    blockchain.validateChainDetailed();
-                }
+                ));
             }
+            blockchain.addBlocksBatch(regularBlocks);
+            logger.info("✅ Batch created 20 regular blocks");
+
+            // Add some encrypted blocks individually (encryption requires different handling)
+            for (int i = 0; i < 7; i++) {
+                blockchain.addEncryptedBlock(
+                    "Encrypted data " + i,
+                    "password123",
+                    keyPair.getPrivate(),
+                    keyPair.getPublic()
+                );
+                Thread.sleep(100);
+            }
+            logger.info("✅ Created 7 encrypted blocks");
+
+            // Perform search operations
+            for (int i = 0; i < 5; i++) {
+                blockchain.searchBlocks("test");
+                Thread.sleep(100);
+            }
+            logger.info("✅ Performed 5 search operations");
+
+            // Perform validations
+            for (int i = 0; i < 3; i++) {
+                blockchain.validateChainDetailed();
+                Thread.sleep(100);
+            }
+            logger.info("✅ Performed 3 validation operations");
             
             // Generate some large data for off-chain storage
             StringBuilder largeData = new StringBuilder();

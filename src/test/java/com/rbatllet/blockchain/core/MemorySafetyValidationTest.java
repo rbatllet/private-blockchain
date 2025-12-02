@@ -252,16 +252,16 @@ public class MemorySafetyValidationTest {
     void testProcessChainInBatchesDefaultSize() {
         logger.info("🧪 Testing processChainInBatches batch size with 2500 blocks...");
 
-        // Add 2500 blocks (rigorous test)
+        // Phase 5.2: Use batch write API for faster test execution (2500 blocks)
+        List<Blockchain.BlockWriteRequest> requests = new ArrayList<>();
         for (int i = 0; i < 2500; i++) {
-            blockchain.addBlock("Batch test " + i, privateKey, publicKey);
-
-            if (i % 500 == 0) {
-                logger.info("   Added {} blocks...", i);
-            }
+            requests.add(new Blockchain.BlockWriteRequest(
+                "Batch test " + i, privateKey, publicKey
+            ));
         }
+        blockchain.addBlocksBatch(requests);
 
-        logger.info("✅ All 2500 blocks added successfully");
+        logger.info("✅ All 2500 blocks added successfully using batch write API");
 
         final List<Integer> batchSizes = new ArrayList<>();
         final int[] totalBlocks = {0};

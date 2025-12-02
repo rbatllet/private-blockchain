@@ -1,6 +1,7 @@
 package demo;
 
 import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.search.SearchSpecialistAPI;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.EnhancedSearchResult;
 import com.rbatllet.blockchain.security.KeyFileLoader;
@@ -68,6 +69,15 @@ public class SearchSpecialistAPIErrorDemo {
             KeyPair userKeys = dataAPI.createUser("demo-user");
             dataAPI.setDefaultCredentials("demo-user", userKeys);
             dataAPI.storeSearchableData("Test searchable data", password, new String[]{"test", "demo"});
+            
+            // Wait for background indexing to complete
+            try {
+                System.out.println("\n⏳ Waiting for background indexing to complete...");
+                IndexingCoordinator.getInstance().waitForCompletion();
+                System.out.println("✅ Background indexing completed - all blocks indexed\n");
+            } catch (InterruptedException e) {
+                System.err.println("⚠️ Indexing wait interrupted: " + e.getMessage());
+            }
             
             // Create new SearchSpecialistAPI with the updated blockchain
             SearchSpecialistAPI updatedAPI = new SearchSpecialistAPI(blockchain, password, userKeys.getPrivate());

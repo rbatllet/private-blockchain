@@ -1,6 +1,7 @@
 package com.rbatllet.blockchain.core;
 
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.*;
 
@@ -28,6 +29,9 @@ public class OptimizationWithFixVerificationTest {
 
     @BeforeEach
     void cleanDatabase() {
+        // Reset IndexingCoordinator to clear shutdown state
+        IndexingCoordinator.getInstance().reset();
+
         blockchain.clearAndReinitialize();
         blockchain.createBootstrapAdmin(publicKeyStr, "TestUser");
     }

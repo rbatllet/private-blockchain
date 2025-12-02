@@ -248,7 +248,7 @@ blockchain.processChainInBatches(batch -> {
 blockchain.processChainInBatches(batch -> {
     // Process batch of 1000 blocks
     processBatch(batch);
-}, 1000); // Batch size is explicit
+}, MemorySafetyConstants.DEFAULT_BATCH_SIZE); // Batch size is explicit
 
 // ✅ CUSTOM: Can customize if needed
 blockchain.processChainInBatches(batch -> {

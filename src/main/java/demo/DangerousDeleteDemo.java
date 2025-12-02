@@ -122,8 +122,13 @@ public class DangerousDeleteDemo {
             System.out.println("============================================================");
             
             System.out.println("🎯 Attempting to safely delete Alice's key...");
-            boolean aliceDeleted = blockchain.deleteAuthorizedKey(publicKey1);
-            System.out.println("Result: " + (aliceDeleted ? "✅ SUCCESS" : "❌ BLOCKED (as expected)"));
+            try {
+                blockchain.deleteAuthorizedKey(publicKey1);
+                System.out.println("Result: ❌ UNEXPECTED - Deletion should have been blocked!");
+            } catch (IllegalStateException e) {
+                System.out.println("Result: ✅ BLOCKED (as expected)");
+                System.out.println("Reason: " + e.getMessage());
+            }
             
             // Enhanced validation after Alice's blocked deletion
             ChainValidationResult aliceResult = blockchain.validateChainDetailed();

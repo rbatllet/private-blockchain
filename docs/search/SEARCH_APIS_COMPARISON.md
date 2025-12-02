@@ -8,13 +8,19 @@
 
 ### Required Secure Initialization
 
+> **🔑 PREREQUISITE**: Generate genesis-admin keys first:
+> ```bash
+> ./tools/generate_genesis_keys.zsh
+> ```
+> This creates `./keys/genesis-admin.*` required for all examples below. **Backup securely!**
+
 All code examples assume this initialization pattern:
 
 ```java
 // 1. Create blockchain (only genesis block is automatic)
 Blockchain blockchain = new Blockchain();
 
-// 2. Load genesis admin keys
+// 2. Load genesis admin keys (generated via ./tools/generate_genesis_keys.zsh)
 KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
     "./keys/genesis-admin.private",
     "./keys/genesis-admin.public"
@@ -95,10 +101,44 @@ List<Block> results = api.searchByTerms(new String[]{"medical"}, password, 20);
 
 Use this when you need specialized search capabilities but already have data storage handled elsewhere.
 
-```java
-// SEARCH-SPECIALIZED APPROACH - NEW IMPROVED CONSTRUCTOR
-SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(blockchain, password, privateKey);
+### ⚠️ Phase 5.4 Initialization Pattern (CRITICAL!)
 
+**IMPORTANT:** With Phase 5.4 (Async/Background Indexing), you MUST initialize SearchSpecialistAPI AFTER blocks are created and indexed:
+
+```java
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
+
+// Step 1: Setup blockchain and create blocks FIRST
+Blockchain blockchain = new Blockchain();
+UserFriendlyEncryptionAPI dataAPI = new UserFriendlyEncryptionAPI(blockchain);
+KeyPair userKeys = dataAPI.createUser("search-user");
+dataAPI.setDefaultCredentials("search-user", userKeys);
+
+// Step 2: Store searchable data (triggers async indexing)
+String password = "SearchPassword123!";
+dataAPI.storeSearchableData("Medical data", password, new String[]{"medical", "patient"});
+
+// Step 3: ⚡ CRITICAL - Wait for async indexing to complete
+IndexingCoordinator.getInstance().waitForCompletion();
+
+// Step 4: NOW initialize SearchSpecialistAPI (blockchain has indexed blocks)
+SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(blockchain, password, userKeys.getPrivate());
+
+// Step 5: Search works correctly
+List<EnhancedSearchResult> results = searchAPI.searchAll("medical");
+```
+
+**Key Points:**
+- ✅ Create blocks FIRST with `storeSearchableData()`
+- ✅ Wait for indexing with `IndexingCoordinator.getInstance().waitForCompletion()`
+- ✅ Initialize SearchSpecialistAPI AFTER blocks are indexed
+- ❌ DO NOT initialize on empty blockchain (throws IllegalStateException)
+
+See [SearchSpecialistAPI Initialization Guide](SEARCHSPECIALISTAPI_INITIALIZATION_GUIDE.md) for complete details.
+
+### Basic Usage After Initialization
+
+```java
 // Optional: Use custom EncryptionConfig for specific security requirements
 EncryptionConfig config = EncryptionConfig.createPerformanceConfig();
 SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(blockchain, password, privateKey, config);
@@ -175,10 +215,19 @@ List<Block> patientRecords = api.searchByTerms(new String[]{"diabetes"}, medical
 ### 🔍 Search Analytics Dashboard
 **Recommendation: SearchSpecialistAPI**
 ```java
-// Specialized search analytics - NEW IMPROVED CONSTRUCTOR
-SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(blockchain, adminPassword, adminKey);
+// Phase 5.4: Setup and create indexed blocks FIRST
+UserFriendlyEncryptionAPI dataAPI = new UserFriendlyEncryptionAPI(blockchain);
+KeyPair adminKeys = dataAPI.createUser("analytics-admin");
+dataAPI.setDefaultCredentials("analytics-admin", adminKeys);
 
-// Fast public search for dashboard metrics  
+// Store data and wait for async indexing
+dataAPI.storeSearchableData("Transaction data", adminPassword, new String[]{"transactions"});
+com.rbatllet.blockchain.indexing.IndexingCoordinator.getInstance().waitForCompletion();
+
+// NOW initialize SearchSpecialistAPI (blockchain has indexed blocks)
+SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(blockchain, adminPassword, adminKeys.getPrivate());
+
+// Fast public search for dashboard metrics
 List<EnhancedSearchResult> publicMetrics = searchAPI.searchPublic("transactions");
 
 // Detailed analysis with full access
@@ -279,8 +328,13 @@ Are you building a complete blockchain application?
 KeyPair userKeys = api.createUser("user");
 api.setDefaultCredentials("user", userKeys);
 
-// Phase 2: Add specialized search if needed - NEW IMPROVED CONSTRUCTOR
-SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(blockchain, password, privateKey);
+// Store data and wait for async indexing
+api.storeSearchableData("data", password, keywords);
+com.rbatllet.blockchain.indexing.IndexingCoordinator.getInstance().waitForCompletion();
+
+// Phase 2: Add specialized search if needed - Phase 5.4 pattern
+// IMPORTANT: Initialize AFTER blocks are created and indexed
+SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(blockchain, password, userKeys.getPrivate());
 
 // Phase 3: Custom engines for special requirements (rarely needed)
 SearchFrameworkEngine customEngine = new SearchFrameworkEngine(customConfig);

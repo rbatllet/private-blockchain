@@ -2,7 +2,7 @@
 
 # Comprehensive test runner for ALL Blockchain tests
 # Executes all 45 test classes in logical categories (ML-DSA-87 post-quantum)
-# Version: 2.0.2 - COMPLETE TEST COVERAGE (Post-Quantum Migration + Phase 5.0 SEQUENCE)
+# Version: 2.0.3 - COMPLETE TEST COVERAGE (Post-Quantum Migration + Phase 5.0 Manual Assignment)
 
 # Set script directory before changing directories
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -124,7 +124,7 @@ run_test_suite "Comprehensive Thread Safety" "ComprehensiveThreadSafetyTest" "Co
 run_test_suite "Advanced Thread Safety" "AdvancedThreadSafetyTest" "Advanced thread safety"
 run_test_suite "Extreme Thread Safety" "ExtremeThreadSafetyTest" "Extreme thread safety"
 run_test_suite "Edge Case Thread Safety" "EdgeCaseThreadSafetyTest" "Edge case thread safety"
-run_test_suite "Block Number Thread Safety" "BlockNumberThreadSafetyTest" "Block number thread safety (Hibernate SEQUENCE)"
+run_test_suite "Block Number Thread Safety" "BlockNumberThreadSafetyTest" "Block number thread safety (Manual Assignment)"
 run_test_suite "Encrypted Block Thread Safety" "EncryptedBlockThreadSafetyTest" "Encrypted block thread safety"
 run_test_suite "Data Integrity Thread Safety" "DataIntegrityThreadSafetyTest" "Data integrity thread safety"
 run_test_suite "Thread Safe Export/Import" "ThreadSafeExportImportTest" "Thread-safe export/import"

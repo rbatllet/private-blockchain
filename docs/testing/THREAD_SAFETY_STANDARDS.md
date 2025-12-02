@@ -640,7 +640,8 @@ Total: **13 deadlocks** fixed during StampedLock migration
 
 ### **Internal References:**
 - [Thread Safety Tests Guide](THREAD_SAFETY_TESTS.md)
-- [Atomic Protection & Multi-Instance Coordination](ATOMIC_PROTECTION_MULTI_INSTANCE_GUIDE.md)
+- [Thread Safety & Concurrent Indexing](../monitoring/INDEXING_COORDINATOR_EXAMPLES.md#thread-safety--concurrent-indexing)
+- [Semaphore-Based Block Indexing Implementation](../development/SEMAPHORE_INDEXING_IMPLEMENTATION.md)
 - [Security Classes Guide](../security/SECURITY_CLASSES_GUIDE.md)
 - [Performance Optimization](../reports/PERFORMANCE_OPTIMIZATION_SUMMARY.md)
 

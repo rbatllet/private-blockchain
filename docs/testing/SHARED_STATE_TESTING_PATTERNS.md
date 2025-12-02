@@ -1,5 +1,19 @@
 # Shared State Testing Patterns Guide
 
+## ⚠️ Phase 5.4 Update (November 2025)
+
+> **IMPORTANT**: This document contains general shared state patterns. For **Phase 5.4 async indexing tests**, the patterns have been significantly updated.
+>
+> 📖 **See [PHASE_5_4_TEST_ISOLATION_GUIDE.md](PHASE_5_4_TEST_ISOLATION_GUIDE.md)** for:
+> - Updated tearDown() pattern with `clearShutdownFlag()`
+> - Using `clearIndexes()` instead of `clearAll()`
+> - Avoiding `enableTestMode()` in async tests
+> - Complete singleton state management for Phase 5.4
+>
+> The examples in this document show older patterns. Always prefer Phase 5.4 patterns for new tests.
+
+---
+
 ## Overview
 This document describes patterns and solutions for testing components with shared static state, based on lessons learned from debugging `SearchStatisticsDiscrepancyTest` failures.
 

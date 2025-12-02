@@ -10,13 +10,19 @@ This directory contains comprehensive API reference documentation, technical det
 
 ### Required Secure Initialization
 
+> **🔑 PREREQUISITE**: Generate genesis-admin keys first:
+> ```bash
+> ./tools/generate_genesis_keys.zsh
+> ```
+> This creates `./keys/genesis-admin.*` required for all examples in this directory. **Backup securely!**
+
 All code examples in this directory assume the following secure initialization:
 
 ```java
 // 1. Create blockchain (only genesis block is automatic)
 Blockchain blockchain = new Blockchain();
 
-// 2. Load genesis admin keys
+// 2. Load genesis admin keys (generated via ./tools/generate_genesis_keys.zsh)
 KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
     "./keys/genesis-admin.private",
     "./keys/genesis-admin.public"
@@ -144,7 +150,7 @@ List<Block> results = api.smartSearchEncryptedData("keyword", "password", 10);
 ### Key Information
 
 #### Database Schema
-- **Block Entity**: Main blockchain data structure (uses Hibernate SEQUENCE for numbering)
+- **Block Entity**: Main blockchain data structure (uses manual assignment for numbering, Phase 5.0)
 - **AuthorizedKey Entity**: Access control with revocation
 - **OffChainData Entity**: Large file metadata
 

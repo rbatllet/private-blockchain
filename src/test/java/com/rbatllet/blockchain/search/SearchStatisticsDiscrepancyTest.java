@@ -123,6 +123,9 @@ public class SearchStatisticsDiscrepancyTest {
         
         logger.info("✅ Created controlled test blockchain with {} blocks", testBlockchain.getBlockCount());
         
+        // CRITICAL: Wait for async indexing to complete before resetting
+        IndexingCoordinator.getInstance().waitForCompletion();
+        
         // Reset IndexingCoordinator after blockchain creation to ensure clean state for tests
         IndexingCoordinator.getInstance().reset();
         logger.info("🔄 IndexingCoordinator reset after blockchain setup for clean test state");

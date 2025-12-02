@@ -1,5 +1,7 @@
 package com.rbatllet.blockchain.search.metadata;
 
+import com.rbatllet.blockchain.config.SearchConstants;
+
 import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.Map;
@@ -190,9 +192,9 @@ public class PrivateMetadata {
         // Specific keywords (highest weight - these are the most precise)
         for (String keyword : specificKeywords) {
             if (keyword.toLowerCase().equals(lowerQuery)) {
-                score += 15.0; // Exact match in sensitive keywords
+                score += SearchConstants.SENSITIVE_EXACT_MATCH_BONUS;
             } else if (keyword.toLowerCase().contains(lowerQuery)) {
-                score += 8.0; // Partial match in sensitive keywords
+                score += SearchConstants.SENSITIVE_PARTIAL_MATCH_BONUS;
             }
         }
         

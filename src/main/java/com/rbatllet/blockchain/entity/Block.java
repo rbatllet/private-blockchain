@@ -59,7 +59,12 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
  * @see com.rbatllet.blockchain.core.Blockchain#updateBlock(Block)
  */
 @Entity
-@Table(name = "blocks")
+@Table(name = "blocks", indexes = {
+    @Index(name = "idx_blocks_timestamp", columnList = "timestamp"),
+    @Index(name = "idx_blocks_is_encrypted", columnList = "is_encrypted"),
+    @Index(name = "idx_blocks_signer_public_key", columnList = "signer_public_key"),
+    @Index(name = "idx_blocks_content_category", columnList = "content_category")
+})
 public class Block {
 
     // ========== IMMUTABLE FIELDS (Hash-Critical) - updatable=false ==========
@@ -88,7 +93,7 @@ public class Block {
     @Column(name = "signature", columnDefinition = "TEXT", updatable = false)
     private String signature;
     
-    @Column(name = "signer_public_key", columnDefinition = "TEXT", updatable = false)
+    @Column(name = "signer_public_key", length = 5000, updatable = false)
     private String signerPublicKey;
     
     // ========== MUTABLE FIELDS (Safe to update) ==========
@@ -277,6 +282,19 @@ public class Block {
             );
         }
         this.searchableContent = combined;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Block block = (Block) o;
+        return blockNumber != null && blockNumber.equals(block.blockNumber);
+    }
+
+    @Override
+    public int hashCode() {
+        return blockNumber != null ? blockNumber.hashCode() : 0;
     }
 
     @Override

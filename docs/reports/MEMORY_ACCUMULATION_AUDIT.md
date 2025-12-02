@@ -72,7 +72,7 @@ for (long offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
 **Current Implementation:**
 ```java
 List<Block> similarBlocks = new java.util.ArrayList<>();
-final int BATCH_SIZE = 100;
+final int BATCH_SIZE = MemorySafetyConstants.FALLBACK_BATCH_SIZE;
 long totalBlocks = blockchain.getBlockCount();
 
 for (long offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {

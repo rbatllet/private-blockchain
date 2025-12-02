@@ -574,7 +574,7 @@ public void monitorMemoryUsage(String operation) {
 ```java
 // ✅ Solution 1: Process data in batches
 public void batchProcessLargeDataset(List<String> largeDataset, String password) {
-    int batchSize = 100;
+    int batchSize = MemorySafetyConstants.FALLBACK_BATCH_SIZE;
     
     for (int i = 0; i < largeDataset.size(); i += batchSize) {
         int end = Math.min(i + batchSize, largeDataset.size());

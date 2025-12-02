@@ -145,10 +145,30 @@ public class OffChainStorageService {
      * Delete off-chain data file
      */
     public boolean deleteData(OffChainData offChainData) {
+        // Validate input
+        if (offChainData == null) {
+            logger.warn("❌ Cannot delete off-chain data: offChainData is null");
+            return false;
+        }
+        
+        if (offChainData.getFilePath() == null || offChainData.getFilePath().trim().isEmpty()) {
+            logger.warn("❌ Cannot delete off-chain data: file path is null or empty (ID: {})", 
+                offChainData.getId());
+            return false;
+        }
+        
         try {
-            return Files.deleteIfExists(Paths.get(offChainData.getFilePath()));
+            Path path = Paths.get(offChainData.getFilePath());
+            boolean deleted = Files.deleteIfExists(path);
+            if (deleted) {
+                logger.debug("✅ Deleted off-chain file: {}", offChainData.getFilePath());
+            }
+            return deleted;
         } catch (Exception e) {
-            logger.error("❌ Error deleting off-chain data: {}", e.getMessage());
+            logger.error("❌ Error deleting off-chain data file '{}': {} - {}", 
+                offChainData.getFilePath(),
+                e.getClass().getSimpleName(),
+                e.getMessage() != null ? e.getMessage() : e.toString());
             return false;
         }
     }

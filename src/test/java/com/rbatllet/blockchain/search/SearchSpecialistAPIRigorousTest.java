@@ -2,6 +2,7 @@ package com.rbatllet.blockchain.search;
 
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.search.BlockPasswordRegistry.RegistryStats;
@@ -73,6 +74,9 @@ public class SearchSpecialistAPIRigorousTest {
         // This ensures each test has access to a test block
         String[] keywords = {"rigorous", "test", "financial"};
         testBlock = api.storeSearchableData("Rigorous test financial data", testPassword, keywords);
+        
+        // CRITICAL: Wait for async indexing to complete
+        IndexingCoordinator.getInstance().waitForCompletion();
 
         // Initialize search components
         blockchain.initializeAdvancedSearch(testPassword);

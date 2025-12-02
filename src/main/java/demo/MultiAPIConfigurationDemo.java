@@ -1,6 +1,7 @@
 package demo;
 
 import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.search.SearchSpecialistAPI;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.EnhancedSearchResult;
 import com.rbatllet.blockchain.security.KeyFileLoader;
@@ -81,6 +82,11 @@ public class MultiAPIConfigurationDemo {
         // Store data with high security
         highSecAPI.storeSearchableData("High security financial data", password, new String[]{"financial", "secure"});
         
+        // Wait for background indexing to complete
+        System.out.println("\n⏳ Waiting for background indexing to complete...");
+        IndexingCoordinator.getInstance().waitForCompletion();
+        System.out.println("✅ Background indexing completed - all blocks indexed\n");
+        
         System.out.println("   📊 Config: " + highSecConfig.getSummary());
         System.out.println("   🔐 Security Level: " + highSecConfig.getSecurityLevel());
         System.out.println("   🔑 Key Length: " + highSecConfig.getKeyLength() + " bits");
@@ -143,12 +149,15 @@ public class MultiAPIConfigurationDemo {
         
         dataAPI.storeSearchableData("Search test data", password, new String[]{"search", "test", "data"});
         
+        // Wait for background indexing to complete
+        com.rbatllet.blockchain.indexing.IndexingCoordinator.getInstance().waitForCompletion(5000);
+        
         // High Security Search
         System.out.println("🔒 High Security Search:");
         EncryptionConfig highSecConfig = EncryptionConfig.createHighSecurityConfig();
         SearchSpecialistAPI highSecSearchAPI = new SearchSpecialistAPI(blockchain, password, userKeys.getPrivate(), highSecConfig);
         
-        List<EnhancedSearchResult> highSecResults = highSecSearchAPI.searchAll("search");
+        List<EnhancedSearchResult> highSecResults = highSecSearchAPI.searchPublic("search");
         System.out.println("   📊 Config: " + highSecConfig.getSummary());
         System.out.println("   🔍 Search Results: " + highSecResults.size());
         System.out.println("   🔐 Security Level: " + highSecConfig.getSecurityLevel());
@@ -159,7 +168,7 @@ public class MultiAPIConfigurationDemo {
         EncryptionConfig perfConfig = EncryptionConfig.createPerformanceConfig();
         SearchSpecialistAPI perfSearchAPI = new SearchSpecialistAPI(blockchain, password, userKeys.getPrivate(), perfConfig);
         
-        List<EnhancedSearchResult> perfResults = perfSearchAPI.searchAll("data");
+        List<EnhancedSearchResult> perfResults = perfSearchAPI.searchPublic("data");
         System.out.println("   📊 Config: " + perfConfig.getSummary());
         System.out.println("   🔍 Search Results: " + perfResults.size());
         System.out.println("   🔐 Security Level: " + perfConfig.getSecurityLevel());
@@ -176,7 +185,7 @@ public class MultiAPIConfigurationDemo {
         
         SearchSpecialistAPI customSearchAPI = new SearchSpecialistAPI(blockchain, password, userKeys.getPrivate(), customConfig);
         
-        List<EnhancedSearchResult> customResults = customSearchAPI.searchAll("test");
+        List<EnhancedSearchResult> customResults = customSearchAPI.searchPublic("test");
         System.out.println("   📊 Config: " + customConfig.getSummary());
         System.out.println("   🔍 Search Results: " + customResults.size());
         System.out.println("   🔐 Security Level: " + customConfig.getSecurityLevel());
@@ -241,11 +250,14 @@ public class MultiAPIConfigurationDemo {
         // Store data using the unified config
         dataAPI.storeSearchableData("Unified configuration test data", password, new String[]{"unified", "config", "test"});
         
+        // Wait for background indexing to complete
+        com.rbatllet.blockchain.indexing.IndexingCoordinator.getInstance().waitForCompletion(5000);
+        
         // SearchSpecialistAPI with same unified config
         SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(blockchain, password, userKeys.getPrivate(), unifiedConfig);
         
         // Test search
-        List<EnhancedSearchResult> results = searchAPI.searchAll("unified");
+        List<EnhancedSearchResult> results = searchAPI.searchPublic("unified");
         
         System.out.println("✅ UNIFIED CONFIGURATION RESULTS:");
         System.out.println("   📊 Data stored with UserFriendlyEncryptionAPI using unified config");

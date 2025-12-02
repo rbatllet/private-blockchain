@@ -722,7 +722,7 @@ public List<Block> getEncryptedBlocksPaginated(long offset, int limit)
 Blockchain blockchain = new Blockchain();
 
 // Process all blocks with off-chain data in batches
-int batchSize = 100;
+int batchSize = MemorySafetyConstants.FALLBACK_BATCH_SIZE;
 long offset = 0;  // ⚠️ Use long to prevent overflow with large blockchains
 List<Block> batch;
 
@@ -774,7 +774,7 @@ public void completeCleanupForTests()
   - ❌ Off-chain data files
   - ❌ Emergency backup files
 - **Note:** For full cleanup including files, use `clearAndReinitialize()` or `completeCleanupForTestsWithBackups()`
-- **Phase 5.0:** Hibernate SEQUENCE is reset automatically when blocks are deleted
+- **Phase 5.0:** Block numbering restarts from 0 when all blocks are deleted (manual assignment)
 
 ```java
 public void completeCleanupForTestsWithBackups()
@@ -788,7 +788,7 @@ public void completeCleanupForTestsWithBackups()
   - ✅ All authorized keys
   - ✅ Emergency backup files
 - **Use when:** You want database cleanup AND removal of accumulated backups
-- **Phase 5.0:** Hibernate SEQUENCE is reset automatically when blocks are deleted
+- **Phase 5.0:** Block numbering restarts from 0 when all blocks are deleted (manual assignment)
 
 ```java
 public int cleanupEmergencyBackups()
@@ -1358,23 +1358,25 @@ EntityManager em = JPAUtil.getEntityManager();
 try {
     // Find blocks by date range using JPQL
     TypedQuery<Block> query = em.createQuery(
-        "SELECT b FROM Block b WHERE b.timestamp BETWEEN :startTime AND :endTime ORDER BY b.blockNumber ASC", 
+        "SELECT b FROM Block b WHERE b.timestamp BETWEEN :startTime AND :endTime",
         Block.class);
+    // Note: blockNumber ordering is automatic (PRIMARY KEY index guarantees ASC order)
     query.setParameter("startTime", startDateTime);
     query.setParameter("endTime", endDateTime);
     List<Block> blocks = query.getResultList();
-    
+
     // Count blocks with specific content
     TypedQuery<Long> countQuery = em.createQuery(
-        "SELECT COUNT(b) FROM Block b WHERE LOWER(b.data) LIKE :content", 
+        "SELECT COUNT(b) FROM Block b WHERE LOWER(b.data) LIKE :content",
         Long.class);
     countQuery.setParameter("content", "%" + searchTerm.toLowerCase() + "%");
     Long count = countQuery.getSingleResult();
-    
+
     // Get blocks by signer
     TypedQuery<Block> signerQuery = em.createQuery(
-        "SELECT b FROM Block b WHERE b.signerPublicKey = :publicKey ORDER BY b.blockNumber ASC", 
+        "SELECT b FROM Block b WHERE b.signerPublicKey = :publicKey",
         Block.class);
+    // Note: blockNumber ordering is automatic (PRIMARY KEY index guarantees ASC order)
     signerQuery.setParameter("publicKey", publicKeyString);
     List<Block> signerBlocks = signerQuery.getResultList();
     
@@ -2651,7 +2653,7 @@ public ValidationSummary validateChainStreaming(
               }
           }
       },
-      1000 // Process 1000 blocks at a time
+      MemorySafetyConstants.DEFAULT_BATCH_SIZE // Process 1000 blocks at a time
   );
 
   System.out.println("📊 Validation Summary:");
@@ -3367,6 +3369,102 @@ EncryptionConfig config = EncryptionConfig.createPerformanceConfig();
 SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(blockchain, password, privateKey, config);
 ```
 
+### SearchSpecialistAPI Usage Pattern (Phase 5.4+)
+
+**⚠️ IMPORTANT (v1.0.6 - Phase 5.4):** With async/background indexing, the initialization order has CHANGED:
+
+> **🔑 PREREQUISITE**: Generate genesis-admin keys first:
+> ```bash
+> ./tools/generate_genesis_keys.zsh
+> ```
+> This creates `./keys/genesis-admin.*` required for user creation. **Backup securely!**
+
+```java
+// ✅ CORRECT PATTERN (Phase 5.4+ with v1.0.6 Security)
+import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
+import com.rbatllet.blockchain.search.SearchSpecialistAPI;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.util.CryptoUtil;
+import java.security.KeyPair;
+
+public class SearchExample {
+    public static void main(String[] args) throws Exception {
+        // Step 1: Initialize blockchain with bootstrap admin (REQUIRED v1.0.6+)
+        Blockchain blockchain = new Blockchain();
+
+        // Load genesis admin keys (generated via ./tools/generate_genesis_keys.zsh)
+        KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+            "./keys/genesis-admin.private",
+            "./keys/genesis-admin.public"
+        );
+
+        // Register bootstrap admin in blockchain (REQUIRED!)
+        blockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(genesisKeys.getPublic()),
+            "BOOTSTRAP_ADMIN"
+        );
+
+        // Step 2: Create API with bootstrap admin credentials
+        UserFriendlyEncryptionAPI dataAPI = new UserFriendlyEncryptionAPI(blockchain);
+        dataAPI.setDefaultCredentials("BOOTSTRAP_ADMIN", genesisKeys);
+
+        // Step 3: Create search user (authorized by bootstrap admin)
+        KeyPair userKeys = dataAPI.createUser("search-user");
+        dataAPI.setDefaultCredentials("search-user", userKeys);
+
+        // Step 4: Store searchable data (triggers async indexing in background)
+        String password = "SearchPassword123!";
+        String[] keywords = {"medical", "patient", "diagnosis"};
+        System.out.println("📝 Storing searchable data...");
+        dataAPI.storeSearchableData("Medical record data", password, keywords);
+
+        // Step 5: CRITICAL - Wait for async indexing to complete
+        System.out.println("⏳ Waiting for async indexing...");
+        IndexingCoordinator.getInstance().waitForCompletion();
+        System.out.println("✅ Async indexing completed");
+
+        // Step 6: NOW initialize SearchSpecialistAPI (blockchain has indexed blocks)
+        System.out.println("🔍 Initializing SearchSpecialistAPI...");
+        SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(
+            blockchain, password, userKeys.getPrivate());
+
+        // Step 7: Search works correctly
+        List<EnhancedSearchResult> results = searchAPI.searchAll("medical");
+        System.out.println("✅ Found " + results.size() + " results");
+
+        // Different search methods available
+        List<EnhancedSearchResult> secureResults = searchAPI.searchSecure("patient", password, 10);
+        List<EnhancedSearchResult> intelligentResults = searchAPI.searchIntelligent("diagnosis", password, 15);
+    }
+}
+```
+
+**Key Points (Phase 5.4 + v1.0.6 Security):**
+- **Security first (v1.0.6)**: Generate genesis keys → Register bootstrap admin → Authenticate before creating users
+- **Create blocks FIRST**: Store data before initializing SearchSpecialistAPI
+- **Wait for indexing**: Always call `IndexingCoordinator.getInstance().waitForCompletion()`
+- **Validation**: Constructor validates blockchain has blocks (throws `IllegalStateException` if empty)
+- **Password consistency**: Blocks indexed with SAME password used for encryption
+
+**❌ Common Mistakes:**
+```java
+// ❌ WRONG #1: Missing security initialization (v1.0.6)
+Blockchain blockchain = new Blockchain();
+UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+KeyPair userKeys = api.createUser("user");  // Fails: No authorized caller!
+
+// ❌ WRONG #2: Initializing SearchSpecialistAPI on empty blockchain
+Blockchain blockchain = new Blockchain();  // Only genesis block
+SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(blockchain, password, privateKey);
+// Throws IllegalStateException: "Blockchain is empty (0 blocks)"
+```
+
+**📖 See Also:**
+- [SearchSpecialistAPI Initialization Guide](../search/SEARCHSPECIALISTAPI_INITIALIZATION_GUIDE.md)
+- [SearchSpecialistAPI Initialization Order Issue](../reports/SEARCHSPECIALISTAPI_INITIALIZATION_ORDER_ISSUE.md)
+
 ### Available Configuration Types
 
 #### Predefined Configurations
@@ -3562,13 +3660,14 @@ The internal implementation uses JPA's TypedQuery with optimized IN clause:
 
 ```java
 private List<Block> executeBatchRetrieval(EntityManager em, List<Long> blockNumbers) {
-    logger.debug("🔄 Executing batch retrieval for {} blocks using JPA", 
+    logger.debug("🔄 Executing batch retrieval for {} blocks using JPA",
                 blockNumbers.size());
-    
+
     TypedQuery<Block> query = em.createQuery(
-        "SELECT b FROM Block b WHERE b.blockNumber IN :blockNumbers ORDER BY b.blockNumber",
+        "SELECT b FROM Block b WHERE b.blockNumber IN :blockNumbers",
         Block.class
     );
+    // Note: blockNumber ordering is automatic (PRIMARY KEY index guarantees ASC order)
     query.setParameter("blockNumbers", blockNumbers);
     
     List<Block> foundBlocks = query.getResultList();
@@ -3730,7 +3829,7 @@ The Private Blockchain is **fully thread-safe** and designed for concurrent mult
 - ✅ **Exclusive Writes**: Write operations have exclusive access
 - ✅ **Atomic Operations**: All operations are atomic and consistent
 - ✅ **ACID Compliance**: Database operations use proper JPA transactions
-- ✅ **Atomic Block Numbering**: Block numbers are generated atomically using Hibernate SEQUENCE generator (Phase 5.0)
+- ✅ **Atomic Block Numbering**: Block numbers are assigned manually within write lock for thread-safe sequential numbering (Phase 5.0)
 
 ### Thread-Safe APIs
 
@@ -4342,11 +4441,12 @@ public List<Block> getBlocksInRange(int startIndex, int endIndex) {
         transaction.begin();
         
         TypedQuery<Block> query = em.createQuery(
-            "SELECT b FROM Block b WHERE b.blockNumber BETWEEN :start AND :end ORDER BY b.blockNumber",
+            "SELECT b FROM Block b WHERE b.blockNumber BETWEEN :start AND :end",
             Block.class);
+        // Note: blockNumber ordering is automatic (PRIMARY KEY index guarantees ASC order)
         query.setParameter("start", startIndex);
         query.setParameter("end", endIndex);
-        
+
         List<Block> results = query.getResultList();
         transaction.commit();
         return results;

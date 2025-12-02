@@ -1,5 +1,7 @@
 package com.rbatllet.blockchain.search.metadata;
 
+import com.rbatllet.blockchain.config.SearchConstants;
+
 import java.util.Set;
 import java.util.HashSet;
 
@@ -121,9 +123,9 @@ public class PublicMetadata {
         // Keyword matches (highest weight)
         for (String keyword : generalKeywords) {
             if (keyword.toLowerCase().equals(lowerQuery)) {
-                score += 10.0; // Exact match
+                score += SearchConstants.EXACT_MATCH_BONUS;
             } else if (keyword.toLowerCase().contains(lowerQuery)) {
-                score += 5.0; // Partial match
+                score += SearchConstants.PARTIAL_MATCH_BONUS;
             }
         }
         

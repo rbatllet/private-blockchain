@@ -8,13 +8,19 @@
 
 ### Required Secure Initialization
 
+> **🔑 PREREQUISITE**: Generate genesis-admin keys first:
+> ```bash
+> ./tools/generate_genesis_keys.zsh
+> ```
+> This creates `./keys/genesis-admin.*` required for all examples below. **Backup securely!**
+
 All code examples assume this initialization pattern:
 
 ```java
 // 1. Create blockchain (only genesis block is automatic)
 Blockchain blockchain = new Blockchain();
 
-// 2. Load genesis admin keys
+// 2. Load genesis admin keys (generated via ./tools/generate_genesis_keys.zsh)
 KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
     "./keys/genesis-admin.private",
     "./keys/genesis-admin.public"
@@ -41,7 +47,7 @@ api.setDefaultCredentials("username", userKeys);
 
 This directory contains comprehensive documentation for all search functionality in the Private Blockchain.
 
-## 📚 Documents in This Directory (9 files)
+## 📚 Documents in This Directory (10 files)
 
 ### 🎯 Start Here
 | Document | Description | Use Case |
@@ -53,6 +59,7 @@ This directory contains comprehensive documentation for all search functionality
 |----------|-------------|----------|
 | **[SEARCH_FRAMEWORK_GUIDE.md](SEARCH_FRAMEWORK_GUIDE.md)** | Complete guide to Search Framework Engine | Professional search with caching |
 | **[SEARCH_COMPARISON.md](SEARCH_COMPARISON.md)** | Detailed comparison of search implementations | Understanding differences |
+| **[SEARCH_PASSWORD_BEHAVIOR.md](SEARCH_PASSWORD_BEHAVIOR.md)** | How passwords affect search scope and strategy | Understanding password-based search |
 
 ### 👤 User-Friendly Search
 | Document | Description | Use Case |
@@ -148,6 +155,6 @@ List<Block> results = engine.searchWithMetadata("keyword", filters);
 
 ---
 
-**Directory**: `docs/search/`
-**Files**: 9
-**Last Updated**: 2025-10-04
+**Directory**: `docs/search/`  
+**Files**: 10  
+**Last Updated**: 2025-11-30

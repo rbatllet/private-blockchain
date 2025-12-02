@@ -632,7 +632,7 @@ public class InitializeBlockchainDemo {
         logger.info("🔗 Step 2: Create blockchain...");
         Blockchain blockchain = new Blockchain();
 
-        // Step 3: Load bootstrap admin keys from files
+        // Step 3: Load bootstrap admin keys from files (generated via ./tools/generate_genesis_keys.zsh)
         KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
             "./keys/genesis-admin.private",
             "./keys/genesis-admin.public"
@@ -828,7 +828,7 @@ public class BootstrapAdminRevocationDemo {
         Blockchain blockchain = new Blockchain();
         UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
 
-        // Load bootstrap admin keys and get entity
+        // Load bootstrap admin keys and get entity (generated via ./tools/generate_genesis_keys.zsh)
         KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
             "./keys/genesis-admin.private",
             "./keys/genesis-admin.public"
@@ -1058,7 +1058,7 @@ public class ReEncryptWithBMEK {
 
         // Process blocks in batches
         long offset = 0;
-        int batchSize = 1000;
+        int batchSize = MemorySafetyConstants.DEFAULT_BATCH_SIZE;
         int reEncryptedCount = 0;
 
         while (true) {

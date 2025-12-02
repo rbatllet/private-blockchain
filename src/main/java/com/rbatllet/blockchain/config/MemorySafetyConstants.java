@@ -55,6 +55,13 @@ public final class MemorySafetyConstants {
     public static final int DEFAULT_BATCH_SIZE = 1000;
 
     /**
+     * Fallback batch size for linear search operations.
+     * Smaller batch size used when optimized indexes are unavailable.
+     * Used by fallback search methods in UserFriendlyEncryptionAPI.
+     */
+    public static final int FALLBACK_BATCH_SIZE = 100;
+
+    /**
      * Progress reporting interval for batch operations.
      * Log progress every N blocks processed.
      */

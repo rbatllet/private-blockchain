@@ -2,6 +2,7 @@ package com.rbatllet.blockchain.search;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
@@ -91,14 +92,16 @@ public class SearchCompatibilityTest {
         userKeys = api.createUser("compatibility-test-user");
         api.setDefaultCredentials("compatibility-test-user", userKeys);
         
-        // Initialize SearchSpecialistAPI BEFORE creating test data
+        // Create diverse test data FIRST
+        createTestData();
+        
+        // Initialize SearchSpecialistAPI AFTER creating test data (needs blocks to index)
         blockchain.initializeAdvancedSearch(testPassword);
         searchAPI = blockchain.getSearchSpecialistAPI();
         
         assertTrue(searchAPI.isReady(), "SearchSpecialistAPI should be ready");
         
-        // Create diverse test data
-        createTestData();
+        System.out.println("✅ Setup completed - SearchSpecialistAPI initialized with test data");
     }
     
     private void createTestData() throws Exception {
@@ -133,9 +136,8 @@ public class SearchCompatibilityTest {
         api.storeSearchableDataWithLayers("Public announcement for community news", 
                                          testPassword, publicKeywords, null);
         
-        // Ensure SearchSpecialistAPI is ready after adding test data
-        // NOTE: No need to re-initialize as it's already initialized with the same password
-        assertTrue(searchAPI.isReady(), "SearchSpecialistAPI should be ready after test data creation");
+        // CRITICAL: Wait for async indexing to complete before initializing SearchSpecialistAPI
+        IndexingCoordinator.getInstance().waitForCompletion();
     }
     
     @Test
@@ -360,8 +362,16 @@ public class SearchCompatibilityTest {
     }
     
     @AfterEach
-    void tearDown() {
+    void tearDown() throws InterruptedException {
+        // Phase 5.4 FIX: Wait for async indexing to complete before cleanup
+        IndexingCoordinator.getInstance().waitForCompletion();
+
         // Clean database and disable test mode after each test to ensure test isolation
         TestDatabaseUtils.teardownTest();
+
+        // Reset IndexingCoordinator singleton state
+        IndexingCoordinator.getInstance().forceShutdown();
+        IndexingCoordinator.getInstance().clearShutdownFlag();
+        IndexingCoordinator.getInstance().disableTestMode();
     }
 }

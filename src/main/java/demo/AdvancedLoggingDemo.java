@@ -2,6 +2,7 @@ package demo;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.logging.AdvancedLoggingService;
 import com.rbatllet.blockchain.logging.LoggingManager;
 import com.rbatllet.blockchain.security.KeyFileLoader;
@@ -137,7 +138,7 @@ public class AdvancedLoggingDemo {
     
     private static void demonstrateSearchOperationLogging() {
         System.out.println("\n🔍 Demonstrating Search Operation Logging");
-        
+
         try {
             // First, create some real blockchain data to search
             String[] testData = {
@@ -147,11 +148,20 @@ public class AdvancedLoggingDemo {
                 "Distributed ledger system for secure transactions",
                 "Advanced logging system for blockchain operations"
             };
-            
-            // Add real blocks to the blockchain
-            for (int i = 0; i < testData.length; i++) {
-                blockchain.addBlock(testData[i], authorizedDemoKeys.getPrivate(), authorizedDemoKeys.getPublic());
+
+            // Add real blocks to the blockchain using Phase 5.2 batch API
+            List<Blockchain.BlockWriteRequest> requests = new ArrayList<>();
+            for (String data : testData) {
+                requests.add(new Blockchain.BlockWriteRequest(
+                    data, authorizedDemoKeys.getPrivate(), authorizedDemoKeys.getPublic()
+                ));
             }
+            blockchain.addBlocksBatch(requests);
+            
+            // Wait for background indexing to complete
+            System.out.println("\n⏳ Waiting for background indexing to complete...");
+            IndexingCoordinator.getInstance().waitForCompletion();
+            System.out.println("✅ Background indexing completed - all blocks indexed\n");
             
             // Perform real search operations on the blockchain
             LoggingManager.logSearchOperation(

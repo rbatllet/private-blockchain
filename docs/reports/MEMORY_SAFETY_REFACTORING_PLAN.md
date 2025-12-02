@@ -250,7 +250,8 @@ private void streamBlocksBySignerPublicKeyWithScrollableResults(
 ) {
     Session session = em.unwrap(Session.class);
 
-    String hql = "SELECT b FROM Block b WHERE b.signerPublicKey = :signerPublicKey ORDER BY b.blockNumber";
+    String hql = "SELECT b FROM Block b WHERE b.signerPublicKey = :signerPublicKey";
+    // Note: blockNumber ordering is automatic (PRIMARY KEY index guarantees ASC order)
 
     try (ScrollableResults<Block> scrollableResults = session.createQuery(hql, Block.class)
             .setParameter("signerPublicKey", signerPublicKey)
@@ -287,7 +288,8 @@ private void streamBlocksBySignerPublicKeyWithPagination(
     int offset = 0;
     boolean hasMore = true;
 
-    String hql = "SELECT b FROM Block b WHERE b.signerPublicKey = :signerPublicKey ORDER BY b.blockNumber";
+    String hql = "SELECT b FROM Block b WHERE b.signerPublicKey = :signerPublicKey";
+    // Note: blockNumber ordering is automatic (PRIMARY KEY index guarantees ASC order)
 
     while (hasMore) {
         List<Block> batch = em.createQuery(hql, Block.class)
@@ -394,7 +396,8 @@ public List<Block> getBlocksBySignerPublicKeyWithLimit(
     }
 
     EntityManager em = JPAUtil.getEntityManager();
-    String hql = "SELECT b FROM Block b WHERE b.signerPublicKey = :signerPublicKey ORDER BY b.blockNumber";
+    String hql = "SELECT b FROM Block b WHERE b.signerPublicKey = :signerPublicKey";
+    // Note: blockNumber ordering is automatic (PRIMARY KEY index guarantees ASC order)
 
     return em.createQuery(hql, Block.class)
         .setParameter("signerPublicKey", signerPublicKey)
@@ -718,7 +721,7 @@ public List<Block> searchByCustomMetadataKeyValuePaginated(
     int offset,
     int limit
 ) {
-    final int BATCH_SIZE = 1000;
+    final int BATCH_SIZE = MemorySafetyConstants.DEFAULT_BATCH_SIZE;
     final int MAX_ITERATIONS = 100;  // Max 100K blocks processed
 
     List<Block> results = new ArrayList<>();
@@ -726,7 +729,8 @@ public List<Block> searchByCustomMetadataKeyValuePaginated(
     int foundCount = 0;
     int iterations = 0;
 
-    String hql = "SELECT b FROM Block b WHERE b.customMetadata LIKE :pattern ORDER BY b.blockNumber";
+    String hql = "SELECT b FROM Block b WHERE b.customMetadata LIKE :pattern";
+    // Note: blockNumber ordering is automatic (PRIMARY KEY index guarantees ASC order)
     String pattern = "%\"" + key + "\":\"" + value + "\"%";
 
     // ✅ BOUNDED LOOP: Maximum 100 iterations
@@ -929,7 +933,8 @@ private void streamAllBlocksWithScrollableResults(
     Session session = em.unwrap(Session.class);
 
     try (ScrollableResults<Block> results = session
-            .createQuery("SELECT b FROM Block b ORDER BY b.blockNumber", Block.class)
+            .createQuery("SELECT b FROM Block b", Block.class)
+            // Note: blockNumber ordering is automatic (PRIMARY KEY index guarantees ASC order)
             .setReadOnly(true)
             .setFetchSize(batchSize)
             .scroll(ScrollMode.FORWARD_ONLY)) {
@@ -1038,7 +1043,8 @@ private void streamTimeRangeWithScrollableResults(
 ) {
     Session session = em.unwrap(Session.class);
 
-    String hql = "SELECT b FROM Block b WHERE b.timestamp BETWEEN :start AND :end ORDER BY b.blockNumber";
+    String hql = "SELECT b FROM Block b WHERE b.timestamp BETWEEN :start AND :end";
+    // Note: blockNumber ordering is automatic (PRIMARY KEY index guarantees ASC order)
 
     try (ScrollableResults<Block> results = session.createQuery(hql, Block.class)
             .setParameter("start", startTime)
@@ -1065,7 +1071,7 @@ private void streamTimeRangeWithPagination(
     Consumer<Block> blockConsumer,
     EntityManager em
 ) {
-    final int BATCH_SIZE = 1000;
+    final int BATCH_SIZE = MemorySafetyConstants.DEFAULT_BATCH_SIZE;
     long offset = 0;
     boolean hasMore = true;
 

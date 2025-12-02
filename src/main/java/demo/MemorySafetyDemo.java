@@ -3,12 +3,14 @@ package demo;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.config.DatabaseConfig;
 import com.rbatllet.blockchain.config.MemorySafetyConstants;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.JPAUtil;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.validation.BlockValidationResult;
 
 import java.security.KeyPair;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -91,25 +93,42 @@ public class MemorySafetyDemo {
         printSection("2. CREATING LARGE DATASET");
         System.out.println("  📦 Creating 1000 sample blocks for memory safety testing");
         System.out.println("     (This simulates a real blockchain with significant data)");
+        System.out.println("     🚀 Using Phase 5.2 batch write API for improved performance");
         System.out.println();
 
         long startTime = System.currentTimeMillis();
 
+        // Phase 5.2: Use batch write for plain blocks (much faster!)
+        List<Blockchain.BlockWriteRequest> plainBlocks = new ArrayList<>();
+        List<Integer> encryptedBlockIndices = new ArrayList<>();
+
+        // Prepare batch requests for plain blocks
         for (int i = 1; i <= 1000; i++) {
             String data = "Block #" + i + " - Transaction data for memory safety testing";
 
-            // Mix encrypted and plain blocks
             if (i % 5 == 0) {
-                blockchain.addEncryptedBlock(data, "password" + i, keyPair.getPrivate(), keyPair.getPublic());
+                // Track encrypted blocks for later individual creation
+                encryptedBlockIndices.add(i);
             } else {
-                blockchain.addBlock(data, keyPair.getPrivate(), keyPair.getPublic());
-            }
-
-            // Progress indicator every 100 blocks
-            if (i % 100 == 0) {
-                System.out.println("    ✅ Created " + i + " blocks...");
+                // Add to batch for plain blocks
+                plainBlocks.add(new Blockchain.BlockWriteRequest(
+                    data, keyPair.getPrivate(), keyPair.getPublic()
+                ));
             }
         }
+
+        // Create plain blocks in batch (800 blocks - 5-10x faster!)
+        System.out.println("    🚀 Creating " + plainBlocks.size() + " plain blocks using batch API...");
+        blockchain.addBlocksBatch(plainBlocks);
+        System.out.println("    ✅ Batch created " + plainBlocks.size() + " plain blocks");
+
+        // Create encrypted blocks individually (200 blocks)
+        System.out.println("    🔐 Creating " + encryptedBlockIndices.size() + " encrypted blocks individually...");
+        for (int i : encryptedBlockIndices) {
+            String data = "Block #" + i + " - Transaction data for memory safety testing";
+            blockchain.addEncryptedBlock(data, "password" + i, keyPair.getPrivate(), keyPair.getPublic());
+        }
+        System.out.println("    ✅ Created " + encryptedBlockIndices.size() + " encrypted blocks");
 
         long elapsed = System.currentTimeMillis() - startTime;
         long totalBlocks = blockchain.getBlockCount();
@@ -118,8 +137,8 @@ public class MemorySafetyDemo {
         System.out.println("  📊 Dataset created:");
         System.out.println("     - Total blocks: " + totalBlocks + " (including genesis)");
         System.out.println("     - Encrypted blocks: ~200 (every 5th block)");
-        System.out.println("     - Plain blocks: ~800");
-        System.out.println("     - Creation time: " + elapsed + "ms");
+        System.out.println("     - Plain blocks: ~800 (created with batch API)");
+        System.out.println("     - Creation time: " + elapsed + "ms (Phase 5.2 optimization)");
         System.out.println();
     }
 
@@ -276,6 +295,15 @@ public class MemorySafetyDemo {
         System.out.println("     - Default limit: " + MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS);
         System.out.println("     - Prevents unbounded memory growth");
         System.out.println();
+
+        // Wait for background indexing to complete
+        try {
+            System.out.println("\n⏳ Waiting for background indexing to complete...");
+            IndexingCoordinator.getInstance().waitForCompletion();
+            System.out.println("✅ Background indexing completed - all blocks indexed\n");
+        } catch (InterruptedException e) {
+            System.err.println("⚠️ Indexing wait interrupted: " + e.getMessage());
+        }
 
         // Search 1: Default limit
         System.out.println("  Test 1: Search by signer (default limit)");

@@ -56,7 +56,8 @@ public List<Block> getBlocksPaginated(long offset, int limit) {
 
     long stamp = lock.readLock();
     try {
-        return em.createQuery("SELECT b FROM Block b ORDER BY b.blockNumber ASC", Block.class)
+        return em.createQuery("SELECT b FROM Block b", Block.class)
+                // Note: blockNumber ordering is automatic (PRIMARY KEY index guarantees ASC order)
                 .setFirstResult((int) offset)  // Safe cast after validation
                 .setMaxResults(limit)
                 .getResultList();
@@ -95,7 +96,7 @@ do {
  * ✅ CORRECT: Uses Consumer pattern with constant memory (~50MB)
  */
 public void processAllBlocks(Consumer<Block> blockProcessor) {
-    final int BATCH_SIZE = 1000;
+    final int BATCH_SIZE = MemorySafetyConstants.DEFAULT_BATCH_SIZE;
 
     // Process in batches WITHOUT accumulation (constant memory)
     blockchain.processChainInBatches(batch -> {
@@ -187,7 +188,7 @@ public List<Block> searchSimilar(String criteria, SearchOptions options) {
 ```java
 // Standard batch sizes for different operations
 public static final int DEFAULT_SEARCH_BATCH_SIZE = 200;
-public static final int DEFAULT_ENCRYPTION_BATCH_SIZE = 100;
+public static final int DEFAULT_ENCRYPTION_BATCH_SIZE = MemorySafetyConstants.FALLBACK_BATCH_SIZE;
 public static final int DEFAULT_VALIDATION_BATCH_SIZE = 50;
 public static final int MEMORY_PRESSURE_BATCH_SIZE = 25;
 ```
@@ -378,7 +379,7 @@ public class EncryptedSearchWithBatching {
 public class StreamProcessingExample {
     
     public void processBlocksAsStream(Consumer<Block> processor) {
-        final int STREAM_BATCH_SIZE = 100;
+        final int STREAM_BATCH_SIZE = MemorySafetyConstants.FALLBACK_BATCH_SIZE;
         long offset = 0;  // ⚠️ Use long to prevent overflow with large blockchains
 
         while (true) {
@@ -416,7 +417,7 @@ public class MemoryAwarePagination {
         if (stats.getUsagePercentage() > 80) {
             batchSize = 25; // Small batches under pressure
         } else if (stats.getUsagePercentage() > 60) {
-            batchSize = 100; // Medium batches
+            batchSize = MemorySafetyConstants.FALLBACK_BATCH_SIZE; // Medium batches (100)
         } else {
             batchSize = 200; // Normal batches
         }

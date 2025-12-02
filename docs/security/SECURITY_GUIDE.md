@@ -14,11 +14,17 @@ This guide covers security best practices for using UserFriendlyEncryptionAPI in
 
 All users **MUST** be pre-authorized before using the API. The following pattern is now **mandatory**:
 
+> **🔑 PREREQUISITE**: Generate genesis-admin keys first:
+> ```bash
+> ./tools/generate_genesis_keys.zsh
+> ```
+> This creates `./keys/genesis-admin.*` required for bootstrap authorization. **Backup securely!**
+
 ```java
 // 1. Create blockchain (only genesis block is automatic)
 Blockchain blockchain = new Blockchain();
 
-// 2. Load genesis admin keys
+// 2. Load genesis admin keys (generated via ./tools/generate_genesis_keys.zsh)
 KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
     "./keys/genesis-admin.private",
     "./keys/genesis-admin.public"
@@ -628,7 +634,7 @@ public class ProductionSecurityConfig {
         // Use high-security configuration for production (v1.0.6+ secure pattern)
         Blockchain blockchain = new Blockchain();
 
-        // Load genesis admin keys
+        // Load genesis admin keys (generated once via ./tools/generate_genesis_keys.zsh)
         KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
             "./keys/genesis-admin.private",
             "./keys/genesis-admin.public"

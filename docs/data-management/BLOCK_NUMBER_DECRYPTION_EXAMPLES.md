@@ -8,13 +8,19 @@
 
 ### Required Secure Initialization
 
+> **🔑 PREREQUISITE**: Generate genesis-admin keys first:
+> ```bash
+> ./tools/generate_genesis_keys.zsh
+> ```
+> This creates `./keys/genesis-admin.*` required for all examples below. **Backup securely!**
+
 All code examples assume this initialization pattern at the beginning:
 
 ```java
 // 1. Create blockchain (only genesis block is automatic)
 Blockchain blockchain = new Blockchain();
 
-// 2. Load genesis admin keys
+// 2. Load genesis admin keys (generated via ./tools/generate_genesis_keys.zsh)
 KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
     "./keys/genesis-admin.private",
     "./keys/genesis-admin.public"
@@ -53,6 +59,7 @@ public class SimpleSecretExample {
     public static void main(String[] args) throws Exception {
         // Secure initialization (see security section above)
         Blockchain blockchain = new Blockchain();
+        // Load genesis admin keys (generated via ./tools/generate_genesis_keys.zsh)
         KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
             "./keys/genesis-admin.private",
             "./keys/genesis-admin.public"
@@ -486,6 +493,7 @@ public class RobustDecryptionExample {
     public static void main(String[] args) throws Exception {
         // Secure initialization (see security section above)
         Blockchain blockchain = new Blockchain();
+        // Load genesis admin keys (generated via ./tools/generate_genesis_keys.zsh)
         KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
             "./keys/genesis-admin.private",
             "./keys/genesis-admin.public"
@@ -608,6 +616,7 @@ public class OptimizedDecryptionExample {
     public static void main(String[] args) throws Exception {
         // Secure initialization (see security section above)
         Blockchain blockchain = new Blockchain();
+        // Load genesis admin keys (generated via ./tools/generate_genesis_keys.zsh)
         KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
             "./keys/genesis-admin.private",
             "./keys/genesis-admin.public"
@@ -682,6 +691,7 @@ public class BlockNumberDecryptionIntegrationTest {
     public void setUp() throws Exception {
         // Secure initialization for tests (see security section above)
         blockchain = new Blockchain();
+        // Load genesis admin keys (generated via ./tools/generate_genesis_keys.zsh)
         KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
             "./keys/genesis-admin.private",
             "./keys/genesis-admin.public"

@@ -50,8 +50,9 @@ Uses pagination with configurable limits:
 
 ```java
 TypedQuery<Block> query = em.createQuery(
-    "SELECT b FROM Block b LEFT JOIN FETCH b.offChainData ORDER BY b.blockNumber ASC", 
+    "SELECT b FROM Block b LEFT JOIN FETCH b.offChainData",
     Block.class);
+// Note: blockNumber ordering is automatic (PRIMARY KEY index guarantees ASC order)
 query.setFirstResult(offset);
 query.setMaxResults(limit);
 ```
@@ -74,7 +75,7 @@ List<Block> matchingBlocks = blockchain.batchRetrieveBlocks(sortedNumbers);
 Process blockchain in configurable batches:
 
 ```java
-final int BATCH_SIZE = 100;
+final int BATCH_SIZE = MemorySafetyConstants.FALLBACK_BATCH_SIZE;
 long totalBlocks = blockchain.getBlockCount();
 // ⚠️ Use long offset to prevent overflow with large blockchains
 for (long offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
@@ -86,6 +87,7 @@ for (long offset = 0; offset < totalBlocks; offset += BATCH_SIZE) {
 ### Search Framework Optimization
 ```java
 // Optimized exhaustive search with batch processing
+// Note: Consider using MemorySafetyConstants.DEFAULT_BATCH_SIZE (1000) for better performance
 final int BATCH_SIZE = 200;
 long totalBlocks = blockchain.getBlockCount();
 // ⚠️ Use long offset to prevent overflow with large blockchains

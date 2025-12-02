@@ -17,7 +17,7 @@
         <maven.compiler.target>25</maven.compiler.target>
         <maven.compiler.release>25</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <hibernate.version>7.1.7.Final</hibernate.version>
+        <hibernate.version>7.1.10.Final</hibernate.version>
         <jakarta.persistence.version>3.2.0</jakarta.persistence.version>
         <sqlite.version>3.51.0.0</sqlite.version>
         <postgresql.version>42.7.8</postgresql.version>
@@ -25,8 +25,8 @@
         <h2.version>2.4.240</h2.version>
         <jackson.version>2.19.1</jackson.version>
         <slf4j.version>2.0.17</slf4j.version>
-        <junit-jupiter.version>5.14.0</junit-jupiter.version>
-        <junit-platform.version>1.14.0</junit-platform.version>
+        <junit-jupiter.version>6.0.1</junit-jupiter.version>
+        <junit-platform.version>6.0.1</junit-platform.version>
         <hikaricp.version>7.0.2</hikaricp.version>
         <log4j.version>2.25.2</log4j.version>
         <mockito.version>5.20.0</mockito.version>
@@ -230,9 +230,9 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>${maven-execution-plugin.version}</version>
                 <configuration>
-                    <!-- Default configuration for running all tests (excludes slow and extreme tests by default) -->
+                    <!-- JUnit 6 uses new command structure: junit execute [options] -->
                     <executable>java</executable>
-                    <commandlineArgs>${argLine} -cp "%classpath" org.junit.platform.console.ConsoleLauncher --scan-classpath --include-classname=".*Test.*" --exclude-tag=slow --exclude-tag=extreme --details=tree</commandlineArgs>
+                    <commandlineArgs>${argLine} -cp "%classpath" org.junit.platform.console.ConsoleLauncher execute --scan-class-path --exclude-tag slow --exclude-tag extreme --details tree</commandlineArgs>
                     <classpathScope>test</classpathScope>
                     <systemProperties>
                         <systemProperty>

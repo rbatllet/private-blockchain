@@ -2,6 +2,7 @@ package demo;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.validation.ChainValidationResult;
 
@@ -64,6 +65,11 @@ public class SimpleDemo {
             // Show detailed validation report for debugging
             System.out.println("\n📋 Detailed Validation Report:");
             System.out.println(result.getDetailedReport());
+            
+            // Wait for background indexing to complete
+            System.out.println("\n⏳ Waiting for background indexing to complete...");
+            IndexingCoordinator.getInstance().waitForCompletion();
+            System.out.println("✅ Background indexing completed - all blocks indexed\n");
             
             // Show search statistics for monitoring
             System.out.println("\n📊 Search Statistics:");
