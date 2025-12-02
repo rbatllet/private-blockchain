@@ -2,6 +2,7 @@ package com.rbatllet.blockchain.integration;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.search.metadata.TermVisibilityMap;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.util.CryptoUtil;
@@ -59,8 +60,7 @@ public class GranularTermVisibilityIntegrationTest {
         assertNotNull(block);
         assertNotNull(block.getHash());
         
-        // Allow time for indexing
-        Thread.sleep(500);
+        IndexingCoordinator.getInstance().waitForCompletion();
         
         // Test public searches (should find general medical terms)
         List<Block> publicResults = api.searchByTerms(new String[]{"patient"}, null, 10);
@@ -99,7 +99,7 @@ public class GranularTermVisibilityIntegrationTest {
         Block block = api.storeDataWithGranularTermControl(financialData, password, allTerms, visibility);
         assertNotNull(block);
         
-        Thread.sleep(500);
+        IndexingCoordinator.getInstance().waitForCompletion();
         
         // Public searches should find transaction type
         List<Block> publicResults = api.searchByTerms(new String[]{"swift"}, null, 10);
@@ -134,7 +134,7 @@ public class GranularTermVisibilityIntegrationTest {
         Block block = api.storeDataWithSeparatedTerms(data, password, publicTerms, privateTerms);
         assertNotNull(block);
         
-        Thread.sleep(500);
+        IndexingCoordinator.getInstance().waitForCompletion();
         
         // Test public access
         List<Block> publicResults = api.searchByTerms(new String[]{"employee"}, null, 10);
@@ -196,7 +196,7 @@ public class GranularTermVisibilityIntegrationTest {
         assertNotNull(medical);
         assertNotNull(financial);
         
-        Thread.sleep(1000);
+        IndexingCoordinator.getInstance().waitForCompletion();
         
         // Cross-domain public searches should work
         List<Block> patientResults = api.searchByTerms(new String[]{"patient"}, null, 10);

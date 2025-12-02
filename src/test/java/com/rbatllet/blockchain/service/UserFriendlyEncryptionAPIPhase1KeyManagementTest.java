@@ -65,6 +65,13 @@ public class UserFriendlyEncryptionAPIPhase1KeyManagementTest {
     @Nested
     @DisplayName("🔐 Hierarchical Key Generation Tests")
     class HierarchicalKeyGenerationTests {
+        
+        @BeforeEach
+        void setUpHierarchicalTests() {
+            // CRITICAL: Reinitialize API for each test to prevent state contamination
+            // between tests that create/revoke hierarchical keys
+            api = new UserFriendlyEncryptionAPI(mockBlockchain, testUsername, testKeyPair);
+        }
 
         @Test
         @DisplayName("Should generate valid hierarchical key with proper structure")

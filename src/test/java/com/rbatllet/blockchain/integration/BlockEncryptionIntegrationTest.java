@@ -101,6 +101,12 @@ public class BlockEncryptionIntegrationTest {
 
     @BeforeAll
     static void setUpClass() {
+        System.out.println("🔧 BlockEncryptionIntegrationTest.setUpClass() - Initializing test environment");
+        
+        // CRITICAL: Reset IndexingCoordinator state from previous tests
+        IndexingCoordinator.getInstance().clearShutdownFlag();
+        IndexingCoordinator.getInstance().disableTestMode();
+        
         // Initialize JPAUtil with default configuration (respects environment variables)
         JPAUtil.initializeDefault();
 
@@ -678,7 +684,16 @@ public class BlockEncryptionIntegrationTest {
     @Test
     @Order(10)
     @DisplayName("Test search encrypted data")
-    void testSearchEncryptedData() {
+    void testSearchEncryptedData() throws InterruptedException {
+        // CRITICAL: Ensure all previous async indexing is complete before searching
+        IndexingCoordinator.getInstance().waitForCompletion();
+        
+        // CRITICAL: Verify test preconditions - blocks must exist from Order(1) and Order(2)
+        assertNotNull(medicalBlock, "Medical block must be created in Order(1) test");
+        assertNotNull(financialBlock, "Financial block must be created in Order(2) test");
+        assertNotNull(medicalBlock.getBlockNumber(), "Medical block must have block number");
+        assertNotNull(financialBlock.getBlockNumber(), "Financial block must have block number");
+        
         // RIGOROUS validation - Search functionality for encrypted data
 
         // Test 1: Search for medical encrypted data WITH PASSWORD (data is encrypted)

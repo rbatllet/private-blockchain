@@ -185,13 +185,19 @@ public class SearchMetricsTest {
                         startLatch.await();
                         
                         for (int j = 0; j < OPERATIONS_PER_THREAD; j++) {
-                            metrics.recordSearch("WRITE_TYPE_" + threadId, 
-                                               100 + j, j + 1, j % 2 == 0);
-                            writeOperations.incrementAndGet();
-                            Thread.sleep(1);
+                            try {
+                                metrics.recordSearch("WRITE_TYPE_" + threadId, 
+                                                   100 + j, j + 1, j % 2 == 0);
+                                writeOperations.incrementAndGet();
+                                Thread.sleep(1);
+                            } catch (Exception e) {
+                                logger.warn("Error in write operation (thread {}, iteration {}): {}", 
+                                           threadId, j, e.getMessage());
+                                errors.incrementAndGet();
+                            }
                         }
                     } catch (Exception e) {
-                        logger.error("Error in writer thread {}", threadId, e);
+                        logger.error("Fatal error in writer thread {}", threadId, e);
                         errors.incrementAndGet();
                     } finally {
                         completionLatch.countDown();
@@ -207,26 +213,36 @@ public class SearchMetricsTest {
                         startLatch.await();
                         
                         for (int j = 0; j < OPERATIONS_PER_THREAD; j++) {
-                            // Read various metrics
-                            long totalSearches = metrics.getTotalSearches();
-                            long totalCacheHits = metrics.getTotalCacheHits();
-                            double cacheHitRate = metrics.getCacheHitRate();
-                            double avgTime = metrics.getAverageSearchTimeMs();
-                            Map<String, PerformanceStats> typeStats = metrics.getSearchTypeStats();
-                            
-                            // Validate consistency
-                            assertTrue(totalSearches >= 0, "Total searches should be non-negative");
-                            assertTrue(totalCacheHits >= 0, "Total cache hits should be non-negative");
-                            assertTrue(totalCacheHits <= totalSearches, "Cache hits cannot exceed total searches");
-                            assertTrue(cacheHitRate >= 0 && cacheHitRate <= 100, "Cache hit rate should be valid");
-                            assertTrue(avgTime >= 0, "Average time should be non-negative");
-                            assertNotNull(typeStats, "Type stats should never be null");
-                            
-                            readOperations.incrementAndGet();
-                            Thread.sleep(1);
+                            try {
+                                // Read various metrics
+                                long totalSearches = metrics.getTotalSearches();
+                                long totalCacheHits = metrics.getTotalCacheHits();
+                                double cacheHitRate = metrics.getCacheHitRate();
+                                double avgTime = metrics.getAverageSearchTimeMs();
+                                Map<String, PerformanceStats> typeStats = metrics.getSearchTypeStats();
+                                
+                                // Validate consistency
+                                assertTrue(totalSearches >= 0, "Total searches should be non-negative");
+                                assertTrue(totalCacheHits >= 0, "Total cache hits should be non-negative");
+                                assertTrue(totalCacheHits <= totalSearches, "Cache hits cannot exceed total searches");
+                                assertTrue(cacheHitRate >= 0 && cacheHitRate <= 100, "Cache hit rate should be valid");
+                                assertTrue(avgTime >= 0, "Average time should be non-negative");
+                                assertNotNull(typeStats, "Type stats should never be null");
+                                
+                                readOperations.incrementAndGet();
+                                Thread.sleep(1);
+                            } catch (AssertionError e) {
+                                logger.warn("Assertion error in read operation (thread {}, iteration {}): {}", 
+                                           threadId, j, e.getMessage());
+                                errors.incrementAndGet();
+                            } catch (Exception e) {
+                                logger.warn("Error in read operation (thread {}, iteration {}): {}", 
+                                           threadId, j, e.getMessage());
+                                errors.incrementAndGet();
+                            }
                         }
                     } catch (Exception e) {
-                        logger.error("Error in reader thread {}", threadId, e);
+                        logger.error("Fatal error in reader thread {}", threadId, e);
                         errors.incrementAndGet();
                     } finally {
                         completionLatch.countDown();
@@ -245,32 +261,35 @@ public class SearchMetricsTest {
             IndexingCoordinator.getInstance().waitForCompletion();
             logger.info("✅ Background indexing completed");
             
-            // Validate results - NO TOLERANCE! We want to detect real issues
+            // Validate results - RIGOROUS: All operations must complete
             int expectedWrites = NUM_WRITER_THREADS * OPERATIONS_PER_THREAD;
             int expectedReads = NUM_READER_THREADS * OPERATIONS_PER_THREAD;
             int actualWrites = writeOperations.get();
             int actualReads = readOperations.get();
+            int errorCount = errors.get();
             
             // Log detailed results for debugging
             logger.info("📊 Expected: {} writes, {} reads", expectedWrites, expectedReads);
             logger.info("📊 Actual: {} writes, {} reads", actualWrites, actualReads);
-            logger.info("📊 Errors: {}", errors.get());
+            logger.info("📊 Errors: {}", errorCount);
             
-            // If operations didn't complete, log which threads might have failed
-            if (actualReads < expectedReads || actualWrites < expectedWrites) {
-                logger.error("❌ INCOMPLETE OPERATIONS DETECTED!");
+            // If operations didn't complete, log detailed failure information
+            if (actualReads < expectedReads || actualWrites < expectedWrites || errorCount > 0) {
+                logger.error("❌ OPERATION FAILURES DETECTED!");
                 logger.error("   Missing writes: {}", expectedWrites - actualWrites);
                 logger.error("   Missing reads: {}", expectedReads - actualReads);
-                logger.error("   Errors caught: {}", errors.get());
+                logger.error("   Errors caught: {}", errorCount);
             }
             
+            // RIGOROUS: ALL operations must complete successfully
             assertEquals(expectedWrites, actualWrites, 
-                String.format("All write operations must complete (expected: %d, actual: %d)", 
+                String.format("ALL write operations must complete (expected: %d, actual: %d)", 
                              expectedWrites, actualWrites));
             assertEquals(expectedReads, actualReads,
-                String.format("All read operations must complete (expected: %d, actual: %d)", 
+                String.format("ALL read operations must complete (expected: %d, actual: %d)", 
                              expectedReads, actualReads));
-            assertEquals(0, errors.get(), "No errors should occur during concurrent operations");
+            assertEquals(0, errorCount, 
+                String.format("NO errors should occur during concurrent operations (got %d errors)", errorCount));
             
             // Recorded searches should match actual writes exactly
             long totalSearches = metrics.getTotalSearches();

@@ -390,8 +390,7 @@ public class Phase_5_2_AsyncIndexingTest {
             assertEquals(expected, blockchain.getBlockCount(),
                 "Should have " + expected + " total blocks");
 
-            // Give async indexing time to complete
-            Thread.sleep(5000);
+            IndexingCoordinator.getInstance().waitForCompletion();
         }
     }
 
@@ -506,8 +505,7 @@ public class Phase_5_2_AsyncIndexingTest {
                 "All blocks should be written");
             assertEquals(0, errorCount.get(), "No errors should occur");
 
-            // Give async indexing time to complete
-            Thread.sleep(5000);
+            IndexingCoordinator.getInstance().waitForCompletion();
         }
     }
 

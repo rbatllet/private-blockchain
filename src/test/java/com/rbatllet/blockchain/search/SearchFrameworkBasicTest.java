@@ -3,6 +3,7 @@ package com.rbatllet.blockchain.search;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.*;
 import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.security.UserRole;
@@ -79,8 +80,7 @@ public class SearchFrameworkBasicTest {
         assertNotNull(specialistAPI, "Specialist API should be initialized");
         assertTrue(specialistAPI.isReady(), "Specialist API should be ready");
 
-        // Give some time for asynchronous indexing to complete
-        Thread.sleep(1000);
+        IndexingCoordinator.getInstance().waitForCompletion();
 
         // Test statistics from the SearchSpecialistAPI
         SearchStats stats = specialistAPI.getStatistics();

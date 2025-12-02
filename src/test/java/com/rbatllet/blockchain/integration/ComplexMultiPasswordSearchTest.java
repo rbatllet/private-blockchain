@@ -124,7 +124,7 @@ public class ComplexMultiPasswordSearchTest {
         );
         assertNotNull(medicalBlock, "Medical block should be stored");
 
-        Thread.sleep(500); // Allow indexing
+        IndexingCoordinator.getInstance().waitForCompletion();
 
         // CRITICAL TEST: Finance department tries to access medical data with their password
         List<Block> financeAttempt = financeAPI.searchAndDecryptByTerms(
@@ -194,7 +194,7 @@ public class ComplexMultiPasswordSearchTest {
         financeAPI.storeSearchableData(financeData, financePassword,
             new String[]{"revenue", "50000", "bonus", "quarterly"});
 
-        Thread.sleep(500);
+        IndexingCoordinator.getInstance().waitForCompletion();
 
         // Finance searches for "50000" with their password
         List<Block> financeResults = financeAPI.searchAndDecryptByTerms(
@@ -246,7 +246,7 @@ public class ComplexMultiPasswordSearchTest {
         );
 
         assertNotNull(legalBlock);
-        Thread.sleep(500);
+        IndexingCoordinator.getInstance().waitForCompletion();
 
         // CRITICAL TEST: Public terms should be searchable WITHOUT any password
         List<Block> publicSearch = legalAPI.searchByTerms(
@@ -302,7 +302,7 @@ public class ComplexMultiPasswordSearchTest {
         assertNotNull(legBlock);
         assertNotNull(hrBlock);
 
-        Thread.sleep(1000);
+        IndexingCoordinator.getInstance().waitForCompletion();
 
         // Each department searches for their own data - all should succeed
         List<Block> medResults = medicalAPI.searchAndDecryptByTerms(
@@ -467,7 +467,7 @@ public class ComplexMultiPasswordSearchTest {
         );
 
         assertNotNull(hrBlock);
-        Thread.sleep(500);
+        IndexingCoordinator.getInstance().waitForCompletion();
 
         // Try to decrypt with slightly wrong password (typo simulation)
         String wrongPassword1 = "HRSecure2025";  // Missing !
