@@ -36,6 +36,11 @@ jobs:
         sudo apt-get update -qq
         sudo apt-get install -y -qq zsh
       shell: bash
+    
+    - name: Generate genesis admin keys
+      run: |
+        ./tools/generate_genesis_keys.zsh
+      shell: zsh {0}
         
     - name: Run tests
       run: |
