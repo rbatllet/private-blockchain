@@ -266,10 +266,29 @@ public class MetadataLayerManager {
                 }
             }
             
+            // SECURITY & PRIVACY: Do NOT extract keywords automatically from content
+            // Rationale: This is a PRIVATE blockchain - if user didn't provide keywords,
+            // the block should NOT be searchable by default (privacy by design).
+            // 
+            // For encrypted blocks: Already handled above - no extraction
+            // For unencrypted blocks: Also no extraction - user must explicitly provide keywords
+            // 
+            // This ensures that blocks are only searchable when the user explicitly
+            // wants them to be searchable by providing manual keywords.
+            if (publicKeywordSet.isEmpty() && privateKeywordSet.isEmpty()) {
+                if (block.isDataEncrypted()) {
+                    logger.debug("🔒 Encrypted block #{} has no manual keywords - will not be searchable (privacy by design)",
+                              block.getBlockNumber());
+                } else {
+                    logger.debug("🔒 Unencrypted block #{} has no manual keywords - will not be searchable (privacy by design)",
+                              block.getBlockNumber());
+                }
+            }
+            
             if (!publicKeywordSet.isEmpty() || !privateKeywordSet.isEmpty()) {
                 logger.debug("🔍 using keywords - public: {}, private: {}", publicKeywordSet, privateKeywordSet);
             } else {
-                logger.debug("🔍 no keywords available, using minimal metadata");
+                logger.debug("🔍 no keywords available after extraction, using minimal metadata");
             }
             
             // Analyze content characteristics using decrypted content if available
@@ -1517,6 +1536,7 @@ public class MetadataLayerManager {
                  .replace("\\r", "\r")
                  .replace("\\t", "\t");
     }
+    
     
     // ===== GETTER METHODS =====
     

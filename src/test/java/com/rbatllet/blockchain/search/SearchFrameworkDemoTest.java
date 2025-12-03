@@ -1,24 +1,28 @@
 package com.rbatllet.blockchain.search;
 
-import com.rbatllet.blockchain.core.Blockchain;
-import com.rbatllet.blockchain.search.SearchFrameworkEngine.EnhancedSearchResult;
-import com.rbatllet.blockchain.security.KeyFileLoader;
-import com.rbatllet.blockchain.security.UserRole;
-import com.rbatllet.blockchain.util.CryptoUtil;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.TestMethodOrder;
-import org.junit.jupiter.api.MethodOrderer;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
+
+import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
+import com.rbatllet.blockchain.search.SearchFrameworkEngine.EnhancedSearchResult;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.security.UserRole;
+import com.rbatllet.blockchain.util.CryptoUtil;
 
 /**
  * Test based on SearchFrameworkDemo to detect hidden issues
@@ -69,6 +73,13 @@ public class SearchFrameworkDemoTest {
         assertNotNull(blockchain, "Blockchain should not be null");
         assertNotNull(privateKey, "Private key should not be null");
         assertNotNull(publicKey, "Public key should not be null");
+        
+        // Wait for auto-indexing from addBlock() to complete before initializing SearchSpecialistAPI
+        try {
+            IndexingCoordinator.getInstance().waitForCompletion();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
         
         // Initialize advanced search engine with improved constructor
         searchAPI = new SearchSpecialistAPI(blockchain, demoPassword, privateKey);

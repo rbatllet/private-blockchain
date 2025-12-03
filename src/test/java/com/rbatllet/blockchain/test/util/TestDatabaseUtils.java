@@ -46,7 +46,7 @@ public class TestDatabaseUtils {
             tempBlockchain.clearAndReinitialize();
             
             // Clear global search engine state to prevent cross-test contamination
-            SearchFrameworkEngine.clearGlobalProcessingMapForTesting();
+            SearchFrameworkEngine.resetGlobalState();
             
             // Clear IndexingCoordinator state to prevent duplicate indexing prevention
             IndexingCoordinator.getInstance().reset();

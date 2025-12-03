@@ -1,6 +1,7 @@
 package com.rbatllet.blockchain.search;
 
 import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.SearchResult;
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.util.CryptoUtil;
@@ -47,6 +48,7 @@ public class SimpleExhaustiveTest {
         
         // Index blockchain
         searchEngine.indexBlockchain(blockchain, password, privateKey);
+        IndexingCoordinator.getInstance().waitForCompletion();
         System.out.println("📋 Blockchain indexed");
         
         // Perform exhaustive search

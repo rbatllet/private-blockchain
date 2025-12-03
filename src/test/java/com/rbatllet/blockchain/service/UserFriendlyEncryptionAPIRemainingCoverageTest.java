@@ -33,10 +33,19 @@ public class UserFriendlyEncryptionAPIRemainingCoverageTest {
     void setUp() throws Exception {
         realBlockchain = new Blockchain();
 
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        realBlockchain.clearAndReinitialize();
+
         // Load bootstrap admin keys
         bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
             "./keys/genesis-admin.private",
             "./keys/genesis-admin.public"
+        );
+
+        // SECURITY (v1.0.6): Register bootstrap admin in blockchain (REQUIRED!)
+        realBlockchain.createBootstrapAdmin(
+            CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+            "BOOTSTRAP_ADMIN"
         );
 
         testKeyPair = CryptoUtil.generateKeyPair();

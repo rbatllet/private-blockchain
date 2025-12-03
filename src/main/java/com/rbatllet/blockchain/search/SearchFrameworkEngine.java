@@ -151,14 +151,20 @@ public class SearchFrameworkEngine {
     private static final ConcurrentHashMap<String, Semaphore> blockIndexingSemaphores = new ConcurrentHashMap<>();
 
     /**
-     * Clears the global processing map for testing purposes.
-     * ⚠️ WARNING: This method should ONLY be used in test environments.
-     * It will clear the atomic coordination state across all SearchFrameworkEngine instances.
+     * Reset global state for all SearchFrameworkEngine instances.
+     * 
+     * This method clears the global processing map and semaphores, releasing resources
+     * and resetting coordination state. Useful for:
+     * - Cleanup between test cases
+     * - Resetting state between demo examples
+     * - Releasing resources when reinitializing the blockchain
+     * 
+     * ⚠️ WARNING: This affects ALL SearchFrameworkEngine instances globally.
      */
-    public static void clearGlobalProcessingMapForTesting() {
+    public static void resetGlobalState() {
         globalProcessingMap.clear();
         blockIndexingSemaphores.clear();
-        logger.info("🧪 TESTING: Global processing map and semaphores cleared");
+        logger.info("🔄 Global processing map and semaphores cleared");
     }
 
     private static final Logger logger = LoggerFactory.getLogger(
@@ -1169,20 +1175,6 @@ public class SearchFrameworkEngine {
     ) {
         long startTime = System.nanoTime();
 
-        // Check IndexingCoordinator to prevent infinite loops
-        IndexingCoordinator coordinator = IndexingCoordinator.getInstance();
-        if (coordinator.isIndexing()) {
-            logger.debug(
-                "⏭️ Skipping filtered blocks indexing - another indexing operation in progress"
-            );
-            return new IndexingResult(
-                0,
-                0,
-                (System.nanoTime() - startTime) / 1_000_000.0,
-                null
-            );
-        }
-
         List<CompletableFuture<Void>> indexingTasks = new ArrayList<>();
 
         logger.info(
@@ -1293,8 +1285,126 @@ public class SearchFrameworkEngine {
     }
 
     /**
-     * Index entire blockchain for advanced search
-     * Enhanced with better error handling and progress tracking
+     * Index entire blockchain for advanced search (SYNCHRONOUS - BLOCKING).
+     * 
+     * <p>This method blocks the calling thread until all blocks have been indexed and returns
+     * accurate results. It internally calls {@link #indexBlockchain(Blockchain, String, PrivateKey)}
+     * and then waits for the background indexing coordinator to finish processing all blocks.</p>
+     * 
+     * <p><strong>Behavior:</strong></p>
+     * <ol>
+     *   <li>Triggers asynchronous indexing via {@code indexBlockchain()}</li>
+     *   <li>Blocks the current thread using {@code IndexingCoordinator.waitForCompletion()}</li>
+     *   <li>Returns only after ALL blocks have been processed</li>
+     *   <li>Returns accurate counts from {@code blockMetadataIndex.size()}</li>
+     * </ol>
+     * 
+     * <p><strong>Use Cases:</strong></p>
+     * <ul>
+     *   <li><strong>Unit tests:</strong> Verify indexing completed before assertions</li>
+     *   <li><strong>Demo scripts:</strong> Sequential execution required for predictable output</li>
+     *   <li><strong>CLI tools:</strong> User expects operation to complete before next command</li>
+     *   <li><strong>Synchronous APIs:</strong> Caller needs immediate indexing confirmation</li>
+     *   <li><strong>Integration tests:</strong> Ensure search index ready before validation</li>
+     * </ul>
+     * 
+     * <p><strong>Difference from {@link #indexBlockchain(Blockchain, String, PrivateKey)}:</strong></p>
+     * <ul>
+     *   <li><strong>indexBlockchain():</strong> Returns immediately, indexing in background</li>
+     *   <li><strong>indexBlockchainSync():</strong> Blocks until complete, accurate counts</li>
+     * </ul>
+     * 
+     * <p><strong>Thread Safety:</strong></p>
+     * <ul>
+     *   <li>Thread-safe: multiple threads can call simultaneously</li>
+     *   <li>Interruption: {@code InterruptedException} wrapped in {@code RuntimeException}</li>
+     *   <li>Preserves interrupt status: {@code Thread.currentThread().interrupt()} called</li>
+     * </ul>
+     * 
+     * <p><strong>Privacy Model (Privacy-by-Design):</strong></p>
+     * <ul>
+     *   <li>Only blocks with explicit keywords are indexed</li>
+     *   <li>Blocks without keywords remain non-searchable (privacy default)</li>
+     *   <li>Use {@code addBlockWithKeywords()} to make blocks searchable</li>
+     * </ul>
+     * 
+     * <p><strong>Example Usage:</strong></p>
+     * <pre>{@code
+     * // In a test - ensure indexing completes before search
+     * SearchFrameworkEngine engine = new SearchFrameworkEngine();
+     * IndexingResult result = engine.indexBlockchainSync(blockchain, password, privateKey);
+     * assertEquals(10, result.getTotalIndexed());
+     * 
+     * // Now safe to search - all blocks are indexed
+     * SearchResult searchResult = engine.search("financial", password, privateKey);
+     * }</pre>
+     * 
+     * @param blockchain The blockchain to index (must not be null)
+     * @param password Password for decrypting private metadata (must not be null)
+     * @param privateKey Private key for signature verification (must not be null)
+     * @return IndexingResult with accurate block counts and timing statistics.
+     *         Both {@code totalProcessed} and {@code successfullyIndexed} reflect actual
+     *         indexed blocks from {@code blockMetadataIndex}.
+     * @throws RuntimeException if thread is interrupted during indexing (wraps InterruptedException)
+     * @throws IllegalArgumentException if any parameter is null
+     * @see #indexBlockchain(Blockchain, String, PrivateKey) for async version
+     * @see IndexingCoordinator#waitForCompletion() for manual completion wait
+     * @see IndexingResult for result structure
+     */
+    public IndexingResult indexBlockchainSync(
+        Blockchain blockchain,
+        String password,
+        PrivateKey privateKey
+    ) {
+        long startTime = System.nanoTime();
+        
+        // Trigger async indexing
+        indexBlockchain(blockchain, password, privateKey);
+        
+        // Wait for all background indexing to complete
+        try {
+            IndexingCoordinator.getInstance().waitForCompletion();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.error("Indexing interrupted", e);
+            throw new RuntimeException("Blockchain indexing was interrupted", e);
+        }
+        
+        double durationMs = (System.nanoTime() - startTime) / 1_000_000.0;
+        
+        // Count actual indexed blocks from the instance metadata index
+        // This is the reliable source - blockMetadataIndex contains the actual data
+        int totalIndexed = blockMetadataIndex.size();
+        
+        logger.info("✅ Synchronous blockchain indexing completed: {} blocks indexed in {}ms",
+            totalIndexed, durationMs);
+        
+        return new IndexingResult(
+            totalIndexed,
+            totalIndexed,
+            durationMs,
+            strategyRouter.getRouterStats()
+        );
+    }
+
+    /**
+     * Index entire blockchain for advanced search (ASYNCHRONOUS)
+     * Returns immediately while indexing continues in background.
+     * 
+     * <p><strong>Use cases:</strong></p>
+     * <ul>
+     *   <li>Background jobs - non-blocking indexing</li>
+     *   <li>Scheduled tasks - fire-and-forget</li>
+     *   <li>UI operations - avoid blocking user interface</li>
+     * </ul>
+     * 
+     * <p><strong>Note:</strong> Call {@code IndexingCoordinator.getInstance().waitForCompletion()}
+     * if you need to wait for completion manually.</p>
+     * 
+     * @param blockchain The blockchain to index
+     * @param password Password for decrypting private metadata
+     * @param privateKey Private key for signature verification
+     * @return IndexingResult with initial counts (may not reflect final state)
      */
     public IndexingResult indexBlockchain(
         Blockchain blockchain,

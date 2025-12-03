@@ -2,6 +2,7 @@ package com.rbatllet.blockchain.search;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.config.EncryptionConfig;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.*;
 import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.security.UserRole;
@@ -83,15 +84,29 @@ public class SearchFrameworkExhaustiveTest {
         // Create comprehensive test blockchain
         createExhaustiveTestBlockchain();
         
-        // Clear global processing map before indexing to ensure clean state
-        SearchFrameworkEngine.clearGlobalProcessingMapForTesting();
+        // Wait for auto-indexing from addBlock() to complete
+        try {
+            IndexingCoordinator.getInstance().waitForCompletion();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
         
-        // Index the blockchain
-        IndexingResult indexingResult = searchEngine.indexBlockchain(testBlockchain, testPassword, testPrivateKey);
-        assertTrue(indexingResult.getBlocksIndexed() > 0, "Should index all test blocks");
+        // Clear global processing map before manual indexing
+        SearchFrameworkEngine.resetGlobalState();
         
-        System.out.printf("🔍 Exhaustive Test Setup: Indexed %d blocks successfully%n", 
-                         indexingResult.getBlocksIndexed());
+        // Index the blockchain manually
+        searchEngine.indexBlockchain(testBlockchain, testPassword, testPrivateKey);
+        
+        // Wait for asynchronous indexing to complete
+        IndexingCoordinator.getInstance().waitForCompletion();
+        
+        // Verify indexing succeeded by performing a simple search
+        // Search for common words that should appear in test blocks with explicit keywords
+        SearchResult verifyResult = searchEngine.searchPublicOnly("financial", 10);
+        assertTrue(verifyResult.getResultCount() > 0, "Should index test blocks with explicit keywords");
+        
+        System.out.printf("🔍 Exhaustive Test Setup: Indexed %d blocks successfully (found '%s')%n", 
+                         verifyResult.getResultCount(), "financial");
     }
     
     @AfterEach
@@ -361,7 +376,7 @@ public class SearchFrameworkExhaustiveTest {
         System.out.println("==========================================");
         
         // Clear global processing map to allow specialist API to index blocks
-        SearchFrameworkEngine.clearGlobalProcessingMapForTesting();
+        SearchFrameworkEngine.resetGlobalState();
         
         // Initialize advanced API
         IndexingResult initResult = specialistAPI.initializeWithBlockchain(testBlockchain, testPassword, testPrivateKey);
@@ -638,112 +653,136 @@ public class SearchFrameworkExhaustiveTest {
             throw new RuntimeException("Failed to authorize test key for exhaustive blockchain creation");
         }
         
-        // Financial blocks
-        testBlockchain.addBlock(
+        // Financial blocks - now with explicit keywords for searchability (privacy by design)
+        testBlockchain.addBlockWithKeywords(
             "SWIFT MT103 International Transfer: From ES1234567890123456789012 to DE0987654321098765432109. " +
             "Amount: EUR 250,000.00. Reference: TXN-SWIFT-2024-001. " +
             "Purpose: Commercial payment for medical equipment acquisition. " +
             "IBAN verification: PASSED. AML compliance: CLEARED. Risk assessment: MEDIUM. " +
             "Processing bank: Deutsche Bank AG. Correspondent bank: BBVA Madrid.",
+            new String[]{"financial", "swift", "transfer", "international", "payment"},
+            null,
             testPrivateKey, testPublicKey);
         
-        testBlockchain.addBlock(
+        testBlockchain.addBlockWithKeywords(
             "High-Value Cryptocurrency Transaction: Bitcoin transfer 15.7843 BTC " +
             "from 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa to 3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy. " +
             "USD equivalent: $487,532.15. Transaction fee: 0.00045 BTC. " +
             "Block confirmation: 6/6. Wallet security: Multi-signature. Exchange: Coinbase Pro.",
+            new String[]{"financial", "cryptocurrency", "bitcoin", "transaction", "transfer"},
+            null,
             testPrivateKey, testPublicKey);
         
         // Medical blocks
-        testBlockchain.addBlock(
+        testBlockchain.addBlockWithKeywords(
             "Confidential Medical Record: Patient Sarah Johnson (DOB: 1985-03-15, SSN: ***-**-7890). " +
             "Diagnosis: Stage II Hypertension with cardiovascular risk factors. " +
             "Treatment Protocol: Lisinopril 20mg QD, Amlodipine 5mg QD, lifestyle modifications. " +
             "Attending Physician: Dr. Michael Chen, MD. Facility: Johns Hopkins Hospital. " +
             "Insurance: Anthem Blue Cross PPO. HIPAA compliance: VERIFIED.",
+            new String[]{"medical", "patient", "diagnosis", "treatment", "hospital"},
+            null,
             testPrivateKey, testPublicKey);
         
-        testBlockchain.addBlock(
+        testBlockchain.addBlockWithKeywords(
             "Surgical Procedure Record: Patient ID P-2024-789, Emergency appendectomy. " +
             "Procedure date: 2024-01-15T14:30:00Z. Surgeon: Dr. Lisa Rodriguez, MD. " +
             "Anesthesia: General (Propofol/Sevoflurane). Duration: 45 minutes. " +
             "Complications: None. Recovery: Uneventful. Discharge: Post-op day 2. " +
             "Pathology: Acute appendicitis confirmed. Follow-up: 2 weeks.",
+            new String[]{"medical", "surgical", "procedure", "patient", "surgery"},
+            null,
             testPrivateKey, testPublicKey);
         
         // Legal blocks
-        testBlockchain.addBlock(
+        testBlockchain.addBlockWithKeywords(
             "Software License Agreement: Enterprise license between TechCorp Ltd (Client) and " +
             "MediSoft Solutions Inc (Vendor). Contract ID: LEGAL-ESA-2024-456. " +
             "License value: USD 750,000. Term: 5 years with annual renewal option. " +
             "Scope: 500 concurrent users, unlimited data processing. " +
             "Liability cap: USD 2,500,000. Governing law: State of California. " +
             "Confidentiality: Mutual NDA attached.",
+            new String[]{"legal", "contract", "agreement", "license", "software"},
+            null,
             testPrivateKey, testPublicKey);
         
-        testBlockchain.addBlock(
+        testBlockchain.addBlockWithKeywords(
             "Intellectual Property Agreement: Patent licensing deal for AI algorithm technology. " +
             "Licensor: Stanford Research Institute. Licensee: DeepMind Technologies. " +
             "Patent portfolio: 47 patents covering neural network architectures. " +
             "Royalty: 3.5% of net revenue. Exclusivity: Non-exclusive worldwide license. " +
             "Term: 15 years. Milestone payments: $50M over 3 phases.",
+            new String[]{"legal", "patent", "intellectual", "agreement", "technology"},
+            null,
             testPrivateKey, testPublicKey);
         
         // Technical blocks
-        testBlockchain.addBlock(
+        testBlockchain.addBlockWithKeywords(
             "API Security Audit Report: Comprehensive penetration testing of REST API v2.1. " +
             "Testing framework: OWASP Top 10 + custom security vectors. " +
             "Vulnerabilities found: 3 Medium, 7 Low risk. Critical issues: NONE. " +
             "Authentication: OAuth 2.0 + JWT tokens validated. " +
             "Rate limiting: Implemented and effective. SQL injection: Protected. " +
             "Recommendation: Deploy to production with monitoring enhancements.",
+            new String[]{"technical", "api", "security", "audit", "testing"},
+            null,
             testPrivateKey, testPublicKey);
         
-        testBlockchain.addBlock(
+        testBlockchain.addBlockWithKeywords(
             "Database Performance Metrics: PostgreSQL cluster analysis Q1 2024. " +
             "Query performance: Average 12.3ms response time. " +
             "Slow queries: 0.003% of total (improvement from 0.15%). " +
             "Connection pool: 85% utilization peak. Memory usage: 14.7GB of 32GB allocated. " +
             "Backup verification: 100% successful. Replication lag: <500ms consistently.",
+            new String[]{"technical", "database", "performance", "postgresql", "metrics"},
+            null,
             testPrivateKey, testPublicKey);
         
         // Personal information blocks
-        testBlockchain.addBlock(
+        testBlockchain.addBlockWithKeywords(
             "Employee Onboarding Record: Maria Elena Garcia-Rodriguez. " +
             "Employee ID: EMP-2024-1547. Email: maria.garcia@company.com. " +
             "Phone: +34-91-234-5678. Address: Calle Mayor 45, 3B, Madrid, Spain 28013. " +
             "Department: Financial Technology Division. Position: Senior Software Engineer. " +
             "Salary: EUR 78,000 annually. Start date: 2024-02-01. " +
             "Emergency contact: Carlos Garcia (+34-91-876-5432).",
+            new String[]{"personal", "employee", "onboarding", "record", "hr"},
+            null,
             testPrivateKey, testPublicKey);
         
-        testBlockchain.addBlock(
+        testBlockchain.addBlockWithKeywords(
             "Customer Privacy Record: VIP client onboarding for private banking services. " +
             "Client: Alexander Petrov (Russian Federation passport). " +
             "Account type: Premium wealth management. Assets under management: $15.7M. " +
             "KYC verification: Enhanced due diligence completed. " +
             "PEP status: Negative. Sanctions check: Clear. " +
             "Communication preference: Encrypted email only. Relationship manager: James Wilson.",
+            new String[]{"personal", "customer", "banking", "client", "privacy"},
+            null,
             testPrivateKey, testPublicKey);
         
         // Research and development blocks
-        testBlockchain.addBlock(
+        testBlockchain.addBlockWithKeywords(
             "Pharmaceutical Research Data: Clinical trial results for drug compound XR-7749. " +
             "Trial phase: Phase IIb randomized controlled trial. Participants: 847 patients. " +
             "Primary endpoint: 67% reduction in symptom severity (p<0.001). " +
             "Adverse events: 12% mild, 3% moderate, 0% severe. " +
             "FDA submission: Planned Q3 2024. Patent applications: Filed in US, EU, Japan. " +
             "Market potential: $2.4B annually.",
+            new String[]{"technical", "research", "pharmaceutical", "clinical", "trial"},
+            null,
             testPrivateKey, testPublicKey);
         
         // IoT and sensor data
-        testBlockchain.addBlock(
+        testBlockchain.addBlockWithKeywords(
             "Smart City Sensor Network Data: Barcelona environmental monitoring Q1 2024. " +
             "Air quality index: Average 42 (Good), Peak 78 (Moderate). " +
             "Temperature range: 8.2°C to 24.7°C. Humidity: 45-85%. " +
             "Traffic flow: 12% increase over 2023. Noise levels: Within EU standards. " +
             "Energy consumption: 15% reduction through smart grid optimization. " +
             "Water quality: All parameters within WHO guidelines.",
+            new String[]{"technical", "iot", "sensor", "environmental", "monitoring"},
+            null,
             testPrivateKey, testPublicKey);
         
         System.out.printf("✅ Created exhaustive test blockchain with %d blocks%n",

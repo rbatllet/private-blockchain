@@ -32,11 +32,13 @@ if [[ ! -f "$BASE_DIR/pom.xml" ]]; then
 fi
 
 SCRIPTS_DIR="$BASE_DIR/scripts"
+TOOLS_DIR="$BASE_DIR/tools"
 DOCS_DIR="$BASE_DIR/docs"
 
 print -P "${BLUE}🔍 Checking .zsh Script References${NC}"
 print "Base directory: $BASE_DIR"
 print "Scripts directory: $SCRIPTS_DIR"
+print "Tools directory: $TOOLS_DIR"
 print ""
 
 # Index existing scripts
@@ -45,7 +47,7 @@ print -P "${CYAN}📦 Indexing existing .zsh scripts...${NC}"
 # Use associative array for O(1) lookups
 typeset -A existing_scripts
 
-# Index all .zsh files (including subdirectories)
+# Index all .zsh files from scripts/ (including subdirectories)
 for script_path in $SCRIPTS_DIR/**/*.zsh(N); do
     # Store relative path from scripts/ dir
     rel_path="${script_path#$SCRIPTS_DIR/}"
@@ -54,10 +56,23 @@ for script_path in $SCRIPTS_DIR/**/*.zsh(N); do
     # Store both full relative path and just filename
     existing_scripts[$script_name]="$rel_path"
     existing_scripts[$rel_path]="$rel_path"
+    # Also store with scripts/ prefix for references like "scripts/run_demo.zsh"
+    existing_scripts["scripts/$rel_path"]="scripts/$rel_path"
+done
+
+# Index all .zsh files from tools/ directory
+for script_path in $TOOLS_DIR/**/*.zsh(N); do
+    # Store relative path from tools/ dir
+    rel_path="${script_path#$TOOLS_DIR/}"
+    script_name="${script_path:t}"
+    
+    # Store both full relative path and just filename
+    existing_scripts[$script_name]="tools/$rel_path"
+    existing_scripts["tools/$rel_path"]="tools/$rel_path"
 done
 
 script_count=${#existing_scripts}/2
-print "Found $script_count existing .zsh scripts (including subdirectories)"
+print "Found $script_count existing .zsh scripts (including scripts/ and tools/ subdirectories)"
 print ""
 
 # Arrays to hold results

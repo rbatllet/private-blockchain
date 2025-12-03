@@ -8,6 +8,12 @@ Comprehensive guide to the Private Blockchain's Search Framework Engine with two
 - [Search Architecture](#-search-architecture)
 - [Search Strategies](#-search-strategies)
 - [Basic Usage](#-basic-usage)
+- [Blockchain Indexing](#-blockchain-indexing)
+  - [Asynchronous Indexing (Default)](#asynchronous-indexing-default)
+  - [Synchronous Indexing (Blocking)](#synchronous-indexing-blocking)
+  - [Practical Examples](#practical-examples)
+  - [Privacy-by-Design: Keyword Requirement](#privacy-by-design-keyword-requirement)
+  - [Comparison: Async vs Sync](#comparison-async-vs-sync)
 - [Advanced Search Features](#-advanced-search-features)
 - [Granular Term Visibility Control](#-granular-term-visibility-control)
 - [Specialized Domain Searches](#-specialized-domain-searches)
@@ -72,11 +78,30 @@ import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.api.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.search.SearchSpecialistAPI;
 import com.rbatllet.blockchain.indexing.IndexingCoordinator;
+import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.util.CryptoUtil;
 import java.security.KeyPair;
 
-// Step 1: Setup blockchain and user
+// Step 1: Create blockchain
 Blockchain blockchain = new Blockchain();
+
+// Step 2: Load genesis admin keys (generated via ./tools/generate_genesis_keys.zsh)
+KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+    "./keys/genesis-admin.private",
+    "./keys/genesis-admin.public"
+);
+
+// Step 3: Register bootstrap admin (REQUIRED!)
+blockchain.createBootstrapAdmin(
+    CryptoUtil.publicKeyToString(genesisKeys.getPublic()),
+    "BOOTSTRAP_ADMIN"
+);
+
+// Step 4: Create API with genesis admin credentials
 UserFriendlyEncryptionAPI dataAPI = new UserFriendlyEncryptionAPI(blockchain);
+dataAPI.setDefaultCredentials("BOOTSTRAP_ADMIN", genesisKeys);
+
+// Step 5: Create user (only authorized users can create new users)
 KeyPair userKeys = dataAPI.createUser("search-user");
 dataAPI.setDefaultCredentials("search-user", userKeys);
 
@@ -140,22 +165,383 @@ List<EnhancedSearchResult> smartResults = searchAPI.searchIntelligent(
 
 ### Direct Engine Usage
 
-```java
-// Initialize the search engine
-SearchFrameworkEngine searchEngine = new SearchFrameworkEngine();
+For lower-level control, you can use `SearchFrameworkEngine` directly:
 
-// Initialize with blockchain
-searchEngine.initialize(blockchain, OffChainStorageService.getInstance());
+```java
+import com.rbatllet.blockchain.search.SearchFrameworkEngine;
+import com.rbatllet.blockchain.search.SearchResult;
+import com.rbatllet.blockchain.config.EncryptionConfig;
+import java.util.Map;
+import java.util.HashMap;
+
+// Create search engine with configuration
+EncryptionConfig config = EncryptionConfig.createHighSecurityConfig();
+SearchFrameworkEngine searchEngine = new SearchFrameworkEngine(config);
+
+// Index blockchain (requires user's private key)
+searchEngine.indexBlockchainSync(blockchain, password, userKeys.getPrivate());
 
 // Perform public-only search
 SearchResult result = searchEngine.searchPublicOnly("medical", 20);
 
-// Perform authenticated search
-Map<String, String> passwords = new HashMap<>();
-passwords.put("block123", "password123");
-SearchResult authResult = searchEngine.searchWithAuth(
-    "confidential", passwords, 50);
+// Perform authenticated search with password
+SearchResult authResult = searchEngine.search("patient", password, userKeys.getPrivate());
 ```
+
+## 📇 Blockchain Indexing
+
+The Search Framework Engine provides two methods for indexing blockchain data for search:
+
+### Asynchronous Indexing (Default)
+
+**Use when:** Background jobs, scheduled tasks, UI operations - any scenario where you don't need to wait for completion.
+
+```java
+SearchFrameworkEngine searchEngine = new SearchFrameworkEngine();
+
+// Trigger async indexing - returns immediately
+IndexingResult result = searchEngine.indexBlockchain(
+    blockchain,
+    password,
+    privateKey
+);
+
+// Indexing happens in background
+// Result contains initial counts (may not reflect final state)
+System.out.println("Indexing started: " + result.getTotalProcessed() + " blocks queued");
+
+// Optional: Wait for completion manually if needed later
+IndexingCoordinator.getInstance().waitForCompletion();
+System.out.println("✅ Background indexing completed");
+```
+
+**Characteristics:**
+- ✅ **Non-blocking**: Returns immediately, doesn't block caller thread
+- ✅ **Parallel processing**: Uses background thread pool for efficiency
+- ✅ **Fire-and-forget**: Ideal for scheduled tasks and background jobs
+- ⚠️ **Delayed availability**: Search index not immediately available
+- ⚠️ **Approximate counts**: Initial result may not reflect final state
+
+### Synchronous Indexing (Blocking)
+
+**Use when:** Unit tests, demo scripts, CLI tools, integration tests - any scenario where you need immediate completion confirmation.
+
+```java
+SearchFrameworkEngine searchEngine = new SearchFrameworkEngine();
+
+// Trigger sync indexing - BLOCKS until complete
+IndexingResult result = searchEngine.indexBlockchainSync(
+    blockchain,
+    password,
+    privateKey
+);
+
+// Returns ONLY after all blocks are indexed
+// Result contains accurate final counts
+System.out.println("✅ Indexing completed: " + result.getTotalIndexed() + " blocks indexed");
+System.out.println("⏱️ Duration: " + result.getDurationMs() + "ms");
+
+// Safe to search immediately - all blocks are indexed
+SearchResult searchResult = searchEngine.search("medical", password, privateKey);
+```
+
+**Characteristics:**
+- ✅ **Blocking**: Waits for completion before returning
+- ✅ **Accurate counts**: Returns precise final indexed block count
+- ✅ **Immediate availability**: Search index ready for queries after return
+- ✅ **Thread-safe**: Multiple threads can call simultaneously
+- ⚠️ **Blocks caller**: Thread waits for indexing completion
+- ⚠️ **InterruptedException**: Wrapped in RuntimeException if interrupted
+
+### Practical Examples
+
+#### Example 1: Unit Test Pattern
+
+```java
+@Test
+public void testSearchAfterIndexing() throws Exception {
+    // Setup blockchain with bootstrap admin
+    Blockchain blockchain = new Blockchain();
+    
+    // Load genesis admin keys
+    KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+        "./keys/genesis-admin.private",
+        "./keys/genesis-admin.public"
+    );
+    
+    // Register bootstrap admin (REQUIRED!)
+    blockchain.createBootstrapAdmin(
+        CryptoUtil.publicKeyToString(genesisKeys.getPublic()),
+        "BOOTSTRAP_ADMIN"
+    );
+    
+    // Create API with genesis admin
+    UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+    api.setDefaultCredentials("BOOTSTRAP_ADMIN", genesisKeys);
+    
+    // Create test user
+    KeyPair userKeys = api.createUser("testuser");
+    api.setDefaultCredentials("testuser", userKeys);
+    
+    String[] keywords = {"medical", "patient", "diagnosis"};
+    
+    // Add searchable block (skip auto-indexing for manual SYNC indexing)
+    blockchain.addBlockWithKeywords(
+        "Patient diagnosis record",
+        keywords,
+        "MEDICAL",
+        userKeys.getPrivate(),
+        userKeys.getPublic(),
+        true  // skipAutoIndexing - we'll use SYNC indexing
+    );
+    
+    // Use SYNC indexing for tests - ensure completion before assertions
+    SearchFrameworkEngine engine = new SearchFrameworkEngine();
+    IndexingResult indexResult = engine.indexBlockchainSync(
+        blockchain,
+        null,  // No password - block is unencrypted
+        userKeys.getPrivate()
+    );
+    
+    // Now safe to assert - indexing is complete
+    assertEquals(2, indexResult.getTotalIndexed()); // Genesis + test block
+    
+    // Search works immediately
+    SearchResult searchResult = engine.search("medical", null, userKeys.getPrivate());
+    assertEquals(1, searchResult.getResults().size());
+}
+```
+
+#### Example 2: Demo Script Pattern
+
+```java
+public static void main(String[] args) throws Exception {
+    System.out.println("🚀 Private Blockchain Search Demo");
+    
+    // Create blockchain with sample data
+    BlockchainWithKeys blockchainData = createSampleBlockchain();
+    Blockchain blockchain = blockchainData.blockchain;
+    PrivateKey userPrivateKey = blockchainData.userPrivateKey;
+    
+    // SYNC indexing for demos - users see sequential execution
+    System.out.println("⏳ Indexing blockchain...");
+    SearchFrameworkEngine engine = new SearchFrameworkEngine();
+    
+    long startTime = System.currentTimeMillis();
+    IndexingResult result = engine.indexBlockchainSync(
+        blockchain,
+        null,  // No password - blocks are unencrypted
+        userPrivateKey
+    );
+    long duration = System.currentTimeMillis() - startTime;
+    
+    System.out.println("✅ Indexed " + result.getTotalIndexed() + 
+                       " blocks in " + duration + "ms");
+    
+    // Immediate search demonstration
+    System.out.println("\n🔍 Searching for 'medical' records...");
+    SearchResult medicalResults = engine.search("medical", null, 10);
+    
+    System.out.println("📊 Found " + medicalResults.getResultCount() + " results");
+    medicalResults.getResults().forEach(r -> 
+        System.out.println("  - " + r.getBlockHash().substring(0, 8) + 
+                           " (relevance: " + String.format("%.2f", r.getRelevanceScore()) + ")")
+    );
+}
+
+// Helper class to return blockchain and user keys
+static class BlockchainWithKeys {
+    Blockchain blockchain;
+    PrivateKey userPrivateKey;
+    
+    BlockchainWithKeys(Blockchain blockchain, PrivateKey userPrivateKey) {
+        this.blockchain = blockchain;
+        this.userPrivateKey = userPrivateKey;
+    }
+}
+
+private static BlockchainWithKeys createSampleBlockchain() throws Exception {
+    Blockchain blockchain = new Blockchain();
+    
+    // Load genesis admin keys
+    KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
+        "./keys/genesis-admin.private",
+        "./keys/genesis-admin.public"
+    );
+    
+    // Register bootstrap admin
+    blockchain.createBootstrapAdmin(
+        CryptoUtil.publicKeyToString(genesisKeys.getPublic()),
+        "BOOTSTRAP_ADMIN"
+    );
+    
+    // Create API with genesis admin
+    UserFriendlyEncryptionAPI api = new UserFriendlyEncryptionAPI(blockchain);
+    api.setDefaultCredentials("BOOTSTRAP_ADMIN", genesisKeys);
+    
+    // Create demo user
+    KeyPair keys = api.createUser("demo-user");
+    api.setDefaultCredentials("demo-user", keys);
+    
+    // Add searchable blocks (UNENCRYPTED with public keywords, skip auto-indexing)
+    blockchain.addBlockWithKeywords(
+        "Medical research paper",
+        new String[]{"medical", "research", "clinical"},
+        "RESEARCH",
+        keys.getPrivate(),
+        keys.getPublic(),
+        true  // skipAutoIndexing
+    );
+    
+    blockchain.addBlockWithKeywords(
+        "Financial transaction log",
+        new String[]{"financial", "transaction", "payment"},
+        "FINANCE",
+        keys.getPrivate(),
+        keys.getPublic(),
+        true  // skipAutoIndexing
+    );
+    
+    blockchain.addBlockWithKeywords(
+        "Legal contract agreement",
+        new String[]{"legal", "contract", "agreement"},
+        "LEGAL",
+        keys.getPrivate(),
+        keys.getPublic(),
+        true  // skipAutoIndexing
+    );
+    
+    return new BlockchainWithKeys(blockchain, keys.getPrivate());
+}
+```
+
+#### Example 3: Background Job Pattern
+
+```java
+public class BlockchainIndexingJob {
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    
+    public void scheduleIndexing() {
+        // Schedule async indexing every hour
+        scheduler.scheduleAtFixedRate(() -> {
+            try {
+                System.out.println("⏰ Starting scheduled blockchain indexing...");
+                
+                SearchFrameworkEngine engine = new SearchFrameworkEngine();
+                
+                // Use ASYNC for background jobs - non-blocking
+                IndexingResult result = engine.indexBlockchain(
+                    blockchain,
+                    indexingPassword,
+                    indexingPrivateKey
+                );
+                
+                System.out.println("📨 Indexing job submitted: " + 
+                                   result.getTotalProcessed() + " blocks queued");
+                
+                // Job continues, indexing happens in background
+                // No need to wait - next job will pick up new blocks
+                
+            } catch (Exception e) {
+                System.err.println("❌ Indexing job failed: " + e.getMessage());
+            }
+        }, 0, 1, TimeUnit.HOURS);
+    }
+}
+```
+
+#### Example 4: CLI Tool Pattern
+
+```java
+public class SearchCLI {
+    public static void main(String[] args) {
+        if (args.length < 2) {
+            System.err.println("Usage: search-cli <blockchain-file> <search-term>");
+            System.exit(1);
+        }
+        
+        String blockchainFile = args[0];
+        String searchTerm = args[1];
+        
+        // Load blockchain from file
+        Blockchain blockchain = loadBlockchain(blockchainFile);
+        
+        // CLI tools need SYNC - user waits for completion
+        System.out.println("⏳ Indexing blockchain from " + blockchainFile + "...");
+        SearchFrameworkEngine engine = new SearchFrameworkEngine();
+        
+        IndexingResult indexResult = engine.indexBlockchainSync(
+            blockchain,
+            getPassword(),
+            getPrivateKey()
+        );
+        
+        System.out.println("✅ Indexed " + indexResult.getTotalIndexed() + 
+                           " blocks in " + indexResult.getDurationMs() + "ms");
+        
+        // Now search
+        System.out.println("\n🔍 Searching for: " + searchTerm);
+        SearchResult result = engine.search(searchTerm, getPassword(), getPrivateKey());
+        
+        System.out.println("📊 Results: " + result.getResults().size() + " blocks found");
+        result.getResults().forEach(r -> displayResult(r));
+    }
+}
+```
+
+### Privacy-by-Design: Keyword Requirement
+
+**IMPORTANT:** The Search Framework Engine follows a **privacy-by-design** model:
+
+- ✅ **Blocks WITH keywords** → Indexed and searchable
+- ❌ **Blocks WITHOUT keywords** → NOT indexed (remains private)
+
+This applies to both encrypted and unencrypted blocks. If you want a block to be searchable, you MUST provide explicit keywords:
+
+```java
+// ✅ SEARCHABLE - Block will be indexed
+String[] keywords = {"medical", "patient", "diagnosis"};
+blockchain.addBlockWithKeywords(
+    "Patient medical record",
+    keywords,
+    "MEDICAL",  // Category
+    privateKey,
+    publicKey
+);
+
+// ❌ NOT SEARCHABLE - Block remains private (no keywords provided)
+blockchain.addBlock(
+    "Confidential internal memo",
+    privateKey,
+    publicKey
+);
+```
+
+**Rationale:** In a **private blockchain**, the default should be privacy, not convenience. Users must explicitly opt-in to searchability by providing keywords. This prevents accidental exposure of sensitive data and aligns with privacy-first principles.
+
+### Comparison: Async vs Sync
+
+| Feature | `indexBlockchain()` (Async) | `indexBlockchainSync()` (Sync) |
+|---------|----------------------------|--------------------------------|
+| **Blocking** | ❌ Returns immediately | ✅ Blocks until complete |
+| **Return Counts** | ⚠️ Initial/approximate | ✅ Accurate final counts |
+| **Search Availability** | ⏳ Delayed (background) | ✅ Immediate after return |
+| **Use Cases** | Background jobs, scheduled tasks | Tests, demos, CLI tools |
+| **Thread Pool** | ✅ Uses background threads | ✅ Uses background + waits |
+| **Interruption** | ➖ N/A | ⚠️ Throws RuntimeException |
+| **Performance** | 🚀 Non-blocking caller | ⏸️ Caller waits |
+
+**Choose async when:**
+- Background indexing jobs
+- Scheduled maintenance tasks
+- UI operations (avoid blocking interface)
+- Fire-and-forget scenarios
+
+**Choose sync when:**
+- Unit/integration tests
+- Demo scripts needing sequential execution
+- CLI tools where user expects completion
+- Scenarios requiring immediate search after indexing
 
 ## 🎯 Advanced Search Features
 
@@ -644,7 +1030,58 @@ if (result.isSuccessful()) {
 
 ## ✅ Best Practices
 
-### 1. **Choose the Right Search Strategy**
+### 1. **Choose the Right Indexing Method**
+```java
+// ✅ Use SYNC for tests - ensure completion before assertions
+@Test
+public void testBlockchainSearch() throws Exception {
+    // Create block with skipAutoIndexing
+    blockchain.addBlockWithKeywords(
+        "Test data",
+        new String[]{"test", "data"},
+        "TEST",
+        privateKey,
+        publicKey,
+        true  // skipAutoIndexing
+    );
+    
+    IndexingResult result = searchEngine.indexBlockchainSync(
+        blockchain, null, privateKey);  // null for unencrypted blocks
+    // Safe to search immediately
+    assertEquals(2, result.getTotalIndexed());  // Genesis + test block
+}
+
+// ✅ Use ASYNC for background jobs - non-blocking execution
+public void scheduleIndexing() {
+    scheduler.scheduleAtFixedRate(() -> {
+        searchEngine.indexBlockchain(blockchain, null, privateKey);
+        // Job continues, indexing in background
+    }, 0, 1, TimeUnit.HOURS);
+}
+
+// ✅ Use SYNC for CLI tools - user expects completion
+public static void main(String[] args) throws Exception {
+    System.out.println("⏳ Indexing...");
+    IndexingResult result = searchEngine.indexBlockchainSync(
+        blockchain, null, privateKey);  // null for unencrypted blocks
+    System.out.println("✅ Indexed " + result.getTotalIndexed() + " blocks");
+    // Now search
+}
+
+// ✅ Always provide keywords for searchable blocks (privacy-by-design)
+String[] keywords = {"medical", "patient", "diagnosis"};
+blockchain.addBlockWithKeywords(
+    data, 
+    keywords, 
+    "MEDICAL",  // Category
+    privateKey, 
+    publicKey,
+    false  // Don't skip auto-indexing (default behavior)
+);
+// Block WITHOUT keywords will NOT be searchable (privacy default)
+```
+
+### 2. **Choose the Right Search Strategy**
 ```java
 // For fast public-only discovery (<50ms)
 searchAPI.searchPublic("keyword");
@@ -662,7 +1099,7 @@ searchAPI.searchIntelligent("complex query", password, limit);
 searchAPI.searchAdvanced("detailed search", password, config, maxResults);
 ```
 
-### 2. **Optimize for Performance**
+### 3. **Optimize for Performance**
 ```java
 // Use caching for repeated searches
 searchAPI.enableCaching(true);
@@ -675,7 +1112,7 @@ CompletableFuture<List<EnhancedSearchResult>> future =
     searchAPI.searchAsync("data");
 ```
 
-### 3. **Maintain Security**
+### 4. **Maintain Security**
 ```java
 // Always validate passwords
 if (!isValidPassword(password)) {
@@ -689,7 +1126,7 @@ SearchSession session = searchAPI.createSession(Duration.ofMinutes(30));
 searchAPI.clearCaches();
 ```
 
-### 4. **Handle Errors Gracefully**
+### 5. **Handle Errors Gracefully**
 ```java
 try {
     List<EnhancedSearchResult> results = searchAPI.searchSecure(
@@ -705,6 +1142,8 @@ try {
 
 ## 🔗 Related Documentation
 
+- **[Indexing Guide](INDEXING_GUIDE.md)** - Complete blockchain indexing documentation (async vs sync)
+- **[IndexingSyncDemo](../../src/main/java/demo/IndexingSyncDemo.java)** - Working demo with 4 practical examples
 - [API Guide](../reference/API_GUIDE.md) - Complete API reference
 - [Thread Safety & Concurrent Indexing](../monitoring/INDEXING_COORDINATOR_EXAMPLES.md#thread-safety--concurrent-indexing) - Per-block semaphore coordination
 - [Semaphore-Based Block Indexing Implementation](../development/SEMAPHORE_INDEXING_IMPLEMENTATION.md) - Complete technical guide
@@ -712,6 +1151,31 @@ try {
 - [Granular Term Visibility Demo](../scripts/run_granular_term_visibility_demo.zsh) - Interactive demonstration
 - [Search Comparison](SEARCH_COMPARISON.md) - Performance benchmarks
 - [Technical Details](../reference/TECHNICAL_DETAILS.md) - Implementation details
+
+### 🎬 Complete Working Examples
+
+For complete, runnable implementations of all indexing patterns, see:
+
+📁 **`src/main/java/demo/IndexingSyncDemo.java`**
+
+This comprehensive demo includes:
+- ✅ Example 1: Hospital Medical Records System (100 patient records)
+- ✅ Example 2: Demo Script Pattern (sequential execution)
+- ✅ Example 3: Background Job Pattern (async indexing)
+- ✅ Example 4: CLI Tool Pattern (sync for user expectations)
+
+**Key features demonstrated:**
+- `skipAutoIndexing` parameter for explicit control
+- SYNC vs ASYNC indexing patterns
+- Unencrypted blocks with public keywords
+- Multi-department security isolation
+- Bootstrap admin initialization
+- IndexingCoordinator coordination
+
+**Run the demo:**
+```bash
+./scripts/run_indexing_sync_demo.zsh
+```
 
 ## 🎯 Quick Reference
 

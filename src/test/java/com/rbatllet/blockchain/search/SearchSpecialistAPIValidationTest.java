@@ -37,7 +37,7 @@ public class SearchSpecialistAPIValidationTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        SearchFrameworkEngine.clearGlobalProcessingMapForTesting();
+        SearchFrameworkEngine.resetGlobalState();
         IndexingCoordinator.getInstance().reset();
 
         testBlockchain = new Blockchain();

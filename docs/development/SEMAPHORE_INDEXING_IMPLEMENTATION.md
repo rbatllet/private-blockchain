@@ -270,7 +270,7 @@ public void indexBlock(Block block, String password,
 #### 4. Update Test Cleanup
 
 ```java
-public static void clearGlobalProcessingMapForTesting() {
+public static void resetGlobalState() {
     globalProcessingMap.clear();
     blockIndexingSemaphores.clear();  // ← Added
     logger.info("🧪 TESTING: Global maps and semaphores cleared");
@@ -506,7 +506,7 @@ With semaphores:
    ```java
    @AfterEach
    void tearDown() {
-       SearchFrameworkEngine.clearGlobalProcessingMapForTesting();
+       SearchFrameworkEngine.resetGlobalState();
        // Clears both globalProcessingMap AND semaphores
    }
    ```

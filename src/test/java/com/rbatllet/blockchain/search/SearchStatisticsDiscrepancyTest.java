@@ -94,7 +94,7 @@ public class SearchStatisticsDiscrepancyTest {
         }
         
         // Clear global state to ensure test isolation
-        SearchFrameworkEngine.clearGlobalProcessingMapForTesting();
+        SearchFrameworkEngine.resetGlobalState();
         
         // Reset IndexingCoordinator to clear execution tracking and ensure test mode
         IndexingCoordinator.getInstance().reset();
@@ -138,7 +138,7 @@ public class SearchStatisticsDiscrepancyTest {
         
         // Reset both IndexingCoordinator and SearchFrameworkEngine state for clean test
         IndexingCoordinator.getInstance().reset();
-        SearchFrameworkEngine.clearGlobalProcessingMapForTesting();
+        SearchFrameworkEngine.resetGlobalState();
         logger.info("🔄 IndexingCoordinator and SearchFrameworkEngine state reset for testDirectEngineStatistics");
         
         // Test direct SearchFrameworkEngine
@@ -151,6 +151,7 @@ public class SearchStatisticsDiscrepancyTest {
         
         // Index the blockchain directly
         IndexingResult result = directEngine.indexBlockchain(testBlockchain, testPassword, testPrivateKey);
+        IndexingCoordinator.getInstance().waitForCompletion();
         
         logger.info("🚀 Indexing result:");
         logger.info("   - Blocks processed: {}", result.getBlocksProcessed());
@@ -339,7 +340,7 @@ public class SearchStatisticsDiscrepancyTest {
             tempBlockchain.clearAndReinitialize();
             
             // Clear global search engine state to prevent cross-test contamination
-            SearchFrameworkEngine.clearGlobalProcessingMapForTesting();
+            SearchFrameworkEngine.resetGlobalState();
             
             // Clear IndexingCoordinator state to prevent duplicate indexing prevention
             IndexingCoordinator.getInstance().reset();

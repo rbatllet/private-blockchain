@@ -54,7 +54,7 @@ For tests that create new instances requiring fresh state:
 public void testDirectEngineStatistics() throws Exception {
     // CRITICAL: Clear both coordination systems at method start
     IndexingCoordinator.getInstance().reset();
-    SearchFrameworkEngine.clearGlobalProcessingMapForTesting();
+    SearchFrameworkEngine.resetGlobalState();
     
     // Test execution with fresh state guaranteed
     SearchFrameworkEngine directEngine = new SearchFrameworkEngine();
@@ -82,7 +82,7 @@ public void tearDown() throws Exception {
     }
     
     // Clear static shared state
-    SearchFrameworkEngine.clearGlobalProcessingMapForTesting();
+    SearchFrameworkEngine.resetGlobalState();
     
     // Reset singleton state
     IndexingCoordinator.getInstance().reset();
@@ -104,7 +104,7 @@ Add cleanup methods to components with shared state:
 ```java
 // Example from SearchFrameworkEngine
 @VisibleForTesting
-public static void clearGlobalProcessingMapForTesting() {
+public static void resetGlobalState() {
     globalProcessingMap.clear();
     logger.info("🧪 TESTING: Global processing map cleared");
 }

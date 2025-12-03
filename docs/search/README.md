@@ -47,7 +47,7 @@ api.setDefaultCredentials("username", userKeys);
 
 This directory contains comprehensive documentation for all search functionality in the Private Blockchain.
 
-## 📚 Documents in This Directory (10 files)
+## 📚 Documents in This Directory (11 files)
 
 ### 🎯 Start Here
 | Document | Description | Use Case |
@@ -58,6 +58,7 @@ This directory contains comprehensive documentation for all search functionality
 | Document | Description | Use Case |
 |----------|-------------|----------|
 | **[SEARCH_FRAMEWORK_GUIDE.md](SEARCH_FRAMEWORK_GUIDE.md)** | Complete guide to Search Framework Engine | Professional search with caching |
+| **[INDEXING_GUIDE.md](INDEXING_GUIDE.md)** | Blockchain indexing guide (async vs sync) | Understanding indexing methods |
 | **[SEARCH_COMPARISON.md](SEARCH_COMPARISON.md)** | Detailed comparison of search implementations | Understanding differences |
 | **[SEARCH_PASSWORD_BEHAVIOR.md](SEARCH_PASSWORD_BEHAVIOR.md)** | How passwords affect search scope and strategy | Understanding password-based search |
 

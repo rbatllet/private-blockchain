@@ -587,6 +587,22 @@ public class Blockchain {
         PrivateKey signerPrivateKey,
         PublicKey signerPublicKey
     ) {
+        return addBlockWithKeywords(data, manualKeywords, category, signerPrivateKey, signerPublicKey, false);
+    }
+
+    /**
+     * Add block with keywords and optional auto-indexing control
+     * 
+     * @param skipAutoIndexing If true, skip automatic background indexing (caller must index manually)
+     */
+    public Block addBlockWithKeywords(
+        String data,
+        String[] manualKeywords,
+        String category,
+        PrivateKey signerPrivateKey,
+        PublicKey signerPublicKey,
+        boolean skipAutoIndexing
+    ) {
         // CRITICAL: Validate input parameters BEFORE transaction to allow exceptions to propagate
         if (data == null) {
             throw new IllegalArgumentException("Block data cannot be null");
@@ -787,6 +803,12 @@ public class Blockchain {
                     blockNumber, savedBlock.isDataEncrypted(), hasKeywords);
             }
 
+            // Check if auto-indexing is disabled for this block
+            if (skipAutoIndexing) {
+                logger.debug("⏭️ Auto-indexing skipped for block #{} (skipAutoIndexing=true)", blockNumber);
+                return savedBlock;
+            }
+            
             // FIX: Only use password-based indexing for ENCRYPTED blocks
             // Normal blocks use basic indexing without password to avoid failed indexing attempts
             if (savedBlock.isDataEncrypted()) {
@@ -794,8 +816,9 @@ public class Blockchain {
                 indexBlocksRangeAsync(blockNumber, blockNumber, signerPrivateKey,
                     SearchConstants.DEFAULT_INDEXING_KEY);
             } else {
-                // NORMAL blocks with keywords: Use basic indexing without password (keywords in plain text)
-                indexBlocksRangeAsync(blockNumber, blockNumber);
+                // NORMAL blocks with keywords: Pass private key for indexing (no password needed)
+                // FIX: Pass signerPrivateKey to avoid ./keys/ directory search
+                indexBlocksRangeAsync(blockNumber, blockNumber, signerPrivateKey);
             }
             
             // PERFORMANCE: Don't attach callbacks in non-debug mode - reduces overhead
@@ -1140,12 +1163,19 @@ public class Blockchain {
 
                         // Search for corresponding private key file in ./keys/ directory
                         PrivateKey privateKey = findPrivateKeyForPublicKey(publicKeyStr);
-                        if (privateKey == null) {
-                            logger.warn("⏭️ Skipping block {} - private key file not found for public key: {}...",
+                        
+                        // FIX: For unencrypted blocks, we can index without private key
+                        // Only skip if block is encrypted AND we don't have the key
+                        if (privateKey == null && block.isDataEncrypted()) {
+                            logger.warn("⏭️ Skipping encrypted block {} - private key file not found for public key: {}...",
                                 block.getBlockNumber(),
                                 publicKeyStr.substring(0, Math.min(20, publicKeyStr.length())));
                             skipped++;
                             continue;
+                        }
+                        
+                        if (privateKey == null) {
+                            logger.debug("📋 Indexing unencrypted block {} without private key", block.getBlockNumber());
                         }
 
                         // Index the block with standard password (same as batch indexing)
@@ -1154,7 +1184,7 @@ public class Blockchain {
                         searchFrameworkEngine.indexBlock(
                             block,
                             SearchConstants.DEFAULT_INDEXING_KEY,
-                            privateKey,
+                            privateKey,  // Can be null for unencrypted blocks
                             config
                         );
                         indexed++;

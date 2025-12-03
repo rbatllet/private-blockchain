@@ -3,6 +3,7 @@ package com.rbatllet.blockchain.search;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.config.EncryptionConfig;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.*;
 import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.security.UserRole;
@@ -38,7 +39,7 @@ public class EncryptedBlockThreadSafetyTest {
     @BeforeEach
     void setUp() throws Exception {
         // Clear global processing map before each test to ensure clean state
-        SearchFrameworkEngine.clearGlobalProcessingMapForTesting();
+        SearchFrameworkEngine.resetGlobalState();
 
         blockchain = new Blockchain();
 
@@ -181,6 +182,7 @@ public class EncryptedBlockThreadSafetyTest {
         
         // Initialize search engine
         IndexingResult indexingResult = searchEngine.indexBlockchain(blockchain, testPassword, testPrivateKey);
+        IndexingCoordinator.getInstance().waitForCompletion();
         // With global atomic protection, blocks might already be indexed from previous tests
         // So we check that either blocks were indexed OR the search engine can find existing data
         assertTrue(indexingResult.getBlocksIndexed() > 0 || 
@@ -312,6 +314,7 @@ public class EncryptedBlockThreadSafetyTest {
         
         // Initialize search engine
         IndexingResult initialResult = searchEngine.indexBlockchain(blockchain, testPassword, testPrivateKey);
+        IndexingCoordinator.getInstance().waitForCompletion();
         assertTrue(initialResult.getBlocksIndexed() > 0 || searchEngine.search("Integrity", testPassword, 10).isSuccessful());
         
         int numThreads = 3;

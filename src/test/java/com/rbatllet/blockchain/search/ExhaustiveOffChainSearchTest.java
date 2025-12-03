@@ -6,6 +6,7 @@ import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.entity.OffChainData;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.*;
 import com.rbatllet.blockchain.search.strategy.SearchStrategyRouter;
 import com.rbatllet.blockchain.security.KeyFileLoader;
@@ -215,6 +216,7 @@ public class ExhaustiveOffChainSearchTest {
 
         // Index blockchain
         searchEngine.indexBlockchain(blockchain, testPassword, testPrivateKey);
+        IndexingCoordinator.getInstance().waitForCompletion();
 
         // Perform EXHAUSTIVE_OFFCHAIN search
         long startTime = System.nanoTime();
@@ -309,6 +311,7 @@ public class ExhaustiveOffChainSearchTest {
 
         // Index blockchain with off-chain capability
         searchEngine.indexBlockchain(blockchain, testPassword, testPrivateKey);
+        IndexingCoordinator.getInstance().waitForCompletion();
 
         // Search for content that should be in off-chain file
         SearchResult result = searchEngine.searchExhaustiveOffChain(
@@ -490,6 +493,7 @@ public class ExhaustiveOffChainSearchTest {
         // Index blockchain
         long indexStartTime = System.nanoTime();
         searchEngine.indexBlockchain(blockchain, testPassword, testPrivateKey);
+        IndexingCoordinator.getInstance().waitForCompletion();
         long indexEndTime = System.nanoTime();
         double indexTimeMs = (indexEndTime - indexStartTime) / 1_000_000.0;
 
@@ -566,6 +570,7 @@ public class ExhaustiveOffChainSearchTest {
         }
 
         searchEngine.indexBlockchain(blockchain, testPassword, testPrivateKey);
+        IndexingCoordinator.getInstance().waitForCompletion();
 
         // Test with wrong password
         SearchResult wrongPasswordResult =
@@ -675,6 +680,7 @@ public class ExhaustiveOffChainSearchTest {
         }
 
         searchEngine.indexBlockchain(blockchain, testPassword, testPrivateKey);
+        IndexingCoordinator.getInstance().waitForCompletion();
 
         // Concurrent search testing
         int threadCount = 10;
@@ -817,6 +823,7 @@ public class ExhaustiveOffChainSearchTest {
         }
 
         searchEngine.indexBlockchain(blockchain, testPassword, testPrivateKey);
+        IndexingCoordinator.getInstance().waitForCompletion();
 
         // First search (populate cache)
         long firstSearchStart = System.nanoTime();
@@ -916,6 +923,7 @@ public class ExhaustiveOffChainSearchTest {
 
         // 2. Index blockchain
         searchEngine.indexBlockchain(blockchain, testPassword, testPrivateKey);
+        IndexingCoordinator.getInstance().waitForCompletion();
 
         // 3. Test different search strategies
 

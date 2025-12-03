@@ -240,7 +240,7 @@ void testConcurrentBlockIndexing() {
 2. **Trust the double-check**: After acquiring lock, check if work is still needed
 3. **Accept `indexed == 0`**: Normal in concurrent scenarios
 4. **Use `waitForCompletion()`**: In tests, wait for background indexing before assertions
-5. **Clean up in tests**: Call `clearGlobalProcessingMapForTesting()` in tearDown
+5. **Clean up in tests**: Call `resetGlobalState()` in tearDown
 
 ---
 

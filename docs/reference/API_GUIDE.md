@@ -2227,9 +2227,19 @@ List<Block> contentResults = blockchain.searchBlocksByContent("searchTerm");  //
 Block hashResult = blockchain.getBlockByHash("hashString");
 List<Block> dateResults = blockchain.getBlocksByDateRange(startDate, endDate);  // Max 10K
 
-// Add blocks with keywords and categories
+// Add blocks with keywords and categories (auto-indexed by default)
 boolean success = blockchain.addBlockWithKeywords(data, manualKeywords, category, privateKey, publicKey);
+
+// Skip auto-indexing when you need manual control (e.g., unit tests, demos)
+blockchain.addBlockWithKeywords(data, manualKeywords, category, privateKey, publicKey, true);  // skipAutoIndexing=true
+// Later: manually index when ready
+SearchFrameworkEngine engine = new SearchFrameworkEngine();
+engine.indexBlockchainSync(blockchain, password, privateKey);  // Sync indexing for tests/demos
 ```
+
+> **📚 Search & Indexing Documentation**: For complete documentation on `SearchFrameworkEngine` API including `indexBlockchain()`, `indexBlockchainSync()`, and advanced search methods, see:
+> - **[INDEXING_GUIDE.md](../search/INDEXING_GUIDE.md)** - Complete indexing API reference with async/sync patterns, use cases, and examples
+> - **[SEARCH_FRAMEWORK_GUIDE.md](../search/SEARCH_FRAMEWORK_GUIDE.md)** - Advanced search capabilities, filtering, and best practices
 
 ### Blockchain Class API
 
@@ -2546,7 +2556,7 @@ safeBlock.setCustomMetadata("{}"); // ✅ Safe
 
 ```java
 public Block addBlockWithKeywords(String data, String[] manualKeywords, String category, 
-                                PrivateKey privateKey, PublicKey publicKey)
+                                PrivateKey privateKey, PublicKey publicKey, boolean skipAutoIndexing)
 ```
 - **Parameters:**
   - `data`: The content to store in the block (max 10,000 characters)
@@ -2554,9 +2564,14 @@ public Block addBlockWithKeywords(String data, String[] manualKeywords, String c
   - `category`: Content category (e.g., "MEDICAL", "FINANCE", "TECHNICAL", "LEGAL")
   - `privateKey`: Private key for signing the block
   - `publicKey`: Public key for verification (must be authorized)
+  - `skipAutoIndexing`: If `true`, skips automatic background indexing. Use when you plan to index manually with `indexBlockchainSync()` or `indexBlockchain()`. Default is `false` (auto-index immediately).
 - **Returns:** The created `Block` object with search metadata populated
 - **Description:** Enhanced block creation with search functionality. Combines manual keywords with automatic keyword extraction to enable efficient hybrid search capabilities.
 - **Thread-Safety:** Fully thread-safe with global locking
+- **Indexing Behavior:**
+  - **Auto-Indexing (default)**: `skipAutoIndexing = false` - Block is automatically indexed in background immediately after creation
+  - **Manual Indexing**: `skipAutoIndexing = true` - Block is NOT indexed automatically. You must call `indexBlockchainSync()` or `indexBlockchain()` manually when ready
+  - **Use Manual Indexing When**: Unit tests need synchronous indexing, demo scripts need predictable flow, or CLI tools need guaranteed completion before search
 - **Search Features:**
   - **Manual Keywords**: User-specified terms for targeted search results
   - **Automatic Extraction**: System extracts universal keywords (dates, numbers, emails, codes)
