@@ -232,14 +232,8 @@
                 <configuration>
                     <!-- JUnit 6 uses new command structure: junit execute [options] -->
                     <executable>java</executable>
-                    <commandlineArgs>${argLine} -cp "%classpath" org.junit.platform.console.ConsoleLauncher execute --scan-class-path --exclude-tag slow --exclude-tag extreme --details tree</commandlineArgs>
+                    <commandlineArgs>${argLine} -Dlog4j2.configurationFile=classpath:${log4j2.configurationFile} -cp "%classpath" org.junit.platform.console.ConsoleLauncher execute --scan-class-path --exclude-tag slow --exclude-tag extreme --details tree</commandlineArgs>
                     <classpathScope>test</classpathScope>
-                    <systemProperties>
-                        <systemProperty>
-                            <key>log4j2.configurationFile</key>
-                            <value>classpath:${log4j2.configurationFile}</value>
-                        </systemProperty>
-                    </systemProperties>
                 </configuration>
                 <executions>
                     <execution>
@@ -327,6 +321,14 @@
             <id>production</id>
             <properties>
                 <log4j2.configurationFile>log4j2-core-production.xml</log4j2.configurationFile>
+            </properties>
+        </profile>
+        
+        <!-- CI/CD profile - minimal test logging -->
+        <profile>
+            <id>ci</id>
+            <properties>
+                <log4j2.configurationFile>log4j2-ci.xml</log4j2.configurationFile>
             </properties>
         </profile>
     </profiles>

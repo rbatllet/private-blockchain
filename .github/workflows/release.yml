@@ -39,14 +39,12 @@ jobs:
         
     - name: Run tests
       run: |
-        mvn clean test-compile exec:exec@run-tests -q -B \
-          -Dlog4j2.configurationFile=file:src/test/resources/log4j2-ci.xml \
+        mvn clean test-compile exec:exec@run-tests -q -B -Pci \
           -Dmaven.test.failure.ignore=false
       shell: zsh {0}    
     - name: Build JAR with dependencies
       run: |
-        mvn clean package -q -B \
-          -Dlog4j2.configurationFile=file:src/main/resources/log4j2-production.xml \
+        mvn clean package -q -B -Pproduction \
           -DskipTests=true \
           -Dmaven.javadoc.skip=true
       shell: zsh {0}
