@@ -203,8 +203,16 @@ public class SearchFrameworkSyncIndexingTest {
         
         // Then
         assertTrue(result.getBlocksIndexed() > 0, "Should have completed indexing");
-        assertTrue(endTime - startTime >= result.getIndexingTimeMs(),
-            "Method should block until indexing completes");
+        
+        // System.currentTimeMillis() has 1ms resolution, System.nanoTime() has nanosecond resolution
+        // Allow 2ms tolerance for clock precision differences
+        long actualDuration = endTime - startTime;
+        double reportedDuration = result.getIndexingTimeMs();
+        long tolerance = 2; // milliseconds
+        
+        assertTrue(actualDuration + tolerance >= reportedDuration,
+            String.format("Method should block until indexing completes (actual: %dms, reported: %.2fms, tolerance: %dms)",
+                actualDuration, reportedDuration, tolerance));
         
         // Verify immediately searchable (proves indexing is complete)
         SearchFrameworkEngine.SearchResult searchResult = 

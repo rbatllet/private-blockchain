@@ -1778,16 +1778,16 @@ public class Blockchain {
                 // Delegate to synchronous indexBlocksRange() WITH private key:
                 // - If privateKey is provided, uses it directly (no ./keys/ search needed)
                 // - If privateKey is null, falls back to ./keys/ search
-                // - Throws exception if indexing fails (no silent failures)
+                // - May return 0 if blocks have no keywords (privacy-by-design) - this is NORMAL
                 long indexed = indexBlocksRange(startBlock, endBlock, privateKey);
 
+                // Note: indexed == 0 is VALID for blocks without keywords (privacy-by-design)
+                // Only log, don't throw exception
                 if (indexed == 0) {
-                    throw new RuntimeException(
-                        "Indexing failed: 0 blocks indexed (private key not available)"
-                    );
+                    logger.debug("⏭️ Background indexing: 0 blocks indexed (blocks may have no keywords - privacy-by-design)");
+                } else {
+                    logger.info("✅ Background indexing completed: {} blocks indexed", indexed);
                 }
-
-                logger.info("✅ Background indexing completed: {} blocks indexed", indexed);
             } catch (Exception e) {
                 logger.error("❌ Background indexing failed for blocks [{}, {}]: {}",
                     startBlock, endBlock, e.getMessage(), e);
