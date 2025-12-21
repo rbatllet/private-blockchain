@@ -4365,6 +4365,32 @@ public List<Block> searchWithPagination(String searchTerm, int page, int pageSiz
 ```java
 public class BlockchainService {
     
+    // Example result class for operation outcomes
+    public static class BlockOperationResult {
+        private final boolean success;
+        private final String message;
+        private final String blockHash;
+        
+        private BlockOperationResult(boolean success, String message, String blockHash) {
+            this.success = success;
+            this.message = message;
+            this.blockHash = blockHash;
+        }
+        
+        public static BlockOperationResult success(String message) {
+            return new BlockOperationResult(true, message, null);
+        }
+        
+        public static BlockOperationResult failure(String message) {
+            return new BlockOperationResult(false, message, null);
+        }
+        
+        // Getters
+        public boolean isSuccess() { return success; }
+        public String getMessage() { return message; }
+        public String getBlockHash() { return blockHash; }
+    }
+    
     public BlockOperationResult addBlockSafely(String data, PrivateKey privateKey, 
                                              PublicKey publicKey) {
         try {
@@ -4376,12 +4402,14 @@ public class BlockchainService {
             boolean success = blockchain.addBlock(data, privateKey, publicKey);
             
             if (success) {
-                // Post-validation
-                ChainValidationResult validationResult = blockchain.validateChainDetailed();
-                if (!validationResult.isStructurallyIntact()) {
-                    // Rollback if chain becomes invalid
+                // Post-validation: validate the newly added block
+                Block newBlock = blockchain.getLatestBlock();
+                Block previousBlock = blockchain.getBlockByNumber(newBlock.getBlockNumber() - 1);
+                
+                if (!blockchain.validateBlock(newBlock, previousBlock)) {
+                    // Rollback if block is invalid
                     blockchain.rollbackBlocks(1);
-                    return BlockOperationResult.failure("Chain validation failed after block addition");
+                    return BlockOperationResult.failure("Block validation failed after addition");
                 }
                 
                 return BlockOperationResult.success("Block added successfully");
@@ -4413,31 +4441,6 @@ public class BlockchainService {
         if (!blockchain.isKeyAuthorized(publicKeyString)) {
             throw new SecurityException("Public key not authorized");
         }
-    }
-    
-    public static class BlockOperationResult {
-        private final boolean success;
-        private final String message;
-        private final String blockHash;
-        
-        private BlockOperationResult(boolean success, String message, String blockHash) {
-            this.success = success;
-            this.message = message;
-            this.blockHash = blockHash;
-        }
-        
-        public static BlockOperationResult success(String message) {
-            return new BlockOperationResult(true, message, null);
-        }
-        
-        public static BlockOperationResult failure(String message) {
-            return new BlockOperationResult(false, message, null);
-        }
-        
-        // Getters
-        public boolean isSuccess() { return success; }
-        public String getMessage() { return message; }
-        public String getBlockHash() { return blockHash; }
     }
 }
 ```

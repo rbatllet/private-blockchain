@@ -4,6 +4,9 @@ import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.entity.OffChainData;
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.util.CryptoUtil;
+
+import tools.jackson.databind.ObjectMapper;
+
 import com.rbatllet.blockchain.util.CompressionUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,9 +17,6 @@ import java.util.*;
 import java.util.Collections;
 import java.security.PrivateKey;
 import com.rbatllet.blockchain.service.SecureBlockEncryptionService;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 /**
  * Advanced Metadata Layer Manager for Encryption-First Search Architecture
@@ -38,7 +38,6 @@ public class MetadataLayerManager {
     
     public MetadataLayerManager() {
         this.objectMapper = new ObjectMapper();
-        this.objectMapper.registerModule(new JavaTimeModule());
     }
     
     /**

@@ -115,8 +115,8 @@ Example error log entry:
 ```
 2025-11-03 14:23:45.123 [pool-2-thread-5] ERROR com.rbatllet.blockchain.search.SearchFrameworkEngine - ❌ FAILED to index block ab12cd34 with strategy: Full decryption | Instance: SFE-001 | Error: Password decryption failed
 java.security.InvalidKeyException: Invalid AES key length
-    at com.rbatllet.blockchain.encryption.AESEncryption.decrypt(AESEncryption.java:145)
-    at com.rbatllet.blockchain.search.MetadataManager.generateMetadataLayers(MetadataManager.java:234)
+    at com.rbatllet.blockchain.service.BlockDataEncryptionService.decryptBlockData(BlockDataEncryptionService.java:145)
+    at com.rbatllet.blockchain.search.metadata.MetadataLayerManager.generateMetadataLayers(MetadataLayerManager.java:234)
     ...
 ```
 

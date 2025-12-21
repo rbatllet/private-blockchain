@@ -1,14 +1,15 @@
 package com.rbatllet.blockchain.search.strategy;
 
 import com.rbatllet.blockchain.util.CryptoUtil;
+
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.JsonNodeType;
+
 import com.rbatllet.blockchain.util.CompressionUtil;
 import com.rbatllet.blockchain.search.metadata.PrivateMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -48,7 +49,6 @@ public class EncryptedContentSearch {
         
         // Initialize Jackson ObjectMapper for JSON parsing
         this.objectMapper = new ObjectMapper();
-        this.objectMapper.registerModule(new JavaTimeModule());
     }
     
     /**
@@ -218,8 +218,8 @@ public class EncryptedContentSearch {
             if (keywordsNode != null && keywordsNode.isArray()) {
                 Set<String> keywords = new HashSet<>();
                 for (JsonNode keyword : keywordsNode) {
-                    if (keyword.isTextual()) {
-                        keywords.add(keyword.asText());
+                    if (keyword.getNodeType() == JsonNodeType.STRING) {
+                        keywords.add(keyword.asString());
                     }
                 }
                 metadata.setDetailedKeywords(keywords);
@@ -233,8 +233,8 @@ public class EncryptedContentSearch {
             if (sensitiveNode != null && sensitiveNode.isArray()) {
                 Set<String> sensitiveTerms = new HashSet<>();
                 for (JsonNode term : sensitiveNode) {
-                    if (term.isTextual()) {
-                        sensitiveTerms.add(term.asText());
+                    if (term.getNodeType() == JsonNodeType.STRING) {
+                        sensitiveTerms.add(term.asString());
                     }
                 }
                 metadata.setSensitiveTerms(sensitiveTerms);
@@ -246,8 +246,8 @@ public class EncryptedContentSearch {
             if (identifiersNode != null && identifiersNode.isArray()) {
                 Set<String> identifiers = new HashSet<>();
                 for (JsonNode id : identifiersNode) {
-                    if (id.isTextual()) {
-                        identifiers.add(id.asText());
+                    if (id.getNodeType() == JsonNodeType.STRING) {
+                        identifiers.add(id.asString());
                     }
                 }
                 metadata.setIdentifiers(identifiers);
@@ -256,14 +256,14 @@ public class EncryptedContentSearch {
             
             // Extract content summary
             JsonNode summaryNode = jsonNode.get("contentSummary");
-            if (summaryNode != null && summaryNode.isTextual()) {
-                metadata.setContentSummary(summaryNode.asText());
+            if (summaryNode != null && summaryNode.getNodeType() == JsonNodeType.STRING) {
+                metadata.setContentSummary(summaryNode.asString());
             }
             
             // Extract content category
             JsonNode categoryNode = jsonNode.get("detailedCategory");
-            if (categoryNode != null && categoryNode.isTextual()) {
-                metadata.setContentCategory(categoryNode.asText());
+            if (categoryNode != null && categoryNode.getNodeType() == JsonNodeType.STRING) {
+                metadata.setContentCategory(categoryNode.asString());
             }
             
             return metadata;

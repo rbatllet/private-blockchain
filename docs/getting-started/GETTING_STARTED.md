@@ -200,8 +200,7 @@ AdvancedSearchResult results = api.performAdvancedSearch(criteria, password, 25)
 KeyPair newUserKeys = api.createUser("alice-researcher");
 
 // Save keys securely
-SecureKeyStorage.savePrivateKey("alice-researcher", 
-    newUserKeys.getPrivate(), "userPassword");
+SecureKeyStorage.savePrivateKey("alice-researcher", newUserKeys.getPrivate(), "userPassword");
 ```
 
 ### Load Existing User

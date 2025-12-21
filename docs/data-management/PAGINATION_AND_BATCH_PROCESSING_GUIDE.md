@@ -302,16 +302,14 @@ public class PaginatedBlockchainSearch {
     
     public List<Block> searchBlocksWithCriteria(String criteria) {
         List<Block> results = new ArrayList<>();
-        SearchOptions options = SearchOptions.builder()
-            .withBatchSize(150)
-            .withMaxResults(1000)
-            .withTimeout(30000)
-            .memoryAware(true);
+        
+        // Configuration
+        int batchSize = 150;
+        int maxResults = 1000;
 
         long offset = 0;  // ⚠️ Use long to prevent overflow with large blockchains
-        int batchSize = options.getBatchSize().orElse(200);
 
-        while (results.size() < options.getMaxResults().orElse(Integer.MAX_VALUE)) {
+        while (results.size() < maxResults) {
             List<Block> batch = blockchain.getBlocksPaginated(offset, batchSize);
             if (batch.isEmpty()) break;
 
@@ -407,10 +405,9 @@ public class StreamProcessingExample {
 
 ```java
 public class MemoryAwarePagination {
-    private final MemoryManagementService memoryService = MemoryManagementService.getInstance();
     
     public List<Block> getBlocksWithMemoryManagement(int requestedSize) {
-        MemoryStats stats = memoryService.getMemoryStats();
+        MemoryStats stats = MemoryManagementService.getMemoryStats();
         
         // Adjust batch size based on memory pressure
         int batchSize;

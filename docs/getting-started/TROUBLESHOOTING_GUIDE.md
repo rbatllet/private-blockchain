@@ -91,10 +91,13 @@ if (!keyFile.canRead()) {
 
 // Verify key file format
 try {
-    KeyPair testKeys = KeyFileLoader.loadKeysFromFile(keyFile.getPath(), "password");
+    KeyPair testKeys = KeyFileLoader.loadKeyPairFromFiles(
+        keyFile.getPath() + ".private", 
+        keyFile.getPath() + ".public"
+    );
     logger.info("✅ Key file format is valid");
 } catch (Exception e) {
-    logger.error("❌ Key file is corrupted or password is wrong: " + e.getMessage());
+    logger.error("❌ Key file is corrupted or invalid format: " + e.getMessage());
 }
 ```
 

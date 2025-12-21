@@ -306,8 +306,8 @@ String operationId = AdvancedLoggingService.startOperation(type, name, context);
 // 📋 OPERATION_START [VALIDATION] - Block validation operation (ID: op_20240115_143045_001)
 
 // Operation progress (optional)
-AdvancedLoggingService.updateOperationContext(operationId, "progress", "50%");
-// 📋 OPERATION_UPDATE [VALIDATION] - Progress: 50% (ID: op_20240115_143045_001)
+AdvancedLoggingService.logProgress(operationId, 50, "Validation in progress");
+// 📊 PROGRESS [VALIDATION] - 50% - Validation in progress (ID: op_20240115_143045_001)
 
 // Operation end
 AdvancedLoggingService.endOperation(operationId, true, 1, null);
@@ -388,15 +388,15 @@ public void complexWorkflowWithLogging() {
     
     try {
         // Step 1: Data preparation
-        AdvancedLoggingService.updateOperationContext(operationId, "step", "data_preparation");
+        AdvancedLoggingService.logProgress(operationId, 33, "Data preparation");
         prepareData();
         
         // Step 2: Processing
-        AdvancedLoggingService.updateOperationContext(operationId, "step", "processing");
+        AdvancedLoggingService.logProgress(operationId, 66, "Processing data");
         processData();
         
         // Step 3: Validation
-        AdvancedLoggingService.updateOperationContext(operationId, "step", "validation");
+        AdvancedLoggingService.logProgress(operationId, 100, "Validating results");
         validateResults();
         
         AdvancedLoggingService.endOperation(operationId, true, 100, null);
@@ -455,7 +455,8 @@ public void complexWorkflowWithLogging() {
 #### Missing Operation Context
 ```java
 // Ensure proper operation lifecycle
-String operationId = AdvancedLoggingService.startOperation(...);
+String operationId = AdvancedLoggingService.startOperation("SEARCH", "findBlocks", 
+    Map.of("criteria", "encrypted"));
 try {
     // Operation code
 } finally {

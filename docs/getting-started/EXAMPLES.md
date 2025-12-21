@@ -2653,7 +2653,7 @@ public class MultiDepartmentEnterpriseExample {
     }
 
     private static String generateSecureRandomSuffix() {
-        return CryptoUtil.generateRandomString(12); // Assuming this method exists
+        return UUID.randomUUID().toString().substring(0, 12);
     }
 }
 ```

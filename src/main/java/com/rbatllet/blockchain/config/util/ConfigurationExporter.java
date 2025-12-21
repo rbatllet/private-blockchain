@@ -1,10 +1,12 @@
 package com.rbatllet.blockchain.config.util;
 
 import com.rbatllet.blockchain.config.DatabaseConfig;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 
-import java.io.*;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -196,10 +198,11 @@ public final class ConfigurationExporter {
 
         try {
             ObjectMapper mapper = new ObjectMapper();
+            ObjectWriter writer = mapper.writer();
             if (prettyPrint) {
-                mapper.enable(SerializationFeature.INDENT_OUTPUT);
+                writer = writer.withDefaultPrettyPrinter();
             }
-            return mapper.writeValueAsString(data);
+            return writer.writeValueAsString(data);
         } catch (Exception e) {
             throw new RuntimeException("Failed to serialize configuration to JSON", e);
         }

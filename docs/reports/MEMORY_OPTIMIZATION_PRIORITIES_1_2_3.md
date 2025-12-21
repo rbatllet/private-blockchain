@@ -1,6 +1,6 @@
 # Detailed Memory Accumulation Code Findings
 
-## Finding #1: ChainRecoveryManager.exportPartialChain()
+## Finding #1: ChainRecoveryManager.attemptPartialExport()
 
 ### Location
 File: `/Users/user/develop/rbatllet/privateBlockchain/src/main/java/com/rbatllet/blockchain/recovery/ChainRecoveryManager.java`
@@ -8,7 +8,7 @@ Lines: 490-554
 
 ### Current Code (PROBLEMATIC)
 ```java
-private RecoveryResult exportPartialChain(String deletedPublicKey) {
+private RecoveryResult attemptPartialExport(String deletedPublicKey) {
     try {
         logger.info("📤 Exporting valid portion of chain...");
 

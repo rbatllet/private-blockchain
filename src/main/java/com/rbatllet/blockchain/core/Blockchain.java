@@ -1,8 +1,5 @@
 package com.rbatllet.blockchain.core;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.config.MemorySafetyConstants;
 import com.rbatllet.blockchain.config.SearchConstants;
@@ -20,21 +17,30 @@ import com.rbatllet.blockchain.recovery.ChainRecoveryManager.ChainDiagnostic;
 import com.rbatllet.blockchain.recovery.ChainRecoveryManager.RecoveryResult;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.EnhancedSearchResult;
+import com.rbatllet.blockchain.search.SearchLevel;
 import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.search.SearchSpecialistAPI;
 import com.rbatllet.blockchain.service.OffChainStorageService;
 import com.rbatllet.blockchain.service.SecureBlockEncryptionService;
+import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.EncryptionExportUtil;
 import com.rbatllet.blockchain.util.JPAUtil;
+import com.rbatllet.blockchain.util.PathSecurityUtil;
 import com.rbatllet.blockchain.util.validation.BlockValidationUtil;
 import com.rbatllet.blockchain.validation.BlockStatus;
 import com.rbatllet.blockchain.validation.BlockValidationResult;
 import com.rbatllet.blockchain.validation.ChainValidationResult;
 import com.rbatllet.blockchain.validation.EncryptedBlockValidator;
 import jakarta.persistence.EntityManager;
+import tools.jackson.core.JsonEncoding;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectWriter;
+
 import java.io.File;
+import java.io.FileOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -56,6 +62,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.StampedLock;
 import java.util.stream.Stream;
 import org.slf4j.Logger;
@@ -588,6 +595,83 @@ public class Blockchain {
         PublicKey signerPublicKey
     ) {
         return addBlockWithKeywords(data, manualKeywords, category, signerPrivateKey, signerPublicKey, false);
+    }
+
+    /**
+     * Add block with keywords, category, and custom metadata.
+     * This is a convenience method that handles custom metadata serialization.
+     *
+     * @param data Block data content
+     * @param manualKeywords Optional manual keywords array (can be null)
+     * @param category Optional content category (can be null)
+     * @param customMetadata Optional custom metadata map (can be null or empty)
+     * @param signerPrivateKey Private key for signing
+     * @param signerPublicKey Public key for signing
+     * @param skipAutoIndexing If true, skip automatic background indexing
+     * @return Created and saved block with custom metadata
+     * @throws IllegalArgumentException if data or keys are invalid
+     * @throws UnauthorizedKeyException if signer key is not authorized
+     */
+    public Block addBlockWithKeywordsAndMetadata(
+        String data,
+        String[] manualKeywords,
+        String category,
+        java.util.Map<String, String> customMetadata,
+        PrivateKey signerPrivateKey,
+        PublicKey signerPublicKey,
+        boolean skipAutoIndexing
+    ) {
+        // Create block with keywords and category first
+        Block block = addBlockWithKeywords(
+            data,
+            manualKeywords,
+            category,
+            signerPrivateKey,
+            signerPublicKey,
+            skipAutoIndexing
+        );
+
+        // Add custom metadata if provided
+        if (customMetadata != null && !customMetadata.isEmpty()) {
+            String serializedMetadata = com.rbatllet.blockchain.util.CustomMetadataUtil.serializeMetadata(customMetadata);
+            block.setCustomMetadata(serializedMetadata);
+            updateBlock(block);
+        }
+
+        return block;
+    }
+
+    /**
+     * Add block with keywords, category, and custom metadata (with auto-indexing enabled).
+     * This is a convenience method that handles custom metadata serialization.
+     *
+     * @param data Block data content
+     * @param manualKeywords Optional manual keywords array (can be null)
+     * @param category Optional content category (can be null)
+     * @param customMetadata Optional custom metadata map (can be null or empty)
+     * @param signerPrivateKey Private key for signing
+     * @param signerPublicKey Public key for signing
+     * @return Created and saved block with custom metadata
+     * @throws IllegalArgumentException if data or keys are invalid
+     * @throws UnauthorizedKeyException if signer key is not authorized
+     */
+    public Block addBlockWithKeywordsAndMetadata(
+        String data,
+        String[] manualKeywords,
+        String category,
+        java.util.Map<String, String> customMetadata,
+        PrivateKey signerPrivateKey,
+        PublicKey signerPublicKey
+    ) {
+        return addBlockWithKeywordsAndMetadata(
+            data,
+            manualKeywords,
+            category,
+            customMetadata,
+            signerPrivateKey,
+            signerPublicKey,
+            false
+        );
     }
 
     /**
@@ -4558,44 +4642,17 @@ public class Blockchain {
      * @since 1.0.6
      */
     private void isValidFilePath(String filePath, String operation) {
-        // Fast validation checks first
-        if (filePath == null || filePath.trim().isEmpty()) {
-            logger.error("❌ {} file path cannot be null or empty", operation);
-            throw new IllegalArgumentException(operation + " file path cannot be null or empty");
-        }
-
-        // SECURITY: Comprehensive path traversal prevention
-        if (filePath.contains("..") || filePath.contains("%2e%2e") ||
-            filePath.contains("%252e%252e") || filePath.contains("\\..") ||
-            filePath.contains("/..")) {
-            logger.error("❌ SECURITY: Path traversal attempt detected in {}: {}", operation, filePath);
-            throw new SecurityException(
-                "SECURITY: Path traversal attempt detected in " + operation + ": " + filePath
-            );
-        }
+        // Use PathSecurityUtil for core security validation
+        PathSecurityUtil.validateFilePath(filePath, operation);
 
         // Fast extension check for export/import
         boolean isExportImport = "export".equals(operation) || "import".equals(operation);
-        if (isExportImport && !filePath.endsWith(".json")) {
-            logger.error("❌ SECURITY: {} only allowed for .json files: {}", operation, filePath);
-            throw new IllegalArgumentException(
-                "SECURITY: " + operation + " only allowed for .json files: " + filePath
-            );
+        if (isExportImport) {
+            PathSecurityUtil.validateFileExtension(filePath, ".json", operation);
         }
 
-        // Additional security: normalize path and verify it doesn't escape
+        // Additional operation-specific validation
         try {
-            java.nio.file.Path normalizedPath = java.nio.file.Paths.get(filePath).normalize();
-            String normalizedString = normalizedPath.toString();
-
-            // Double-check that normalization didn't reveal traversal
-            if (normalizedString.contains("..")) {
-                logger.error("❌ SECURITY: Path normalization revealed traversal in {}: {}", operation, filePath);
-                throw new SecurityException(
-                    "SECURITY: Path normalization revealed traversal in " + operation + ": " + filePath
-                );
-            }
-
             File file = new File(filePath);
 
             if ("export".equals(operation)) {
@@ -4720,33 +4777,30 @@ public class Blockchain {
 
             // STREAMING JSON EXPORT: Write directly to file without memory accumulation
             ObjectMapper mapper = new ObjectMapper();
-            mapper.registerModule(new JavaTimeModule());
-            mapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+            ObjectWriter writer = mapper.writer().withDefaultPrettyPrinter();
 
             File file = new File(filePath);
             final File finalOffChainBackupDir = offChainBackupDir;
 
-            try (com.fasterxml.jackson.core.JsonGenerator generator = mapper.getFactory()
-                .createGenerator(file, com.fasterxml.jackson.core.JsonEncoding.UTF8)) {
+            try (FileOutputStream fos = new FileOutputStream(file);
+                JsonGenerator generator = writer.createGenerator(fos, JsonEncoding.UTF8)) {
 
-                generator.useDefaultPrettyPrinter(); // Pretty print for readability
                 generator.writeStartObject();
 
                 // Write metadata fields first
-                generator.writeStringField("version", "1.1");
-                generator.writeNumberField("totalBlocks", totalBlocks);
-                generator.writeStringField("exportTimestamp", LocalDateTime.now().toString());
+                generator.writeStringProperty("version", "1.1");
+                generator.writeNumberProperty("totalBlocks", totalBlocks);
+                generator.writeStringProperty("exportTimestamp", LocalDateTime.now().toString());
 
                 // Write authorized keys array
-                generator.writeFieldName("authorizedKeys");
-                mapper.writeValue(generator, allKeys);
+                generator.writeName("authorizedKeys");
+                writer.writeValue(generator, allKeys);
 
                 // STREAMING: Write blocks array one block at a time
-                generator.writeFieldName("blocks");
+                generator.writeName("blocks");
                 generator.writeStartArray();
 
-                java.util.concurrent.atomic.AtomicLong blocksExported =
-                    new java.util.concurrent.atomic.AtomicLong(0);
+                AtomicLong blocksExported = new AtomicLong(0);
 
                 // Stream blocks in batches without accumulating
                 for (long offset = 0; offset < totalBlocks; offset += VALIDATION_BATCH_SIZE) {
@@ -4793,7 +4847,7 @@ public class Blockchain {
                         }
 
                         // Write block directly to JSON stream (no accumulation)
-                        mapper.writeValue(generator, block);
+                        writer.writeValue(generator, block);
                         blocksExported.incrementAndGet();
                     }
 
@@ -4849,7 +4903,6 @@ public class Blockchain {
                 try {
                     // Read and parse JSON file
                     ObjectMapper mapper = new ObjectMapper();
-                    mapper.registerModule(new JavaTimeModule());
 
                     File file = new File(filePath);
                     // Note: File existence already validated in isValidFilePath
@@ -7651,11 +7704,6 @@ public class Blockchain {
 
             // Convert to JSON
             ObjectMapper mapper = new ObjectMapper();
-            mapper.registerModule(new JavaTimeModule());
-            mapper.configure(
-                SerializationFeature.WRITE_DATES_AS_TIMESTAMPS,
-                false
-            );
 
             // Write to file
             File file = new File(filePath);
@@ -7727,7 +7775,6 @@ public class Blockchain {
                 try {
                     // Read and parse JSON file
                     ObjectMapper mapper = new ObjectMapper();
-                    mapper.registerModule(new JavaTimeModule());
 
                     File file = new File(filePath);
                     // Note: File existence already validated in isValidFilePath

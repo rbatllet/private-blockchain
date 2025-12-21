@@ -185,7 +185,67 @@ public class PasswordUtil {
         
         return true;
     }
-    
+
+    /**
+     * Validates if a password meets strong security requirements.
+     *
+     * <p>This method enforces stricter password requirements than {@link #isValidPassword(String)}
+     * and is intended for critical operations such as genesis keys, admin accounts, or any
+     * operation requiring enhanced security.</p>
+     *
+     * <p><strong>Requirements:</strong></p>
+     * <ul>
+     *   <li>Minimum 12 characters (stronger than regular 8)</li>
+     *   <li>Maximum 128 characters</li>
+     *   <li>At least one uppercase letter (A-Z)</li>
+     *   <li>At least one lowercase letter (a-z)</li>
+     *   <li>At least one digit (0-9)</li>
+     *   <li>At least one special character (!@#$%^&*()_+-=[]{}...)</li>
+     * </ul>
+     *
+     * @param password The password to validate
+     * @return Error message if invalid, null if valid
+     * @since 1.0.6
+     */
+    public static String validateStrongPassword(String password) {
+        if (password == null) {
+            return "Password cannot be null";
+        }
+
+        // Minimum length: 12 characters (stronger than regular 8)
+        if (password.length() < 12) {
+            return "Password must be at least 12 characters long";
+        }
+
+        // Maximum length: 128 characters (prevent buffer issues)
+        if (password.length() > 128) {
+            return "Password is too long (maximum 128 characters)";
+        }
+
+        // Check for uppercase letter
+        if (!password.matches(".*[A-Z].*")) {
+            return "Password must contain at least one uppercase letter (A-Z)";
+        }
+
+        // Check for lowercase letter
+        if (!password.matches(".*[a-z].*")) {
+            return "Password must contain at least one lowercase letter (a-z)";
+        }
+
+        // Check for digit
+        if (!password.matches(".*\\d.*")) {
+            return "Password must contain at least one digit (0-9)";
+        }
+
+        // Check for special character
+        if (!password.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?].*")) {
+            return "Password must contain at least one special character (!@#$%^&*()_+-=[]{}...)";
+        }
+
+        // All checks passed
+        return null;
+    }
+
     /**
      * Checks if a code point represents a CJK (Chinese, Japanese, Korean) character.
      * This includes various Unicode blocks for CJK characters.

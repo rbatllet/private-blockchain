@@ -416,7 +416,7 @@ Five critical memory optimizations applied to `UserFriendlyEncryptionAPI.java`:
 #### Priority 1 Additional Optimizations 🆕
 Two quick-win memory optimizations applied after Phase B.5:
 
-**Optimization #1: ChainRecoveryManager.exportPartialChain()** (500MB+ saved)
+**Optimization #1: ChainRecoveryManager internal optimization** (500MB+ saved)
 - **Before**: Accumulated all valid blocks into unused ArrayList → 500MB+ wasted
 - **After**: Use `AtomicLong` counter instead of block accumulation
 - **Result**: Only uses counter for statistics, blocks not needed in memory

@@ -351,13 +351,18 @@ public class CachedSearchService {
 ```java
 @Component
 public class SearchRateLimiter {
-    private final RateLimiter publicSearchLimiter = RateLimiter.create(100.0); // 100 requests/second
+    private final AtomicInteger requestCount = new AtomicInteger(0);
+    private final long windowStartTime = System.currentTimeMillis();
+    private static final int MAX_REQUESTS_PER_SECOND = 100;
     
     public List<EnhancedSearchResult> rateLimitedPublicSearch(String query) {
-        if (!publicSearchLimiter.tryAcquire()) {
+        long currentTime = System.currentTimeMillis();
+        if (currentTime - windowStartTime < 1000 && 
+            requestCount.get() >= MAX_REQUESTS_PER_SECOND) {
             throw new RateLimitExceededException("Public search rate limit exceeded");
         }
         
+        requestCount.incrementAndGet();
         return searchAPI.searchPublic(query);
     }
 }

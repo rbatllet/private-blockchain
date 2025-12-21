@@ -219,11 +219,11 @@ if (loadedKey != null) {
 ```java
 import com.rbatllet.blockchain.security.KeyFileLoader;
 
-// Save keys to encrypted file
-KeyFileLoader.saveKeysToFile(userKeys, "user-keys.dat", protectionPassword);
+// Save key pair to separate files
+KeyFileLoader.saveKeyPairToFiles(userKeys, "user.private", "user.public");
 
-// Load keys from encrypted file
-KeyPair loadedKeys = KeyFileLoader.loadKeysFromFile("user-keys.dat", protectionPassword);
+// Load key pair from separate files
+KeyPair loadedKeys = KeyFileLoader.loadKeyPairFromFiles("user.private", "user.public");
 
 // Verify key integrity
 boolean keysMatch = Arrays.equals(

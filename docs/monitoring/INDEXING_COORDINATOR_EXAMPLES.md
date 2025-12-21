@@ -437,6 +437,8 @@ class MyBlockchainTests {
 
 ### 🎯 Controlled Indexing in Tests
 
+> **Note**: Examples use constructor syntax. `IndexingRequest` parameters: operation, blocks, blockchain, forceRebuild, forceExecution, canWait, minIntervalMs
+
 ```java
 @Test
 @DisplayName("Should perform controlled indexing operations")
@@ -447,20 +449,14 @@ void shouldPerformControlledIndexing() {
     // When: Force indexing operations in test mode
     CompletableFuture<IndexingCoordinator.IndexingResult> metadataResult = 
         coordinator.coordinateIndexing(
-            new IndexingCoordinator.IndexingRequest.Builder()
-                .operation("METADATA_INDEX_REBUILD")
-                .blockchain(blockchain)
-                .forceExecution() // Required in test mode
-                .build()
+            new IndexingCoordinator.IndexingRequest(
+                "METADATA_INDEX_REBUILD", null, blockchain, false, true, true, 1000L)
         );
 
     CompletableFuture<IndexingCoordinator.IndexingResult> cacheResult = 
         coordinator.coordinateIndexing(
-            new IndexingCoordinator.IndexingRequest.Builder()
-                .operation("ENCRYPTED_BLOCKS_CACHE_REBUILD")
-                .blockchain(blockchain)
-                .forceExecution()
-                .build()
+            new IndexingCoordinator.IndexingRequest(
+                "ENCRYPTED_BLOCKS_CACHE_REBUILD", null, blockchain, false, true, true, 1000L)
         );
 
     // Then: Wait for completion and verify results
@@ -482,24 +478,18 @@ void shouldPerformControlledIndexing() {
 @Test
 @DisplayName("Should respect minimum intervals between operations")
 void shouldRespectMinimumIntervals() {
-    // When: Execute same operation twice quickly
+    // When: Execute same operation twice
     CompletableFuture<IndexingCoordinator.IndexingResult> result1 = 
         coordinator.coordinateIndexing(
-            new IndexingCoordinator.IndexingRequest.Builder()
-                .operation("TEST_OPERATION")
-                .forceExecution()
-                .minInterval(500) // 500ms minimum interval
-                .build()
+            new IndexingCoordinator.IndexingRequest(
+                "TEST_OPERATION", null, null, false, true, true, 500L)
         );
 
     // Immediately try again
     CompletableFuture<IndexingCoordinator.IndexingResult> result2 = 
         coordinator.coordinateIndexing(
-            new IndexingCoordinator.IndexingRequest.Builder()
-                .operation("TEST_OPERATION")
-                .forceExecution()
-                .minInterval(500)
-                .build()
+            new IndexingCoordinator.IndexingRequest(
+                "TEST_OPERATION", null, null, false, true, true, 500L)
         );
 
     // Then: First should complete, second should be skipped
@@ -542,12 +532,8 @@ public class CustomIndexingExample {
         IndexingCoordinator coordinator = IndexingCoordinator.getInstance();
         
         IndexingCoordinator.IndexingRequest request = 
-            new IndexingCoordinator.IndexingRequest.Builder()
-                .operation("CUSTOM_ANALYTICS_INDEX")
-                .blocks(blocks)
-                .minInterval(60000) // 1 minute minimum interval
-                .cannotWait() // Don't wait if another operation is running
-                .build();
+            new IndexingCoordinator.IndexingRequest(
+                "CUSTOM_ANALYTICS_INDEX", blocks, null, false, false, false, 60000L);
         
         coordinator.coordinateIndexing(request)
             .thenAccept(result -> {
@@ -638,12 +624,9 @@ public class ProductionBlockchainService {
     @Scheduled(fixedDelay = 300000) // Every 5 minutes
     public void scheduledMaintenance() {
         coordinator.coordinateIndexing(
-            new IndexingCoordinator.IndexingRequest.Builder()
-                .operation("PRODUCTION_METADATA_INDEX")
-                .blockchain(api.getBlockchain())
-                .minInterval(300000) // 5 minutes minimum
-                .cannotWait() // Skip if busy
-                .build()
+            new IndexingCoordinator.IndexingRequest(
+                "PRODUCTION_METADATA_INDEX", null, api.getBlockchain(), 
+                false, false, false, 300000L)
         );
     }
     
@@ -693,11 +676,8 @@ public class HighThroughputBlockchainApp {
         // Coordinate indexing after processing
         processingFuture.thenRun(() -> {
             coordinator.coordinateIndexing(
-                new IndexingCoordinator.IndexingRequest.Builder()
-                    .operation("BULK_METADATA_INDEX")
-                    .blocks(newBlocks)
-                    .minInterval(30000) // 30 seconds minimum
-                    .build()
+                new IndexingCoordinator.IndexingRequest(
+                    "BULK_METADATA_INDEX", newBlocks, null, false, false, true, 30000L)
             ).thenAccept(result -> {
                 if (result.isSuccess()) {
                     notifyIndexingComplete(newBlocks.size(), result.getDurationMs());
@@ -732,11 +712,8 @@ public class BlockchainMicroserviceController {
         
         CompletableFuture<IndexingCoordinator.IndexingResult> future = 
             coordinator.coordinateIndexing(
-                new IndexingCoordinator.IndexingRequest.Builder()
-                    .operation(request.getOperation())
-                    .forceExecution()
-                    .cannotWait() // Return immediately if busy
-                    .build()
+                new IndexingCoordinator.IndexingRequest(
+                    request.getOperation(), null, null, false, true, false, 1000L)
             );
         
         try {
@@ -809,19 +786,14 @@ void setUp() {
 ```java
 // ❌ Problem: Minimum interval too high
 coordinator.coordinateIndexing(
-    new IndexingCoordinator.IndexingRequest.Builder()
-        .operation("MY_OPERATION")
-        .minInterval(300000) // 5 minutes - too long for frequent operations!
-        .build()
+    new IndexingCoordinator.IndexingRequest(
+        "MY_OPERATION", null, null, false, false, true, 300000L)
 );
 
 // ✅ Solution: Adjust interval or use forceRebuild
 coordinator.coordinateIndexing(
-    new IndexingCoordinator.IndexingRequest.Builder()
-        .operation("MY_OPERATION")
-        .minInterval(1000) // 1 second
-        .forceRebuild() // Or force if needed
-        .build()
+    new IndexingCoordinator.IndexingRequest(
+        "MY_OPERATION", null, null, true, false, true, 1000L)
 );
 ```
 
@@ -829,9 +801,7 @@ coordinator.coordinateIndexing(
 ```java
 // ❌ Problem: Not registering custom indexer
 coordinator.coordinateIndexing(
-    new IndexingCoordinator.IndexingRequest.Builder()
-        .operation("CUSTOM_OPERATION") // No indexer registered!
-        .build()
+    new IndexingCoordinator.IndexingRequest("CUSTOM_OPERATION", null, null, false, false, true, 1000L)
 );
 
 // ✅ Solution: Always register before using
@@ -912,12 +882,8 @@ public class IndexingEmergencyProcedures {
         
         for (String operation : criticalOperations) {
             coordinator.coordinateIndexing(
-                new IndexingCoordinator.IndexingRequest.Builder()
-                    .operation(operation)
-                    .forceRebuild()
-                    .forceExecution()
-                    .minInterval(0) // No minimum interval
-                    .build()
+                new IndexingCoordinator.IndexingRequest(
+                    operation, null, null, true, true, true, 0L)
             ).thenAccept(result -> {
                 logger.info("🔄 Emergency rebuild {}: {}", operation, result.getStatus());
             });

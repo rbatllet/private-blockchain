@@ -754,15 +754,10 @@ public class FinancialSearchExample {
     public List<EnhancedSearchResult> searchTransactions(
             String accountId, BigDecimal minAmount) {
         
-        // Build financial search criteria
-        FinancialSearchCriteria criteria = FinancialSearchCriteria.builder()
-            .accountId(accountId)
-            .minAmount(minAmount)
-            .transactionType("TRANSFER")
-            .dateRange(DateRange.lastMonth())
-            .build();
+        // Search financial transactions with keywords
+        String searchTerm = "account:" + accountId + " type:TRANSFER";
             
-        return searchAPI.searchFinancial(criteria, financePassword);
+        return searchAPI.searchEncryptedData(searchTerm, financePassword, 100);
     }
 }
 ```
@@ -885,19 +880,12 @@ public class ComplianceAuditSystem {
     private final SearchSpecialistAPI searchAPI;
     
     public ComplianceReport auditTimeframe(LocalDateTime start, LocalDateTime end) {
-        // Comprehensive audit search
+        // Comprehensive audit search with keywords
+        String searchTerm = "transaction contract record";
         
-        ComplianceSearchCriteria criteria = ComplianceSearchCriteria.builder()
-            .startTime(start)
-            .endTime(end)
-            .includeCategories(Set.of("FINANCIAL", "LEGAL", "MEDICAL"))
-            .requiredTerms(Arrays.asList("transaction", "contract", "record"))
-            .complianceLevel(ComplianceLevel.STRICT)
-            .build();
-            
-        // Perform exhaustive authenticated search
+        // Perform authenticated search across categories
         List<EnhancedSearchResult> auditResults = 
-            searchAPI.searchForCompliance(criteria, auditPasswords);
+            searchAPI.searchEncryptedData(searchTerm, auditPassword, 1000);
             
         // Generate compliance report
         return generateComplianceReport(auditResults);
@@ -1201,12 +1189,12 @@ if (needEncryptedOnly) {
     List<EnhancedSearchResult> encrypted = searchAPI.searchSecure(term, pass, 100);
 }
 
-// Pattern 2: Filtered search
-SearchFilter filter = SearchFilter.builder()
-    .categories(Set.of("MEDICAL"))
-    .timeRange(TimeRange.lastMonth())
-    .build();
-List<EnhancedSearchResult> filtered = searchAPI.searchWithFilter(term, filter);
+// Pattern 2: Category-filtered search
+List<Block> medicalBlocks = blockchain.searchByCategory("MEDICAL");
+List<EnhancedSearchResult> filtered = medicalBlocks.stream()
+    .filter(block -> block.getData().contains(term))
+    .map(block -> new EnhancedSearchResult(block))
+    .collect(Collectors.toList());
 
 // Pattern 3: Batch search
 List<String> terms = Arrays.asList("medical", "patient", "treatment");

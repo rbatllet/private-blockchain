@@ -26,6 +26,7 @@ fi
 
 DOCS_DIR="$BASE_DIR/docs"
 SRC_DIR="$BASE_DIR/src/main/java"
+TEST_DIR="$BASE_DIR/src/test/java"
 
 # Cache for validated method references (to avoid redundant checks)
 # Format: "ClassName.methodName:paramCount" -> "valid"
@@ -48,7 +49,9 @@ IGNORE_CLASSES=(
     "SecureRandom" "Instant" "Duration" "YearMonth" "LocalTime"
     "ConcurrentHashMap" "DateRange" "Persistence" "ThreadLocalRandom"
     "MDC" "Base64" "UUID" "Comparator" "Security" "Files" "Path"
-    "LocalDateTime" "TimeRange" "Objects"
+    "LocalDateTime" "TimeRange" "Objects" "IntStream" "LongStream" "DoubleStream"
+    "DriverManager" "Connection" "PreparedStatement" "ResultSet" "SQLException"
+    "Session" "Transaction" "Query" "Criteria"
 )
 
 if [[ ! -d "$SRC_DIR" ]]; then
@@ -60,6 +63,7 @@ echo "🔍 Checking Java references in documentation..."
 echo "📁 Project root: $BASE_DIR"
 echo "📚 Docs directory: $DOCS_DIR"
 echo "☕ Source directory: $SRC_DIR"
+echo "🧪 Test directory: $TEST_DIR"
 echo ""
 
 # Output file for results
@@ -235,7 +239,7 @@ for md_file in "${MD_FILES[@]}"; do
                         found=true
                         break
                     fi
-                done < <(find "$SRC_DIR" -name "*.java" -type f 2>/dev/null)
+                done < <(find "$SRC_DIR" "$TEST_DIR" -name "*.java" -type f 2>/dev/null)
                 
                 if [[ "$constant_found" == false ]]; then
                     error_msg="❌ INVALID METHOD REFERENCE:
@@ -310,7 +314,7 @@ for md_file in "${MD_FILES[@]}"; do
                 fi
                 
                 [[ "$found" == true ]] && break
-            done < <(find "$SRC_DIR" -name "${class_name}.java" -type f 2>/dev/null)
+            done < <(find "$SRC_DIR" "$TEST_DIR" -name "${class_name}.java" -type f 2>/dev/null)
             
             # If still not found, search in all Java files (class might be inner class)
             if [[ "$found" == false ]]; then
@@ -366,7 +370,7 @@ for md_file in "${MD_FILES[@]}"; do
                     fi
                     
                     [[ "$found" == true ]] && break
-                done < <(find "$SRC_DIR" -name "*.java" -type f 2>/dev/null)
+                done < <(find "$SRC_DIR" "$TEST_DIR" -name "*.java" -type f 2>/dev/null)
             fi
             
             if [[ "$found" == false ]]; then
@@ -518,7 +522,8 @@ for md_file in "${MD_FILES[@]}"; do
                     
                     # Search for constructors: public ClassName(...)
                     # Constructors have the same name as the class
-                    if grep -q "[[:space:]]\<${class_name}\>[[:space:]]*([^)]*)" "$java_file"; then
+                    # Only match constructor DEFINITIONS (with access modifiers), not constructor calls
+                    if grep -q "^[[:space:]]*\(public\|private\|protected\)[[:space:]]\+${class_name}[[:space:]]*(" "$java_file"; then
                         # Found constructor(s), now check parameter count
                         # Extract all constructor signatures
                         typeset -a found_param_counts
@@ -546,12 +551,12 @@ for md_file in "${MD_FILES[@]}"; do
                                     found=true
                                 fi
                             fi
-                        done < <(grep -n "[[:space:]]\<${class_name}\>[[:space:]]*([^)]*)" "$java_file")
+                        done < <(grep -n "^[[:space:]]*\(public\|private\|protected\)[[:space:]]\+${class_name}[[:space:]]*(" "$java_file")
                         
                         break
                     fi
                 fi
-            done < <(find "$SRC_DIR" -name "*.java" -type f 2>/dev/null)
+            done < <(find "$SRC_DIR" "$TEST_DIR" -name "*.java" -type f 2>/dev/null)
             
             # Report errors
             if [[ "$found" == false ]]; then

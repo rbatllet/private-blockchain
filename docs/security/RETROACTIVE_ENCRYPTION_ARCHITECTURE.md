@@ -193,15 +193,23 @@ Conclusion: Chain integrity maintained because data field unchanged.
 ### Validation Flow
 
 ```java
-// EncryptedBlockValidator - Updated validation logic
-public ValidationResult validateEncryptedBlock(Block block) {
+// EncryptedBlockValidator - Real validation logic
+public static EncryptedBlockValidationResult validateEncryptedBlock(Block block) {
     if (!block.isDataEncrypted()) {
-        return ValidationResult.notEncrypted();
+        return new EncryptedBlockValidationResult(false, false, false, false,
+            "Block is not marked as encrypted", null);
     }
     
+    boolean encryptionIntact = true;
+    boolean metadataValid = true;
+    boolean formatCorrect = true;
+    String errorMessage = null;
+    
     // 1. Validate encryption metadata present
-    if (block.getEncryptionMetadata() == null) {
-        return ValidationResult.invalid("Missing encryption metadata");
+    if (block.getEncryptionMetadata() == null || block.getEncryptionMetadata().trim().isEmpty()) {
+        encryptionIntact = false;
+        metadataValid = false;
+        errorMessage = "Encryption metadata is missing or empty";
     }
     
     // 2. CRITICAL: Data field must remain UNCHANGED for hash integrity
@@ -209,11 +217,18 @@ public ValidationResult validateEncryptedBlock(Block block) {
     // Encrypted content is stored separately in encryptionMetadata
     
     // 3. Validate encryption metadata format
-    if (!isValidEncryptionFormat(block.getEncryptionMetadata())) {
-        return ValidationResult.invalid("Invalid encryption format");
+    if (metadataValid && block.getEncryptionMetadata() != null) {
+        if (!isValidEncryptionFormat(block.getEncryptionMetadata())) {
+            encryptionIntact = false;
+            errorMessage = errorMessage == null ? 
+                "Encryption metadata appears corrupted or invalid format" :
+                errorMessage + "; Invalid encryption format";
+        }
     }
     
-    return ValidationResult.valid();
+    boolean isValid = encryptionIntact && metadataValid && formatCorrect;
+    return new EncryptedBlockValidationResult(isValid, encryptionIntact, metadataValid, 
+                                            formatCorrect, errorMessage, null);
 }
 ```
 
@@ -406,7 +421,7 @@ for (Long blockNumber : blockNumbers) {
 }
 
 // Verify chain integrity after batch encryption
-ValidationResult validation = blockchain.validateChain();
+ChainValidationResult validation = blockchain.validateChainDetailed();
 assert validation.isValid();  // Chain integrity maintained
 ```
 
@@ -518,7 +533,7 @@ void testChainValidationWithEncryptedBlocks() {
     blockchain.encryptExistingBlock(toEncrypt.getBlockNumber(), "password");
     
     // Validate entire chain
-    ValidationResult result = blockchain.validateChainDetailed();
+    ChainValidationResult result = blockchain.validateChainDetailed();
     
     assertTrue(result.isValid(), "Chain with encrypted block is valid");
     assertEquals(3, result.getTotalBlocks(), "All blocks validated");

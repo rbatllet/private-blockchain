@@ -5,9 +5,16 @@ import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.dto.ChainExportData;
 import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import org.junit.jupiter.api.*;
+
+import tools.jackson.databind.ObjectMapper;
+
+import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
@@ -227,8 +234,6 @@ class BlockchainAdditionalAdvancedFunctionsTest {
 
         // Read and verify export file content
         ObjectMapper mapper = new ObjectMapper();
-        mapper.registerModule(new JavaTimeModule());
-
         ChainExportData exportData = mapper.readValue(exportFile, ChainExportData.class);
 
         assertNotNull(exportData, "Export data should not be null");

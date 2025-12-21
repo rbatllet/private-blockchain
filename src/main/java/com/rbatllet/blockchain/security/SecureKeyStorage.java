@@ -36,7 +36,28 @@ public class SecureKeyStorage {
     private static final int GCM_IV_LENGTH = 12; // 96-bit IV recommended for GCM
     private static final int GCM_TAG_LENGTH = 16; // 128-bit authentication tag
     private static final int AES_KEY_LENGTH = 32; // 256-bit key
-    
+
+    /**
+     * Get the keys directory, respecting user.dir system property for test isolation.
+     *
+     * @return File object representing the keys directory
+     */
+    private static File getKeysDirectory() {
+        String baseDir = System.getProperty("user.dir", ".");
+        return new File(baseDir, KEYS_DIRECTORY);
+    }
+
+    /**
+     * Get the full path to a key file, respecting user.dir system property.
+     *
+     * @param ownerName Owner identifier
+     * @param extension File extension (.key or .keypair)
+     * @return Full path to the key file
+     */
+    private static String getKeyFilePath(String ownerName, String extension) {
+        return new File(getKeysDirectory(), ownerName.trim() + extension).getPath();
+    }
+
     /**
      * Save a private key encrypted with password using AES-256-GCM
      */
@@ -49,7 +70,7 @@ public class SecureKeyStorage {
             }
 
             // Create directory if it doesn't exist
-            File keysDir = new File(KEYS_DIRECTORY);
+            File keysDir = getKeysDirectory();
             if (!keysDir.exists()) {
                 keysDir.mkdirs();
             }
@@ -82,7 +103,7 @@ public class SecureKeyStorage {
             System.arraycopy(ciphertext, 0, combined, iv.length, ciphertext.length);
 
             // Save to file
-            String fileName = KEYS_DIRECTORY + File.separator + ownerName.trim() + KEY_EXTENSION;
+            String fileName = getKeyFilePath(ownerName, KEY_EXTENSION);
             String encodedKey = Base64.getEncoder().encodeToString(combined);
             Files.write(Paths.get(fileName), encodedKey.getBytes(StandardCharsets.UTF_8));
 
@@ -110,7 +131,7 @@ public class SecureKeyStorage {
             }
 
             // Read encrypted file
-            String fileName = KEYS_DIRECTORY + File.separator + ownerName.trim() + KEY_EXTENSION;
+            String fileName = getKeyFilePath(ownerName, KEY_EXTENSION);
             if (!Files.exists(Paths.get(fileName))) {
                 return null;
             }
@@ -171,7 +192,7 @@ public class SecureKeyStorage {
         if (ownerName == null || ownerName.trim().isEmpty()) {
             return false;
         }
-        String fileName = KEYS_DIRECTORY + File.separator + ownerName.trim() + KEY_EXTENSION;
+        String fileName = getKeyFilePath(ownerName, KEY_EXTENSION);
         return Files.exists(Paths.get(fileName));
     }
     
@@ -183,7 +204,7 @@ public class SecureKeyStorage {
             if (ownerName == null || ownerName.trim().isEmpty()) {
                 return false;
             }
-            String fileName = KEYS_DIRECTORY + File.separator + ownerName.trim() + KEY_EXTENSION;
+            String fileName = getKeyFilePath(ownerName, KEY_EXTENSION);
             return Files.deleteIfExists(Paths.get(fileName));
         } catch (Exception e) {
             return false;
@@ -209,7 +230,7 @@ public class SecureKeyStorage {
             }
 
             // Create directory if it doesn't exist
-            File keysDir = new File(KEYS_DIRECTORY);
+            File keysDir = getKeysDirectory();
             if (!keysDir.exists()) {
                 keysDir.mkdirs();
             }
@@ -254,7 +275,7 @@ public class SecureKeyStorage {
             System.arraycopy(ciphertext, 0, encrypted, iv.length, ciphertext.length);
 
             // Save to file with .keypair extension
-            String fileName = KEYS_DIRECTORY + File.separator + ownerName.trim() + KEYPAIR_EXTENSION;
+            String fileName = getKeyFilePath(ownerName, KEYPAIR_EXTENSION);
             String encodedKey = Base64.getEncoder().encodeToString(encrypted);
             Files.write(Paths.get(fileName), encodedKey.getBytes(StandardCharsets.UTF_8));
 
@@ -288,7 +309,7 @@ public class SecureKeyStorage {
             }
 
             // Read encrypted file
-            String fileName = KEYS_DIRECTORY + File.separator + ownerName.trim() + KEYPAIR_EXTENSION;
+            String fileName = getKeyFilePath(ownerName, KEYPAIR_EXTENSION);
             if (!Files.exists(Paths.get(fileName))) {
                 return null;
             }
@@ -371,7 +392,7 @@ public class SecureKeyStorage {
         if (ownerName == null || ownerName.trim().isEmpty()) {
             return false;
         }
-        String fileName = KEYS_DIRECTORY + File.separator + ownerName.trim() + KEYPAIR_EXTENSION;
+        String fileName = getKeyFilePath(ownerName, KEYPAIR_EXTENSION);
         return Files.exists(Paths.get(fileName));
     }
 
@@ -386,7 +407,7 @@ public class SecureKeyStorage {
             if (ownerName == null || ownerName.trim().isEmpty()) {
                 return false;
             }
-            String fileName = KEYS_DIRECTORY + File.separator + ownerName.trim() + KEYPAIR_EXTENSION;
+            String fileName = getKeyFilePath(ownerName, KEYPAIR_EXTENSION);
             return Files.deleteIfExists(Paths.get(fileName));
         } catch (Exception e) {
             return false;
@@ -397,7 +418,7 @@ public class SecureKeyStorage {
      * List all stored private key owners
      */
     public static String[] listStoredKeys() {
-        File keysDir = new File(KEYS_DIRECTORY);
+        File keysDir = getKeysDirectory();
         if (!keysDir.exists() || !keysDir.isDirectory()) {
             return new String[0];
         }

@@ -1212,8 +1212,11 @@ public String decryptBlockData(long blockNumber, String password) throws Excepti
 
 1. **Use Hardware Security Module (HSM):**
    ```java
-   // Instead of file-based storage, use HSM
-   SecretKey bmek = HSMProvider.loadKey("blockchain-master-key");
+   // Example: HSM integration (requires HSM provider library)
+   // SecretKey bmek = hsmProvider.loadKey("blockchain-master-key");
+   
+   // For development/testing, use file-based storage
+   SecretKey bmek = BlockDataEncryptionService.loadBMEK();
    ```
 
 2. **Shamir's Secret Sharing (3-of-5 scheme):**

@@ -261,7 +261,7 @@ public boolean validateBlock(Block block, String publicKey) {
     }
     
     // Continue with hash validation using proper content
-    String calculatedHash = HashUtil.calculateHash(content);
+    String calculatedHash = CryptoUtil.calculateHash(content);
     return calculatedHash.equals(block.getHash());
 }
 ```

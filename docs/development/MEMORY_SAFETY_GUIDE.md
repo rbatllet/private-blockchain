@@ -85,7 +85,7 @@ All search engines have been refactored to use memory-safe patterns:
 
 - ✅ `Blockchain.exportChain()` - Validates chain size (max 500K blocks), warns at 100K+ blocks
 - ✅ `Blockchain.exportEncryptedChain()` - Validates chain size (max 500K blocks), warns at 100K+ blocks
-- ✅ `Blockchain.rollbackChain()` - Processes rollback in 1000-block batches without loading all blocks into memory
+- ✅ `Blockchain.rollbackBlocks()` - Processes rollback in 1000-block batches without loading all blocks into memory
 - ✅ `Blockchain.validateChainDetailed()` - Validates chain size (max 500K blocks), throws exception >500K blocks
 - ✅ `Blockchain.validateChainStreaming()` - **NEW!** Streaming validation for unlimited blockchain size, processes in batches with consumer callback
 

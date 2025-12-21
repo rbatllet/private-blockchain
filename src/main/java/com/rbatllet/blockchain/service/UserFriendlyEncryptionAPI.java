@@ -13185,6 +13185,82 @@ public class UserFriendlyEncryptionAPI {
 
             KeyPair userKeyPair = createUser(effectiveUsername);
 
+            // Delegate to shared implementation
+            return createBlockWithUserKeyPair(content, userKeyPair, options);
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            logger.error("Failed to create block with options", e);
+            throw new RuntimeException(
+                "Failed to create block: " + e.getMessage(),
+                e
+            );
+        }
+    }
+
+    /**
+     * Creates a block using an existing user's key pair.
+     * This method assumes the user is already created and authorized.
+     *
+     * <p>Use this method when you have already created and authorized a user
+     * through RBAC mechanisms and want to create a block without triggering
+     * another user creation.</p>
+     *
+     * @param content The block content (required, non-empty)
+     * @param userKeyPair The existing user's key pair (required, must be authorized)
+     * @param options Block creation options (encryption, keywords, metadata, etc.)
+     * @return The created block
+     * @throws IllegalArgumentException if content is empty or userKeyPair is null
+     * @throws RuntimeException if block creation fails
+     * @since 1.0.6
+     */
+    public Block createBlockWithExistingUser(
+        String content,
+        KeyPair userKeyPair,
+        BlockCreationOptions options
+    ) {
+        try {
+            // Validate required parameters
+            if (content == null || content.trim().isEmpty()) {
+                throw new IllegalArgumentException(
+                    "Block content cannot be empty"
+                );
+            }
+            if (userKeyPair == null) {
+                throw new IllegalArgumentException(
+                    "User key pair cannot be null"
+                );
+            }
+
+            // Delegate to shared implementation
+            return createBlockWithUserKeyPair(content, userKeyPair, options);
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            logger.error("Failed to create block with existing user", e);
+            throw new RuntimeException(
+                "Failed to create block: " + e.getMessage(),
+                e
+            );
+        }
+    }
+
+    /**
+     * Shared implementation for creating blocks with a user's key pair.
+     * This method contains the core logic used by both createBlockWithOptions()
+     * and createBlockWithExistingUser().
+     *
+     * @param content The block content
+     * @param userKeyPair The user's key pair
+     * @param options Block creation options
+     * @return The created block
+     */
+    private Block createBlockWithUserKeyPair(
+        String content,
+        KeyPair userKeyPair,
+        BlockCreationOptions options
+    ) {
+        try {
             // Check if off-chain storage is requested (handles both encrypted and unencrypted)
             if (options.isOffChain() && options.getOffChainFilePath() != null) {
                 try {
@@ -13388,7 +13464,7 @@ public class UserFriendlyEncryptionAPI {
         } catch (IllegalArgumentException e) {
             throw e;
         } catch (Exception e) {
-            logger.error("Failed to create block with options", e);
+            logger.error("Failed to create block with user key pair", e);
             throw new RuntimeException(
                 "Failed to create block: " + e.getMessage(),
                 e

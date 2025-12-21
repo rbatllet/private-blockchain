@@ -737,9 +737,8 @@ WHERE owner_name = 'BOOTSTRAP_ADMIN'
 1. ✅ Create `UserRole` enum (completed)
 2. ✅ Update `AuthorizedKey` entity with `role` and `createdBy` fields
 3. ✅ Add new `Blockchain.addAuthorizedKey(String, String, KeyPair, UserRole)` signature
-4. ✅ **REMOVE** old `Blockchain.addAuthorizedKey(String, String)` signature (directly removed)
-5. ✅ Update `AuthorizedKeyDAO.saveAuthorizedKey()` to accept role and creator
-6. ✅ Update `UserFriendlyEncryptionAPI` to pass credentials
+4. ✅ Update `AuthorizedKeyDAO.saveAuthorizedKey()` to accept role and creator
+5. ✅ Update `UserFriendlyEncryptionAPI` to pass credentials
 
 ### Step 3: Update Tests
 

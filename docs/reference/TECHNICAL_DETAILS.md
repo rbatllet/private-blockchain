@@ -546,7 +546,7 @@ public boolean verifyIntegrity(OffChainData metadata, String password) {
     byte[] decryptedData = decryptFile(metadata.getFilePath(), password, metadata.getNonce());
     
     // 2. Calculate SHA3-256 hash of decrypted data
-    String calculatedHash = SHA3_256.hash(decryptedData);
+    String calculatedHash = CryptoUtil.calculateHash(new String(decryptedData, StandardCharsets.UTF_8));
     
     // 3. Compare with stored hash
     if (!calculatedHash.equals(metadata.getDataHash())) {
@@ -570,9 +570,8 @@ public boolean verifyIntegrity(OffChainData metadata, String password) {
 ```java
 private String generateOffChainPassword(Long blockNumber, String signerPublicKey) {
     String input = "OFFCHAIN_" + blockNumber + "_" + signerPublicKey;
-    MessageDigest digest = MessageDigest.getInstance("SHA3-256");
-    byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
-    return Base64.getEncoder().encodeToString(hash).substring(0, 32);
+    String hash = CryptoUtil.calculateHash(input);
+    return Base64.getEncoder().encodeToString(hash.getBytes(StandardCharsets.UTF_8)).substring(0, 32);
 }
 ```
 

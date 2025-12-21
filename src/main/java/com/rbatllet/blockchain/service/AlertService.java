@@ -2,8 +2,9 @@ package com.rbatllet.blockchain.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -242,7 +243,7 @@ public class AlertService {
             String jsonAlert = objectMapper.writeValueAsString(alert);
             
             // Log to structured alerts logger
-            String severity = alert.get("severity").asText();
+            String severity = alert.get("severity").asString();
             switch (AlertSeverity.valueOf(severity)) {
                 case CRITICAL:
                     alertLogger.error("🚨 {}", jsonAlert);
@@ -258,7 +259,7 @@ public class AlertService {
             // Update statistics
             totalAlertsGenerated.incrementAndGet();
             alertCountsBySeverity.get(AlertSeverity.valueOf(severity)).incrementAndGet();
-            alertCountsByType.computeIfAbsent(alert.get("alert_type").asText(), k -> new AtomicLong(0)).incrementAndGet();
+            alertCountsByType.computeIfAbsent(alert.get("alert_type").asString(), k -> new AtomicLong(0)).incrementAndGet();
             
         } catch (Exception e) {
             logger.error("Failed to log structured alert: {}", e.getMessage(), e);

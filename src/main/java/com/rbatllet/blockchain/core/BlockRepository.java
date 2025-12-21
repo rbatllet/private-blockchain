@@ -1,6 +1,5 @@
 package com.rbatllet.blockchain.core;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.JPAUtil;
@@ -15,6 +14,8 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityTransaction;
 import jakarta.persistence.LockModeType;
 import jakarta.persistence.TypedQuery;
+import tools.jackson.databind.ObjectMapper;
+
 import org.hibernate.Session;
 import org.hibernate.ScrollableResults;
 import org.hibernate.ScrollMode;
@@ -1632,7 +1633,7 @@ class BlockRepository {
                         String metadata = block.getCustomMetadata();
 
                         // Use Jackson to parse JSON safely
-                        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                        ObjectMapper mapper = new ObjectMapper();
 
                         @SuppressWarnings("unchecked")
                         java.util.Map<String, Object> jsonMap = mapper.readValue(
@@ -1775,7 +1776,7 @@ class BlockRepository {
                         String metadata = block.getCustomMetadata();
 
                         // Parse JSON
-                        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                        ObjectMapper mapper = new ObjectMapper();
 
                         @SuppressWarnings("unchecked")
                         java.util.Map<String, Object> jsonMap = mapper.readValue(
@@ -2871,7 +2872,7 @@ class BlockRepository {
 
                     try {
                         String metadata = block.getCustomMetadata();
-                        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                        ObjectMapper mapper = new ObjectMapper();
 
                         @SuppressWarnings("unchecked")
                         java.util.Map<String, Object> jsonMap = mapper.readValue(
@@ -2973,7 +2974,7 @@ class BlockRepository {
 
                     try {
                         String metadata = block.getCustomMetadata();
-                        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                        ObjectMapper mapper = new ObjectMapper();
 
                         @SuppressWarnings("unchecked")
                         java.util.Map<String, Object> jsonMap = mapper.readValue(

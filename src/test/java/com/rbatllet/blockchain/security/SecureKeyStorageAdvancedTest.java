@@ -353,15 +353,16 @@ public class SecureKeyStorageAdvancedTest {
         // Ensure the private-keys directory is created properly
         String[] keys = SecureKeyStorage.listStoredKeys();
         assertNotNull(keys, "Should be able to list keys even if directory doesn't exist initially");
-        
+
         // Save a key to trigger directory creation
         assertTrue(SecureKeyStorage.savePrivateKey(testOwner, testKeyPair.getPrivate(), testPassword));
-        
-        // Verify directory exists
-        File keysDir = new File("private-keys");
+
+        // Verify directory exists (respect user.dir like SecureKeyStorage does)
+        String baseDir = System.getProperty("user.dir", ".");
+        File keysDir = new File(baseDir, "private-keys");
         assertTrue(keysDir.exists(), "private-keys directory should exist");
         assertTrue(keysDir.isDirectory(), "private-keys should be a directory");
-        
+
         // Verify file was created
         File keyFile = new File(keysDir, testOwner + ".key");
         assertTrue(keyFile.exists(), "Key file should exist");

@@ -1,10 +1,11 @@
 package com.rbatllet.blockchain.util;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -43,7 +44,7 @@ public class CustomMetadataUtil {
         
         try {
             return objectMapper.writeValueAsString(metadataCopy);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             logger.error("❌ Failed to serialize custom metadata: {}", metadataCopy, e);
             throw new RuntimeException("Failed to serialize custom metadata", e);
         }
@@ -66,7 +67,7 @@ public class CustomMetadataUtil {
             Map<String, String> result = objectMapper.readValue(jsonString, typeRef);
             // Return immutable map for thread safety
             return result != null ? Collections.unmodifiableMap(result) : Collections.emptyMap();
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             logger.error("❌ Failed to deserialize custom metadata: {}", jsonString, e);
             throw new RuntimeException("Failed to deserialize custom metadata", e);
         }

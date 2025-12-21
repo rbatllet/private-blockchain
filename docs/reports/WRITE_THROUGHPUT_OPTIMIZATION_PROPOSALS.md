@@ -33,8 +33,8 @@
 
 **✅ Phase 5.2 COMPLETED (2025-11-23)**: Batch Write API with JPA compatibility
 - ✅ `addBlocksBatch()` with optional `skipIndexing` parameter
-- ✅ `addBlocksBatchWithResult()` returns `BatchWriteResult` for async control
-- ✅ `BatchWriteResult` class: memory-efficient (stores count, not list)
+- ✅ `addBlocksBatchWithFuture()` returns `CompletableFuture<IndexingResult>` for async control
+- ✅ Batch write operations with memory-efficient design
 - ✅ Batch authorization validation (1 query instead of N)
 - ✅ Pure JPA strategy (StatelessSession rejected)
 - ✅ JDBC URL optimizations in persistence.xml
@@ -325,8 +325,8 @@ public List<Block> batchInsertBlocks(List<BlockWriteRequest> requests) {
 **Batch API Implementation (Phase 5.2)**: ✅ COMPLETED (2025-11-30)
 - ✅ Add `BlockWriteRequest` DTO class
 - ✅ Implement `Blockchain.addBlocksBatch(List<BlockWriteRequest>, boolean skipIndexing)`
-- ✅ Implement `Blockchain.addBlocksBatchWithResult()` for async control
-- ✅ Add `BatchWriteResult` class (memory-efficient: stores count, not list)
+- ✅ Implement `Blockchain.addBlocksBatchWithFuture()` for async control
+- ✅ Returns `CompletableFuture<IndexingResult>` for async indexing
 - ✅ Add `BlockRepository.batchInsertBlocks()` with JPQL
 - ✅ Comprehensive batch validation tests (Phase_5_2_BatchWriteBenchmark)
 - ✅ Async indexing tests (Phase_5_2_AsyncIndexingTest: 16 tests)
@@ -357,9 +357,9 @@ public static class BatchWriteResult {
 }
 
 // Usage example: memory-efficient batch write with async indexing
-BatchWriteResult result = blockchain.addBlocksBatchWithResult(requests, false);
-int count = result.getBlockCount(); // No memory overhead!
-result.waitForIndexing(); // Wait for indexing when needed
+CompletableFuture<IndexingResult> indexingFuture = blockchain.addBlocksBatchWithFuture(requests, false);
+// Async indexing in background - no blocking!
+indexingFuture.get(); // Wait for indexing when needed
 ```
 
 ---
