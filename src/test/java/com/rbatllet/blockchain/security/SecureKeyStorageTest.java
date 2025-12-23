@@ -23,7 +23,7 @@ public class SecureKeyStorageTest {
 
     private KeyPair testKeyPair;
     private String testOwner = "TestUser";
-    private String testPassword = "securepassword123";
+    private String testPassword = "SecurePassword123!";
 
     @BeforeEach
     void setUp() {

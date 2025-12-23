@@ -17,11 +17,9 @@ public class ConfigurationDiagnosticTest {
     void testInitialDefaults() {
         Blockchain blockchain = new Blockchain();
         System.out.println("=== STEP 1: Initial Defaults ===");
-        System.out.println("MaxBlockDataLength: " + blockchain.getMaxBlockDataLength());
         System.out.println("MaxBlockSizeBytes: " + blockchain.getMaxBlockSizeBytes());
         System.out.println("OffChainThresholdBytes: " + blockchain.getCurrentOffChainThresholdBytes());
-        
-        assertEquals(10000, blockchain.getMaxBlockDataLength(), "Initial MaxBlockDataLength should be 10000");
+
         assertEquals(1024 * 1024, blockchain.getMaxBlockSizeBytes(), "Initial MaxBlockSizeBytes should be 1MB");
         assertEquals(512 * 1024, blockchain.getCurrentOffChainThresholdBytes(), "Initial OffChainThresholdBytes should be 512KB");
     }
@@ -32,14 +30,14 @@ public class ConfigurationDiagnosticTest {
     void testModifyConfiguration() {
         Blockchain blockchain = new Blockchain();
         System.out.println("\n=== STEP 2: Before Modification ===");
-        System.out.println("MaxBlockDataLength: " + blockchain.getMaxBlockDataLength());
-        
-        blockchain.setMaxBlockDataLength(20000);
-        
+        System.out.println("OffChainThresholdBytes: " + blockchain.getCurrentOffChainThresholdBytes());
+
+        blockchain.setOffChainThresholdBytes(256 * 1024); // 256KB
+
         System.out.println("=== STEP 2: After Modification ===");
-        System.out.println("MaxBlockDataLength: " + blockchain.getMaxBlockDataLength());
-        
-        assertEquals(20000, blockchain.getMaxBlockDataLength(), "Modified MaxBlockDataLength should be 20000");
+        System.out.println("OffChainThresholdBytes: " + blockchain.getCurrentOffChainThresholdBytes());
+
+        assertEquals(256 * 1024, blockchain.getCurrentOffChainThresholdBytes(), "Modified OffChainThresholdBytes should be 256KB");
     }
 
     @Test
@@ -48,16 +46,13 @@ public class ConfigurationDiagnosticTest {
     void testNewInstanceDefaults() {
         Blockchain blockchain = new Blockchain();
         System.out.println("\n=== STEP 3: New Instance After Modification ===");
-        System.out.println("MaxBlockDataLength: " + blockchain.getMaxBlockDataLength());
         System.out.println("MaxBlockSizeBytes: " + blockchain.getMaxBlockSizeBytes());
         System.out.println("OffChainThresholdBytes: " + blockchain.getCurrentOffChainThresholdBytes());
-        
-        assertEquals(10000, blockchain.getMaxBlockDataLength(), 
-            "New instance should have default MaxBlockDataLength (10000), but got: " + blockchain.getMaxBlockDataLength());
-        assertEquals(1024 * 1024, blockchain.getMaxBlockSizeBytes(), 
+
+        assertEquals(1024 * 1024, blockchain.getMaxBlockSizeBytes(),
             "New instance should have default MaxBlockSizeBytes");
-        assertEquals(512 * 1024, blockchain.getCurrentOffChainThresholdBytes(), 
-            "New instance should have default OffChainThresholdBytes");
+        assertEquals(512 * 1024, blockchain.getCurrentOffChainThresholdBytes(),
+            "New instance should have default OffChainThresholdBytes (512KB), but got: " + blockchain.getCurrentOffChainThresholdBytes());
     }
 
     @Test
@@ -66,14 +61,14 @@ public class ConfigurationDiagnosticTest {
     void testResetLimitsToDefault() {
         Blockchain blockchain = new Blockchain();
         System.out.println("\n=== STEP 4: Test Reset ===");
-        
-        blockchain.setMaxBlockDataLength(30000);
-        System.out.println("After setting to 30000: " + blockchain.getMaxBlockDataLength());
-        
+
+        blockchain.setOffChainThresholdBytes(128 * 1024); // 128KB
+        System.out.println("After setting to 128KB: " + blockchain.getCurrentOffChainThresholdBytes());
+
         blockchain.resetLimitsToDefault();
-        System.out.println("After reset: " + blockchain.getMaxBlockDataLength());
-        
-        assertEquals(10000, blockchain.getMaxBlockDataLength(), 
-            "After reset should be 10000, but got: " + blockchain.getMaxBlockDataLength());
+        System.out.println("After reset: " + blockchain.getCurrentOffChainThresholdBytes());
+
+        assertEquals(512 * 1024, blockchain.getCurrentOffChainThresholdBytes(),
+            "After reset should be 512KB, but got: " + blockchain.getCurrentOffChainThresholdBytes());
     }
 }

@@ -146,14 +146,12 @@ public class EncryptedChainExportImportTest {
     @Test
     @DisplayName("Export and import with off-chain encrypted data")
     void testOffChainEncryptedDataExportImport() throws Exception {
-        // Generate large data that will be stored off-chain
-        StringBuilder largeData = new StringBuilder();
-        for (int i = 0; i < 50000; i++) {
-            largeData.append("Large encrypted dataset entry ").append(i).append(" with sensitive information. ");
-        }
-        
+        // Generate large data that will be stored off-chain (> 512KB, test expects > 1M chars)
+        // Need between 1M chars and 1MB max (1,048,576 bytes)
+        String largeData = "Large encrypted dataset entry with sensitive information. ".repeat(17500); // ~1.015MB
+
         // Add large block (should go to off-chain storage)
-        Block largeBlock = blockchain.addBlockAndReturn(largeData.toString(), privateKey, publicKey);
+        Block largeBlock = blockchain.addBlockAndReturn(largeData, privateKey, publicKey);
         assertTrue(largeBlock.hasOffChainData(), "Large block should have off-chain data");
 
         // Export and import

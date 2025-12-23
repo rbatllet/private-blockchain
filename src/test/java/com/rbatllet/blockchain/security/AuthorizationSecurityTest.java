@@ -155,7 +155,7 @@ class AuthorizationSecurityTest {
 
         // Try to load credentials without being authorized (should fail)
         SecurityException exception = assertThrows(SecurityException.class, () -> {
-            api.loadUserCredentials("attacker", "password123");
+            api.loadUserCredentials("attacker", "Password123!");
         });
 
         assertTrue(exception.getMessage().contains("AUTHORIZATION REQUIRED"),

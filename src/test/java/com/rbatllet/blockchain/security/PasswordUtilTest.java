@@ -232,7 +232,7 @@ public class PasswordUtilTest {
             "12345678",      // no letters  
             "Pass1",         // too short
             "PASSWORD1",     // valid but could be stronger
-            "password123",   // valid but all lowercase
+            "Password123!",   // valid but all lowercase
             "123ABC",        // too short
             "",              // empty
             "1234567",       // too short and no letters
@@ -241,7 +241,7 @@ public class PasswordUtilTest {
         
         for (String password : invalidPasswords) {
             boolean result = PasswordUtil.isValidPassword(password);
-            if (password.equals("PASSWORD1") || password.equals("password123")) {
+            if (password.equals("PASSWORD1") || password.equals("Password123!")) {
                 // These are actually valid by current criteria, even if not ideal
                 assertTrue(result, "Password should be valid by current criteria: " + password);
             } else {

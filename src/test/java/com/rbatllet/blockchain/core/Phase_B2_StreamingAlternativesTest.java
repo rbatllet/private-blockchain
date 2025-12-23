@@ -162,7 +162,7 @@ public class Phase_B2_StreamingAlternativesTest {
 
         // Create mixed blocks (encrypted and non-encrypted)
         blockchain.addBlock("Plain block 1", keyPair.getPrivate(), keyPair.getPublic());
-        blockchain.addEncryptedBlock("Encrypted block 1", "password123", keyPair.getPrivate(), keyPair.getPublic());
+        blockchain.addEncryptedBlock("Encrypted block 1", "Password123!", keyPair.getPrivate(), keyPair.getPublic());
         blockchain.addBlock("Plain block 2", keyPair.getPrivate(), keyPair.getPublic());
         blockchain.addEncryptedBlock("Encrypted block 2", "password456", keyPair.getPrivate(), keyPair.getPublic());
 

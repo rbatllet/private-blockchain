@@ -242,13 +242,10 @@ class MetadataExtractionMethodsTest {
     @Test
     @DisplayName("📦 Should handle blocks with off-chain data in technical details")
     void testTechnicalDetailsWithOffChainData() throws Exception {
-        // Arrange: Create large content to trigger off-chain storage
-        StringBuilder largeContent = new StringBuilder();
-        for (int i = 0; i < 50000; i++) {
-            largeContent.append("Research data point ").append(i).append(" with extensive details value: 123.45 ");
-        }
-        
-        Block block = blockchain.addBlockAndReturn(largeContent.toString(), testKeyPair.getPrivate(), testKeyPair.getPublic());
+        // Arrange: Create large content to trigger off-chain storage (between 512KB and 1MB)
+        String largeContent = "Research data point with extensive details value: 123.45 ".repeat(10000); // ~600KB
+
+        Block block = blockchain.addBlockAndReturn(largeContent, testKeyPair.getPrivate(), testKeyPair.getPublic());
         
         // Verify block has off-chain data
         assertTrue(block.hasOffChainData(), "Large block should have off-chain data");

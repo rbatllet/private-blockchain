@@ -2054,8 +2054,18 @@ public class UserFriendlyEncryptionAPI {
      * @param password The password to validate
      * @return true if password meets all security requirements
      */
+    /**
+     * Validate password meets strong security requirements.
+     *
+     * <p>This method validates that a password meets the strong security requirements
+     * defined by {@link PasswordUtil#validateStrongPassword(String)}.</p>
+     *
+     * @param password The password to validate
+     * @return true if the password meets all strong requirements, false otherwise
+     * @since 1.0.6
+     */
     public boolean validatePassword(String password) {
-        return PasswordUtil.isValidPassword(password);
+        return PasswordUtil.validateStrongPassword(password) == null;
     }
 
     /**
@@ -2305,24 +2315,31 @@ public class UserFriendlyEncryptionAPI {
     }
 
     /**
-     * Validate password meets security requirements
+     * Validate password meets strong security requirements.
+     *
+     * <p>This method enforces strict password requirements for all encryption operations
+     * to ensure robust security against brute-force and dictionary attacks.</p>
+     *
+     * <p><strong>Requirements (v1.0.6+):</strong></p>
+     * <ul>
+     *   <li>Minimum 12 characters (stronger than previous 8)</li>
+     *   <li>Maximum 128 characters</li>
+     *   <li>At least one uppercase letter (A-Z)</li>
+     *   <li>At least one lowercase letter (a-z)</li>
+     *   <li>At least one digit (0-9)</li>
+     *   <li>At least one special character (!@#$%^&*()_+-=[]{}...)</li>
+     * </ul>
+     *
      * @param password The password to validate
      * @param fieldName Name of the field for error messages
      * @throws IllegalArgumentException if validation fails
+     * @since 1.0.6
      */
     private void validatePasswordSecurity(String password, String fieldName) {
-        if (password == null) {
-            throw new IllegalArgumentException(fieldName + " cannot be null");
-        }
-        if (password.length() < 8) {
-            throw new IllegalArgumentException(
-                fieldName + " must be at least 8 characters long"
-            );
-        }
-        if (password.length() > 256) {
-            throw new IllegalArgumentException(
-                fieldName + " cannot exceed 256 characters (DoS protection)"
-            );
+        // Use centralized strong password validation from PasswordUtil
+        String validationError = PasswordUtil.validateStrongPassword(password);
+        if (validationError != null) {
+            throw new IllegalArgumentException(fieldName + " validation failed: " + validationError);
         }
     }
 

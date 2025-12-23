@@ -32,10 +32,11 @@ class UserFriendlyEncryptionAPISecurityRefactoredTest extends UserFriendlyEncryp
         @ValueSource(strings = {"weak", "123", "1234567", "", "short"}) // Removed "password" and "12345678" as they meet length requirement
         void shouldRejectWeakPasswords(String weakPassword) {
             // Using new assertion utility instead of duplicated validation code
+            // Updated for v1.0.6+ strong password validation (12 characters + complexity)
             ApiAssertions.assertThrowsWithMessage(
                 IllegalArgumentException.class,
                 () -> api.storeSecret(SMALL_DATA, weakPassword),
-                "must be at least 8 characters long"
+                "validation failed"
             );
         }
         

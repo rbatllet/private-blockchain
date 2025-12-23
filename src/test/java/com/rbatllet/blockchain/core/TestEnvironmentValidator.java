@@ -37,8 +37,8 @@ public class TestEnvironmentValidator {
             
             // Verify size validation methods
             int maxSize = blockchain.getMaxBlockSizeBytes();
-            int maxLength = blockchain.getMaxBlockDataLength();
-            System.out.println("   ✅ Block size validation - Max bytes: " + maxSize + ", Max length: " + maxLength);
+            int offChainThreshold = blockchain.getOffChainThresholdBytes();
+            System.out.println("   ✅ Block size validation - Max bytes: " + maxSize + ", Off-chain threshold: " + offChainThreshold);
             
             // Verify that the Additional Advanced Functions exist (without executing them)
             java.lang.reflect.Method[] methods = Blockchain.class.getDeclaredMethods();

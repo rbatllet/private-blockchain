@@ -146,7 +146,6 @@ public class Blockchain {
     // SECURITY FIX: Consistent block size validation
     // Use single byte-based limit for all data types to prevent confusion and bypass attempts
     private static final int MAX_BLOCK_SIZE_BYTES = 1024 * 1024; // 1MB max per block
-    private static final int MAX_BLOCK_CHARS = 10000; // 10K chars (original limit for compatibility)
     // SECURITY: Single coherent limit prevents bypass through multibyte character manipulation
 
     // Off-chain storage threshold - data larger than this will be stored off-chain
@@ -171,7 +170,6 @@ public class Blockchain {
 
     // Dynamic configuration for block size limits
     private volatile int currentMaxBlockSizeBytes = MAX_BLOCK_SIZE_BYTES;
-    private volatile int currentMaxBlockChars = MAX_BLOCK_CHARS;
     private volatile int currentOffChainThresholdBytes =
         OFF_CHAIN_THRESHOLD_BYTES;
 
@@ -4334,50 +4332,29 @@ public class Blockchain {
             return 1; // Store on-chain
         }
 
-        // Check character limit first
-        int charCount = data.length();
-        if (charCount > currentMaxBlockChars) {
-            // Exceeds character limit - must go off-chain
-            logger.info(
-                "📦 Data exceeds character limit ({} > {}). Will store off-chain.",
-                charCount,
-                currentMaxBlockChars
-            );
-
-            // Validate it's not too large even for off-chain
-            byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
-            if (dataBytes.length > 100 * 1024 * 1024) {
-                logger.error(
-                    "❌ Data size ({} bytes) exceeds maximum supported size (100MB)",
-                    dataBytes.length
-                );
-                return 0; // Invalid
-            }
-            return 2; // Store off-chain
-        }
-
-        // Within character limit, check byte size
+        // Check byte size to determine storage strategy
         byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
+        int dataSize = dataBytes.length;
 
         // If data is small enough for on-chain storage (under off-chain threshold)
-        if (dataBytes.length < currentOffChainThresholdBytes) {
+        if (dataSize < currentOffChainThresholdBytes) {
             return 1; // Store on-chain
         }
 
-        // If data is large but within reasonable limits, store off-chain
-        if (dataBytes.length <= 100 * 1024 * 1024) {
-            // Max 100MB
+        // If data is large but within maximum block size, store off-chain
+        if (dataSize <= currentMaxBlockSizeBytes) {
             logger.info(
                 "📦 Large data detected ({} bytes). Will store off-chain.",
-                dataBytes.length
+                dataSize
             );
             return 2; // Store off-chain
         }
 
         // Data is too large even for off-chain storage
         logger.error(
-            "❌ Data size ({} bytes) exceeds maximum supported size (100MB)",
-            dataBytes.length
+            "❌ Data size ({} bytes) exceeds maximum supported size ({} bytes)",
+            dataSize,
+            currentMaxBlockSizeBytes
         );
         return 0; // Invalid
     }
@@ -6274,12 +6251,14 @@ public class Blockchain {
         return MAX_BLOCK_SIZE_BYTES;
     }
 
-    public int getMaxBlockDataLength() {
-        return currentMaxBlockChars; // SECURITY FIX: Use consistent character limit
-    }
-
-    public int getMaxBlockChars() {
-        return currentMaxBlockChars;
+    /**
+     * Get the off-chain storage threshold in bytes.
+     * Data larger than this will be stored off-chain.
+     *
+     * @return off-chain threshold in bytes (default: 512KB)
+     */
+    public int getOffChainThresholdBytes() {
+        return currentOffChainThresholdBytes;
     }
 
     /**
@@ -7182,20 +7161,6 @@ public class Blockchain {
         }
     }
 
-    public void setMaxBlockDataLength(int maxDataLength) {
-        if (maxDataLength > 0 && maxDataLength <= 1000000) {
-            // Max 1M characters
-            this.currentMaxBlockChars = maxDataLength;
-            logger.info(
-                "📊 Max block data length updated to: {} characters",
-                maxDataLength
-            );
-        } else {
-            throw new IllegalArgumentException(
-                "Invalid data length. Must be between 1 and 1M characters"
-            );
-        }
-    }
 
     public void setOffChainThresholdBytes(int thresholdBytes) {
         if (thresholdBytes > 0 && thresholdBytes <= currentMaxBlockSizeBytes) {
@@ -7224,10 +7189,6 @@ public class Blockchain {
         return searchFrameworkEngine;
     }
 
-    public int getCurrentMaxBlockDataLength() {
-        return currentMaxBlockChars;
-    }
-
     public int getCurrentOffChainThresholdBytes() {
         return currentOffChainThresholdBytes;
     }
@@ -7237,7 +7198,6 @@ public class Blockchain {
      */
     public void resetLimitsToDefault() {
         this.currentMaxBlockSizeBytes = MAX_BLOCK_SIZE_BYTES;
-        this.currentMaxBlockChars = MAX_BLOCK_CHARS;
         this.currentOffChainThresholdBytes = OFF_CHAIN_THRESHOLD_BYTES;
         logger.info("🔄 Block size limits reset to default values");
     }
@@ -7249,16 +7209,13 @@ public class Blockchain {
         return String.format(
             "Block Size Configuration:%n" +
             "- Max block size: %,d bytes (%.1f MB)%n" +
-            "- Max data length: %,d characters%n" +
             "- Off-chain threshold: %,d bytes (%.1f KB)%n" +
-            "- Default values: %,d bytes / %,d chars / %,d bytes",
+            "- Default values: %,d bytes / %,d bytes",
             currentMaxBlockSizeBytes,
             currentMaxBlockSizeBytes / (1024.0 * 1024),
-            currentMaxBlockChars,
             currentOffChainThresholdBytes,
             currentOffChainThresholdBytes / 1024.0,
             MAX_BLOCK_SIZE_BYTES,
-            MAX_BLOCK_CHARS,
             OFF_CHAIN_THRESHOLD_BYTES
         );
     }

@@ -127,13 +127,14 @@ class BlockchainAdditionalAdvancedFunctionsTest {
         assertTrue(blockchain.addBlock(normalData, aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()),
                 "Normal sized data should be accepted");
 
-        // Test data at character limit (should be valid)
-        StringBuilder maxCharData = new StringBuilder();
-        for (int i = 0; i < blockchain.getMaxBlockDataLength(); i++) {
-            maxCharData.append("a");
+        // Test data at off-chain threshold (should go off-chain)
+        StringBuilder largeData = new StringBuilder();
+        int threshold = blockchain.getOffChainThresholdBytes();
+        for (int i = 0; i < threshold; i++) {
+            largeData.append("a");
         }
-        assertTrue(blockchain.addBlock(maxCharData.toString(), aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()),
-                "Data at character limit should be accepted");
+        assertTrue(blockchain.addBlock(largeData.toString(), aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()),
+                "Data at off-chain threshold should be accepted (stored off-chain)");
     }
 
     @Test
@@ -149,28 +150,28 @@ class BlockchainAdditionalAdvancedFunctionsTest {
             blockchain.addBlock(null, aliceKeyPair.getPrivate(), aliceKeyPair.getPublic());
         }, "Null data should throw exception");
 
-        // Test data exceeding character limit
+        // Test data exceeding maximum block size (should be rejected)
         StringBuilder tooLongData = new StringBuilder();
-        for (int i = 0; i <= blockchain.getMaxBlockDataLength(); i++) {
+        int maxSize = blockchain.getMaxBlockSizeBytes();
+        for (int i = 0; i <= maxSize; i++) {
             tooLongData.append("x");
         }
-        // With the fixed validateAndDetermineStorage logic, large data now goes to off-chain storage
-        // instead of being rejected, so this should succeed
-        assertTrue(blockchain.addBlock(tooLongData.toString(), aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()),
-                "Data exceeding character limit should be stored off-chain");
+        // Data exceeding max block size should be rejected
+        assertFalse(blockchain.addBlock(tooLongData.toString(), aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()),
+                "Data exceeding max block size should be rejected");
 
         // Test data with multibyte characters that might exceed byte limit
         StringBuilder unicodeData = new StringBuilder();
-        for (int i = 0; i < blockchain.getMaxBlockDataLength() / 2; i++) {
+        int maxSizeBytes = blockchain.getMaxBlockSizeBytes();
+        // Create enough unicode chars to exceed max size (each emoji is 4 bytes)
+        for (int i = 0; i < (maxSizeBytes / 4) + 1000; i++) {
             unicodeData.append("🔗"); // Unicode blockchain emoji (4 bytes each)
         }
         String unicodeString = unicodeData.toString();
-        
-        // This should exceed byte limit even if under character limit
-        if (unicodeString.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > blockchain.getMaxBlockSizeBytes()) {
-            assertFalse(blockchain.addBlock(unicodeString, aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()),
-                    "Data exceeding byte limit should be rejected");
-        }
+
+        // This should exceed byte limit
+        assertFalse(blockchain.addBlock(unicodeString, aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()),
+                "Data exceeding byte limit should be rejected");
     }
 
     @Test
@@ -178,11 +179,11 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @DisplayName("Test Block Size Constants")
     void testBlockSizeConstants() {
         assertTrue(blockchain.getMaxBlockSizeBytes() > 0, "Max block size in bytes should be positive");
-        assertTrue(blockchain.getMaxBlockDataLength() > 0, "Max block data length should be positive");
-        
+        assertTrue(blockchain.getOffChainThresholdBytes() > 0, "Off-chain threshold should be positive");
+
         // Verify reasonable limits
         assertEquals(1024 * 1024, blockchain.getMaxBlockSizeBytes(), "Max block size should be 1MB");
-        assertEquals(10000, blockchain.getMaxBlockDataLength(), "Max block data length should be 10K characters");
+        assertEquals(512 * 1024, blockchain.getOffChainThresholdBytes(), "Off-chain threshold should be 512KB");
     }
 
     // ===============================

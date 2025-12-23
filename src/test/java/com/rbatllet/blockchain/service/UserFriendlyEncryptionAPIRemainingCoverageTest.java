@@ -486,7 +486,7 @@ public class UserFriendlyEncryptionAPIRemainingCoverageTest {
         void shouldStoreDataWithSearchableTerms() {
             // Given
             String data = "Searchable test data";
-            String password = "password123";
+            String password = "Password123!";
             String[] searchTerms = {"test", "data", "searchable"};
             
             // When & Then
@@ -501,7 +501,7 @@ public class UserFriendlyEncryptionAPIRemainingCoverageTest {
         void shouldStoreDataWithLayeredTerms() {
             // Given
             String data = "Layered test data";
-            String password = "password123";
+            String password = "Password123!";
             String[] userTerms = {"user", "terms"};
             String[] suggestedTerms = {"suggested", "automatic"};
             
@@ -517,7 +517,7 @@ public class UserFriendlyEncryptionAPIRemainingCoverageTest {
         void shouldStoreDataWithGranularTermControl() {
             // Given
             String data = "Granular control test data";
-            String password = "password123";
+            String password = "Password123!";
             Set<String> allTerms = new HashSet<>(Arrays.asList("encrypted", "secure", "public", "visible"));
             TermVisibilityMap visibility = 
                 new TermVisibilityMap();
@@ -534,7 +534,7 @@ public class UserFriendlyEncryptionAPIRemainingCoverageTest {
         void shouldSearchByTerms() {
             // Given
             String[] searchTerms = {"test", "data"};
-            String password = "password123";
+            String password = "Password123!";
             int maxResults = 10;
             
             // When & Then
@@ -627,7 +627,7 @@ public class UserFriendlyEncryptionAPIRemainingCoverageTest {
         void shouldTestExportMethodsViaPublicAPI() {
             // Given - Create search result data first
             String data = "Test data for export";
-            String password = "testPass123";
+            String password = "TestPassword123!";
             String[] searchTerms = {"export", "test"};
             
             // Add some searchable data to get results

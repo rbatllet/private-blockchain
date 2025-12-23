@@ -125,7 +125,7 @@ class SearchIntegrityFixTest {
 
         Block block = api.storeSearchableData(
             "Medical patient data with auto-public keywords",
-            "password123",
+            "Password123!",
             medicalTerms
         );
 
@@ -173,7 +173,7 @@ class SearchIntegrityFixTest {
         
         Block fixedBlock = api.storeSearchableDataWithLayers(
             "Medical patient data with PROPERLY SEPARATED public/private keywords",
-            "password123", 
+            "Password123!", 
             publicTerms,
             privateTerms
         );
@@ -244,7 +244,7 @@ class SearchIntegrityFixTest {
             "PATIENT_001"    // Private - specific patient ID
         };
         
-        Block medicalBlock = api.storeSearchableDataWithLayers(medicalData, "password123", medicalPublicTerms, medicalPrivateTerms);
+        Block medicalBlock = api.storeSearchableDataWithLayers(medicalData, "Password123!", medicalPublicTerms, medicalPrivateTerms);
         assertNotNull(medicalBlock, "Medical block should be created");
         
         // 2. Financial data with proper public/private separation  
@@ -261,7 +261,7 @@ class SearchIntegrityFixTest {
             "mortgage"       // Private - specific transaction type
         };
         
-        Block financialBlock = api.storeSearchableDataWithLayers(financialData, "password123", financialPublicTerms, financialPrivateTerms);
+        Block financialBlock = api.storeSearchableDataWithLayers(financialData, "Password123!", financialPublicTerms, financialPrivateTerms);
         assertNotNull(financialBlock, "Financial block should be created");
         
         // 3. Legal data with proper public/private separation
@@ -278,7 +278,7 @@ class SearchIntegrityFixTest {
             "parties"        // Private - specific detail
         };
         
-        Block legalBlock = api.storeSearchableDataWithLayers(legalData, "password123", legalPublicTerms, legalPrivateTerms);
+        Block legalBlock = api.storeSearchableDataWithLayers(legalData, "Password123!", legalPublicTerms, legalPrivateTerms);
         assertNotNull(legalBlock, "Legal block should be created");
 
         // Phase 5.4: Wait for async indexing to complete
@@ -351,7 +351,7 @@ class SearchIntegrityFixTest {
         String[] publicKeywords = {"test", "searchable"};
         String[] privateKeywords = {"private_data", "internal_use"};
         
-        Block mixedBlock = api.storeSearchableDataWithLayers("Mixed keyword test data", "password123", publicKeywords, privateKeywords);
+        Block mixedBlock = api.storeSearchableDataWithLayers("Mixed keyword test data", "Password123!", publicKeywords, privateKeywords);
         assertNotNull(mixedBlock, "Mixed keyword block should be created");
 
         // Phase 5.4: Wait for async indexing to complete
@@ -377,7 +377,7 @@ class SearchIntegrityFixTest {
         assertTrue(dataResults.size() > 0, "findEncryptedData should still work");
         
         // Test 3: Block creation without keywords should still work
-        Block simpleBlock = api.storeSecret("Simple secret without keywords", "password123");
+        Block simpleBlock = api.storeSecret("Simple secret without keywords", "Password123!");
         assertNotNull(simpleBlock, "Simple block creation should still work");
         
         logger.info("✅ REGRESSION TEST PASSED - Existing functionality intact");

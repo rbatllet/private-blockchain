@@ -187,7 +187,7 @@ class UserFriendlyEncryptionAPIOptimizationTest {
             List<Block> createdBlocks = new ArrayList<>();
             for (int i = 0; i < blockCount; i++) {
                 try {
-                    Block block = api.storeSecret("Secret data " + i, "password123");
+                    Block block = api.storeSecret("Secret data " + i, "Password123!");
                     if (block != null) {
                         createdBlocks.add(block);
                     }
@@ -252,7 +252,7 @@ class UserFriendlyEncryptionAPIOptimizationTest {
             List<Block> results = new ArrayList<>();
             for (int i = 0; i < concurrentBlocks; i++) {
                 try {
-                    Block block = api.storeSecret("Concurrent data " + i, "password" + i);
+                    Block block = api.storeSecret("Concurrent data " + i, "Password" + i + "123!!");
                     if (block != null) {
                         results.add(block);
                     }
@@ -336,7 +336,7 @@ class UserFriendlyEncryptionAPIOptimizationTest {
 
         for (int i = 0; i < testData.length; i++) {
             try {
-                Block block = api.storeSecret(testData[i], "password12" + i);
+                Block block = api.storeSecret(testData[i], "Password12" + i + "3!!");
 
                 if (block != null) {
                     // Log what was actually created
@@ -362,7 +362,7 @@ class UserFriendlyEncryptionAPIOptimizationTest {
             try {
                 if (i % 2 == 0) {
                     // Create encrypted block
-                    Block encrypted = api.storeSecret("Secret data " + i, "password123");
+                    Block encrypted = api.storeSecret("Secret data " + i, "Password123!");
                     if (encrypted != null) {
                         testBlocks.add(encrypted);
                     }

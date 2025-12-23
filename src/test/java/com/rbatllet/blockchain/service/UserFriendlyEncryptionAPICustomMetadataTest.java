@@ -192,7 +192,7 @@ class UserFriendlyEncryptionAPICustomMetadataTest {
     void testEncryptedBlockWithCustomMetadata() throws Exception {
         // Arrange
         String testContent = "Secret content with metadata";
-        String password = "secure-password-123";
+        String password = "SecurePassword123!";
 
         UserFriendlyEncryptionAPI.BlockCreationOptions options = 
             new UserFriendlyEncryptionAPI.BlockCreationOptions()

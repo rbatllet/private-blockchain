@@ -268,13 +268,10 @@ public class ExportImportEdgeCasesTest {
     @Test
     @DisplayName("Import file with missing off-chain data")
     void testImportMissingOffChainData() throws Exception {
-        // Create large data that will be stored off-chain
-        StringBuilder largeData = new StringBuilder();
-        for (int i = 0; i < 50000; i++) {
-            largeData.append("Off-chain data entry ").append(i).append(" with content. ");
-        }
-        
-        Block largeBlock = blockchain.addBlockAndReturn(largeData.toString(), privateKey, publicKey);
+        // Create large data that will be stored off-chain (between 512KB and 1MB)
+        String largeData = "Off-chain data entry with content. ".repeat(18000); // ~630KB
+
+        Block largeBlock = blockchain.addBlockAndReturn(largeData, privateKey, publicKey);
         assertTrue(largeBlock.hasOffChainData());
         
         // Export chain

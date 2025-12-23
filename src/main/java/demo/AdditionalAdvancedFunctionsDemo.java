@@ -63,8 +63,8 @@ public class AdditionalAdvancedFunctionsDemo {
             
             // Show current limits
             System.out.println("📏 Current size limits:");
-            System.out.println("   - Max data length: " + blockchain.getMaxBlockDataLength() + " characters");
-            System.out.println("   - Max data size: " + blockchain.getMaxBlockSizeBytes() + " bytes");
+            System.out.println("   - Off-chain threshold: " + blockchain.getOffChainThresholdBytes() + " bytes");
+            System.out.println("   - Max block size: " + blockchain.getMaxBlockSizeBytes() + " bytes");
             
             // Test valid size
             String normalData = "This is a normal transaction with reasonable size";
@@ -79,9 +79,11 @@ public class AdditionalAdvancedFunctionsDemo {
             boolean limitAdded = blockchain.addBlock(limitData.toString(), bob.getPrivate(), bob.getPublic());
             System.out.println("   ✅ Large but valid data added: " + limitAdded);
             
-            // Test oversized data (should fail)
+            // Test oversized data (should go off-chain or fail if exceeds max)
             StringBuilder overData = new StringBuilder();
-            for (int i = 0; i < blockchain.getMaxBlockDataLength() + 100; i++) {
+            // Create data larger than max block size (1MB) to test rejection
+            int maxSize = blockchain.getMaxBlockSizeBytes();
+            for (int i = 0; i < maxSize + 1000; i++) {
                 overData.append("x");
             }
             boolean overAdded = blockchain.addBlock(overData.toString(), alice.getPrivate(), alice.getPublic());
@@ -264,8 +266,8 @@ public class AdditionalAdvancedFunctionsDemo {
             System.out.println("   - Enhanced validation: " + statsResult.getSummary());
             System.out.println("   - Valid blocks: " + statsResult.getValidBlocks() + "/" + statsResult.getTotalBlocks());
             System.out.println("   - Revoked blocks: " + statsResult.getRevokedBlocks());
-            System.out.println("   - Size limits: " + blockchain.getMaxBlockSizeBytes() + " bytes, " + 
-                             blockchain.getMaxBlockDataLength() + " chars");
+            System.out.println("   - Size limits: off-chain threshold=" + blockchain.getOffChainThresholdBytes() + " bytes, " +
+                             "max=" + blockchain.getMaxBlockSizeBytes() + " bytes");
             
             System.out.println("\n💡 Enhanced Features Demonstrated:");
             System.out.println("   • Rich validation results with detailed breakdowns");

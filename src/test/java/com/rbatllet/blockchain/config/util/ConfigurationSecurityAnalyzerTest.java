@@ -81,7 +81,7 @@ class ConfigurationSecurityAnalyzerTest {
     @DisplayName("analyze() should warn HIGH for password in FILE source")
     void testAnalyze_PostgreSQL_PasswordInFile() {
         DatabaseConfig config = DatabaseConfig.createPostgreSQLConfig(
-            "localhost", 5432, "blockchain", "admin", "password123"
+            "localhost", 5432, "blockchain", "admin", "Password123!"
         );
 
         analyzer.withConfigSource(ConfigurationSecurityAnalyzer.ConfigSource.FILE);
@@ -110,7 +110,7 @@ class ConfigurationSecurityAnalyzerTest {
     @DisplayName("analyze() should warn CRITICAL for password in CLI_ARGS")
     void testAnalyze_PostgreSQL_PasswordInCliArgs() {
         DatabaseConfig config = DatabaseConfig.createPostgreSQLConfig(
-            "localhost", 5432, "blockchain", "admin", "password123"
+            "localhost", 5432, "blockchain", "admin", "Password123!"
         );
 
         analyzer.withConfigSource(ConfigurationSecurityAnalyzer.ConfigSource.CLI_ARGS);
@@ -140,7 +140,7 @@ class ConfigurationSecurityAnalyzerTest {
     @DisplayName("analyze() should provide INFO for password from ENVIRONMENT")
     void testAnalyze_PostgreSQL_PasswordFromEnvironment() {
         DatabaseConfig config = DatabaseConfig.createPostgreSQLConfig(
-            "localhost", 5432, "blockchain", "admin", "password123"
+            "localhost", 5432, "blockchain", "admin", "Password123!"
         );
 
         analyzer.withConfigSource(ConfigurationSecurityAnalyzer.ConfigSource.ENVIRONMENT);
@@ -168,7 +168,7 @@ class ConfigurationSecurityAnalyzerTest {
             PosixFilePermissions.fromString("rw-rw-rw-"));
 
         DatabaseConfig config = DatabaseConfig.createPostgreSQLConfig(
-            "localhost", 5432, "blockchain", "admin", "password123"
+            "localhost", 5432, "blockchain", "admin", "Password123!"
         );
 
         analyzer.withConfigFile(tempConfigFile)
@@ -193,7 +193,7 @@ class ConfigurationSecurityAnalyzerTest {
             PosixFilePermissions.fromString("rw-------"));
 
         DatabaseConfig config = DatabaseConfig.createPostgreSQLConfig(
-            "localhost", 5432, "blockchain", "admin", "password123"
+            "localhost", 5432, "blockchain", "admin", "Password123!"
         );
 
         analyzer.withConfigFile(tempConfigFile)
@@ -214,7 +214,7 @@ class ConfigurationSecurityAnalyzerTest {
         Path nonExistent = tempDir.resolve("non-existent.properties");
 
         DatabaseConfig config = DatabaseConfig.createPostgreSQLConfig(
-            "localhost", 5432, "blockchain", "admin", "password123"
+            "localhost", 5432, "blockchain", "admin", "Password123!"
         );
 
         analyzer.withConfigFile(nonExistent);
@@ -233,7 +233,7 @@ class ConfigurationSecurityAnalyzerTest {
     @DisplayName("analyze() should warn MEDIUM when SSL not detected in PostgreSQL URL")
     void testAnalyze_NoSSL_PostgreSQL() {
         DatabaseConfig config = DatabaseConfig.createPostgreSQLConfig(
-            "localhost", 5432, "blockchain", "admin", "password123"
+            "localhost", 5432, "blockchain", "admin", "Password123!"
         );
 
         List<SecurityWarning> warnings = analyzer.analyze(config);
@@ -365,7 +365,7 @@ class ConfigurationSecurityAnalyzerTest {
     @DisplayName("analyze() should work correctly with MySQL config")
     void testAnalyze_MySQL() {
         DatabaseConfig config = DatabaseConfig.createMySQLConfig(
-            "localhost", 3306, "blockchain", "root", "password123"
+            "localhost", 3306, "blockchain", "root", "Password123!"
         );
 
         analyzer.withConfigSource(ConfigurationSecurityAnalyzer.ConfigSource.FILE);

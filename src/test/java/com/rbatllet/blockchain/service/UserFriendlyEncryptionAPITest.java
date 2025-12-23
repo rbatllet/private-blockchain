@@ -337,9 +337,10 @@ public class UserFriendlyEncryptionAPITest {
         // Test operations without default credentials
         UserFriendlyEncryptionAPI apiWithoutCreds = new UserFriendlyEncryptionAPI(blockchain);
         
-        assertThrows(IllegalStateException.class, () -> 
-            apiWithoutCreds.storeSecret("test", "password"), 
-            "Should require default credentials");
+        // Updated for v1.0.6+ strong password validation - password validation happens first
+        assertThrows(IllegalArgumentException.class, () ->
+            apiWithoutCreds.storeSecret("test", "password"),
+            "Should reject weak password (password validation happens before credential check)");
         
         // Test invalid inputs
         assertThrows(IllegalArgumentException.class, () ->

@@ -41,7 +41,8 @@ public class GranularTermVisibilityIntegrationTest {
         blockchain.createBootstrapAdmin(publicKeyString, "test_user");
 
         api = new UserFriendlyEncryptionAPI(blockchain, "test_user", keyPair);
-        password = "test_password_123";
+        // Updated for v1.0.6+ strong password validation (12 characters + complexity)
+        password = "TestPassword123!";
     }
     
     @Test

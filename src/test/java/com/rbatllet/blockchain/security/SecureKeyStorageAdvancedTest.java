@@ -33,7 +33,7 @@ public class SecureKeyStorageAdvancedTest {
 
     private KeyPair testKeyPair;
     private final String testOwner = "AdvancedTestUser";
-    private final String testPassword = "AdvancedTestPassword123";
+    private final String testPassword = "AdvancedTestPassword123!";
 
     @BeforeEach
     void setUp() {

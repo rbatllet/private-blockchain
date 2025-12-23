@@ -80,8 +80,8 @@ public class UserFriendlyEncryptionAPISecureMetadataTest {
 
         // Initialize SearchSpecialistAPI
         try {
-            blockchain.initializeAdvancedSearch("password123");
-            blockchain.getSearchSpecialistAPI().initializeWithBlockchain(blockchain, "password123", testKeyPair.getPrivate());
+            blockchain.initializeAdvancedSearch("Password123!");
+            blockchain.getSearchSpecialistAPI().initializeWithBlockchain(blockchain, "Password123!", testKeyPair.getPrivate());
         } catch (Exception e) {
             throw new RuntimeException("Failed to initialize SearchSpecialistAPI", e);
         }
@@ -138,7 +138,7 @@ public class UserFriendlyEncryptionAPISecureMetadataTest {
         @DisplayName("Should demonstrate security validation blocks unsafe operations")
         void shouldDemonstrateSecurityValidationBlocksUnsafeOperations() {
             // Given: Create a block
-            Block originalBlock = api.storeSecret("Test data", "password123");
+            Block originalBlock = api.storeSecret("Test data", "Password123!");
             assertNotNull(originalBlock);
             
             // When: Attempt to create a modified version (simulating unsafe update)
@@ -178,7 +178,7 @@ public class UserFriendlyEncryptionAPISecureMetadataTest {
             
             for (int i = 0; i < blockCount; i++) {
                 String category = (i % 2 == 0) ? "even" : "odd";
-                Block block = api.storeSecret("Test data " + i + " category:" + category, "password123");
+                Block block = api.storeSecret("Test data " + i + " category:" + category, "Password123!");
                 if (block != null) {
                     createdBlocks.add(block);
                 }
@@ -216,7 +216,7 @@ public class UserFriendlyEncryptionAPISecureMetadataTest {
             List<Block> encryptedBlocks = new ArrayList<>();
             
             for (int i = 0; i < 3; i++) {
-                Block block = api.storeSecret("Encrypted medical data " + i, "password123");
+                Block block = api.storeSecret("Encrypted medical data " + i, "Password123!");
                 if (block != null) {
                     assertTrue(block.getIsEncrypted(), "Block should be encrypted");
                     encryptedBlocks.add(block);
@@ -259,7 +259,7 @@ public class UserFriendlyEncryptionAPISecureMetadataTest {
                 String data = String.format("Test data %d category:%s priority:%s", i, category, priority);
                 
                 // Store the block (metadata is inherent in the data)
-                Block block = api.storeSecret(data, "password123");
+                Block block = api.storeSecret(data, "Password123!");
                 if (block != null) {
                     testBlocks.add(block);
                     logger.debug("✅ Created block #{} with embedded metadata: {} {}", 
@@ -285,7 +285,7 @@ public class UserFriendlyEncryptionAPISecureMetadataTest {
 
                 // Try to decrypt and check content (since blocks are encrypted)
                 try {
-                    String decryptedData = api.retrieveSecret(block.getBlockNumber(), "password123");
+                    String decryptedData = api.retrieveSecret(block.getBlockNumber(), "Password123!");
                     if (decryptedData != null && decryptedData.toLowerCase().contains(searchTerm.toLowerCase())) {
                         matchingBlocks.add(block);
                     }

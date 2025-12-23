@@ -96,7 +96,8 @@ class UserFriendlyEncryptionAPIUntestedMethodsTest {
 
     // Test data constants
     private static final String TEST_USERNAME = "testUser";
-    private static final String TEST_PASSWORD = "testPassword123";
+    // Updated for v1.0.6+ strong password validation (12 characters + complexity)
+    private static final String TEST_PASSWORD = "TestPassword123!";
 
 
         @BeforeEach
@@ -200,8 +201,8 @@ class UserFriendlyEncryptionAPIUntestedMethodsTest {
 
         // Initialize SearchSpecialistAPI properly (following stress test pattern)
         try {
-            realBlockchain.initializeAdvancedSearch("testPassword123");
-            realBlockchain.getSearchSpecialistAPI().initializeWithBlockchain(realBlockchain, "testPassword123", testKeyPair.getPrivate());
+            realBlockchain.initializeAdvancedSearch(TEST_PASSWORD);
+            realBlockchain.getSearchSpecialistAPI().initializeWithBlockchain(realBlockchain, TEST_PASSWORD, testKeyPair.getPrivate());
         } catch (Exception e) {
             // Log but don't fail - some tests may not need search functionality
             System.err.println("Warning: SearchSpecialistAPI initialization failed: " + e.getMessage());
@@ -646,25 +647,28 @@ class UserFriendlyEncryptionAPIUntestedMethodsTest {
         lenient().when(mockBlockchain.addEncryptedBlockWithKeywords(any(), any(), any(), any(), any(), any()))
             .thenReturn(mockBlock);
         
+        // Use inline strong password to ensure validation passes (v1.0.6+)
+        String strongPassword = "StrongOffchainPassword123!";
+        // Correct parameter order: (blockData, textContent, password, filename, keywords)
         Block result = api.storeDataWithOffChainText(
-            "Summary", textContent, filename, TEST_PASSWORD, publicTerms);
-        
+            "Summary", textContent, strongPassword, filename, publicTerms);
+
         assertNotNull(result, "Should successfully store large text off-chain");
-        
+
         // Test with moderate size text (should stay on-chain)
         String moderateText = "This is a moderate size text that should stay on-chain.";
         Block onChainResult = api.storeDataWithOffChainText(
-            moderateText, moderateText, "small.txt", TEST_PASSWORD, publicTerms);
+            moderateText, moderateText, strongPassword, "small.txt", publicTerms);
         
         assertNotNull(onChainResult, "Should handle moderate text on-chain");
         
-        // Test parameter validation
+        // Test parameter validation (using strong password for v1.0.6+)
         assertThrows(IllegalArgumentException.class, () -> {
-            api.storeDataWithOffChainText(null, textContent, filename, TEST_PASSWORD, publicTerms);
+            api.storeDataWithOffChainText(null, textContent, strongPassword, filename, publicTerms);
         }, "Should throw exception for null summary");
-        
+
         assertThrows(IllegalArgumentException.class, () -> {
-            api.storeDataWithOffChainText("summary", null, filename, TEST_PASSWORD, publicTerms);
+            api.storeDataWithOffChainText("summary", null, strongPassword, filename, publicTerms);
         }, "Should throw exception for null text content");
     }
 
@@ -893,23 +897,25 @@ class UserFriendlyEncryptionAPIUntestedMethodsTest {
     @Order(20)
     @DisplayName("Test storeSearchableDataWithOffChainFile() - Off-chain searchable data storage")
     void testStoreSearchableDataWithOffChainFile() throws Exception {
+        // Method signature: (blockData, fileData, password, contentType, publicKeywords, privateKeywords)
         Method storeMethod = UserFriendlyEncryptionAPI.class
-            .getDeclaredMethod("storeSearchableDataWithOffChainFile", 
+            .getDeclaredMethod("storeSearchableDataWithOffChainFile",
                 String.class, byte[].class, String.class, String.class, String[].class, String[].class);
         storeMethod.setAccessible(true);
 
         UserFriendlyEncryptionAPI realApi = createApiWithRealBlockchain();
 
-        // Test data
+        // Test data - including strong password for v1.0.6+ validation
         String summary = "Test document summary";
         byte[] fileContent = "Test file content".getBytes();
-        String filename = "test.txt";
+        String strongPassword = "SearchableOffchainFilePassword123!";  // Added password parameter
         String contentType = "text/plain";
         String[] publicTerms = {"test", "document"};
         String[] privateTerms = {"private", "confidential"};
 
         assertDoesNotThrow(() -> {
-            storeMethod.invoke(realApi, summary, fileContent, filename, contentType, publicTerms, privateTerms);
+            // Pass password as 3rd parameter (correct method signature)
+            storeMethod.invoke(realApi, summary, fileContent, strongPassword, contentType, publicTerms, privateTerms);
             // Result could be Block or Long depending on implementation
         }, "Off-chain searchable data storage should complete without errors");
     }

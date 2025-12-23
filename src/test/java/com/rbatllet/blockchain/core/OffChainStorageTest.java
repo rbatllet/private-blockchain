@@ -100,11 +100,9 @@ public class OffChainStorageTest {
         assertEquals(1, blockchain.validateAndDetermineStorage(smallData));
         
         // Test large data (should store off-chain)
-        StringBuilder largeData = new StringBuilder();
-        for (int i = 0; i < 60000; i++) { // Create ~600KB data
-            largeData.append("This is large data for off-chain storage. ");
-        }
-        assertEquals(2, blockchain.validateAndDetermineStorage(largeData.toString()));
+        // Create data between 512KB and 1MB to go off-chain
+        String largeData = "a".repeat(600 * 1024); // 600KB exactly
+        assertEquals(2, blockchain.validateAndDetermineStorage(largeData));
         
         // Test invalid data
         assertEquals(0, blockchain.validateAndDetermineStorage(null));
@@ -191,26 +189,23 @@ public class OffChainStorageTest {
         
         // Test setting new limits
         blockchain.setMaxBlockSizeBytes(2 * 1024 * 1024); // 2MB
-        blockchain.setMaxBlockDataLength(20000); // 20K chars
         blockchain.setOffChainThresholdBytes(1024 * 1024); // 1MB threshold
-        
+
         assertEquals(2 * 1024 * 1024, blockchain.getCurrentMaxBlockSizeBytes());
-        assertEquals(20000, blockchain.getCurrentMaxBlockDataLength());
         assertEquals(1024 * 1024, blockchain.getCurrentOffChainThresholdBytes());
-        
+
         // Test reset to defaults
         blockchain.resetLimitsToDefault();
         assertEquals(1024 * 1024, blockchain.getCurrentMaxBlockSizeBytes());
-        assertEquals(10000, blockchain.getCurrentMaxBlockDataLength());
         assertEquals(512 * 1024, blockchain.getCurrentOffChainThresholdBytes());
-        
+
         // Test invalid configurations
         assertThrows(IllegalArgumentException.class, () -> {
             blockchain.setMaxBlockSizeBytes(-1);
         });
-        
+
         assertThrows(IllegalArgumentException.class, () -> {
-            blockchain.setMaxBlockDataLength(0);
+            blockchain.setOffChainThresholdBytes(0);
         });
         
         assertThrows(IllegalArgumentException.class, () -> {

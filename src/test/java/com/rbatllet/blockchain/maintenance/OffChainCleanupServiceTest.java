@@ -705,9 +705,8 @@ class OffChainCleanupServiceTest {
             );
 
             // Create a block with off-chain data (this will create a referenced file)
-            String largeData = "Large content that goes off-chain. ".repeat(
-                2000
-            ); // Force off-chain storage
+            // Need > 512KB to go off-chain
+            String largeData = "C".repeat(600 * 1024); // Exactly 600KB - Force off-chain storage
             boolean blockAdded = blockchain.addBlock(
                 largeData,
                 testPrivateKey,
@@ -786,10 +785,8 @@ class OffChainCleanupServiceTest {
 
             // Create multiple blocks with off-chain data
             for (int i = 0; i < 3; i++) {
-                String blockData = String.format(
-                    "Referenced block data %d. ",
-                    i
-                ).repeat(1500);
+                // Create data > 512KB to force off-chain storage
+                String blockData = "A".repeat(600 * 1024); // Exactly 600KB
                 boolean added = blockchain.addBlock(
                     blockData,
                     testPrivateKey,
@@ -1392,10 +1389,8 @@ class OffChainCleanupServiceTest {
             // Create off-chain blocks (will automatically create referenced files)
             List<Path> compressionFiles = new ArrayList<>();
             for (int i = 0; i < 3; i++) {
-                String blockData = String.format(
-                    "Mixed compression block data %d. ",
-                    i
-                ).repeat(1500);
+                // Create data > 512KB to force off-chain storage
+                String blockData = "B".repeat(600 * 1024); // Exactly 600KB
                 boolean added = blockchain.addBlock(
                     blockData,
                     testPrivateKey,

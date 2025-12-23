@@ -164,7 +164,7 @@ class UserFriendlyEncryptionAPIRecipientTest {
     void testPasswordEncryptionStillWorks() throws Exception {
         // Arrange
         String testContent = "Password encrypted content";
-        String password = "test-password-123";
+        String password = "TestPassword123!";
 
         UserFriendlyEncryptionAPI.BlockCreationOptions options = 
             new UserFriendlyEncryptionAPI.BlockCreationOptions()
@@ -248,7 +248,7 @@ class UserFriendlyEncryptionAPIRecipientTest {
         Block passwordBlock = api.createBlockWithOptions("Password content", 
             new UserFriendlyEncryptionAPI.BlockCreationOptions()
                 .withEncryption(true)
-                .withPassword("test-password"));
+                .withPassword("TestPassword123!"));
 
         // Create recipient user and recipient-encrypted block
         KeyPair recipientKeyPair = api.createUser(recipientUsername);

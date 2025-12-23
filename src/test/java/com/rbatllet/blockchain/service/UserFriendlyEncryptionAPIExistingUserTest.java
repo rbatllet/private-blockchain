@@ -151,7 +151,7 @@ public class UserFriendlyEncryptionAPIExistingUserTest {
      */
     @Test
     void testCreatePasswordEncryptedBlockWithExistingUser() {
-        String password = "secure-password-123";
+        String password = "SecurePassword123!";
         String identifier = "test-secret-id";
 
         UserFriendlyEncryptionAPI.BlockCreationOptions options =

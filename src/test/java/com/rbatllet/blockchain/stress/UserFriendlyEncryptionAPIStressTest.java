@@ -63,8 +63,8 @@ public class UserFriendlyEncryptionAPIStressTest {
         // Initialize SearchSpecialistAPI for stress tests that may use storeSecret
         try {
             KeyPair defaultKeyPair = CryptoUtil.generateKeyPair();
-            blockchain.initializeAdvancedSearch("password123");
-            blockchain.getSearchSpecialistAPI().initializeWithBlockchain(blockchain, "password123", defaultKeyPair.getPrivate());
+            blockchain.initializeAdvancedSearch("Password123!");
+            blockchain.getSearchSpecialistAPI().initializeWithBlockchain(blockchain, "Password123!", defaultKeyPair.getPrivate());
         } catch (Exception e) {
             logger.warn("⚠️ SearchSpecialistAPI initialization failed in stress test setup: " + e.getMessage());
         }
@@ -488,7 +488,7 @@ public class UserFriendlyEncryptionAPIStressTest {
                                     op;
                                 Block block = api.storeSecret(
                                     data,
-                                    "password123"
+                                    "Password123!"
                                 );
 
                                 if (block != null) {
