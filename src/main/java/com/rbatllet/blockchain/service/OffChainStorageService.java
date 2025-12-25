@@ -14,8 +14,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.PrivateKey;
-import java.security.SecureRandom;
 import java.util.Base64;
+
+import static com.rbatllet.blockchain.util.CryptoUtil.getSecureRandom;
 
 /**
  * Service for managing off-chain data storage with AES-256-GCM encryption
@@ -243,16 +244,16 @@ public class OffChainStorageService {
      */
     private byte[] generateIV() {
         byte[] iv = new byte[IV_LENGTH];
-        new SecureRandom().nextBytes(iv);
+        getSecureRandom().nextBytes(iv);
         return iv;
     }
-    
+
     /**
      * Generate unique filename based on timestamp and random component
      */
     private String generateUniqueFileName() {
         long timestamp = System.currentTimeMillis();
-        int random = new SecureRandom().nextInt(10000);
+        int random = getSecureRandom().nextInt(10000);
         return "offchain_" + timestamp + "_" + random + ".dat";
     }
     

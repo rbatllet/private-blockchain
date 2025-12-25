@@ -4,7 +4,7 @@ import com.rbatllet.blockchain.config.DatabaseConfig;
 import com.rbatllet.blockchain.config.SearchConstants;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.indexing.IndexingCoordinator;
-import com.rbatllet.blockchain.security.KeyFileLoader;
+import com.rbatllet.blockchain.testutil.GenesisKeyManager;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.JPAUtil;
 import org.junit.jupiter.api.*;
@@ -64,11 +64,8 @@ public class Phase_5_2_AsyncIndexingTest {
         DatabaseConfig h2Config = DatabaseConfig.createH2TestConfig();
         JPAUtil.initialize(h2Config);
 
-        // Load bootstrap admin keys
-        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
-            "./keys/genesis-admin.private",
-            "./keys/genesis-admin.public"
-        );
+        // Load bootstrap admin keys (auto-generates if missing - test-only)
+        bootstrapKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
         
         assertNotNull(bootstrapKeyPair, "Failed to load genesis admin keys");
     }

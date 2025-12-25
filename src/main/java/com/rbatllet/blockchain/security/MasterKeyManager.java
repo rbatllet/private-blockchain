@@ -13,10 +13,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.PosixFilePermission;
 import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.HashSet;
 import java.util.Set;
+
+import static com.rbatllet.blockchain.util.CryptoUtil.getSecureRandom;
 
 /**
  * Blockchain Master Encryption Key (BMEK) Manager
@@ -221,8 +222,7 @@ public class MasterKeyManager {
      */
     private static SecretKey generateNewMasterKey() throws NoSuchAlgorithmException {
         KeyGenerator keyGen = KeyGenerator.getInstance(ALGORITHM);
-        SecureRandom secureRandom = new SecureRandom();
-        keyGen.init(KEY_SIZE_BITS, secureRandom);
+        keyGen.init(KEY_SIZE_BITS, getSecureRandom());
         return keyGen.generateKey();
     }
 

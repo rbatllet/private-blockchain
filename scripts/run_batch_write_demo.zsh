@@ -21,6 +21,9 @@ PROJECT_ROOT="$(pwd)"
 # Trap to ensure cleanup on exit
 trap cleanup_database EXIT INT TERM
 
+# Ensure genesis admin keys exist (auto-generates if missing)
+ensure_genesis_keys
+
 cd "$PROJECT_ROOT"
 
 print_header "BATCH WRITE API DEMO - PHASE 5.2"

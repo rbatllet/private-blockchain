@@ -14,8 +14,8 @@ import org.slf4j.LoggerFactory;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.indexing.IndexingCoordinator;
-import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.security.UserRole;
+import com.rbatllet.blockchain.testutil.GenesisKeyManager;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.IndexingResult;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.SearchStats;
@@ -56,11 +56,8 @@ public class SearchStatisticsDiscrepancyTest {
         // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
         testBlockchain.clearAndReinitialize();
 
-        // Load bootstrap admin keys
-        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
-            "./keys/genesis-admin.private",
-            "./keys/genesis-admin.public"
-        );
+        // Load bootstrap admin keys (auto-generates if missing - test-only)
+        bootstrapKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
 
         // Register bootstrap admin in blockchain (RBAC v1.0.6)
         testBlockchain.createBootstrapAdmin(

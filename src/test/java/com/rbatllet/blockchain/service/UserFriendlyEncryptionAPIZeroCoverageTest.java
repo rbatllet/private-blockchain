@@ -2,8 +2,8 @@ package com.rbatllet.blockchain.service;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.OffChainData;
-import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.security.UserRole;
+import com.rbatllet.blockchain.testutil.GenesisKeyManager;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,11 +42,8 @@ class UserFriendlyEncryptionAPIZeroCoverageTest {
         // Create API with default credentials to avoid key pair errors
         KeyPair defaultKeyPair = CryptoUtil.generateKeyPair();
 
-        // Load bootstrap admin keys
-        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
-            "./keys/genesis-admin.private",
-            "./keys/genesis-admin.public"
-        );
+        // Load bootstrap admin keys (auto-generates if missing - test-only)
+        bootstrapKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
 
         // SECURITY (v1.0.6): Register bootstrap admin in blockchain (REQUIRED!)
         realBlockchain.createBootstrapAdmin(
@@ -440,12 +437,11 @@ class UserFriendlyEncryptionAPIZeroCoverageTest {
         void shouldHandleEmptySearchQueries() {
             // Given
             String emptyQuery = "";
-            
-            // When & Then
-            assertDoesNotThrow(() -> {
-                SearchResults results = api.searchPublicFast(emptyQuery);
-                assertNotNull(results, "Should return results even for empty query");
-            }, "Should handle empty search queries gracefully");
+
+            // When & Then - empty queries should be rejected
+            assertThrows(IllegalArgumentException.class, () -> {
+                api.searchPublicFast(emptyQuery);
+            }, "Should reject empty search queries");
         }
 
         @Test

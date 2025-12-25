@@ -2,8 +2,8 @@ package com.rbatllet.blockchain.core;
 
 import com.rbatllet.blockchain.config.DatabaseConfig;
 import com.rbatllet.blockchain.entity.Block;
-import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.security.UserRole;
+import com.rbatllet.blockchain.testutil.GenesisKeyManager;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.JPAUtil;
 import org.junit.jupiter.api.*;
@@ -42,10 +42,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class Phase_A7_DatabaseCompatibilityTest {
 
     private Blockchain blockchain;
-    private KeyPair bootstrapKeyPair;
+    private static KeyPair bootstrapKeyPair; // Shared across all tests
     private KeyPair keyPair;
     private String databaseType;
     private static final int BLOCK_COUNT = 10_000; // Test size (reduced for faster execution)
+
+    @BeforeAll
+    static void setUpClass() {
+        // Load genesis admin keys once for all tests (auto-generates if missing)
+        bootstrapKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
+    }
 
     // ==================== DATABASE DETECTION HELPERS ====================
 
@@ -110,13 +116,7 @@ public class Phase_A7_DatabaseCompatibilityTest {
         blockchain = new Blockchain();
         blockchain.clearAndReinitialize();
 
-        // Load bootstrap admin keys (created automatically)
-        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
-            "./keys/genesis-admin.private",
-            "./keys/genesis-admin.public"
-        );
-
-        // Register bootstrap admin in blockchain
+        // Register bootstrap admin in blockchain (keys loaded in @BeforeAll)
         blockchain.createBootstrapAdmin(
             CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
             "BOOTSTRAP_ADMIN"
@@ -171,13 +171,7 @@ public class Phase_A7_DatabaseCompatibilityTest {
         blockchain = new Blockchain();
         blockchain.clearAndReinitialize();
 
-        // Load bootstrap admin keys (created automatically)
-        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
-            "./keys/genesis-admin.private",
-            "./keys/genesis-admin.public"
-        );
-
-        // Register bootstrap admin in blockchain
+        // Register bootstrap admin in blockchain (keys loaded in @BeforeAll)
         blockchain.createBootstrapAdmin(
             CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
             "BOOTSTRAP_ADMIN"
@@ -244,13 +238,7 @@ public class Phase_A7_DatabaseCompatibilityTest {
         blockchain = new Blockchain();
         blockchain.clearAndReinitialize();
 
-        // Load bootstrap admin keys (created automatically)
-        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
-            "./keys/genesis-admin.private",
-            "./keys/genesis-admin.public"
-        );
-
-        // Register bootstrap admin in blockchain
+        // Register bootstrap admin in blockchain (keys loaded in @BeforeAll)
         blockchain.createBootstrapAdmin(
             CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
             "BOOTSTRAP_ADMIN"
@@ -302,13 +290,7 @@ public class Phase_A7_DatabaseCompatibilityTest {
         blockchain = new Blockchain();
         blockchain.clearAndReinitialize();
 
-        // Load bootstrap admin keys (created automatically)
-        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
-            "./keys/genesis-admin.private",
-            "./keys/genesis-admin.public"
-        );
-
-        // Register bootstrap admin in blockchain (RBAC v1.0.6)
+        // Register bootstrap admin in blockchain (keys loaded in @BeforeAll) (RBAC v1.0.6)
         blockchain.createBootstrapAdmin(
             CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
             "BOOTSTRAP_ADMIN"
@@ -361,13 +343,7 @@ public class Phase_A7_DatabaseCompatibilityTest {
         blockchain = new Blockchain();
         blockchain.clearAndReinitialize();
 
-        // Load bootstrap admin keys (created automatically)
-        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
-            "./keys/genesis-admin.private",
-            "./keys/genesis-admin.public"
-        );
-
-        // Register bootstrap admin in blockchain
+        // Register bootstrap admin in blockchain (keys loaded in @BeforeAll)
         blockchain.createBootstrapAdmin(
             CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
             "BOOTSTRAP_ADMIN"

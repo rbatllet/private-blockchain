@@ -3,8 +3,8 @@ package com.rbatllet.blockchain.search;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.indexing.IndexingCoordinator;
-import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.security.UserRole;
+import com.rbatllet.blockchain.testutil.GenesisKeyManager;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.*;
 import com.rbatllet.blockchain.test.util.TestDatabaseUtils;
@@ -46,11 +46,8 @@ public class SearchCompatibilityTest {
         blockchain = new Blockchain();
         blockchain.clearAndReinitialize();  // Ensure clean state before bootstrap
 
-        // Load bootstrap admin keys
-        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
-            "./keys/genesis-admin.private",
-            "./keys/genesis-admin.public"
-        );
+        // Load bootstrap admin keys (auto-generates if missing - test-only)
+        bootstrapKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
 
         // Register bootstrap admin in blockchain (RBAC v1.0.6)
         blockchain.createBootstrapAdmin(

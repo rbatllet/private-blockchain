@@ -50,8 +50,8 @@ import com.rbatllet.blockchain.entity.OffChainData;
 import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.indexing.IndexingCoordinator.IndexingResult;
 import com.rbatllet.blockchain.search.SearchSpecialistAPI;
-import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.security.UserRole;
+import com.rbatllet.blockchain.testutil.GenesisKeyManager;
 import com.rbatllet.blockchain.util.CustomMetadataUtil;
 import com.rbatllet.blockchain.util.CryptoUtil;
 
@@ -183,11 +183,8 @@ class UserFriendlyEncryptionAPIUntestedMethodsTest {
         // Clear and reinitialize to ensure clean state for each test
         realBlockchain.clearAndReinitialize();
 
-        // Load bootstrap admin keys
-        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
-            "./keys/genesis-admin.private",
-            "./keys/genesis-admin.public"
-        );
+        // Load bootstrap admin keys (auto-generates if missing - test-only)
+        bootstrapKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
 
         // Register bootstrap admin in blockchain
         realBlockchain.createBootstrapAdmin(

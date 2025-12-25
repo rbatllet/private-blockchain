@@ -5,8 +5,9 @@ import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
-import java.security.SecureRandom;
 import java.util.Base64;
+
+import static com.rbatllet.blockchain.util.CryptoUtil.getSecureRandom;
 
 /**
  * Secure block encryption service using AES-256-GCM
@@ -221,7 +222,7 @@ public class SecureBlockEncryptionService {
      */
     private static byte[] generateRandomBytes(int length) {
         byte[] bytes = new byte[length];
-        new SecureRandom().nextBytes(bytes);
+        getSecureRandom().nextBytes(bytes);
         return bytes;
     }
     

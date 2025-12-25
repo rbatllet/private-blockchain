@@ -44,6 +44,9 @@ print_success "All prerequisites satisfied"
 # Clean and compile
 cleanup_database
 
+# Ensure genesis admin keys exist (auto-generates if missing)
+ensure_genesis_keys
+
 if ! compile_project; then
     exit 1
 fi
@@ -97,5 +100,8 @@ echo ""
 
 # Final cleanup
 cleanup_database > /dev/null 2>&1
+
+# Ensure genesis admin keys exist (auto-generates if missing)
+ensure_genesis_keys
 
 print_success "Custom Metadata Search Demo completed successfully!"

@@ -30,6 +30,9 @@ print_success "All prerequisites satisfied"
 # Clean and compile
 cleanup_database
 
+# Ensure genesis admin keys exist (auto-generates if missing)
+ensure_genesis_keys
+
 if ! compile_project; then
     exit 1
 fi
@@ -201,6 +204,9 @@ print_info ""
 
 # Final cleanup
 cleanup_database
+
+# Ensure genesis admin keys exist (auto-generates if missing)
+ensure_genesis_keys
 
 print_success "🎉 Multilingual Blockchain Demo completed successfully!"
 print_info ""

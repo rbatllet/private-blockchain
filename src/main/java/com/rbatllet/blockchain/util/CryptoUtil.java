@@ -72,6 +72,37 @@ public class CryptoUtil {
     
     // FIXED: Global lock for thread safety on key store operations
     private static final ReentrantReadWriteLock KEY_STORE_LOCK = new ReentrantReadWriteLock();
+
+    /**
+     * Shared SecureRandom singleton for cryptographically secure random number generation.
+     *
+     * <p>SecureRandom is thread-safe according to Java documentation and can be safely
+     * shared across threads. Using a single instance provides:</p>
+     * <ul>
+     *   <li>Memory efficiency (single instance vs. one per thread)</li>
+     *   <li>Single initialization cost instead of per-thread</li>
+     *   <li>Native thread-safety without contention</li>
+     *   <li>Better entropy pooling across operations</li>
+     * </ul>
+     *
+     * <p>From Oracle Java Docs: "SecureRandom objects are safe for use by multiple
+     * concurrent threads."</p>
+     *
+     * @since 1.0.6
+     */
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
+    /**
+     * Get the shared SecureRandom instance.
+     *
+     * <p>This method is thread-safe and can be called concurrently.</p>
+     *
+     * @return A thread-safe SecureRandom instance
+     * @since 1.0.6
+     */
+    public static SecureRandom getSecureRandom() {
+        return SECURE_RANDOM;
+    }
     
     // Key type constants
     public enum KeyType {
@@ -172,9 +203,13 @@ public class CryptoUtil {
     
     /**
      * Convert bytes to hexadecimal (thread-safe method)
+     *
+     * @param bytes The byte array to convert
+     * @return Hexadecimal string representation
      */
     private static String bytesToHex(byte[] bytes) {
-        StringBuilder result = new StringBuilder();
+        // Pre-calculate capacity: each byte becomes 2 hex characters
+        StringBuilder result = new StringBuilder(bytes.length * 2);
         for (byte b : bytes) {
             result.append(String.format("%02x", b));
         }
@@ -824,7 +859,7 @@ public class CryptoUtil {
             
             // Generate random IV
             byte[] iv = new byte[GCM_IV_LENGTH];
-            new SecureRandom().nextBytes(iv);
+            getSecureRandom().nextBytes(iv);
             
             // Encrypt with AES-256-GCM
             SecretKeySpec secretKey = new SecretKeySpec(key, AES_ALGORITHM);
@@ -912,7 +947,7 @@ public class CryptoUtil {
      */
     public static String generateAESKey() {
         byte[] key = new byte[AES_KEY_LENGTH];
-        new SecureRandom().nextBytes(key);
+        getSecureRandom().nextBytes(key);
         return Base64.getEncoder().encodeToString(key);
     }
     

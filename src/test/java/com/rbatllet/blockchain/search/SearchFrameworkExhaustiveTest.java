@@ -4,8 +4,8 @@ import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.*;
-import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.security.UserRole;
+import com.rbatllet.blockchain.testutil.GenesisKeyManager;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.test.util.TestDatabaseUtils;
 import org.junit.jupiter.api.*;
@@ -52,11 +52,8 @@ public class SearchFrameworkExhaustiveTest {
         // Clean database and enable test mode before each test to ensure test isolation
         TestDatabaseUtils.setupTest();
 
-        // Load bootstrap admin keys
-        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
-            "./keys/genesis-admin.private",
-            "./keys/genesis-admin.public"
-        );
+        // Load bootstrap admin keys (auto-generates if missing - test-only)
+        bootstrapKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
 
         // Use high security configuration for exhaustive testing
         highSecurityConfig = EncryptionConfig.createHighSecurityConfig();

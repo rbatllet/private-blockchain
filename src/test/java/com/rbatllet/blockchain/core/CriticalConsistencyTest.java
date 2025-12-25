@@ -1,7 +1,7 @@
 package com.rbatllet.blockchain.core;
 
-import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.security.UserRole;
+import com.rbatllet.blockchain.testutil.GenesisKeyManager;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.validation.ChainValidationResult;
 import com.rbatllet.blockchain.test.util.TestDatabaseUtils;
@@ -39,11 +39,8 @@ class CriticalConsistencyTest {
         // Clean database and enable test mode before each test to ensure test isolation
         TestDatabaseUtils.setupTest();
 
-        // Load bootstrap admin keys
-        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
-            "./keys/genesis-admin.private",
-            "./keys/genesis-admin.public"
-        );
+        // Load bootstrap admin keys (auto-generates if missing - test-only)
+        bootstrapKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
 
         // The generateKeyPair() method now uses the new hierarchical key system internally
         aliceKeyPair = CryptoUtil.generateKeyPair();

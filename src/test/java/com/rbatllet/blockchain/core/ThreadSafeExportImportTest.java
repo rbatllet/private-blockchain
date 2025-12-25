@@ -1,7 +1,7 @@
 package com.rbatllet.blockchain.core;
 
-import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.security.UserRole;
+import com.rbatllet.blockchain.testutil.GenesisKeyManager;
 import com.rbatllet.blockchain.testutil.BaseBlockchainTest;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.Test;
@@ -40,11 +40,8 @@ public class ThreadSafeExportImportTest extends BaseBlockchainTest {
         // Ensure clean state
         blockchain.clearAndReinitialize();
 
-        // Load bootstrap admin keys
-        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
-            "./keys/genesis-admin.private",
-            "./keys/genesis-admin.public"
-        );
+        // Load bootstrap admin keys (auto-generates if missing - test-only)
+        bootstrapKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
 
         // Register bootstrap admin in blockchain
         blockchain.createBootstrapAdmin(

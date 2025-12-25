@@ -18,6 +18,8 @@ import com.rbatllet.blockchain.security.SecureKeyStorage;
 import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.CustomMetadataUtil;
+
+import static com.rbatllet.blockchain.util.CryptoUtil.getSecureRandom;
 import com.rbatllet.blockchain.util.JPAUtil;
 import com.rbatllet.blockchain.util.format.FormatUtil;
 import com.rbatllet.blockchain.util.validation.BlockValidationUtil;
@@ -533,12 +535,13 @@ public class UserFriendlyEncryptionAPI {
      */
     public List<Block> findEncryptedData(String searchTerm) {
         logger.info("🔍 DEBUG: findEncryptedData called with searchTerm='{}'", searchTerm);
-        
-        // Handle null search term gracefully
+
+        // Validate search term (allow null for backward compatibility, treat as empty result)
         if (searchTerm == null) {
             logger.debug("🔍 DEBUG: searchTerm is null, returning empty list");
             return Collections.emptyList();
         }
+        validateStringParameter(searchTerm, "Search term", false, 10000);
 
         // Use Advanced Search public metadata search (no password required)
         logger.debug("🔍 DEBUG: Calling searchAll() with term '{}'", searchTerm);
@@ -664,10 +667,12 @@ public class UserFriendlyEncryptionAPI {
      * @since 1.0
      */
     public List<Block> findAndDecryptData(String searchTerm, String password) {
+        validateStringParameter(searchTerm, "Search term", false, 10000);
+        validatePasswordSecurity(password, "Password");
         logger.debug(
             "🔍 Debug: findAndDecryptData called with searchTerm='{}', password length={}",
             searchTerm,
-            (password != null ? password.length() : "null")
+            password.length()
         );
         // Use Search Framework Engine for elegant, robust search
         return searchWithAdaptiveDecryption(searchTerm, password, 50);
@@ -727,6 +732,7 @@ public class UserFriendlyEncryptionAPI {
         if (identifier == null || identifier.trim().isEmpty()) {
             return Collections.emptyList();
         }
+        validateStringParameter(identifier, "Identifier", false, 1000);
         return searchByTerms(new String[] { identifier }, null, 50);
     }
 
@@ -801,12 +807,8 @@ public class UserFriendlyEncryptionAPI {
      * @since 1.0.6
      */
     public List<Block> findRecordsByIdentifier(String identifier, String password) {
-        if (identifier == null || identifier.trim().isEmpty()) {
-            throw new IllegalArgumentException("Identifier cannot be null or empty");
-        }
-        if (password == null || password.trim().isEmpty()) {
-            throw new IllegalArgumentException("Password cannot be null or empty");
-        }
+        validateStringParameter(identifier, "Identifier", false, 1000);
+        validatePasswordSecurity(password, "Password");
         return searchByTerms(new String[] { identifier }, password, 50);
     }
 
@@ -873,6 +875,7 @@ public class UserFriendlyEncryptionAPI {
         if (searchTerm == null || searchTerm.trim().isEmpty()) {
             return Collections.emptyList();
         }
+        validateStringParameter(searchTerm, "Search term", false, 10000);
 
         // Use Advanced Search public search (no password, metadata only)
         var enhancedResults = blockchain
@@ -977,6 +980,10 @@ public class UserFriendlyEncryptionAPI {
      * @return Space-separated keywords extracted from the content
      */
     public String extractKeywords(String content) {
+        if (content == null || content.trim().isEmpty()) {
+            return "";
+        }
+        validateStringParameter(content, "Content", true, 100000); // 100KB limit for content
         return extractSimpleKeywords(content);
     }
 
@@ -1045,6 +1052,7 @@ public class UserFriendlyEncryptionAPI {
      * @return List of matching blocks found using intelligent keyword matching
      */
     public List<Block> smartSearch(String query) {
+        validateStringParameter(query, "Query", false, 10000);
         // Extract keywords from the query
         String extractedKeywords = extractSimpleKeywords(query);
 
@@ -1068,6 +1076,8 @@ public class UserFriendlyEncryptionAPI {
      * @return List of matching blocks with decrypted content where applicable
      */
     public List<Block> smartSearchWithPassword(String query, String password) {
+        validateStringParameter(query, "Query", false, 10000);
+        validatePasswordSecurity(password, "Password");
         // Extract keywords from the query
         String extractedKeywords = extractSimpleKeywords(query);
 
@@ -1087,6 +1097,7 @@ public class UserFriendlyEncryptionAPI {
      * @return Comprehensive search results with keyword-enhanced matching
      */
     public List<Block> smartAdvancedSearch(String query, String password) {
+        validateStringParameter(query, "Query", false, 10000);
         // Extract keywords from the query
         String extractedKeywords = extractSimpleKeywords(query);
 
@@ -1097,6 +1108,7 @@ public class UserFriendlyEncryptionAPI {
 
         // Perform Advanced Search with extracted keywords using proper architecture
         if (password != null && !password.trim().isEmpty()) {
+            validatePasswordSecurity(password, "Password");
             return searchWithAdaptiveDecryption(searchTerms, password, 50);
         } else {
             var enhancedResults = blockchain
@@ -1236,12 +1248,14 @@ public class UserFriendlyEncryptionAPI {
             );
             return Collections.emptyList();
         }
+        validateStringParameter(query, "Query", false, 10000);
         if (password == null) {
             logger.debug(
                 "Password is null for secure search, returning empty results"
             );
             return Collections.emptyList();
         }
+        validatePasswordSecurity(password, "Password");
 
         try {
             // Use SearchSpecialistAPI for advanced secure search
@@ -1314,6 +1328,7 @@ public class UserFriendlyEncryptionAPI {
         if (content == null || content.trim().isEmpty()) {
             return "No content provided for analysis.";
         }
+        validateStringParameter(content, "Content", true, 100000); // 100KB limit
 
         String keywords = extractSimpleKeywords(content);
 
@@ -2006,21 +2021,12 @@ public class UserFriendlyEncryptionAPI {
      * @return A cryptographically secure random password
      */
     public String generateSecurePassword(int length) {
-        if (length < 12) {
-            throw new IllegalArgumentException(
-                "Password must be at least 12 characters long"
-            );
-        }
-        if (length > 256) {
-            throw new IllegalArgumentException(
-                "Password length cannot exceed 256 characters (DoS protection)"
-            );
-        }
+        validateIntParameter(length, "Password length", 12, 256);
 
         String chars =
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
         StringBuilder password = new StringBuilder(length);
-        java.security.SecureRandom random = new java.security.SecureRandom();
+        java.security.SecureRandom random = getSecureRandom();
 
         for (int i = 0; i < length; i++) {
             password.append(chars.charAt(random.nextInt(chars.length())));
@@ -2340,6 +2346,56 @@ public class UserFriendlyEncryptionAPI {
         String validationError = PasswordUtil.validateStrongPassword(password);
         if (validationError != null) {
             throw new IllegalArgumentException(fieldName + " validation failed: " + validationError);
+        }
+    }
+
+    /**
+     * Validate a String parameter (search terms, identifiers, content, etc.)
+     *
+     * <p>This method provides comprehensive validation for String parameters including
+     * null checks, empty checks, and maximum length enforcement.</p>
+     *
+     * @param param The parameter to validate
+     * @param paramName Name of the parameter for error messages
+     * @param allowEmpty Whether empty strings are allowed (after trim)
+     * @param maxLength Maximum allowed length (use -1 for no limit)
+     * @throws IllegalArgumentException if validation fails
+     * @since 1.0.6
+     */
+    private void validateStringParameter(String param, String paramName, boolean allowEmpty, int maxLength) {
+        if (param == null) {
+            throw new IllegalArgumentException(paramName + " cannot be null");
+        }
+        if (!allowEmpty && param.trim().isEmpty()) {
+            throw new IllegalArgumentException(paramName + " cannot be empty");
+        }
+        if (maxLength > 0 && param.length() > maxLength) {
+            throw new IllegalArgumentException(
+                paramName + " length cannot exceed " + maxLength + " characters"
+            );
+        }
+    }
+
+    /**
+     * Validate an integer parameter within a specified range.
+     *
+     * @param value The value to validate
+     * @param paramName Name of the parameter for error messages
+     * @param min Minimum allowed value (inclusive)
+     * @param max Maximum allowed value (inclusive)
+     * @throws IllegalArgumentException if validation fails
+     * @since 1.0.6
+     */
+    private void validateIntParameter(int value, String paramName, int min, int max) {
+        if (value < min) {
+            throw new IllegalArgumentException(
+                paramName + " cannot be less than " + min + " (was: " + value + ")"
+            );
+        }
+        if (value > max) {
+            throw new IllegalArgumentException(
+                paramName + " cannot be greater than " + max + " (was: " + value + ")"
+            );
         }
     }
 
@@ -7627,6 +7683,8 @@ public class UserFriendlyEncryptionAPI {
      * @return SearchResults with comprehensive results and performance metrics
      */
     public SearchResults searchExhaustive(String query, String password) {
+        validateStringParameter(query, "Query", false, 10000);
+        validatePasswordSecurity(password, "Password");
         logger.info("🔍 Starting exhaustive search for query: '{}'", query);
         long startTime = System.currentTimeMillis();
 
@@ -7787,6 +7845,7 @@ public class UserFriendlyEncryptionAPI {
      * @return SearchResults with public metadata results
      */
     public SearchResults searchPublicFast(String query) {
+        validateStringParameter(query, "Query", false, 10000);
         logger.info("🔍 Starting fast public search for query: '{}'", query);
         long startTime = System.currentTimeMillis();
 
@@ -7860,6 +7919,7 @@ public class UserFriendlyEncryptionAPI {
      * @return SearchResults with encrypted content results
      */
     public SearchResults searchEncryptedOnly(String query, String password) {
+        validateStringParameter(query, "Query", false, 10000);
         logger.info("🔍 Starting encrypted-only search for query: '{}'", query);
         long startTime = System.currentTimeMillis();
 
@@ -7869,6 +7929,7 @@ public class UserFriendlyEncryptionAPI {
                     "Password required for encrypted content search"
                 );
             }
+            validatePasswordSecurity(password, "Password");
 
             EncryptionConfig config = EncryptionConfig.createBalancedConfig();
             SearchFrameworkEngine searchEngine = new SearchFrameworkEngine(

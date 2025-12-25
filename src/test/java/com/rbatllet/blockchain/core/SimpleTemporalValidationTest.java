@@ -3,8 +3,8 @@ package com.rbatllet.blockchain.core;
 import com.rbatllet.blockchain.dao.AuthorizedKeyDAO;
 import com.rbatllet.blockchain.entity.AuthorizedKey;
 import com.rbatllet.blockchain.entity.Block;
-import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.security.UserRole;
+import com.rbatllet.blockchain.testutil.GenesisKeyManager;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.*;
 
@@ -28,10 +28,7 @@ class SimpleTemporalValidationTest {
     void setUp() throws Exception {
         // RBAC FIX (v1.0.6): Load genesis-admin keys for createBootstrapAdmin()
         // createBootstrapAdmin() validates that the public key matches genesis-admin.public
-        aliceKeyPair = KeyFileLoader.loadKeyPairFromFiles(
-            "./keys/genesis-admin.private",
-            "./keys/genesis-admin.public"
-        );
+        aliceKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
 
         // Get public key string
         alicePublicKey = CryptoUtil.publicKeyToString(aliceKeyPair.getPublic());

@@ -4,8 +4,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.OffChainData;
-import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.security.UserRole;
+import com.rbatllet.blockchain.testutil.GenesisKeyManager;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.JPAUtil;
 import com.rbatllet.blockchain.validation.BlockValidationResult;
@@ -45,11 +45,8 @@ public class UserFriendlyEncryptionAPISecurityTest {
         realBlockchain = new Blockchain();
         realBlockchain.clearAndReinitialize();
 
-        // Load bootstrap admin keys
-        bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
-            "./keys/genesis-admin.private",
-            "./keys/genesis-admin.public"
-        );
+        // Load bootstrap admin keys (auto-generates if missing - test-only)
+        bootstrapKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
 
         // Register bootstrap admin in blockchain (RBAC v1.0.6)
         realBlockchain.createBootstrapAdmin(
@@ -373,8 +370,8 @@ public class UserFriendlyEncryptionAPISecurityTest {
             String secretData = "Ultra secret information";
             api.storeSecret(secretData, testPassword);
 
-            // Try to search with wrong password
-            var results = api.searchExhaustive("secret", "wrongpassword");
+            // Try to search with wrong password (must meet strong password requirements)
+            var results = api.searchExhaustive("secret", "WrongPassword123!");
             assertNotNull(results, "Should handle wrong password gracefully");
             // Results should be empty or not contain the actual secret
             if (results.getResultCount() > 0) {

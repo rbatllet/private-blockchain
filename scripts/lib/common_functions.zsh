@@ -238,5 +238,32 @@ confirm() {
     esac
 }
 
+# Function to ensure genesis admin keys exist (generates if missing)
+ensure_genesis_keys() {
+    if [[ -f "./keys/genesis-admin.private" && -f "./keys/genesis-admin.public" ]]; then
+        print_info "Genesis admin keys already exist"
+        return 0
+    fi
+
+    print_warning "Genesis admin keys not found"
+    print_step "Generating genesis admin keys..."
+
+    # Check if generate_genesis_keys.zsh exists
+    if [[ ! -f "./tools/generate_genesis_keys.zsh" ]]; then
+        error_exit "tools/generate_genesis_keys.zsh not found. Cannot generate keys."
+    fi
+
+    # Make sure it's executable
+    chmod +x ./tools/generate_genesis_keys.zsh 2>/dev/null || true
+
+    # Generate keys
+    if ./tools/generate_genesis_keys.zsh; then
+        print_success "Genesis admin keys generated successfully"
+        return 0
+    else
+        error_exit "Failed to generate genesis admin keys"
+    fi
+}
+
 # Functions are automatically available when sourcing in ZSH
 # No need to export them

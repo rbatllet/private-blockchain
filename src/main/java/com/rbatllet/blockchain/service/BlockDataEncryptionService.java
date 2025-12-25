@@ -10,8 +10,9 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.security.SecureRandom;
 import java.util.Base64;
+
+import static com.rbatllet.blockchain.util.CryptoUtil.getSecureRandom;
 
 /**
  * Advanced encryption service for blockchain block data using AES-256-GCM
@@ -405,16 +406,16 @@ public class BlockDataEncryptionService {
      */
     private static byte[] generateRandomKey() {
         byte[] key = new byte[AES_KEY_LENGTH];
-        new SecureRandom().nextBytes(key);
+        getSecureRandom().nextBytes(key);
         return key;
     }
-    
+
     /**
      * Generate cryptographically secure random IV for GCM
      */
     private static byte[] generateRandomIV() {
         byte[] iv = new byte[GCM_IV_LENGTH];
-        new SecureRandom().nextBytes(iv);
+        getSecureRandom().nextBytes(iv);
         return iv;
     }
     

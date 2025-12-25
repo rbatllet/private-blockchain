@@ -13,10 +13,11 @@ import java.nio.file.Paths;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+
+import static com.rbatllet.blockchain.util.CryptoUtil.getSecureRandom;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.security.KeyFactory;
-import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Base64;
 
@@ -84,7 +85,7 @@ public class SecureKeyStorage {
 
             // Generate random IV
             byte[] iv = new byte[GCM_IV_LENGTH];
-            new SecureRandom().nextBytes(iv);
+            getSecureRandom().nextBytes(iv);
 
             // Encrypt the private key with AES-256-GCM
             GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv);
@@ -255,7 +256,7 @@ public class SecureKeyStorage {
 
             // Generate random IV
             byte[] iv = new byte[GCM_IV_LENGTH];
-            new SecureRandom().nextBytes(iv);
+            getSecureRandom().nextBytes(iv);
 
             // Encrypt with AES-256-GCM
             GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv);

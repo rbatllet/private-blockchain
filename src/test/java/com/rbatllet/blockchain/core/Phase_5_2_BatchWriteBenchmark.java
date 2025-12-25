@@ -2,8 +2,8 @@ package com.rbatllet.blockchain.core;
 
 import com.rbatllet.blockchain.config.DatabaseConfig;
 import com.rbatllet.blockchain.entity.Block;
-import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.security.UserRole;
+import com.rbatllet.blockchain.testutil.GenesisKeyManager;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.JPAUtil;
 import org.junit.jupiter.api.*;
@@ -105,11 +105,8 @@ public class Phase_5_2_BatchWriteBenchmark {
         Blockchain blockchain = new Blockchain();
         blockchain.clearAndReinitialize();
 
-        // Load bootstrap admin keys
-        KeyPair bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
-            "./keys/genesis-admin.private",
-            "./keys/genesis-admin.public"
-        );
+        // Load bootstrap admin keys (auto-generates if missing - test-only)
+        KeyPair bootstrapKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
         
         assertNotNull(bootstrapKeyPair, 
             "Failed to load genesis admin keys. Check that keys exist in ./keys/ directory. " +
@@ -235,10 +232,7 @@ public class Phase_5_2_BatchWriteBenchmark {
         // Re-create bootstrap admin and test user (required after clearAndReinitialize)
         KeyPair bootstrapKeyPair;
         try {
-            bootstrapKeyPair = KeyFileLoader.loadKeyPairFromFiles(
-                "./keys/genesis-admin.private",
-                "./keys/genesis-admin.public"
-            );
+            bootstrapKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
             blockchain.createBootstrapAdmin(
                 CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
                 "BOOTSTRAP_ADMIN"

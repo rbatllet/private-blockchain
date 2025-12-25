@@ -69,6 +69,9 @@ print_success "All prerequisites satisfied"
 # Clean and compile
 cleanup_database
 
+# Ensure genesis admin keys exist (auto-generates if missing)
+ensure_genesis_keys
+
 # Compile project
 if ! compile_project; then
     exit 1

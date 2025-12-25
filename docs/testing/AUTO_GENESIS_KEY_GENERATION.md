@@ -60,17 +60,15 @@ Simplify test execution by automatically generating genesis-admin keys when they
 
 ```java
 import com.rbatllet.blockchain.testutil.BaseBlockchainTest;
+import com.rbatllet.blockchain.testutil.GenesisKeyManager;
 
 public class MyBlockchainTest extends BaseBlockchainTest {
     // Genesis keys are automatically available!
 
     @Test
     void myTest() {
-        // Keys at ./keys/genesis-admin.* are ready
-        KeyPair genesisKeys = KeyFileLoader.loadKeyPairFromFiles(
-            "./keys/genesis-admin.private",
-            "./keys/genesis-admin.public"
-        );
+        // Keys are auto-generated if missing, or loaded if exist
+        KeyPair genesisKeys = GenesisKeyManager.ensureGenesisKeysExist();
 
         // ... test logic ...
     }
