@@ -116,9 +116,92 @@ if (password == null) {
 // ✅ CORRECT: SecureKeyStorage provides authenticated encryption
 // - AES-256-GCM with 96-bit random IV
 // - 128-bit authentication tag for tamper detection
-// - SHA-3-256 password-based key derivation
+// - PBKDF2-HMAC-SHA512 quantum-resistant key derivation (210k iterations)
 // - Automatic memory cleanup after operations
 ```
+
+---
+
+## 🔮 Key Derivation and Quantum Safety
+
+### Quantum-Resistant Key Derivation
+
+The blockchain uses **PBKDF2-HMAC-SHA512** for all password-based key derivation, providing:
+
+- ✅ **256-bit post-quantum security** (resistant to Grover's algorithm)
+- ✅ **Rainbow table immunity** (unique salt per encryption)
+- ✅ **Brute-force resistance** (210,000 iterations - OWASP 2023)
+- ✅ **NIST SP 800-132 compliant**
+- ✅ **FIPS-140 validated implementations available**
+
+### Why Quantum-Safe Matters
+
+Quantum computers using **Grover's algorithm** reduce hash security by half:
+
+| Hash Function | Classical Security | Quantum Security | Status |
+|---------------|-------------------|------------------|--------|
+| SHA-256 | 256 bits | 128 bits | ⚠️ Borderline |
+| **SHA-512** | **512 bits** | **256 bits** | ✅ **Quantum-safe** |
+| SHA3-256 | 256 bits | 128 bits | ⚠️ Borderline |
+| SHA3-512 | 512 bits | 256 bits | ✅ Quantum-safe |
+
+**PBKDF2-HMAC-SHA512 provides 256-bit post-quantum security** - well above the 128-bit minimum.
+
+### Key Derivation Best Practices
+
+```java
+import com.rbatllet.blockchain.security.KeyDerivationUtil;
+
+// ✅ CORRECT: Let KeyDerivationUtil handle everything
+byte[] salt = KeyDerivationUtil.generateSalt();  // 128-bit random salt
+SecretKeySpec key = KeyDerivationUtil.deriveSecretKey("password", salt);
+
+// Key derivation parameters:
+// - Algorithm: PBKDF2-HMAC-SHA512
+// - Iterations: 210,000 (OWASP 2023 recommendation)
+// - Salt: 128-bit (16 bytes) random
+// - Output: 256-bit (32 bytes) AES key
+// - Quantum Security: 256 bits
+
+// ❌ WRONG: Never derive keys manually
+MessageDigest digest = MessageDigest.getInstance("SHA-256");
+byte[] key = digest.digest(password.getBytes());  // Vulnerable to rainbow tables!
+```
+
+### Migration from Old Key Derivation
+
+**Breaking Change (v1.0.6+)**: Old SHA-3-256 direct hashing **for password-based key derivation** replaced with PBKDF2-HMAC-SHA512.
+
+**Important**: SHA-3-256 is still used correctly for content hashing (block integrity). Only password-to-key derivation changed.
+
+**Old (DEPRECATED for password-based key derivation)**:
+```java
+// OLD: SHA-3-256 direct hash for password → key (VULNERABLE)
+MessageDigest digest = MessageDigest.getInstance("SHA3-256");
+byte[] hash = digest.digest(password.getBytes());
+// ❌ No salt - rainbow table vulnerable
+// ❌ Single iteration - fast brute force
+// ❌ 128-bit quantum security (borderline)
+```
+
+**New (SECURE)**:
+```java
+// NEW: PBKDF2-HMAC-SHA512 (quantum-safe)
+byte[] salt = KeyDerivationUtil.generateSalt();
+byte[] key = KeyDerivationUtil.deriveKey("password", salt);
+// ✅ Unique salt - rainbow table immune
+// ✅ 210k iterations - slow brute force
+// ✅ 256-bit quantum security (safe)
+```
+
+**Impact**:
+- 🔄 **SecureKeyStorage**: New file format `[IV][salt][ciphertext]`
+- 🔄 **OffChainStorage**: New file format with embedded salt
+- ⚠️ **No backward compatibility**: Old encrypted files cannot be decrypted
+
+See [KEY_DERIVATION_GUIDE.md](KEY_DERIVATION_GUIDE.md) for complete migration guide.
+
+---
 
 ## 🔒 Data Classification and Protection
 

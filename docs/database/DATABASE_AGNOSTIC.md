@@ -437,6 +437,73 @@ export DB_PASSWORD=staging_password
 export DB_PASSWORD=$(vault read -field=password secret/blockchain/db)
 ```
 
+### 4. SSL/TLS Encryption (NEW in v1.0.6+)
+
+**PostgreSQL** - SSL enabled by default:
+
+```java
+// Default configuration (development/self-signed certs)
+DatabaseConfig pgConfig = DatabaseConfig.createPostgreSQLConfig(
+    "db.example.com", "blockchain", "user", "pass"
+);
+// Connection string: jdbc:postgresql://db.example.com:5432/blockchain?ssl=true&sslmode=require
+
+// ⚠️ WARNING: sslmode=require encrypts traffic but does NOT verify server certificate
+// This is acceptable for development but vulnerable to MITM attacks in production
+
+// For PRODUCTION with valid CA certificates:
+DatabaseConfig prodConfig = DatabaseConfig.builder()
+    .databaseType(DatabaseConfig.DatabaseType.POSTGRESQL)
+    .databaseUrl("jdbc:postgresql://db.example.com:5432/blockchain?ssl=true&sslmode=verify-full")
+    .username("user")
+    .password("pass")
+    .build();
+// sslmode=verify-full: Encrypts traffic AND verifies server certificate (recommended)
+```
+
+**MySQL** - SSL required by default:
+
+```java
+// Default configuration (SSL mandatory)
+DatabaseConfig mysqlConfig = DatabaseConfig.createMySQLConfig(
+    "db.example.com", "blockchain", "user", "pass"
+);
+// Connection string: jdbc:mysql://db.example.com:3306/blockchain?useSSL=true&requireSSL=true
+
+// ⚠️ IMPORTANT: MySQL server MUST have SSL/TLS configured or connection will fail
+
+// For self-signed certificates:
+DatabaseConfig mysqlSelfSigned = DatabaseConfig.builder()
+    .databaseType(DatabaseConfig.DatabaseType.MYSQL)
+    .databaseUrl("jdbc:mysql://db.example.com:3306/blockchain?useSSL=true&requireSSL=true&trustServerCertificate=true")
+    .username("user")
+    .password("pass")
+    .build();
+
+// For production with CA-signed certificates:
+DatabaseConfig mysqlProd = DatabaseConfig.builder()
+    .databaseType(DatabaseConfig.DatabaseType.MYSQL)
+    .databaseUrl("jdbc:mysql://db.example.com:3306/blockchain?useSSL=true&requireSSL=true&verifyServerCertificate=true")
+    .username("user")
+    .password("pass")
+    .build();
+```
+
+**SSL/TLS Security Levels:**
+
+| Database | Default Mode | Security | Recommendation |
+|----------|-------------|----------|----------------|
+| PostgreSQL | `sslmode=require` | ⚠️ Encrypts, doesn't verify cert | Development OK, Production use `verify-full` |
+| MySQL | `requireSSL=true` | ⚠️ Encrypts, doesn't verify cert | Development OK, Production add `verifyServerCertificate=true` |
+| SQLite | N/A (local file) | ✅ No network traffic | Development only |
+| H2 | N/A (embedded/local) | ✅ No network traffic | Testing only |
+
+**Production Checklist:**
+- ✅ Use `sslmode=verify-full` for PostgreSQL
+- ✅ Add `verifyServerCertificate=true` for MySQL
+- ✅ Ensure database server has valid CA-signed certificates
+- ✅ Never use self-signed certificates in production without proper validation
+
 ## 📊 Performance Tuning
 
 ### SQLite Optimization

@@ -562,7 +562,7 @@ public boolean verifyIntegrity(OffChainData metadata, String password) {
 
 #### Encryption Specifications
 - **Algorithm**: AES-256-GCM with authenticated encryption
-- **Key Derivation**: SHA3-256 hash of deterministic password (32 bytes)
+- **Key Derivation**: PBKDF2-HMAC-SHA512 with unique salt (210,000 iterations, 32 bytes)
 - **Nonce Generation**: Cryptographically secure random 12 bytes per file
 - **Password Generation**: `"OFFCHAIN_" + blockNumber + "_" + signerPublicKey`
 

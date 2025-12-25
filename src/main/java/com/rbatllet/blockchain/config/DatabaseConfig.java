@@ -125,7 +125,11 @@ public class DatabaseConfig {
     public static DatabaseConfig createPostgreSQLConfig(String host, int port, String dbName, String username, String password) {
         return builder()
             .databaseType(DatabaseType.POSTGRESQL)
-            .databaseUrl("jdbc:postgresql://" + host + ":" + port + "/" + dbName)
+            // SECURITY: SSL/TLS enabled for encrypted connections (ssl=true&sslmode=require)
+            // WARNING: sslmode=require encrypts traffic but does NOT verify server certificate (vulnerable to MITM)
+            // For DEVELOPMENT: sslmode=require is acceptable
+            // For PRODUCTION: use sslmode=verify-full (requires valid CA certificates) for maximum security
+            .databaseUrl("jdbc:postgresql://" + host + ":" + port + "/" + dbName + "?ssl=true&sslmode=require")
             .username(username)
             .password(password)
             .poolMinSize(DEFAULT_POSTGRESQL_POOL_MIN)
@@ -160,7 +164,11 @@ public class DatabaseConfig {
     public static DatabaseConfig createMySQLConfig(String host, int port, String dbName, String username, String password) {
         return builder()
             .databaseType(DatabaseType.MYSQL)
-            .databaseUrl("jdbc:mysql://" + host + ":" + port + "/" + dbName + "?useSSL=false&allowPublicKeyRetrieval=true")
+            // SECURITY: SSL/TLS enabled for encrypted connections (useSSL=true&requireSSL=true)
+            // IMPORTANT: MySQL server MUST have SSL/TLS configured or connection will fail
+            // For self-signed certificates: add &trustServerCertificate=true
+            // For valid CA certificates: add &verifyServerCertificate=true for maximum security
+            .databaseUrl("jdbc:mysql://" + host + ":" + port + "/" + dbName + "?useSSL=true&requireSSL=true&allowPublicKeyRetrieval=true")
             .username(username)
             .password(password)
             .poolMinSize(DEFAULT_MYSQL_POOL_MIN)

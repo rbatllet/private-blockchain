@@ -1,6 +1,7 @@
 package com.rbatllet.blockchain.config.util;
 
 import com.rbatllet.blockchain.config.DatabaseConfig;
+import com.rbatllet.blockchain.config.DatabaseConfig.DatabaseType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.BeforeEach;
@@ -232,9 +233,17 @@ class ConfigurationSecurityAnalyzerTest {
     @Test
     @DisplayName("analyze() should warn MEDIUM when SSL not detected in PostgreSQL URL")
     void testAnalyze_NoSSL_PostgreSQL() {
-        DatabaseConfig config = DatabaseConfig.createPostgreSQLConfig(
-            "localhost", 5432, "blockchain", "admin", "Password123!"
-        );
+        // Create PostgreSQL config WITHOUT SSL (using builder to bypass factory method SSL enforcement)
+        DatabaseConfig config = DatabaseConfig.builder()
+            .databaseType(DatabaseType.POSTGRESQL)
+            .databaseUrl("jdbc:postgresql://localhost:5432/blockchain")  // No SSL parameters
+            .username("admin")
+            .password("Password123!")
+            .poolMinSize(5)  // Minimum pool size for PostgreSQL
+            .poolMaxSize(10)
+            .connectionTimeout(30000)  // 30 seconds
+            .hbm2ddlAuto("update")
+            .build();
 
         List<SecurityWarning> warnings = analyzer.analyze(config);
 

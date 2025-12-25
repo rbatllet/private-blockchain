@@ -202,7 +202,7 @@ String protectionPassword = api.generateValidatedPassword(24, true);
 boolean saved = SecureKeyStorage.savePrivateKey(username, privateKey, protectionPassword);
 if (saved) {
     System.out.println("✅ Private key saved with AES-256-GCM encryption");
-    System.out.println("🔐 Features: Random IV, 128-bit auth tag, SHA-3-256 key derivation");
+    System.out.println("🔐 Features: Random IV, 128-bit auth tag, PBKDF2-HMAC-SHA512 key derivation (210k iterations)");
 }
 
 // Load private key when needed (authentication tag verified automatically)

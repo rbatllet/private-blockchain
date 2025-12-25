@@ -1277,9 +1277,11 @@ System.out.println(report);
 
 #### Encryption Details
 - **Algorithm**: AES-256-GCM with authenticated encryption
-- **Key Derivation**: SHA3-256 hash of deterministic password (32 bytes)
+- **Key Derivation**: PBKDF2-HMAC-SHA512 with unique salt (210,000 iterations, 32 bytes)
+- **Salt**: Cryptographically secure 128-bit random salt per file
 - **Nonce Generation**: Cryptographically secure random 12-byte nonce per file
 - **Password Generation**: Based on block number + signer public key (reproducible)
+- **Quantum Security**: 256-bit post-quantum security (Grover-resistant)
 
 #### Integrity Protection
 - **Content Hash**: SHA3-256 of original (unencrypted) data

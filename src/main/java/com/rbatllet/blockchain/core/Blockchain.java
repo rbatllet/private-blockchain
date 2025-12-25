@@ -8205,6 +8205,7 @@ public class Blockchain {
                 originalOffChain.getFilePath(),
                 originalOffChain.getFileSize(),
                 originalOffChain.getEncryptionIV(),
+                originalOffChain.getEncryptionSalt(),
                 originalOffChain.getContentType(),
                 originalOffChain.getSignerPublicKey()
             );

@@ -12,7 +12,8 @@ import java.util.List;
 
 /**
  * Demonstration of enhanced cryptographic security features:
- * - SHA-3 for hashing (quantum-resistant)
+ * - SHA-3-256 for content hashing (quantum-resistant integrity checks)
+ * - PBKDF2-HMAC-SHA512 for password-based key derivation (quantum-resistant)
  * - ML-DSA-87 for digital signatures (NIST FIPS 204, 256-bit quantum-resistant, post-quantum secure)
  * - Hierarchical key management (root, intermediate, operational)
  * - Key rotation and revocation capabilities
@@ -98,14 +99,18 @@ public class CryptoSecurityDemo {
     }
     
     private static void demonstrateHashAlgorithms() {
-        System.out.println("📊 === 🔗 SHA-3 HASH ALGORITHM 🔗 === 📊");
+        System.out.println("📊 === 🔗 SHA-3 HASH ALGORITHM (Content Integrity) 🔗 === 📊");
+        System.out.println("ℹ️  Note: SHA-3-256 is used for HASHING block content, NOT for password-based key derivation");
+        System.out.println("ℹ️  For password-based encryption, use PBKDF2-HMAC-SHA512 (see KeyDerivationUtil)");
+        System.out.println();
+
         String data = "This is sample data to hash";
-        
-        // Calculate hash using SHA-3
+
+        // Calculate hash using SHA-3-256 (for content integrity, NOT password derivation)
         String sha3Hash = CryptoUtil.calculateHash(data);
-        
+
         System.out.println("📝 Original data: " + data);
-        System.out.println("🔗 SHA-3 hash:    " + sha3Hash);
+        System.out.println("🔗 SHA-3-256 hash (content integrity): " + sha3Hash);
         System.out.println();
     }
     

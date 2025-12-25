@@ -29,7 +29,10 @@ public class OffChainData {
     
     @Column(nullable = false, length = 32)
     private String encryptionIV;
-    
+
+    @Column(nullable = false, length = 32)
+    private String encryptionSalt;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
     
@@ -43,8 +46,8 @@ public class OffChainData {
         this.createdAt = LocalDateTime.now();
     }
     
-    public OffChainData(String dataHash, String signature, String filePath, 
-                       Long fileSize, String encryptionIV, String contentType, 
+    public OffChainData(String dataHash, String signature, String filePath,
+                       Long fileSize, String encryptionIV, String encryptionSalt, String contentType,
                        String signerPublicKey) {
         this();
         this.dataHash = dataHash;
@@ -52,6 +55,7 @@ public class OffChainData {
         this.filePath = filePath;
         this.fileSize = fileSize;
         this.encryptionIV = encryptionIV;
+        this.encryptionSalt = encryptionSalt;
         this.contentType = contentType;
         this.signerPublicKey = signerPublicKey;
     }
@@ -100,11 +104,19 @@ public class OffChainData {
     public String getEncryptionIV() {
         return encryptionIV;
     }
-    
+
     public void setEncryptionIV(String encryptionIV) {
         this.encryptionIV = encryptionIV;
     }
-    
+
+    public String getEncryptionSalt() {
+        return encryptionSalt;
+    }
+
+    public void setEncryptionSalt(String encryptionSalt) {
+        this.encryptionSalt = encryptionSalt;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }

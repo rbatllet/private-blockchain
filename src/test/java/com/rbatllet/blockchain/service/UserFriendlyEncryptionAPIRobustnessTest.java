@@ -267,6 +267,7 @@ public class UserFriendlyEncryptionAPIRobustnessTest {
                 "test-file-path",
                 1024L,
                 "test-iv",
+                "AAAAAAAAAAAAAAAAAAAAAA==",  // dummy salt
                 "application/text",
                 "test-public-key"
             );

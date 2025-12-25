@@ -11,31 +11,32 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.KeyPair;
-import java.security.MessageDigest;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.security.SecureRandom;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.security.KeyFactory;
+import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Base64;
 
 /**
  * Secure storage for private keys using AES-256-GCM encryption
+ * Uses PBKDF2WithHmacSHA512 for quantum-resistant password-based key derivation
  */
 public class SecureKeyStorage {
 
     private static final Logger logger = LoggerFactory.getLogger(SecureKeyStorage.class);
 
     private static final String KEYS_DIRECTORY = "private-keys";
-    private static final String ALGORITHM = "AES";
     private static final String TRANSFORMATION = "AES/GCM/NoPadding";
     private static final String KEY_EXTENSION = ".key";
     private static final String KEYPAIR_EXTENSION = ".keypair"; // For ML-DSA KeyPairs (public + private)
     private static final int GCM_IV_LENGTH = 12; // 96-bit IV recommended for GCM
     private static final int GCM_TAG_LENGTH = 16; // 128-bit authentication tag
-    private static final int AES_KEY_LENGTH = 32; // 256-bit key
+
+    // Key derivation constants from KeyDerivationUtil
+    private static final int SALT_LENGTH = KeyDerivationUtil.getDefaultSaltLength();
 
     /**
      * Get the keys directory, respecting user.dir system property for test isolation.
@@ -75,15 +76,11 @@ public class SecureKeyStorage {
                 keysDir.mkdirs();
             }
 
-            // Derive secret key from password using SHA-3-256
-            MessageDigest digest = MessageDigest.getInstance(CryptoUtil.HASH_ALGORITHM);
-            byte[] hash = digest.digest(password.getBytes(StandardCharsets.UTF_8));
+            // Generate random salt for key derivation
+            byte[] salt = KeyDerivationUtil.generateSalt();
 
-            // Ensure we have exactly 256 bits (32 bytes) for AES-256
-            byte[] keyBytes = new byte[AES_KEY_LENGTH];
-            System.arraycopy(hash, 0, keyBytes, 0, Math.min(hash.length, AES_KEY_LENGTH));
-
-            SecretKeySpec secretKey = new SecretKeySpec(keyBytes, ALGORITHM);
+            // Derive secret key from password using PBKDF2WithHmacSHA512
+            SecretKeySpec secretKey = KeyDerivationUtil.deriveSecretKey(password, salt);
 
             // Generate random IV
             byte[] iv = new byte[GCM_IV_LENGTH];
@@ -97,10 +94,12 @@ public class SecureKeyStorage {
             byte[] privateKeyBytes = privateKey.getEncoded();
             byte[] ciphertext = cipher.doFinal(privateKeyBytes);
 
-            // Combine IV + ciphertext (includes auth tag)
-            byte[] combined = new byte[iv.length + ciphertext.length];
+            // Combine IV + salt + ciphertext (includes auth tag)
+            // New format: [12 bytes IV][16 bytes salt][ciphertext]
+            byte[] combined = new byte[iv.length + SALT_LENGTH + ciphertext.length];
             System.arraycopy(iv, 0, combined, 0, iv.length);
-            System.arraycopy(ciphertext, 0, combined, iv.length, ciphertext.length);
+            System.arraycopy(salt, 0, combined, iv.length, SALT_LENGTH);
+            System.arraycopy(ciphertext, 0, combined, iv.length + SALT_LENGTH, ciphertext.length);
 
             // Save to file
             String fileName = getKeyFilePath(ownerName, KEY_EXTENSION);
@@ -108,7 +107,7 @@ public class SecureKeyStorage {
             Files.write(Paths.get(fileName), encodedKey.getBytes(StandardCharsets.UTF_8));
 
             // Clear sensitive data
-            Arrays.fill(keyBytes, (byte) 0);
+            Arrays.fill(salt, (byte) 0);
             Arrays.fill(privateKeyBytes, (byte) 0);
 
             return true;
@@ -139,26 +138,22 @@ public class SecureKeyStorage {
             String encodedKey = new String(Files.readAllBytes(Paths.get(fileName)), StandardCharsets.UTF_8);
             byte[] combined = Base64.getDecoder().decode(encodedKey);
 
-            if (combined.length < GCM_IV_LENGTH + GCM_TAG_LENGTH) {
+            // New format: IV (12 bytes) + salt (16 bytes) + ciphertext
+            if (combined.length < GCM_IV_LENGTH + SALT_LENGTH + GCM_TAG_LENGTH) {
                 return null;
             }
 
-            // Derive secret key from password using SHA-3-256
-            MessageDigest digest = MessageDigest.getInstance(CryptoUtil.HASH_ALGORITHM);
-            byte[] hash = digest.digest(password.getBytes(StandardCharsets.UTF_8));
-
-            // Ensure we have exactly 256 bits (32 bytes) for AES-256
-            byte[] keyBytes = new byte[AES_KEY_LENGTH];
-            System.arraycopy(hash, 0, keyBytes, 0, Math.min(hash.length, AES_KEY_LENGTH));
-
-            SecretKeySpec secretKey = new SecretKeySpec(keyBytes, ALGORITHM);
-
-            // Extract IV and ciphertext
+            // Extract IV and salt
             byte[] iv = new byte[GCM_IV_LENGTH];
-            byte[] ciphertext = new byte[combined.length - GCM_IV_LENGTH];
+            byte[] salt = new byte[SALT_LENGTH];
+            byte[] ciphertext = new byte[combined.length - GCM_IV_LENGTH - SALT_LENGTH];
 
             System.arraycopy(combined, 0, iv, 0, GCM_IV_LENGTH);
-            System.arraycopy(combined, GCM_IV_LENGTH, ciphertext, 0, ciphertext.length);
+            System.arraycopy(combined, GCM_IV_LENGTH, salt, 0, SALT_LENGTH);
+            System.arraycopy(combined, GCM_IV_LENGTH + SALT_LENGTH, ciphertext, 0, ciphertext.length);
+
+            // Derive secret key from password using PBKDF2WithHmacSHA512
+            SecretKeySpec secretKey = KeyDerivationUtil.deriveSecretKey(password, salt);
 
             // Decrypt with AES-256-GCM
             GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv);
@@ -174,7 +169,7 @@ public class SecureKeyStorage {
             PrivateKey privateKey = keyFactory.generatePrivate(keySpec);
 
             // Clear sensitive data
-            Arrays.fill(keyBytes, (byte) 0);
+            Arrays.fill(salt, (byte) 0);
             Arrays.fill(decryptedKey, (byte) 0);
 
             return privateKey;
@@ -252,12 +247,11 @@ public class SecureKeyStorage {
             System.arraycopy(privateKeyBytes, 0, combined, 4, privateKeyBytes.length);
             System.arraycopy(publicKeyBytes, 0, combined, 4 + privateKeyBytes.length, publicKeyBytes.length);
 
-            // Derive secret key from password using SHA-3-256
-            MessageDigest digest = MessageDigest.getInstance(CryptoUtil.HASH_ALGORITHM);
-            byte[] hash = digest.digest(password.getBytes(StandardCharsets.UTF_8));
-            byte[] keyBytes = new byte[AES_KEY_LENGTH];
-            System.arraycopy(hash, 0, keyBytes, 0, Math.min(hash.length, AES_KEY_LENGTH));
-            SecretKeySpec secretKey = new SecretKeySpec(keyBytes, ALGORITHM);
+            // Generate random salt for key derivation
+            byte[] salt = KeyDerivationUtil.generateSalt();
+
+            // Derive secret key from password using PBKDF2WithHmacSHA512
+            SecretKeySpec secretKey = KeyDerivationUtil.deriveSecretKey(password, salt);
 
             // Generate random IV
             byte[] iv = new byte[GCM_IV_LENGTH];
@@ -269,10 +263,12 @@ public class SecureKeyStorage {
             cipher.init(Cipher.ENCRYPT_MODE, secretKey, gcmSpec);
             byte[] ciphertext = cipher.doFinal(combined);
 
-            // Combine IV + ciphertext
-            byte[] encrypted = new byte[iv.length + ciphertext.length];
+            // Combine IV + salt + ciphertext
+            // New format: [12 bytes IV][16 bytes salt][ciphertext]
+            byte[] encrypted = new byte[iv.length + SALT_LENGTH + ciphertext.length];
             System.arraycopy(iv, 0, encrypted, 0, iv.length);
-            System.arraycopy(ciphertext, 0, encrypted, iv.length, ciphertext.length);
+            System.arraycopy(salt, 0, encrypted, iv.length, SALT_LENGTH);
+            System.arraycopy(ciphertext, 0, encrypted, iv.length + SALT_LENGTH, ciphertext.length);
 
             // Save to file with .keypair extension
             String fileName = getKeyFilePath(ownerName, KEYPAIR_EXTENSION);
@@ -280,7 +276,7 @@ public class SecureKeyStorage {
             Files.write(Paths.get(fileName), encodedKey.getBytes(StandardCharsets.UTF_8));
 
             // Clear sensitive data
-            Arrays.fill(keyBytes, (byte) 0);
+            Arrays.fill(salt, (byte) 0);
             Arrays.fill(privateKeyBytes, (byte) 0);
             Arrays.fill(combined, (byte) 0);
 
@@ -317,22 +313,21 @@ public class SecureKeyStorage {
             String encodedKey = new String(Files.readAllBytes(Paths.get(fileName)), StandardCharsets.UTF_8);
             byte[] encrypted = Base64.getDecoder().decode(encodedKey);
 
-            if (encrypted.length < GCM_IV_LENGTH + GCM_TAG_LENGTH) {
+            // New format: IV (12 bytes) + salt (16 bytes) + ciphertext
+            if (encrypted.length < GCM_IV_LENGTH + SALT_LENGTH + GCM_TAG_LENGTH) {
                 return null;
             }
 
-            // Derive secret key from password using SHA-3-256
-            MessageDigest digest = MessageDigest.getInstance(CryptoUtil.HASH_ALGORITHM);
-            byte[] hash = digest.digest(password.getBytes(StandardCharsets.UTF_8));
-            byte[] keyBytes = new byte[AES_KEY_LENGTH];
-            System.arraycopy(hash, 0, keyBytes, 0, Math.min(hash.length, AES_KEY_LENGTH));
-            SecretKeySpec secretKey = new SecretKeySpec(keyBytes, ALGORITHM);
-
-            // Extract IV and ciphertext
+            // Extract IV and salt
             byte[] iv = new byte[GCM_IV_LENGTH];
-            byte[] ciphertext = new byte[encrypted.length - GCM_IV_LENGTH];
+            byte[] salt = new byte[SALT_LENGTH];
+            byte[] ciphertext = new byte[encrypted.length - GCM_IV_LENGTH - SALT_LENGTH];
             System.arraycopy(encrypted, 0, iv, 0, GCM_IV_LENGTH);
-            System.arraycopy(encrypted, GCM_IV_LENGTH, ciphertext, 0, ciphertext.length);
+            System.arraycopy(encrypted, GCM_IV_LENGTH, salt, 0, SALT_LENGTH);
+            System.arraycopy(encrypted, GCM_IV_LENGTH + SALT_LENGTH, ciphertext, 0, ciphertext.length);
+
+            // Derive secret key from password using PBKDF2WithHmacSHA512
+            SecretKeySpec secretKey = KeyDerivationUtil.deriveSecretKey(password, salt);
 
             // Decrypt with AES-256-GCM
             GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv);
@@ -370,7 +365,7 @@ public class SecureKeyStorage {
             PublicKey publicKey = keyFactory.generatePublic(publicKeySpec);
 
             // Clear sensitive data
-            Arrays.fill(keyBytes, (byte) 0);
+            Arrays.fill(salt, (byte) 0);
             Arrays.fill(decrypted, (byte) 0);
             Arrays.fill(privateKeyBytes, (byte) 0);
 

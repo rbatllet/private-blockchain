@@ -43,7 +43,8 @@ These classes are available in the `com.rbatllet.blockchain.security` package.
 - **AES-256-GCM**: Galois/Counter Mode with 256-bit keys for authenticated encryption
 - **Random IV Generation**: Each encryption uses a cryptographically secure random 96-bit IV
 - **Authentication Tag**: 128-bit authentication tag protects against tampering
-- **SHA-3-256 Key Derivation**: Password-based key derivation using SHA-3-256
+- **PBKDF2-HMAC-SHA512 Key Derivation**: Quantum-resistant password-based key derivation (210,000 iterations)
+- **Unique Salt**: 128-bit cryptographically secure random salt per encryption
 - **Memory Security**: Sensitive data cleared from memory after use
 - **Thread-Safe**: All operations are thread-safe for concurrent access
 
@@ -55,7 +56,8 @@ These classes are available in the `com.rbatllet.blockchain.security` package.
 | Key Size | 256 bits (32 bytes) | Maximum AES security |
 | IV Size | 96 bits (12 bytes) | GCM recommended size |
 | Auth Tag | 128 bits (16 bytes) | Data integrity protection |
-| Key Derivation | SHA-3-256 | Secure hash algorithm |
+| Key Derivation | PBKDF2-HMAC-SHA512 | Quantum-resistant KDF (210k iterations) |
+| Salt | 128 bits (16 bytes) | Unique per encryption |
 
 ### Main Methods
 
@@ -246,7 +248,7 @@ public static boolean isValidPassword(String password)
   - One digit
   - One special character
 - **Formatting**: No leading or trailing spaces
-- **Security**: Uses PBKDF2 with HMAC-SHA256 for key derivation
+- **Security**: Uses PBKDF2 with HMAC-SHA512 for quantum-resistant key derivation (210,000 iterations)
 
 ### Usage Example
 

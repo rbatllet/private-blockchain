@@ -84,6 +84,7 @@ public class OffChainStorageServiceTest {
             tempDir.resolve("nonexistent.dat").toString(),
             100L,
             Base64.getEncoder().encodeToString(new byte[12]),
+            Base64.getEncoder().encodeToString(new byte[16]),  // dummy salt
             "text/plain",
             "publicKey123"
         );
@@ -111,6 +112,7 @@ public class OffChainStorageServiceTest {
                 testFile.toString(),
                 100L,
                 Base64.getEncoder().encodeToString(new byte[12]),
+                Base64.getEncoder().encodeToString(new byte[16]),  // dummy salt
                 "text/plain",
                 "publicKey123"
             );
@@ -136,6 +138,7 @@ public class OffChainStorageServiceTest {
             emptyFile.toString(),
             100L,
             Base64.getEncoder().encodeToString(new byte[12]),
+            Base64.getEncoder().encodeToString(new byte[16]),  // dummy salt
             "text/plain",
             "publicKey123"
         );
@@ -156,6 +159,7 @@ public class OffChainStorageServiceTest {
             smallFile.toString(),
             100L,
             Base64.getEncoder().encodeToString(new byte[12]),
+            Base64.getEncoder().encodeToString(new byte[16]),  // dummy salt
             "text/plain",
             "publicKey123"
         );
@@ -178,6 +182,7 @@ public class OffChainStorageServiceTest {
             mismatchFile.toString(),
             1000L, // Expected original size
             Base64.getEncoder().encodeToString(new byte[12]),
+            Base64.getEncoder().encodeToString(new byte[16]),  // dummy salt
             "text/plain",
             "publicKey123"
         );
@@ -200,6 +205,7 @@ public class OffChainStorageServiceTest {
             mismatchFile.toString(),
             100L, // Expected original size
             Base64.getEncoder().encodeToString(new byte[12]),
+            Base64.getEncoder().encodeToString(new byte[16]),  // dummy salt
             "text/plain",
             "publicKey123"
         );
@@ -220,6 +226,7 @@ public class OffChainStorageServiceTest {
             validFile.toString(),
             84L, // 100 - 16 = 84 bytes original
             "INVALID_BASE64!!!!", // Invalid Base64
+            "AAAAAAAAAAAAAAAAAAAAAA==",  // dummy salt
             "text/plain",
             "publicKey123"
         );
@@ -243,6 +250,7 @@ public class OffChainStorageServiceTest {
             validFile.toString(),
             84L,
             Base64.getEncoder().encodeToString(wrongLengthIV),
+            Base64.getEncoder().encodeToString(new byte[16]),  // dummy salt
             "text/plain",
             "publicKey123"
         );
@@ -264,6 +272,7 @@ public class OffChainStorageServiceTest {
             directory.toString(), // Directory, not a file
             100L,
             Base64.getEncoder().encodeToString(new byte[12]),
+            Base64.getEncoder().encodeToString(new byte[16]),  // dummy salt
             "text/plain",
             "publicKey123"
         );
@@ -288,6 +297,7 @@ public class OffChainStorageServiceTest {
             validFile.toString(),
             100L, // Expected original size
             Base64.getEncoder().encodeToString(new byte[12]),
+            Base64.getEncoder().encodeToString(new byte[16]),  // dummy salt
             "text/plain",
             "publicKey123"
         );
@@ -308,6 +318,7 @@ public class OffChainStorageServiceTest {
             minFile.toString(),
             0L, // Expected original size 0 (edge case)
             Base64.getEncoder().encodeToString(new byte[12]),
+            Base64.getEncoder().encodeToString(new byte[16]),  // dummy salt
             "text/plain",
             "publicKey123"
         );
@@ -351,6 +362,7 @@ public class OffChainStorageServiceTest {
             validFile.toString(),
             84L,
             Base64.getEncoder().encodeToString(correctIV),
+            Base64.getEncoder().encodeToString(new byte[16]),  // dummy salt
             "text/plain",
             "publicKey123"
         );
