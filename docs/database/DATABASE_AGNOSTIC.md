@@ -439,70 +439,66 @@ export DB_PASSWORD=$(vault read -field=password secret/blockchain/db)
 
 ### 4. SSL/TLS Encryption (NEW in v1.0.6+)
 
-**PostgreSQL** - SSL enabled by default:
+**PostgreSQL** - SSL with certificate verification by default:
 
 ```java
-// Default configuration (development/self-signed certs)
+// Default configuration (v1.0.6+: verifies server certificate)
 DatabaseConfig pgConfig = DatabaseConfig.createPostgreSQLConfig(
     "db.example.com", "blockchain", "user", "pass"
 );
-// Connection string: jdbc:postgresql://db.example.com:5432/blockchain?ssl=true&sslmode=require
+// Connection string: jdbc:postgresql://db.example.com:5432/blockchain?ssl=true&sslmode=verify-full
 
-// ⚠️ WARNING: sslmode=require encrypts traffic but does NOT verify server certificate
-// This is acceptable for development but vulnerable to MITM attacks in production
+// ✅ SECURITY: sslmode=verify-full encrypts traffic AND verifies server certificate
+// REQUIRES: Valid CA certificates in system truststore or custom sslrootcert parameter
+// PROTECTION: Prevents MITM attacks by verifying server identity
 
-// For PRODUCTION with valid CA certificates:
-DatabaseConfig prodConfig = DatabaseConfig.builder()
+// For self-signed certificates (development only):
+DatabaseConfig devConfig = DatabaseConfig.builder()
     .databaseType(DatabaseConfig.DatabaseType.POSTGRESQL)
-    .databaseUrl("jdbc:postgresql://db.example.com:5432/blockchain?ssl=true&sslmode=verify-full")
+    .databaseUrl("jdbc:postgresql://db.example.com:5432/blockchain?ssl=true&sslmode=verify-full&sslrootcert=/path/to/ca.pem")
     .username("user")
     .password("pass")
     .build();
-// sslmode=verify-full: Encrypts traffic AND verifies server certificate (recommended)
+// Add &sslrootcert=/path/to/ca.pem to specify custom CA for self-signed certificates
 ```
 
-**MySQL** - SSL required by default:
+**MySQL** - SSL with certificate verification by default:
 
 ```java
-// Default configuration (SSL mandatory)
+// Default configuration (v1.0.6+: verifies server certificate)
 DatabaseConfig mysqlConfig = DatabaseConfig.createMySQLConfig(
     "db.example.com", "blockchain", "user", "pass"
 );
-// Connection string: jdbc:mysql://db.example.com:3306/blockchain?useSSL=true&requireSSL=true
+// Connection string: jdbc:mysql://db.example.com:3306/blockchain?useSSL=true&requireSSL=true&verifyServerCertificate=true
 
-// ⚠️ IMPORTANT: MySQL server MUST have SSL/TLS configured or connection will fail
+// ✅ SECURITY: verifyServerCertificate=true encrypts traffic AND verifies server certificate
+// REQUIRES: Valid CA certificates in system truststore or custom trustCertificateKeyStoreUrl
+// PROTECTION: Prevents MITM attacks by verifying server identity
 
-// For self-signed certificates:
+// For self-signed certificates (development only):
 DatabaseConfig mysqlSelfSigned = DatabaseConfig.builder()
     .databaseType(DatabaseConfig.DatabaseType.MYSQL)
-    .databaseUrl("jdbc:mysql://db.example.com:3306/blockchain?useSSL=true&requireSSL=true&trustServerCertificate=true")
+    .databaseUrl("jdbc:mysql://db.example.com:3306/blockchain?useSSL=true&requireSSL=true&verifyServerCertificate=false&trustCertificateKeyStoreUrl=file:/path/to/truststore.jks&trustCertificateKeyStorePassword=password")
     .username("user")
     .password("pass")
     .build();
-
-// For production with CA-signed certificates:
-DatabaseConfig mysqlProd = DatabaseConfig.builder()
-    .databaseType(DatabaseConfig.DatabaseType.MYSQL)
-    .databaseUrl("jdbc:mysql://db.example.com:3306/blockchain?useSSL=true&requireSSL=true&verifyServerCertificate=true")
-    .username("user")
-    .password("pass")
-    .build();
+// Use custom truststore for self-signed certificates (set verifyServerCertificate=false or configure truststore)
 ```
 
 **SSL/TLS Security Levels:**
 
-| Database | Default Mode | Security | Recommendation |
-|----------|-------------|----------|----------------|
-| PostgreSQL | `sslmode=require` | ⚠️ Encrypts, doesn't verify cert | Development OK, Production use `verify-full` |
-| MySQL | `requireSSL=true` | ⚠️ Encrypts, doesn't verify cert | Development OK, Production add `verifyServerCertificate=true` |
+| Database | Default Mode (v1.0.6+) | Security | Notes |
+|----------|----------------------|----------|-------|
+| PostgreSQL | `sslmode=verify-full` | ✅ Encrypts + verifies cert | Production-ready, MITM protection enabled |
+| MySQL | `verifyServerCertificate=true` | ✅ Encrypts + verifies cert | Production-ready, MITM protection enabled |
 | SQLite | N/A (local file) | ✅ No network traffic | Development only |
 | H2 | N/A (embedded/local) | ✅ No network traffic | Testing only |
 
 **Production Checklist:**
-- ✅ Use `sslmode=verify-full` for PostgreSQL
-- ✅ Add `verifyServerCertificate=true` for MySQL
-- ✅ Ensure database server has valid CA-signed certificates
-- ✅ Never use self-signed certificates in production without proper validation
+- ✅ DatabaseConfig defaults (v1.0.6+) are production-ready with certificate verification
+- ✅ Ensure database server has valid CA-signed certificates in system truststore
+- ✅ For self-signed certs: Use `sslrootcert` (PostgreSQL) or custom truststore (MySQL)
+- ⚠️ Never disable certificate verification in production environments
 
 ## 📊 Performance Tuning
 

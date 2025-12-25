@@ -125,11 +125,11 @@ public class DatabaseConfig {
     public static DatabaseConfig createPostgreSQLConfig(String host, int port, String dbName, String username, String password) {
         return builder()
             .databaseType(DatabaseType.POSTGRESQL)
-            // SECURITY: SSL/TLS enabled for encrypted connections (ssl=true&sslmode=require)
-            // WARNING: sslmode=require encrypts traffic but does NOT verify server certificate (vulnerable to MITM)
-            // For DEVELOPMENT: sslmode=require is acceptable
-            // For PRODUCTION: use sslmode=verify-full (requires valid CA certificates) for maximum security
-            .databaseUrl("jdbc:postgresql://" + host + ":" + port + "/" + dbName + "?ssl=true&sslmode=require")
+            // SECURITY: SSL/TLS with server certificate verification (ssl=true&sslmode=verify-full)
+            // REQUIRES: Valid CA certificates in system truststore or custom sslrootcert parameter
+            // PROTECTION: Prevents MITM attacks by verifying server identity
+            // For self-signed certs: add &sslrootcert=/path/to/ca.pem to specify custom CA
+            .databaseUrl("jdbc:postgresql://" + host + ":" + port + "/" + dbName + "?ssl=true&sslmode=verify-full")
             .username(username)
             .password(password)
             .poolMinSize(DEFAULT_POSTGRESQL_POOL_MIN)
@@ -164,11 +164,11 @@ public class DatabaseConfig {
     public static DatabaseConfig createMySQLConfig(String host, int port, String dbName, String username, String password) {
         return builder()
             .databaseType(DatabaseType.MYSQL)
-            // SECURITY: SSL/TLS enabled for encrypted connections (useSSL=true&requireSSL=true)
-            // IMPORTANT: MySQL server MUST have SSL/TLS configured or connection will fail
-            // For self-signed certificates: add &trustServerCertificate=true
-            // For valid CA certificates: add &verifyServerCertificate=true for maximum security
-            .databaseUrl("jdbc:mysql://" + host + ":" + port + "/" + dbName + "?useSSL=true&requireSSL=true&allowPublicKeyRetrieval=true")
+            // SECURITY: SSL/TLS with server certificate verification (useSSL=true&requireSSL=true&verifyServerCertificate=true)
+            // REQUIRES: Valid CA certificates in system truststore or custom trustCertificateKeyStoreUrl
+            // PROTECTION: Prevents MITM attacks by verifying server identity
+            // For self-signed certs: add &trustCertificateKeyStoreUrl=file:/path/to/truststore.jks&trustCertificateKeyStorePassword=password
+            .databaseUrl("jdbc:mysql://" + host + ":" + port + "/" + dbName + "?useSSL=true&requireSSL=true&verifyServerCertificate=true&allowPublicKeyRetrieval=true")
             .username(username)
             .password(password)
             .poolMinSize(DEFAULT_MYSQL_POOL_MIN)

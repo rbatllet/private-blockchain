@@ -1,0 +1,114 @@
+# =============================================================================
+# Docker Compose configuration for MySQL with SSL/TLS enabled
+# Private Blockchain - Development/Testing Environment
+# =============================================================================
+# Usage:
+#   1. Generate SSL certificates: cd mysql && ./generate-certs.sh
+#   2. Start containers: docker-compose up -d
+#   3. View logs: docker-compose logs -f mysql
+#   4. Stop containers: docker-compose down
+#   5. Stop and remove volumes: docker-compose down -v
+# =============================================================================
+
+services:
+  # MySQL Database with SSL/TLS enabled
+  mysql:
+    image: mysql:8.0
+    container_name: mysql-blockchain-ssl
+    hostname: mysql-blockchain
+
+    environment:
+      # Root password (CHANGE THIS FOR PRODUCTION!)
+      MYSQL_ROOT_PASSWORD: RootPassword123!
+      MYSQL_ROOT_HOST: '%'
+
+      # Application database and user
+      MYSQL_DATABASE: blockchain_prod
+      MYSQL_USER: blockchain_user
+      MYSQL_PASSWORD: SecurePassword123!
+
+      # MySQL 8.x authentication plugin
+      MYSQL_AUTHENTICATION_PLUGIN: mysql_native_password
+
+    ports:
+      - "3306:3306"
+
+    volumes:
+      # Persist MySQL data
+      - mysql_data:/var/lib/mysql
+
+      # Mount SSL certificates (read-only)
+      - ./mysql/certs:/etc/mysql/certs:ro
+
+      # Optional: Custom MySQL configuration
+      - ./mysql/config/my.cnf:/etc/mysql/conf.d/custom.cnf:ro
+
+    # SSL configuration command
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --ssl=1
+      - --ssl-ca=/etc/mysql/certs/ca.pem
+      - --ssl-cert=/etc/mysql/certs/server-cert.pem
+      - --ssl-key=/etc/mysql/certs/server-key.pem
+      - --require-secure-transport=ON
+      # Only allow strong ciphers
+      - --tls-version=TLSv1.2,TLSv1.3
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+
+    healthcheck:
+      test: ["CMD", "sh", "-c", "MYSQL_PWD=RootPassword123! mysqladmin ping -h localhost -u root --ssl-mode=REQUIRED"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+    networks:
+      - blockchain-network
+
+    restart: unless-stopped
+
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Optional: phpMyAdmin for database management (development only)
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: phpmyadmin-blockchain
+    hostname: phpmyadmin
+
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: RootPassword123!
+      UPLOAD_LIMIT: 100M
+
+    ports:
+      - "8080:80"
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+    networks:
+      - blockchain-network
+
+    restart: unless-stopped
+
+    profiles:
+      - tools  # Only start with: docker-compose --profile tools up
+
+volumes:
+  mysql_data:
+    driver: local
+    name: blockchain_mysql_data
+
+networks:
+  blockchain-network:
+    driver: bridge
+    name: blockchain_network

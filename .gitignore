@@ -81,6 +81,7 @@ replay_pid*
 *.p12
 *.jks
 *.keystore
+*.srl
 
 # Other files
 *.dat

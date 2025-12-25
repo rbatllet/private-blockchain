@@ -1,0 +1,17 @@
+# =============================================================================
+# Docker .gitignore - Exclude sensitive and generated files
+# =============================================================================
+
+# Environment variables with sensitive data
+.env
+
+# SSL Certificates (private keys should NOT be committed)
+mysql/certs/*.pem
+mysql/certs/*.key
+mysql/certs/*.crt
+
+# MySQL data directory (should not be committed)
+mysql/data/
+
+# Docker volumes (local data)
+mysql_data/
