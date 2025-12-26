@@ -260,13 +260,13 @@ Based on the implementation:
 **Symptom**: ThreadDumpAnalyzer shows 0 virtual threads
 
 **Causes**:
-1. Using Java < 21
+1. Using Java < 25
 2. Code still using platform thread pools
 
 **Solution**:
 ```bash
 # Verify Java version
-java -version  # Should show Java 21 or 25
+java -version  # Should show Java 25
 
 # Check for old thread pools
 grep -r "Executors.newFixedThreadPool\|newCachedThreadPool" src/

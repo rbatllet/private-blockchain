@@ -71,7 +71,7 @@ This is a **post-quantum secure private blockchain** for controlled environments
   - **Block Linking**: New methods for creating blocks linked to off-chain data
   - **File Storage**: storeDataWithOffChainFile() for file-based off-chain storage
 
-### 🚀 Performance Optimizations (v2.0.0)
+### 🚀 Performance Optimizations (v1.0.5)
 - **Batch Retrieval System**: Eliminates N+1 query problems with `blockchain.batchRetrieveBlocks()`
   - **90%+ Performance Improvement**: Metadata search operations now complete in <200ms vs previous 2000+ms
   - **Query Optimization**: Replaces hundreds of individual SELECT statements with single batch IN clause
@@ -83,7 +83,7 @@ This is a **post-quantum secure private blockchain** for controlled environments
   - **Searchable Off-Chain**: storeSearchableDataWithOffChainFile() with keyword indexing
 - **Data Size Management**: Intelligent data placement based on configurable size thresholds
 - **Integrity Verification**: Cryptographic verification of off-chain data with hash and signature validation
-- **Enhanced Integrity Reporting**: **NEW v2.0** - Thread-safe `OffChainIntegrityReport` with comprehensive validation, resource protection, and intelligent recommendations
+- **Enhanced Integrity Reporting**: Thread-safe `OffChainIntegrityReport` with comprehensive validation, resource protection, and intelligent recommendations
 - **Detailed Validation**: Enhanced `validateChainDetailed()` with comprehensive off-chain data analysis
 - **Real-time Monitoring**: Live validation results with detailed file status, integrity checks, and storage metrics
 - **Data Consistency**: Complete synchronization between database and file system operations
@@ -99,11 +99,13 @@ This is a **post-quantum secure private blockchain** for controlled environments
 - **Key Revocation**: Secure key revocation with audit trails
 
 ### 🛡️ Security Controls
+- **PBKDF2-HMAC-SHA512 Key Derivation**: 210,000 iterations, OWASP 2023 compliant (256-bit post-quantum security)
 - **Thread-Safe Implementation**: Safe for concurrent access
-- **Database Encryption**: Sensitive data at rest encryption
-- **Secure Key Storage**: AES-256 encrypted key storage
+- **Database Encryption**: Sensitive data at rest encryption with unique salts
+- **Secure Key Storage**: AES-256 encrypted key storage with PBKDF2 derivation
+- **SSL/TLS Enforcement**: Mandatory encrypted database connections (PostgreSQL/MySQL)
 - **Audit Logging**: Comprehensive security event logging
-- **Input Validation**: Protection against injection attacks
+- **Input Validation**: Protection against injection and path traversal attacks
 
 ### 🔄 Key Management
 - **Root Keys**: 5-year validity, signs intermediate keys
@@ -120,7 +122,7 @@ This is a **post-quantum secure private blockchain** for controlled environments
 
 ### 🔐 User-Friendly Encryption API
 
-**NEW**: Comprehensive encryption and blockchain management API that simplifies complex operations:
+Comprehensive encryption and blockchain management API that simplifies complex operations:
 
 - **🎯 Complete Interface**: Single API for all encryption, search, storage, and recovery operations
 - **🔍 Advanced Search**: Multi-level search (fast/balanced/exhaustive) with encrypted content support
@@ -139,14 +141,14 @@ This is a **post-quantum secure private blockchain** for controlled environments
   - **Zero-Code Switching**: Switch databases via configuration without code changes
 - **Off-Chain Storage**: Encrypted file storage with automatic data tiering (AES-256-GCM)
 - **Professional Logging**: SLF4J with Logback - configurable performance modes (dev/production/test)
-- **Comprehensive Testing**: **828+ JUnit 5 tests** with **72% code coverage** + integration demos + security tests
+- **Comprehensive Testing**: **828+ JUnit 6 tests** with **72% code coverage** + integration demos + security tests
 - **Production Ready**: Complete documentation and deployment guides with performance optimization
 - **Clean Architecture**: Well-structured code with DAO pattern and enterprise logging
 - **Scalable Storage**: Support for data up to 100MB per block through off-chain storage
 
-## 🛡️ OffChainIntegrityReport v2.0 - Enhanced Robustness
+## 🛡️ OffChainIntegrityReport - Enhanced Robustness
 
-**NEW in v2.0**: The `OffChainIntegrityReport` class has been completely rewritten for enterprise-grade reliability and performance:
+The `OffChainIntegrityReport` class has been completely rewritten for enterprise-grade reliability and performance:
 
 ### 🚀 Key Improvements
 - **🧵 Thread Safety**: Full concurrent access support with `ReentrantReadWriteLock` and atomic operations
@@ -198,7 +200,7 @@ System.out.println(report.getFormattedSummary()); // Rich output
   - **Digital Signatures**: ML-DSA-87 (NIST FIPS 204, 256-bit quantum-resistant lattice-based)
   - **Key Management**: Hierarchical key structure with automatic rotation
   - **Encryption**: AES-256-GCM for off-chain data encryption with authenticated encryption
-- **JUnit 5** - Testing framework for comprehensive validation
+- **JUnit 6** - Testing framework for comprehensive validation
 
 ## 📦 Prerequisites
 
@@ -510,7 +512,7 @@ ChainRecoveryResult recovery = api.recoverFromCorruption(options);
 // Safe rollback with data preservation
 ChainRecoveryResult rollback = api.rollbackToSafeState(targetBlock, options);
 
-// Enhanced integrity verification and repair (v2.0)
+// Enhanced integrity verification and repair
 OffChainIntegrityReport integrity = api.verifyOffChainIntegrity(blockNumbers);
 integrity.generateRecommendations(); // AI-driven recommendations
 System.out.println(integrity.getFormattedSummary()); // Rich formatted output
@@ -520,7 +522,7 @@ System.out.println(integrity.getFormattedSummary()); // Rich formatted output
 
 The UserFriendlyEncryptionAPI includes comprehensive testing with:
 
-- **828+ JUnit 5 Tests** across multiple test classes
+- **828+ JUnit 6 Tests** across multiple test classes
 - **72% Code Coverage** with focus on critical functionality
 - **Nested Test Organization** for improved maintainability
 - **Concurrent Testing** for thread-safety validation
@@ -617,7 +619,7 @@ blockchain.resetLimitsToDefault();
 
 ### Comprehensive Test Suite
 
-The project includes extensive testing with **828+ JUnit 5 tests** achieving **72% code coverage** plus integration demos and security testing:
+The project includes extensive testing with **828+ JUnit 6 tests** achieving **72% code coverage** plus integration demos and security testing:
 
 #### Run All Tests (Recommended)
 ```zsh
@@ -628,7 +630,7 @@ The project includes extensive testing with **828+ JUnit 5 tests** achieving **7
 ```
 === COMPREHENSIVE BLOCKCHAIN TEST RUNNER ===
 ✅ Compilation successful!
-🎉 JUnit 5 tests: PASSED (828+ tests, 72% coverage)
+🎉 JUnit 6 tests: PASSED (828+ tests, 72% coverage)
 ✅ UserFriendlyEncryptionAPI tests: PASSED
 ✅ Security and encryption tests: PASSED
 ✅ Basic Core Functions test: PASSED
@@ -795,7 +797,7 @@ mvn clean test jacoco:report
 
 #### Test Coverage Achievements
 - **Overall Coverage**: 72% (Target reached: 75%+)
-- **Total Tests**: 828+ JUnit 5 tests across all test classes
+- **Total Tests**: 828+ JUnit 6 tests across all test classes
 - **Test Classes**: 10+ dedicated test classes for comprehensive validation
 - **Critical Methods**: 100% coverage for security-critical operations
 - **Edge Cases**: Comprehensive testing of error conditions and boundary cases
@@ -873,7 +875,7 @@ Threads: 10, Blocks per thread: 5
 
 #### Individual Test Categories
 ```zsh
-# Advanced functions only (JUnit 5 tests)
+# Advanced functions only (JUnit 6 tests)
 ./run_advanced_tests.zsh
 
 # Basic core functions only
@@ -1126,7 +1128,7 @@ src/main/java/com/rbatllet/blockchain/
 src/test/java/com/rbatllet/blockchain/
 ├── core/
 │   ├── BlockchainTest.java                             # Core blockchain tests
-│   ├── BlockchainAdditionalAdvancedFunctionsTest.java   # JUnit 5 test suite
+│   ├── BlockchainAdditionalAdvancedFunctionsTest.java   # JUnit 6 test suite
 │   ├── BlockchainKeyAuthorizationTest.java             # Key authorization tests
 │   ├── CriticalConsistencyTest.java                    # Consistency validation tests
 │   ├── SimpleTemporalValidationTest.java               # Temporal validation tests
@@ -1189,7 +1191,7 @@ Complete test suite execution with all categories
 ./run_all_tests.zsh
 ```
 **Features**:
-- Executes JUnit 5 tests (Additional Advanced Functions, Temporal Validation, Key Authorization, Critical Consistency)
+- Executes JUnit 6 tests (Additional Advanced Functions, Temporal Validation, Key Authorization, Critical Consistency)
 - Runs all demo applications with enhanced validation
 - Security tests for key deletion and cryptographic features
 - Comprehensive result tracking and reporting
@@ -1773,7 +1775,6 @@ This project includes 65+ comprehensive documentation files organized into **11 
 ## 🔧 Configuration
 
 ### Storage Configuration
-- **On-Chain Block Data**: 10,000 characters maximum (configurable)
 - **On-Chain Block Size**: 1MB (1,048,576 bytes) maximum (configurable)
 - **Off-Chain Threshold**: 512KB default (configurable)
 - **Off-Chain Maximum**: 100MB per file
@@ -1839,7 +1840,7 @@ blockchain.resetLimitsToDefault();                    // Reset to defaults
 
 ### Testing New Features
 1. **Feature Development**: Add your feature to the appropriate class following existing patterns
-2. **Unit Tests**: Create comprehensive JUnit 5 tests following existing test structures
+2. **Unit Tests**: Create comprehensive JUnit 6 tests following existing test structures
 3. **Integration Tests**: Ensure your feature works with existing functionality
 4. **Consistency Tests**: Add critical consistency tests for complex scenarios
 5. **Documentation**: Update README.md and add code comments

@@ -20,10 +20,10 @@ public class TestEnvironmentValidator {
         
         // Verify JUnit dependencies
         System.out.println("\n🧪 Verifying test dependencies...");
-        allChecksPass &= checkClass("org.junit.jupiter.api.Test", "JUnit 5 Test");
-        allChecksPass &= checkClass("org.junit.jupiter.api.BeforeEach", "JUnit 5 BeforeEach");
-        allChecksPass &= checkClass("org.junit.jupiter.api.DisplayName", "JUnit 5 DisplayName");
-        allChecksPass &= checkClass("org.junit.jupiter.api.Order", "JUnit 5 Order");
+        allChecksPass &= checkClass("org.junit.jupiter.api.Test", "JUnit 6 Test");
+        allChecksPass &= checkClass("org.junit.jupiter.api.BeforeEach", "JUnit 6 BeforeEach");
+        allChecksPass &= checkClass("org.junit.jupiter.api.DisplayName", "JUnit 6 DisplayName");
+        allChecksPass &= checkClass("org.junit.jupiter.api.Order", "JUnit 6 Order");
         
         // Verify Jackson dependencies
         System.out.println("\n📝 Verifying JSON dependencies...");

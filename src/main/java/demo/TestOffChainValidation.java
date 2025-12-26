@@ -12,6 +12,7 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.io.File;
 import java.io.FileWriter;
+import java.nio.file.Files;
 import java.time.LocalDateTime;
 
 /**
@@ -289,10 +290,8 @@ public class TestOffChainValidation {
         if (block.hasOffChainData()) {
             File offChainFile = new File(block.getOffChainData().getFilePath());
             if (offChainFile.exists()) {
-                // Clear the file content
-                try (FileWriter writer = new FileWriter(offChainFile, false)) {
-                    // Write nothing - creates empty file
-                }
+                // Clear the file content - create empty file
+                Files.write(offChainFile.toPath(), new byte[0]);
                 
                 // Validate - should fail
                 var result = BlockValidationUtil.validateOffChainDataDetailed(block);

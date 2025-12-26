@@ -32,7 +32,7 @@ The project includes comprehensive test suites to verify all functionality and e
 - ✅ **Performance Testing**: Key operation benchmarks
 - ✅ **EC Key Derivation**: Comprehensive tests for elliptic curve key generation and validation
 
-#### Advanced Functions (**828+ JUnit 5 Tests** with **72% Code Coverage**)
+#### Advanced Functions (**828+ JUnit 6 Tests** with **72% Code Coverage**)
 - ✅ **Block Size Validation**: Prevents oversized blocks
 - ✅ **Chain Export**: Complete blockchain backup to JSON
 - ✅ **Chain Import**: Blockchain restore from backup
@@ -123,7 +123,7 @@ void setUp() {
 
 #### Test Execution
 - **Total Test Files**: **46+ comprehensive test suites** (added BlockchainComprehensiveSecurityTest)
-- **JUnit 5 Tests**: **828+ professional unit tests** (33 new security tests)
+- **JUnit 6 Tests**: **828+ professional unit tests** (33 new security tests)
 - **Code Coverage**: **72% overall coverage** (target: 75%+)
 - **Demo Applications**: 9 interactive demonstrations (including SearchFrameworkDemo)
 - **Verification Tests**: 5+ quick validation tests
@@ -155,7 +155,7 @@ This runs everything: basic core tests + advanced function tests.
 ```
 === COMPREHENSIVE BLOCKCHAIN TEST RUNNER ===
 ✅ Compilation successful!
-🎉 JUnit 5 tests: PASSED (828+ tests, 72% coverage)
+🎉 JUnit 6 tests: PASSED (828+ tests, 72% coverage)
 ✅ Basic Core Functions test: PASSED
 ✅ Blockchain Demo: PASSED
 ✅ Simple Test: PASSED
@@ -167,24 +167,24 @@ This runs everything: basic core tests + advanced function tests.
 
 **What it does:**
 1. Compiles the project
-2. Runs JUnit 5 tests for advanced functions
+2. Runs JUnit 6 tests for advanced functions
 3. Executes core blockchain functionality test
 4. Runs demo applications to verify end-to-end functionality
 5. Performs quick verification tests
 
-#### 2. Advanced Functions Only (JUnit 5 Tests)
+#### 2. Advanced Functions Only (JUnit 6 Tests)
 ```zsh
 ./scripts/run_advanced_tests.zsh
 ```
 
-Runs professional JUnit 5 tests for additional advanced functions only.
+Runs professional JUnit 6 tests for additional advanced functions only.
 
 **Expected output:**
 ```
 === ADVANCED FUNCTIONS TEST RUNNER ===
 ✅ Compilation successful!
 
-Running JUnit 5 tests...
+Running JUnit 6 tests...
 [INFO] Tests run: more than 40, Failures: 0, Errors: 0, Skipped: 0
 
 Test Results:
@@ -477,7 +477,7 @@ void setUp() {
 
 ## 📝 Test Suites Description
 
-### 1. JUnit 5 Test Suites
+### 1. JUnit 6 Test Suites
 
 #### 1.1 Core Blockchain Test Suite
 **File**: `BlockchainTest.java`
@@ -1402,8 +1402,8 @@ update-alternatives --list java
 # Check available Java versions (macOS with Homebrew)
 /usr/libexec/java_home -V
 
-# Set correct Java version (example for Java 21)
-export JAVA_HOME=/usr/lib/jvm/java-21-openjdk
+# Set correct Java version (example for Java 25)
+export JAVA_HOME=/usr/lib/jvm/java-25-openjdk
 export PATH=$JAVA_HOME/bin:$PATH
 
 # Verify Maven uses correct Java

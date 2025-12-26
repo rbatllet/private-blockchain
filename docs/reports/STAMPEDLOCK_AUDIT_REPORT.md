@@ -302,7 +302,7 @@ public List<AuthorizedKey> getAuthorizedKeysWithoutLock() {
 | **Reentrant support** | ✅ Yes | ❌ No | 🟡 **ReentrantRWL** (but not needed) |
 | **Deadlock risk** | 🟡 Lower (reentrant) | 🟠 Higher (non-reentrant) | 🟡 **ReentrantRWL** |
 | **Deadlock mitigation** | N/A | ✅ LockTracer + dual-mode pattern | ✅ **StampedLock** (properly mitigated) |
-| **Virtual threads (Java 21)** | ❌ Limited (65K threads) | ✅ Unlimited | ✅ **StampedLock** |
+| **Virtual threads (Java 21+)** | ❌ Limited (65K threads) | ✅ Unlimited | ✅ **StampedLock** |
 
 **Verdict**: ✅ **StampedLock is more future-proof (Virtual Threads) with proper mitigation**
 

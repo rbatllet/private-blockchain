@@ -1095,9 +1095,8 @@ public void setupForDocumentManagement() {
 // Example output:
 // Block Size Configuration:
 // - Max block size: 5,242,880 bytes (5.0 MB)
-// - Max data length: 10,000 characters
 // - Off-chain threshold: 102,400 bytes (100.0 KB)
-// - Default values: 1,048,576 bytes / 10,000 chars / 524,288 bytes
+// - Default values: 1,048,576 bytes / 524,288 bytes
 ```
 
 #### Data Validation and Storage Decision
@@ -1294,7 +1293,6 @@ System.out.println(report);
 | Setting | Default | Range | Description |
 |---------|---------|--------|------------|
 | On-Chain Block Size | 1MB | 1B - 10MB | Maximum size for on-chain storage |
-| On-Chain Data Length | 10,000 chars | 1 - 1M chars | Maximum characters for on-chain text |
 | Off-Chain Threshold | 512KB | 1B - Block Size | Size threshold for off-chain storage |
 | Off-Chain Max Size | 100MB | - | Maximum size per off-chain file |
 
@@ -1491,7 +1489,6 @@ System.out.println("Validation report: " + report);
 ```java
 // Get size limits
 int maxBytes = blockchain.getMaxBlockSizeBytes();      // 1MB limit
-int maxChars = blockchain.getMaxBlockDataLength();     // 10K characters limit
 
 // Size validation happens automatically when adding blocks
 // Large blocks are rejected automatically
@@ -1833,7 +1830,6 @@ blockchain.processChainInBatches(batch -> {
 
 // Configuration
 int maxBytes = blockchain.getMaxBlockSizeBytes();
-int maxChars = blockchain.getMaxBlockDataLength();
 ```
 
 #### Key Management
@@ -2259,7 +2255,7 @@ Creates a new blockchain instance. Automatically creates the genesis block if th
 public boolean addBlock(String data, PrivateKey privateKey, PublicKey publicKey)
 ```
 - **Parameters:**
-  - `data`: The content to store in the block (max 10,000 characters)
+  - `data`: The content to store in the block (size limited by max block size in bytes)
   - `privateKey`: Private key for signing the block
   - `publicKey`: Public key for verification (must be authorized)
 - **Returns:** `true` if block was added successfully, `false` otherwise
@@ -2269,7 +2265,7 @@ public boolean addBlock(String data, PrivateKey privateKey, PublicKey publicKey)
 public Block addBlockAndReturn(String data, PrivateKey privateKey, PublicKey publicKey)
 ```
 - **Parameters:**
-  - `data`: The content to store in the block (max 10,000 characters)
+  - `data`: The content to store in the block (size limited by max block size in bytes)
   - `privateKey`: Private key for signing the block
   - `publicKey`: Public key for verification (must be authorized)
 - **Returns:** The created `Block` object if successful, `null` if failed
@@ -2561,7 +2557,7 @@ public Block addBlockWithKeywords(String data, String[] manualKeywords, String c
                                 PrivateKey privateKey, PublicKey publicKey, boolean skipAutoIndexing)
 ```
 - **Parameters:**
-  - `data`: The content to store in the block (max 10,000 characters)
+  - `data`: The content to store in the block (size limited by max block size in bytes)
   - `manualKeywords`: Array of manual keywords for search indexing (optional, can be null)
   - `category`: Content category (e.g., "MEDICAL", "FINANCE", "TECHNICAL", "LEGAL")
   - `privateKey`: Private key for signing the block
@@ -3047,11 +3043,6 @@ public int getMaxBlockSizeBytes()
 ```
 - **Returns:** Maximum block size in bytes (default: 1,048,576 bytes = 1MB)
 
-```java
-public int getMaxBlockDataLength()
-```
-- **Returns:** Maximum characters allowed in block data (default: 10,000)
-
 #### Off-Chain Storage Configuration Methods
 
 ```java
@@ -3267,7 +3258,6 @@ public LocalDateTime getRevokedAt()
 - **Logging**: SQL queries logged (can be disabled in persistence.xml)
 
 ### Size Limits
-- **Block Data**: 10,000 characters maximum
 - **Block Size**: 1MB (1,048,576 bytes) maximum
 - **Hash Length**: 64 characters (SHA3-256)
 
@@ -3779,7 +3769,6 @@ These methods replace the removed `getAllBlocksWithOffChainData()` and `getAllEn
 ### Size and Performance Limits
 ```properties
 # On-Chain Block constraints (configurable at runtime)
-blockchain.block.max_data_size=10000           # 10,000 characters (default)
 blockchain.block.max_size_bytes=1048576        # 1MB (1,048,576 bytes) (default)
 blockchain.block.max_hash_length=64            # SHA3-256 hash length
 
@@ -4095,7 +4084,8 @@ blockchain.revokeAuthorizedKey(oldPublicKey);
 // ✅ GOOD: Input validation
 public boolean addSecureBlock(String data, PrivateKey privateKey, PublicKey publicKey) {
     // Validate input size
-    if (data.length() > blockchain.getMaxBlockDataLength()) {
+    byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
+    if (dataBytes.length > blockchain.getMaxBlockSizeBytes()) {
         throw new IllegalArgumentException("Block data exceeds maximum size");
     }
     
@@ -4433,8 +4423,9 @@ public class BlockchainService {
         if (data == null || data.trim().isEmpty()) {
             throw new IllegalArgumentException("Block data cannot be null or empty");
         }
-        if (data.length() > blockchain.getMaxBlockDataLength()) {
-            throw new IllegalArgumentException("Block data exceeds maximum length");
+        byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
+        if (dataBytes.length > blockchain.getMaxBlockSizeBytes()) {
+            throw new IllegalArgumentException("Block data exceeds maximum size");
         }
     }
     
@@ -5182,7 +5173,7 @@ List<Block> analyzeContent(String data, String password)
 
 ### 🎯 Testing and Quality Assurance
 
-The UserFriendlyEncryptionAPI is thoroughly tested with **828+ JUnit 5 tests** achieving **72% code coverage**:
+The UserFriendlyEncryptionAPI is thoroughly tested with **828+ JUnit 6 tests** achieving **72% code coverage**:
 
 #### Test Classes Structure
 - **UserFriendlyEncryptionAPIPhase1Test** - Core functionality (46 tests)

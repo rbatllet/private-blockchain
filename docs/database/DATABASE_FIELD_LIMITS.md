@@ -387,12 +387,10 @@ if (dataBytes.length > 100 * 1024 * 1024) {
 **Limits:**
 - On-chain storage: 512 KB (default, configurable)
 - Off-chain storage: 100 MB maximum
-- Character limit: 10,000 characters (before byte conversion)
 
 **Protection Points:**
-1. Character limit check (10K chars) → Prevents large strings
-2. Byte size validation (100MB) → Prevents memory allocation overflow
-3. Off-chain threshold (512KB) → Automatic off-chain storage
+1. Byte size validation (100MB) → Prevents memory allocation overflow
+2. Off-chain threshold (512KB) → Automatic off-chain storage
 
 ## Time Overflow Protection (Temporal Types)
 

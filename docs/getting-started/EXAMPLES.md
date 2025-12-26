@@ -864,7 +864,7 @@ public void processBatchTransactions(Blockchain blockchain, List<String> transac
         
         for (String transaction : transactions) {
             // Validate transaction size
-            if (transaction.length() > blockchain.getMaxBlockDataLength()) {
+            if (transaction.getBytes(StandardCharsets.UTF_8).length > blockchain.getMaxBlockSizeBytes()) {
                 System.err.println("Transaction too large, skipping: " + transaction.substring(0, 50) + "...");
                 failureCount++;
                 continue;
@@ -914,7 +914,7 @@ public void processConcurrentBatchTransactions(Blockchain blockchain, List<Strin
         
         for (String transaction : transactions) {
             // Validate transaction size before submitting
-            if (transaction.length() > blockchain.getMaxBlockDataLength()) {
+            if (transaction.getBytes(StandardCharsets.UTF_8).length > blockchain.getMaxBlockSizeBytes()) {
                 System.err.println("Transaction too large, skipping: " + transaction.substring(0, 50) + "...");
                 failureCount.incrementAndGet();
                 continue;

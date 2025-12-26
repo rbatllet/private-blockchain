@@ -107,14 +107,14 @@ public class CompressionUtil {
      */
     private static byte[] compressBytes(byte[] data) throws IOException {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        
-        try (DeflaterOutputStream deflaterStream = new DeflaterOutputStream(
-                outputStream, new Deflater(COMPRESSION_LEVEL))) {
-            
+
+        try (Deflater deflater = new Deflater(COMPRESSION_LEVEL);
+             DeflaterOutputStream deflaterStream = new DeflaterOutputStream(outputStream, deflater)) {
+
             deflaterStream.write(data);
             deflaterStream.finish();
         }
-        
+
         return outputStream.toByteArray();
     }
     
@@ -127,18 +127,18 @@ public class CompressionUtil {
     private static byte[] decompressBytes(byte[] compressedData) throws IOException {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         ByteArrayInputStream inputStream = new ByteArrayInputStream(compressedData);
-        
-        try (InflaterInputStream inflaterStream = new InflaterInputStream(
-                inputStream, new Inflater())) {
-            
+
+        try (Inflater inflater = new Inflater();
+             InflaterInputStream inflaterStream = new InflaterInputStream(inputStream, inflater)) {
+
             byte[] buffer = new byte[BUFFER_SIZE];
             int bytesRead;
-            
+
             while ((bytesRead = inflaterStream.read(buffer)) != -1) {
                 outputStream.write(buffer, 0, bytesRead);
             }
         }
-        
+
         return outputStream.toByteArray();
     }
     

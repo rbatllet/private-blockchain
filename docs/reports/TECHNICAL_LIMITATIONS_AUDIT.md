@@ -261,7 +261,6 @@ DatabaseConfig prodConfig = DatabaseConfig.createPostgreSQLConfig(
 
 **Limits:**
 - **On-chain:** 1,048,576 bytes (1MB) max per block
-- **Character-based:** 10,000 characters (legacy compatibility)
 - **Off-chain threshold:** 524,288 bytes (512KB)
 
 **Location:** `Blockchain.MAX_BLOCK_SIZE_BYTES`, `OFF_CHAIN_THRESHOLD_BYTES`

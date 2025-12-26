@@ -149,7 +149,7 @@ Based on web search findings:
    - StampedLock doesn't support `Condition` (unlike ReentrantReadWriteLock)
    - Current code doesn't use Conditions → No impact ✅
 
-3. **Virtual Threads (Java 21)**
+3. **Virtual Threads (Java 21+)**
    - ReentrantReadWriteLock: Limited to 65,536 threads
    - StampedLock: No such limitation
    - Future-proof for Project Loom ✅

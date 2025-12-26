@@ -499,7 +499,7 @@ mvn test -Dtest=DataIntegrityThreadSafetyTest
 ./scripts/run_all_tests.zsh
 ```
 **Features**:
-- Executes JUnit 5 tests (Additional Advanced Functions, Temporal Validation, Key Authorization, Critical Consistency)
+- Executes JUnit 6 tests (Additional Advanced Functions, Temporal Validation, Key Authorization, Critical Consistency)
 - Runs all demo applications
 - Security tests for key deletion
 - Comprehensive result tracking and reporting

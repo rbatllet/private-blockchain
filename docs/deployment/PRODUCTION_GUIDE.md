@@ -84,11 +84,11 @@ sudo chmod 750 "$APP_HOME/logs"
 sudo chmod 750 "$APP_HOME/backups"
 echo "✅ Set permissions"
 
-# Install Java 21 (if not present)
-if ! java -version 2>&1 | grep -q "21\|22\|23"; then
-    echo "Installing Java 21..."
+# Install Java 25 (if not present)
+if ! java -version 2>&1 | grep -q "25"; then
+    echo "Installing Java 25..."
     sudo apt update
-    sudo apt install -y openjdk-21-jdk
+    sudo apt install -y openjdk-25-jdk
 fi
 
 # Install SQLite (if not present)

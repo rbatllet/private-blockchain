@@ -657,7 +657,6 @@ blockchain.offchain.backup_verification=true     # Verify integrity before backu
 ### Size and Performance Limits
 ```properties
 # Block constraints
-blockchain.block.max_data_size=10000           # 10,000 characters
 blockchain.block.max_size_bytes=1048576        # 1MB (1,048,576 bytes)
 blockchain.block.max_hash_length=64            # SHA3-256 hash length
 
@@ -1416,7 +1415,7 @@ private boolean validateBlockSize(String data) {
 #### Data Validation Rules
 - **Null Data**: Explicitly rejected for security reasons
 - **Empty String**: Allowed for system blocks and configuration blocks
-- **Normal Content**: Must be within size limits (MAX_BLOCK_DATA_LENGTH characters)
+- **Normal Content**: Must be within size limits (MAX_BLOCK_SIZE_BYTES)
 - **UTF-8 Encoding**: All data is stored as UTF-8 with byte size validation
 
 ### Export/Import Functionality
@@ -1629,7 +1628,7 @@ public boolean rollbackToBlock(Long targetBlockNumber) throws Exception {
 ### Test Suite Structure
 
 #### Unit Test Categories
-1. **Core Functionality Tests** (More than 40 JUnit 5 tests)
+1. **Core Functionality Tests** (More than 40 JUnit 6 tests)
    - Genesis block creation and validation
    - Authorized key management operations
    - Block addition with proper authorization
