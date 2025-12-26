@@ -436,7 +436,7 @@ public class SearchFrameworkExhaustiveTest {
         int numThreads = 10;
         int queriesPerThread = 5;
         CountDownLatch latch = new CountDownLatch(numThreads * queriesPerThread);
-        ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
         
         String[] queries = {"financial", "medical", "legal", "technical", "personal"};
         int[] resultCounts = new int[1];

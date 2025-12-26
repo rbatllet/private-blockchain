@@ -88,7 +88,7 @@ public class SearchMetricsTest {
         final CountDownLatch completionLatch = new CountDownLatch(NUM_THREADS);
         final AtomicInteger errors = new AtomicInteger(0);
         
-        ExecutorService executor = Executors.newCachedThreadPool();
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
         
         try {
             // Submit concurrent search recording tasks
@@ -174,7 +174,7 @@ public class SearchMetricsTest {
         final AtomicInteger writeOperations = new AtomicInteger(0);
         final AtomicInteger errors = new AtomicInteger(0);
         
-        ExecutorService executor = Executors.newCachedThreadPool();
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
         
         try {
             // Writer threads

@@ -91,8 +91,9 @@ public class GenerateBlockchainActivity {
             
             // Keep generating activity for 30 seconds
             logger.info("🔄 Continuing with periodic activity for 30 seconds...");
-            
-            ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+
+            ScheduledExecutorService scheduler =
+                Executors.newScheduledThreadPool(1, Thread.ofVirtual().factory()); // Java 25 Virtual Threads
             scheduler.scheduleAtFixedRate(() -> {
                 try {
                     blockchain.addBlockAndReturn(

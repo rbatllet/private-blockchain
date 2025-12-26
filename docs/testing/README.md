@@ -164,8 +164,8 @@ SearchFrameworkEngine instance2 = new SearchFrameworkEngine(blockchain);
 
 ### Stress Testing
 ```java
-// See: THREAD_SAFETY_TESTS.md
-ExecutorService executor = Executors.newFixedThreadPool(100);
+// See: THREAD_SAFETY_TESTS.md (Java 25 Virtual Threads)
+ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 for (int i = 0; i < 100; i++) {
     executor.submit(() -> {
         // Concurrent operations

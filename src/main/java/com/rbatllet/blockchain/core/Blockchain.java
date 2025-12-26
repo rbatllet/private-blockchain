@@ -6511,6 +6511,58 @@ public class Blockchain {
     }
 
     /**
+     * Verify admin signature with timestamp tolerance to handle execution delays.
+     *
+     * <p><strong>Security Note:</strong> Accepts signatures within ±60 seconds of current time
+     * to prevent false rejections due to normal execution delays, while still preventing
+     * replay attacks with old signatures.</p>
+     *
+     * @param signature The admin signature to verify
+     * @param publicKey The public key being acted upon
+     * @param force The force flag value
+     * @param reason The reason for the action
+     * @param adminPublicKey The admin's public key
+     * @return true if signature is valid within tolerance window
+     */
+    private boolean verifyAdminSignatureWithTimestampTolerance(
+        String signature,
+        String publicKey,
+        boolean force,
+        String reason,
+        String adminPublicKey
+    ) {
+        // Validate parameters
+        if (signature == null || signature.trim().isEmpty()) {
+            logger.error("❌ Admin verification failed: null or empty signature");
+            return false;
+        }
+        if (adminPublicKey == null || adminPublicKey.trim().isEmpty()) {
+            logger.error("❌ Admin verification failed: null or empty admin public key");
+            return false;
+        }
+
+        // Current timestamp in seconds
+        long currentTimestamp = System.currentTimeMillis() / 1000;
+
+        // Try timestamps within ±60 seconds tolerance window
+        // This prevents false rejections due to execution delays while preventing replay attacks
+        for (long offset = -60; offset <= 60; offset++) {
+            long testTimestamp = currentTimestamp + offset;
+            String testMessage = publicKey + "|" + force + "|" + reason + "|" + testTimestamp;
+
+            if (verifyAdminSignature(signature, testMessage, adminPublicKey)) {
+                if (offset != 0) {
+                    logger.info("✅ Admin signature verified with timestamp offset: {} seconds", offset);
+                }
+                return true;
+            }
+        }
+
+        logger.error("❌ Admin signature verification failed: no valid timestamp found within ±60s tolerance");
+        return false;
+    }
+
+    /**
      * SECURITY: Create temporary backup for rollback capability
      * Used during operations that might need to be rolled back
      *
@@ -6756,9 +6808,8 @@ public class Blockchain {
         String adminSignature,
         String adminPublicKey
     ) {
-        // SECURITY: Verify admin authorization before proceeding
-        String signedMessage = publicKey + "|" + force + "|" + reason + "|" + System.currentTimeMillis() / 1000;
-        if (!verifyAdminSignature(adminSignature, signedMessage, adminPublicKey)) {
+        // SECURITY: Verify admin authorization with timestamp tolerance (±60s for execution delays)
+        if (!verifyAdminSignatureWithTimestampTolerance(adminSignature, publicKey, force, reason, adminPublicKey)) {
             logger.error("❌ SECURITY VIOLATION: Dangerous key deletion attempt without proper authorization");
             throw new SecurityException("SECURITY VIOLATION: Invalid admin authorization for key deletion. Admin signature verification failed.");
         }

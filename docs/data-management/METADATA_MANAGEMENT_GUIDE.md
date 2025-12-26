@@ -816,7 +816,7 @@ public class RobustMetadataProcessor {
     
     public RobustMetadataProcessor(UserFriendlyEncryptionAPI api) {
         this.api = api;
-        this.executor = Executors.newFixedThreadPool(4);
+        this.executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads
     }
     
     /**
@@ -1421,8 +1421,8 @@ api.searchByCustomMetadataMultipleCriteria(new HashMap<>());  // Empty criteria
 All search methods are **fully thread-safe**:
 
 ```java
-// Safe to call from multiple threads simultaneously
-ExecutorService executor = Executors.newFixedThreadPool(50);
+// Safe to call from multiple threads simultaneously (Java 25 Virtual Threads)
+ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
 for (int i = 0; i < 100; i++) {
     executor.submit(() -> {

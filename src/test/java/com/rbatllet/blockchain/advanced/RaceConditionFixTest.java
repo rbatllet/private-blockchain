@@ -30,7 +30,7 @@ public class RaceConditionFixTest {
     void setUp() {
         blockchain = new Blockchain();
         blockchain.clearAndReinitialize();
-        executorService = Executors.newFixedThreadPool(50);
+        executorService = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
     }
 
     @Test

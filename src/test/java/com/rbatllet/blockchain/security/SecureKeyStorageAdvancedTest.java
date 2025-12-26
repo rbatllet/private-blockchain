@@ -65,7 +65,7 @@ public class SecureKeyStorageAdvancedTest {
         final int threadCount = 10;
         final int operationsPerThread = 5;
         final CountDownLatch latch = new CountDownLatch(threadCount);
-        final ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+        final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
         final List<Exception> exceptions = new ArrayList<>();
 
         for (int i = 0; i < threadCount; i++) {

@@ -6024,43 +6024,54 @@ public class UserFriendlyEncryptionAPI {
                     UserRole.ADMIN
                 );
 
-                // Intermediate key - find suitable parent
+                // Intermediate key - find suitable ACTIVE parent
+                // BUG FIX (v1.0.6 - Virtual Threads Phase 1): Filter only ACTIVE keys
+                // getKeysByType() returns ALL keys regardless of status
                 List<CryptoUtil.KeyInfo> rootKeys = CryptoUtil.getKeysByType(
                     CryptoUtil.KeyType.ROOT
-                );
+                ).stream()
+                    .filter(k -> k.getStatus() == CryptoUtil.KeyStatus.ACTIVE)
+                    .collect(java.util.stream.Collectors.toList());
 
                 // BUG FIX: Validate that root key exists before creating intermediate key
                 if (rootKeys.isEmpty()) {
                     throw new IllegalStateException(
-                        "❌ Cannot create intermediate key: No root key exists. " +
+                        "❌ Cannot create intermediate key: No ACTIVE root key exists. " +
                         "Create a root key first with depth=1"
                     );
                 }
                 generatedKey = CryptoUtil.createIntermediateKey(rootKeys.get(0).getKeyId());
             } else {
                 // Operational or deeper level key - validate hierarchy exists
+                // BUG FIX (v1.0.6 - Virtual Threads Phase 1): Filter only ACTIVE keys
+                // getKeysByType() returns ALL keys regardless of status (ACTIVE/REVOKED/ROTATING)
                 List<CryptoUtil.KeyInfo> intermediateKeys =
-                    CryptoUtil.getKeysByType(CryptoUtil.KeyType.INTERMEDIATE);
+                    CryptoUtil.getKeysByType(CryptoUtil.KeyType.INTERMEDIATE).stream()
+                        .filter(k -> k.getStatus() == CryptoUtil.KeyStatus.ACTIVE)
+                        .collect(java.util.stream.Collectors.toList());
 
                 // SECURITY FIX: NEVER auto-create keys - validate hierarchy exists
                 if (intermediateKeys.isEmpty()) {
                     List<CryptoUtil.KeyInfo> rootKeys = CryptoUtil.getKeysByType(
                         CryptoUtil.KeyType.ROOT
-                    );
+                    ).stream()
+                        .filter(k -> k.getStatus() == CryptoUtil.KeyStatus.ACTIVE)
+                        .collect(java.util.stream.Collectors.toList());
+
                     if (rootKeys.isEmpty()) {
                         throw new IllegalStateException(
-                            "❌ Cannot create operational key: No root key exists. " +
+                            "❌ Cannot create operational key: No ACTIVE root key exists. " +
                             "Create a root key first with depth=1, then an intermediate key with depth=2"
                         );
                     } else {
                         throw new IllegalStateException(
-                            "❌ Cannot create operational key: No intermediate key exists. " +
+                            "❌ Cannot create operational key: No ACTIVE intermediate key exists. " +
                             "Create an intermediate key first with depth=2"
                         );
                     }
                 }
 
-                // Intermediate key exists, use it
+                // ACTIVE intermediate key exists, use it
                 generatedKey = CryptoUtil.createOperationalKey(intermediateKeys.get(0).getKeyId());
             }
 

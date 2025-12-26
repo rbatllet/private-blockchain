@@ -54,7 +54,7 @@ public class ThreadSafeExportImportTest extends BaseBlockchainTest {
         publicKey = keyPair.getPublic();
         publicKeyString = CryptoUtil.publicKeyToString(publicKey);
         masterPassword = "ThreadSafePassword123!";
-        executorService = Executors.newFixedThreadPool(10);
+        executorService = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
 
         blockchain.addAuthorizedKey(publicKeyString, "TestUser", bootstrapKeyPair, UserRole.USER);
     }

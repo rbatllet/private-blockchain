@@ -184,6 +184,14 @@ public class UserFriendlyEncryptionAPIPhase1KeyManagementTest {
     @DisplayName("✅ Key Hierarchy Validation Tests")
     class KeyHierarchyValidationTests {
 
+        @BeforeEach
+        void setUpKeyHierarchy() {
+            // BUG FIX (v1.0.6 - Virtual Threads Phase 1): Create root key before tests
+            // After filtering only ACTIVE keys, tests must ensure root key exists
+            // Previous behavior relied on root keys from other tests (test contamination)
+            api.generateHierarchicalKey("TEST_ROOT", 1, new HashMap<>());
+        }
+
         @Test
         @DisplayName("Should validate correct key hierarchy structure")
         void shouldValidateCorrectKeyHierarchy() {

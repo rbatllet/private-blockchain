@@ -267,8 +267,8 @@ System.out.println("Strategy used: " + result.getStrategyUsed());
 
 The search engine is fully thread-safe:
 ```java
-// Concurrent search example
-ExecutorService executor = Executors.newFixedThreadPool(5);
+// Concurrent search example (Java 25 Virtual Threads)
+ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 CountDownLatch latch = new CountDownLatch(10);
 
 for (int i = 0; i < 10; i++) {

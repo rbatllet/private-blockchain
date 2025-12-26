@@ -115,7 +115,7 @@ public class ConfigurationServiceTest {
             int numThreads = 10;
             ConfigurationService[] instances =
                 new ConfigurationService[numThreads];
-            ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+            ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
 
             for (int i = 0; i < numThreads; i++) {
                 final int index = i;
@@ -778,7 +778,7 @@ public class ConfigurationServiceTest {
             ).thenReturn(true);
 
             int numThreads = 10;
-            ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+            ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
 
             // Submit concurrent operations
             for (int i = 0; i < numThreads; i++) {

@@ -105,9 +105,9 @@ public class SimpleThreadSafetyTest {
             }
         }
         logger.debug("Generated and authorized {} key pairs", NUM_THREADS);
-        
-        // Concurrent execution
-        ExecutorService executor = Executors.newFixedThreadPool(NUM_THREADS);
+
+        // Concurrent execution (Java 25 Virtual Threads)
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch endLatch = new CountDownLatch(NUM_THREADS);
         
@@ -226,8 +226,8 @@ public class SimpleThreadSafetyTest {
             "OffChainTestUser"
         );
         logger.debug("Key pair generated and authorized for off-chain test");
-        
-        ExecutorService executor = Executors.newFixedThreadPool(NUM_THREADS);
+
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch endLatch = new CountDownLatch(NUM_THREADS);
         
@@ -359,8 +359,8 @@ public class SimpleThreadSafetyTest {
             blockchain.addBlockAndReturn("Validation test block " + i, privateKey, publicKey);
         }
         logger.debug("Created 10 test blocks for validation stress testing");
-        
-        ExecutorService executor = Executors.newFixedThreadPool(NUM_THREADS);
+
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch endLatch = new CountDownLatch(NUM_THREADS);
         

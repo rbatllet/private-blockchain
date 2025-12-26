@@ -353,7 +353,7 @@ public class ComplexMultiPasswordSearchTest {
         IndexingCoordinator.getInstance().waitForCompletion();
 
         // Launch 40 concurrent searches (10 per department)
-        ExecutorService executor = Executors.newFixedThreadPool(40);
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
         List<Future<SearchResult>> futures = new ArrayList<>();
 
         // Medical searches

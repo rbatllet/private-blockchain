@@ -419,7 +419,7 @@ private static BlockchainWithKeys createSampleBlockchain() throws Exception {
 
 ```java
 public class BlockchainIndexingJob {
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1, Thread.ofVirtual().factory()); // Java 25 Virtual Threads
     
     public void scheduleIndexing() {
         // Schedule async indexing every hour

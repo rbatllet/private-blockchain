@@ -288,8 +288,8 @@ searchEngine.clearOffChainCache();
 ### Thread Safety
 
 ```java
-// All strategies are thread-safe
-ExecutorService executor = Executors.newFixedThreadPool(10);
+// All strategies are thread-safe (Java 25 Virtual Threads)
+ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 for (int i = 0; i < 100; i++) {
     executor.submit(() -> {
         SearchResult result = searchEngine.searchExhaustiveOffChain(

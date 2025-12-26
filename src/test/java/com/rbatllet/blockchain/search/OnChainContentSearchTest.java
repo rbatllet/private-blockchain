@@ -315,7 +315,7 @@ public class OnChainContentSearchTest {
         // Concurrent search test
         int threadCount = 10;
         int searchesPerThread = 50;
-        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
         CountDownLatch latch = new CountDownLatch(threadCount);
         AtomicInteger successCount = new AtomicInteger(0);
         AtomicInteger errorCount = new AtomicInteger(0);

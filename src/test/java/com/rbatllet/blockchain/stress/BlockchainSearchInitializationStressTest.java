@@ -42,7 +42,7 @@ public class BlockchainSearchInitializationStressTest {
         // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
         blockchain.clearAndReinitialize();
 
-        executorService = Executors.newCachedThreadPool();
+        executorService = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
         testKeyPair = CryptoUtil.generateKeyPair();
 
         // Load bootstrap admin keys (auto-generates if missing - test-only)

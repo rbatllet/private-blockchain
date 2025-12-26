@@ -280,8 +280,8 @@ try {
 
 ### Real-time Monitoring
 ```java
-// Periodic health checks
-ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+// Periodic health checks (Java 25 Virtual Threads)
+ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1, Thread.ofVirtual().factory());
 scheduler.scheduleAtFixedRate(() -> {
     String health = metrics.getSystemHealthSummary();
     logger.info("System Health: {}", health);

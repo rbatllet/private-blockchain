@@ -273,8 +273,8 @@ public Map<String, PerformanceStats> getSearchTypeStats() {
 void testConcurrentOperations() throws Exception {
     final int NUM_THREADS = 20;
     final int OPERATIONS_PER_THREAD = 50;
-    
-    ExecutorService executor = Executors.newCachedThreadPool();
+
+    ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads
     CountDownLatch startLatch = new CountDownLatch(1);
     CountDownLatch completionLatch = new CountDownLatch(NUM_THREADS);
     

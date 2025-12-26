@@ -457,7 +457,7 @@ public class AdvancedPublicPrivateKeywordTest {
         IndexingCoordinator.getInstance().waitForCompletion();
 
         // Launch concurrent searches
-        ExecutorService executor = Executors.newFixedThreadPool(20);
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
         List<Future<SearchResult>> futures = new ArrayList<>();
 
         for (int i = 0; i < 10; i++) {

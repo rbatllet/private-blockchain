@@ -134,8 +134,8 @@ public class ComprehensiveThreadSafetyTest {
     private static void runConcurrentBlockAddition() throws Exception {
         System.out.println("📝 Test 1: Concurrent Block Addition");
         logger.info("📝 Test 1: Concurrent Block Addition");
-        
-        ExecutorService executor = Executors.newFixedThreadPool(NUM_THREADS);
+
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch endLatch = new CountDownLatch(NUM_THREADS);
         
@@ -229,8 +229,8 @@ public class ComprehensiveThreadSafetyTest {
     private static void runConcurrentMixedOperations() throws Exception {
         System.out.println("📝 Test 2: Concurrent Mixed Operations");
         logger.info("📝 Test 2: Concurrent Mixed Operations");
-        
-        ExecutorService executor = Executors.newFixedThreadPool(NUM_THREADS);
+
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch endLatch = new CountDownLatch(NUM_THREADS);
         
@@ -324,8 +324,8 @@ public class ComprehensiveThreadSafetyTest {
     private static void runConcurrentValidationStress() throws Exception {
         System.out.println("📝 Test 3: Concurrent Validation Stress");
         logger.info("📝 Test 3: Concurrent Validation Stress");
-        
-        ExecutorService executor = Executors.newFixedThreadPool(NUM_THREADS);
+
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch endLatch = new CountDownLatch(NUM_THREADS);
         
@@ -380,8 +380,8 @@ public class ComprehensiveThreadSafetyTest {
     private static void runConcurrentOffChainOperations() throws Exception {
         System.out.println("📝 Test 4: Concurrent Off-Chain Operations");
         logger.info("📝 Test 4: Concurrent Off-Chain Operations");
-        
-        ExecutorService executor = Executors.newFixedThreadPool(NUM_THREADS);
+
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch endLatch = new CountDownLatch(NUM_THREADS);
         
@@ -454,8 +454,8 @@ public class ComprehensiveThreadSafetyTest {
         for (int i = 0; i < 10; i++) {
             blockchain.addBlockAndReturn("Block " + i, privateKeys[0], publicKeys[0]);
         }
-        
-        ExecutorService executor = Executors.newFixedThreadPool(NUM_THREADS);
+
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch endLatch = new CountDownLatch(NUM_THREADS);
         
@@ -519,8 +519,8 @@ public class ComprehensiveThreadSafetyTest {
     private static void runConcurrentExportImportTest() throws Exception {
         System.out.println("📝 Test 6: Concurrent Export/Import Safety");
         logger.info("📝 Test 6: Concurrent Export/Import Safety");
-        
-        ExecutorService executor = Executors.newFixedThreadPool(Math.min(NUM_THREADS, 5)); // Limit concurrent exports
+
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch endLatch = new CountDownLatch(Math.min(NUM_THREADS, 5));
         
@@ -591,9 +591,9 @@ public class ComprehensiveThreadSafetyTest {
     private static void runEdgeCaseTests() throws Exception {
         System.out.println("📝 Test 7: Edge Case Thread Safety");
         logger.info("📝 Test 7: Edge Case Thread Safety");
-        
+
         // Test rapid key authorization/revocation
-        ExecutorService executor = Executors.newFixedThreadPool(NUM_THREADS);
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch endLatch = new CountDownLatch(NUM_THREADS);
         

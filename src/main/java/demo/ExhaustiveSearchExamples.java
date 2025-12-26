@@ -589,7 +589,7 @@ public class ExhaustiveSearchExamples {
         // Concurrent search test
         int threadCount = 5;
         int searchesPerThread = 3;
-        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads
         CountDownLatch latch = new CountDownLatch(threadCount);
         
         System.out.println("🧵 Running " + threadCount + " threads with " + searchesPerThread + " searches each...");

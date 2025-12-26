@@ -15,8 +15,9 @@ public class LogAnalysisDashboard {
     
     private static final String LOGS_DIR = "logs";
     private static final int REFRESH_INTERVAL_MS = 1000;
-    
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+
+    private final ScheduledExecutorService scheduler =
+        Executors.newScheduledThreadPool(1, Thread.ofVirtual().factory()); // Java 25 Virtual Threads
     private volatile boolean running = true;
     
     // Metrics from log analysis

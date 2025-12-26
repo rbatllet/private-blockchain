@@ -70,7 +70,7 @@ class CriticalConsistencyTest {
             "BOOTSTRAP_ADMIN"
         );
 
-        ExecutorService executor = Executors.newFixedThreadPool(3);
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
 
         try {
             assertTrue(blockchain.addAuthorizedKey(alicePublicKey, "Alice", bootstrapKeyPair, UserRole.USER));

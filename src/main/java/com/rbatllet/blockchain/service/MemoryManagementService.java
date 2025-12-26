@@ -37,8 +37,9 @@ public class MemoryManagementService {
             logger.info("🚀 Starting Memory Management Service");
             
             // Create new scheduler if needed
+            // Java 25 Virtual Threads (Phase 2.1): Use virtual threads for GC monitoring I/O
             if (cleanupScheduler == null || cleanupScheduler.isShutdown()) {
-                cleanupScheduler = Executors.newScheduledThreadPool(1);
+                cleanupScheduler = Executors.newScheduledThreadPool(1, Thread.ofVirtual().factory());
             }
             
             // Schedule regular cleanup

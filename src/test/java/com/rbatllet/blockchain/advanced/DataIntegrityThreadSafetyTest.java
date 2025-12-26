@@ -32,7 +32,7 @@ public class DataIntegrityThreadSafetyTest {
     void setUp() {
         blockchain = new Blockchain();
         blockchain.clearAndReinitialize();
-        executorService = Executors.newFixedThreadPool(THREAD_COUNT);
+        executorService = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
     }
 
     @Test

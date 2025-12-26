@@ -97,7 +97,7 @@ public class EncryptedBlockThreadSafetyTest {
         int operationsPerThread = 5;
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch completeLatch = new CountDownLatch(numThreads);
-        ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
         
         AtomicInteger indexOperations = new AtomicInteger(0);
         AtomicInteger searchOperations = new AtomicInteger(0);
@@ -192,7 +192,7 @@ public class EncryptedBlockThreadSafetyTest {
         
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch completeLatch = new CountDownLatch(numCreatorThreads + numSearchThreads);
-        ExecutorService executor = Executors.newFixedThreadPool(numCreatorThreads + numSearchThreads);
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
         
         AtomicInteger searchCount = new AtomicInteger(0);
         AtomicInteger createCount = new AtomicInteger(0);
@@ -318,7 +318,7 @@ public class EncryptedBlockThreadSafetyTest {
         int searchesPerThread = 20;
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch completeLatch = new CountDownLatch(numThreads);
-        ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
         
         AtomicInteger successfulSearches = new AtomicInteger(0);
         AtomicInteger totalSearches = new AtomicInteger(0);

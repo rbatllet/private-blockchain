@@ -121,20 +121,14 @@ public class DatabaseMaintenanceScheduler {
                 throw new IllegalStateException("PerformanceMetricsService not available");
             }
 
-            // Create thread pool for scheduled tasks
-            this.scheduler = Executors.newScheduledThreadPool(
-                3, // One thread per maintenance service
-                new ThreadFactory() {
-                    private int threadCount = 0;
+            // Create thread pool for scheduled tasks using virtual threads
+            // Java 25 Virtual Threads (Phase 1.2): Use virtual thread factory for scheduled operations
+            Thread.Builder.OfVirtual virtualBuilder = Thread.ofVirtual()
+                .name("maintenance-scheduler-", 0); // Auto-incrementing names
 
-                    @Override
-                    public Thread newThread(Runnable r) {
-                        Thread thread = new Thread(r);
-                        thread.setName("maintenance-scheduler-" + (++threadCount));
-                        thread.setDaemon(true); // Don't prevent JVM shutdown
-                        return thread;
-                    }
-                }
+            this.scheduler = Executors.newScheduledThreadPool(
+                Runtime.getRuntime().availableProcessors(), // Scale with CPU cores (vs hardcoded 3)
+                virtualBuilder.factory()
             );
 
             logger.info("✅ DatabaseMaintenanceScheduler initialized successfully");

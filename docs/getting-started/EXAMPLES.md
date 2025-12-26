@@ -904,10 +904,10 @@ public void processBatchTransactions(Blockchain blockchain, List<String> transac
 }
 
 // ✅ THREAD-SAFE: Concurrent Batch Processing
-public void processConcurrentBatchTransactions(Blockchain blockchain, List<String> transactions, 
+public void processConcurrentBatchTransactions(Blockchain blockchain, List<String> transactions,
                                              PrivateKey signerKey, PublicKey signerPublic) {
     try {
-        ExecutorService executor = Executors.newFixedThreadPool(4); // Limit concurrent threads
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads
         List<CompletableFuture<Boolean>> futures = new ArrayList<>();
         AtomicInteger successCount = new AtomicInteger(0);
         AtomicInteger failureCount = new AtomicInteger(0);
@@ -2156,7 +2156,7 @@ public class BlockchainProducerConsumer {
     public BlockchainProducerConsumer() {
         this.blockchain = new Blockchain();
         this.transactionQueue = new LinkedBlockingQueue<>(1000); // Bounded queue
-        this.producerPool = Executors.newFixedThreadPool(5);
+        this.producerPool = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads
     }
     
     /**
@@ -2276,8 +2276,8 @@ public class ConcurrentPerformanceTest {
         System.out.println("   Threads: " + numberOfThreads);
         System.out.println("   Blocks per thread: " + blocksPerThread);
         System.out.println("   Expected total blocks: " + expectedBlocks);
-        
-        ExecutorService executor = Executors.newFixedThreadPool(numberOfThreads);
+
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads
         CountDownLatch latch = new CountDownLatch(numberOfThreads);
         AtomicInteger successCount = new AtomicInteger(0);
         AtomicInteger failureCount = new AtomicInteger(0);
@@ -2386,9 +2386,9 @@ public class ConcurrentBestPractices {
     /**
      * ✅ GOOD: Proper error handling in concurrent scenarios
      */
-    public void robustConcurrentOperation(Blockchain blockchain, List<String> dataList, 
+    public void robustConcurrentOperation(Blockchain blockchain, List<String> dataList,
                                         PrivateKey privateKey, PublicKey publicKey) {
-        ExecutorService executor = Executors.newFixedThreadPool(4);
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads
         List<CompletableFuture<String>> futures = new ArrayList<>();
         
         for (String data : dataList) {

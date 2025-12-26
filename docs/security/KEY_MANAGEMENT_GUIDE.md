@@ -244,7 +244,7 @@ public class KeyRotationManager {
     
     public KeyRotationManager(UserFriendlyEncryptionAPI api) {
         this.api = api;
-        this.scheduler = Executors.newScheduledThreadPool(2);
+        this.scheduler = Executors.newScheduledThreadPool(2, Thread.ofVirtual().factory()); // Java 25 Virtual Threads
     }
     
     public void scheduleKeyRotation() {

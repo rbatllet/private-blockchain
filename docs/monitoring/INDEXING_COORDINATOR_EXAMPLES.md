@@ -193,7 +193,7 @@ Tests with **high concurrency** (10+ writer threads, 15+ reader threads) validat
 ```java
 @Test
 void testConcurrentBlockIndexing() {
-    ExecutorService executor = Executors.newFixedThreadPool(25);
+    ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads
     CountDownLatch startLatch = new CountDownLatch(1);
     
     // 10 threads creating encrypted blocks concurrently
@@ -660,10 +660,11 @@ public class HighThroughputBlockchainApp {
     
     private final IndexingCoordinator coordinator;
     private final ExecutorService executorService;
-    
+
+
     public HighThroughputBlockchainApp() {
         this.coordinator = IndexingCoordinator.getInstance();
-        this.executorService = Executors.newFixedThreadPool(4);
+        this.executorService = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads
     }
     
     public void handleBulkOperations(List<Block> newBlocks) {

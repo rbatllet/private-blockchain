@@ -185,7 +185,7 @@ System.out.println(report.getFormattedSummary()); // Rich output
 
 ## 🛠️ Technologies Used
 
-- **Java 21** - Programming language with modern features
+- **Java 25** - Programming language with modern features
 - **Maven** - Build and dependency management
 - **Database-Agnostic Architecture** - 100% portable across multiple databases:
   - **SQLite** - Development and demos (single-writer, 2-5 connections)
@@ -202,13 +202,13 @@ System.out.println(report.getFormattedSummary()); // Rich output
 
 ## 📦 Prerequisites
 
-- **Java 21** or higher installed
+- **Java 25** or higher installed
 - **Maven 3.6** or higher
 - At least **500MB** of free disk space (additional space needed for off-chain storage)
 
 ### Checking Prerequisites
 ```zsh
-# Check Java version (must be 21+)
+# Check Java version (must be 25+)
 java -version
 
 # Check Maven version
@@ -1831,7 +1831,7 @@ blockchain.resetLimitsToDefault();                    // Reset to defaults
 ## 🤝 Contributing
 
 ### Development Setup
-1. **Environment**: Ensure Java 21+ and Maven 3.6+ are installed
+1. **Environment**: Ensure Java 25+ and Maven 3.6+ are installed
 2. **Clone**: Clone the repository to your local development environment
 3. **Build**: Run `mvn clean compile` to build the project
 4. **Test**: Run `./run_all_tests.zsh` to verify everything works (more than 40 tests)

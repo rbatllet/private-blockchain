@@ -32,7 +32,7 @@ public class EdgeCaseThreadSafetyTest {
     void setUp() {
         blockchain = new Blockchain();
         blockchain.clearAndReinitialize();
-        executorService = Executors.newFixedThreadPool(THREAD_COUNT);
+        executorService = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
     }
 
     @Test
@@ -150,7 +150,7 @@ public class EdgeCaseThreadSafetyTest {
 
         // Use more threads for extreme concurrency
         int EXTREME_THREAD_COUNT = 30;
-        ExecutorService extremeExecutor = Executors.newFixedThreadPool(EXTREME_THREAD_COUNT);
+        ExecutorService extremeExecutor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
         
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch endLatch = new CountDownLatch(EXTREME_THREAD_COUNT);

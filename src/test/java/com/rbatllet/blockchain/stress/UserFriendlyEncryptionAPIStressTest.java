@@ -55,7 +55,7 @@ public class UserFriendlyEncryptionAPIStressTest {
         );
 
         api = new UserFriendlyEncryptionAPI(blockchain);
-        executorService = Executors.newCachedThreadPool();
+        executorService = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
 
         // Initialize SearchSpecialistAPI for stress tests that may use storeSecret
         try {

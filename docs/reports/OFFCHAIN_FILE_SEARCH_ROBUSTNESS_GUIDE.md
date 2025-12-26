@@ -163,8 +163,8 @@ try {
 ### 2. Thread Safety Considerations
 
 ```java
-// Safe for concurrent usage
-ExecutorService executor = Executors.newFixedThreadPool(10);
+// Safe for concurrent usage (Java 25 Virtual Threads)
+ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
 for (File file : filesToSearch) {
     executor.submit(() -> {
@@ -190,8 +190,8 @@ Map<String, Object> cacheStats = offChainFileSearch.getCacheStats();
 logger.info("Cache efficiency: {} hits, {} misses", 
     cacheStats.get("hits"), cacheStats.get("misses"));
 
-// Periodic cleanup for long-running applications
-ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+// Periodic cleanup for long-running applications (Java 25 Virtual Threads)
+ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1, Thread.ofVirtual().factory());
 scheduler.scheduleAtFixedRate(
     () -> offChainFileSearch.cleanupCache(),
     0, 1, TimeUnit.HOURS

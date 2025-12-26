@@ -112,8 +112,8 @@ double avgSpeed = report.getStatistics().getAverageCheckSpeedMbps();
 ```java
 OffChainIntegrityReport report = new OffChainIntegrityReport("LARGE_SCALE_REPORT");
 
-// Process 1000 items concurrently with thread pool
-ExecutorService executor = Executors.newFixedThreadPool(4);
+// Process 1000 items concurrently with thread pool (Java 25 Virtual Threads)
+ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 for (int i = 0; i < 1000; i++) {
     final int index = i;
     executor.submit(() -> {

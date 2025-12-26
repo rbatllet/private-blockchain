@@ -29,7 +29,7 @@ class ComprehensiveThreadSafetyTest {
         blockchain = new Blockchain();
         blockchain.clearAndReinitialize();  // Ensure clean state for each test
         // Use cached thread pool for maximum thread contention testing
-        executorService = Executors.newCachedThreadPool();
+        executorService = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
     }
     
     @AfterEach

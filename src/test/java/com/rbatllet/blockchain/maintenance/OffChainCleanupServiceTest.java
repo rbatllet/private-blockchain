@@ -1149,9 +1149,7 @@ class OffChainCleanupServiceTest {
 
             // Run cleanup operations concurrently
             int threadCount = 5;
-            ExecutorService executor = Executors.newFixedThreadPool(
-                threadCount
-            );
+            ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads
             CountDownLatch latch = new CountDownLatch(threadCount);
             List<OffChainCleanupService.CleanupResult> results =
                 Collections.synchronizedList(new ArrayList<>());
@@ -1259,9 +1257,7 @@ class OffChainCleanupServiceTest {
 
             // Run compression operations concurrently
             int threadCount = 3;
-            ExecutorService executor = Executors.newFixedThreadPool(
-                threadCount
-            );
+            ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads
             CountDownLatch latch = new CountDownLatch(threadCount);
             List<OffChainCleanupService.CleanupResult> results =
                 Collections.synchronizedList(new ArrayList<>());
@@ -1428,7 +1424,7 @@ class OffChainCleanupServiceTest {
             );
 
             // Run mixed operations concurrently
-            ExecutorService executor = Executors.newFixedThreadPool(4);
+            ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
             CountDownLatch latch = new CountDownLatch(4);
             List<OffChainCleanupService.CleanupResult> cleanupResults =
                 Collections.synchronizedList(new ArrayList<>());

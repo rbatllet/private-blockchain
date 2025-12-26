@@ -83,7 +83,7 @@ public class ThreadSafetyTest {
     private static void testConcurrentBlockAddition(Blockchain blockchain, KeyPair keyPair) {
         System.out.println("\n🧪 Testing concurrent block addition...");
         
-        ExecutorService executor = Executors.newFixedThreadPool(THREAD_COUNT);
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
         CountDownLatch latch = new CountDownLatch(THREAD_COUNT);
         AtomicInteger successCount = new AtomicInteger(0);
         AtomicInteger failureCount = new AtomicInteger(0);
@@ -133,7 +133,7 @@ public class ThreadSafetyTest {
     private static void testConcurrentKeyOperations(Blockchain blockchain) {
         System.out.println("\n🧪 Testing concurrent key operations...");
         
-        ExecutorService executor = Executors.newFixedThreadPool(THREAD_COUNT);
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
         CountDownLatch latch = new CountDownLatch(THREAD_COUNT);
         AtomicInteger successCount = new AtomicInteger(0);
         
@@ -190,7 +190,7 @@ public class ThreadSafetyTest {
     private static void testConcurrentReadOperations(Blockchain blockchain) {
         System.out.println("\n🧪 Testing concurrent read operations...");
 
-        ExecutorService executor = Executors.newFixedThreadPool(THREAD_COUNT);
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
         CountDownLatch latch = new CountDownLatch(THREAD_COUNT);
         AtomicInteger successCount = new AtomicInteger(0);
 

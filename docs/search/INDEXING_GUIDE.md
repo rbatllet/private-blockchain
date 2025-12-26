@@ -392,8 +392,8 @@ public class BlockchainSearchDemo {
 
 ```java
 public class BlockchainIndexingJob {
-    private final ScheduledExecutorService scheduler = 
-        Executors.newScheduledThreadPool(1);
+    private final ScheduledExecutorService scheduler =
+        Executors.newScheduledThreadPool(1, Thread.ofVirtual().factory()); // Java 25 Virtual Threads
     
     private final Blockchain blockchain;
     private final String indexingPassword;

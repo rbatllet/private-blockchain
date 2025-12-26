@@ -63,8 +63,8 @@ Map<IntegrityStatus, List<IntegrityCheckResult>> grouped = report.groupByStatus(
 ```java
 OffChainIntegrityReport report = new OffChainIntegrityReport("CONCURRENT_REPORT");
 
-// Safe concurrent operations
-ExecutorService executor = Executors.newFixedThreadPool(4);
+// Safe concurrent operations (Java 25 Virtual Threads)
+ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
 // Multiple threads adding results safely
 for (int i = 0; i < 1000; i++) {

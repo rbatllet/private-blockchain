@@ -500,7 +500,7 @@ public class SearchCacheManagerTest {
         @DisplayName("Should handle concurrent read and write operations")
         void shouldHandleConcurrentReadAndWriteOperations() throws InterruptedException, ExecutionException {
             // Given
-            ExecutorService executor = Executors.newFixedThreadPool(10);
+            ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
             int operationsPerThread = 100;
             int threadCount = 10;
             List<CompletableFuture<Void>> futures = new ArrayList<>();
@@ -547,7 +547,7 @@ public class SearchCacheManagerTest {
                 cacheManager.put("key_" + i, "value_" + i, 100);
             }
             
-            ExecutorService executor = Executors.newFixedThreadPool(5);
+            ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
             List<CompletableFuture<Void>> futures = new ArrayList<>();
             
             // When - Concurrent invalidation operations

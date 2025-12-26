@@ -1732,8 +1732,8 @@ public class SearchFrameworkDemo {
 All search operations are fully thread-safe and can be performed concurrently:
 
 ```java
-// Concurrent search operations
-ExecutorService executor = Executors.newFixedThreadPool(4);
+// Concurrent search operations (Java 25 Virtual Threads)
+ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
 CompletableFuture<List<Block>> search1 = CompletableFuture.supplyAsync(() -> 
     blockchain.searchBlocks("medical", SearchLevel.FAST_ONLY), executor);
@@ -4296,10 +4296,10 @@ for (BlockData data : blockDataList) {
     blockchain.addBlock(data.getContent(), privateKey, publicKey); // Works but not optimal
 }
 
-// ✅ BETTER: Concurrent batch processing for improved performance
-public void addBlocksBatchConcurrent(List<BlockData> blockDataList, 
+// ✅ BETTER: Concurrent batch processing for improved performance (Java 25 Virtual Threads)
+public void addBlocksBatchConcurrent(List<BlockData> blockDataList,
                                    PrivateKey signerKey, PublicKey signerPublic) {
-    ExecutorService executor = Executors.newFixedThreadPool(4);
+    ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
     List<CompletableFuture<Block>> futures = new ArrayList<>();
     
     for (BlockData data : blockDataList) {
