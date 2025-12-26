@@ -221,9 +221,14 @@ public class ConfigurationSecurityAnalyzer {
      * Analyzes connection security (SSL/TLS).
      */
     private void analyzeConnectionSecurity(DatabaseConfig config, List<SecurityWarning> warnings) {
-        // For now, this is informational
-        // In future versions, we could parse JDBC URL for SSL parameters
-        if (config.getDatabaseType() != DatabaseConfig.DatabaseType.SQLITE) {
+        // Only check SSL for network-based databases (PostgreSQL, MySQL)
+        // Embedded databases (SQLite, H2) don't need SSL as they're local file-based
+        DatabaseConfig.DatabaseType dbType = config.getDatabaseType();
+
+        // Only warn for network databases
+        if (dbType == DatabaseConfig.DatabaseType.POSTGRESQL ||
+            dbType == DatabaseConfig.DatabaseType.MYSQL) {
+
             String jdbcUrl = config.getDatabaseUrl();
             if (jdbcUrl != null && !jdbcUrl.toLowerCase().contains("ssl")) {
                 warnings.add(SecurityWarning.builder()
