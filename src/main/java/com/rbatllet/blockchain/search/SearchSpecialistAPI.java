@@ -872,25 +872,26 @@ public class SearchSpecialistAPI {
         if (blockchain == null) {
             throw new IllegalArgumentException("Blockchain cannot be null");
         }
-        if (password == null) {
-            throw new IllegalArgumentException("Password cannot be null");
-        }
-        if (password.trim().isEmpty()) {
+
+        // ARCHITECTURAL FIX: Allow null password for non-encrypted blocks with public keywords
+        // - If password is null: only non-encrypted blocks with public keywords will be indexed
+        // - If password is provided: both encrypted and non-encrypted blocks will be indexed
+        if (password != null && password.trim().isEmpty()) {
             throw new IllegalArgumentException("Password cannot be empty or contain only whitespace");
         }
         if (privateKey == null) {
             throw new IllegalArgumentException("Private key cannot be null");
         }
-        
+
         SearchFrameworkEngine.IndexingResult result = searchEngine.indexBlockchain(blockchain, password, privateKey);
         this.defaultPassword = password;
         isInitialized = true;
-        
+
         // Clear the direct instantiation flag since it's now properly initialized
         if (isDirectlyInstantiated) {
             logger.info("✅ SearchSpecialistAPI directly instantiated but now properly initialized with blockchain");
         }
-        
+
         return result;
     }
     
@@ -954,16 +955,17 @@ public class SearchSpecialistAPI {
         if (blockchain == null) {
             throw new IllegalArgumentException("Blockchain cannot be null");
         }
-        if (password == null) {
-            throw new IllegalArgumentException("Password cannot be null");
-        }
-        if (password.trim().isEmpty()) {
+
+        // ARCHITECTURAL FIX: Allow null password for non-encrypted blocks with public keywords
+        // - If password is null: only non-encrypted blocks with public keywords will be indexed
+        // - If password is provided: both encrypted and non-encrypted blocks will be indexed
+        if (password != null && password.trim().isEmpty()) {
             throw new IllegalArgumentException("Password cannot be empty or contain only whitespace");
         }
         if (privateKey == null) {
             throw new IllegalArgumentException("Private key cannot be null");
         }
-        
+
         return CompletableFuture.supplyAsync(() -> {
             SearchFrameworkEngine.IndexingResult result = searchEngine.indexBlockchain(blockchain, password, privateKey);
             this.defaultPassword = password;

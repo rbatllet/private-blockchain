@@ -193,13 +193,19 @@ public class MetadataLayerManager {
                 // Try to extract keywords from autoKeywords (encrypted) and manualKeywords (public)
                 logger.debug("🔍 no external keywords provided, extracting from block...");
                 
-                // Extract manual keywords - separate public vs private based on prefix
+                // Extract manual keywords - separate public vs private based on block encryption status
+                // ARCHITECTURAL FIX: Keywords are stored WITHOUT prefix in database
+                // For NON-encrypted blocks: all manualKeywords are PUBLIC (searchable without password)
+                // For ENCRYPTED blocks: check for explicit "public:" prefix to determine visibility
                 if (block.getManualKeywords() != null && !block.getManualKeywords().trim().isEmpty()) {
                     String[] manualKeywords = block.getManualKeywords().split("\\s+");
+                    boolean isEncrypted = block.isDataEncrypted();
+
                     for (String keyword : manualKeywords) {
                         if (!keyword.trim().isEmpty()) {
                             String cleanKeyword = keyword.trim();
-                            // Check for "public:" prefix - these go to public layer
+
+                            // Check for explicit "public:" prefix (used for encrypted blocks)
                             if (cleanKeyword.toLowerCase().startsWith("public:")) {
                                 String originalKeyword = cleanKeyword;
                                 cleanKeyword = cleanKeyword.substring(7); // Remove "public:" prefix
@@ -208,9 +214,13 @@ public class MetadataLayerManager {
                                     publicKeywordSet.add(cleanKeyword);
                                     logger.debug("🔍 ADDED TO PUBLIC INDEX: '{}'", cleanKeyword);
                                 }
+                            } else if (!isEncrypted) {
+                                // Non-encrypted block: all keywords are public by default
+                                publicKeywordSet.add(cleanKeyword);
+                                logger.debug("🔍 ADDED TO PUBLIC INDEX (non-encrypted): '{}'", cleanKeyword);
                             } else {
-                                // No prefix = private keyword
-                                logger.debug("🔍 ADDED TO PRIVATE INDEX: '{}'", cleanKeyword);
+                                // Encrypted block without "public:" prefix = private keyword
+                                logger.debug("🔍 ADDED TO PRIVATE INDEX (encrypted): '{}'", cleanKeyword);
                                 privateKeywordSet.add(cleanKeyword);
                             }
                         }

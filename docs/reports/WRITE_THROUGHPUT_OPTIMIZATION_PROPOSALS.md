@@ -1754,10 +1754,10 @@ var query = em.createQuery(
 })
 ```
 
-**5. SearchConstants.java** - New configuration constants:
+**5. SearchConstants.java** - Search configuration constants:
 ```java
 public final class SearchConstants {
-    public static final String DEFAULT_INDEXING_KEY = "search-index-key";
+    // Relevance scoring constants
     public static final double MIN_QUALITY_SCORE = 0.7;
     public static final double EXACT_MATCH_BONUS = 10.0;
     public static final double PARTIAL_MATCH_BONUS = 5.0;
@@ -1765,6 +1765,7 @@ public final class SearchConstants {
     public static final double SENSITIVE_PARTIAL_MATCH_BONUS = 8.0;
     public static final double ON_CHAIN_BONUS = 15.0;
     public static final double OFF_CHAIN_BONUS = 20.0;
+    public static final int MAX_SEARCH_WORD_LENGTH = 50;
 }
 ```
 

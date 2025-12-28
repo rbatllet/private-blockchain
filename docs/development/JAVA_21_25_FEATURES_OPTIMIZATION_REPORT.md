@@ -66,7 +66,7 @@ import java.security.*;
 /**
  * Quantum-resistant key encapsulation using ML-KEM (FIPS 203)
  *
- * @since 1.0.7 (Java 24+ feature)
+ * @since 1.0.6 (Java 24+ feature)
  */
 public class QuantumResistantKeyExchange {
 
@@ -148,7 +148,7 @@ import java.security.*;
  * Quantum-resistant digital signatures using ML-DSA (FIPS 204)
  * Native Java implementation replaces Bouncy Castle dependency
  *
- * @since 1.0.7 (Java 24+ feature)
+ * @since 1.0.6 (Java 24+ feature)
  */
 public class NativeMLDSASignatures {
 
@@ -251,7 +251,7 @@ import javax.crypto.spec.SecretKeySpec;
 /**
  * Modern Key Derivation using Java 25 KDF API
  *
- * @since 1.0.7 (Java 25 feature)
+ * @since 1.0.6 (Java 25 feature)
  */
 public class ModernKeyDerivation {
 
@@ -661,7 +661,7 @@ import java.util.concurrent.StructuredTaskScope;
 /**
  * Modern concurrent indexing with structured concurrency
  *
- * @since 1.0.7 (Java 25 preview feature)
+ * @since 1.0.6 (Java 25 preview feature)
  */
 public class StructuredIndexingCoordinator {
 
@@ -767,7 +767,7 @@ import java.lang.ScopedValue;
 /**
  * Modern thread-scoped data with automatic cleanup
  *
- * @since 1.0.7 (Java 25 feature)
+ * @since 1.0.6 (Java 25 feature)
  */
 public class BlockchainContext {
 
@@ -880,7 +880,7 @@ import static java.util.stream.Gatherers.*;
 /**
  * Modern stream operations with Gatherers API
  *
- * @since 1.0.7 (Java 25 feature)
+ * @since 1.0.6 (Java 25 feature)
  */
 public class ModernStreamOperations {
 

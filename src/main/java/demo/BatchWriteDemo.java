@@ -1,7 +1,6 @@
 package demo;
 
 import com.rbatllet.blockchain.config.DatabaseConfig;
-import com.rbatllet.blockchain.config.SearchConstants;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.indexing.IndexingCoordinator;
@@ -107,7 +106,8 @@ public class BatchWriteDemo {
         System.out.println("  ✅ Using bootstrap admin keys for demo blocks");
 
         // Initialize advanced search BEFORE storing data
-        blockchain.initializeAdvancedSearch(SearchConstants.DEFAULT_INDEXING_KEY);
+        // Pass null password since demo creates non-encrypted blocks only
+        blockchain.initializeAdvancedSearch(null);
         System.out.println("  ✅ Advanced search initialized");
         System.out.println();
     }

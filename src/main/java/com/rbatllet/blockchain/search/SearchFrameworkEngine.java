@@ -1571,6 +1571,40 @@ public class SearchFrameworkEngine {
     }
 
     /**
+     * Index a single block WITHOUT password (for non-encrypted blocks with public keywords).
+     *
+     * <p><strong>ARCHITECTURAL FIX:</strong> This overload is specifically for indexing
+     * non-encrypted blocks where all keywords are public and searchable without a password.
+     * It avoids the conceptual issue of requiring a password for non-encrypted content.</p>
+     *
+     * <p><strong>Use Cases:</strong>
+     * <ul>
+     *   <li>Non-encrypted blocks with public keywords</li>
+     *   <li>Blocks where all metadata is publicly searchable</li>
+     *   <li>Re-indexing operations where password is not available</li>
+     * </ul>
+     *
+     * <p><strong>Implementation:</strong> Internally calls the password-based overload with
+     * {@code null} password. The MetadataLayerManager will extract keywords from the block
+     * and place them in the public layer (no password required for search).</p>
+     *
+     * @param block The block to index (must not be null)
+     * @param privateKey Private key for cryptographic operations (can be null)
+     * @param config Encryption configuration
+     * @throws RuntimeException if indexing fails
+     * @since 1.0.6
+     */
+    public void indexBlock(
+        Block block,
+        PrivateKey privateKey,
+        EncryptionConfig config
+    ) {
+        // Delegate to password-based overload with null password
+        // MetadataLayerManager will handle non-encrypted blocks correctly
+        indexBlock(block, null, privateKey, config);
+    }
+
+    /**
      * Index a single block with user-defined search terms
      * @param block The block to index
      * @param password Password for encryption

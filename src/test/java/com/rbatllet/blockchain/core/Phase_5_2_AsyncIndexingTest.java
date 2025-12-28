@@ -1,7 +1,6 @@
 package com.rbatllet.blockchain.core;
 
 import com.rbatllet.blockchain.config.DatabaseConfig;
-import com.rbatllet.blockchain.config.SearchConstants;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.testutil.GenesisKeyManager;
@@ -88,7 +87,8 @@ public class Phase_5_2_AsyncIndexingTest {
         userKeys = bootstrapKeyPair;
 
         // Initialize advanced search
-        blockchain.initializeAdvancedSearch(SearchConstants.DEFAULT_INDEXING_KEY);
+        // Pass null password since test creates non-encrypted blocks only
+        blockchain.initializeAdvancedSearch(null);
     }
 
     @AfterEach

@@ -891,17 +891,10 @@ public class Blockchain {
                 return savedBlock;
             }
             
-            // FIX: Only use password-based indexing for ENCRYPTED blocks
-            // Normal blocks use basic indexing without password to avoid failed indexing attempts
-            if (savedBlock.isDataEncrypted()) {
-                // ENCRYPTED blocks: Pass private key + password to decrypt keywords
-                indexBlocksRangeAsync(blockNumber, blockNumber, signerPrivateKey,
-                    SearchConstants.DEFAULT_INDEXING_KEY);
-            } else {
-                // NORMAL blocks with keywords: Pass private key for indexing (no password needed)
-                // FIX: Pass signerPrivateKey to avoid ./keys/ directory search
-                indexBlocksRangeAsync(blockNumber, blockNumber, signerPrivateKey);
-            }
+            // ARCHITECTURAL FIX: addBlockWithKeywords() creates NON-ENCRYPTED blocks only
+            // Always index without password (keywords are public for non-encrypted blocks)
+            // Pass signerPrivateKey to avoid ./keys/ directory search
+            indexBlocksRangeAsync(blockNumber, blockNumber, signerPrivateKey);
             
             // PERFORMANCE: Don't attach callbacks in non-debug mode - reduces overhead
             // Background indexing errors are logged by IndexingCoordinator internally
@@ -1260,17 +1253,24 @@ public class Blockchain {
                             logger.debug("📋 Indexing unencrypted block {} without private key", block.getBlockNumber());
                         }
 
-                        // Index the block with standard password (same as batch indexing)
-                        // This ensures search compatibility with blocks indexed via addBlocksBatch()
+                        // ARCHITECTURAL FIX: Use passwordless indexing for non-encrypted blocks
+                        // For encrypted blocks, we cannot index without the correct password
+                        // (which we don't have here - encrypted blocks should be indexed when created)
                         EncryptionConfig config = EncryptionConfig.createHighSecurityConfig();
-                        searchFrameworkEngine.indexBlock(
-                            block,
-                            SearchConstants.DEFAULT_INDEXING_KEY,
-                            privateKey,  // Can be null for unencrypted blocks
-                            config
-                        );
-                        indexed++;
-                        logger.debug("✅ Indexed block {}", block.getBlockNumber());
+                        if (block.isDataEncrypted()) {
+                            // Skip encrypted blocks - cannot index without correct password
+                            logger.warn("⏭️ Skipping encrypted block {} - password required for indexing", block.getBlockNumber());
+                            skipped++;
+                        } else {
+                            // Non-encrypted block: use passwordless indexing
+                            searchFrameworkEngine.indexBlock(
+                                block,
+                                privateKey,
+                                config
+                            );
+                            indexed++;
+                            logger.debug("✅ Indexed block {}", block.getBlockNumber());
+                        }
                     } catch (Exception e) {
                         logger.error("❌ Failed to index block {}: {}", block.getBlockNumber(), e.getMessage());
                         skipped++;
@@ -1368,16 +1368,24 @@ public class Blockchain {
                             }
                         }
 
-                        // Index the block with standard password
+                        // ARCHITECTURAL FIX: Use passwordless indexing for non-encrypted blocks
+                        // For encrypted blocks, we cannot index without the correct password
+                        // (which we don't have here - encrypted blocks should be indexed when created)
                         EncryptionConfig config = EncryptionConfig.createHighSecurityConfig();
-                        searchFrameworkEngine.indexBlock(
-                            block,
-                            SearchConstants.DEFAULT_INDEXING_KEY,
-                            keyToUse,
-                            config
-                        );
-                        indexed++;
-                        logger.debug("✅ Indexed block {}", block.getBlockNumber());
+                        if (block.isDataEncrypted()) {
+                            // Skip encrypted blocks - cannot index without correct password
+                            logger.warn("⏭️ Skipping encrypted block {} - password required for indexing", block.getBlockNumber());
+                            skipped++;
+                        } else {
+                            // Non-encrypted block: use passwordless indexing
+                            searchFrameworkEngine.indexBlock(
+                                block,
+                                keyToUse,
+                                config
+                            );
+                            indexed++;
+                            logger.debug("✅ Indexed block {}", block.getBlockNumber());
+                        }
                     } catch (Exception e) {
                         logger.error("❌ Failed to index block {}: {}",
                             block.getBlockNumber(), e.getMessage());

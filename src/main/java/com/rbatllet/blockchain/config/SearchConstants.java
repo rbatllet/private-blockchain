@@ -21,20 +21,6 @@ public final class SearchConstants {
     }
 
     /**
-     * Default key identifier used for search metadata indexing operations.
-     * This is NOT a security password - it's a system identifier for the indexing scheme.
-     *
-     * Used by:
-     * - {@code Blockchain.addBlocksBatch()} - indexes blocks with this key
-     * - {@code Blockchain.indexBlocksRange()} - re-indexes blocks with this key
-     * - {@code SearchFrameworkEngine.indexBlock()} - encrypts metadata with this key
-     *
-     * This ensures consistency between indexing and re-indexing operations,
-     * allowing the search system to decrypt indexed metadata using the same key.
-     */
-    public static final String DEFAULT_INDEXING_KEY = "search-index-key";
-
-    /**
      * Minimum relevance score threshold for quality search results.
      * Results with scores below this threshold are considered low-quality matches.
      *
