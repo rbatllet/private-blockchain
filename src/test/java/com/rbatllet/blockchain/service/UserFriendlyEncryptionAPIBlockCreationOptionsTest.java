@@ -85,7 +85,7 @@ public class UserFriendlyEncryptionAPIBlockCreationOptionsTest {
             // Given
             BlockCreationOptions options = new BlockCreationOptions()
                     .withCategory("FINANCIAL")
-                    .withUsername("testuser");
+                    .withUsername("categoryuser");
             
             // When
             Block result = api.createBlockWithOptions("Test financial data", options);
@@ -105,7 +105,7 @@ public class UserFriendlyEncryptionAPIBlockCreationOptionsTest {
             String[] keywords = {"payment", "invoice", "urgent"};
             BlockCreationOptions options = new BlockCreationOptions()
                     .withKeywords(keywords)
-                    .withUsername("testuser");
+                    .withUsername("keywordsuser");
             
             // When
             Block result = api.createBlockWithOptions("Invoice payment data", options);
@@ -220,7 +220,7 @@ public class UserFriendlyEncryptionAPIBlockCreationOptionsTest {
                     .withOffChain(true)
                     .withOffChainFilePath(testFile.toString())
                     .withCategory("DOCUMENT")
-                    .withUsername("testuser")
+                    .withUsername("offchainuser")
                     .withPassword(testPassword); // Off-chain storage requires password
             
             // When
@@ -275,7 +275,7 @@ public class UserFriendlyEncryptionAPIBlockCreationOptionsTest {
             BlockCreationOptions options = new BlockCreationOptions()
                     .withOffChain(true)
                     .withCategory("DOCUMENT")
-                    .withUsername("testuser");
+                    .withUsername("nowarnuser");
             // Note: No offChainFilePath provided
             
             // When
@@ -325,7 +325,7 @@ public class UserFriendlyEncryptionAPIBlockCreationOptionsTest {
             BlockCreationOptions options = new BlockCreationOptions()
                     .withOffChain(true)
                     .withOffChainFilePath("/nonexistent/path/file.txt")
-                    .withUsername("testuser");
+                    .withUsername("invalidpathuser");
             
             // When & Then
             assertThrows(RuntimeException.class, () -> {
@@ -340,7 +340,7 @@ public class UserFriendlyEncryptionAPIBlockCreationOptionsTest {
             BlockCreationOptions options = new BlockCreationOptions()
                     .withCategory("TEST")
                     .withKeywords(null)
-                    .withUsername("testuser");
+                    .withUsername("nullkeywordsuser");
             
             // When
             Block result = api.createBlockWithOptions("Test content", options);
@@ -359,7 +359,7 @@ public class UserFriendlyEncryptionAPIBlockCreationOptionsTest {
             BlockCreationOptions options = new BlockCreationOptions()
                     .withCategory("TEST")
                     .withKeywords(emptyKeywords)
-                    .withUsername("testuser");
+                    .withUsername("emptykeywordsuser");
             
             // When
             Block result = api.createBlockWithOptions("Test content", options);

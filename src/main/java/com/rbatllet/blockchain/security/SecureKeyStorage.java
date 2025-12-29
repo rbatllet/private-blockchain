@@ -1,6 +1,9 @@
 package com.rbatllet.blockchain.security;
 
 import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.util.PathSecurityUtil;
+import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.entity.AuthorizedKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import javax.crypto.Cipher;
@@ -418,18 +421,201 @@ public class SecureKeyStorage {
         if (!keysDir.exists() || !keysDir.isDirectory()) {
             return new String[0];
         }
-        
+
         File[] keyFiles = keysDir.listFiles((dir, name) -> name.endsWith(KEY_EXTENSION));
         if (keyFiles == null) {
             return new String[0];
         }
-        
+
         String[] owners = new String[keyFiles.length];
         for (int i = 0; i < keyFiles.length; i++) {
             String fileName = keyFiles[i].getName();
             owners[i] = fileName.substring(0, fileName.length() - KEY_EXTENSION.length());
         }
-        
+
         return owners;
+    }
+
+    /**
+     * Import a private key from external files with blockchain verification
+     *
+     * SECURITY: Verifies that the public key matches the AuthorizedKey on blockchain
+     * to prevent an attacker from importing their own key with a legitimate username
+     *
+     * @param ownerName Owner identifier (must be authorized on blockchain)
+     * @param privateKeyFile Path to the private key file (PEM or raw format)
+     * @param publicKeyFile Path to the public key file (PEM or raw format)
+     * @param password Password to encrypt the stored private key
+     * @return true if import successful, false otherwise
+     * @throws SecurityException if public key doesn't match blockchain AuthorizedKey
+     * @throws IllegalArgumentException if owner is not authorized on blockchain
+     */
+    public static boolean importPrivateKey(String ownerName, String privateKeyFile,
+                                          String publicKeyFile, String password) {
+        // Validate inputs (let these exceptions propagate)
+        if (ownerName == null || ownerName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Owner name cannot be null or empty");
+        }
+        if (privateKeyFile == null || publicKeyFile == null) {
+            throw new IllegalArgumentException("Key files cannot be null");
+        }
+        if (password == null || password.trim().isEmpty()) {
+            throw new IllegalArgumentException("Password cannot be null or empty");
+        }
+
+        // SECURITY: Validate file paths to prevent path traversal attacks (let SecurityException propagate)
+        PathSecurityUtil.validateFilePath(privateKeyFile, "import private key");
+        PathSecurityUtil.validateFilePath(publicKeyFile, "import public key");
+
+        try {
+
+            // Read private key from file
+            byte[] privateKeyBytes = Files.readAllBytes(Paths.get(privateKeyFile));
+            String privateKeyContent = new String(privateKeyBytes, StandardCharsets.UTF_8).trim();
+
+            // Remove PEM headers if present
+            privateKeyContent = privateKeyContent
+                .replace("-----BEGIN PRIVATE KEY-----", "")
+                .replace("-----END PRIVATE KEY-----", "")
+                .replaceAll("\\s", "");
+
+            byte[] privateKeyDecoded = Base64.getDecoder().decode(privateKeyContent);
+            PKCS8EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(privateKeyDecoded);
+            KeyFactory keyFactory = KeyFactory.getInstance(CryptoUtil.SIGNATURE_ALGORITHM);
+            PrivateKey privateKey = keyFactory.generatePrivate(privateKeySpec);
+
+            // Read public key from file
+            byte[] publicKeyBytes = Files.readAllBytes(Paths.get(publicKeyFile));
+            String publicKeyContent = new String(publicKeyBytes, StandardCharsets.UTF_8).trim();
+
+            // Remove PEM headers if present
+            publicKeyContent = publicKeyContent
+                .replace("-----BEGIN PUBLIC KEY-----", "")
+                .replace("-----END PUBLIC KEY-----", "")
+                .replaceAll("\\s", "");
+
+            byte[] publicKeyDecoded = Base64.getDecoder().decode(publicKeyContent);
+            X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(publicKeyDecoded);
+            PublicKey publicKey = keyFactory.generatePublic(publicKeySpec);
+
+            // CRITICAL SECURITY: Verify against blockchain AuthorizedKey
+            Blockchain blockchain = new Blockchain();
+            AuthorizedKey authorizedKey = blockchain.getAuthorizedKeyByOwner(ownerName);
+
+            if (authorizedKey == null) {
+                throw new IllegalArgumentException(
+                    "Owner '" + ownerName + "' is not authorized on blockchain. " +
+                    "Use 'add-key' command to authorize first."
+                );
+            }
+
+            if (!authorizedKey.isActive()) {
+                throw new SecurityException(
+                    "AuthorizedKey for '" + ownerName + "' is not active on blockchain"
+                );
+            }
+
+            String publicKeyString = CryptoUtil.publicKeyToString(publicKey);
+            if (!authorizedKey.getPublicKey().equals(publicKeyString)) {
+                throw new SecurityException(
+                    "Public key mismatch! The public key in the file does not match " +
+                    "the AuthorizedKey on blockchain for owner '" + ownerName + "'. " +
+                    "This could be an attack attempt."
+                );
+            }
+
+            // All security checks passed - save the private key
+            boolean saved = savePrivateKey(ownerName, privateKey, password);
+
+            if (saved) {
+                logger.info("Private key imported successfully for: {}", ownerName);
+            }
+
+            return saved;
+
+        } catch (SecurityException | IllegalArgumentException e) {
+            // Re-throw security and validation exceptions
+            throw e;
+        } catch (Exception e) {
+            logger.error("Error importing private key: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Export a stored private key to a file
+     *
+     * SECURITY WARNING: Exported keys can be stolen. Use restrictive file permissions.
+     *
+     * @param ownerName Owner identifier
+     * @param outputFile Path where to write the private key (PEM format)
+     * @param password Password to decrypt the stored private key
+     * @return true if export successful, false otherwise
+     */
+    public static boolean exportPrivateKey(String ownerName, String outputFile, String password) {
+        // Validate inputs (let these exceptions propagate)
+        if (ownerName == null || ownerName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Owner name cannot be null or empty");
+        }
+        if (outputFile == null) {
+            throw new IllegalArgumentException("Output file cannot be null");
+        }
+        if (password == null || password.trim().isEmpty()) {
+            throw new IllegalArgumentException("Password cannot be null or empty");
+        }
+
+        // SECURITY: Validate output file path to prevent path traversal attacks
+        PathSecurityUtil.validateFilePath(outputFile, "export private key");
+
+        try {
+
+            // Load the private key
+            PrivateKey privateKey = loadPrivateKey(ownerName, password);
+            if (privateKey == null) {
+                logger.error("Failed to load private key for: {}", ownerName);
+                return false;
+            }
+
+            // Convert to PEM format
+            String privateKeyBase64 = Base64.getEncoder().encodeToString(privateKey.getEncoded());
+            StringBuilder pemContent = new StringBuilder();
+            pemContent.append("-----BEGIN PRIVATE KEY-----\n");
+
+            // Split into 64-character lines (PEM standard)
+            int index = 0;
+            while (index < privateKeyBase64.length()) {
+                int endIndex = Math.min(index + 64, privateKeyBase64.length());
+                pemContent.append(privateKeyBase64, index, endIndex).append("\n");
+                index = endIndex;
+            }
+
+            pemContent.append("-----END PRIVATE KEY-----\n");
+
+            // Write to file
+            Files.write(Paths.get(outputFile), pemContent.toString().getBytes(StandardCharsets.UTF_8));
+
+            // Set restrictive file permissions (Unix/Linux/macOS only)
+            try {
+                File file = new File(outputFile);
+                file.setReadable(false, false); // Remove read for everyone
+                file.setWritable(false, false); // Remove write for everyone
+                file.setExecutable(false, false); // Remove execute for everyone
+
+                file.setReadable(true, true); // Add read for owner only
+                file.setWritable(true, true); // Add write for owner only
+            } catch (Exception e) {
+                logger.warn("Could not set restrictive file permissions: {}", e.getMessage());
+            }
+
+            // SECURITY: Log the export operation
+            logger.warn("⚠️  SECURITY ALERT: Private key exported for '{}' to file: {}",
+                       ownerName, outputFile);
+
+            return true;
+
+        } catch (Exception e) {
+            logger.error("Error exporting private key: {}", e.getMessage());
+            return false;
+        }
     }
 }

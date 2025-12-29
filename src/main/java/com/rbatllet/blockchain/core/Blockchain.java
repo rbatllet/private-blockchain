@@ -4101,6 +4101,22 @@ public class Blockchain {
                 return false;
             }
 
+            // SECURITY FIX: Prevent ownerName duplication to avoid identity substitution attacks
+            // An ADMIN could otherwise create a new key with an existing user's name,
+            // effectively replacing their identity and breaking import/export functionality
+            AuthorizedKey existingByName = authorizedKeyDAO.getAuthorizedKeyByOwner(ownerName);
+            if (existingByName != null && existingByName.isActive()) {
+                logger.error("❌ SECURITY: Owner name '{}' already has an active authorized key (public key: {}...)",
+                            ownerName, existingByName.getPublicKey().substring(0, Math.min(50, existingByName.getPublicKey().length())));
+                throw new SecurityException(
+                    "❌ SECURITY VIOLATION: Owner name '" + ownerName + "' already exists with an active authorized key.\n" +
+                    "This prevents identity substitution attacks where an ADMIN replaces another user's key.\n" +
+                    "To replace a key, first revoke the existing one using 'revoke-key' command, or use a different owner name.\n" +
+                    "Existing key created: " + existingByName.getCreatedAt() + " by: " +
+                    (existingByName.getCreatedBy() != null ? existingByName.getCreatedBy() : "SYSTEM")
+                );
+            }
+
             // Allow re-authorization: create new authorization record (RBAC v1.0.6+)
             AuthorizedKey authorizedKey = new AuthorizedKey(
                 publicKeyString,

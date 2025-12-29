@@ -313,7 +313,7 @@ public class UserFriendlyEncryptionAPIRobustnessTest {
             // Create a block with metadata using the BlockCreationOptions
             UserFriendlyEncryptionAPI.BlockCreationOptions options =
                 new UserFriendlyEncryptionAPI.BlockCreationOptions()
-                    .withUsername(TEST_USERNAME)
+                    .withUsername("metadatauser")
                     .withPassword(TEST_PASSWORD)
                     .withMetadata("key1", "value1")
                     .withMetadata("key2", "value2");
