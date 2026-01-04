@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.UUID;
+
 /**
  * Test class for CompressionUtil
  * Validates compression, decompression, and utility functionality
@@ -163,7 +165,7 @@ public class CompressionUtilTest {
         // Generate pseudo-random data that won't compress well
         StringBuilder randomData = new StringBuilder();
         for (int i = 0; i < 500; i++) {
-            randomData.append(java.util.UUID.randomUUID().toString().replace("-", ""));
+            randomData.append(UUID.randomUUID().toString().replace("-", ""));
         }
         
         String data = randomData.toString();

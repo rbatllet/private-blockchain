@@ -1,8 +1,14 @@
 package com.rbatllet.blockchain.security;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.Console;
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.Arrays;
 import java.util.Scanner;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,7 +42,7 @@ public class PasswordUtil {
             }
             String password = new String(passwordArray);
             // Clear the array for security
-            java.util.Arrays.fill(passwordArray, ' ');
+            Arrays.fill(passwordArray, ' ');
             return password;
         } else {
             // Fallback for environments without Console (IDEs, tests)
@@ -44,11 +50,11 @@ public class PasswordUtil {
             System.out.print(prompt + " (WARNING: Password will be visible): ");
             
             // Simple implementation for testing with ByteArrayInputStream
-            if (inputStream instanceof java.io.ByteArrayInputStream) {
+            if (inputStream instanceof ByteArrayInputStream) {
                 try {
-                    java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(inputStream));
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
                     return reader.readLine();
-                } catch (java.io.IOException e) {
+                } catch (IOException e) {
                     return null;
                 }
             } else {
@@ -71,9 +77,9 @@ public class PasswordUtil {
      */
     public static String readPasswordWithConfirmation(String prompt, InputStream inputStream) {
         // For ByteArrayInputStream in tests, we need to handle multiple reads differently
-        if (inputStream instanceof java.io.ByteArrayInputStream) {
+        if (inputStream instanceof ByteArrayInputStream) {
             try {
-                java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(inputStream));
+                BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
                 
                 logger.warn("⚠️ ByteArrayInputStream fallback mode - password will be visible");
                 System.out.print(prompt + " (WARNING: Password will be visible): ");
@@ -95,7 +101,7 @@ public class PasswordUtil {
                 }
                 
                 return password;
-            } catch (java.io.IOException e) {
+            } catch (IOException e) {
                 return null;
             }
         } else {

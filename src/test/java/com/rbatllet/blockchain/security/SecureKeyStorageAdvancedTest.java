@@ -17,6 +17,7 @@ import java.util.concurrent.TimeUnit;
 import java.io.File;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import com.rbatllet.blockchain.util.CryptoUtil;
 
@@ -227,7 +228,7 @@ public class SecureKeyStorageAdvancedTest {
         
         // Manually corrupt the key file
         try {
-            String fileName = "private-keys" + File.separator + testOwner + ".key";
+            String fileName = "keys" + File.separator + testOwner + ".key";
             Path keyFile = Paths.get(fileName);
             
             if (Files.exists(keyFile)) {
@@ -350,7 +351,7 @@ public class SecureKeyStorageAdvancedTest {
 
     @Test
     void testDirectoryCreationAndPermissions() {
-        // Ensure the private-keys directory is created properly
+        // Ensure the keys directory is created properly
         String[] keys = SecureKeyStorage.listStoredKeys();
         assertNotNull(keys, "Should be able to list keys even if directory doesn't exist initially");
 
@@ -359,9 +360,9 @@ public class SecureKeyStorageAdvancedTest {
 
         // Verify directory exists (respect user.dir like SecureKeyStorage does)
         String baseDir = System.getProperty("user.dir", ".");
-        File keysDir = new File(baseDir, "private-keys");
-        assertTrue(keysDir.exists(), "private-keys directory should exist");
-        assertTrue(keysDir.isDirectory(), "private-keys should be a directory");
+        File keysDir = new File(baseDir, "keys");
+        assertTrue(keysDir.exists(), "keys directory should exist");
+        assertTrue(keysDir.isDirectory(), "keys should be a directory");
 
         // Verify file was created
         File keyFile = new File(keysDir, testOwner + ".key");
@@ -387,7 +388,7 @@ public class SecureKeyStorageAdvancedTest {
         assertNotNull(loadedKey2);
         
         // Keys should be different
-        assertFalse(java.util.Arrays.equals(loadedKey1.getEncoded(), loadedKey2.getEncoded()),
+        assertFalse(Arrays.equals(loadedKey1.getEncoded(), loadedKey2.getEncoded()),
                    "Overwritten key should be different from original");
         
         // New key should match the one we saved

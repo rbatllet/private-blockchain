@@ -205,10 +205,10 @@ if (key == null) {
 
 ### File Storage Format
 
-Keys are stored in the `private-keys/` directory with the following format:
+Keys are stored in the `keys/` directory with the following format:
 
 ```
-private-keys/
+keys/
   ├── Alice.key          (Base64-encoded: IV + Ciphertext + Auth Tag)
   ├── Bob.key
   └── Charlie.key

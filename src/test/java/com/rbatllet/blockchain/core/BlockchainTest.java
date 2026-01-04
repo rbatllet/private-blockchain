@@ -1,5 +1,6 @@
 package com.rbatllet.blockchain.core;
 
+import com.rbatllet.blockchain.config.MemorySafetyConstants;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 
 import java.security.KeyPair;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -470,6 +472,410 @@ class BlockchainTest {
 
             // Verify no block was created (only Genesis exists)
             assertEquals(1, blockchain.getBlockCount(), "Should only have Genesis block");
+        }
+    }
+
+    @Nested
+    @DisplayName("Recipient Filtering (P0 Performance Fix)")
+    class RecipientFiltering {
+
+        private KeyPair senderKeyPair;
+        private String senderPublicKey;
+        private KeyPair recipientKeyPair;
+        private String recipientPublicKey;
+        private KeyPair otherKeyPair;
+        private String otherPublicKey;
+
+        @BeforeEach
+        void setUpRecipientFiltering() {
+            // Create three users: sender, recipient, and other
+            senderKeyPair = CryptoUtil.generateKeyPair();
+            senderPublicKey = CryptoUtil.publicKeyToString(senderKeyPair.getPublic());
+
+            recipientKeyPair = CryptoUtil.generateKeyPair();
+            recipientPublicKey = CryptoUtil.publicKeyToString(recipientKeyPair.getPublic());
+
+            otherKeyPair = CryptoUtil.generateKeyPair();
+            otherPublicKey = CryptoUtil.publicKeyToString(otherKeyPair.getPublic());
+
+            // Authorize all keys
+            blockchain.addAuthorizedKey(senderPublicKey, "Sender", adminKeyPair, UserRole.USER);
+            blockchain.addAuthorizedKey(recipientPublicKey, "Recipient", adminKeyPair, UserRole.USER);
+            blockchain.addAuthorizedKey(otherPublicKey, "Other", adminKeyPair, UserRole.USER);
+        }
+
+        @Test
+        @DisplayName("Should add block with recipient public key")
+        void shouldAddBlockWithRecipientPublicKey() {
+            // Add block with recipient public key
+            Block block = blockchain.addBlockAndReturn(
+                "Secret message for recipient",
+                senderKeyPair.getPrivate(),
+                senderKeyPair.getPublic(),
+                recipientPublicKey
+            );
+
+            assertNotNull(block, "Block should be created");
+            assertEquals(2, blockchain.getBlockCount(), "Should have 2 blocks (Genesis + new block)");
+
+            // Verify recipient public key is set
+            assertEquals(recipientPublicKey, block.getRecipientPublicKey(),
+                "Recipient public key should be set");
+        }
+
+        @Test
+        @DisplayName("Should add block without recipient public key")
+        void shouldAddBlockWithoutRecipientPublicKey() {
+            // Add block without recipient public key
+            Block block = blockchain.addBlockAndReturn(
+                "Public message",
+                senderKeyPair.getPrivate(),
+                senderKeyPair.getPublic()
+            );
+
+            assertNotNull(block, "Block should be created");
+            assertEquals(2, blockchain.getBlockCount(), "Should have 2 blocks (Genesis + new block)");
+
+            // Verify recipient public key is null
+            assertNull(block.getRecipientPublicKey(),
+                "Recipient public key should be null for non-recipient blocks");
+        }
+
+        @Test
+        @DisplayName("Should get blocks by recipient public key")
+        void shouldGetBlocksByRecipientPublicKey() {
+            // Add 3 blocks: 2 for recipient, 1 for other
+            blockchain.addBlockAndReturn("Message 1 for recipient",
+                senderKeyPair.getPrivate(), senderKeyPair.getPublic(), recipientPublicKey);
+            blockchain.addBlockAndReturn("Message 2 for recipient",
+                senderKeyPair.getPrivate(), senderKeyPair.getPublic(), recipientPublicKey);
+            blockchain.addBlockAndReturn("Message for other",
+                senderKeyPair.getPrivate(), senderKeyPair.getPublic(), otherPublicKey);
+
+            // Get blocks for recipient
+            var recipientBlocks = blockchain.getBlocksByRecipientPublicKey(recipientPublicKey);
+
+            assertEquals(2, recipientBlocks.size(), "Should find 2 blocks for recipient");
+
+            // Verify all blocks have the correct recipient public key
+            assertTrue(recipientBlocks.stream().allMatch(b -> recipientPublicKey.equals(b.getRecipientPublicKey())),
+                "All blocks should have recipient public key set");
+        }
+
+        @Test
+        @DisplayName("Should get blocks by recipient public key with limit")
+        void shouldGetBlocksByRecipientPublicKeyWithLimit() {
+            // Add 5 blocks for recipient
+            for (int i = 1; i <= 5; i++) {
+                blockchain.addBlockAndReturn("Message " + i,
+                    senderKeyPair.getPrivate(), senderKeyPair.getPublic(), recipientPublicKey);
+            }
+
+            // Get blocks with limit of 3
+            var recipientBlocks = blockchain.getBlocksByRecipientPublicKey(recipientPublicKey, 3);
+
+            assertEquals(3, recipientBlocks.size(), "Should return only 3 blocks");
+        }
+
+        @Test
+        @DisplayName("Should count blocks by recipient public key")
+        void shouldCountBlocksByRecipientPublicKey() {
+            // Add 3 blocks for recipient, 2 for other
+            blockchain.addBlockAndReturn("Message 1 for recipient",
+                senderKeyPair.getPrivate(), senderKeyPair.getPublic(), recipientPublicKey);
+            blockchain.addBlockAndReturn("Message 2 for recipient",
+                senderKeyPair.getPrivate(), senderKeyPair.getPublic(), recipientPublicKey);
+            blockchain.addBlockAndReturn("Message 3 for recipient",
+                senderKeyPair.getPrivate(), senderKeyPair.getPublic(), recipientPublicKey);
+            blockchain.addBlockAndReturn("Message 1 for other",
+                senderKeyPair.getPrivate(), senderKeyPair.getPublic(), otherPublicKey);
+            blockchain.addBlockAndReturn("Message 2 for other",
+                senderKeyPair.getPrivate(), senderKeyPair.getPublic(), otherPublicKey);
+
+            // Count blocks for recipient
+            long recipientCount = blockchain.countBlocksByRecipientPublicKey(recipientPublicKey);
+            assertEquals(3, recipientCount, "Should count 3 blocks for recipient");
+
+            // Count blocks for other
+            long otherCount = blockchain.countBlocksByRecipientPublicKey(otherPublicKey);
+            assertEquals(2, otherCount, "Should count 2 blocks for other");
+        }
+
+        @Test
+        @DisplayName("Should return empty list for non-existent recipient")
+        void shouldReturnEmptyListForNonExistentRecipient() {
+            // Add a block for recipient
+            blockchain.addBlockAndReturn("Message",
+                senderKeyPair.getPrivate(), senderKeyPair.getPublic(), recipientPublicKey);
+
+            // Get blocks for non-existent recipient
+            String fakePublicKey = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEFAKE000000000000000";
+            var blocks = blockchain.getBlocksByRecipientPublicKey(fakePublicKey);
+
+            assertEquals(0, blocks.size(), "Should return empty list for non-existent recipient");
+        }
+
+        @Test
+        @DisplayName("Should return zero count for non-existent recipient")
+        void shouldReturnZeroCountForNonExistentRecipient() {
+            // Add a block for recipient
+            blockchain.addBlockAndReturn("Message",
+                senderKeyPair.getPrivate(), senderKeyPair.getPublic(), recipientPublicKey);
+
+            // Count blocks for non-existent recipient
+            String fakePublicKey = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEFAKE000000000000000";
+            long count = blockchain.countBlocksByRecipientPublicKey(fakePublicKey);
+
+            assertEquals(0, count, "Should return zero count for non-existent recipient");
+        }
+
+        @Test
+        @DisplayName("Should include recipient public key in hash calculation")
+        void shouldIncludeRecipientPublicKeyInHashCalculation() {
+            // Add two blocks with same content but different recipients
+            Block block1 = blockchain.addBlockAndReturn("Same content",
+                senderKeyPair.getPrivate(), senderKeyPair.getPublic(), recipientPublicKey);
+            Block block2 = blockchain.addBlockAndReturn("Same content",
+                senderKeyPair.getPrivate(), senderKeyPair.getPublic(), otherPublicKey);
+
+            // Hashes should be different because recipientPublicKey is part of hash
+            assertNotEquals(block1.getHash(), block2.getHash(),
+                "Hashes should differ when recipient public keys differ");
+        }
+
+        @Test
+        @DisplayName("Should throw exception for null recipient public key in count")
+        void shouldThrowExceptionForNullRecipientPublicKeyInCount() {
+            assertThrows(IllegalArgumentException.class, () -> {
+                blockchain.countBlocksByRecipientPublicKey(null);
+            }, "Should throw exception for null recipient public key");
+        }
+
+        @Test
+        @DisplayName("Should throw exception for empty recipient public key in count")
+        void shouldThrowExceptionForEmptyRecipientPublicKeyInCount() {
+            assertThrows(IllegalArgumentException.class, () -> {
+                blockchain.countBlocksByRecipientPublicKey("");
+            }, "Should throw exception for empty recipient public key");
+        }
+    }
+
+    @Nested
+    @DisplayName("Accessible Blocks Filtering Tests")
+    class AccessibleBlocksFiltering {
+
+        @BeforeEach
+        void setUpAccessibleBlocksFiltering() {
+            // Authorize testKeyPair so tests can add blocks (using unique owner name for this nested class)
+            blockchain.addAuthorizedKey(testPublicKey, "Default Test User", adminKeyPair, UserRole.USER);
+        }
+
+        @Test
+        @DisplayName("Should get accessible blocks (public + created by user)")
+        void shouldGetAccessibleBlocks() {
+            KeyPair userKeyPair = CryptoUtil.generateKeyPair();
+            String publicKey = CryptoUtil.publicKeyToString(userKeyPair.getPublic());
+
+            // Add authorized key for user (unique name)
+            blockchain.addAuthorizedKey(publicKey, "Accessible Test User", adminKeyPair, UserRole.USER);
+
+            // Add public block (accessible to everyone)
+            blockchain.addBlock("Public data", testKeyPair.getPrivate(), testKeyPair.getPublic());
+
+            // Add block created by user
+            blockchain.addBlock("Created by user", userKeyPair.getPrivate(), userKeyPair.getPublic());
+
+            // Add encrypted block (isEncrypted=true, also accessible to everyone via password)
+            blockchain.addEncryptedBlock("Encrypted data", "Password123!", testKeyPair.getPrivate(), testKeyPair.getPublic());
+
+            // Get accessible blocks
+            List<Block> accessible = blockchain.getAccessibleBlocks(publicKey);
+
+            // Should include public blocks, blocks created by user, and encrypted blocks
+            assertTrue(accessible.size() >= 2, "Should get accessible blocks");
+        }
+
+        @Test
+        @DisplayName("Should get blocks created by user in accessible blocks")
+        void shouldGetBlocksCreatedByUserInAccessibleBlocks() {
+            KeyPair userKeyPair = CryptoUtil.generateKeyPair();
+            String publicKey = CryptoUtil.publicKeyToString(userKeyPair.getPublic());
+
+            // Add authorized key (unique name)
+            blockchain.addAuthorizedKey(publicKey, "Creator User", adminKeyPair, UserRole.USER);
+
+            // Add block created by user
+            blockchain.addBlock("Created by user", userKeyPair.getPrivate(), userKeyPair.getPublic());
+
+            // Add another block created by someone else
+            blockchain.addBlock("By someone else", testKeyPair.getPrivate(), testKeyPair.getPublic());
+
+            List<Block> accessible = blockchain.getAccessibleBlocks(publicKey);
+
+            assertTrue(accessible.stream().anyMatch(b -> publicKey.equals(b.getSignerPublicKey())),
+                "Should include blocks created by user");
+        }
+
+        @Test
+        @DisplayName("Should exclude genesis block from accessible blocks")
+        void shouldExcludeGenesisBlockFromAccessibleBlocks() {
+            KeyPair userKeyPair = CryptoUtil.generateKeyPair();
+            String publicKey = CryptoUtil.publicKeyToString(userKeyPair.getPublic());
+
+            blockchain.addAuthorizedKey(publicKey, "Genesis Exclusion User", adminKeyPair, UserRole.USER);
+
+            // Add regular block
+            blockchain.addBlock("Regular block", userKeyPair.getPrivate(), userKeyPair.getPublic());
+
+            List<Block> accessible = blockchain.getAccessibleBlocks(publicKey);
+
+            // Genesis block (blockNumber=0) should be excluded
+            assertTrue(accessible.stream().noneMatch(b -> b.getBlockNumber() != null && b.getBlockNumber() == 0L),
+                "Genesis block should be excluded from accessible blocks");
+        }
+
+        @Test
+        @DisplayName("Should respect maxResults limit in accessible blocks")
+        void shouldRespectMaxResultsLimitInAccessibleBlocks() {
+            KeyPair userKeyPair = CryptoUtil.generateKeyPair();
+            String publicKey = CryptoUtil.publicKeyToString(userKeyPair.getPublic());
+
+            blockchain.addAuthorizedKey(publicKey, "Max Results User", adminKeyPair, UserRole.USER);
+
+            // Add many blocks
+            for (int i = 1; i <= 10; i++) {
+                blockchain.addBlock("Block " + i, testKeyPair.getPrivate(), testKeyPair.getPublic());
+            }
+
+            // Request only 5
+            List<Block> accessible = blockchain.getAccessibleBlocks(publicKey, 5);
+
+            assertEquals(5, accessible.size(), "Should respect maxResults limit");
+        }
+
+        @Test
+        @DisplayName("Should throw exception for invalid maxResults in accessible blocks")
+        void shouldThrowExceptionForInvalidMaxResultsInAccessibleBlocks() {
+            String publicKey = testPublicKey;
+
+            // Negative limit
+            assertThrows(IllegalArgumentException.class, () -> {
+                blockchain.getAccessibleBlocks(publicKey, -1);
+            }, "Should throw exception for negative maxResults");
+
+            // Zero limit
+            assertThrows(IllegalArgumentException.class, () -> {
+                blockchain.getAccessibleBlocks(publicKey, 0);
+            }, "Should throw exception for zero maxResults");
+
+            // Exceeds maximum
+            assertThrows(IllegalArgumentException.class, () -> {
+                blockchain.getAccessibleBlocks(publicKey, MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS + 1);
+            }, "Should throw exception for maxResults exceeding limit");
+        }
+
+        @Test
+        @DisplayName("Should throw exception for null public key in accessible blocks")
+        void shouldThrowExceptionForNullPublicKeyInAccessibleBlocks() {
+            assertThrows(IllegalArgumentException.class, () -> {
+                blockchain.getAccessibleBlocks(null);
+            }, "Should throw exception for null public key");
+        }
+
+        @Test
+        @DisplayName("Should throw exception for empty public key in accessible blocks")
+        void shouldThrowExceptionForEmptyPublicKeyInAccessibleBlocks() {
+            assertThrows(IllegalArgumentException.class, () -> {
+                blockchain.getAccessibleBlocks("  ");
+            }, "Should throw exception for empty/whitespace public key");
+        }
+
+        @Test
+        @DisplayName("Should get blocks by encryption status (public)")
+        void shouldGetBlocksByEncryptionStatus() {
+            // Add public blocks (genesis is public, and we add more)
+            blockchain.addBlock("Public block 1", testKeyPair.getPrivate(), testKeyPair.getPublic());
+            blockchain.addBlock("Public block 2", testKeyPair.getPrivate(), testKeyPair.getPublic());
+
+            // Get public blocks
+            List<Block> publicBlocks = blockchain.getBlocksByIsEncrypted(false);
+
+            assertTrue(publicBlocks.size() >= 3, "Should get at least 3 public blocks (genesis + 2 added)");
+            assertTrue(publicBlocks.stream().allMatch(b -> !b.getIsEncrypted()),
+                "All returned blocks should be public");
+        }
+
+        @Test
+        @DisplayName("Should get encrypted blocks by encryption status")
+        void shouldGetEncryptedBlocksByEncryptionStatus() {
+            // Add encrypted blocks
+            blockchain.addEncryptedBlock("Encrypted 1", "Password1!", testKeyPair.getPrivate(), testKeyPair.getPublic());
+            blockchain.addEncryptedBlock("Encrypted 2", "Password2!", testKeyPair.getPrivate(), testKeyPair.getPublic());
+
+            // Add public block
+            blockchain.addBlock("Public block", testKeyPair.getPrivate(), testKeyPair.getPublic());
+
+            // Get encrypted blocks
+            List<Block> encryptedBlocks = blockchain.getBlocksByIsEncrypted(true);
+
+            assertTrue(encryptedBlocks.size() >= 2, "Should get at least 2 encrypted blocks");
+            assertTrue(encryptedBlocks.stream().allMatch(b -> b.getIsEncrypted()),
+                "All returned blocks should be encrypted");
+        }
+
+        @Test
+        @DisplayName("Should respect maxResults limit in blocks by encryption status")
+        void shouldRespectMaxResultsLimitInBlocksByEncryptionStatus() {
+            // Add many public blocks
+            for (int i = 1; i <= 10; i++) {
+                blockchain.addBlock("Public block " + i, testKeyPair.getPrivate(), testKeyPair.getPublic());
+            }
+
+            // Request only 5
+            List<Block> publicBlocks = blockchain.getBlocksByIsEncrypted(false, 5);
+
+            assertEquals(5, publicBlocks.size(), "Should respect maxResults limit");
+        }
+
+        @Test
+        @DisplayName("Should return empty list when no encrypted blocks exist")
+        void shouldReturnEmptyListWhenNoEncryptedBlocksExist() {
+            // Clear database - only genesis exists (public)
+            blockchain.clearAndReinitialize();
+
+            // Add only public blocks
+            blockchain.addBlock("Public block", testKeyPair.getPrivate(), testKeyPair.getPublic());
+
+            // Get encrypted blocks
+            List<Block> encryptedBlocks = blockchain.getBlocksByIsEncrypted(true);
+
+            assertNotNull(encryptedBlocks, "Should return empty list, not null");
+            assertTrue(encryptedBlocks.isEmpty(), "Should return empty list when no encrypted blocks");
+        }
+
+        @Test
+        @DisplayName("Should handle large number of public blocks efficiently")
+        void shouldHandleLargeNumberOfPublicBlocksEfficiently() {
+            KeyPair userKeyPair = CryptoUtil.generateKeyPair();
+            String publicKey = CryptoUtil.publicKeyToString(userKeyPair.getPublic());
+
+            blockchain.addAuthorizedKey(publicKey, "Performance Test User", adminKeyPair, UserRole.USER);
+
+            // Add many public blocks (test performance)
+            int blockCount = 100;
+            for (int i = 1; i <= blockCount; i++) {
+                blockchain.addBlock("Public block " + i, testKeyPair.getPrivate(), testKeyPair.getPublic());
+            }
+
+            long startTime = System.nanoTime();
+            List<Block> accessible = blockchain.getAccessibleBlocks(publicKey);
+            long duration = System.nanoTime() - startTime;
+
+            // Should be efficient (O(1) query, not O(n) iteration)
+            assertTrue(accessible.size() >= blockCount,
+                "Should retrieve all accessible blocks");
+            assertTrue(duration < 1_000_000_000L, // Less than 1 second
+                "Query should be efficient (indexed lookup, not full scan), took: " + duration / 1_000_000 + "ms");
         }
     }
 

@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -115,7 +116,7 @@ class UserFriendlyEncryptionAPIUntestedMethodsTest {
 
         // Mock processChainInBatches to handle batch processing
         lenient().doAnswer(invocation -> {
-            java.util.function.Consumer<List<Block>> batchProcessor = invocation.getArgument(0);
+            Consumer<List<Block>> batchProcessor = invocation.getArgument(0);
             int batchSize = invocation.getArgument(1);
 
             long blockCount = mockBlockchain.getBlockCount();
@@ -827,14 +828,14 @@ class UserFriendlyEncryptionAPIUntestedMethodsTest {
     @DisplayName("Test processMetadataMatches() - Streaming metadata search")
     void testProcessMetadataMatches() throws Exception {
         Method streamingSearchMethod = UserFriendlyEncryptionAPI.class
-            .getDeclaredMethod("processMetadataMatches", String.class, String.class, int.class, java.util.function.Consumer.class);
+            .getDeclaredMethod("processMetadataMatches", String.class, String.class, int.class, Consumer.class);
         streamingSearchMethod.setAccessible(true);
 
         UserFriendlyEncryptionAPI realApi = createApiWithRealBlockchain();
 
         assertDoesNotThrow(() -> {
             List<Block> results = new ArrayList<>();
-            streamingSearchMethod.invoke(realApi, "category", "test", 100, (java.util.function.Consumer<Block>) results::add);
+            streamingSearchMethod.invoke(realApi, "category", "test", 100, (Consumer<Block>) results::add);
             assertNotNull(results, "Streaming search results should not be null");
         }, "Streaming metadata search should complete without errors");
     }
@@ -844,14 +845,14 @@ class UserFriendlyEncryptionAPIUntestedMethodsTest {
     @DisplayName("Test processRecipientMatches() - Streaming recipient search")
     void testProcessRecipientMatches() throws Exception {
         Method streamingSearchMethod = UserFriendlyEncryptionAPI.class
-            .getDeclaredMethod("processRecipientMatches", String.class, int.class, java.util.function.Consumer.class);
+            .getDeclaredMethod("processRecipientMatches", String.class, int.class, Consumer.class);
         streamingSearchMethod.setAccessible(true);
 
         UserFriendlyEncryptionAPI realApi = createApiWithRealBlockchain();
 
         assertDoesNotThrow(() -> {
             List<Block> results = new ArrayList<>();
-            streamingSearchMethod.invoke(realApi, "testUser", 100, (java.util.function.Consumer<Block>) results::add);
+            streamingSearchMethod.invoke(realApi, "testUser", 100, (Consumer<Block>) results::add);
             assertNotNull(results, "Streaming recipient search results should not be null");
         }, "Streaming recipient search should complete without errors");
     }

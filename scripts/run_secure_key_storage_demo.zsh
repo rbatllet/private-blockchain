@@ -20,10 +20,10 @@ print_header "🔐 ${DEMO_NAME}"
 # Change to project root
 cd "${PROJECT_ROOT}" || exit 1
 
-# Clean up previous private-keys directory if it exists
-if [[ -d "private-keys" ]]; then
-    print_info "Cleaning up previous private-keys directory..."
-    rm -rf private-keys
+# Clean up previous keys directory if it exists
+if [[ -d "keys" ]]; then
+    print_info "Cleaning up previous keys directory..."
+    rm -rf keys
 fi
 
 # Compile the project
@@ -42,13 +42,13 @@ if mvn -q exec:java -Dexec.mainClass="${MAIN_CLASS}" -Dexec.cleanupDaemonThreads
     echo
     print_success "Demo completed successfully"
 
-    # Show private-keys directory if it exists
-    if [[ -d "private-keys" ]]; then
+    # Show keys directory if it exists
+    if [[ -d "keys" ]]; then
         echo
         print_info "Private keys directory contents:"
-        ls -lh private-keys/ | grep -v "^total"
+        ls -lh keys/ | grep -v "^total"
         echo
-        TOTAL_SIZE=$(du -sh private-keys/ | cut -f1)
+        TOTAL_SIZE=$(du -sh keys/ | cut -f1)
         print_info "Total directory size: ${TOTAL_SIZE}"
     fi
 

@@ -14,6 +14,7 @@ import org.mockito.MockitoAnnotations;
 
 import java.security.KeyPair;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.List;
 import java.util.HashMap;
 
@@ -419,7 +420,7 @@ public class UserFriendlyEncryptionAPIPhase1KeyManagementTest {
         @DisplayName("Should handle concurrent key operations safely")
         void shouldHandleConcurrentKeyOperationsSafely() {
             // Generate multiple keys concurrently to test thread safety
-            List<String> keyIds = new java.util.concurrent.CopyOnWriteArrayList<>();
+            List<String> keyIds = new CopyOnWriteArrayList<>();
             
             // Simulate concurrent key generation
             int numberOfThreads = 5;

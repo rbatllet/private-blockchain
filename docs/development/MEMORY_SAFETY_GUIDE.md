@@ -76,7 +76,7 @@ All search engines have been refactored to use memory-safe patterns:
 - ✅ `SearchSpecialistAPI.*` - All methods have maxResults parameters with defaults (20-50)
 - ✅ `UserFriendlyEncryptionAPI.findBlocksByMetadata()` - Limits to 10K before batch retrieve
 - ✅ `UserFriendlyEncryptionAPI.findBlocksByCategory()` - Uses processChainInBatches() with 10K limit
-- ✅ `UserFriendlyEncryptionAPI.findBlocksByUser()` - Uses processChainInBatches() with 10K limit
+- ✅ `UserFriendlyEncryptionAPI.findBlocksByUser()` - CREATED_BY/ENCRYPTED_FOR use native O(1) queries, ACCESSIBLE uses processChainInBatches() with 10K limit (P0 optimization)
 - ✅ `UserFriendlyEncryptionAPI.analyzeEncryption()` - Uses processChainInBatches() for analysis
 - ✅ `UserFriendlyEncryptionAPI.getEncryptedBlocksOnlyLinear()` - Uses processChainInBatches() with 10K limit
 - ✅ `UserFriendlyEncryptionAPI.repairBrokenChain()` - Processes chain repair in 1000-block batches with progress reporting

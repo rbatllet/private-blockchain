@@ -10,12 +10,14 @@ import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.File;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.MessageDigest;
 
 import static com.rbatllet.blockchain.util.CryptoUtil.getSecureRandom;
 import java.security.spec.PKCS8EncodedKeySpec;
@@ -32,7 +34,7 @@ public class SecureKeyStorage {
 
     private static final Logger logger = LoggerFactory.getLogger(SecureKeyStorage.class);
 
-    private static final String KEYS_DIRECTORY = "private-keys";
+    private static final String KEYS_DIRECTORY = "keys";
     private static final String TRANSFORMATION = "AES/GCM/NoPadding";
     private static final String KEY_EXTENSION = ".key";
     private static final String KEYPAIR_EXTENSION = ".keypair"; // For ML-DSA KeyPairs (public + private)
@@ -41,6 +43,27 @@ public class SecureKeyStorage {
 
     // Key derivation constants from KeyDerivationUtil
     private static final int SALT_LENGTH = KeyDerivationUtil.getDefaultSaltLength();
+
+    /**
+     * Constant-time string comparison to prevent timing attacks.
+     *
+     * <p>Uses XOR-based comparison that always processes all characters,
+     * preventing attackers from measuring response times to guess secrets.</p>
+     *
+     * @param a first string
+     * @param b second string
+     * @return true if strings are equal, false otherwise
+     */
+    private static boolean constantTimeEquals(String a, String b) {
+        if (a == null || b == null) {
+            return a == b;
+        }
+
+        byte[] aBytes = a.getBytes(StandardCharsets.UTF_8);
+        byte[] bBytes = b.getBytes(StandardCharsets.UTF_8);
+
+        return MessageDigest.isEqual(aBytes, bBytes);
+    }
 
     /**
      * Get the keys directory, respecting user.dir system property for test isolation.
@@ -123,65 +146,153 @@ public class SecureKeyStorage {
     }
     
     /**
-     * Load a private key by decrypting with password using AES-256-GCM
+     * Load a private key by decrypting with password using AES-256-GCM.
+     *
+     * <p><strong>OWASP-Compliant Constant-Time Operation:</strong></p>
+     * <p>This method implements constant-time execution to prevent timing attacks
+     * according to OWASP Authentication Cheat Sheet guidelines:</p>
+     * <ul>
+     *   <li>No early returns - all code paths execute the full operation</li>
+     *   <li>Dummy PBKDF2 operations for invalid inputs to mask failures</li>
+     *   <li>No Files.exists() checks - uses try/catch to avoid timing leaks</li>
+     *   <li>Single return point after finally block ensures constant-time</li>
+     *   <li>Minimum 400ms execution time enforced for all paths</li>
+     * </ul>
+     *
+     * @param ownerName Owner name for key file lookup
+     * @param password Password to decrypt the key
+     * @return PrivateKey if successful, null otherwise (constant-time in both cases)
+     *
+     * @see <a href="https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html">OWASP Authentication Cheat Sheet</a>
      */
     public static PrivateKey loadPrivateKey(String ownerName, String password) {
+        long startTime = System.nanoTime();
+        PrivateKey result = null;  // Single return point
+
+        // Reusable arrays for cleanup
+        byte[] dummySalt = null;
+        byte[] fileSalt = null;
+        byte[] decryptedKey = null;
+
         try {
-            // Validate inputs
-            if (ownerName == null || ownerName.trim().isEmpty() ||
-                password == null || password.trim().isEmpty()) {
-                return null;
+            // OWASP: Validate inputs but DON'T return early
+            boolean validInputs = (ownerName != null && !ownerName.trim().isEmpty() &&
+                                   password != null && !password.trim().isEmpty());
+
+            if (!validInputs) {
+                // OWASP: Perform dummy PBKDF2 operation for constant-time
+                // This ensures invalid inputs take same time as valid ones
+                dummySalt = KeyDerivationUtil.generateSalt();
+                KeyDerivationUtil.deriveSecretKey(password != null ? password : "", dummySalt);
+                // Continue to finally - NO early return!
+            } else {
+                String fileName = getKeyFilePath(ownerName, KEY_EXTENSION);
+                byte[] fileBytes = null;
+
+                // OWASP: Use try/catch instead of Files.exists() to prevent timing leak
+                try {
+                    fileBytes = Files.readAllBytes(Paths.get(fileName));
+                } catch (IOException ioException) {
+                    // File not found or read error
+                    // OWASP: Perform dummy PBKDF2 to mask file absence
+                    dummySalt = KeyDerivationUtil.generateSalt();
+                    KeyDerivationUtil.deriveSecretKey(password, dummySalt);
+                    // Continue to finally - NO early return!
+                }
+
+                // Process file content if available
+                if (fileBytes != null && fileBytes.length > 0) {
+                    try {
+                        String encodedKey = new String(fileBytes, StandardCharsets.UTF_8);
+                        byte[] combined = Base64.getDecoder().decode(encodedKey);
+
+                        // Validate format
+                        if (combined.length >= GCM_IV_LENGTH + SALT_LENGTH + GCM_TAG_LENGTH) {
+                            // Extract IV and salt from file
+                            byte[] iv = new byte[GCM_IV_LENGTH];
+                            fileSalt = new byte[SALT_LENGTH];
+                            byte[] ciphertext = new byte[combined.length - GCM_IV_LENGTH - SALT_LENGTH];
+
+                            System.arraycopy(combined, 0, iv, 0, GCM_IV_LENGTH);
+                            System.arraycopy(combined, GCM_IV_LENGTH, fileSalt, 0, SALT_LENGTH);
+                            System.arraycopy(combined, GCM_IV_LENGTH + SALT_LENGTH, ciphertext, 0, ciphertext.length);
+
+                            // Derive secret key from password using PBKDF2WithHmacSHA512
+                            SecretKeySpec secretKey = KeyDerivationUtil.deriveSecretKey(password, fileSalt);
+
+                            // Decrypt with AES-256-GCM
+                            GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv);
+                            Cipher cipher = Cipher.getInstance(TRANSFORMATION);
+                            cipher.init(Cipher.DECRYPT_MODE, secretKey, gcmSpec);
+
+                            decryptedKey = cipher.doFinal(ciphertext);
+
+                            // Reconstruct PrivateKey
+                            PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(decryptedKey);
+                            KeyFactory keyFactory = KeyFactory.getInstance(CryptoUtil.SIGNATURE_ALGORITHM);
+
+                            result = keyFactory.generatePrivate(keySpec);
+                        } else {
+                            // Invalid format - perform dummy PBKDF2 for constant-time
+                            dummySalt = KeyDerivationUtil.generateSalt();
+                            KeyDerivationUtil.deriveSecretKey(password, dummySalt);
+                        }
+                    } catch (Exception decryptException) {
+                        // Decryption failed (wrong password, corrupted file, etc.)
+                        // OWASP: Don't log specific errors to avoid information leak
+                        // Already did PBKDF2, so timing is consistent
+                        // Continue to finally
+                    }
+                }
             }
-
-            // Read encrypted file
-            String fileName = getKeyFilePath(ownerName, KEY_EXTENSION);
-            if (!Files.exists(Paths.get(fileName))) {
-                return null;
-            }
-
-            String encodedKey = new String(Files.readAllBytes(Paths.get(fileName)), StandardCharsets.UTF_8);
-            byte[] combined = Base64.getDecoder().decode(encodedKey);
-
-            // New format: IV (12 bytes) + salt (16 bytes) + ciphertext
-            if (combined.length < GCM_IV_LENGTH + SALT_LENGTH + GCM_TAG_LENGTH) {
-                return null;
-            }
-
-            // Extract IV and salt
-            byte[] iv = new byte[GCM_IV_LENGTH];
-            byte[] salt = new byte[SALT_LENGTH];
-            byte[] ciphertext = new byte[combined.length - GCM_IV_LENGTH - SALT_LENGTH];
-
-            System.arraycopy(combined, 0, iv, 0, GCM_IV_LENGTH);
-            System.arraycopy(combined, GCM_IV_LENGTH, salt, 0, SALT_LENGTH);
-            System.arraycopy(combined, GCM_IV_LENGTH + SALT_LENGTH, ciphertext, 0, ciphertext.length);
-
-            // Derive secret key from password using PBKDF2WithHmacSHA512
-            SecretKeySpec secretKey = KeyDerivationUtil.deriveSecretKey(password, salt);
-
-            // Decrypt with AES-256-GCM
-            GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv);
-            Cipher cipher = Cipher.getInstance(TRANSFORMATION);
-            cipher.init(Cipher.DECRYPT_MODE, secretKey, gcmSpec);
-
-            byte[] decryptedKey = cipher.doFinal(ciphertext);
-
-            // Reconstruct PrivateKey
-            PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(decryptedKey);
-            KeyFactory keyFactory = KeyFactory.getInstance(CryptoUtil.SIGNATURE_ALGORITHM);
-
-            PrivateKey privateKey = keyFactory.generatePrivate(keySpec);
-
-            // Clear sensitive data
-            Arrays.fill(salt, (byte) 0);
-            Arrays.fill(decryptedKey, (byte) 0);
-
-            return privateKey;
 
         } catch (Exception e) {
+            // OWASP: Catch-all for any unexpected errors
             // Don't print password-related errors to avoid security issues
-            return null;
+            // Continue to finally - NO early return!
+        } finally {
+            // OWASP: Clear all sensitive data
+            if (dummySalt != null) {
+                Arrays.fill(dummySalt, (byte) 0);
+            }
+            if (fileSalt != null) {
+                Arrays.fill(fileSalt, (byte) 0);
+            }
+            if (decryptedKey != null) {
+                Arrays.fill(decryptedKey, (byte) 0);
+            }
+
+            // OWASP: CRITICAL - Constant-time enforcement
+            // ALL code paths MUST pass through here and take minimum 400ms
+            // This prevents attackers from distinguishing:
+            //   - Valid vs invalid username/password
+            //   - File exists vs doesn't exist
+            //   - Decryption success vs failure
+            //   - Different exception types
+            //
+            // Timing breakdown:
+            //   - PBKDF2WithHmacSHA512 (210k iterations): ~200-500ms (machine-dependent)
+            //   - AES-256-GCM decryption: ~5-20ms
+            //   - File I/O + overhead: ~10-50ms
+            //   - Total expected: ~215-570ms on typical hardware
+            //
+            // Setting minTimeMs=400ms ensures:
+            //   - Fast machines (PBKDF2 < 300ms) get padded to 400ms
+            //   - Slow machines (PBKDF2 > 400ms) don't add excessive delay
+            //   - All execution paths appear identical to timing analysis
+            long minTimeMs = 400;
+            long elapsedMs = (System.nanoTime() - startTime) / 1_000_000;
+            if (elapsedMs < minTimeMs) {
+                try {
+                    Thread.sleep(minTimeMs - elapsedMs);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                }
+            }
         }
+
+        // OWASP: Single return point - ensures finally always executes
+        return result;
     }
     
     /**
@@ -516,7 +627,8 @@ public class SecureKeyStorage {
             }
 
             String publicKeyString = CryptoUtil.publicKeyToString(publicKey);
-            if (!authorizedKey.getPublicKey().equals(publicKeyString)) {
+            // SECURITY: Use constant-time comparison to prevent timing attacks
+            if (!constantTimeEquals(authorizedKey.getPublicKey(), publicKeyString)) {
                 throw new SecurityException(
                     "Public key mismatch! The public key in the file does not match " +
                     "the AuthorizedKey on blockchain for owner '" + ownerName + "'. " +

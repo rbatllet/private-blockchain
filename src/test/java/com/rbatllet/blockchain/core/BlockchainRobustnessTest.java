@@ -12,6 +12,7 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -508,13 +509,13 @@ public class BlockchainRobustnessTest {
         }
 
         // Create batch request for 1000 blocks
-        java.util.List<Long> blockNumbers = new java.util.ArrayList<>();
+        List<Long> blockNumbers = new ArrayList<>();
         for (long i = 0; i < 1000; i++) {
             blockNumbers.add(i);
         }
 
         // Should succeed (within MAX_BATCH_SIZE of 10,000)
-        java.util.List<Block> results = blockchain.batchRetrieveBlocks(blockNumbers);
+        List<Block> results = blockchain.batchRetrieveBlocks(blockNumbers);
 
         assertNotNull(results, "Results should not be null");
         assertEquals(1000, results.size(), "Should retrieve all 1000 blocks");
@@ -534,12 +535,12 @@ public class BlockchainRobustnessTest {
         }
 
         // Test offset beyond chain length
-        java.util.List<Block> emptyResults = blockchain.getBlocksPaginated(1000L, 10);
+        List<Block> emptyResults = blockchain.getBlocksPaginated(1000L, 10);
         assertNotNull(emptyResults, "Results should not be null");
         assertEquals(0, emptyResults.size(), "Should return empty list for offset beyond chain");
 
         // Test limit larger than remaining blocks
-        java.util.List<Block> partialResults = blockchain.getBlocksPaginated(45L, 100);
+        List<Block> partialResults = blockchain.getBlocksPaginated(45L, 100);
         assertNotNull(partialResults, "Results should not be null");
         assertTrue(partialResults.size() <= 100, "Should not exceed limit");
 
@@ -557,7 +558,7 @@ public class BlockchainRobustnessTest {
         blockchain.addBlock("Category: Test@#$%, Data: more", privateKey, publicKey);
 
         // Search should work with special characters
-        java.util.List<Block> results = blockchain.searchByCategory("Test@#$%");
+        List<Block> results = blockchain.searchByCategory("Test@#$%");
 
         assertNotNull(results, "Results should not be null");
         assertTrue(results.size() >= 0, "Should handle special characters");
@@ -682,12 +683,12 @@ public class BlockchainRobustnessTest {
         Block block1 = blockchain.getBlock(1L);
         Block block2 = blockchain.getBlock(2L);
 
-        java.util.List<String> validHashes = java.util.Arrays.asList(
+        List<String> validHashes = Arrays.asList(
             block1.getHash(),
             block2.getHash()
         );
 
-        java.util.List<Block> results = blockchain.batchRetrieveBlocksByHash(validHashes);
+        List<Block> results = blockchain.batchRetrieveBlocksByHash(validHashes);
         assertNotNull(results, "Results should not be null");
         assertEquals(2, results.size(), "Should retrieve 2 blocks by hash");
 

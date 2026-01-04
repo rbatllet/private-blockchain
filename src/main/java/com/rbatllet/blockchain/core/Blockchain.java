@@ -61,9 +61,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.StampedLock;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -414,7 +417,7 @@ public class Blockchain {
      */
     private void reindexBlocksWithPasswords() {
         try {
-            java.util.concurrent.atomic.AtomicInteger reindexedCount = new java.util.concurrent.atomic.AtomicInteger(0);
+            AtomicInteger reindexedCount = new AtomicInteger(0);
 
             // Get all blocks that have registered passwords
             Set<String> registeredBlockHashes =
@@ -555,6 +558,37 @@ public class Blockchain {
     }
 
     /**
+     * ENHANCED: Add a new block with recipient public key and return the created block.
+     *
+     * <p>This method is used for recipient-encrypted blocks where the recipient public key
+     * must be set before the block is persisted (immutable field).</p>
+     *
+     * @param data The block data
+     * @param signerPrivateKey The signer's private key
+     * @param signerPublicKey The signer's public key
+     * @param recipientPublicKey The recipient's public key (optional, for recipient-encrypted blocks)
+     * @return The created block
+     *
+     * @since 2025-12-29 (P0 Performance Fix - Native Recipient Filtering)
+     */
+    public Block addBlockAndReturn(
+        String data,
+        PrivateKey signerPrivateKey,
+        PublicKey signerPublicKey,
+        String recipientPublicKey
+    ) {
+        return addBlockWithKeywords(
+            data,
+            null,
+            null,
+            signerPrivateKey,
+            signerPublicKey,
+            false,
+            recipientPublicKey
+        );
+    }
+
+    /**
      * ENHANCED: Add a new block with keywords and category
      *
      * <p><strong>THREAD-SAFE:</strong> Enhanced version with search functionality</p>
@@ -614,7 +648,7 @@ public class Blockchain {
         String data,
         String[] manualKeywords,
         String category,
-        java.util.Map<String, String> customMetadata,
+        Map<String, String> customMetadata,
         PrivateKey signerPrivateKey,
         PublicKey signerPublicKey,
         boolean skipAutoIndexing
@@ -657,7 +691,7 @@ public class Blockchain {
         String data,
         String[] manualKeywords,
         String category,
-        java.util.Map<String, String> customMetadata,
+        Map<String, String> customMetadata,
         PrivateKey signerPrivateKey,
         PublicKey signerPublicKey
     ) {
@@ -684,6 +718,35 @@ public class Blockchain {
         PrivateKey signerPrivateKey,
         PublicKey signerPublicKey,
         boolean skipAutoIndexing
+    ) {
+        return addBlockWithKeywords(data, manualKeywords, category, signerPrivateKey, signerPublicKey, skipAutoIndexing, null);
+    }
+
+    /**
+     * ENHANCED: Add a new block with keywords, category, and optional recipient public key.
+     *
+     * <p>This version allows setting the recipient public key for recipient-encrypted blocks.
+     * The recipient public key is immutable and must be set before the block is persisted.</p>
+     *
+     * @param data The data to store in the block (cannot be null or empty)
+     * @param manualKeywords Optional keywords for search indexing
+     * @param category Optional category for classification
+     * @param signerPrivateKey Private key for signing (cannot be null)
+     * @param signerPublicKey Public key for verification (cannot be null)
+     * @param skipAutoIndexing If true, skip automatic background indexing
+     * @param recipientPublicKey Optional recipient public key for recipient-encrypted blocks
+     * @return The created block if successful, or null if a non-critical error occurs
+     *
+     * @since 2025-12-29 (P0 Performance Fix - Native Recipient Filtering)
+     */
+    public Block addBlockWithKeywords(
+        String data,
+        String[] manualKeywords,
+        String category,
+        PrivateKey signerPrivateKey,
+        PublicKey signerPublicKey,
+        boolean skipAutoIndexing,
+        String recipientPublicKey
     ) {
         // CRITICAL: Validate input parameters BEFORE transaction to allow exceptions to propagate
         if (data == null) {
@@ -806,7 +869,14 @@ public class Blockchain {
                     newBlock.setSignerPublicKey(publicKeyString);
                     newBlock.setOffChainData(offChainData);
 
-                    // 7. Calculate block hash
+                    // CRITICAL: Set recipient public key BEFORE hash calculation
+                    // This field is immutable (updatable=false) and must be set before persist
+                    // It's included in the hash calculation for cryptographic integrity
+                    if (recipientPublicKey != null && !recipientPublicKey.trim().isEmpty()) {
+                        newBlock.setRecipientPublicKey(recipientPublicKey);
+                    }
+
+                    // 7. Calculate block hash (includes recipientPublicKey if set)
                     String blockContent = buildBlockContent(newBlock);
                     newBlock.setHash(CryptoUtil.calculateHash(blockContent));
 
@@ -1205,16 +1275,55 @@ public class Blockchain {
      * @see com.rbatllet.blockchain.security.KeyFileLoader
      */
     public long indexBlocksRange(long startBlockNumber, long endBlockNumber) {
+        // Public methods always create and manage their own EntityManager
+        EntityManager em = JPAUtil.getEntityManager();
+        
+        try {
+            return indexBlocksRange(startBlockNumber, endBlockNumber, em);
+        } finally {
+            if (em != null && em.isOpen()) {
+                em.close();
+            }
+        }
+    }
+
+    /**
+     * Index a range of blocks with required dedicated EntityManager (PACKAGE-PRIVATE).
+     *
+     * <p><strong>INTERNAL USE ONLY:</strong> This method is package-private and should only
+     * be called by IndexingCoordinator for async operations. External code should use
+     * {@link #indexBlocksRange(long, long)} which manages EntityManager lifecycle internally.</p>
+     *
+     * @param startBlockNumber First block number to index (inclusive)
+     * @param endBlockNumber Last block number to index (inclusive)
+     * @param dedicatedEM Required EntityManager for async operations to prevent Session/EntityManager closed errors
+     * @return Number of blocks successfully indexed (skipped blocks not counted). Returns {@code long}
+     *         to prevent overflow with blockchains containing millions of blocks (Integer.MAX_VALUE = 2.147.483.647)
+     * @throws IllegalArgumentException if range is invalid or dedicatedEM is null
+     * @since 1.0.6
+     * @see #addBlocksBatch(List, boolean)
+     * @see com.rbatllet.blockchain.security.KeyFileLoader
+     */
+    long indexBlocksRange(
+        long startBlockNumber,
+        long endBlockNumber,
+        EntityManager dedicatedEM
+    ) {
         if (startBlockNumber < 0 || endBlockNumber < startBlockNumber) {
             throw new IllegalArgumentException(
                 "Invalid block range: [" + startBlockNumber + ", " + endBlockNumber + "]"
             );
         }
+        if (dedicatedEM == null) {
+            throw new IllegalArgumentException("EntityManager cannot be null - required for async operations");
+        }
 
         long indexed = 0;
         long skipped = 0;
 
-        logger.info("🔍 Starting batch indexing for blocks [{}, {}]", startBlockNumber, endBlockNumber);
+        logger.info("🔍 Starting batch indexing for blocks [{}, {}]{}",
+            startBlockNumber, endBlockNumber,
+            dedicatedEM != null ? " with dedicated EntityManager" : "");
 
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
         try {
@@ -1224,7 +1333,13 @@ public class Blockchain {
 
             while (currentStart <= endBlockNumber) {
                 long currentEnd = Math.min(currentStart + batchSize - 1, endBlockNumber);
-                List<Block> blocks = blockRepository.getBlocksInRange(currentStart, currentEnd);
+                
+                // CRITICAL FIX: Pass dedicated EntityManager to repository
+                List<Block> blocks = blockRepository.getBlocksInRange(
+                    currentStart,
+                    currentEnd,
+                    dedicatedEM
+                );
 
                 for (Block block : blocks) {
                     try {
@@ -1315,20 +1430,70 @@ public class Blockchain {
     public long indexBlocksRange(
         long startBlockNumber,
         long endBlockNumber,
-        java.security.PrivateKey privateKey
+        PrivateKey privateKey
+    ) {
+        // Public methods always create and manage their own EntityManager
+        EntityManager em = JPAUtil.getEntityManager();
+        
+        try {
+            return indexBlocksRange(startBlockNumber, endBlockNumber, privateKey, em);
+        } finally {
+            if (em != null && em.isOpen()) {
+                em.close();
+            }
+        }
+    }
+
+    /**
+     * Index a range of blocks with provided private key and required EntityManager (PACKAGE-PRIVATE).
+     *
+     * <p><strong>INTERNAL USE ONLY:</strong> Package-private for IndexingCoordinator async operations.</p>
+     *
+     * <p><strong>Phase 5.4 FIX (v1.0.6):</strong> Private key passthrough for async indexing</p>
+     *
+     * <p>This overloaded version accepts a PrivateKey directly for indexing, avoiding the need
+     * to search ./keys/ directory. If privateKey is null, falls back to key file search.
+     *
+     * <p><strong>CRITICAL FIX:</strong> This method throws exceptions instead of failing silently:
+     * <ul>
+     *   <li>If privateKey is provided but indexing fails → RuntimeException</li>
+     *   <li>If privateKey is null and no key found in ./keys/ → RuntimeException</li>
+     *   <li>This ensures no silent failures in async indexing operations</li>
+     * </ul>
+     *
+     * @param startBlockNumber First block number to index (inclusive)
+     * @param endBlockNumber Last block number to index (inclusive)
+     * @param privateKey PrivateKey to use for indexing (null = search ./keys/)
+     * @param dedicatedEM Required EntityManager for async operations to prevent Session/EntityManager closed errors
+     * @return Number of blocks successfully indexed. Returns {@code long}
+     *         to prevent overflow with blockchains containing millions of blocks (Integer.MAX_VALUE = 2.147.483.647)
+     * @throws IllegalArgumentException if block range is invalid or dedicatedEM is null
+     * @throws RuntimeException if indexing fails (no silent failures)
+     * @since 1.0.6
+     * @see #indexBlocksRange(long, long)
+     */
+    long indexBlocksRange(
+        long startBlockNumber,
+        long endBlockNumber,
+        PrivateKey privateKey,
+        EntityManager dedicatedEM
     ) {
         if (startBlockNumber < 0 || endBlockNumber < startBlockNumber) {
             throw new IllegalArgumentException(
                 "Invalid block range: [" + startBlockNumber + ", " + endBlockNumber + "]"
             );
         }
+        if (dedicatedEM == null) {
+            throw new IllegalArgumentException("EntityManager cannot be null - required for async operations");
+        }
 
         long indexed = 0;
         long skipped = 0;
 
-        logger.info("🔍 Starting batch indexing for blocks [{}, {}] with {}",
+        logger.info("🔍 Starting batch indexing for blocks [{}, {}] with {}{}",
             startBlockNumber, endBlockNumber,
-            privateKey != null ? "provided key" : "key search");
+            privateKey != null ? "provided key" : "key search",
+            dedicatedEM != null ? " and dedicated EM" : "");
 
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
         try {
@@ -1338,11 +1503,17 @@ public class Blockchain {
 
             while (currentStart <= endBlockNumber) {
                 long currentEnd = Math.min(currentStart + batchSize - 1, endBlockNumber);
-                List<Block> blocks = blockRepository.getBlocksInRange(currentStart, currentEnd);
+                
+                // CRITICAL FIX: Pass dedicated EntityManager to repository
+                List<Block> blocks = blockRepository.getBlocksInRange(
+                    currentStart,
+                    currentEnd,
+                    dedicatedEM
+                );
 
                 for (Block block : blocks) {
                     try {
-                        java.security.PrivateKey keyToUse = privateKey;
+                        PrivateKey keyToUse = privateKey;
 
                         // If no private key provided, try to find it from ./keys/
                         if (keyToUse == null) {
@@ -1410,6 +1581,47 @@ public class Blockchain {
     /**
      * Index a range of blocks with private key AND password (OVERLOAD).
      *
+     * <p><strong>Phase 5.4 FIX (v1.0.6):</strong> Password passthrough for async indexing</p>
+     *
+     * <p>This overloaded version accepts both PrivateKey and password, fixing the password mismatch
+     * issue. When a block is encrypted with a specific password, that SAME password must be used
+     * for indexing to decrypt and process the metadata correctly.
+     *
+     * @param startBlockNumber First block number to index (inclusive)
+     * @param endBlockNumber Last block number to index (inclusive)
+     * @param privateKey PrivateKey to use for indexing (null = search ./keys/)
+     * @param password Password used to encrypt the block (must match encryption password)
+     * @return Number of blocks successfully indexed. Returns {@code long}
+     *         to prevent overflow with blockchains containing millions of blocks (Integer.MAX_VALUE = 2.147.483.647)
+     * @throws IllegalArgumentException if range is invalid or password is null
+     * @throws RuntimeException if indexing fails for any block
+     * @since 1.0.6
+     * @see #indexBlocksRange(long, long)
+     * @see #indexBlocksRange(long, long, PrivateKey)
+     */
+    public long indexBlocksRange(
+        long startBlockNumber,
+        long endBlockNumber,
+        PrivateKey privateKey,
+        String password
+    ) {
+        // Public methods always create and manage their own EntityManager
+        EntityManager em = JPAUtil.getEntityManager();
+        
+        try {
+            return indexBlocksRange(startBlockNumber, endBlockNumber, privateKey, password, em);
+        } finally {
+            if (em != null && em.isOpen()) {
+                em.close();
+            }
+        }
+    }
+
+    /**
+     * Index a range of blocks with private key, password AND required EntityManager (PACKAGE-PRIVATE).
+     *
+     * <p><strong>INTERNAL USE ONLY:</strong> Package-private for IndexingCoordinator async operations.</p>
+     *
      * <p><strong>Phase 5.4 FIX (v1.0.6):</strong> Password passthrough for indexing</p>
      *
      * <p>This overloaded version accepts both a PrivateKey and the encryption password,
@@ -1434,14 +1646,62 @@ public class Blockchain {
      * @throws IllegalArgumentException if range is invalid or password is null
      * @throws RuntimeException if indexing fails for any block
      * @since 1.0.6
-     * @see #indexBlocksRange(long, long)
-     * @see #indexBlocksRange(long, long, PrivateKey)
+     * @see #indexBlocksRange(long, long, EntityManager)
+     * @see #indexBlocksRange(long, long, PrivateKey, EntityManager)
      */
-    public long indexBlocksRange(
+
+    /**
+     * Index a range of blocks with private key AND password (OVERLOAD).
+     *
+     * <p><strong>Phase 5.4 FIX (v1.0.6):</strong> Password passthrough for async indexing</p>
+     *
+     * <p>This overloaded version accepts both PrivateKey and password, fixing the password mismatch
+     * issue. When a block is encrypted with a specific password, that SAME password must be used
+     * for indexing to decrypt and process the metadata correctly.
+     *
+     * <p><strong>Why This Matters:</strong><br>
+     * Before this fix, blocks encrypted with "OnOffChainTest123!" were being indexed with
+     * "SearchTestPass123!", causing search failures. Now, the encryption password flows through:
+     * <pre>
+     * Block Creation (password: "OnOffChainTest123!") →
+     * Metadata Encryption (same password) →
+     * Async Indexing (same password) →
+     * Search (same password) = ✅ SUCCESS
+     * </pre>
+     *
+     * <p><strong>Use Cases:</strong>
+     * <ul>
+     *   <li>Individual encrypted block indexing after creation (password already known)</li>
+     *   <li>Ensuring password consistency across encryption/indexing/search pipeline</li>
+     * </ul>
+     *
+     * <p><strong>Password Consistency Flow:</strong>
+     * <pre>
+     * 1. Block created with encryptionPassword → Metadata encrypted
+     * 2. indexBlocksRange() called with SAME password → Metadata decrypted for indexing
+     * 3. SearchFrameworkEngine indexes with correct password → Search succeeds
+     * </pre>
+     *
+     * <p><strong>Error Handling:</strong> This method throws exceptions on failure (no silent failures).
+     *
+     * @param startBlockNumber First block number to index (inclusive)
+     * @param endBlockNumber Last block number to index (inclusive)
+     * @param privateKey PrivateKey to use for indexing (null = search ./keys/)
+     * @param password Password used to encrypt the block (must match encryption password)
+     * @param dedicatedEM Required EntityManager for async operations to prevent Session/EntityManager closed errors
+     * @return Number of blocks successfully indexed. Returns {@code long}
+     *         to prevent overflow with blockchains containing millions of blocks (Integer.MAX_VALUE = 2.147.483.647)
+     * @throws IllegalArgumentException if range is invalid, password is null, or dedicatedEM is null
+     * @throws RuntimeException if indexing fails for any block
+     * @since 1.0.6
+     * @see #addBlocksBatch(List, boolean)
+     */
+    long indexBlocksRange(
         long startBlockNumber,
         long endBlockNumber,
-        java.security.PrivateKey privateKey,
-        String password
+        PrivateKey privateKey,
+        String password,
+        EntityManager dedicatedEM
     ) {
         // Validate parameters
         if (startBlockNumber < 0 || endBlockNumber < startBlockNumber) {
@@ -1451,6 +1711,9 @@ public class Blockchain {
         }
         if (password == null || password.trim().isEmpty()) {
             throw new IllegalArgumentException("Password cannot be null or empty");
+        }
+        if (dedicatedEM == null) {
+            throw new IllegalArgumentException("EntityManager cannot be null - required for async operations");
         }
 
         logger.info(
@@ -1475,12 +1738,13 @@ public class Blockchain {
 
                 List<Block> blocks = blockRepository.getBlocksInRange(
                     currentStart,
-                    currentEnd
+                    currentEnd,
+                    dedicatedEM
                 );
 
                 for (Block block : blocks) {
                     try {
-                        java.security.PrivateKey keyToUse = privateKey;
+                        PrivateKey keyToUse = privateKey;
 
                         // If no private key provided, try to find it from ./keys/
                         if (keyToUse == null) {
@@ -1668,7 +1932,7 @@ public class Blockchain {
     public CompletableFuture<IndexingCoordinator.IndexingResult> indexBlocksRangeAsync(
         long startBlockNumber,
         long endBlockNumber,
-        java.security.PrivateKey privateKey
+        PrivateKey privateKey
     ) {
         // Validate parameters
         if (startBlockNumber < 0 || endBlockNumber < startBlockNumber) {
@@ -1745,7 +2009,7 @@ public class Blockchain {
     public CompletableFuture<IndexingCoordinator.IndexingResult> indexBlocksRangeAsync(
         long startBlockNumber,
         long endBlockNumber,
-        java.security.PrivateKey privateKey,
+        PrivateKey privateKey,
         String password
     ) {
         // Validate parameters
@@ -1810,12 +2074,15 @@ public class Blockchain {
                     logger.info("🔍 Background indexer executing for blocks [{}, {}]", startBlock, endBlock);
                 }
 
+                // CRITICAL FIX: Get dedicated EntityManager from request to prevent Session closed errors
+                EntityManager dedicatedEM = request.getDedicatedEntityManager();
+
                 // Delegate to synchronous indexBlocksRange() which handles all the logic:
                 // - Batch processing (100 blocks at a time)
                 // - Private key loading from ./keys/ directory
                 // - SearchFrameworkEngine indexing
                 // - Error handling and logging
-                long indexed = indexBlocksRange(startBlock, endBlock);
+                long indexed = indexBlocksRange(startBlock, endBlock, dedicatedEM);
 
                 // Only log completions for multi-block operations or in debug mode
                 if (logger.isDebugEnabled() || (endBlock - startBlock) > 0) {
@@ -1855,7 +2122,7 @@ public class Blockchain {
         String operationName,
         long startBlock,
         long endBlock,
-        java.security.PrivateKey privateKey
+        PrivateKey privateKey
     ) {
         // Register indexer with specific operation name using cached coordinator
         // The indexer lambda captures startBlock, endBlock, AND privateKey for this specific operation
@@ -1865,11 +2132,14 @@ public class Blockchain {
                     startBlock, endBlock,
                     privateKey != null ? "provided key" : "key search");
 
+                // CRITICAL FIX: Get dedicated EntityManager from request
+                EntityManager dedicatedEM = request.getDedicatedEntityManager();
+
                 // Delegate to synchronous indexBlocksRange() WITH private key:
                 // - If privateKey is provided, uses it directly (no ./keys/ search needed)
                 // - If privateKey is null, falls back to ./keys/ search
                 // - May return 0 if blocks have no keywords (privacy-by-design) - this is NORMAL
-                long indexed = indexBlocksRange(startBlock, endBlock, privateKey);
+                long indexed = indexBlocksRange(startBlock, endBlock, privateKey, dedicatedEM);
 
                 // Note: indexed == 0 is VALID for blocks without keywords (privacy-by-design)
                 // Only log, don't throw exception
@@ -1918,7 +2188,7 @@ public class Blockchain {
         String operationName,
         long startBlock,
         long endBlock,
-        java.security.PrivateKey privateKey,
+        PrivateKey privateKey,
         String password
     ) {
         // Register indexer with specific operation name using cached coordinator
@@ -1929,11 +2199,14 @@ public class Blockchain {
                     startBlock, endBlock,
                     privateKey != null ? "provided key" : "key search");
 
+                // CRITICAL FIX: Get dedicated EntityManager from request
+                EntityManager dedicatedEM = request.getDedicatedEntityManager();
+
                 // Delegate to synchronous indexBlocksRange() WITH private key AND password:
                 // - Uses provided privateKey (or falls back to ./keys/ search if null)
                 // - Uses provided password for indexing (must match block encryption password)
                 // - May return 0 if blocks already indexed (race condition protection)
-                long indexed = indexBlocksRange(startBlock, endBlock, privateKey, password);
+                long indexed = indexBlocksRange(startBlock, endBlock, privateKey, password, dedicatedEM);
 
                 if (indexed == 0) {
                     // This is normal - blocks may already be indexed by another thread
@@ -2546,9 +2819,12 @@ public class Blockchain {
             timestampSeconds +
             (block.getSignerPublicKey() != null
                     ? block.getSignerPublicKey()
+                    : "") +
+            (block.getRecipientPublicKey() != null
+                    ? block.getRecipientPublicKey()
                     : "")
         );
-        
+
         // TRACE: Log detailed hash calculation inputs for encrypted blocks (only in trace mode)
         if (logger.isTraceEnabled()) {
             logger.trace("🔧 ENCRYPTED HASH DEBUG: Block #{} hash calculation:", block.getBlockNumber());
@@ -2557,13 +2833,14 @@ public class Blockchain {
             logger.trace("  - data: {}", block.getData() != null ? block.getData().substring(0, Math.min(50, block.getData().length())) + "..." : "null");
             logger.trace("  - timestampSeconds: {}", timestampSeconds);
             logger.trace("  - signerPublicKey: {}", block.getSignerPublicKey() != null ? block.getSignerPublicKey().substring(0, Math.min(20, block.getSignerPublicKey().length())) + "..." : "null");
+            logger.trace("  - recipientPublicKey: {}", block.getRecipientPublicKey() != null ? block.getRecipientPublicKey().substring(0, Math.min(20, block.getRecipientPublicKey().length())) + "..." : "null");
             logger.trace("  - Final content: {}", content.substring(0, Math.min(100, content.length())) + "...");
         }
         String calculatedHash = CryptoUtil.calculateHash(content);
         if (logger.isTraceEnabled()) {
             logger.trace("  - Calculated hash: {}", calculatedHash);
         }
-        
+
         return content;
     }
 
@@ -3648,7 +3925,7 @@ public class Blockchain {
      * @return Summary statistics (counts only, no individual block results)
      */
     public ValidationSummary validateChainStreaming(
-        java.util.function.Consumer<List<BlockValidationResult>> batchResultConsumer,
+        Consumer<List<BlockValidationResult>> batchResultConsumer,
         int batchSize
     ) {
         if (batchSize <= 0) {
@@ -3817,7 +4094,7 @@ public class Blockchain {
      * @see #verifyAllOffChainIntegrity() - Off-chain verification (automatic benefit)
      * @see SearchFrameworkEngine#searchExhaustiveOffChain(String, int, KeyPair, String) - Search (automatic benefit)
      */
-    public void processChainInBatches(java.util.function.Consumer<List<Block>> batchProcessor, int batchSize) {
+    public void processChainInBatches(Consumer<List<Block>> batchProcessor, int batchSize) {
         if (batchSize <= 0) {
             throw new IllegalArgumentException("Batch size must be positive");
         }
@@ -3858,8 +4135,11 @@ public class Blockchain {
             timestampSeconds +
             (block.getSignerPublicKey() != null
                     ? block.getSignerPublicKey()
+                    : "") +
+            (block.getRecipientPublicKey() != null
+                    ? block.getRecipientPublicKey()
                     : "");
-        
+
         // TRACE: Log detailed hash calculation inputs (only in trace mode)
         if (logger.isTraceEnabled()) {
             logger.trace("🔧 HASH DEBUG: Block #{} hash calculation:", block.getBlockNumber());
@@ -3868,13 +4148,14 @@ public class Blockchain {
             logger.trace("  - data: {}", block.getData() != null ? block.getData().substring(0, Math.min(50, block.getData().length())) + "..." : "null");
             logger.trace("  - timestampSeconds: {}", timestampSeconds);
             logger.trace("  - signerPublicKey: {}", block.getSignerPublicKey() != null ? block.getSignerPublicKey().substring(0, Math.min(20, block.getSignerPublicKey().length())) + "..." : "null");
+            logger.trace("  - recipientPublicKey: {}", block.getRecipientPublicKey() != null ? block.getRecipientPublicKey().substring(0, Math.min(20, block.getRecipientPublicKey().length())) + "..." : "null");
             logger.trace("  - Final content: {}", content.substring(0, Math.min(100, content.length())) + "...");
         }
         String calculatedHash = CryptoUtil.calculateHash(content);
         if (logger.isTraceEnabled()) {
             logger.trace("  - Calculated hash: {}", calculatedHash);
         }
-        
+
         return content;
     }
 
@@ -3971,6 +4252,58 @@ public class Blockchain {
         KeyPair callerKeyPair,
         UserRole targetRole
     ) {
+        // Bootstrap mode: callerKeyPair is null for genesis admin creation
+        // In this case, skip challenge verification (no private key to prove)
+        if (callerKeyPair == null) {
+            return addAuthorizedKey(publicKeyString, ownerName, callerKeyPair, targetRole, null, null);
+        }
+
+        // Normal mode: Auto-generate challenge and signature for security
+        // This ensures ALL non-bootstrap calls verify private key possession
+        String challenge = "auto-challenge-" +
+                           UUID.randomUUID().toString() + "-" +
+                           java.time.Instant.now().toString() + "-" +
+                           "add-key:" + ownerName + ":" + targetRole.name();
+
+        String signature = CryptoUtil.signData(challenge, callerKeyPair.getPrivate());
+
+        return addAuthorizedKey(publicKeyString, ownerName, callerKeyPair, targetRole, challenge, signature);
+    }
+
+    /**
+     * Add an authorized key to the blockchain with cryptographic challenge verification.
+     *
+     * <p>This is the SECURITY-ENHANCED version that requires the caller to prove possession
+     * of their private key by signing a cryptographic challenge. This prevents password-only
+     * attacks where an attacker with a stolen password could impersonate a user.</p>
+     *
+     * <p><b>Challenge-Response Flow:</b></p>
+     * <ol>
+     *   <li>Caller generates a unique challenge (UUID + timestamp + operation details)</li>
+     *   <li>Caller signs the challenge with their private key using ML-DSA-87</li>
+     *   <li>This method verifies the signature using the caller's public key</li>
+     *   <li>If verification succeeds, the caller has proven private key possession</li>
+     * </ol>
+     *
+     * @param publicKeyString The public key string to authorize
+     * @param ownerName The username
+     * @param callerKeyPair The caller's credentials (null ONLY for genesis admin bootstrap)
+     * @param targetRole The role to assign to the new user
+     * @param challenge The cryptographic challenge to verify (null for legacy mode)
+     * @param signature The signature of the challenge (null for legacy mode)
+     * @return true if successful
+     * @throws SecurityException if caller lacks permission, signature verification fails, or callerKeyPair=null after bootstrap
+     * @throws IllegalArgumentException if parameters are invalid
+     * @since 1.0.6
+     */
+    public boolean addAuthorizedKey(
+        String publicKeyString,
+        String ownerName,
+        KeyPair callerKeyPair,
+        UserRole targetRole,
+        String challenge,
+        String signature
+    ) {
         // Input validation
         if (publicKeyString == null || publicKeyString.trim().isEmpty()) {
             throw new IllegalArgumentException("Public key cannot be null or empty");
@@ -4037,6 +4370,43 @@ public class Blockchain {
                     "See docs/security/ROLE_BASED_ACCESS_CONTROL.md for permission matrix."
                 );
             }
+
+            // ========== SECURITY: Cryptographic Challenge Verification ==========
+            // ALWAYS require challenge verification (no legacy mode)
+            // The ONLY exception is bootstrap mode where callerKeyPair is null
+            if (challenge == null || signature == null) {
+                throw new SecurityException(
+                    "❌ SECURITY VIOLATION: Cryptographic challenge is required for all user creation.\n" +
+                    "Challenge and signature cannot be null.\n" +
+                    "This prevents password-only attacks where an attacker has the password but not the private key.\n" +
+                    "Caller: " + caller.getOwnerName() + "\n" +
+                    "If this is bootstrap mode (genesis admin creation), ensure callerKeyPair is null."
+                );
+            }
+
+            logger.info("🔐 Verifying cryptographic challenge for signer '{}'", caller.getOwnerName());
+
+            boolean signatureValid = CryptoUtil.verifySignature(
+                challenge,
+                signature,
+                callerKeyPair.getPublic()
+            );
+
+            if (!signatureValid) {
+                logger.error("❌ SECURITY: Invalid signature for signer '{}'", caller.getOwnerName());
+                throw new SecurityException(
+                    "❌ SIGNATURE VERIFICATION FAILED: Signer '" + caller.getOwnerName() + "' " +
+                    "cannot prove private key possession.\n" +
+                    "This may indicate:\n" +
+                    "  • Password theft attempt (attacker has password but not private key)\n" +
+                    "  • Man-in-the-middle attack\n" +
+                    "  • Corrupted key storage\n\n" +
+                    "Action blocked for security reasons."
+                );
+            }
+
+            logger.info("✅ Signer '{}' successfully proved private key possession", caller.getOwnerName());
+            // ========== END Challenge Verification ==========
 
             logger.info("✅ User '{}' (role: {}) creating new user '{}' with role {}",
                         caller.getOwnerName(), callerRole, ownerName, targetRole);
@@ -4756,8 +5126,7 @@ public class Blockchain {
             // Setup off-chain backup directory if needed
             File exportDir = new File(filePath).getParentFile();
             File offChainBackupDir = includeOffChainFiles ? new File(exportDir, "off-chain-backup") : null;
-            java.util.concurrent.atomic.AtomicInteger offChainFilesExported =
-                new java.util.concurrent.atomic.AtomicInteger(0);
+            AtomicInteger offChainFilesExported = new AtomicInteger(0);
 
             if (includeOffChainFiles && offChainBackupDir != null) {
                 if (!offChainBackupDir.exists()) {
@@ -5653,7 +6022,7 @@ public class Blockchain {
      */
     public void streamBlocksByCategory(
             String category,
-            java.util.function.Consumer<Block> blockConsumer) {
+            Consumer<Block> blockConsumer) {
         if (category == null || category.trim().isEmpty()) {
             throw new IllegalArgumentException("Category cannot be null or empty");
         }
@@ -6048,7 +6417,7 @@ public class Blockchain {
      */
     public void streamBlocksBySignerPublicKey(
             String signerPublicKey,
-            java.util.function.Consumer<Block> blockConsumer) {
+            Consumer<Block> blockConsumer) {
         if (signerPublicKey == null || signerPublicKey.trim().isEmpty()) {
             throw new IllegalArgumentException("Signer public key cannot be null or empty");
         }
@@ -6077,7 +6446,7 @@ public class Blockchain {
     public void streamBlocksByTimeRange(
             java.time.LocalDateTime startTime,
             java.time.LocalDateTime endTime,
-            java.util.function.Consumer<Block> blockConsumer) {
+            Consumer<Block> blockConsumer) {
 
         if (startTime == null || endTime == null) {
             throw new IllegalArgumentException("Start time and end time cannot be null");
@@ -6102,7 +6471,7 @@ public class Blockchain {
      *
      * @since 2025-10-27 (Performance Optimization - Phase B.2)
      */
-    public void streamEncryptedBlocks(java.util.function.Consumer<Block> blockConsumer) {
+    public void streamEncryptedBlocks(Consumer<Block> blockConsumer) {
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
         try {
             blockRepository.streamEncryptedBlocks(blockConsumer);
@@ -6122,7 +6491,7 @@ public class Blockchain {
      *
      * @since 2025-10-27 (Performance Optimization - Phase B.2)
      */
-    public void streamBlocksWithOffChainData(java.util.function.Consumer<Block> blockConsumer) {
+    public void streamBlocksWithOffChainData(Consumer<Block> blockConsumer) {
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
         try {
             blockRepository.streamBlocksWithOffChainData(blockConsumer);
@@ -6143,7 +6512,7 @@ public class Blockchain {
      *
      * @since 2025-10-27 (Performance Optimization - Phase B.2)
      */
-    public void streamBlocksAfter(Long blockNumber, java.util.function.Consumer<Block> blockConsumer) {
+    public void streamBlocksAfter(Long blockNumber, Consumer<Block> blockConsumer) {
         if (blockNumber == null) {
             throw new IllegalArgumentException("Block number cannot be null");
         }
@@ -6182,6 +6551,185 @@ public class Blockchain {
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
         try {
             return blockRepository.getBlocksBySignerPublicKeyWithLimit(signerPublicKey, maxResults);
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
+        }
+    }
+
+    /**
+     * Get blocks encrypted for a specific recipient public key (uses default limit).
+     *
+     * <p>This method returns blocks that were encrypted for the specified recipient.
+     * The recipient filtering uses the native {@code recipient_public_key} database column
+     * with index for O(1) lookup performance.</p>
+     *
+     * <p><b>🔒 Privacy:</b> Uses public key (pseudonymous) instead of username,
+     * matching the privacy model of {@code signer_public_key}.</p>
+     *
+     * <p><b>⚡ Performance:</b> Uses indexed database query instead of loading all blocks
+     * and filtering in-memory with JSON parsing (P0 performance fix).</p>
+     *
+     * @param recipientPublicKey The public key of the recipient
+     * @return List of blocks (≤ DEFAULT_MAX_SEARCH_RESULTS)
+     *
+     * @throws IllegalArgumentException if recipientPublicKey is null or empty
+     *
+     * @since 2025-12-29 (P0 Performance Fix - Native Recipient Filtering)
+     */
+    public List<Block> getBlocksByRecipientPublicKey(String recipientPublicKey) {
+        if (recipientPublicKey == null || recipientPublicKey.trim().isEmpty()) {
+            throw new IllegalArgumentException("Recipient public key cannot be null or empty");
+        }
+        return getBlocksByRecipientPublicKey(recipientPublicKey, MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS);
+    }
+
+    /**
+     * Get blocks encrypted for a specific recipient public key with strict limit validation.
+     *
+     * <p>This method returns blocks that were encrypted for the specified recipient.
+     * The recipient filtering uses the native {@code recipient_public_key} database column
+     * with index for O(1) lookup performance.</p>
+     *
+     * <p><b>🔒 Privacy:</b> Uses public key (pseudonymous) instead of username,
+     * matching the privacy model of {@code signer_public_key}.</p>
+     *
+     * <p><b>⚡ Performance:</b> Uses indexed database query instead of loading all blocks
+     * and filtering in-memory with JSON parsing (P0 performance fix).</p>
+     *
+     * <p><b>⚠️ MEMORY SAFETY:</b> This method enforces strict maxResults validation.
+     * maxResults ≤ 0 is rejected (memory-unsafe behavior removed).
+     * maxResults > {@code MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS} is rejected.</p>
+     *
+     * @param recipientPublicKey The public key of the recipient
+     * @param maxResults Maximum results (1 to 10,000)
+     * @return List of blocks (≤ maxResults)
+     *
+     * @throws IllegalArgumentException if recipientPublicKey is null or empty
+     * @throws IllegalArgumentException if maxResults ≤ 0 or > 10,000
+     *
+     * @since 2025-12-29 (P0 Performance Fix - Native Recipient Filtering)
+     */
+    public List<Block> getBlocksByRecipientPublicKey(String recipientPublicKey, int maxResults) {
+        long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
+        try {
+            return blockRepository.getBlocksByRecipientPublicKeyWithLimit(recipientPublicKey, maxResults);
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
+        }
+    }
+
+    /**
+     * Count blocks encrypted for a specific recipient public key.
+     *
+     * <p>This method counts blocks that were encrypted for the specified recipient.
+     * Uses the native {@code recipient_public_key} database column with index
+     * for efficient counting.</p>
+     *
+     * @param recipientPublicKey The public key of the recipient
+     * @return Number of blocks encrypted for this recipient
+     *
+     * @throws IllegalArgumentException if recipientPublicKey is null or empty
+     *
+     * @since 2025-12-29 (P0 Performance Fix - Native Recipient Filtering)
+     */
+    public long countBlocksByRecipientPublicKey(String recipientPublicKey) {
+        if (recipientPublicKey == null || recipientPublicKey.trim().isEmpty()) {
+            throw new IllegalArgumentException("Recipient public key cannot be null or empty");
+        }
+        long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
+        try {
+            return blockRepository.countBlocksByRecipientPublicKey(recipientPublicKey);
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
+        }
+    }
+
+    /**
+     * Get blocks accessible to a specific user (O(1) indexed query).
+     * <p>
+     * Returns blocks that the user can access:
+     * <ul>
+     *   <li>Public blocks (isEncrypted = false) - accessible to everyone</li>
+     *   <li>Blocks encrypted for the user (recipientPublicKey = userPublicKey)</li>
+     *   <li>Blocks created by the user (signerPublicKey = userPublicKey)</li>
+     * </ul>
+     * </p>
+     * <p><b>🔒 Privacy:</b> Uses public key (pseudonymous) instead of username.</p>
+     * <p><b>⚡ Performance:</b> Single indexed query with OR conditions (O(1)).</p>
+     * <p><b>⚠️ MEMORY SAFETY:</b> Enforced maxResults limit (default 10K).</p>
+     *
+     * @param userPublicKey The user's public key
+     * @return List of accessible blocks (≤ DEFAULT_MAX_SEARCH_RESULTS)
+     *
+     * @throws IllegalArgumentException if userPublicKey is null or empty
+     *
+     * @since 2025-12-29 (P0 Performance Optimization - ACCESSIBLE query)
+     */
+    public List<Block> getAccessibleBlocks(String userPublicKey) {
+        if (userPublicKey == null || userPublicKey.trim().isEmpty()) {
+            throw new IllegalArgumentException("User public key cannot be null or empty");
+        }
+        return getAccessibleBlocks(userPublicKey, MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS);
+    }
+
+    /**
+     * Get blocks accessible to a specific user with custom limit (O(1) indexed query).
+     *
+     * @param userPublicKey The user's public key
+     * @param maxResults Maximum results to return
+     * @return List of accessible blocks
+     *
+     * @throws IllegalArgumentException if userPublicKey is null/empty or maxResults is invalid
+     *
+     * @since 2025-12-29 (P0 Performance Optimization - ACCESSIBLE query)
+     */
+    public List<Block> getAccessibleBlocks(String userPublicKey, int maxResults) {
+        if (userPublicKey == null || userPublicKey.trim().isEmpty()) {
+            throw new IllegalArgumentException("User public key cannot be null or empty");
+        }
+        long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
+        try {
+            List<Block> results = blockRepository.getAccessibleBlocks(userPublicKey, maxResults);
+            // Exclude genesis block (system block, not user block)
+            return results.stream()
+                .filter(b -> b.getBlockNumber() == null || b.getBlockNumber() != 0L)
+                .toList();
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
+        }
+    }
+
+    /**
+     * Get blocks by encryption status (uses default limit).
+     * <p>
+     * Returns blocks with the specified encryption status.
+     * Useful for getting all public blocks (isEncrypted = false) or encrypted blocks (isEncrypted = true).
+     * </p>
+     *
+     * @param isEncrypted The encryption status to filter by
+     * @return List of blocks with the specified encryption status (≤ DEFAULT_MAX_SEARCH_RESULTS)
+     *
+     * @since 2025-12-29 (P0 Performance Optimization - ACCESSIBLE support)
+     */
+    public List<Block> getBlocksByIsEncrypted(boolean isEncrypted) {
+        return getBlocksByIsEncrypted(isEncrypted, MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS);
+    }
+
+    /**
+     * Get blocks by encryption status with custom limit.
+     *
+     * @param isEncrypted The encryption status to filter by
+     * @param maxResults Maximum results to return
+     * @return List of blocks with the specified encryption status
+     *
+     * @throws IllegalArgumentException if maxResults is invalid
+     *
+     * @since 2025-12-29 (P0 Performance Optimization - ACCESSIBLE support)
+     */
+    public List<Block> getBlocksByIsEncrypted(boolean isEncrypted, int maxResults) {
+        long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
+        try {
+            return blockRepository.getBlocksByIsEncrypted(isEncrypted, maxResults);
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
         }
@@ -8426,6 +8974,10 @@ public class Blockchain {
                     }
                     if (!Objects.equals(existingBlock.getSignerPublicKey(), block.getSignerPublicKey())) {
                         logger.error("❌ Cannot modify 'signerPublicKey' field - it's immutable (identity integrity)");
+                        return false;
+                    }
+                    if (!Objects.equals(existingBlock.getRecipientPublicKey(), block.getRecipientPublicKey())) {
+                        logger.error("❌ Cannot modify 'recipientPublicKey' field - it's immutable (encryption target integrity)");
                         return false;
                     }
 

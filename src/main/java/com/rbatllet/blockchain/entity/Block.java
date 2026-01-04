@@ -2,17 +2,20 @@ package com.rbatllet.blockchain.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 /**
  * Block entity representing a single block in the blockchain.
- * 
+ *
  * <h2>🔒 SECURITY: Blockchain Integrity Protection (2-Layer Defense)</h2>
  * <p>This class implements a robust protection system to prevent modification
  * of hash-critical fields that would compromise blockchain integrity.</p>
- * 
+ *
  * <h3>⚠️ IMMUTABLE Fields (Hash-Critical) - Protected by 2 Layers:</h3>
- * 
+ *
  * <h4>Layer 1: Database Level Protection (JPA)</h4>
  * <p>All hash-critical fields are marked {@code @Column(updatable=false)}:</p>
  * <ul>
@@ -23,10 +26,11 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
  *   <li><b>hash</b> - Block's cryptographic hash</li>
  *   <li><b>signature</b> - Cryptographic signature</li>
  *   <li><b>signerPublicKey</b> - Signer identity</li>
+ *   <li><b>recipientPublicKey</b> - Recipient identity (for encrypted blocks)</li>
  * </ul>
  * <p><b>JPA will silently ignore any UPDATE statements</b> for these fields,
  * providing the final enforcement layer at the database level.</p>
- * 
+ *
  * <h4>Layer 2: API Level Validation + Logging</h4>
  * <p>{@link com.rbatllet.blockchain.core.Blockchain#updateBlock(Block)} provides:</p>
  * <ul>
@@ -36,7 +40,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
  *   <li><b>Safe Updates:</b> Only copies mutable fields to existing block</li>
  * </ul>
  * <p><b>All modification attempts are logged</b> for security auditing.</p>
- * 
+ *
  * <h3>✅ MUTABLE Fields (Safe for updates):</h3>
  * <p>These fields can be safely modified without affecting blockchain integrity:</p>
  * <ul>
@@ -49,11 +53,11 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
  *   <li><b>isEncrypted</b> - Encryption flag</li>
  *   <li><b>offChainData</b> - Off-chain data reference</li>
  * </ul>
- * 
+ *
  * <h3>Safe Update API:</h3>
  * <p>Use {@code Blockchain.updateBlock()} to safely update mutable fields.</p>
  * <p>The method will log and reject any attempts to modify immutable fields.</p>
- * 
+ *
  * @author rbatllet
  * @since 1.0.0
  * @see com.rbatllet.blockchain.core.Blockchain#updateBlock(Block)
@@ -63,6 +67,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
     @Index(name = "idx_blocks_timestamp", columnList = "timestamp"),
     @Index(name = "idx_blocks_is_encrypted", columnList = "is_encrypted"),
     @Index(name = "idx_blocks_signer_public_key", columnList = "signer_public_key"),
+    @Index(name = "idx_blocks_recipient_public_key", columnList = "recipient_public_key"),
     @Index(name = "idx_blocks_content_category", columnList = "content_category")
 })
 public class Block {
@@ -92,10 +97,13 @@ public class Block {
     
     @Column(name = "signature", columnDefinition = "TEXT", updatable = false)
     private String signature;
-    
-    @Column(name = "signer_public_key", length = 5000, updatable = false)
+
+    @Column(name = "signer_public_key", columnDefinition = "TEXT", updatable = false)
     private String signerPublicKey;
-    
+
+    @Column(name = "recipient_public_key", columnDefinition = "TEXT", updatable = false)
+    private String recipientPublicKey;  // Immutable: recipient cannot be changed after block creation
+
     // ========== MUTABLE FIELDS (Safe to update) ==========
     
     @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
@@ -188,7 +196,10 @@ public class Block {
 
     public String getSignerPublicKey() { return signerPublicKey; }
     public void setSignerPublicKey(String signerPublicKey) { this.signerPublicKey = signerPublicKey; }
-    
+
+    public String getRecipientPublicKey() { return recipientPublicKey; }
+    public void setRecipientPublicKey(String recipientPublicKey) { this.recipientPublicKey = recipientPublicKey; }
+
     public OffChainData getOffChainData() { return offChainData; }
     public void setOffChainData(OffChainData offChainData) { this.offChainData = offChainData; }
     
@@ -265,7 +276,7 @@ public class Block {
      * Updates searchableContent by combining manual and auto keywords
      */
     public void updateSearchableContent() {
-        java.util.List<String> allKeywords = new java.util.ArrayList<>();
+        List<String> allKeywords = new ArrayList<>();
         if (manualKeywords != null && !manualKeywords.trim().isEmpty()) {
             allKeywords.add(manualKeywords.toLowerCase());
         }
@@ -301,10 +312,10 @@ public class Block {
     public String toString() {
         // For encrypted blocks, show a preview of the original data (for debugging/logging)
         // The data field is never null and contains the original unencrypted data
-        String dataPreview = data != null 
+        String dataPreview = data != null
             ? (data.length() > 50 ? data.substring(0, 50) + "..." : data)
             : "null";
-            
+
         return "Block{" +
                 "blockNumber=" + blockNumber +
                 ", previousHash='" + previousHash + '\'' +
@@ -313,6 +324,7 @@ public class Block {
                 ", hash='" + hash + '\'' +
                 ", signature='" + (signature != null ? signature.substring(0, Math.min(20, signature.length())) + "..." : "null") + '\'' +
                 ", signerPublicKey='" + (signerPublicKey != null ? signerPublicKey.substring(0, Math.min(20, signerPublicKey.length())) + "..." : "null") + '\'' +
+                ", recipientPublicKey='" + (recipientPublicKey != null ? recipientPublicKey.substring(0, Math.min(20, recipientPublicKey.length())) + "..." : "null") + '\'' +
                 ", hasOffChainData=" + hasOffChainData() +
                 ", isEncrypted=" + isEncrypted +
                 '}';

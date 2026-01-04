@@ -6,6 +6,7 @@ import com.rbatllet.blockchain.util.CryptoUtil;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.util.concurrent.atomic.AtomicLong;
 import java.io.File;
 
 /**
@@ -56,8 +57,8 @@ public class EncryptedChainExportImportDemo {
         System.out.println("4. 📦 Added large block (off-chain): " + largeBlock.getBlockNumber());
         
         // Verify we have encrypted content
-        java.util.concurrent.atomic.AtomicLong encryptedBlocks = new java.util.concurrent.atomic.AtomicLong(0);
-        java.util.concurrent.atomic.AtomicLong offChainBlocks = new java.util.concurrent.atomic.AtomicLong(0);
+        AtomicLong encryptedBlocks = new AtomicLong(0);
+        AtomicLong offChainBlocks = new AtomicLong(0);
         blockchain.processChainInBatches(batch -> {
             batch.forEach(block -> {
                 if (block.isDataEncrypted()) encryptedBlocks.incrementAndGet();

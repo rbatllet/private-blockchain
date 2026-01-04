@@ -52,7 +52,7 @@ public class SecureKeyStorageDemo {
             // cleanupDemoKeys();
 
             System.out.println("✅ Demo completed successfully!");
-            System.out.println("📁 Demo keys saved in 'private-keys/' directory for inspection");
+            System.out.println("📁 Demo keys saved in 'keys/' directory for inspection");
 
         } catch (Exception e) {
             System.err.println("❌ Demo failed: " + e.getMessage());

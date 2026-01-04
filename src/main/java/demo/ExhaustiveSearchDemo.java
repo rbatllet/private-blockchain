@@ -12,7 +12,9 @@ import com.rbatllet.blockchain.service.OffChainStorageService;
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.util.CryptoUtil;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.security.KeyPair;
@@ -458,8 +460,7 @@ public class ExhaustiveSearchDemo {
     
     private static String readFileContent(File file) throws IOException {
         StringBuilder content = new StringBuilder();
-        try (java.io.BufferedReader reader = new java.io.BufferedReader(
-                new java.io.FileReader(file))) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 content.append(line).append("\n");

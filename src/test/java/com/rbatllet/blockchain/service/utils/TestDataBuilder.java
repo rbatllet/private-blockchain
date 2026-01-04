@@ -6,6 +6,7 @@ import org.mockito.Mockito;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
@@ -58,7 +59,7 @@ public class TestDataBuilder {
     public static List<Block> createMockBlocks(int count) {
         return IntStream.rangeClosed(1, count)
                 .mapToObj(i -> createMockBlock((long) i, "Test data " + i))
-                .collect(java.util.stream.Collectors.toList());
+                .collect(Collectors.toList());
     }
     
     /**

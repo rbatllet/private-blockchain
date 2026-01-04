@@ -10,6 +10,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -174,10 +177,10 @@ class UserFriendlyEncryptionAPISecurityRefactoredTest extends UserFriendlyEncryp
     
     // Helper method using base class functionality
     private List<Block> createTestBlocksWithCategory(String category, int count) {
-        return java.util.stream.IntStream.range(0, count)
+        return IntStream.range(0, count)
                 .mapToObj(i -> api.storeSecret(category + " test data " + i, SECURE_PASSWORD))
-                .filter(java.util.Objects::nonNull)
-                .collect(java.util.stream.Collectors.toList());
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
     }
     
     @Override

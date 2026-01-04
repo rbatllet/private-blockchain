@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Method;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -253,8 +254,8 @@ public class OperationLoggingInterceptor {
     private static int getResultCount(Object result) {
         if (result == null) return 0;
         
-        if (result instanceof java.util.Collection) {
-            return ((java.util.Collection<?>) result).size();
+        if (result instanceof Collection) {
+            return ((Collection<?>) result).size();
         }
         
         if (result instanceof Object[]) {

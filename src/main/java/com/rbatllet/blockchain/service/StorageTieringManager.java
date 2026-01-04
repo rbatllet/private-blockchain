@@ -5,11 +5,15 @@ import com.rbatllet.blockchain.entity.OffChainData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 /**
  * Smart Storage Tiering Manager for blockchain data optimization
@@ -538,13 +542,13 @@ public class StorageTieringManager {
     private String compressData(String data) {
         try {
             // Use GZIP compression for data tiering
-            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-            java.util.zip.GZIPOutputStream gzipOut = new java.util.zip.GZIPOutputStream(baos);
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            GZIPOutputStream gzipOut = new GZIPOutputStream(baos);
             gzipOut.write(data.getBytes("UTF-8"));
             gzipOut.close();
             
             // Convert to Base64 for string storage
-            return java.util.Base64.getEncoder().encodeToString(baos.toByteArray());
+            return Base64.getEncoder().encodeToString(baos.toByteArray());
         } catch (Exception e) {
             logger.warn("⚠️ Compression failed, storing uncompressed: {}", e.getMessage());
             return data;
@@ -554,11 +558,11 @@ public class StorageTieringManager {
     private String decompressData(String compressedData) {
         try {
             // Decode from Base64 and decompress with GZIP
-            byte[] compressedBytes = java.util.Base64.getDecoder().decode(compressedData);
-            java.io.ByteArrayInputStream bais = new java.io.ByteArrayInputStream(compressedBytes);
-            java.util.zip.GZIPInputStream gzipIn = new java.util.zip.GZIPInputStream(bais);
+            byte[] compressedBytes = Base64.getDecoder().decode(compressedData);
+            ByteArrayInputStream bais = new ByteArrayInputStream(compressedBytes);
+            GZIPInputStream gzipIn = new GZIPInputStream(bais);
             
-            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
             byte[] buffer = new byte[1024];
             int len;
             while ((len = gzipIn.read(buffer)) > 0) {

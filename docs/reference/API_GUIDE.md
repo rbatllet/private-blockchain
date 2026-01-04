@@ -2285,7 +2285,7 @@ public boolean updateBlock(Block block)
 - **Description:** Updates an existing block in the database with strict security validation to preserve blockchain integrity.
 - **🔒 SECURITY CONSTRAINTS:** Only allows modification of metadata fields that don't affect block hash:
   - ✅ **Allowed Fields:** `customMetadata`, `encryptionMetadata`, `manualKeywords`, `autoKeywords`, `searchableContent`, `contentCategory`, `isEncrypted`, `offChainData`
-  - ❌ **Forbidden Fields:** `data`, `hash`, `timestamp`, `previousHash`, `signerPublicKey`, `signature`, `blockNumber`
+  - ❌ **Forbidden Fields:** `data`, `hash`, `timestamp`, `previousHash`, `signerPublicKey`, `recipientPublicKey`, `signature`, `blockNumber`
 - **Thread-Safety:** Fully thread-safe, uses global blockchain lock with validation against hash-breaking modifications
 - **Validation:** Automatically validates that only safe fields are modified before committing changes
 - **Use Cases:**
@@ -3216,6 +3216,7 @@ try {
 - `hash`: SHA3-256 hash of this block
 - `signature`: Digital signature of the block
 - `signerPublicKey`: Public key that signed this block
+- `recipientPublicKey`: Public key of the recipient (for encrypted blocks) - immutable
 - `timestamp`: When the block was created
 
 #### Methods
@@ -3226,6 +3227,7 @@ public String getData()
 public String getHash()
 public String getSignature()
 public String getSignerPublicKey()
+public String getRecipientPublicKey()  // Recipient's public key (for encrypted blocks)
 public LocalDateTime getTimestamp()
 ```
 

@@ -831,7 +831,7 @@ This method is the **foundation** for batch processing across the entire codebas
 3. ✅ `SearchFrameworkEngine.searchExhaustiveOffChain()` - Exhaustive search
 4. ✅ `UserFriendlyEncryptionAPI.analyzeEncryption()` - Encryption analysis
 5. ✅ `UserFriendlyEncryptionAPI.findBlocksByCategory()` - Category search
-6. ✅ `UserFriendlyEncryptionAPI.findBlocksByUser()` - User search
+6. ✅ `UserFriendlyEncryptionAPI.findBlocksByUser()` - User search (P0 optimization: CREATED_BY/ENCRYPTED_FOR use native O(1) queries, ACCESSIBLE uses batch processing)
 7. ✅ `UserFriendlyEncryptionAPI.repairBrokenChain()` - Chain repair
 8. ✅ `rollbackChainInternal()` - Off-chain cleanup during rollback
 

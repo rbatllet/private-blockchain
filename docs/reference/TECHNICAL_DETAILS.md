@@ -77,6 +77,11 @@ graph TD
 - **Chain Validation**: Full chain integrity verification including off-chain data verification
 - **Advanced Operations**: Export/Import, Search, Rollback capabilities
 - **Storage Management**: Automatic data tiering between on-chain and off-chain storage
+- **Recipient Filtering (P0 Performance Fix)**:
+  - `addBlockAndReturn(String data, PrivateKey privateKey, PublicKey publicKey, String recipientPublicKey)` - Add block with recipient public key
+  - `getBlocksByRecipientPublicKey(String recipientPublicKey)` - Get blocks encrypted for recipient (O(1) indexed query)
+  - `getBlocksByRecipientPublicKey(String recipientPublicKey, int maxResults)` - Get blocks with limit
+  - `countBlocksByRecipientPublicKey(String recipientPublicKey)` - Count blocks for recipient
 
 #### 2. Data Access Layer
 - **BlockRepository**: Database operations for block entities using JPA
@@ -116,6 +121,7 @@ CREATE TABLE blocks (
     hash TEXT NOT NULL,
     signature TEXT,
     signer_public_key TEXT,
+    recipient_public_key TEXT,         -- Recipient's public key for encrypted blocks (immutable, indexed)
     off_chain_data_id INTEGER,         -- Foreign key to off_chain_data table (nullable)
     manual_keywords TEXT,               -- User-specified keywords (max 1024 chars)
     auto_keywords TEXT,                 -- Automatically extracted keywords (max 1024 chars)
@@ -133,6 +139,7 @@ CREATE INDEX idx_blocks_hash ON blocks(hash);
 CREATE INDEX idx_blocks_previous_hash ON blocks(previous_hash);
 CREATE INDEX idx_blocks_timestamp ON blocks(timestamp);
 CREATE INDEX idx_blocks_signer ON blocks(signer_public_key);
+CREATE INDEX idx_blocks_recipient ON blocks(recipient_public_key);  -- P0: O(1) recipient filtering
 CREATE INDEX idx_blocks_offchain ON blocks(off_chain_data_id);
 CREATE INDEX idx_blocks_category ON blocks(content_category);
 CREATE INDEX idx_blocks_encrypted ON blocks(is_encrypted);
@@ -303,10 +310,13 @@ public class Block {
     
     @Column(name = "signature", columnDefinition = "TEXT")
     private String signature;
-    
+
     @Column(name = "signer_public_key", columnDefinition = "TEXT")
     private String signerPublicKey;
-    
+
+    @Column(name = "recipient_public_key", columnDefinition = "TEXT", updatable = false)
+    private String recipientPublicKey;  // Immutable: recipient cannot be changed after block creation
+
     // Off-chain data reference (foreign key)
     @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @JoinColumn(name = "off_chain_data_id")

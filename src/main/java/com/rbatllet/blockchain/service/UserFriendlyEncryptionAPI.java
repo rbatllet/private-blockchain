@@ -25,6 +25,10 @@ import com.rbatllet.blockchain.util.format.FormatUtil;
 import com.rbatllet.blockchain.util.validation.BlockValidationUtil;
 import com.rbatllet.blockchain.validation.BlockStatus;
 import com.rbatllet.blockchain.validation.BlockValidationResult;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -51,6 +55,9 @@ import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -3558,7 +3565,7 @@ public class UserFriendlyEncryptionAPI {
 
             // ✅ PASS 2: Validate ONLY off-chain blocks (files, tampering, integrity)
             logger.debug("📋 Pass 2: Validating off-chain data (only off-chain blocks)...");
-            java.util.Map<Long, StringBuilder> offChainDetails = Collections.synchronizedMap(new java.util.HashMap<>());
+            Map<Long, StringBuilder> offChainDetails = Collections.synchronizedMap(new HashMap<>());
 
             blockchain.streamBlocksWithOffChainData(block -> {
                 Long blockNumber = block.getBlockNumber();
@@ -4113,8 +4120,8 @@ public class UserFriendlyEncryptionAPI {
             AtomicInteger missingFiles = new AtomicInteger(0);
             AtomicInteger corruptedFiles = new AtomicInteger(0);
 
-            java.util.Map<String, Integer> contentTypes = Collections.synchronizedMap(new java.util.HashMap<>());
-            java.util.Map<String, Long> sizeByType = Collections.synchronizedMap(new java.util.HashMap<>());
+            Map<String, Integer> contentTypes = Collections.synchronizedMap(new HashMap<>());
+            Map<String, Long> sizeByType = Collections.synchronizedMap(new HashMap<>());
 
             report.append("📊 Storage Analysis:\n");
             report.append("   📝 Analyzing off-chain blocks...\n");
@@ -4169,7 +4176,7 @@ public class UserFriendlyEncryptionAPI {
 
             // Content type breakdown
             report.append("📋 Content Types:\n");
-            for (java.util.Map.Entry<
+            for (Map.Entry<
                 String,
                 Integer
             > entry : contentTypes.entrySet()) {
@@ -4989,7 +4996,7 @@ public class UserFriendlyEncryptionAPI {
      * List<Block> legalMatches = api.searchByCustomMetadataMultipleCriteria(legalCriteria);
      * }</pre>
      */
-    public List<Block> searchByCustomMetadataMultipleCriteria(java.util.Map<String, String> criteria) {
+    public List<Block> searchByCustomMetadataMultipleCriteria(Map<String, String> criteria) {
         // Input validation
         if (criteria == null) {
             throw new IllegalArgumentException("Criteria map cannot be null");
@@ -4999,7 +5006,7 @@ public class UserFriendlyEncryptionAPI {
         }
 
         // Validate all keys and values
-        for (java.util.Map.Entry<String, String> entry : criteria.entrySet()) {
+        for (Map.Entry<String, String> entry : criteria.entrySet()) {
             if (entry.getKey() == null || entry.getKey().trim().isEmpty()) {
                 throw new IllegalArgumentException("Criteria key cannot be null or empty");
             }
@@ -6031,7 +6038,7 @@ public class UserFriendlyEncryptionAPI {
                     CryptoUtil.KeyType.ROOT
                 ).stream()
                     .filter(k -> k.getStatus() == CryptoUtil.KeyStatus.ACTIVE)
-                    .collect(java.util.stream.Collectors.toList());
+                    .collect(Collectors.toList());
 
                 // BUG FIX: Validate that root key exists before creating intermediate key
                 if (rootKeys.isEmpty()) {
@@ -6048,7 +6055,7 @@ public class UserFriendlyEncryptionAPI {
                 List<CryptoUtil.KeyInfo> intermediateKeys =
                     CryptoUtil.getKeysByType(CryptoUtil.KeyType.INTERMEDIATE).stream()
                         .filter(k -> k.getStatus() == CryptoUtil.KeyStatus.ACTIVE)
-                        .collect(java.util.stream.Collectors.toList());
+                        .collect(Collectors.toList());
 
                 // SECURITY FIX: NEVER auto-create keys - validate hierarchy exists
                 if (intermediateKeys.isEmpty()) {
@@ -6056,7 +6063,7 @@ public class UserFriendlyEncryptionAPI {
                         CryptoUtil.KeyType.ROOT
                     ).stream()
                         .filter(k -> k.getStatus() == CryptoUtil.KeyStatus.ACTIVE)
-                        .collect(java.util.stream.Collectors.toList());
+                        .collect(Collectors.toList());
 
                     if (rootKeys.isEmpty()) {
                         throw new IllegalStateException(
@@ -8206,7 +8213,7 @@ public class UserFriendlyEncryptionAPI {
             boolean useEncryptedStreaming = (searchEncrypted && password != null && !useTemporalStreaming && categories.isEmpty());
 
             // Define block processor lambda (reusable across all streaming methods)
-            java.util.function.Consumer<Block> blockProcessor = block -> {
+            Consumer<Block> blockProcessor = block -> {
                 if (maxResultsReached.get()) {
                     return; // Early exit
                 }
@@ -10116,10 +10123,8 @@ public class UserFriendlyEncryptionAPI {
     }
 
     private byte[] compressWithGzip(byte[] data) throws Exception {
-        java.io.ByteArrayOutputStream baos =
-            new java.io.ByteArrayOutputStream();
-        java.util.zip.GZIPOutputStream gzipOut =
-            new java.util.zip.GZIPOutputStream(baos);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        GZIPOutputStream gzipOut = new GZIPOutputStream(baos);
         gzipOut.write(data);
         gzipOut.close();
         return baos.toByteArray();
@@ -10138,14 +10143,10 @@ public class UserFriendlyEncryptionAPI {
     }
 
     private byte[] decompressWithGzip(byte[] compressed) throws Exception {
-        java.io.ByteArrayInputStream bais = new java.io.ByteArrayInputStream(
-            compressed
-        );
-        java.util.zip.GZIPInputStream gzipIn =
-            new java.util.zip.GZIPInputStream(bais);
+        ByteArrayInputStream bais = new ByteArrayInputStream(compressed);
+        GZIPInputStream gzipIn = new GZIPInputStream(bais);
 
-        java.io.ByteArrayOutputStream baos =
-            new java.io.ByteArrayOutputStream();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
         byte[] buffer = new byte[1024];
         int len;
         while ((len = gzipIn.read(buffer)) > 0) {
@@ -12454,9 +12455,19 @@ public class UserFriendlyEncryptionAPI {
     /**
      * Find blocks by user with different search criteria
      *
+     * <p><b>🚀 P0 Performance Optimization:</b> Uses native database queries instead of
+     * processing all blocks with JSON parsing:</p>
+     * <ul>
+     *   <li><b>CREATED_BY:</b> Uses indexed {@code getBlocksBySignerPublicKey()} (O(1))</li>
+     *   <li><b>ENCRYPTED_FOR:</b> Uses indexed {@code getBlocksByRecipientPublicKey()} (O(1))</li>
+     *   <li><b>ACCESSIBLE:</b> Processes batches with optimized filtering (mixed)</li>
+     * </ul>
+     *
      * @param username The username to search for
      * @param searchType Type of search to perform
      * @return List of blocks matching the criteria
+     *
+     * @since 2025-12-29 (P0 Performance Optimization - Native Database Queries)
      */
     public List<Block> findBlocksByUser(
         String username,
@@ -12480,267 +12491,161 @@ public class UserFriendlyEncryptionAPI {
             return new ArrayList<>();
         }
 
-        List<Block> results = new ArrayList<>();
         String trimmedUsername = username.trim();
-
-        // MEMORY SAFETY: Process blocks in batches WITHOUT accumulating all in memory
         final int MAX_RESULTS = MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS;
-        final int[] processedCount = {0};
 
-        blockchain.processChainInBatches(batch -> {
-            // Stop if we've found enough results
-            if (results.size() >= MAX_RESULTS) {
-                return;
-            }
-
-            for (Block block : batch) {
-                if (block == null) continue;
-
-                try {
-                    switch (searchType) {
-                        case CREATED_BY:
-                            handleCreatedBySearch(block, trimmedUsername, results);
-                            break;
-                        case ACCESSIBLE:
-                            handleAccessibleSearch(block, trimmedUsername, results);
-                            break;
-                        case ENCRYPTED_FOR:
-                            handleEncryptedForSearch(block, trimmedUsername, results);
-                            break;
-                        default:
-                            logger.warn("Unknown search type: {}", searchType);
-                            break;
-                    }
-                } catch (Exception e) {
-                    logger.debug(
-                        "Error processing block {} for search type {}: {}",
-                        block.getBlockNumber(),
-                        searchType,
-                        e.getMessage()
-                    );
-                }
-
-                processedCount[0]++;
-            }
-        }, 1000);
-
-        logger.info(
-            "✅ User search completed: found {} matching blocks (processed {} total)",
-            results.size(),
-            processedCount[0]
-        );
-
-        if (results.size() >= MAX_RESULTS) {
-            logger.warn(
-                "⚠️ User search hit {} result limit. There may be more matching blocks.",
-                MAX_RESULTS
-            );
+        // P0 OPTIMIZATION: Use native database queries for all search types
+        if (searchType == UserSearchType.CREATED_BY) {
+            return findByCreatedByNative(trimmedUsername, MAX_RESULTS);
+        } else if (searchType == UserSearchType.ENCRYPTED_FOR) {
+            return findByEncryptedForNative(trimmedUsername, MAX_RESULTS);
+        } else if (searchType == UserSearchType.ACCESSIBLE) {
+            return findByAccessibleNative(trimmedUsername, MAX_RESULTS);
         }
 
-        logger.debug(
-            "Found {} blocks for user '{}' with search type {}",
-            results.size(),
-            trimmedUsername,
-            searchType
-        );
-        return results;
+        // Fallback (should not reach here)
+        return new ArrayList<>();
     }
 
     /**
-     * Handle CREATED_BY search logic
+     * P0 OPTIMIZATION: Native database query for CREATED_BY search.
+     * Uses indexed {@code getBlocksBySignerPublicKey()} instead of processing all blocks.
+     *
+     * @param username The username to search for
+     * @param maxResults Maximum results to return
+     * @return List of blocks created by the user
+     *
+     * @since 2025-12-29 (P0 Performance Optimization)
      */
-    private boolean handleCreatedBySearch(
-        Block block,
-        String username,
-        List<Block> results
-    ) {
+    private List<Block> findByCreatedByNative(String username, int maxResults) {
         try {
-            // Skip genesis block (system block, not user block)
-            if (block.getBlockNumber() != null && block.getBlockNumber() == 0L) {
-                return false;
+            // Get user's public key
+            var authorizedKey = blockchain.getAuthorizedKeyByOwner(username);
+            if (authorizedKey == null) {
+                logger.debug("No authorized key found for username: {}", username);
+                return new ArrayList<>();
             }
 
-            // Validate blockchain and get authorized keys safely
-            if (blockchain == null) return false;
+            String userPublicKey = authorizedKey.getPublicKey();
 
-            var authorizedKeys = blockchain.getAuthorizedKeys();
-            if (authorizedKeys == null) return false;
+            // Use native indexed query
+            long startTime = System.nanoTime();
+            List<Block> results = blockchain.getBlocksBySignerPublicKey(userPublicKey, maxResults);
+            long endTime = System.nanoTime();
 
-            var authorizedKey = authorizedKeys
-                .stream()
-                .filter(
-                    key -> key != null && username.equals(key.getOwnerName())
-                )
-                .findFirst();
-
-            if (
-                authorizedKey.isPresent() && block.getSignerPublicKey() != null
-            ) {
-                String blockSignerKey = block.getSignerPublicKey();
-                String userPublicKey = authorizedKey.get().getPublicKey();
-
-                if (
-                    blockSignerKey != null &&
-                    userPublicKey != null &&
-                    blockSignerKey.equals(userPublicKey)
-                ) {
-                    results.add(block);
-                    return true;
-                }
-            }
-        } catch (Exception e) {
-            logger.debug(
-                "Error in CREATED_BY search for block {}: {}",
-                block.getBlockNumber(),
-                e.getMessage()
+            logger.info(
+                "✅ CREATED_BY search completed: found {} blocks in {} ms (native indexed query)",
+                results.size(),
+                (endTime - startTime) / 1_000_000
             );
+
+            return results;
+        } catch (Exception e) {
+            logger.error("❌ Error in CREATED_BY native query: {}", e.getMessage());
+            return new ArrayList<>();
         }
-        return false;
     }
 
     /**
-     * Handle ACCESSIBLE search logic
+     * P0 OPTIMIZATION: Native database query for ENCRYPTED_FOR search.
+     * Uses indexed {@code getBlocksByRecipientPublicKey()} for recipient-encrypted blocks.
+     * <p>
+     * <b>Note:</b> This ONLY returns blocks encrypted for the recipient (with {@code recipient_public_key}).
+     * Password-encrypted blocks are NOT included here - they appear in CREATED_BY and ACCESSIBLE searches.
+     * </p>
+     *
+     * @param username The username to search for
+     * @param maxResults Maximum results to return
+     * @return List of blocks encrypted for the user
+     *
+     * @since 2025-12-29 (P0 Performance Optimization)
+     */
+    private List<Block> findByEncryptedForNative(String username, int maxResults) {
+        try {
+            // Get user's public key
+            var authorizedKey = blockchain.getAuthorizedKeyByOwner(username);
+            if (authorizedKey == null) {
+                logger.debug("No authorized key found for username: {}", username);
+                return new ArrayList<>();
+            }
+
+            String userPublicKey = authorizedKey.getPublicKey();
+
+            // P0 OPTIMIZATION: Use native indexed query for recipient-encrypted blocks
+            long startTime = System.nanoTime();
+            List<Block> results = blockchain.getBlocksByRecipientPublicKey(userPublicKey, maxResults);
+            long endTime = System.nanoTime();
+
+            logger.info(
+                "✅ ENCRYPTED_FOR search: found {} recipient-encrypted blocks in {} ms (native indexed query)",
+                results.size(),
+                (endTime - startTime) / 1_000_000
+            );
+
+            return results;
+        } catch (Exception e) {
+            logger.error("❌ Error in ENCRYPTED_FOR native query: {}", e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * P0 OPTIMIZATION: Native database query for ACCESSIBLE search.
+     * Uses indexed query with OR conditions for O(1) lookup performance.
+     * <p>
      * Returns blocks that the user can access:
-     * - Public blocks (not encrypted) - accessible to everyone (excluding genesis)
-     * - Blocks encrypted for the user (has access)
-     * - Blocks created by the user (owned)
+     * <ul>
+     *   <li>Public blocks (isEncrypted = false) - accessible to everyone</li>
+     *   <li>Blocks encrypted for the user (recipientPublicKey = userPublicKey)</li>
+     *   <li>Blocks created by the user (signerPublicKey = userPublicKey)</li>
+     * </ul>
+     * </p>
+     * <p><b>Special case:</b> If user doesn't exist, only public blocks are returned.</p>
+     * <p><b>Genesis block:</b> Excluded (system block, not user block).</p>
+     *
+     * @param username The username to search for
+     * @param maxResults Maximum results to return
+     * @return List of accessible blocks
+     *
+     * @since 2025-12-29 (P0 Performance Optimization)
      */
-    private boolean handleAccessibleSearch(
-        Block block,
-        String username,
-        List<Block> results
-    ) {
+    private List<Block> findByAccessibleNative(String username, int maxResults) {
         try {
-            // Skip genesis block (system block, not user block)
-            if (block.getBlockNumber() != null && block.getBlockNumber() == 0L) {
-                return false;
+            // Get user's public key
+            var authorizedKey = blockchain.getAuthorizedKeyByOwner(username);
+
+            long startTime = System.nanoTime();
+            List<Block> results;
+
+            if (authorizedKey == null) {
+                // User doesn't exist: only return public blocks (accessible to everyone)
+                logger.debug("No authorized key found for username: {}, returning only public blocks", username);
+                results = blockchain.getBlocksByIsEncrypted(false, maxResults);
+
+                // Filter out genesis block (system block, not user data)
+                results = results.stream()
+                    .filter(b -> b.getBlockNumber() == null || b.getBlockNumber() != 0L)
+                    .toList();
+            } else {
+                // User exists: return accessible blocks (public + encrypted for + created by)
+                // NOTE: getAccessibleBlocks() already excludes genesis at SQL level
+                String userPublicKey = authorizedKey.getPublicKey();
+                results = blockchain.getAccessibleBlocks(userPublicKey, maxResults);
             }
 
-            Boolean isEncrypted = block.getIsEncrypted();
+            long endTime = System.nanoTime();
 
-            // Public blocks (not encrypted) are accessible to everyone
-            if (isEncrypted == null || !isEncrypted) {
-                results.add(block);
-                return true;
-            }
-
-            // For encrypted blocks, check if user has access
-            String encryptionMetadata = block.getEncryptionMetadata();
-            if (
-                encryptionMetadata != null &&
-                !encryptionMetadata.trim().isEmpty() &&
-                encryptionMetadata.contains(username)
-            ) {
-                results.add(block);
-                return true;
-            }
-
-            // Check if block was created by the user
-            if (isBlockCreatedByUser(block, username)) {
-                results.add(block);
-                return true;
-            }
-        } catch (Exception e) {
-            logger.debug(
-                "Error in ACCESSIBLE search for block {}: {}",
-                block.getBlockNumber(),
-                e.getMessage()
+            logger.info(
+                "✅ ACCESSIBLE search: found {} blocks in {} ms (native indexed query)",
+                results.size(),
+                (endTime - startTime) / 1_000_000
             );
-        }
-        return false;
-    }
 
-    /**
-     * Check if a block was created by the specified user (without adding to results)
-     */
-    private boolean isBlockCreatedByUser(Block block, String username) {
-        try {
-            if (blockchain == null) return false;
-
-            var authorizedKeys = blockchain.getAuthorizedKeys();
-            if (authorizedKeys == null) return false;
-
-            var authorizedKey = authorizedKeys
-                .stream()
-                .filter(key -> key != null && username.equals(key.getOwnerName()))
-                .findFirst();
-
-            if (authorizedKey.isPresent() && block.getSignerPublicKey() != null) {
-                String blockSignerKey = block.getSignerPublicKey();
-                String userPublicKey = authorizedKey.get().getPublicKey();
-
-                return blockSignerKey != null &&
-                       userPublicKey != null &&
-                       blockSignerKey.equals(userPublicKey);
-            }
+            return results;
         } catch (Exception e) {
-            logger.debug(
-                "Error checking if block {} created by user {}: {}",
-                block.getBlockNumber(),
-                username,
-                e.getMessage()
-            );
+            logger.error("❌ Error in ACCESSIBLE native query: {}", e.getMessage());
+            return new ArrayList<>();
         }
-        return false;
-    }
-
-    /**
-     * Handle ENCRYPTED_FOR search logic
-     */
-    private boolean handleEncryptedForSearch(
-        Block block,
-        String username,
-        List<Block> results
-    ) {
-        try {
-            // Skip genesis block (system block, not user block)
-            if (block.getBlockNumber() != null && block.getBlockNumber() == 0L) {
-                return false;
-            }
-
-            Boolean isEncrypted = block.getIsEncrypted();
-
-            // ENCRYPTED_FOR only returns encrypted blocks
-            if (isEncrypted != null && isEncrypted) {
-                // Validate blockchain and get authorized keys safely
-                if (blockchain == null) return false;
-
-                var authorizedKeys = blockchain.getAuthorizedKeys();
-                if (authorizedKeys == null) return false;
-
-                var authorizedKey = authorizedKeys
-                    .stream()
-                    .filter(
-                        key ->
-                            key != null && username.equals(key.getOwnerName())
-                    )
-                    .findFirst();
-
-                if (
-                    authorizedKey.isPresent() &&
-                    block.getSignerPublicKey() != null
-                ) {
-                    String blockSignerKey = block.getSignerPublicKey();
-                    String userPublicKey = authorizedKey.get().getPublicKey();
-
-                    if (
-                        blockSignerKey != null &&
-                        userPublicKey != null &&
-                        blockSignerKey.equals(userPublicKey)
-                    ) {
-                        results.add(block);
-                        return true;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            logger.debug(
-                "Error in ENCRYPTED_FOR search for block {}: {}",
-                block.getBlockNumber(),
-                e.getMessage()
-            );
-        }
-        return false;
     }
 
     /**
@@ -13381,7 +13286,7 @@ public class UserFriendlyEncryptionAPI {
                         userKeyPair.getPrivate(),
                         userKeyPair.getPublic()
                     );
-                } catch (java.io.IOException e) {
+                } catch (IOException e) {
                     logger.error(
                         "❌ Failed to read off-chain file: {}",
                         options.getOffChainFilePath(),
@@ -13449,7 +13354,7 @@ public class UserFriendlyEncryptionAPI {
                             !options.getMetadata().isEmpty()))
                 ) {
                     // Use JPA transaction for thread-safe block update
-                    return JPAUtil.executeInTransaction(em -> {
+                    Block updatedBlock = JPAUtil.executeInTransaction(em -> {
                         Block managedBlock = em.find(
                             Block.class,
                             encryptedBlock.getBlockNumber()
@@ -13495,6 +13400,7 @@ public class UserFriendlyEncryptionAPI {
                         }
                         return encryptedBlock;
                     });
+                    return updatedBlock;
                 }
                 return encryptedBlock;
             } else {
@@ -13601,24 +13507,28 @@ public class UserFriendlyEncryptionAPI {
                 );
             }
 
-            PublicKey recipientPublicKey = null;
+            // Find recipient's authorized key
+            AuthorizedKey recipientKey = null;
             for (var key : authorizedKeys) {
                 if (recipientUsername.equals(key.getOwnerName())) {
-                    String publicKeyString = key.getPublicKey();
-                    recipientPublicKey = CryptoUtil.stringToPublicKey(
-                        publicKeyString
-                    );
+                    recipientKey = key;
                     break;
                 }
             }
 
-            if (recipientPublicKey == null) {
+            if (recipientKey == null) {
                 throw new IllegalArgumentException(
                     "Recipient user '" +
                     recipientUsername +
                     "' not found in authorized keys"
                 );
             }
+
+            // Extract public key string and convert to PublicKey object
+            final String recipientPublicKeyString = recipientKey.getPublicKey();
+            PublicKey recipientPublicKey = CryptoUtil.stringToPublicKey(
+                recipientPublicKeyString
+            );
 
             // Use BlockDataEncryptionService to encrypt for recipient
             BlockDataEncryptionService.EncryptedBlockData encryptedData =
@@ -13631,11 +13541,14 @@ public class UserFriendlyEncryptionAPI {
             // Create block with encrypted content
             String serializedEncryptedData = encryptedData.serialize();
 
-            // Add block to blockchain with encrypted data
+            // CRITICAL: Add block to blockchain with recipient public key
+            // The recipient public key is set BEFORE persist (immutable field)
+            // This ensures the recipient is cryptographically bound to the block via the hash
             Block encryptedBlock = blockchain.addBlockAndReturn(
                 serializedEncryptedData,
                 senderKeyPair.getPrivate(),
-                senderKeyPair.getPublic()
+                senderKeyPair.getPublic(),
+                recipientPublicKeyString
             );
 
             if (encryptedBlock != null) {
@@ -13649,9 +13562,13 @@ public class UserFriendlyEncryptionAPI {
                     if (managedBlock != null) {
                         managedBlock.setIsEncrypted(true);
                         // Store recipient username in encryptionMetadata (mutable field)
-                        String recipientMetadata = "{\"type\":\"RECIPIENT_ENCRYPTED\",\"recipient\":\"" + 
+                        String recipientMetadata = "{\"type\":\"RECIPIENT_ENCRYPTED\",\"recipient\":\"" +
                                                    recipientUsername + "\"}";
                         managedBlock.setEncryptionMetadata(recipientMetadata);
+
+                        // Note: recipientPublicKey is already set before persist (immutable field)
+                        // No need to set it here (updatable=false)
+
                         em.merge(managedBlock);
                         em.flush(); // Ensure changes are persisted
                         em.refresh(managedBlock); // Refresh to get updated state

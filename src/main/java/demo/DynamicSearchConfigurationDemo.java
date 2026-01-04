@@ -10,6 +10,7 @@ import com.rbatllet.blockchain.util.CryptoUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.File;
 import java.security.KeyPair;
 import java.util.List;
 
@@ -209,16 +210,16 @@ public class DynamicSearchConfigurationDemo {
         try {
             System.out.println("🧹 Cleaning up test environment...");
             
-            java.io.File dbFile = new java.io.File("blockchain.db");
+            File dbFile = new File("blockchain.db");
             if (dbFile.exists()) dbFile.delete();
             
-            java.io.File shmFile = new java.io.File("blockchain.db-shm");
+            File shmFile = new File("blockchain.db-shm");
             if (shmFile.exists()) shmFile.delete();
             
-            java.io.File walFile = new java.io.File("blockchain.db-wal");
+            File walFile = new File("blockchain.db-wal");
             if (walFile.exists()) walFile.delete();
             
-            java.io.File offChainDir = new java.io.File("off-chain-data");
+            File offChainDir = new File("off-chain-data");
             if (offChainDir.exists()) {
                 deleteDirectory(offChainDir);
             }
@@ -229,11 +230,11 @@ public class DynamicSearchConfigurationDemo {
         }
     }
     
-    private static void deleteDirectory(java.io.File directory) {
+    private static void deleteDirectory(File directory) {
         if (directory.isDirectory()) {
-            java.io.File[] files = directory.listFiles();
+            File[] files = directory.listFiles();
             if (files != null) {
-                for (java.io.File file : files) {
+                for (File file : files) {
                     deleteDirectory(file);
                 }
             }

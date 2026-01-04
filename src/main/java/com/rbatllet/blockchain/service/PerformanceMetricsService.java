@@ -8,6 +8,7 @@ import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
 import java.lang.management.ThreadMXBean;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -16,6 +17,7 @@ import java.util.Map;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
@@ -48,7 +50,7 @@ public class PerformanceMetricsService {
     private final Map<String, ResponseTimeMetrics> responseTimeMetrics = new ConcurrentHashMap<>();
     private final Map<String, MemoryUsageMetrics> memoryMetrics = new ConcurrentHashMap<>();
     private final Map<String, ThroughputMetrics> throughputMetrics = new ConcurrentHashMap<>();
-    private final List<PerformanceAlert> activeAlerts = new java.util.concurrent.CopyOnWriteArrayList<>();
+    private final List<PerformanceAlert> activeAlerts = new CopyOnWriteArrayList<>();
     
     // System metrics
     private final MemoryMXBean memoryBean = ManagementFactory.getMemoryMXBean();
@@ -313,9 +315,9 @@ public class PerformanceMetricsService {
         
         // Group alerts by type
         Map<String, Long> alertsByType = activeAlerts.stream()
-            .collect(java.util.stream.Collectors.groupingBy(
+            .collect(Collectors.groupingBy(
                 PerformanceAlert::getType,
-                java.util.stream.Collectors.counting()
+                Collectors.counting()
             ));
         
         alertsByType.forEach((type, count) -> {
@@ -324,9 +326,9 @@ public class PerformanceMetricsService {
         
         // Group by severity
         Map<AlertSeverity, Long> alertsBySeverity = activeAlerts.stream()
-            .collect(java.util.stream.Collectors.groupingBy(
+            .collect(Collectors.groupingBy(
                 PerformanceAlert::getSeverity,
-                java.util.stream.Collectors.counting()
+                Collectors.counting()
             ));
         
         summary.append("\nBy Severity:\n");

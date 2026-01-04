@@ -11,7 +11,10 @@ import org.junit.jupiter.api.TestInfo;
 
 import java.security.KeyPair;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Base test class for UserFriendlyEncryptionAPI tests.
@@ -113,10 +116,10 @@ public abstract class UserFriendlyEncryptionAPIBaseTest {
      * @return List of created blocks
      */
     protected List<Block> createTestBlocks(int count, String dataPrefix) {
-        return java.util.stream.IntStream.range(0, count)
+        return IntStream.range(0, count)
                 .mapToObj(i -> api.storeSecret(dataPrefix + i, TEST_PASSWORD))
-                .filter(java.util.Objects::nonNull)
-                .collect(java.util.stream.Collectors.toList());
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
     }
     
     /**

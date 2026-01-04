@@ -19,9 +19,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -714,7 +717,7 @@ public class SearchFrameworkEngine {
             final int BUFFER_SIZE = maxResults * 2;
             final PriorityQueue<EnhancedSearchResult> topResults = new PriorityQueue<>(
                 BUFFER_SIZE,
-                java.util.Comparator.comparingDouble(EnhancedSearchResult::getRelevanceScore)  // Min-heap
+                Comparator.comparingDouble(EnhancedSearchResult::getRelevanceScore)  // Min-heap
             );
 
             // Add initial regular results to priority queue
@@ -2113,12 +2116,12 @@ public class SearchFrameworkEngine {
             indexingExecutor.shutdown();
             
             // Wait for existing tasks to complete
-            if (!indexingExecutor.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)) {
+            if (!indexingExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
                 logger.warn("⚠️ Indexing executor did not terminate gracefully, forcing shutdown...");
                 indexingExecutor.shutdownNow();
                 
                 // Wait a bit more for forced shutdown
-                if (!indexingExecutor.awaitTermination(2, java.util.concurrent.TimeUnit.SECONDS)) {
+                if (!indexingExecutor.awaitTermination(2, TimeUnit.SECONDS)) {
                     logger.error("❌ Indexing executor could not be terminated");
                 }
             }
@@ -2414,7 +2417,7 @@ public class SearchFrameworkEngine {
                 .filter(Objects::nonNull)
                 .sorted((a, b) -> Double.compare(b.getRelevanceScore(), a.getRelevanceScore()))
                 .limit(safeLimit)
-                .collect(java.util.stream.Collectors.toList());
+                .collect(Collectors.toList());
         }
 
         /**
@@ -2580,7 +2583,7 @@ public class SearchFrameworkEngine {
      * @since 2025-10-08 (Memory Safety Refactoring - Phase A.4)
      */
     private void addToTopResults(
-            java.util.PriorityQueue<EnhancedSearchResult> topResults,
+            PriorityQueue<EnhancedSearchResult> topResults,
             EnhancedSearchResult newResult,
             int maxSize) {
         if (topResults.size() < maxSize) {
@@ -2606,11 +2609,11 @@ public class SearchFrameworkEngine {
      * @since 2025-10-08 (Memory Safety Refactoring - Phase A.4)
      */
     private List<EnhancedSearchResult> extractTopResults(
-            java.util.PriorityQueue<EnhancedSearchResult> topResults,
+            PriorityQueue<EnhancedSearchResult> topResults,
             int maxResults) {
         // Convert heap to sorted list (best first)
         List<EnhancedSearchResult> results = new ArrayList<>(topResults);
-        results.sort(java.util.Comparator.comparingDouble(EnhancedSearchResult::getRelevanceScore).reversed());
+        results.sort(Comparator.comparingDouble(EnhancedSearchResult::getRelevanceScore).reversed());
 
         // Trim to maxResults
         return results.subList(0, Math.min(maxResults, results.size()));

@@ -9,6 +9,7 @@ import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Map;
 import java.util.Set;
@@ -197,7 +198,7 @@ public class BlockPasswordRegistry {
             keyField.setAccessible(true);
             byte[] keyBytes = (byte[]) keyField.get(masterKey);
             if (keyBytes != null) {
-                java.util.Arrays.fill(keyBytes, (byte) 0);
+                Arrays.fill(keyBytes, (byte) 0);
             }
         } catch (Exception e) {
             // Best effort cleanup

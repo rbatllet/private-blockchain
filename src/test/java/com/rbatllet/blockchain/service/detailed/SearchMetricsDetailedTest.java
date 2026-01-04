@@ -2,6 +2,8 @@ package com.rbatllet.blockchain.service.detailed;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.Arrays;
+
 import com.rbatllet.blockchain.service.SearchMetrics;
 import com.rbatllet.blockchain.service.SearchMetrics.PerformanceInsights;
 import com.rbatllet.blockchain.service.SearchMetrics.ReportFormat;
@@ -47,15 +49,15 @@ public class SearchMetricsDetailedTest {
 
         // Test specific values
         assertTrue(
-            java.util.Arrays.asList(formats).contains(ReportFormat.SUMMARY)
+            Arrays.asList(formats).contains(ReportFormat.SUMMARY)
         );
         assertTrue(
-            java.util.Arrays.asList(formats).contains(ReportFormat.DETAILED)
+            Arrays.asList(formats).contains(ReportFormat.DETAILED)
         );
         assertTrue(
-            java.util.Arrays.asList(formats).contains(ReportFormat.JSON)
+            Arrays.asList(formats).contains(ReportFormat.JSON)
         );
-        assertTrue(java.util.Arrays.asList(formats).contains(ReportFormat.CSV));
+        assertTrue(Arrays.asList(formats).contains(ReportFormat.CSV));
 
         // Test valueOf
         assertEquals(ReportFormat.SUMMARY, ReportFormat.valueOf("SUMMARY"));

@@ -9,6 +9,80 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ⚡ Performance - Native Recipient Filtering (P0 Optimization)
+
+**Optimized block filtering by recipient with native database queries, eliminating O(n) linear scans.**
+
+#### Database Schema Changes
+
+**New Indexed Column:**
+- `Block.recipientPublicKey` - Immutable field for recipient-encrypted blocks (TEXT, indexed)
+- `idx_blocks_recipient_public_key` - Database index for O(1) recipient lookups
+
+**Performance Impact:**
+- **Before**: O(n) - Process all blocks with JSON parsing
+- **After**: O(1) - Single indexed database query
+
+#### New API Methods
+
+**BlockRepository:**
+- `getAccessibleBlocks(userPublicKey, maxResults)` - Get blocks accessible to user (public + encrypted for + created by)
+- `getBlocksByIsEncrypted(isEncrypted, maxResults)` - Filter by encryption status with genesis exclusion
+
+**Blockchain:**
+- `addBlockAndReturn(data, privateKey, publicKey, recipientPublicKey)` - Create block with recipient public key
+
+**UserFriendlyEncryptionAPI:**
+- `findBlocksByUser()` optimized with native queries instead of batch processing
+
+---
+
+### 🔧 Infrastructure - Async Indexing EntityManager Fix
+
+**Fixed "Session/EntityManager is closed" errors in async indexing operations.**
+
+#### Changes
+
+**IndexingCoordinator:**
+- Dedicated EntityManager for each async operation
+- Prevents session closure conflicts between main and async threads
+- Proper resource cleanup in finally blocks
+
+**BlockRepository:**
+- `getBlocksInRange()` overloaded for async operations with dedicated EntityManager
+- Backward-compatible public API maintained
+
+---
+
+### 🔐 Security - OWASP-Compliant Timing Attack Prevention
+
+**Enhanced SecureKeyStorage with OWASP-compliant constant-time operations.**
+
+#### OWASP Authentication Cheat Sheet Compliance
+
+**Constant-Time Implementation:**
+- **Zero early returns** - All code paths execute full PBKDF2 operation
+- **Dummy operations** - Invalid inputs perform full PBKDF2 to mask failures
+- **No Files.exists()** - Uses try/catch to prevent file existence timing leaks
+- **Single return point** - Ensures finally block always executes for constant-time
+- **400ms minimum** - All execution paths (success/failure/not-found) take identical time
+
+**Security Improvements:**
+- Prevents username enumeration via timing analysis
+- Prevents file existence detection via timing differences
+- Prevents password validation bypass via timing side-channels
+- Constant-time string comparison using `MessageDigest.isEqual()`
+
+**Directory Consolidation:**
+- Keys now stored in unified `keys/` directory (previously `private-keys/`)
+- Simplifies demo scripts and key management
+
+**References:**
+- [OWASP Authentication Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html)
+- [OWASP CSRF Prevention - Constant-Time Comparison](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html)
+
+---
+
 ### ⚡ Performance - Java 25 Virtual Threads Migration (Phase 1)
 
 **Migrated to Java 25 virtual threads for massive performance improvements in concurrent operations.**

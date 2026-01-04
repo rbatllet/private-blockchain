@@ -13,6 +13,7 @@ import org.junit.jupiter.api.*;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.util.Base64;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -64,7 +65,7 @@ public class EncryptedBlockThreadSafetyTest {
         testPublicKey = keyPair.getPublic();
 
         // Add authorized key for test operations
-        String publicKeyString = java.util.Base64.getEncoder().encodeToString(testPublicKey.getEncoded());
+        String publicKeyString = Base64.getEncoder().encodeToString(testPublicKey.getEncoded());
         blockchain.addAuthorizedKey(publicKeyString, "ThreadSafetyTestUser", bootstrapKeyPair, UserRole.USER);
         
         // Initialize SearchSpecialistAPI with proper constructor

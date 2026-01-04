@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 import java.time.Duration;
 import java.util.*;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * Advanced search result container with rich metadata and analytics
@@ -182,7 +183,7 @@ public class AdvancedSearchResult implements SearchResultInterface {
             .filter(Objects::nonNull)  // Filter out null matches
             .sorted((a, b) -> Double.compare(b.getRelevanceScore(), a.getRelevanceScore()))
             .limit(safeLimit)
-            .collect(java.util.stream.Collectors.toList());
+            .collect(Collectors.toList());
         
         return Collections.unmodifiableList(result);
     }

@@ -10,6 +10,7 @@ import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI.UserSearchType;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import java.security.KeyPair;
+import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -76,7 +77,7 @@ public class UserSearchTypeTest {
     }
 
     /**
-     * Helper method to create an encrypted block
+     * Helper method to create an encrypted block (password-based)
      */
     private Block createEncryptedBlock(String content, String password)
         throws Exception {
@@ -86,6 +87,19 @@ public class UserSearchTypeTest {
             testUserKeys.getPrivate(),
             testUserKeys.getPublic()
         );
+    }
+
+    /**
+     * Helper method to create a recipient-encrypted block (public key cryptography)
+     * This creates blocks that are found by ENCRYPTED_FOR search (O(1) indexed query)
+     */
+    private Block createRecipientEncryptedBlock(String content, String recipientUsername)
+        throws Exception {
+        UserFriendlyEncryptionAPI.BlockCreationOptions options =
+            new UserFriendlyEncryptionAPI.BlockCreationOptions()
+                .withEncryption(true)
+                .withRecipient(recipientUsername);
+        return api.createBlockWithExistingUser(content, testUserKeys, options);
     }
 
     /**
@@ -113,13 +127,13 @@ public class UserSearchTypeTest {
 
         // Test specific values
         assertTrue(
-            java.util.Arrays.asList(types).contains(UserSearchType.CREATED_BY)
+            Arrays.asList(types).contains(UserSearchType.CREATED_BY)
         );
         assertTrue(
-            java.util.Arrays.asList(types).contains(UserSearchType.ACCESSIBLE)
+            Arrays.asList(types).contains(UserSearchType.ACCESSIBLE)
         );
         assertTrue(
-            java.util.Arrays.asList(types).contains(
+            Arrays.asList(types).contains(
                 UserSearchType.ENCRYPTED_FOR
             )
         );
@@ -313,12 +327,16 @@ public class UserSearchTypeTest {
     @Order(9)
     @DisplayName("Test findBlocksByUser ENCRYPTED_FOR")
     void testFindBlocksByUserEncryptedFor() throws Exception {
-        // Create encrypted block
-        Block encryptedBlock = createEncryptedBlock(
+        // Create recipient-encrypted block (found by ENCRYPTED_FOR search)
+        Block encryptedBlock = createRecipientEncryptedBlock(
             "Encrypted for user",
-            testPassword
+            "test-user"
         );
         assertNotNull(encryptedBlock, "Encrypted block should be created");
+
+        // Create a public block (should NOT be found by ENCRYPTED_FOR)
+        Block publicBlock = createPublicBlock("Public content");
+        assertNotNull(publicBlock, "Public block should be created");
 
         // Search for blocks encrypted for user
         List<Block> result = api.findBlocksByUser(
@@ -327,18 +345,20 @@ public class UserSearchTypeTest {
         );
         assertNotNull(result, "Result should not be null");
 
-        // ENCRYPTED_FOR should only return encrypted blocks, not public ones
-        if (!result.isEmpty()) {
-            boolean allEncrypted = result
-                .stream()
-                .allMatch(
-                    b -> b.getIsEncrypted() != null && b.getIsEncrypted()
-                );
-            assertTrue(
-                allEncrypted,
-                "ENCRYPTED_FOR should only return encrypted blocks"
-            );
-        }
+        // ENCRYPTED_FOR should return recipient-encrypted blocks
+        assertFalse(result.isEmpty(), "ENCRYPTED_FOR should find recipient-encrypted blocks");
+
+        // Should find the encrypted block
+        boolean foundEncryptedBlock = result
+            .stream()
+            .anyMatch(b -> b.getBlockNumber().equals(encryptedBlock.getBlockNumber()));
+        assertTrue(foundEncryptedBlock, "ENCRYPTED_FOR should find the recipient-encrypted block");
+
+        // Should NOT find public blocks
+        boolean foundPublicBlock = result
+            .stream()
+            .anyMatch(b -> b.getBlockNumber().equals(publicBlock.getBlockNumber()));
+        assertFalse(foundPublicBlock, "ENCRYPTED_FOR should not find public blocks");
 
         logger.info(
             "ENCRYPTED_FOR test passed - found {} blocks",
@@ -637,19 +657,17 @@ public class UserSearchTypeTest {
     @Order(17)
     @DisplayName("Test findBlocksByUser ENCRYPTED_FOR with multiple users")
     void testFindBlocksByUserEncryptedForMultipleUsers() throws Exception {
-        // Create blocks encrypted for test-user
-        Block testBlock = createEncryptedBlock(
+        // Create recipient-encrypted blocks for test-user
+        // These blocks are found by ENCRYPTED_FOR search (O(1) indexed query)
+        Block testBlock = createRecipientEncryptedBlock(
             "Encrypted for test-user",
-            testPassword
+            "test-user"
         );
 
-        // Create block encrypted for other-user
-        api.setDefaultCredentials("other-user", otherUserKeys);
-        Block otherBlock = blockchain.addEncryptedBlock(
+        // Create recipient-encrypted block for other-user
+        Block otherBlock = createRecipientEncryptedBlock(
             "Encrypted for other-user",
-            "OtherPassword123!",
-            otherUserKeys.getPrivate(),
-            otherUserKeys.getPublic()
+            "other-user"
         );
 
         // Search for blocks encrypted for test-user

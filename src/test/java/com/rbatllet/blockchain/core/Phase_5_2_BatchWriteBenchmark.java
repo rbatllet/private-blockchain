@@ -1,18 +1,29 @@
 package com.rbatllet.blockchain.core;
 
-import com.rbatllet.blockchain.config.DatabaseConfig;
-import com.rbatllet.blockchain.entity.Block;
-import com.rbatllet.blockchain.security.UserRole;
-import com.rbatllet.blockchain.testutil.GenesisKeyManager;
-import com.rbatllet.blockchain.util.CryptoUtil;
-import com.rbatllet.blockchain.util.JPAUtil;
-import org.junit.jupiter.api.*;
-
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.security.KeyPair;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.Timeout;
+
+import com.rbatllet.blockchain.config.DatabaseConfig;
+import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
+import com.rbatllet.blockchain.security.UserRole;
+import com.rbatllet.blockchain.testutil.GenesisKeyManager;
+import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.util.JPAUtil;
 
 /**
  * Phase 5.2: Batch Write API Benchmark
@@ -272,7 +283,7 @@ public class Phase_5_2_BatchWriteBenchmark {
                 }
 
                 // MEMORY-EFFICIENT: Use future directly, don't store blocks
-                java.util.concurrent.CompletableFuture<com.rbatllet.blockchain.indexing.IndexingCoordinator.IndexingResult> future = 
+                CompletableFuture<IndexingCoordinator.IndexingResult> future = 
                     blockchain.addBlocksBatchWithFuture(requests, false);
                 
                 // Wait for async indexing to complete before test ends

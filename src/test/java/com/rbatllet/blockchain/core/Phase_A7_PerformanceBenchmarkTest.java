@@ -11,6 +11,7 @@ import org.junit.jupiter.api.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.security.KeyPair;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -125,7 +126,7 @@ public class Phase_A7_PerformanceBenchmarkTest {
     private void generateBlocks(int count) throws Exception {
         System.out.println("📝 Generating " + count + " benchmark blocks...");
         // Use batch write with skipIndexing for performance benchmarks
-        List<Blockchain.BlockWriteRequest> requests = new java.util.ArrayList<>();
+        List<Blockchain.BlockWriteRequest> requests = new ArrayList<>();
         for (int i = 0; i < count; i++) {
             requests.add(new Blockchain.BlockWriteRequest(
                 "Benchmark block " + i,

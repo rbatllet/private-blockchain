@@ -15,6 +15,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
@@ -552,7 +553,7 @@ public class OffChainCleanupService {
             return JPAUtil.<Set<String>>executeInTransaction(em -> {
                 // Query all off-chain file paths from blocks
                 @SuppressWarnings("unchecked")
-                java.util.List<String> filePaths = em
+                List<String> filePaths = em
                     .createQuery(
                         "SELECT DISTINCT ocd.filePath FROM Block b " +
                             "JOIN b.offChainData ocd " +

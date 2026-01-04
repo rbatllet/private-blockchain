@@ -24,6 +24,7 @@ import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -620,36 +621,77 @@ class BlockRepository {
      * }
      * }</pre>
      *
-     * @param startBlockNumber First block number (inclusive)
-     * @param endBlockNumber Last block number (inclusive)
+     * <p><strong>BACKWARD COMPATIBILITY:</strong> This public method manages EntityManager
+     * lifecycle internally. For async operations requiring dedicated EntityManager, use
+     * {@link #getBlocksInRange(long, long, EntityManager)} instead.</p>
+     *
+     * @param startBlockNumber Start block number (inclusive)
+     * @param endBlockNumber End block number (inclusive)
      * @return List of blocks within the range (eager-loaded with off-chain data)
      * @throws IllegalArgumentException if range is invalid (negative or inverted)
      * @since 1.0.6
-     * @see Blockchain#indexBlocksRange(long, long) main caller of this method
+     * @see #getBlocksInRange(long, long, EntityManager) async-safe variant with dedicated EntityManager
      */
     public List<Block> getBlocksInRange(long startBlockNumber, long endBlockNumber) {
-        if (startBlockNumber < 0 || endBlockNumber < startBlockNumber) {
-            throw new IllegalArgumentException(
-                "Invalid block range: [" + startBlockNumber + ", " + endBlockNumber + "]"
-            );
-        }
-
         EntityManager em = JPAUtil.getEntityManager();
         try {
-            TypedQuery<Block> query = em.createQuery(
-                "SELECT b FROM Block b LEFT JOIN FETCH b.offChainData " +
-                "WHERE b.blockNumber >= :start AND b.blockNumber <= :end",
-                Block.class
-            );
-            query.setParameter("start", startBlockNumber);
-            query.setParameter("end", endBlockNumber);
-
-            return query.getResultList();
+            return getBlocksInRange(startBlockNumber, endBlockNumber, em);
         } finally {
             if (!JPAUtil.hasActiveTransaction()) {
                 em.close();
             }
         }
+    }
+
+    /**
+     * Get blocks within a specific block number range with dedicated EntityManager.
+     *
+     * <p><strong>ASYNC INDEXING FIX:</strong> This package-private variant requires a dedicated
+     * EntityManager to prevent "Session/EntityManager is closed" errors in async operations.</p>
+     *
+     * <p><strong>Usage:</strong>
+     * <pre>{@code
+     * // Async indexing with dedicated EntityManager
+     * EntityManager dedicatedEM = JPAUtil.getEntityManager();
+     * try {
+     *     List<Block> batch = blockRepository.getBlocksInRange(start, end, dedicatedEM);
+     *     // Process batch...
+     * } finally {
+     *     dedicatedEM.close();
+     * }
+     * }</pre>
+     *
+     * @param startBlockNumber Start block number (inclusive)
+     * @param endBlockNumber End block number (inclusive)
+     * @param dedicatedEM Required EntityManager for async operations - must not be null
+     * @return List of blocks within the range (eager-loaded with off-chain data)
+     * @throws IllegalArgumentException if range is invalid, negative, inverted, or dedicatedEM is null
+     * @since 1.0.6
+     * @see Blockchain#indexBlocksRange(long, long, EntityManager) main caller of this method
+     */
+    List<Block> getBlocksInRange(
+        long startBlockNumber,
+        long endBlockNumber,
+        EntityManager dedicatedEM
+    ) {
+        if (startBlockNumber < 0 || endBlockNumber < startBlockNumber) {
+            throw new IllegalArgumentException(
+                "Invalid block range: [" + startBlockNumber + ", " + endBlockNumber + "]"
+            );
+        }
+        if (dedicatedEM == null) {
+            throw new IllegalArgumentException("EntityManager cannot be null - required for async operations");
+        }
+
+        TypedQuery<Block> query = dedicatedEM.createQuery(
+            "SELECT b FROM Block b LEFT JOIN FETCH b.offChainData " +
+            "WHERE b.blockNumber >= :start AND b.blockNumber <= :end",
+            Block.class
+        );
+        query.setParameter("start", startBlockNumber);
+        query.setParameter("end", endBlockNumber);
+
+        return query.getResultList();
     }
 
     /**
@@ -781,6 +823,116 @@ class BlockRepository {
     }
 
     /**
+     * Get blocks accessible to a specific user (O(1) indexed query).
+     * <p>
+     * Returns blocks that the user can access:
+     * <ul>
+     *   <li>Public blocks (isEncrypted = false) - accessible to everyone</li>
+     *   <li>Blocks encrypted for the user (recipientPublicKey = userPublicKey)</li>
+     *   <li>Blocks created by the user (signerPublicKey = userPublicKey)</li>
+     * </ul>
+     * </p>
+     * <p><b>⚡ Performance:</b> Single indexed query with OR conditions.</p>
+     * <p><b>⚠️ MEMORY SAFETY:</b> Enforces strict maxResults validation.</p>
+     *
+     * @param userPublicKey The user's public key
+     * @param maxResults Maximum results to return (validated)
+     * @return List of accessible blocks
+     *
+     * @since 2025-12-29 (P0 Performance Optimization - ACCESSIBLE query)
+     */
+    public List<Block> getAccessibleBlocks(String userPublicKey, int maxResults) {
+        // Validate maxResults
+        if (maxResults <= 0) {
+            throw new IllegalArgumentException(
+                "Max results must be positive (got: " + maxResults + ")"
+            );
+        }
+
+        // Validate maxResults limit
+        if (maxResults > MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS) {
+            throw new IllegalArgumentException(
+                "Max results cannot exceed " + MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS +
+                " (got: " + maxResults + ")"
+            );
+        }
+
+        EntityManager em = JPAUtil.getEntityManager();
+        try {
+            // Single indexed query with OR conditions
+            // Uses indexes on: is_encrypted, recipient_public_key, signer_public_key
+            // Excludes genesis block (block 0) as it's a system block, not user data
+            TypedQuery<Block> query = em.createQuery(
+                "SELECT b FROM Block b " +
+                "WHERE b.blockNumber > 0 AND (" +
+                "   b.isEncrypted = false " +
+                "   OR b.recipientPublicKey = :userPublicKey " +
+                "   OR b.signerPublicKey = :userPublicKey)",
+                Block.class
+            );
+            query.setParameter("userPublicKey", userPublicKey);
+            query.setMaxResults(maxResults);
+            return query.getResultList();
+        } finally {
+            if (!JPAUtil.hasActiveTransaction()) {
+                em.close();
+            }
+        }
+    }
+
+    /**
+     * Get blocks by encryption status (O(1) indexed query).
+     * <p>
+     * Returns blocks with the specified encryption status.
+     * Useful for getting all public blocks (isEncrypted = false) or encrypted blocks (isEncrypted = true).
+     * </p>
+     * <p><b>⚡ Performance:</b> Uses indexed query on is_encrypted column.</p>
+     * <p><b>⚠️ MEMORY SAFETY:</b> Enforces strict maxResults validation.</p>
+     * <p><b>ℹ️ NOTE:</b> This is a generic repository method that returns ALL blocks
+     * including genesis block (block 0). For user-specific searches that should exclude
+     * genesis, use {@link #getAccessibleBlocks(String, int)} instead.</p>
+     *
+     * @param isEncrypted The encryption status to filter by
+     * @param maxResults Maximum results to return (validated)
+     * @return List of blocks with the specified encryption status (including genesis if matches)
+     *
+     * @since 2025-12-29 (P0 Performance Optimization - ACCESSIBLE support)
+     */
+    public List<Block> getBlocksByIsEncrypted(boolean isEncrypted, int maxResults) {
+        // Validate maxResults
+        if (maxResults <= 0) {
+            throw new IllegalArgumentException(
+                "Max results must be positive (got: " + maxResults + ")"
+            );
+        }
+
+        // Validate maxResults limit
+        if (maxResults > MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS) {
+            throw new IllegalArgumentException(
+                "Max results cannot exceed " + MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS +
+                " (got: " + maxResults + ")"
+            );
+        }
+
+        EntityManager em = JPAUtil.getEntityManager();
+        try {
+            // Indexed query on is_encrypted
+            // NOTE: Includes ALL blocks (including genesis) as this is a generic repository method
+            TypedQuery<Block> query = em.createQuery(
+                "SELECT b FROM Block b WHERE b.isEncrypted = :isEncrypted",
+                Block.class
+            );
+            query.setParameter("isEncrypted", isEncrypted);
+            query.setMaxResults(maxResults);
+            return query.getResultList();
+        } finally {
+            if (!JPAUtil.hasActiveTransaction()) {
+                em.close();
+            }
+        }
+    }
+
+    /**
      * Check if a block with specific number exists
      * FIXED: Added for race condition detection
      */
@@ -887,7 +1039,7 @@ class BlockRepository {
      */
     public void streamBlocksBySignerPublicKey(
             String signerPublicKey,
-            java.util.function.Consumer<Block> blockConsumer) {
+            Consumer<Block> blockConsumer) {
         if (signerPublicKey == null || signerPublicKey.trim().isEmpty()) {
             return;
         }
@@ -916,7 +1068,7 @@ class BlockRepository {
      */
     private void streamBlocksBySignerPublicKeyWithScrollableResults(
             String signerPublicKey,
-            java.util.function.Consumer<Block> blockConsumer,
+            Consumer<Block> blockConsumer,
             EntityManager em) {
         Session session = em.unwrap(Session.class);
 
@@ -965,7 +1117,7 @@ class BlockRepository {
      */
     private void streamBlocksBySignerPublicKeyWithPagination(
             String signerPublicKey,
-            java.util.function.Consumer<Block> blockConsumer,
+            Consumer<Block> blockConsumer,
             EntityManager em) {
         int offset = 0;
         boolean hasMore = true;
@@ -1069,6 +1221,79 @@ class BlockRepository {
                     "SELECT COUNT(b) FROM Block b WHERE b.signerPublicKey = :signerPublicKey",
                     Long.class);
             query.setParameter("signerPublicKey", signerPublicKey);
+            return query.getSingleResult();
+        } finally {
+            if (!JPAUtil.hasActiveTransaction()) {
+                em.close();
+            }
+        }
+    }
+
+    /**
+     * Get blocks encrypted for a specific recipient by their public key
+     * This is the optimized database-level query for recipient filtering
+     *
+     * @param recipientPublicKey The recipient's public key (for whom blocks were encrypted)
+     * @param maxResults Maximum number of results to return (1-10000)
+     * @return List of blocks encrypted for this recipient, ordered by block number ASC
+     * @throws IllegalArgumentException if maxResults is out of valid range
+     *
+     * @since 2025-12-29 (Native Recipient Filtering - Performance Optimization)
+     */
+    public List<Block> getBlocksByRecipientPublicKeyWithLimit(String recipientPublicKey, int maxResults) {
+        if (recipientPublicKey == null || recipientPublicKey.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // ✅ STRICT VALIDATION: Reject maxResults ≤ 0 or > 10K
+        if (maxResults <= 0 || maxResults > MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS) {
+            throw new IllegalArgumentException(
+                    String.format(
+                            "maxResults must be between 1 and %d. " +
+                            "Received: %d. " +
+                            "For unlimited results, use streaming approach.",
+                            MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS,
+                            maxResults
+                    )
+            );
+        }
+
+        EntityManager em = JPAUtil.getEntityManager();
+        try {
+            TypedQuery<Block> query = em.createQuery(
+                    "SELECT b FROM Block b WHERE b.recipientPublicKey = :recipientPublicKey",
+                    Block.class);
+            query.setParameter("recipientPublicKey", recipientPublicKey);
+            query.setMaxResults(maxResults);
+
+            return query.getResultList();
+        } finally {
+            if (!JPAUtil.hasActiveTransaction()) {
+                em.close();
+            }
+        }
+    }
+
+    /**
+     * Count blocks encrypted for a specific recipient
+     * Optimized version for quick impact check
+     *
+     * @param recipientPublicKey The recipient's public key
+     * @return Number of blocks encrypted for this recipient
+     *
+     * @since 2025-12-29 (Native Recipient Filtering)
+     */
+    public long countBlocksByRecipientPublicKey(String recipientPublicKey) {
+        if (recipientPublicKey == null || recipientPublicKey.trim().isEmpty()) {
+            return 0;
+        }
+
+        EntityManager em = JPAUtil.getEntityManager();
+        try {
+            TypedQuery<Long> query = em.createQuery(
+                    "SELECT COUNT(b) FROM Block b WHERE b.recipientPublicKey = :recipientPublicKey",
+                    Long.class);
+            query.setParameter("recipientPublicKey", recipientPublicKey);
             return query.getSingleResult();
         } finally {
             if (!JPAUtil.hasActiveTransaction()) {
@@ -1304,7 +1529,7 @@ class BlockRepository {
             // Sort by priority (manual keywords first)
             return results.stream()
                     .sorted(this::compareSearchPriority)
-                    .collect(java.util.stream.Collectors.toList());
+                    .collect(Collectors.toList());
 
         } finally {
             if (!JPAUtil.hasActiveTransaction()) {
@@ -1334,7 +1559,7 @@ class BlockRepository {
      */
     public void streamBlocksByCategory(
             String category,
-            java.util.function.Consumer<Block> blockConsumer) {
+            Consumer<Block> blockConsumer) {
         if (category == null || category.trim().isEmpty()) {
             return;
         }
@@ -1360,7 +1585,7 @@ class BlockRepository {
      */
     private void streamBlocksByCategoryWithScrollableResults(
             String category,
-            java.util.function.Consumer<Block> blockConsumer,
+            Consumer<Block> blockConsumer,
             EntityManager em) {
         Session session = em.unwrap(Session.class);
 
@@ -1405,7 +1630,7 @@ class BlockRepository {
      */
     private void streamBlocksByCategoryWithPagination(
             String category,
-            java.util.function.Consumer<Block> blockConsumer,
+            Consumer<Block> blockConsumer,
             EntityManager em) {
         int offset = 0;
         boolean hasMore = true;
@@ -1636,9 +1861,9 @@ class BlockRepository {
                         ObjectMapper mapper = new ObjectMapper();
 
                         @SuppressWarnings("unchecked")
-                        java.util.Map<String, Object> jsonMap = mapper.readValue(
+                        Map<String, Object> jsonMap = mapper.readValue(
                                 metadata,
-                                java.util.Map.class);
+                                Map.class);
 
                         // Check if key exists and value matches
                         if (jsonMap.containsKey(jsonKey)) {
@@ -1724,7 +1949,7 @@ class BlockRepository {
      *                                  are invalid
      */
     public List<Block> searchByCustomMetadataMultipleCriteriaPaginated(
-            java.util.Map<String, String> criteria, long offset, int limit) {
+            Map<String, String> criteria, long offset, int limit) {
         // RIGOROUS INPUT VALIDATION
         if (criteria == null) {
             throw new IllegalArgumentException("Criteria map cannot be null");
@@ -1779,13 +2004,13 @@ class BlockRepository {
                         ObjectMapper mapper = new ObjectMapper();
 
                         @SuppressWarnings("unchecked")
-                        java.util.Map<String, Object> jsonMap = mapper.readValue(
+                        Map<String, Object> jsonMap = mapper.readValue(
                                 metadata,
-                                java.util.Map.class);
+                                Map.class);
 
                         // Check ALL criteria (AND logic)
                         boolean allMatch = true;
-                        for (java.util.Map.Entry<String, String> criterion : criteria.entrySet()) {
+                        for (Map.Entry<String, String> criterion : criteria.entrySet()) {
                             String key = criterion.getKey();
                             String expectedValue = criterion.getValue();
 
@@ -2626,7 +2851,7 @@ class BlockRepository {
      *
      * @since 2025-10-08 (Performance Optimization - Phase B.1)
      */
-    public void streamAllBlocksInBatches(java.util.function.Consumer<List<Block>> batchProcessor, int batchSize) {
+    public void streamAllBlocksInBatches(Consumer<List<Block>> batchProcessor, int batchSize) {
         if (batchSize <= 0) {
             throw new IllegalArgumentException("Batch size must be positive");
         }
@@ -2654,7 +2879,7 @@ class BlockRepository {
      * @since 2025-10-08 (Performance Optimization - Phase B.1)
      */
     private void streamAllBlocksWithScrollableResults(
-            java.util.function.Consumer<List<Block>> batchProcessor,
+            Consumer<List<Block>> batchProcessor,
             int batchSize,
             EntityManager em) {
         Session session = em.unwrap(Session.class);
@@ -2710,7 +2935,7 @@ class BlockRepository {
      * @since 2025-10-08 (Performance Optimization - Phase B.1)
      */
     private void streamAllBlocksWithPagination(
-            java.util.function.Consumer<List<Block>> batchProcessor,
+            Consumer<List<Block>> batchProcessor,
             int batchSize,
             EntityManager em) {
         long totalBlocks = getBlockCount();
@@ -2875,9 +3100,9 @@ class BlockRepository {
                         ObjectMapper mapper = new ObjectMapper();
 
                         @SuppressWarnings("unchecked")
-                        java.util.Map<String, Object> jsonMap = mapper.readValue(
+                        Map<String, Object> jsonMap = mapper.readValue(
                                 metadata,
-                                java.util.Map.class);
+                                Map.class);
 
                         // Check if key exists and value matches
                         if (jsonMap.containsKey(jsonKey)) {
@@ -2933,7 +3158,7 @@ class BlockRepository {
      * @since 2025-10-23 (Phase A.5: JSON Metadata Streaming)
      */
     public void streamByCustomMetadataMultipleCriteria(
-            java.util.Map<String, String> criteria, Consumer<Block> resultProcessor) {
+            Map<String, String> criteria, Consumer<Block> resultProcessor) {
         // RIGOROUS INPUT VALIDATION
         if (criteria == null) {
             throw new IllegalArgumentException("Criteria map cannot be null");
@@ -2977,13 +3202,13 @@ class BlockRepository {
                         ObjectMapper mapper = new ObjectMapper();
 
                         @SuppressWarnings("unchecked")
-                        java.util.Map<String, Object> jsonMap = mapper.readValue(
+                        Map<String, Object> jsonMap = mapper.readValue(
                                 metadata,
-                                java.util.Map.class);
+                                Map.class);
 
                         // Check ALL criteria (AND logic)
                         boolean allMatch = true;
-                        for (java.util.Map.Entry<String, String> criterion : criteria.entrySet()) {
+                        for (Map.Entry<String, String> criterion : criteria.entrySet()) {
                             String key = criterion.getKey();
                             String expectedValue = criterion.getValue();
 

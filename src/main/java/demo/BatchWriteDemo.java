@@ -272,7 +272,7 @@ public class BatchWriteDemo {
         long duration = System.currentTimeMillis() - start;
 
         System.out.println();
-        System.out.println("  ⏱️  Duration:      " + duration + "ms");
+        System.out.println("  ⏱️ Duration:      " + duration + "ms");
         System.out.println("  ✅ Blocks indexed: " + indexed);
         System.out.println("  📊 Total blocks:   " + totalBlocks + " (including GENESIS)");
         System.out.println();

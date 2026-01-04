@@ -10,6 +10,7 @@ import com.rbatllet.blockchain.validation.ChainValidationResult;
 import org.junit.jupiter.api.*;
 
 import java.security.KeyPair;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -590,7 +591,7 @@ public class BlockEncryptionIntegrationTest {
         long encryptionTime = System.currentTimeMillis() - startTime;
 
         // RIGOROUS - Verify all blocks have unique block numbers
-        Set<Long> blockNumbers = new java.util.HashSet<>();
+        Set<Long> blockNumbers = new HashSet<>();
         for (Block block : performanceBlocks) {
             blockNumbers.add(block.getBlockNumber());
         }

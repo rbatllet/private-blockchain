@@ -169,7 +169,7 @@ public class AdvancedLoggingDemo {
                 "blockchain",
                 () -> {
                     // Real search through blockchain blocks using batch processing
-                    java.util.List<String> results = new java.util.ArrayList<>();
+                    List<String> results = new ArrayList<>();
                     blockchain.processChainInBatches(batch -> {
                         batch.stream()
                             .filter(block -> block.getData().contains("blockchain"))
@@ -186,7 +186,7 @@ public class AdvancedLoggingDemo {
                 () -> {
                     // Real keyword search through blockchain data using batch processing
                     String[] searchTerms = {"technology", "system", "advanced", "innovation"};
-                    java.util.List<String> results = new java.util.ArrayList<>();
+                    List<String> results = new ArrayList<>();
                     blockchain.processChainInBatches(batch -> {
                         batch.stream()
                             .filter(block -> Arrays.stream(searchTerms).anyMatch(term ->
@@ -203,7 +203,7 @@ public class AdvancedLoggingDemo {
                 "logging system",
                 () -> {
                     // Real advanced search with multiple criteria using batch processing
-                    java.util.List<String> results = new java.util.ArrayList<>();
+                    List<String> results = new ArrayList<>();
                     blockchain.processChainInBatches(batch -> {
                         batch.stream()
                             .filter(block -> block.getData().contains("logging") || block.getData().contains("system"))

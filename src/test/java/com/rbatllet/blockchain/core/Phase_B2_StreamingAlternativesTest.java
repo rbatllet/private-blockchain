@@ -11,6 +11,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.security.KeyPair;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -267,7 +269,7 @@ public class Phase_B2_StreamingAlternativesTest {
 
         // Create 1000 blocks for testing (use batch write for performance + skip indexing for memory safety)
         System.out.println("  📦 Creating 1000 test blocks...");
-        java.util.List<Blockchain.BlockWriteRequest> requests = new java.util.ArrayList<>();
+        List<Blockchain.BlockWriteRequest> requests = new ArrayList<>();
         for (int i = 1; i <= 1000; i++) {
             requests.add(new Blockchain.BlockWriteRequest(
                 "Block " + i,

@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Executors;
@@ -422,8 +423,8 @@ public class LoggingManager {
     private static int getResultCount(Object result) {
         if (result == null) return 0;
         
-        if (result instanceof java.util.Collection) {
-            return ((java.util.Collection<?>) result).size();
+        if (result instanceof Collection) {
+            return ((Collection<?>) result).size();
         }
         
         if (result instanceof Object[]) {

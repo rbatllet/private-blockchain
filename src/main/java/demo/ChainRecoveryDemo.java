@@ -1,14 +1,15 @@
 package demo;
 
+import java.security.KeyPair;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Date;
+
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.recovery.ChainRecoveryManager;
 import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.validation.ChainValidationResult;
-
-import java.security.KeyPair;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 
 /**
  * REFINED VERSION: Demonstration of automatic chain recovery functionality
@@ -274,7 +275,7 @@ public class ChainRecoveryDemo {
                 System.out.println("   🎯 Method used: " + result.getMethod());
                 System.out.println("   📊 Success: " + (result.isSuccess() ? "✅ YES" : "❌ NO"));
                 System.out.println("   💬 Details: " + result.getMessage());
-                System.out.println("   ⏰ Timestamp: " + new java.util.Date(result.getTimestamp()));
+                System.out.println("   ⏰ Timestamp: " + new Date(result.getTimestamp()));
                 
                 // Verify recovery effectiveness
                 if (result.isSuccess()) {

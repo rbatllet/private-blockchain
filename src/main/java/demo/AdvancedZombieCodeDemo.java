@@ -14,6 +14,8 @@ import com.rbatllet.blockchain.util.JPAUtil;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 /**
  * Demo showcasing the powerful "zombie code" capabilities now exposed through UserFriendlyEncryptionAPI
@@ -732,7 +734,7 @@ public class AdvancedZombieCodeDemo {
                 String preview = retrievedDocument
                     .lines()
                     .limit(3)
-                    .collect(java.util.stream.Collectors.joining("\n"));
+                    .collect(Collectors.joining("\n"));
                 System.out.println(
                     "📋 Content preview: " +
                     preview.substring(0, Math.min(60, preview.length())) +
@@ -912,7 +914,7 @@ public class AdvancedZombieCodeDemo {
      * Helper method to count encrypted blocks using batch processing
      */
     private static long countEncryptedBlocks(Blockchain blockchain) {
-        java.util.concurrent.atomic.AtomicLong count = new java.util.concurrent.atomic.AtomicLong(0);
+        AtomicLong count = new AtomicLong(0);
         blockchain.processChainInBatches(batch -> {
             long batchCount = batch.stream()
                 .filter(Block::isDataEncrypted)

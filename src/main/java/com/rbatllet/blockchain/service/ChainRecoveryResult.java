@@ -3,6 +3,7 @@ package com.rbatllet.blockchain.service;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Comprehensive result container for chain recovery operations
@@ -242,7 +243,7 @@ public class ChainRecoveryResult {
         return actions
             .stream()
             .filter(action -> action != null && !action.isSuccess())
-            .collect(java.util.stream.Collectors.toList());
+            .collect(Collectors.toList());
     }
 
     public Map<String, List<RecoveryAction>> groupActionsByType() {

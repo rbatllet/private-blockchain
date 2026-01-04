@@ -3,6 +3,7 @@ package com.rbatllet.blockchain.config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
@@ -108,7 +109,7 @@ public class ConfigurationUtils {
      * @return Map containing encryption configuration
      */
     public static Map<String, String> encryptionConfigToMap(EncryptionConfig config) {
-        Map<String, String> props = new java.util.HashMap<>();
+        Map<String, String> props = new HashMap<>();
         
         props.put("algorithm", config.getEncryptionAlgorithm());
         props.put("mode", config.getEncryptionMode());
@@ -160,7 +161,7 @@ public class ConfigurationUtils {
      * @return Map containing string key-value pairs
      */
     public static Map<String, String> propertiesToStringMap(Properties props) {
-        Map<String, String> map = new java.util.HashMap<>();
+        Map<String, String> map = new HashMap<>();
         for (String key : props.stringPropertyNames()) {
             map.put(key, props.getProperty(key));
         }
@@ -185,7 +186,7 @@ public class ConfigurationUtils {
      * @return Merged configuration map
      */
     public static Map<String, String> mergeConfigMaps(Map<String, String> baseConfig, Map<String, String> priorityConfig) {
-        Map<String, String> merged = new java.util.HashMap<>(baseConfig);
+        Map<String, String> merged = new HashMap<>(baseConfig);
         merged.putAll(priorityConfig);
         return merged;
     }

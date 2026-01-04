@@ -5,6 +5,7 @@ import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 
+import java.io.File;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -113,7 +114,7 @@ public class TestDetailedValidation {
             deleteFileIfExists("blockchain.db-wal");
             
             // Clean up off-chain directory
-            java.io.File offChainDir = new java.io.File("off-chain-data");
+            File offChainDir = new File("off-chain-data");
             if (offChainDir.exists()) {
                 deleteDirectory(offChainDir);
             }
@@ -124,16 +125,16 @@ public class TestDetailedValidation {
     }
     
     private static void deleteFileIfExists(String fileName) {
-        java.io.File file = new java.io.File(fileName);
+        File file = new File(fileName);
         if (file.exists()) {
             file.delete();
         }
     }
     
-    private static void deleteDirectory(java.io.File directory) {
-        java.io.File[] files = directory.listFiles();
+    private static void deleteDirectory(File directory) {
+        File[] files = directory.listFiles();
         if (files != null) {
-            for (java.io.File file : files) {
+            for (File file : files) {
                 if (file.isDirectory()) {
                     deleteDirectory(file);
                 } else {

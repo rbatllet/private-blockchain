@@ -2,6 +2,10 @@ package com.rbatllet.blockchain.indexing;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.util.JPAUtil;
+
+import jakarta.persistence.EntityManager;
+
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -235,12 +239,31 @@ public class IndexingCoordinator {
         logger.info("🚀 Starting coordinated indexing: {}", operation);
 
         long startTime = System.currentTimeMillis();
+        EntityManager dedicatedEM = null;
 
         try {
             // IMPROVED: Double-check shutdown state before proceeding
             if (!isSafeToExecute()) {
                 return IndexingResult.cancelled("Shutdown requested during indexing setup");
             }
+            
+            // OPTION 1 IMPLEMENTATION: Create dedicated EntityManager for this async operation
+            // This prevents "Session/EntityManager is closed" errors when main thread
+            // commits transaction and closes its EntityManager before async indexing starts
+            try {
+                dedicatedEM = JPAUtil.getEntityManager();
+                if (dedicatedEM != null && dedicatedEM.isOpen()) {
+                    request.setDedicatedEntityManager(dedicatedEM);
+                    logger.debug("✅ Created dedicated EntityManager for async indexing: {}", operation);
+                } else {
+                    // NOTE: EntityManager is optional - indexer may create its own if needed
+                    logger.debug("⚠️ No dedicated EntityManager available - indexer will manage its own: {}", operation);
+                }
+            } catch (Exception emEx) {
+                // NOTE: EntityManager creation failure is non-fatal - indexer can create its own
+                logger.debug("EntityManager creation skipped for indexing: {} - {}", operation, emEx.getMessage());
+            }
+            
             // Check if this operation is already completed recently
             AtomicLong lastExecution = indexingProgress.get(operation);
             if (lastExecution != null && !request.isForceRebuild()) {
@@ -299,6 +322,16 @@ public class IndexingCoordinator {
                 e.getMessage()
             );
             return IndexingResult.failed(e.getMessage());
+        } finally {
+            // CRITICAL: Always close dedicated EntityManager to prevent resource leaks
+            if (dedicatedEM != null && dedicatedEM.isOpen()) {
+                try {
+                    dedicatedEM.close();
+                    logger.debug("🔒 Closed dedicated EntityManager for indexing: {}", operation);
+                } catch (Exception closeEx) {
+                    logger.warn("⚠️ Error closing EntityManager for {}: {}", operation, closeEx.getMessage());
+                }
+            }
         }
     }
 
@@ -557,6 +590,7 @@ public class IndexingCoordinator {
         private final boolean forceExecution;
         private final boolean canWait;
         private final long minIntervalMs;
+        private EntityManager dedicatedEntityManager;
 
         public IndexingRequest(String operation) {
             this(operation, null, null, false, false, true, 1000L);
@@ -607,6 +641,22 @@ public class IndexingCoordinator {
 
         public long getMinIntervalMs() {
             return minIntervalMs;
+        }
+
+        /**
+         * Get dedicated EntityManager for this indexing operation.
+         * Will be null if not created yet by executeIndexing().
+         */
+        public EntityManager getDedicatedEntityManager() {
+            return dedicatedEntityManager;
+        }
+
+        /**
+         * Set dedicated EntityManager (called by executeIndexing).
+         * Package-private - only IndexingCoordinator should call this.
+         */
+        void setDedicatedEntityManager(EntityManager em) {
+            this.dedicatedEntityManager = em;
         }
 
         // Builder pattern for easy construction

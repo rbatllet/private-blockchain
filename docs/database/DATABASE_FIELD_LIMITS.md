@@ -15,6 +15,7 @@ All VARCHAR fields with size limits now have validation in their setters that th
 | `data` | TEXT | unlimited | ❌ No | Main block content |
 | `signature` | TEXT | unlimited | ❌ No | ML-DSA-87 signature (NIST FIPS 204, 256-bit quantum-resistant) |
 | `signerPublicKey` | TEXT | unlimited | ❌ No | Public key |
+| `recipientPublicKey` | TEXT | unlimited | ❌ No (immutable) | Recipient's public key (for encrypted blocks) |
 | `manualKeywords` | VARCHAR(1024) | 1024 chars | ✅ **Yes** | User-provided keywords |
 | `autoKeywords` | VARCHAR(1024) | 1024 chars | ✅ **Yes** | Auto-extracted keywords |
 | `searchableContent` | VARCHAR(2048) | 2048 chars | ✅ **Yes** | Combined manual + auto |

@@ -15,6 +15,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.Collections;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.security.PrivateKey;
 import com.rbatllet.blockchain.service.SecureBlockEncryptionService;
 
@@ -509,7 +511,7 @@ public class MetadataLayerManager {
         try {
             // Decode enough bytes to check magic numbers
             String sample = base64Data.substring(0, Math.min(100, base64Data.length()));
-            byte[] decoded = java.util.Base64.getDecoder().decode(sample);
+            byte[] decoded = Base64.getDecoder().decode(sample);
             
             // PDF magic number: %PDF
             if (startsWith(decoded, new byte[]{0x25, 0x50, 0x44, 0x46})) {
@@ -760,8 +762,8 @@ public class MetadataLayerManager {
         };
         
         for (String pattern : patterns) {
-            java.util.regex.Pattern p = java.util.regex.Pattern.compile(pattern);
-            java.util.regex.Matcher m = p.matcher(content);
+            Pattern p = Pattern.compile(pattern);
+            Matcher m = p.matcher(content);
             while (m.find()) {
                 dates.add(m.group());
             }
@@ -774,15 +776,15 @@ public class MetadataLayerManager {
         Set<String> ids = new HashSet<>();
         
         // Email pattern
-        java.util.regex.Pattern emailPattern = java.util.regex.Pattern.compile("\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\\b");
-        java.util.regex.Matcher emailMatcher = emailPattern.matcher(content);
+        Pattern emailPattern = Pattern.compile("\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\\b");
+        Matcher emailMatcher = emailPattern.matcher(content);
         while (emailMatcher.find()) {
             ids.add(emailMatcher.group());
         }
         
         // ID patterns (e.g., TXN-123456, ACC-789)
-        java.util.regex.Pattern idPattern = java.util.regex.Pattern.compile("\\b[A-Z]{2,}-\\d+\\b");
-        java.util.regex.Matcher idMatcher = idPattern.matcher(content);
+        Pattern idPattern = Pattern.compile("\\b[A-Z]{2,}-\\d+\\b");
+        Matcher idMatcher = idPattern.matcher(content);
         while (idMatcher.find()) {
             ids.add(idMatcher.group());
         }

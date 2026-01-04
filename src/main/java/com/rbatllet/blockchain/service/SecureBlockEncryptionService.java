@@ -276,7 +276,7 @@ public class SecureBlockEncryptionService {
             
             // Try to parse as Base64 (our format uses Base64 encoding)
             try {
-                java.util.Base64.getDecoder().decode(encryptedString);
+                Base64.getDecoder().decode(encryptedString);
                 return true;
             } catch (IllegalArgumentException e) {
                 // Not valid Base64, might be different format but could still be valid
