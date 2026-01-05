@@ -82,6 +82,13 @@ class UserFriendlyEncryptionAPIOptimizationTest {
 
     @AfterEach
     void tearDown() {
+        // CRITICAL: Wait for all async indexing to complete before shutdown (Phase 5.4)
+        try {
+            IndexingCoordinator.getInstance().waitForCompletion(5000); // 5 seconds
+        } catch (Exception e) {
+            logger.warn("Waiting for indexing completion warning: {}", e.getMessage());
+        }
+
         // Graceful shutdown order to prevent "Shutdown requested" errors
         if (blockchain != null) {
             try {
@@ -91,14 +98,17 @@ class UserFriendlyEncryptionAPIOptimizationTest {
                 logger.warn("Blockchain shutdown warning: {}", e.getMessage());
             }
         }
-        
+
         // Then shutdown coordinator (will be already shutting down, but ensure clean state)
         try {
             IndexingCoordinator.getInstance().shutdown();
         } catch (Exception e) {
             logger.warn("IndexingCoordinator shutdown warning: {}", e.getMessage());
         }
-        
+
+        // CRITICAL: Clear shutdown flag for next test (Phase 5.4 singleton state management)
+        IndexingCoordinator.getInstance().clearShutdownFlag();
+
         // Finally disable test mode
         IndexingCoordinator.getInstance().disableTestMode();
     }

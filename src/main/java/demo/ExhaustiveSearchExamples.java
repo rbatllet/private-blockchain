@@ -210,16 +210,17 @@ public class ExhaustiveSearchExamples {
             publicKeyString,
             "text/plain"
         );
-        
-        // Create block with off-chain reference
-        Block block = blockchain.addEncryptedBlockWithKeywords(
+
+        // Create block with off-chain reference using the correct method
+        // Keywords include content from off-chain file for searchability
+        Block block = blockchain.addBlockWithOffChainData(
             "Medical record with off-chain detailed patient information",
+            offChainData,
+            new String[]{"medical", "patient", "record", "offchain", "hypertension", "cardiac", "diagnosis"},
             DEMO_PASSWORD,
-            new String[]{"medical", "patient", "record", "offchain"},
-            "MEDICAL",
-            privateKey, publicKey
+            privateKey,
+            publicKey
         );
-        block.setOffChainData(offChainData);
         
         // Index blockchain with off-chain content
         searchEngine.indexBlockchain(blockchain, DEMO_PASSWORD, privateKey);

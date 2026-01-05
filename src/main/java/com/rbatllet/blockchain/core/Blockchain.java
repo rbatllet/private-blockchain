@@ -2758,6 +2758,70 @@ public class Blockchain {
     }
 
     /**
+     * Attach off-chain data to an existing block.
+     *
+     * IMPORTANT: This method properly persists the off-chain data relationship to the database.
+     * DO NOT use block.setOffChainData() directly - it only modifies the in-memory object!
+     *
+     * @param blockNumber The block number to attach off-chain data to
+     * @param offChainData The off-chain data to attach (must not be null)
+     * @return true if successful, false otherwise
+     * @throws IllegalArgumentException if blockNumber or offChainData is null
+     */
+    public boolean attachOffChainDataToBlock(Long blockNumber, OffChainData offChainData) {
+        if (blockNumber == null) {
+            throw new IllegalArgumentException("Block number cannot be null");
+        }
+        if (offChainData == null) {
+            throw new IllegalArgumentException("Off-chain data cannot be null");
+        }
+
+        long stamp = GLOBAL_BLOCKCHAIN_LOCK.writeLock();
+        try {
+            Boolean result = JPAUtil.executeInTransaction(em -> {
+                try {
+                    // 1. Find the block
+                    Block block = em.find(Block.class, blockNumber);
+                    if (block == null) {
+                        logger.error("❌ Block #{} not found", blockNumber);
+                        return false;
+                    }
+
+                    // 2. Ensure off-chain data is persisted
+                    if (offChainData.getId() == null) {
+                        em.persist(offChainData);
+                        em.flush();
+                        logger.debug("✅ Off-chain data persisted with ID: {}", offChainData.getId());
+                    } else {
+                        // Merge if already has ID but might be detached
+                        em.merge(offChainData);
+                    }
+
+                    // 3. Attach off-chain data to block
+                    block.setOffChainData(offChainData);
+
+                    // 4. Merge and persist changes
+                    em.merge(block);
+                    em.flush();
+
+                    logger.info(
+                        "✅ Off-chain data (ID: {}) attached to Block #{} and persisted to database",
+                        offChainData.getId(),
+                        blockNumber
+                    );
+                    return true;
+                } catch (Exception e) {
+                    logger.error("❌ Error attaching off-chain data to block #{}", blockNumber, e);
+                    return false;
+                }
+            });
+            return result != null && result;
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.unlockWrite(stamp);
+        }
+    }
+
+    /**
      * Decrypt and retrieve block data
      *
      * @param blockNumber The block number of the encrypted block

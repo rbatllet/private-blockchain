@@ -437,17 +437,80 @@ public class OffChainStorageTest {
         assertNotNull(blockchain.getBlock(0L)); // Genesis block
     }
     
+    @Test
+    @DisplayName("Test attachOffChainDataToBlock method")
+    void testAttachOffChainDataToBlock() throws Exception {
+        String largeData = generateLargeTestData(600 * 1024);
+        String smallData = "Small on-chain data";
+
+        // Create off-chain data first
+        OffChainData offChainData = offChainService.storeData(
+            largeData.getBytes(),
+            "testPassword123",
+            testPrivateKey,
+            testPublicKeyString,
+            "text/plain"
+        );
+
+        // Create block WITHOUT off-chain data (encrypted block)
+        Block block = blockchain.addEncryptedBlockWithKeywords(
+            smallData,
+            "testPassword123",
+            new String[]{"test", "attach"},
+            "TEST",
+            testPrivateKey,
+            testPublicKey
+        );
+
+        assertNotNull(block);
+        assertFalse(block.hasOffChainData(), "Block should not have off-chain data initially");
+
+        // Now attach off-chain data using new method
+        boolean success = blockchain.attachOffChainDataToBlock(block.getBlockNumber(), offChainData);
+
+        assertTrue(success, "Attaching off-chain data should succeed");
+
+        // Retrieve the block again to verify persistence
+        Block updatedBlock = blockchain.getBlock(block.getBlockNumber());
+        assertNotNull(updatedBlock);
+        assertTrue(updatedBlock.hasOffChainData(), "Block should now have off-chain data");
+        assertNotNull(updatedBlock.getOffChainData());
+        assertEquals(offChainData.getDataHash(), updatedBlock.getOffChainData().getDataHash());
+
+        // Verify we can retrieve the complete data
+        String completeData = blockchain.getCompleteBlockData(updatedBlock);
+        assertNotNull(completeData);
+        // The block's on-chain data should still be the encrypted small data
+        assertNotEquals(largeData, completeData);
+
+        // Verify off-chain file exists
+        assertTrue(offChainService.fileExists(updatedBlock.getOffChainData()));
+
+        // Test error cases
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.attachOffChainDataToBlock(null, offChainData);
+        });
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.attachOffChainDataToBlock(block.getBlockNumber(), null);
+        });
+
+        // Test attaching to non-existent block
+        boolean failResult = blockchain.attachOffChainDataToBlock(999999L, offChainData);
+        assertFalse(failResult, "Attaching to non-existent block should fail");
+    }
+
     /**
      * Helper method to generate large test data
      */
     private String generateLargeTestData(int sizeBytes) {
         StringBuilder sb = new StringBuilder();
         String pattern = "This is test data for off-chain storage testing. ";
-        
+
         while (sb.length() < sizeBytes) {
             sb.append(pattern);
         }
-        
+
         return sb.substring(0, sizeBytes);
     }
 }
