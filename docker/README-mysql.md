@@ -8,20 +8,28 @@ This configuration provides a MySQL 8.0 server with SSL/TLS enabled, ideal for d
 
 ```
 docker/
-├── docker-compose-mysql.yml    # Docker Compose configuration for MySQL
-├── start-mysql.sh               # Quick start script for MySQL
-├── test-mysql-ssl-connection.sh # SSL connection test script
-└── mysql/
-    ├── generate-certs.sh        # SSL certificates generator
+├── .env                         # Environment variables (passwords, config)
+├── .env.example                 # Template for environment variables
+├── .gitignore                   # Git ignore rules (excludes .env and certs)
+│
+├── README.md                    # General overview
+├── README-mysql.md              # MySQL 8.0 documentation (this file)
+│
+├── docker-compose-mysql.yml      # Docker Compose configuration for MySQL
+├── start-mysql.zsh               # MySQL quick start script
+├── test-mysql-ssl-connection.zsh # MySQL SSL connection test script
+│
+└── mysql/                       # MySQL-specific files
+    ├── generate-certs.zsh       # SSL certificates generator
     ├── config/
     │   └── my.cnf               # MySQL custom configuration
     └── certs/                   # SSL certificates (generated)
-        ├── ca.pem              # CA Certificate
-        ├── ca-key.pem          # CA Private Key
-        ├── server-cert.pem     # Server Certificate
-        ├── server-key.pem      # Server Private Key
-        ├── client-cert.pem     # Client Certificate (optional)
-        └── client-key.pem      # Client Private Key (optional)
+        ├── ca.pem               # CA Certificate
+        ├── ca-key.pem           # CA Private Key (keep secure!)
+        ├── server-cert.pem      # Server Certificate
+        ├── server-key.pem       # Server Private Key (keep secure!)
+        ├── client-cert.pem      # Client Certificate (optional)
+        └── client-key.pem       # Client Private Key (optional)
 ```
 
 ## 🚀 Quick Start
@@ -30,7 +38,7 @@ docker/
 
 ```bash
 cd docker
-./start-mysql.sh
+./start-mysql.zsh
 ```
 
 This script will:
@@ -44,7 +52,7 @@ This script will:
 
 ```bash
 cd docker/mysql
-./generate-certs.sh
+./generate-certs.zsh
 ```
 
 This will generate RSA 3072-bit self-signed certificates valid for 2 years (NIST-compliant).
@@ -59,9 +67,8 @@ docker-compose -f docker-compose-mysql.yml up -d
 #### 3. Verify SSL is enabled
 
 ```bash
-# Connect to MySQL
+# Connect to MySQL (password from .env file: MYSQL_ROOT_PASSWORD)
 docker exec -it mysql-blockchain-ssl mysql -u root -p
-# Password: RootPassword123!
 
 # Inside MySQL, run:
 SHOW VARIABLES LIKE '%ssl%';
@@ -199,11 +206,11 @@ docker exec -it mysql-blockchain-ssl mysql -u root -pRootPassword123!
 ### Connect as different users
 
 ```bash
-# Connect as root user
-docker exec -it mysql-blockchain-ssl mysql -u root -pRootPassword123!
+# Connect as root user (password from .env: MYSQL_ROOT_PASSWORD)
+docker exec -it mysql-blockchain-ssl mysql -u root -p
 
-# Connect as application user
-docker exec -it mysql-blockchain-ssl mysql -u blockchain_user -pSecurePassword123! blockchain_prod
+# Connect as application user (password from .env: MYSQL_PASSWORD)
+docker exec -it mysql-blockchain-ssl mysql -u blockchain_user -p blockchain_prod
 ```
 
 ### Common MySQL commands
@@ -355,7 +362,7 @@ docker-compose -f docker-compose-mysql.yml --profile tools up -d
 
 # Access at: http://localhost:8080
 # User: root
-# Password: RootPassword123!
+# Password: (value from .env file: MYSQL_ROOT_PASSWORD)
 ```
 
 ## 🔒 SSL Certificate Details
@@ -378,7 +385,7 @@ For **production**, use certificates from a trusted CA such as:
 ```bash
 cd docker/mysql
 rm -rf certs/*
-./generate-certs.sh
+./generate-certs.zsh
 docker-compose -f docker-compose-mysql.yml restart mysql
 ```
 
@@ -459,7 +466,7 @@ openssl s_client -connect localhost:3306 -showcerts
 
 ```bash
 cd docker
-./test-mysql-ssl-connection.sh
+./test-mysql-ssl-connection.zsh
 ```
 
 This script will verify:

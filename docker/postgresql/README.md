@@ -10,14 +10,14 @@ This configuration provides a PostgreSQL 18 server with SSL/TLS enabled, ideal f
 docker/
 ├── docker-compose-postgres.yml # Docker Compose configuration
 └── postgresql/
-    ├── generate-certs.sh       # SSL certificates generator
+    ├── generate-certs.zsh      # SSL certificates generator
     ├── config/
     │   └── postgresql.conf     # PostgreSQL custom configuration
     └── certs/                  # SSL certificates (generated)
-        ├── ca.pem             # CA Certificate
-        ├── ca-key.pem         # CA Private Key
-        ├── server-cert.pem    # Server Certificate
-        └── server-key.pem     # Server Private Key
+        ├── ca.pem              # CA Certificate
+        ├── ca-key.pem          # CA Private Key
+        ├── server-cert.pem     # Server Certificate
+        └── server-key.pem      # Server Private Key
 ```
 
 ## 🚀 Quick Start
@@ -26,7 +26,7 @@ docker/
 
 ```bash
 cd docker
-./start-postgres.sh
+./start-postgres.zsh
 ```
 
 This script will:
@@ -40,7 +40,7 @@ This script will:
 
 ```bash
 cd docker/postgresql
-./generate-certs.sh
+./generate-certs.zsh
 ```
 
 This will generate RSA 3072-bit self-signed certificates valid for 2 years (NIST-compliant).
@@ -245,7 +245,7 @@ For **production**, use certificates from a trusted CA such as:
 ```bash
 cd docker/postgresql
 rm -rf certs/*
-./generate-certs.sh
+./generate-certs.zsh
 docker-compose -f docker-compose-postgres.yml restart postgres
 ```
 

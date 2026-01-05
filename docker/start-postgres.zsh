@@ -3,7 +3,7 @@
 # PostgreSQL Docker SSL Setup - Quick Start Script
 # =============================================================================
 # This script automates the setup of PostgreSQL with SSL/TLS
-# Usage: ./start-postgres.sh
+# Usage: ./start-postgres.zsh
 # =============================================================================
 
 set -e
@@ -25,8 +25,8 @@ echo ""
 echo -e "${GREEN}[1/3]${NC} Generating SSL certificates..."
 cd "${SCRIPT_DIR}/postgresql"
 if [[ ! -f "certs/ca.pem" ]]; then
-    chmod +x generate-certs.sh
-    ./generate-certs.sh
+    chmod +x generate-certs.zsh
+    ./generate-certs.zsh
 else
     echo -e "  ${YELLOW}⚠${NC} Certificates already exist, skipping generation"
 fi
@@ -55,7 +55,7 @@ echo -e "  ${BLUE}User:${NC}     blockchain_user"
 echo -e "  ${BLUE}Password:${NC} SecurePassword123!"
 echo ""
 echo -e "${YELLOW}Test Connection:${NC}"
-echo -e "  ${BLUE}./test-postgres-ssl-connection.sh${NC}"
+echo -e "  ${BLUE}./test-postgres-ssl-connection.zsh${NC}"
 echo ""
 echo -e "${YELLOW}JDBC URL (v1.0.6+):${NC}"
 echo -e "  ${BLUE}jdbc:postgresql://localhost:5432/blockchain_prod?ssl=true&sslmode=verify-full${NC}"

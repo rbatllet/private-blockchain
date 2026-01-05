@@ -15,10 +15,10 @@ This directory contains Docker configurations for running PostgreSQL 18 and MySQ
 
 ```bash
 # Automated setup
-./start-postgres.sh
+./start-postgres.zsh
 
 # Or manual setup
-cd postgresql && ./generate-certs.sh && cd ..
+cd postgresql && ./generate-certs.zsh && cd ..
 docker-compose -f docker-compose-postgres.yml up -d
 ```
 
@@ -28,10 +28,10 @@ docker-compose -f docker-compose-postgres.yml up -d
 
 ```bash
 # Automated setup
-./start-mysql.sh
+./start-mysql.zsh
 
 # Or manual setup
-cd mysql && ./generate-certs.sh && cd ..
+cd mysql && ./generate-certs.zsh && cd ..
 docker-compose -f docker-compose-mysql.yml up -d
 ```
 
@@ -43,25 +43,25 @@ docker-compose -f docker-compose-mysql.yml up -d
 docker/
 ├── README.md                      # This file - General overview
 ├── README-mysql.md                # MySQL 8.0 documentation
-├── README-postgresql.md            # PostgreSQL 18 documentation
+├── README-postgresql.md           # PostgreSQL 18 documentation
 │
-├── docker-compose-mysql.yml       # MySQL Docker configuration
+├── docker-compose-mysql.yml        # MySQL Docker configuration
 ├── docker-compose-postgres.yml     # PostgreSQL Docker configuration
 │
-├── start-mysql.sh                 # MySQL quick start script
-├── start-postgres.sh              # PostgreSQL quick start script
+├── start-mysql.zsh                 # MySQL quick start script
+├── start-postgres.zsh              # PostgreSQL quick start script
 │
-├── test-mysql-ssl-connection.sh   # MySQL SSL test script
-├── test-postgres-ssl-connection.sh # PostgreSQL SSL test script
+├── test-mysql-ssl-connection.zsh    # MySQL SSL test script
+├── test-postgres-ssl-connection.zsh # PostgreSQL SSL test script
 │
 ├── mysql/                         # MySQL-specific files
-│   ├── generate-certs.sh          # SSL certificate generator
+│   ├── generate-certs.zsh         # SSL certificate generator
 │   ├── config/my.cnf              # MySQL configuration
 │   └── certs/                     # SSL certificates (generated)
 │
 └── postgresql/                    # PostgreSQL-specific files
-    ├── generate-certs.sh          # SSL certificate generator
-    ├── config/postgresql.conf    # PostgreSQL configuration
+    ├── generate-certs.zsh         # SSL certificate generator
+    ├── config/postgresql.conf     # PostgreSQL configuration
     └── certs/                     # SSL certificates (generated)
 ```
 
@@ -125,12 +125,12 @@ docker-compose -f docker-compose-mysql.yml down -v
 
 ### PostgreSQL
 ```bash
-./test-postgres-ssl-connection.sh
+./test-postgres-ssl-connection.zsh
 ```
 
 ### MySQL
 ```bash
-./test-mysql-ssl-connection.sh
+./test-mysql-ssl-connection.zsh
 ```
 
 ## 🔒 Security Notes
@@ -138,7 +138,9 @@ docker-compose -f docker-compose-mysql.yml down -v
 - All databases use **self-signed certificates** for development
 - SSL/TLS is **required** for all connections
 - In production, use certificates from a trusted CA
-- Change default passwords before deploying to production
+- **Configuration via `.env` file**: All passwords and settings are stored in the `.env` file
+- **Change default passwords**: Update the `.env` file before deploying to production
+- The `.env` file is excluded from version control via `.gitignore`
 
 ## 📚 Detailed Documentation
 

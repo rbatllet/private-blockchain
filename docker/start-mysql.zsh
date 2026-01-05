@@ -3,7 +3,7 @@
 # MySQL SSL Docker - Quick Start Script
 # Private Blockchain Development Environment
 # =============================================================================
-# Usage: ./start-mysql.sh [--with-phpmyadmin] [--skip-certs]
+# Usage: ./start-mysql.zsh [--with-phpmyadmin] [--skip-certs]
 # =============================================================================
 
 set -e
@@ -49,10 +49,10 @@ if [ "$SKIP_CERTS" = false ]; then
     echo -e "${GREEN}[1/3]${NC} Generating SSL certificates..."
     if [ -f "mysql/certs/ca.pem" ]; then
         echo -e "${YELLOW}  ⚠ Certificates already exist. Skipping generation.${NC}"
-        echo -e "${YELLOW}  To regenerate: rm -rf mysql/certs && ./start-mysql.sh${NC}"
+        echo -e "${YELLOW}  To regenerate: rm -rf mysql/certs && ./start-mysql.zsh${NC}"
     else
         cd mysql
-        ./generate-certs.sh
+        ./generate-certs.zsh
         cd ..
     fi
 else
@@ -97,7 +97,7 @@ echo ""
 echo -e "${YELLOW}Next steps:${NC}"
 echo -e "  1. Wait for MySQL to be ready (~10 seconds)"
 echo -e "  2. Verify SSL: ${YELLOW}docker exec -it mysql-blockchain-ssl mysql -u root -pRootPassword123! -e 'SHOW VARIABLES LIKE \"%ssl%\"'${NC}"
-echo -e "  3. Run SSL test: ${YELLOW}./test-mysql-ssl-connection.sh${NC}"
+echo -e "  3. Run SSL test: ${YELLOW}./test-mysql-ssl-connection.zsh${NC}"
 echo -e "  4. Run tests: ${YELLOW}cd .. && mvn test${NC}"
 echo ""
 echo -e "${YELLOW}Useful commands:${NC}"

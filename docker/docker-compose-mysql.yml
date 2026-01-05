@@ -3,7 +3,7 @@
 # Private Blockchain - Development/Testing Environment
 # =============================================================================
 # Usage:
-#   1. Generate SSL certificates: cd mysql && ./generate-certs.sh
+#   1. Generate SSL certificates: cd mysql && ./generate-certs.zsh
 #   2. Start containers: docker-compose up -d
 #   3. View logs: docker-compose logs -f mysql
 #   4. Stop containers: docker-compose down
@@ -18,20 +18,20 @@ services:
     hostname: mysql-blockchain
 
     environment:
-      # Root password (CHANGE THIS FOR PRODUCTION!)
-      MYSQL_ROOT_PASSWORD: RootPassword123!
+      # Root password (from .env file)
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_ROOT_HOST: '%'
 
-      # Application database and user
-      MYSQL_DATABASE: blockchain_prod
-      MYSQL_USER: blockchain_user
-      MYSQL_PASSWORD: SecurePassword123!
+      # Application database and user (from .env file)
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
 
       # MySQL 8.x authentication plugin
       MYSQL_AUTHENTICATION_PLUGIN: mysql_native_password
 
     ports:
-      - "3306:3306"
+      - "${MYSQL_PORT:-3306}:3306"
 
     volumes:
       # Persist MySQL data
@@ -57,7 +57,7 @@ services:
       - --collation-server=utf8mb4_unicode_ci
 
     healthcheck:
-      test: ["CMD", "sh", "-c", "MYSQL_PWD=RootPassword123! mysqladmin ping -h localhost -u root --ssl-mode=REQUIRED"]
+      test: ["CMD", "sh", "-c", "MYSQL_PWD=$${MYSQL_ROOT_PASSWORD} mysqladmin ping -h localhost -u root --ssl-mode=REQUIRED"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -85,11 +85,11 @@ services:
       PMA_HOST: mysql
       PMA_PORT: 3306
       PMA_USER: root
-      PMA_PASSWORD: RootPassword123!
+      PMA_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       UPLOAD_LIMIT: 100M
 
     ports:
-      - "8080:80"
+      - "${PHPMYADMIN_PORT:-8080}:80"
 
     depends_on:
       mysql:
@@ -106,9 +106,9 @@ services:
 volumes:
   mysql_data:
     driver: local
-    name: blockchain_mysql_data
+    name: ${MYSQL_VOLUME:-blockchain_mysql_data}
 
 networks:
   blockchain-network:
     driver: bridge
-    name: blockchain_network
+    name: ${NETWORK_NAME:-blockchain_network}

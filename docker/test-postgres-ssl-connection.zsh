@@ -3,7 +3,7 @@
 # PostgreSQL SSL Connection Test Script
 # =============================================================================
 # Tests the SSL connection to PostgreSQL Docker container
-# Usage: ./test-postgres-ssl-connection.sh
+# Usage: ./test-postgres-ssl-connection.zsh
 # =============================================================================
 
 set -e

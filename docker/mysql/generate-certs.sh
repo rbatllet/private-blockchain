@@ -4,7 +4,7 @@
 # =============================================================================
 # Generates self-signed SSL certificates for MySQL 8.0
 # RSA 3072-bit (NIST-compliant), valid for 2 years (730 days)
-# Usage: ./generate-certs.sh
+# Usage: ./generate-certs.zsh
 # =============================================================================
 
 set -e  # Exit on error
