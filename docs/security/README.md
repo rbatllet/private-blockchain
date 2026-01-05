@@ -2,7 +2,7 @@
 
 This directory contains comprehensive security, encryption, and key management documentation for the Private Blockchain.
 
-## 📚 Documents in This Directory (16 files)
+## 📚 Documents in This Directory (17 files)
 
 ### 🎯 Essential Guides
 | Document | Description | Recommended For |
@@ -27,6 +27,7 @@ This directory contains comprehensive security, encryption, and key management d
 |----------|-------------|-----------------|
 | **[SECURITY_CLASSES_GUIDE.md](SECURITY_CLASSES_GUIDE.md)** | Security classes reference documentation | API reference |
 | **[RETROACTIVE_ENCRYPTION_QUICK_REFERENCE.md](RETROACTIVE_ENCRYPTION_QUICK_REFERENCE.md)** | Quick reference for retroactive encryption | Quick lookup |
+| **[KEY_DERIVATION_GUIDE.md](KEY_DERIVATION_GUIDE.md)** | Key derivation functions and PBKDF2 usage | Cryptographic key generation |
 | **[CALLER_IDENTIFICATION_PROPOSAL.md](CALLER_IDENTIFICATION_PROPOSAL.md)** | 🆕 **v1.0.6** Caller identification for RBAC implementation | Architecture reference |
 
 ### 🚨 Vulnerability Reports & Security Fixes
@@ -201,5 +202,5 @@ If you discover a security vulnerability, please report it to the project mainta
 ---
 
 **Directory**: `docs/security/`
-**Files**: 16
-**Last Updated**: 2025-11-21
+**Files**: 17
+**Last Updated**: 2026-01-05

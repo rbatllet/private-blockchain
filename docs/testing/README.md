@@ -2,19 +2,21 @@
 
 This directory contains comprehensive testing guides, thread-safety standards, and concurrent programming patterns for the Private Blockchain.
 
-## 📚 Documents in This Directory (5 files)
+## 📚 Documents in This Directory (7 files)
 
 ### 🎯 Essential Guides
 | Document | Description | Recommended For |
 |----------|-------------|-----------------|
 | **[TESTING.md](TESTING.md)** | Complete testing guide with 828+ tests | **START HERE** - All developers |
 | **[THREAD_SAFETY_STANDARDS.md](THREAD_SAFETY_STANDARDS.md)** | Concurrency best practices and patterns | Thread-safe code |
+| **[AUTO_GENESIS_KEY_GENERATION.md](AUTO_GENESIS_KEY_GENERATION.md)** | Automatic genesis key generation for tests | Test setup automation |
 
 ### 🔒 Thread-Safety Patterns
 | Document | Description | Recommended For |
 |----------|-------------|-----------------|
 | **[THREAD_SAFETY_TESTS.md](THREAD_SAFETY_TESTS.md)** | Thread-safety testing guide | Concurrent testing |
 | **[SHARED_STATE_TESTING_PATTERNS.md](SHARED_STATE_TESTING_PATTERNS.md)** | Testing static/singleton shared state | Complex test scenarios |
+| **[PHASE_5_4_TEST_ISOLATION_GUIDE.md](PHASE_5_4_TEST_ISOLATION_GUIDE.md)** | Phase 5.4 singleton state management patterns | Async indexing test isolation |
 | **[Thread Safety & Semaphores](../development/SEMAPHORE_INDEXING_IMPLEMENTATION.md)** | Per-block semaphore coordination | Concurrent indexing |
 
 ## 🚀 Recommended Reading Order
@@ -212,5 +214,5 @@ for (int i = 0; i < 100; i++) {
 ---
 
 **Directory**: `docs/testing/`
-**Files**: 5
-**Last Updated**: 2025-10-04
+**Files**: 7
+**Last Updated**: 2026-01-05
