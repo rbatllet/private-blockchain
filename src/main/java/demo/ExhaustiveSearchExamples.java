@@ -213,7 +213,7 @@ public class ExhaustiveSearchExamples {
 
         // Create block with off-chain reference using the correct method
         // Keywords include content from off-chain file for searchability
-        Block block = blockchain.addBlockWithOffChainData(
+        blockchain.addBlockWithOffChainData(
             "Medical record with off-chain detailed patient information",
             offChainData,
             new String[]{"medical", "patient", "record", "offchain", "hypertension", "cardiac", "diagnosis"},
