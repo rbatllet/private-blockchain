@@ -6,7 +6,7 @@ import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.*;
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.security.UserRole;
-import com.rbatllet.blockchain.testutil.GenesisKeyManager;
+import com.rbatllet.blockchain.util.TestGenesisKeyManager;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -44,7 +44,7 @@ public class SearchSpecialistAPIComprehensiveTest {
         blockchain.clearAndReinitialize();
 
         // Load bootstrap admin keys (auto-generates if missing - test-only)
-        bootstrapKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
+        bootstrapKeyPair = TestGenesisKeyManager.ensureGenesisKeysExist();
 
         // SECURITY (v1.0.6): Register bootstrap admin in blockchain (REQUIRED!)
         blockchain.createBootstrapAdmin(

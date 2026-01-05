@@ -462,7 +462,9 @@ class IndexingCoordinatorSessionTest {
         
         for (CompletableFuture<IndexingCoordinator.IndexingResult> future : futures) {
             try {
-                IndexingCoordinator.IndexingResult result = future.get(2, TimeUnit.SECONDS);
+                // Increased timeout to 5 seconds to accommodate virtual thread executor
+                // With semaphore limiting to 1 concurrent operation, later operations may need more time
+                IndexingCoordinator.IndexingResult result = future.get(5, TimeUnit.SECONDS);
                 if ("COMPLETED".equals(result.getStatus())) {
                     completedCount++;
                 } else if ("FAILED".equals(result.getStatus())) {

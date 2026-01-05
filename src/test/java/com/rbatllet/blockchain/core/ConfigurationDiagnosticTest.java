@@ -20,7 +20,7 @@ public class ConfigurationDiagnosticTest {
         System.out.println("MaxBlockSizeBytes: " + blockchain.getMaxBlockSizeBytes());
         System.out.println("OffChainThresholdBytes: " + blockchain.getCurrentOffChainThresholdBytes());
 
-        assertEquals(1024 * 1024, blockchain.getMaxBlockSizeBytes(), "Initial MaxBlockSizeBytes should be 1MB");
+        assertEquals(10 * 1024 * 1024, blockchain.getMaxBlockSizeBytes(), "Initial MaxBlockSizeBytes should be 10MB");
         assertEquals(512 * 1024, blockchain.getCurrentOffChainThresholdBytes(), "Initial OffChainThresholdBytes should be 512KB");
     }
 
@@ -49,8 +49,8 @@ public class ConfigurationDiagnosticTest {
         System.out.println("MaxBlockSizeBytes: " + blockchain.getMaxBlockSizeBytes());
         System.out.println("OffChainThresholdBytes: " + blockchain.getCurrentOffChainThresholdBytes());
 
-        assertEquals(1024 * 1024, blockchain.getMaxBlockSizeBytes(),
-            "New instance should have default MaxBlockSizeBytes");
+        assertEquals(10 * 1024 * 1024, blockchain.getMaxBlockSizeBytes(),
+            "New instance should have default MaxBlockSizeBytes (10MB)");
         assertEquals(512 * 1024, blockchain.getCurrentOffChainThresholdBytes(),
             "New instance should have default OffChainThresholdBytes (512KB), but got: " + blockchain.getCurrentOffChainThresholdBytes());
     }

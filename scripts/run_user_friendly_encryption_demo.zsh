@@ -114,8 +114,5 @@ print_info ""
 # Final cleanup
 cleanup_database
 
-# Ensure genesis admin keys exist (auto-generates if missing)
-ensure_genesis_keys
-
 print_success "🎉 User-Friendly Encryption API Demo completed successfully!"
 exit 0

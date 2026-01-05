@@ -3,7 +3,7 @@ package com.rbatllet.blockchain.service;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.security.UserRole;
-import com.rbatllet.blockchain.testutil.GenesisKeyManager;
+import com.rbatllet.blockchain.util.TestGenesisKeyManager;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,7 +41,7 @@ public class UserFriendlyEncryptionAPICoreFunctionalityTest {
         realBlockchain.clearAndReinitialize(); // Clean DB before each test
 
         // Load bootstrap admin keys (auto-generates if missing - test-only)
-        bootstrapKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
+        bootstrapKeyPair = TestGenesisKeyManager.ensureGenesisKeysExist();
 
         // Register bootstrap admin in blockchain (RBAC v1.0.6)
         realBlockchain.createBootstrapAdmin(

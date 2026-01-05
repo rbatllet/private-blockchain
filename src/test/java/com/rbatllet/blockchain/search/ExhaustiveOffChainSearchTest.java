@@ -10,7 +10,7 @@ import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.*;
 import com.rbatllet.blockchain.search.strategy.SearchStrategyRouter;
 import com.rbatllet.blockchain.security.UserRole;
-import com.rbatllet.blockchain.testutil.GenesisKeyManager;
+import com.rbatllet.blockchain.util.TestGenesisKeyManager;
 import com.rbatllet.blockchain.service.OffChainStorageService;
 import com.rbatllet.blockchain.util.CryptoUtil;
 
@@ -87,7 +87,7 @@ public class ExhaustiveOffChainSearchTest {
         offChainService = new OffChainStorageService();
 
         // Load bootstrap admin keys (auto-generates if missing - test-only)
-        bootstrapKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
+        bootstrapKeyPair = TestGenesisKeyManager.ensureGenesisKeysExist();
 
         // Register bootstrap admin in blockchain (RBAC v1.0.6)
         blockchain.createBootstrapAdmin(
@@ -681,7 +681,7 @@ public class ExhaustiveOffChainSearchTest {
         // Concurrent search testing
         int threadCount = 10;
         int searchesPerThread = 3;
-        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
+        ExecutorService executor = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("TestWorker-", 0).factory()); // Java 25 Virtual Threads;
         CountDownLatch latch = new CountDownLatch(threadCount);
         AtomicInteger successCount = new AtomicInteger(0);
         AtomicInteger errorCount = new AtomicInteger(0);

@@ -79,11 +79,13 @@ public class EncryptionConfigDemo {
             System.out.println("✅ Secret storage with custom password: Block #" + customBlock.getBlockNumber());
             
             System.out.println("\n5️⃣ Testing password validation:");
+            System.out.println("   Attempting to use intentionally weak password 'weak' (only 4 chars)...");
             try {
-                api.storeSecret("Test", "short"); // Should test with current validation
-                System.out.println("✅ Short password accepted (standard validation allows shorter passwords)");
+                api.storeSecret("Test", "weak"); // Intentionally weak password to test validation
+                System.out.println("   ⚠️ WARNING: Weak password was accepted - validation may need strengthening");
             } catch (IllegalArgumentException e) {
-                System.out.println("✅ Password validation working: " + e.getMessage());
+                System.out.println("   ✅ Password validation correctly rejected weak password");
+                System.out.println("   📋 Rejection reason: " + e.getMessage());
             }
             
             System.out.println("\n🎉 All encryption configuration tests passed!");

@@ -23,7 +23,7 @@ if [ ! -f "pom.xml" ]; then
 fi
 
 print_step "Compiling the project..."
-mvn clean compile test-compile -q
+mvn clean compile test-compile
 
 if [ $? -ne 0 ]; then
     error_exit "Compilation error. Please review the errors above."

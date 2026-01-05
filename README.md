@@ -597,7 +597,7 @@ System.out.println(blockchain.getConfigurationSummary());
 
 // Adjust thresholds
 blockchain.setOffChainThresholdBytes(1024 * 1024); // 1MB threshold
-blockchain.setMaxBlockSizeBytes(5 * 1024 * 1024);  // 5MB on-chain max
+blockchain.setMaxBlockSizeBytes(8 * 1024 * 1024);  // 8MB on-chain max (default: 10MB)
 
 // Reset to defaults
 blockchain.resetLimitsToDefault();
@@ -610,7 +610,7 @@ blockchain.resetLimitsToDefault();
 - **Deterministic Keys**: Encryption passwords derived from block metadata
 
 ### Storage Limits
-- **On-Chain**: Up to 1MB per block (configurable)
+- **On-Chain**: Up to 10MB per block (configurable)
 - **Off-Chain**: Up to 100MB per file
 - **Threshold**: 512KB default (configurable)
 - **Total Capacity**: Limited only by available disk space
@@ -1775,7 +1775,7 @@ This project includes 65+ comprehensive documentation files organized into **11 
 ## 🔧 Configuration
 
 ### Storage Configuration
-- **On-Chain Block Size**: 1MB (1,048,576 bytes) maximum (configurable)
+- **On-Chain Block Size**: 10MB (10,485,760 bytes) maximum (configurable)
 - **Off-Chain Threshold**: 512KB default (configurable)
 - **Off-Chain Maximum**: 100MB per file
 - **Hash Length**: 64 characters (SHA3-256)

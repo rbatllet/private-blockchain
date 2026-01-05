@@ -175,7 +175,7 @@ public class BlockNumberThreadSafetyTest {
         
         int numberOfThreads = 5;
         int blocksPerThread = 3;
-        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
+        ExecutorService executor = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("TestWorker-", 0).factory()); // Java 25 Virtual Threads;
         List<Future<List<Block>>> futures = new ArrayList<>();
         
         // Submit tasks to create blocks concurrently

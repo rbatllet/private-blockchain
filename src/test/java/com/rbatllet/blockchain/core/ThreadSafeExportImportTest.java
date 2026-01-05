@@ -1,8 +1,8 @@
 package com.rbatllet.blockchain.core;
 
 import com.rbatllet.blockchain.security.UserRole;
-import com.rbatllet.blockchain.testutil.GenesisKeyManager;
-import com.rbatllet.blockchain.testutil.BaseBlockchainTest;
+import com.rbatllet.blockchain.util.TestGenesisKeyManager;
+import com.rbatllet.blockchain.util.BaseBlockchainTest;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,7 +41,7 @@ public class ThreadSafeExportImportTest extends BaseBlockchainTest {
         blockchain.clearAndReinitialize();
 
         // Load bootstrap admin keys (auto-generates if missing - test-only)
-        bootstrapKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
+        bootstrapKeyPair = TestGenesisKeyManager.ensureGenesisKeysExist();
 
         // Register bootstrap admin in blockchain
         blockchain.createBootstrapAdmin(
@@ -54,7 +54,7 @@ public class ThreadSafeExportImportTest extends BaseBlockchainTest {
         publicKey = keyPair.getPublic();
         publicKeyString = CryptoUtil.publicKeyToString(publicKey);
         masterPassword = "ThreadSafePassword123!";
-        executorService = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
+        executorService = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("TestWorker-", 0).factory()); // Java 25 Virtual Threads;
 
         blockchain.addAuthorizedKey(publicKeyString, "TestUser", bootstrapKeyPair, UserRole.USER);
     }

@@ -1,17 +1,29 @@
 package com.rbatllet.blockchain.security;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.security.KeyPair;
+
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.TestMethodOrder;
+
 import com.rbatllet.blockchain.config.DatabaseConfig;
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
-import com.rbatllet.blockchain.testutil.GenesisKeyManager;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.JPAUtil;
-import org.junit.jupiter.api.*;
-
-import java.security.KeyPair;
-
-import static org.junit.jupiter.api.Assertions.*;
+import com.rbatllet.blockchain.util.TestGenesisKeyManager;
 
 /**
  * Security tests for authorization mechanism.
@@ -41,7 +53,7 @@ class AuthorizationSecurityTest {
         blockchain.clearAndReinitialize();
 
         // Load bootstrap admin keys (auto-generates if missing - test-only)
-        bootstrapKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
+        bootstrapKeyPair = TestGenesisKeyManager.ensureGenesisKeysExist();
 
         // Register bootstrap admin in blockchain (RBAC v1.0.6)
         blockchain.createBootstrapAdmin(

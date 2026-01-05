@@ -21,7 +21,7 @@ import com.rbatllet.blockchain.config.DatabaseConfig;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.security.UserRole;
-import com.rbatllet.blockchain.testutil.GenesisKeyManager;
+import com.rbatllet.blockchain.util.TestGenesisKeyManager;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.JPAUtil;
 
@@ -36,7 +36,7 @@ import com.rbatllet.blockchain.util.JPAUtil;
  * - Batch 100 blocks: ~3,000-5,000 blocks/sec (15-25x improvement)
  * - Batch 1000 blocks: ~5,000-10,000 blocks/sec (25-50x improvement)
  *
- * Use: mvn test -Dtest=Phase_5_2_BatchWriteBenchmark
+ * Use: mvn test -Dtest=Phase_5_2_BatchWriteBenchmarkTest
  *
  * Tags: phase5, benchmark, batch-write
  *
@@ -47,7 +47,7 @@ import com.rbatllet.blockchain.util.JPAUtil;
 @Tag("benchmark")
 @Tag("phase5")
 @Tag("batch-write")
-public class Phase_5_2_BatchWriteBenchmark {
+public class Phase_5_2_BatchWriteBenchmarkTest {
 
     private static final double BASELINE_BLOCKS_PER_SEC = 181.6; // Phase 5.0 measured baseline
     private static final int TOTAL_BLOCKS = 1000;
@@ -117,7 +117,7 @@ public class Phase_5_2_BatchWriteBenchmark {
         blockchain.clearAndReinitialize();
 
         // Load bootstrap admin keys (auto-generates if missing - test-only)
-        KeyPair bootstrapKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
+        KeyPair bootstrapKeyPair = TestGenesisKeyManager.ensureGenesisKeysExist();
         
         assertNotNull(bootstrapKeyPair, 
             "Failed to load genesis admin keys. Check that keys exist in ./keys/ directory. " +
@@ -243,7 +243,7 @@ public class Phase_5_2_BatchWriteBenchmark {
         // Re-create bootstrap admin and test user (required after clearAndReinitialize)
         KeyPair bootstrapKeyPair;
         try {
-            bootstrapKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
+            bootstrapKeyPair = TestGenesisKeyManager.ensureGenesisKeysExist();
             blockchain.createBootstrapAdmin(
                 CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
                 "BOOTSTRAP_ADMIN"

@@ -302,7 +302,8 @@ public class AdvancedLoggingDemo {
     
     private static void demonstrateSecurityEventLogging() {
         System.out.println("\n🛡️ Demonstrating Security Event Logging");
-        
+        System.out.println("ℹ️  Note: Security errors below are INTENTIONAL to demonstrate security logging");
+
         try {
             // Real authentication success - create and validate a real key
             KeyPair userKeys = CryptoUtil.generateKeyPair();
@@ -332,16 +333,29 @@ public class AdvancedLoggingDemo {
             }
             
             // Real unauthorized access - try to access blockchain with invalid key
+            System.out.println("ℹ️  Testing unauthorized access (expect error messages below - this is correct behavior)...");
             try {
                 KeyPair unauthorizedKeys = CryptoUtil.generateKeyPair();
-                blockchain.addBlock("Unauthorized data", unauthorizedKeys.getPrivate(), unauthorizedKeys.getPublic());
+                boolean result = blockchain.addBlock("Unauthorized data", unauthorizedKeys.getPrivate(), unauthorizedKeys.getPublic());
+                if (!result) {
+                    // addBlock returned false (unauthorized access blocked without exception)
+                    AdvancedLoggingService.logSecurityEvent(
+                        "UNAUTHORIZED_ACCESS",
+                        "Unauthorized key attempted to add block (blocked by authorization check)",
+                        AdvancedLoggingService.SecuritySeverity.HIGH,
+                        "unknown_user"
+                    );
+                    System.out.println("✅ Unauthorized access correctly blocked and logged as security event");
+                }
             } catch (Exception e) {
+                // Exception thrown (UnauthorizedKeyException)
                 AdvancedLoggingService.logSecurityEvent(
                     "UNAUTHORIZED_ACCESS",
                     "Unauthorized key attempted to add block: " + e.getMessage(),
                     AdvancedLoggingService.SecuritySeverity.HIGH,
                     "unknown_user"
                 );
+                System.out.println("✅ Unauthorized access correctly blocked via exception and logged as security event");
             }
             
             // Real key rotation - generate new keys and validate rotation

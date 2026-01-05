@@ -1,15 +1,12 @@
-package com.rbatllet.blockchain.demos;
+package demo;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
-import org.junit.jupiter.api.*;
 
 import java.security.KeyPair;
 import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Demo: P0 Performance Fix - Native Recipient Filtering
@@ -31,9 +28,24 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * @since 2025-12-29 (P0 Performance Fix - Native Recipient Filtering)
  */
-@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-@DisplayName("📊 Recipient Filtering Demo (P0 Performance Fix)")
 public class RecipientFilteringDemo {
+
+    public static void main(String[] args) {
+        try {
+            setUp();
+            testCreateBlocksWithRecipients();
+            testNativeRecipientFiltering();
+            testCountBlocksByRecipient();
+            testHashIntegrity();
+            testPerformanceComparison();
+            testLimitResults();
+            tearDown();
+        } catch (Exception e) {
+            System.err.println("❌ Error: " + e.getMessage());
+            e.printStackTrace();
+            System.exit(1);
+        }
+    }
 
     private static Blockchain blockchain;
     private static KeyPair adminKeyPair;
@@ -47,7 +59,6 @@ public class RecipientFilteringDemo {
     private static String bobPublicKey;
     private static String charliePublicKey;
 
-    @BeforeAll
     static void setUp() {
         printHeader("🚀 INITIALIZING BLOCKCHAIN");
 
@@ -86,10 +97,7 @@ public class RecipientFilteringDemo {
         System.out.println();
     }
 
-    @Test
-    @Order(1)
-    @DisplayName("1. Create blocks with different recipients")
-    void testCreateBlocksWithRecipients() {
+    static void testCreateBlocksWithRecipients() {
         printStep("📝 Creating blocks with recipient public keys");
 
         // Alice receives 5 blocks
@@ -138,10 +146,7 @@ public class RecipientFilteringDemo {
         System.out.println();
     }
 
-    @Test
-    @Order(2)
-    @DisplayName("2. Native recipient filtering (O(1) indexed query)")
-    void testNativeRecipientFiltering() {
+    static void testNativeRecipientFiltering() {
         printStep("🔍 Native recipient filtering with indexed queries");
 
         long startTime, endTime;
@@ -155,8 +160,10 @@ public class RecipientFilteringDemo {
         System.out.println("⚡ Query time: " + (endTime - startTime) / 1_000_000 + " ms");
 
         // Verify all blocks have Alice's public key
-        assertTrue(aliceBlocks.stream().allMatch(b -> alicePublicKey.equals(b.getRecipientPublicKey())),
-            "All blocks should have Alice as recipient");
+        boolean allAliceBlocks = aliceBlocks.stream().allMatch(b -> alicePublicKey.equals(b.getRecipientPublicKey()));
+        if (!allAliceBlocks) {
+            throw new RuntimeException("All blocks should have Alice as recipient");
+        }
         System.out.println("✅ All blocks correctly have Alice as recipient");
 
         System.out.println();
@@ -184,40 +191,42 @@ public class RecipientFilteringDemo {
         System.out.println();
     }
 
-    @Test
-    @Order(3)
-    @DisplayName("3. Count blocks by recipient (native query)")
-    void testCountBlocksByRecipient() {
+    static void testCountBlocksByRecipient() {
         printStep("🔢 Counting blocks by recipient (native queries)");
 
         // Count Alice's blocks
         long aliceCount = blockchain.countBlocksByRecipientPublicKey(alicePublicKey);
         System.out.println("📦 Alice's block count: " + aliceCount);
-        assertEquals(5, aliceCount, "Alice should have 5 blocks");
+        if (aliceCount != 5) {
+            throw new RuntimeException("Alice should have 5 blocks, but has " + aliceCount);
+        }
 
         // Count Bob's blocks
         long bobCount = blockchain.countBlocksByRecipientPublicKey(bobPublicKey);
         System.out.println("📦 Bob's block count: " + bobCount);
-        assertEquals(3, bobCount, "Bob should have 3 blocks");
+        if (bobCount != 3) {
+            throw new RuntimeException("Bob should have 3 blocks, but has " + bobCount);
+        }
 
         // Count Charlie's blocks
         long charlieCount = blockchain.countBlocksByRecipientPublicKey(charliePublicKey);
         System.out.println("📦 Charlie's block count: " + charlieCount);
-        assertEquals(2, charlieCount, "Charlie should have 2 blocks");
+        if (charlieCount != 2) {
+            throw new RuntimeException("Charlie should have 2 blocks, but has " + charlieCount);
+        }
 
         // Count non-existent recipient
         String fakePublicKey = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEFAKE000000000000000";
         long fakeCount = blockchain.countBlocksByRecipientPublicKey(fakePublicKey);
         System.out.println("📦 Non-existent recipient count: " + fakeCount);
-        assertEquals(0, fakeCount, "Non-existent recipient should have 0 blocks");
+        if (fakeCount != 0) {
+            throw new RuntimeException("Non-existent recipient should have 0 blocks, but has " + fakeCount);
+        }
 
         System.out.println();
     }
 
-    @Test
-    @Order(4)
-    @DisplayName("4. Hash integrity: recipientPublicKey in hash")
-    void testHashIntegrity() {
+    static void testHashIntegrity() {
         printStep("🔐 Hash integrity: recipientPublicKey included in hash");
 
         // Create two blocks with same content but different recipients
@@ -242,8 +251,9 @@ public class RecipientFilteringDemo {
         System.out.println("📝 Block for Alice hash: " + aliceHash.substring(0, 16) + "...");
         System.out.println("📝 Block for Bob hash:   " + bobHash.substring(0, 16) + "...");
 
-        assertNotEquals(aliceHash, bobHash,
-            "Hashes should differ when recipient public keys differ");
+        if (aliceHash.equals(bobHash)) {
+            throw new RuntimeException("Hashes should differ when recipient public keys differ");
+        }
 
         System.out.println("✅ Hashes are different - recipientPublicKey is cryptographically bound to block");
         System.out.println("🔒 Any modification of recipient would invalidate the hash");
@@ -251,10 +261,7 @@ public class RecipientFilteringDemo {
         System.out.println();
     }
 
-    @Test
-    @Order(5)
-    @DisplayName("5. Performance comparison: O(n) vs O(1)")
-    void testPerformanceComparison() {
+    static void testPerformanceComparison() {
         printStep("⚡ Performance comparison: O(n) vs O(1)");
 
         // Create more blocks to demonstrate performance difference
@@ -301,10 +308,7 @@ public class RecipientFilteringDemo {
         System.out.println();
     }
 
-    @Test
-    @Order(6)
-    @DisplayName("6. Limit results (memory safety)")
-    void testLimitResults() {
+    static void testLimitResults() {
         printStep("🛡️ Memory safety: Limit results");
 
         // Query with limit
@@ -315,12 +319,13 @@ public class RecipientFilteringDemo {
         // Verify we can still get all blocks
         List<Block> allAliceBlocks = blockchain.getBlocksByRecipientPublicKey(alicePublicKey);
         System.out.println("📦 Alice's total blocks: " + allAliceBlocks.size() + " blocks");
-        assertTrue(allAliceBlocks.size() > 10, "Alice should have more than 10 blocks");
+        if (allAliceBlocks.size() <= 10) {
+            throw new RuntimeException("Alice should have more than 10 blocks, but has " + allAliceBlocks.size());
+        }
 
         System.out.println();
     }
 
-    @AfterAll
     static void tearDown() {
         printHeader("🎯 DEMO SUMMARY");
 

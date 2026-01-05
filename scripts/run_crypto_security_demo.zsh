@@ -104,9 +104,6 @@ echo ""
 # Final cleanup
 cleanup_database > /dev/null 2>&1
 
-# Ensure genesis admin keys exist (auto-generates if missing)
-ensure_genesis_keys
-
 # Exit with appropriate code
 if [ $SECURITY_TEST_RESULT -eq 0 ] && [ $DEMO_RESULT -eq 0 ]; then
     print_success "All cryptographic security tests and demos completed successfully!"

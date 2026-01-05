@@ -107,8 +107,8 @@
             <AppenderRef ref="AppLogFile"/>
         </Logger>
 
-        <!-- JDBC Batch Operations - CRITICAL (Hibernate 7 format) -->
-        <Logger name="org.hibernate.orm.jdbc.batch" level="TRACE" additivity="false">
+        <!-- JDBC Batch Operations - WARN to reduce noise (Hibernate 7 format) -->
+        <Logger name="org.hibernate.orm.jdbc.batch" level="WARN" additivity="false">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="AppLogFile"/>
         </Logger>

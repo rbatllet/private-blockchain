@@ -146,7 +146,7 @@ class BlockchainComprehensiveSecurityTest {
             blockchain.addBlock("Block 1", authorizedKeyPair.getPrivate(), authorizedKeyPair.getPublic());
             blockchain.addBlock("Block 2", authorizedKeyPair.getPrivate(), authorizedKeyPair.getPublic());
 
-            ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
+            ExecutorService executor = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("TestWorker-", 0).factory()); // Java 25 Virtual Threads;
             final int[] errorCount = {0};
 
             // Act: Multiple threads reading chain simultaneously

@@ -205,9 +205,6 @@ print_info ""
 # Final cleanup
 cleanup_database
 
-# Ensure genesis admin keys exist (auto-generates if missing)
-ensure_genesis_keys
-
 print_success "🎉 Multilingual Blockchain Demo completed successfully!"
 print_info ""
 print_info "🌍 Ready for international deployment! 🚀"

@@ -27,8 +27,9 @@ public class AlertService {
     private static AlertService instance;
     private final ObjectMapper objectMapper = new ObjectMapper();
     // Java 25 Virtual Threads (Phase 1.3): Use virtual threads for alert logging I/O
+    // Thread Naming: Uses "AlertScheduler-N" for better observability in logs
     private final ScheduledExecutorService scheduler =
-        Executors.newScheduledThreadPool(1, Thread.ofVirtual().factory());
+        Executors.newScheduledThreadPool(1, Thread.ofVirtual().name("AlertScheduler-", 0).factory());
     
     // Alert statistics
     private final AtomicLong totalAlertsGenerated = new AtomicLong(0);

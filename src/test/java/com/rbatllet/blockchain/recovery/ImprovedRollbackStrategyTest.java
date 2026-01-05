@@ -1,18 +1,23 @@
 package com.rbatllet.blockchain.recovery;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.security.KeyPair;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.security.UserRole;
-import com.rbatllet.blockchain.testutil.GenesisKeyManager;
 import com.rbatllet.blockchain.util.CryptoUtil;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-
-import java.security.KeyPair;
-import static org.junit.jupiter.api.Assertions.*;
+import com.rbatllet.blockchain.util.TestGenesisKeyManager;
 
 /**
  * Tests for the improved intelligent rollback strategy
@@ -35,7 +40,7 @@ class ImprovedRollbackStrategyTest {
         recoveryManager = new ChainRecoveryManager(blockchain);
 
         // Load bootstrap admin keys (auto-generates if missing - test-only)
-        bootstrapKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
+        bootstrapKeyPair = TestGenesisKeyManager.ensureGenesisKeysExist();
 
         // Register bootstrap admin in blockchain (RBAC v1.0.6)
         blockchain.createBootstrapAdmin(

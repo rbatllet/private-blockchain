@@ -75,7 +75,7 @@ public class RaceConditionFixTest {
     @Test
     public void testConcurrentIndexing_PreventsDuplicateProcessing() throws InterruptedException {
         final int NUM_THREADS = 10;
-        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
+        ExecutorService executor = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("TestWorker-", 0).factory()); // Java 25 Virtual Threads;
         
         // Submit multiple concurrent indexing tasks for the same block
         for (int i = 0; i < NUM_THREADS; i++) {

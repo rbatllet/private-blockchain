@@ -65,9 +65,14 @@ public class IndexingCoordinator {
      *   <li>Minimal memory overhead (400 bytes vs 1-2 MB per thread)</li>
      * </ul>
      *
+     * <p><strong>Thread Naming:</strong> Uses named virtual threads ("IndexingWorker-N") for better
+     * observability in logs and debugging.</p>
+     *
      * @since 1.0.6 (Virtual Threads Phase 1)
      */
-    private final ExecutorService asyncExecutor = Executors.newVirtualThreadPerTaskExecutor();
+    private final ExecutorService asyncExecutor = Executors.newThreadPerTaskExecutor(
+        Thread.ofVirtual().name("IndexingWorker-", 0).factory()
+    );
 
     /**
      * Phase 5.4 FIX: Track active async indexing tasks to prevent race condition in waitForCompletion().

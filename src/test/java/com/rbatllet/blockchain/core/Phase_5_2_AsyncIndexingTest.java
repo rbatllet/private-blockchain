@@ -1,13 +1,9 @@
 package com.rbatllet.blockchain.core;
 
-import com.rbatllet.blockchain.config.DatabaseConfig;
-import com.rbatllet.blockchain.entity.Block;
-import com.rbatllet.blockchain.indexing.IndexingCoordinator;
-import com.rbatllet.blockchain.testutil.GenesisKeyManager;
-import com.rbatllet.blockchain.util.CryptoUtil;
-import com.rbatllet.blockchain.util.JPAUtil;
-import org.junit.jupiter.api.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.security.KeyPair;
 import java.util.ArrayList;
@@ -18,6 +14,26 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.Timeout;
+
+import com.rbatllet.blockchain.config.DatabaseConfig;
+import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
+import com.rbatllet.blockchain.util.TestGenesisKeyManager;
+import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.util.JPAUtil;
 
 /**
  * Phase 5.2: Async/Background Indexing Comprehensive Test Suite
@@ -64,7 +80,7 @@ public class Phase_5_2_AsyncIndexingTest {
         JPAUtil.initialize(h2Config);
 
         // Load bootstrap admin keys (auto-generates if missing - test-only)
-        bootstrapKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
+        bootstrapKeyPair = TestGenesisKeyManager.ensureGenesisKeysExist();
         
         assertNotNull(bootstrapKeyPair, "Failed to load genesis admin keys");
     }

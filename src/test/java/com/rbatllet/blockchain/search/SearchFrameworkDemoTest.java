@@ -21,7 +21,7 @@ import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.EnhancedSearchResult;
 import com.rbatllet.blockchain.security.UserRole;
-import com.rbatllet.blockchain.testutil.GenesisKeyManager;
+import com.rbatllet.blockchain.util.TestGenesisKeyManager;
 import com.rbatllet.blockchain.util.CryptoUtil;
 
 /**
@@ -43,7 +43,7 @@ public class SearchFrameworkDemoTest {
     @BeforeEach
     void setUp() throws Exception {
         // Load bootstrap admin keys (auto-generates if missing - test-only)
-        bootstrapKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
+        bootstrapKeyPair = TestGenesisKeyManager.ensureGenesisKeysExist();
 
         // Demo password and crypto setup
         demoPassword = "SecureSearchDemo2024!";

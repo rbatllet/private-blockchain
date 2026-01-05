@@ -3,7 +3,7 @@ package com.rbatllet.blockchain.core;
 import com.rbatllet.blockchain.config.DatabaseConfig;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.security.UserRole;
-import com.rbatllet.blockchain.testutil.GenesisKeyManager;
+import com.rbatllet.blockchain.util.TestGenesisKeyManager;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.JPAUtil;
 import org.junit.jupiter.api.*;
@@ -50,7 +50,7 @@ public class Phase_A7_DatabaseCompatibilityTest {
     @BeforeAll
     static void setUpClass() {
         // Load genesis admin keys once for all tests (auto-generates if missing)
-        bootstrapKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
+        bootstrapKeyPair = TestGenesisKeyManager.ensureGenesisKeysExist();
     }
 
     // ==================== DATABASE DETECTION HELPERS ====================

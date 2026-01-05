@@ -81,7 +81,4 @@ echo ""
 # Final cleanup
 cleanup_database > /dev/null 2>&1
 
-# Ensure genesis admin keys exist (auto-generates if missing)
-ensure_genesis_keys
-
 print_success "Quick test complete! Run other demos for more features."

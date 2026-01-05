@@ -1,17 +1,26 @@
 package com.rbatllet.blockchain.core;
 
-import com.rbatllet.blockchain.config.DatabaseConfig;
-import com.rbatllet.blockchain.entity.Block;
-import com.rbatllet.blockchain.security.UserRole;
-import com.rbatllet.blockchain.testutil.GenesisKeyManager;
-import com.rbatllet.blockchain.util.CryptoUtil;
-import com.rbatllet.blockchain.util.JPAUtil;
-import org.junit.jupiter.api.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.security.KeyPair;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.Timeout;
+
+import com.rbatllet.blockchain.config.DatabaseConfig;
+import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.UserRole;
+import com.rbatllet.blockchain.util.TestGenesisKeyManager;
+import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.util.JPAUtil;
 
 /**
  * Phase 5.0: Write Throughput Benchmark
@@ -34,7 +43,7 @@ import java.util.List;
  * 3. MySQL (production) - Expected: ~3,000 blocks/sec (6x)
  * 4. SQLite (demos only) - Expected: ~2,000 blocks/sec (4x, single-writer limitation)
  *
- * Use: mvn test -Dtest=Phase_5_0_WriteThroughputBenchmark
+ * Use: mvn test -Dtest=Phase_5_0_WriteThroughputBenchmarkTest
  *
  * Tags: phase5, benchmark, write-performance
  *
@@ -45,7 +54,7 @@ import java.util.List;
 @Tag("benchmark")
 @Tag("phase5")
 @Tag("write-performance")
-public class Phase_5_0_WriteThroughputBenchmark {
+public class Phase_5_0_WriteThroughputBenchmarkTest {
 
     private static final int WARM_UP_BLOCKS = 100;
     private static final int BENCHMARK_BLOCKS = 1000;
@@ -215,7 +224,7 @@ public class Phase_5_0_WriteThroughputBenchmark {
         blockchain.clearAndReinitialize();
 
         // Load bootstrap admin keys (auto-generates if missing - test-only)
-        KeyPair bootstrapKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
+        KeyPair bootstrapKeyPair = TestGenesisKeyManager.ensureGenesisKeysExist();
 
         // Register bootstrap admin (RBAC v1.0.6)
         blockchain.createBootstrapAdmin(

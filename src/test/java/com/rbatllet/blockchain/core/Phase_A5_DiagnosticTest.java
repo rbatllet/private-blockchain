@@ -3,7 +3,7 @@ package com.rbatllet.blockchain.core;
 import com.rbatllet.blockchain.config.MemorySafetyConstants;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.security.UserRole;
-import com.rbatllet.blockchain.testutil.GenesisKeyManager;
+import com.rbatllet.blockchain.util.TestGenesisKeyManager;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -35,7 +35,7 @@ public class Phase_A5_DiagnosticTest {
         blockRepository = new BlockRepository();
 
         // Load bootstrap admin keys (created automatically)
-        bootstrapKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
+        bootstrapKeyPair = TestGenesisKeyManager.ensureGenesisKeysExist();
 
         // Register bootstrap admin in blockchain (RBAC v1.0.6)
         blockchain.createBootstrapAdmin(

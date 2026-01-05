@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.security.UserRole;
-import com.rbatllet.blockchain.testutil.GenesisKeyManager;
+import com.rbatllet.blockchain.util.TestGenesisKeyManager;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import java.security.KeyPair;
@@ -46,7 +46,7 @@ public class UserFriendlyEncryptionAPIStressTest {
         blockchain.getAuthorizedKeyDAO().cleanupTestData();
 
         // Load bootstrap admin keys (auto-generates if missing - test-only)
-        bootstrapKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
+        bootstrapKeyPair = TestGenesisKeyManager.ensureGenesisKeysExist();
 
         // Register bootstrap admin in blockchain
         blockchain.createBootstrapAdmin(
@@ -55,7 +55,7 @@ public class UserFriendlyEncryptionAPIStressTest {
         );
 
         api = new UserFriendlyEncryptionAPI(blockchain);
-        executorService = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
+        executorService = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("TestWorker-", 0).factory()); // Java 25 Virtual Threads;
 
         // Initialize SearchSpecialistAPI for stress tests that may use storeSecret
         try {

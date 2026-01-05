@@ -83,10 +83,10 @@ main() {
     echo "After:  O(1) indexed database lookup"
     echo ""
 
-    # Run the demo test
+    # Run the demo
     print_step "🧪 Running Recipient Filtering Demo..."
 
-    if mvn test -Dtest=RecipientFilteringDemo -q; then
+    if mvn exec:java -Dexec.mainClass="demo.RecipientFilteringDemo" -q; then
         print_success "✅ Recipient Filtering Demo: PASSED"
         ((passed_tests++))
     else

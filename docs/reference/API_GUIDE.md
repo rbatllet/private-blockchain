@@ -1292,7 +1292,7 @@ System.out.println(report);
 
 | Setting | Default | Range | Description |
 |---------|---------|--------|------------|
-| On-Chain Block Size | 1MB | 1B - 10MB | Maximum size for on-chain storage |
+| On-Chain Block Size | 10MB | 1B - 10MB | Maximum size for on-chain storage |
 | Off-Chain Threshold | 512KB | 1B - Block Size | Size threshold for off-chain storage |
 | Off-Chain Max Size | 100MB | - | Maximum size per off-chain file |
 
@@ -1488,7 +1488,7 @@ System.out.println("Validation report: " + report);
 #### Block Size Validation
 ```java
 // Get size limits
-int maxBytes = blockchain.getMaxBlockSizeBytes();      // 1MB limit
+int maxBytes = blockchain.getMaxBlockSizeBytes();      // 10MB limit
 
 // Size validation happens automatically when adding blocks
 // Large blocks are rejected automatically
@@ -3041,7 +3041,7 @@ public boolean rollbackToBlock(long blockNumber)
 ```java
 public int getMaxBlockSizeBytes()
 ```
-- **Returns:** Maximum block size in bytes (default: 1,048,576 bytes = 1MB)
+- **Returns:** Maximum block size in bytes (default: 10,485,760 bytes = 10MB)
 
 #### Off-Chain Storage Configuration Methods
 
@@ -3260,7 +3260,7 @@ public LocalDateTime getRevokedAt()
 - **Logging**: SQL queries logged (can be disabled in persistence.xml)
 
 ### Size Limits
-- **Block Size**: 1MB (1,048,576 bytes) maximum
+- **Block Size**: 10MB (10,485,760 bytes) maximum
 - **Hash Length**: 64 characters (SHA3-256)
 
 ### Memory Safety Configuration
@@ -3771,7 +3771,7 @@ These methods replace the removed `getAllBlocksWithOffChainData()` and `getAllEn
 ### Size and Performance Limits
 ```properties
 # On-Chain Block constraints (configurable at runtime)
-blockchain.block.max_size_bytes=1048576        # 1MB (1,048,576 bytes) (default)
+blockchain.block.max_size_bytes=10485760       # 10MB (10,485,760 bytes) (default)
 blockchain.block.max_hash_length=64            # SHA3-256 hash length
 
 # Off-Chain Storage settings

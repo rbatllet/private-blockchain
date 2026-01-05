@@ -1,21 +1,33 @@
 package com.rbatllet.blockchain.maintenance;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
-import com.rbatllet.blockchain.config.MaintenanceConstants;
-import com.rbatllet.blockchain.core.Blockchain;
-import com.rbatllet.blockchain.security.UserRole;
-import com.rbatllet.blockchain.testutil.GenesisKeyManager;
-import com.rbatllet.blockchain.util.CryptoUtil;
-import com.rbatllet.blockchain.util.JPAUtil;
-import java.io.*;
-import java.nio.file.*;
-import java.nio.file.attribute.*;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.FileTime;
+import java.nio.file.attribute.PosixFileAttributeView;
+import java.nio.file.attribute.PosixFilePermission;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -23,10 +35,26 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import java.util.zip.GZIPInputStream;
-import org.junit.jupiter.api.*;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.rbatllet.blockchain.config.MaintenanceConstants;
+import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.security.UserRole;
+import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.util.JPAUtil;
+import com.rbatllet.blockchain.util.TestGenesisKeyManager;
 
 /**
  * Comprehensive and rigorous tests for OffChainCleanupService
@@ -87,7 +115,7 @@ class OffChainCleanupServiceTest {
         blockchain.clearAndReinitialize();
 
         // Load bootstrap admin keys (auto-generates if missing - test-only)
-        bootstrapKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
+        bootstrapKeyPair = TestGenesisKeyManager.ensureGenesisKeysExist();
 
         // Register bootstrap admin in blockchain (RBAC v1.0.6)
         blockchain.createBootstrapAdmin(
@@ -1149,7 +1177,7 @@ class OffChainCleanupServiceTest {
 
             // Run cleanup operations concurrently
             int threadCount = 5;
-            ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads
+            ExecutorService executor = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("TestWorker-", 0).factory()); // Java 25 Virtual Threads
             CountDownLatch latch = new CountDownLatch(threadCount);
             List<OffChainCleanupService.CleanupResult> results =
                 Collections.synchronizedList(new ArrayList<>());
@@ -1257,7 +1285,7 @@ class OffChainCleanupServiceTest {
 
             // Run compression operations concurrently
             int threadCount = 3;
-            ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads
+            ExecutorService executor = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("TestWorker-", 0).factory()); // Java 25 Virtual Threads
             CountDownLatch latch = new CountDownLatch(threadCount);
             List<OffChainCleanupService.CleanupResult> results =
                 Collections.synchronizedList(new ArrayList<>());
@@ -1424,7 +1452,7 @@ class OffChainCleanupServiceTest {
             );
 
             // Run mixed operations concurrently
-            ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
+            ExecutorService executor = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("TestWorker-", 0).factory()); // Java 25 Virtual Threads;
             CountDownLatch latch = new CountDownLatch(4);
             List<OffChainCleanupService.CleanupResult> cleanupResults =
                 Collections.synchronizedList(new ArrayList<>());

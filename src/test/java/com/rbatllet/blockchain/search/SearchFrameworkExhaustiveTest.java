@@ -5,9 +5,9 @@ import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.*;
 import com.rbatllet.blockchain.security.UserRole;
-import com.rbatllet.blockchain.testutil.GenesisKeyManager;
+import com.rbatllet.blockchain.util.TestGenesisKeyManager;
 import com.rbatllet.blockchain.util.CryptoUtil;
-import com.rbatllet.blockchain.test.util.TestDatabaseUtils;
+import com.rbatllet.blockchain.util.TestDatabaseUtils;
 import org.junit.jupiter.api.*;
 
 import java.security.KeyPair;
@@ -53,7 +53,7 @@ public class SearchFrameworkExhaustiveTest {
         TestDatabaseUtils.setupTest();
 
         // Load bootstrap admin keys (auto-generates if missing - test-only)
-        bootstrapKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
+        bootstrapKeyPair = TestGenesisKeyManager.ensureGenesisKeysExist();
 
         // Use high security configuration for exhaustive testing
         highSecurityConfig = EncryptionConfig.createHighSecurityConfig();
@@ -436,7 +436,7 @@ public class SearchFrameworkExhaustiveTest {
         int numThreads = 10;
         int queriesPerThread = 5;
         CountDownLatch latch = new CountDownLatch(numThreads * queriesPerThread);
-        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
+        ExecutorService executor = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("TestWorker-", 0).factory()); // Java 25 Virtual Threads;
         
         String[] queries = {"financial", "medical", "legal", "technical", "personal"};
         int[] resultCounts = new int[1];

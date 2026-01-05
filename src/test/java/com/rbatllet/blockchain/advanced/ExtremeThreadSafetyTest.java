@@ -30,7 +30,7 @@ class ExtremeThreadSafetyTest {
     void setUp() {
         blockchain = new Blockchain();
         blockchain.clearAndReinitialize();
-        executorService = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
+        executorService = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("TestWorker-", 0).factory()); // Java 25 Virtual Threads;
         
         // Pre-generate keys to avoid delays during test execution
         testKeyPairs = new KeyPair[5];

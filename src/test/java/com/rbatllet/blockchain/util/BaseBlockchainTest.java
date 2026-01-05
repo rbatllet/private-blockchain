@@ -1,4 +1,4 @@
-package com.rbatllet.blockchain.testutil;
+package com.rbatllet.blockchain.util;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.slf4j.Logger;
@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
  * <p><strong>⚠️ TEST-ONLY:</strong> This automatic key generation is ONLY safe in tests.
  * Production code should use {@code ./tools/generate_genesis_keys.zsh}
  *
- * @see GenesisKeyManager
+ * @see TestGenesisKeyManager
  * @since 1.0.6
  */
 public abstract class BaseBlockchainTest {
@@ -41,7 +41,7 @@ public abstract class BaseBlockchainTest {
     @BeforeAll
     static void ensureGenesisKeysExist() {
         logger.debug("🔍 Checking genesis-admin keys availability...");
-        GenesisKeyManager.ensureGenesisKeysExist();
+        TestGenesisKeyManager.ensureGenesisKeysExist();
         logger.debug("✅ Genesis-admin keys ready for tests");
     }
 }

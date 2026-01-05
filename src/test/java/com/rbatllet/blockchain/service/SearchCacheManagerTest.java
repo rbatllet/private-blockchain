@@ -1,20 +1,29 @@
 package com.rbatllet.blockchain.service;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.mockito.MockitoAnnotations;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.mockito.MockitoAnnotations;
 
 /**
  * Comprehensive tests for SearchCacheManager
@@ -500,7 +509,7 @@ public class SearchCacheManagerTest {
         @DisplayName("Should handle concurrent read and write operations")
         void shouldHandleConcurrentReadAndWriteOperations() throws InterruptedException, ExecutionException {
             // Given
-            ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
+            ExecutorService executor = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("TestWorker-", 0).factory()); // Java 25 Virtual Threads;
             int operationsPerThread = 100;
             int threadCount = 10;
             List<CompletableFuture<Void>> futures = new ArrayList<>();
@@ -547,7 +556,7 @@ public class SearchCacheManagerTest {
                 cacheManager.put("key_" + i, "value_" + i, 100);
             }
             
-            ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
+            ExecutorService executor = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("TestWorker-", 0).factory()); // Java 25 Virtual Threads;
             List<CompletableFuture<Void>> futures = new ArrayList<>();
             
             // When - Concurrent invalidation operations

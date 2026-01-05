@@ -328,7 +328,7 @@ public List<Block> batchInsertBlocks(List<BlockWriteRequest> requests) {
 - ✅ Implement `Blockchain.addBlocksBatchWithFuture()` for async control
 - ✅ Returns `CompletableFuture<IndexingResult>` for async indexing
 - ✅ Add `BlockRepository.batchInsertBlocks()` with JPQL
-- ✅ Comprehensive batch validation tests (Phase_5_2_BatchWriteBenchmark)
+- ✅ Comprehensive batch validation tests (Phase_5_2_BatchWriteBenchmarkTest)
 - ✅ Async indexing tests (Phase_5_2_AsyncIndexingTest: 16 tests)
 - ✅ Performance benchmark: 2.8x-3.9x improvement confirmed
 
@@ -1631,7 +1631,7 @@ After discovering PreparedStatement overhead (1 prepare + 15 bindings per block)
 **Kept production code**:
 1. ✅ `Blockchain.addBlocksBatch()` using EntityManager (JPA standard)
 2. ✅ `BlockRepository.batchInsertBlocks()` using JPQL (JPA standard)
-3. ✅ `Phase_5_2_BatchWriteBenchmark.java` (production benchmarks)
+3. ✅ `Phase_5_2_BatchWriteBenchmarkTest.java` (production benchmarks)
 
 **Build Status**: ✅ Compiled successfully with `mvn clean compile -DskipTests`
 
@@ -1792,8 +1792,8 @@ public final class SearchConstants {
 - SearchSpecialistAPIDemo.java (use SearchConstants)
 - GenerateBlockchainActivity.java (comments)
 - BatchWriteDemo.java
-- Phase_5_0_WriteThroughputBenchmark.java
-- Phase_5_2_BatchWriteBenchmark.java
+- Phase_5_0_WriteThroughputBenchmarkTest.java
+- Phase_5_2_BatchWriteBenchmarkTest.java
 
 **Architecture Maintained**:
 - ✅ 100% JPQL (zero native SQL)
@@ -1867,9 +1867,9 @@ mvn clean compile -q
 # No errors, all changes verified
 ```
 
-**Test Status**: ✅ Phase_5_2_BatchWriteBenchmark passing
+**Test Status**: ✅ Phase_5_2_BatchWriteBenchmarkTest passing
 ```bash
-mvn test -Dtest=Phase_5_2_BatchWriteBenchmark
+mvn test -Dtest=Phase_5_2_BatchWriteBenchmarkTest
 # Exit code: 0 (success)
 ```
 

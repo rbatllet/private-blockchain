@@ -10,6 +10,9 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+# Load common functions library
+source "${SCRIPT_DIR}/lib/common_functions.zsh"
+
 # Change to project root directory
 cd "$PROJECT_DIR"
 
@@ -48,17 +51,17 @@ command_exists() {
 # Function to check prerequisites
 check_prerequisites() {
     print_section "📋 Checking Prerequisites"
-    
+
     if ! command_exists java; then
         print_colored $RED "❌ Java is not installed"
         exit 1
     fi
-    
+
     if ! command_exists mvn; then
         print_colored $RED "❌ Maven is not installed"
         exit 1
     fi
-    
+
     print_colored $GREEN "✅ Java: $(java -version 2>&1 | head -n1)"
     print_colored $GREEN "✅ Maven: $(mvn -version 2>&1 | head -n1)"
 }
@@ -80,25 +83,29 @@ build_project() {
 # Function to run demo
 run_demo() {
     print_section "🔍 Running Advanced Logging Demo"
-    
+
     cd "$PROJECT_DIR"
-    
+
+    # Clean database before running demo (demo requires fresh state)
+    print_colored $CYAN "🧹 Cleaning database for fresh demo execution..."
+    cleanup_database
+
     # Set JVM options for better logging
     export JAVA_OPTS="-Xmx1024m -Dlog4j2.configurationFile=file:src/main/resources/log4j2.xml"
-    
+
     print_colored $CYAN "🚀 Starting Advanced Logging System Demo..."
     print_colored $YELLOW "ℹ️  This demo will show comprehensive logging capabilities"
     print_colored $YELLOW "ℹ️  Watch the console for detailed operation tracking"
-    
+
     echo ""
-    
+
     # Run the demo
     if ! java -cp "target/classes:$(mvn -q dependency:build-classpath -Dmdep.outputFile=/dev/stdout)" \
         "$DEMO_CLASS"; then
         print_colored $RED "❌ Demo execution failed"
         exit 1
     fi
-    
+
     print_colored $GREEN "✅ Demo completed successfully"
 }
 
@@ -182,17 +189,20 @@ main() {
             ;;
         -b|--build)
             check_prerequisites
+            ensure_genesis_keys
             build_project
             print_colored $GREEN "✅ Build completed. Run with --run to execute demo."
             exit 0
             ;;
         -r|--run)
+            ensure_genesis_keys
             run_demo
             exit 0
             ;;
         "")
             # Full demo
             check_prerequisites
+            ensure_genesis_keys
             build_project
             show_features
             run_demo

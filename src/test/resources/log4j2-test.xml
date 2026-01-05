@@ -82,26 +82,26 @@
             <AppenderRef ref="FileAppender"/>
         </Logger>
 
-        <!-- SQL statements - TO CONSOLE for SQL debugging (Hibernate 7 format) -->
-        <Logger name="org.hibernate.SQL" level="DEBUG" additivity="false">
+        <!-- SQL statements - WARN to reduce noise in demos/tests (Hibernate 7 format) -->
+        <Logger name="org.hibernate.SQL" level="WARN" additivity="false">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="FileAppender"/>
         </Logger>
 
-        <!-- JDBC Batch Operations - CRITICAL for investigating batching (Hibernate 7) -->
-        <Logger name="org.hibernate.orm.jdbc.batch" level="TRACE" additivity="false">
+        <!-- JDBC Batch Operations - WARN to reduce noise (Hibernate 7) -->
+        <Logger name="org.hibernate.orm.jdbc.batch" level="WARN" additivity="false">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="FileAppender"/>
         </Logger>
 
-        <!-- JDBC parameter binding (Hibernate 7 format) -->
-        <Logger name="org.hibernate.orm.jdbc.bind" level="TRACE" additivity="false">
+        <!-- JDBC parameter binding - WARN to reduce noise (Hibernate 7 format) -->
+        <Logger name="org.hibernate.orm.jdbc.bind" level="WARN" additivity="false">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="FileAppender"/>
         </Logger>
 
-        <!-- JDBC result set extraction (Hibernate 7 format) -->
-        <Logger name="org.hibernate.orm.jdbc.extract" level="TRACE" additivity="false">
+        <!-- JDBC result set extraction - WARN to reduce noise (Hibernate 7 format) -->
+        <Logger name="org.hibernate.orm.jdbc.extract" level="WARN" additivity="false">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="FileAppender"/>
         </Logger>

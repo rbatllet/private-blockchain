@@ -3,7 +3,7 @@ package com.rbatllet.blockchain.core;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.entity.OffChainData;
 import com.rbatllet.blockchain.security.UserRole;
-import com.rbatllet.blockchain.testutil.GenesisKeyManager;
+import com.rbatllet.blockchain.util.TestGenesisKeyManager;
 import com.rbatllet.blockchain.service.OffChainStorageService;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.AfterEach;
@@ -45,7 +45,7 @@ public class OffChainStorageTest {
         blockchain.clearAndReinitialize();
 
         // Load bootstrap admin keys (created automatically)
-        bootstrapKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
+        bootstrapKeyPair = TestGenesisKeyManager.ensureGenesisKeysExist();
 
         // Register bootstrap admin in blockchain (RBAC v1.0.6)
         blockchain.createBootstrapAdmin(
@@ -182,8 +182,8 @@ public class OffChainStorageTest {
         // Test initial configuration
         String config = blockchain.getConfigurationSummary();
         assertNotNull(config);
-        assertTrue(config.contains("1,048,576 bytes")); // 1MB default
-        
+        assertTrue(config.contains("10,485,760 bytes")); // 10MB default
+
         // Test setting new limits
         blockchain.setMaxBlockSizeBytes(2 * 1024 * 1024); // 2MB
         blockchain.setOffChainThresholdBytes(1024 * 1024); // 1MB threshold
@@ -193,7 +193,7 @@ public class OffChainStorageTest {
 
         // Test reset to defaults
         blockchain.resetLimitsToDefault();
-        assertEquals(1024 * 1024, blockchain.getCurrentMaxBlockSizeBytes());
+        assertEquals(10 * 1024 * 1024, blockchain.getCurrentMaxBlockSizeBytes());
         assertEquals(512 * 1024, blockchain.getCurrentOffChainThresholdBytes());
 
         // Test invalid configurations

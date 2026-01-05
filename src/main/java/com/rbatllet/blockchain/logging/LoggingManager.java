@@ -76,10 +76,12 @@ public class LoggingManager {
         
         if (isStarted.compareAndSet(false, true)) {
             logger.info("🚀 Starting Advanced Logging Manager");
-            
+
             // Create scheduler
             // Java 25 Virtual Threads (Phase 2.2): Use virtual threads for log file I/O operations
-            scheduler = Executors.newScheduledThreadPool(2, Thread.ofVirtual().factory());
+            // Thread Naming: Uses "LoggingScheduler-N" for better observability in logs
+            scheduler = Executors.newScheduledThreadPool(2,
+                Thread.ofVirtual().name("LoggingScheduler-", 0).factory());
             
             // Schedule periodic metrics reporting
             scheduler.scheduleAtFixedRate(

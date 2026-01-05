@@ -1,18 +1,23 @@
 package com.rbatllet.blockchain.service;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.rbatllet.blockchain.core.Blockchain;
-import com.rbatllet.blockchain.entity.Block;
-import com.rbatllet.blockchain.security.UserRole;
-import com.rbatllet.blockchain.testutil.GenesisKeyManager;
-import com.rbatllet.blockchain.util.CryptoUtil;
 import java.security.KeyPair;
 import java.util.List;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.security.UserRole;
+import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.util.TestGenesisKeyManager;
 
 /**
  * Critical vulnerability demonstration test for UserFriendlyEncryptionAPI.
@@ -40,7 +45,7 @@ class UserFriendlyEncryptionAPIBlockCorruptionTest {
         blockchain.clearAndReinitialize();
 
         // Load bootstrap admin keys (auto-generates if missing - test-only)
-        bootstrapKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
+        bootstrapKeyPair = TestGenesisKeyManager.ensureGenesisKeysExist();
 
         // SECURITY (v1.0.6): Register bootstrap admin in blockchain (REQUIRED!)
         blockchain.createBootstrapAdmin(

@@ -6,7 +6,7 @@ import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.validation.ChainValidationResult;
-import com.rbatllet.blockchain.test.util.TestDatabaseUtils;
+import com.rbatllet.blockchain.util.TestDatabaseUtils;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 

@@ -8,6 +8,8 @@ import java.security.PrivateKey;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,6 +90,18 @@ public class SearchSpecialistAPI {
     private boolean isInitialized = false;
     private boolean isDirectlyInstantiated = false;
     private String defaultPassword = null;
+
+    /**
+     * Virtual thread executor for async operations.
+     *
+     * <p><strong>Java 25 Virtual Threads:</strong> Uses virtual threads for async indexing
+     * operations to avoid blocking platform threads.</p>
+     *
+     * @since 1.0.6 (Virtual Threads Phase 1)
+     */
+    private final ExecutorService asyncExecutor = Executors.newThreadPerTaskExecutor(
+        Thread.ofVirtual().name("SearchSpecialist-", 0).factory()
+    );
     
     /**
      * Creates a new SearchSpecialistAPI instance with default high-security configuration.
@@ -971,7 +985,7 @@ public class SearchSpecialistAPI {
             this.defaultPassword = password;
             isInitialized = true;
             return result;
-        });
+        }, asyncExecutor);
     }
     
     /**

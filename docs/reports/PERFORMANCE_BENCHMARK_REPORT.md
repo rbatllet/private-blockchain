@@ -54,7 +54,7 @@ This document provides performance benchmarking results for the Memory Safety Re
 - **Small Scale**: 1K-10K blocks
 - **Medium Scale**: 100K blocks
 - **Large Scale**: 1M blocks
-- **Block Size**: Mixed (50 bytes - 1MB)
+- **Block Size**: Mixed (50 bytes - 10MB)
 - **Off-Chain Ratio**: ~5% blocks > 512KB
 
 ---

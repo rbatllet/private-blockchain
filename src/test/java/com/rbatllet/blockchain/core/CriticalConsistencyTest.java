@@ -1,10 +1,10 @@
 package com.rbatllet.blockchain.core;
 
 import com.rbatllet.blockchain.security.UserRole;
-import com.rbatllet.blockchain.testutil.GenesisKeyManager;
+import com.rbatllet.blockchain.util.TestGenesisKeyManager;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.validation.ChainValidationResult;
-import com.rbatllet.blockchain.test.util.TestDatabaseUtils;
+import com.rbatllet.blockchain.util.TestDatabaseUtils;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -40,7 +40,7 @@ class CriticalConsistencyTest {
         TestDatabaseUtils.setupTest();
 
         // Load bootstrap admin keys (auto-generates if missing - test-only)
-        bootstrapKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
+        bootstrapKeyPair = TestGenesisKeyManager.ensureGenesisKeysExist();
 
         // The generateKeyPair() method now uses the new hierarchical key system internally
         aliceKeyPair = CryptoUtil.generateKeyPair();
@@ -70,7 +70,7 @@ class CriticalConsistencyTest {
             "BOOTSTRAP_ADMIN"
         );
 
-        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
+        ExecutorService executor = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("TestWorker-", 0).factory()); // Java 25 Virtual Threads;
 
         try {
             assertTrue(blockchain.addAuthorizedKey(alicePublicKey, "Alice", bootstrapKeyPair, UserRole.USER));

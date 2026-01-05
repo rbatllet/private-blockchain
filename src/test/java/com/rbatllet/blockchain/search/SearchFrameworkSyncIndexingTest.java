@@ -17,8 +17,8 @@ import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.IndexingResult;
-import com.rbatllet.blockchain.test.util.TestDatabaseUtils;
-import com.rbatllet.blockchain.testutil.GenesisKeyManager;
+import com.rbatllet.blockchain.util.TestDatabaseUtils;
+import com.rbatllet.blockchain.util.TestGenesisKeyManager;
 import com.rbatllet.blockchain.util.CryptoUtil;
 
 /**
@@ -46,7 +46,7 @@ public class SearchFrameworkSyncIndexingTest {
         TestDatabaseUtils.setupTest();
         
         // Load bootstrap admin keys (auto-generates if missing - test-only)
-        bootstrapKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
+        bootstrapKeyPair = TestGenesisKeyManager.ensureGenesisKeysExist();
         
         // Create blockchain
         testBlockchain = new Blockchain();

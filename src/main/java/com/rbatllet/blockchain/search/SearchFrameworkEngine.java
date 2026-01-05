@@ -320,7 +320,10 @@ public class SearchFrameworkEngine {
         this.defaultConfig = config;
         // Java 25 Virtual Threads (Phase 1.4): Unlimited concurrent search indexing operations
         // Benefits: 20x-100x improvement for multi-user searches, automatic unmounting during DB I/O
-        this.indexingExecutor = Executors.newVirtualThreadPerTaskExecutor();
+        // Thread Naming: Uses "SearchWorker-N" for better observability in logs
+        this.indexingExecutor = Executors.newThreadPerTaskExecutor(
+            Thread.ofVirtual().name("SearchWorker-", 0).factory()
+        );
         this.blockMetadataIndex = new ConcurrentHashMap<>();
         this.offChainFileSearch = new OffChainFileSearch();
         this.onChainContentSearch = new OnChainContentSearch();

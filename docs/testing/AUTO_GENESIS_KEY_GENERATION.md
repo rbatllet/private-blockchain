@@ -59,8 +59,8 @@ Simplify test execution by automatically generating genesis-admin keys when they
 **Simplest approach:**
 
 ```java
-import com.rbatllet.blockchain.testutil.BaseBlockchainTest;
-import com.rbatllet.blockchain.testutil.GenesisKeyManager;
+import com.rbatllet.blockchain.util.BaseBlockchainTest;
+import com.rbatllet.blockchain.util.TestGenesisKeyManager;
 
 public class MyBlockchainTest extends BaseBlockchainTest {
     // Genesis keys are automatically available!
@@ -68,7 +68,7 @@ public class MyBlockchainTest extends BaseBlockchainTest {
     @Test
     void myTest() {
         // Keys are auto-generated if missing, or loaded if exist
-        KeyPair genesisKeys = GenesisKeyManager.ensureGenesisKeysExist();
+        KeyPair genesisKeys = TestGenesisKeyManager.ensureGenesisKeysExist();
 
         // ... test logic ...
     }
@@ -76,17 +76,17 @@ public class MyBlockchainTest extends BaseBlockchainTest {
 ```
 
 **What happens:**
-1. `@BeforeAll` runs `GenesisKeyManager.ensureGenesisKeysExist()`
+1. `@BeforeAll` runs `TestGenesisKeyManager.ensureGenesisKeysExist()`
 2. If keys don't exist → generates them automatically
 3. If keys exist → loads them from disk
 4. Test proceeds with keys available
 
-### Option 2: Use `GenesisKeyManager` Directly
+### Option 2: Use `TestGenesisKeyManager` Directly
 
 **For custom test setups:**
 
 ```java
-import com.rbatllet.blockchain.testutil.GenesisKeyManager;
+import com.rbatllet.blockchain.util.TestGenesisKeyManager;
 import org.junit.jupiter.api.BeforeAll;
 
 public class CustomTest {
@@ -94,7 +94,7 @@ public class CustomTest {
     @BeforeAll
     static void setUp() {
         // Ensure genesis keys exist (generates if missing)
-        GenesisKeyManager.ensureGenesisKeysExist();
+        TestGenesisKeyManager.ensureGenesisKeysExist();
     }
 
     @Test
@@ -109,13 +109,13 @@ public class CustomTest {
 **For conditional logic:**
 
 ```java
-import com.rbatllet.blockchain.testutil.GenesisKeyManager;
+import com.rbatllet.blockchain.util.TestGenesisKeyManager;
 
-if (!GenesisKeyManager.keysExist()) {
+if (!TestGenesisKeyManager.keysExist()) {
     System.out.println("⚠️ Keys don't exist - will be auto-generated");
 }
 
-KeyPair keys = GenesisKeyManager.ensureGenesisKeysExist();
+KeyPair keys = TestGenesisKeyManager.ensureGenesisKeysExist();
 ```
 
 ---
@@ -233,11 +233,11 @@ graph TD
    }
    ```
 
-2. **Or call `GenesisKeyManager.ensureGenesisKeysExist()` in `@BeforeAll`**:
+2. **Or call `TestGenesisKeyManager.ensureGenesisKeysExist()` in `@BeforeAll`**:
    ```java
    @BeforeAll
    static void setUp() {
-       GenesisKeyManager.ensureGenesisKeysExist();
+       TestGenesisKeyManager.ensureGenesisKeysExist();
    }
    ```
 
@@ -251,8 +251,8 @@ graph TD
 
 1. **Clear cache**:
    ```java
-   GenesisKeyManager.clearCache();
-   GenesisKeyManager.ensureGenesisKeysExist();
+   TestGenesisKeyManager.clearCache();
+   TestGenesisKeyManager.ensureGenesisKeysExist();
    ```
 
 2. **Regenerate keys manually**:
@@ -267,7 +267,7 @@ graph TD
 
 **Symptom:** Race condition when multiple tests try to generate keys simultaneously
 
-**Solution:** ✅ **Already handled!** `GenesisKeyManager.ensureGenesisKeysExist()` is `synchronized`.
+**Solution:** ✅ **Already handled!** `TestGenesisKeyManager.ensureGenesisKeysExist()` is `synchronized`.
 
 ---
 
@@ -287,7 +287,7 @@ graph TD
 // ❌ WRONG - Do NOT do this in production code!
 public class ProductionService {
     public ProductionService() {
-        GenesisKeyManager.ensureGenesisKeysExist(); // DANGEROUS!
+        TestGenesisKeyManager.ensureGenesisKeysExist(); // DANGEROUS!
     }
 }
 ```

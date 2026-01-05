@@ -40,7 +40,10 @@ public class SearchStrategyRouter {
         this.encryptedContentSearch = new EncryptedContentSearch();
         // Java 25 Virtual Threads (Phase 1.5): Unlimited concurrent search strategies
         // Benefits: Better than cached pool (no thread creation overhead), 10x-50x improvement
-        this.executorService = Executors.newVirtualThreadPerTaskExecutor();
+        // Thread Naming: Uses "StrategyWorker-N" for better observability in logs
+        this.executorService = Executors.newThreadPerTaskExecutor(
+            Thread.ofVirtual().name("StrategyWorker-", 0).factory()
+        );
     }
     
     /**

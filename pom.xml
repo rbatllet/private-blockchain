@@ -34,6 +34,8 @@
         <maven-assembly-plugin.version>3.8.0</maven-assembly-plugin.version>
         <maven-execution-plugin.version>3.6.2</maven-execution-plugin.version>
         <maven-jacoco-plugin.version>0.8.14</maven-jacoco-plugin.version>
+        <maven-surefire-plugin.version>3.5.4</maven-surefire-plugin.version>
+        <maven-shade-plugin.version>3.6.1</maven-shade-plugin.version>
     </properties>
 
     <dependencies>
@@ -237,29 +239,70 @@
                     <release>25</release>
                 </configuration>
             </plugin>
-            
-            <!-- Maven Assembly Plugin for creating JAR with dependencies -->
+
+            <!-- Maven Jar Plugin - Exclude demo and tools packages from JAR -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-assembly-plugin</artifactId>
-                <version>${maven-assembly-plugin.version}</version>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.4.2</version>
                 <configuration>
-                    <descriptorRefs>
-                        <descriptorRef>jar-with-dependencies</descriptorRef>
-                    </descriptorRefs>
-                    <archive>
-                        <manifest>
-                            <mainClass>demo.BlockchainDemo</mainClass>
-                        </manifest>
-                    </archive>
+                    <excludes>
+                        <!-- Exclude demo classes from JAR -->
+                        <exclude>demo/**</exclude>
+                        <!-- Exclude tools classes from JAR -->
+                        <exclude>tools/**</exclude>
+                    </excludes>
                 </configuration>
+            </plugin>
+
+            <!-- Maven Surefire Plugin for running tests with JUnit 6 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${maven-surefire-plugin.version}</version>
+                <configuration>
+                    <includes>
+                        <include>**/*Test.java</include>
+                        <include>**/*Tests.java</include>
+                    </includes>
+                </configuration>
+            </plugin>
+            
+            <!-- Maven Shade Plugin for creating uber-JAR with dependencies -->
+            <!-- Excludes demo and tools packages from final JAR -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>${maven-shade-plugin.version}</version>
                 <executions>
                     <execution>
-                        <id>make-assembly</id>
                         <phase>package</phase>
                         <goals>
-                            <goal>single</goal>
+                            <goal>shade</goal>
                         </goals>
+                        <configuration>
+                            <shadedArtifactAttached>true</shadedArtifactAttached>
+                            <shadedClassifierName>jar-with-dependencies</shadedClassifierName>
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                                <filter>
+                                    <artifact>${project.groupId}:${project.artifactId}</artifact>
+                                    <excludes>
+                                        <!-- Exclude demo classes -->
+                                        <exclude>demo/**</exclude>
+                                        <!-- Exclude tools classes -->
+                                        <exclude>tools/**</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>

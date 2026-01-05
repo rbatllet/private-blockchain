@@ -8,7 +8,7 @@ import com.rbatllet.blockchain.util.CryptoUtil;
 
 import tools.jackson.databind.ObjectMapper;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -35,7 +35,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @DisplayName("Blockchain Additional Advanced Functions Tests")
 @ResourceLock("blockchain-config") // Prevents parallel execution with OffChainStorageTest
-class BlockchainAdditionalAdvancedFunctionsTest {
+public class BlockchainAdditionalAdvancedFunctionsTest {
 
     private Blockchain blockchain;
     private KeyPair aliceKeyPair;
@@ -112,7 +112,7 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @Test
     @Order(1)
     @DisplayName("Test Block Size Validation - Valid Sizes")
-    void testValidBlockSizes() {
+    public void testValidBlockSizes() {
         // Clear blockchain for clean size validation testing
         blockchain.clearAndReinitialize();
         blockchain.createBootstrapAdmin(alicePublicKey, "Alice");
@@ -140,7 +140,7 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @Test
     @Order(2)
     @DisplayName("Test Block Size Validation - Invalid Sizes")
-    void testInvalidBlockSizes() {
+    public void testInvalidBlockSizes() {
         // Clear blockchain for clean size validation testing
         blockchain.clearAndReinitialize();
         blockchain.createBootstrapAdmin(alicePublicKey, "Alice");
@@ -177,12 +177,12 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @Test
     @Order(3)
     @DisplayName("Test Block Size Constants")
-    void testBlockSizeConstants() {
+    public void testBlockSizeConstants() {
         assertTrue(blockchain.getMaxBlockSizeBytes() > 0, "Max block size in bytes should be positive");
         assertTrue(blockchain.getOffChainThresholdBytes() > 0, "Off-chain threshold should be positive");
 
         // Verify reasonable limits
-        assertEquals(1024 * 1024, blockchain.getMaxBlockSizeBytes(), "Max block size should be 1MB");
+        assertEquals(10 * 1024 * 1024, blockchain.getMaxBlockSizeBytes(), "Max block size should be 10MB");
         assertEquals(512 * 1024, blockchain.getOffChainThresholdBytes(), "Off-chain threshold should be 512KB");
     }
 
@@ -193,7 +193,7 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @Test
     @Order(4)
     @DisplayName("Test Successful Chain Export")
-    void testSuccessfulChainExport() {
+    public void testSuccessfulChainExport() {
         File exportFile = tempDir.resolve("test_export.json").toFile();
         String exportPath = exportFile.getAbsolutePath();
 
@@ -208,7 +208,7 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @Test
     @Order(5)
     @DisplayName("Test Chain Export to Invalid Path")
-    void testChainExportInvalidPath() {
+    public void testChainExportInvalidPath() {
         // Try to export to an invalid/non-existent directory
         // NOTE: This test intentionally throws an exception - this is expected behavior
         String invalidPath = "/non/existent/directory/export.json";
@@ -222,7 +222,7 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @Test
     @Order(6)
     @DisplayName("Test Chain Export Content Verification")
-    void testChainExportContentVerification() throws Exception {
+    public void testChainExportContentVerification() throws Exception {
         File exportFile = tempDir.resolve("content_test_export.json").toFile();
         String exportPath = exportFile.getAbsolutePath();
 
@@ -255,7 +255,7 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @Test
     @Order(7)
     @DisplayName("Test Successful Chain Import")
-    void testSuccessfulChainImport() {
+    public void testSuccessfulChainImport() {
         // First export the current chain
         File exportFile = tempDir.resolve("import_test.json").toFile();
         String exportPath = exportFile.getAbsolutePath();
@@ -281,7 +281,7 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @Test
     @Order(8)
     @DisplayName("Test Chain Import from Non-existent File")
-    void testChainImportNonexistentFile() {
+    public void testChainImportNonexistentFile() {
         // NOTE: This test intentionally throws an exception - this is expected behavior
         String nonExistentPath = tempDir.resolve("non_existent.json").toString();
 
@@ -294,7 +294,7 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @Test
     @Order(9)
     @DisplayName("Test Chain Import with Invalid JSON")
-    void testChainImportInvalidJson() throws Exception {
+    public void testChainImportInvalidJson() throws Exception {
         File invalidJsonFile = tempDir.resolve("invalid.json").toFile();
         
         // Write invalid JSON to file
@@ -308,7 +308,7 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @Test
     @Order(10)
     @DisplayName("Test Chain Import Data Integrity")
-    void testChainImportDataIntegrity() {
+    public void testChainImportDataIntegrity() {
         // Export original chain
         File exportFile = tempDir.resolve("integrity_test.json").toFile();
         String exportPath = exportFile.getAbsolutePath();
@@ -345,7 +345,7 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @Test
     @Order(11)
     @DisplayName("Test Successful Block Rollback")
-    void testSuccessfulBlockRollback() {
+    public void testSuccessfulBlockRollback() {
         long initialBlockCount = blockchain.getBlockCount();
         
         // Add some more blocks to rollback
@@ -369,7 +369,7 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @Test
     @Order(12)
     @DisplayName("Test Block Rollback Edge Cases")
-    void testBlockRollbackEdgeCases() {
+    public void testBlockRollbackEdgeCases() {
         // Test rollback with zero blocks - should throw IllegalArgumentException
         assertThrows(IllegalArgumentException.class, () -> {
             blockchain.rollbackBlocks(0L);
@@ -390,7 +390,7 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @Test
     @Order(13)
     @DisplayName("Test Rollback to Specific Block")
-    void testRollbackToSpecificBlock() {
+    public void testRollbackToSpecificBlock() {
         // Add some blocks first
         blockchain.addBlock("Rollback test 1", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic());
         blockchain.addBlock("Rollback test 2", bobKeyPair.getPrivate(), bobKeyPair.getPublic());
@@ -408,7 +408,7 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @Test
     @Order(14)
     @DisplayName("Test Rollback to Block Edge Cases")
-    void testRollbackToBlockEdgeCases() {
+    public void testRollbackToBlockEdgeCases() {
         // Test rollback to negative block number - should throw exception (strict validation)
         assertThrows(IllegalArgumentException.class, () -> {
             blockchain.rollbackToBlock(-1L);
@@ -432,7 +432,7 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @Test
     @Order(15)
     @DisplayName("Test Search Blocks by Content")
-    void testSearchBlocksByContent() {
+    public void testSearchBlocksByContent() {
         // Add blocks with specific searchable content
         blockchain.addBlock("Payment to vendor ABC", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic());
         blockchain.addBlock("Invoice from company XYZ", bobKeyPair.getPrivate(), bobKeyPair.getPublic());
@@ -468,7 +468,7 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @Test
     @Order(16)
     @DisplayName("Test Get Block by Hash")
-    void testGetBlockByHash() {
+    public void testGetBlockByHash() {
         // Get a known block
         Block knownBlock = blockchain.getBlock(1L);
         assertNotNull(knownBlock, "Known block should exist");
@@ -497,7 +497,7 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @Test
     @Order(17)
     @DisplayName("Test Get Blocks by Date Range")
-    void testGetBlocksByDateRange() {
+    public void testGetBlocksByDateRange() {
         LocalDate today = LocalDate.now();
         LocalDate yesterday = today.minusDays(1);
         LocalDate tomorrow = today.plusDays(1);
@@ -540,7 +540,7 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @Test
     @Order(18)
     @DisplayName("Test Advanced Search Performance")
-    void testAdvancedSearchPerformance() {
+    public void testAdvancedSearchPerformance() {
         // Add many blocks for performance testing
         for (int i = 0; i < 50; i++) {
             blockchain.addBlock("Performance test block " + i, 
@@ -566,7 +566,7 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @Test
     @Order(19)
     @DisplayName("Test Export-Import-Search Integration")
-    void testExportImportSearchIntegration() {
+    public void testExportImportSearchIntegration() {
         // Add searchable content
         blockchain.addBlock("Integration test data", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic());
         
@@ -592,7 +592,7 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @Test
     @Order(20)
     @DisplayName("Test Rollback-Search Integration")
-    void testRollbackSearchIntegration() {
+    public void testRollbackSearchIntegration() {
         // Add searchable blocks
         blockchain.addBlock("Before rollback", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic());
         blockchain.addBlock("Will be removed", bobKeyPair.getPrivate(), bobKeyPair.getPublic());
@@ -622,7 +622,7 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @Test
     @Order(21)
     @DisplayName("Test Additional Advanced Functions Error Handling")
-    void testAdditionalAdvancedFunctionsErrorHandling() {
+    public void testAdditionalAdvancedFunctionsErrorHandling() {
         // This test verifies that additional advanced functions validate parameters strictly
         // and throw appropriate exceptions for invalid inputs
         
@@ -669,7 +669,7 @@ class BlockchainAdditionalAdvancedFunctionsTest {
     @Test
     @Order(22)
     @DisplayName("Test Chain Validation After All Operations")
-    void testChainValidationAfterAllOperations() {
+    public void testChainValidationAfterAllOperations() {
         // Final verification that the chain remains valid after all test operations
         var finalValidation = blockchain.validateChainDetailed();
         assertTrue(finalValidation.isStructurallyIntact(), 

@@ -1,7 +1,6 @@
-package com.rbatllet.blockchain.testutil;
+package com.rbatllet.blockchain.util;
 
 import com.rbatllet.blockchain.security.KeyFileLoader;
-import com.rbatllet.blockchain.util.CryptoUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,9 +33,9 @@ import java.security.KeyPair;
  *
  * @since 1.0.6
  */
-public class GenesisKeyManager {
+public class TestGenesisKeyManager {
 
-    private static final Logger logger = LoggerFactory.getLogger(GenesisKeyManager.class);
+    private static final Logger logger = LoggerFactory.getLogger(TestGenesisKeyManager.class);
 
     private static final String GENESIS_PRIVATE_KEY_PATH = "./keys/genesis-admin.private";
     private static final String GENESIS_PUBLIC_KEY_PATH = "./keys/genesis-admin.public";
@@ -61,7 +60,7 @@ public class GenesisKeyManager {
      * <pre>{@code
      * @BeforeAll
      * static void setUpClass() {
-     *     GenesisKeyManager.ensureGenesisKeysExist();
+     *     TestGenesisKeyManager.ensureGenesisKeysExist();
      * }
      * }</pre>
      *

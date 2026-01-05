@@ -667,7 +667,7 @@ blockchain.offchain.backup_verification=true     # Verify integrity before backu
 ### Size and Performance Limits
 ```properties
 # Block constraints
-blockchain.block.max_size_bytes=1048576        # 1MB (1,048,576 bytes)
+blockchain.block.max_size_bytes=10485760       # 10MB (10,485,760 bytes)
 blockchain.block.max_hash_length=64            # SHA3-256 hash length
 
 # Database settings

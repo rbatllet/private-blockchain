@@ -3,7 +3,7 @@ package com.rbatllet.blockchain.stress;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.security.UserRole;
-import com.rbatllet.blockchain.testutil.GenesisKeyManager;
+import com.rbatllet.blockchain.util.TestGenesisKeyManager;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,11 +42,14 @@ public class BlockchainSearchInitializationStressTest {
         // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
         blockchain.clearAndReinitialize();
 
-        executorService = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
+        // Java 25 Virtual Threads with named threads for better observability
+        executorService = Executors.newThreadPerTaskExecutor(
+            Thread.ofVirtual().name("StressTest-", 0).factory()
+        );
         testKeyPair = CryptoUtil.generateKeyPair();
 
         // Load bootstrap admin keys (auto-generates if missing - test-only)
-        bootstrapKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
+        bootstrapKeyPair = TestGenesisKeyManager.ensureGenesisKeysExist();
 
         // SECURITY (v1.0.6): Register bootstrap admin in blockchain (REQUIRED!)
         blockchain.createBootstrapAdmin(

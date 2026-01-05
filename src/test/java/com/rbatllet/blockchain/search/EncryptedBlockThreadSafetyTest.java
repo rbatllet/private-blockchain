@@ -6,7 +6,7 @@ import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.*;
 import com.rbatllet.blockchain.security.UserRole;
-import com.rbatllet.blockchain.testutil.GenesisKeyManager;
+import com.rbatllet.blockchain.util.TestGenesisKeyManager;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.*;
 
@@ -48,7 +48,7 @@ public class EncryptedBlockThreadSafetyTest {
         blockchain.clearAndReinitialize();
 
         // Load bootstrap admin keys (auto-generates if missing - test-only)
-        bootstrapKeyPair = GenesisKeyManager.ensureGenesisKeysExist();
+        bootstrapKeyPair = TestGenesisKeyManager.ensureGenesisKeysExist();
 
         // SECURITY (v1.0.6): Register bootstrap admin in blockchain (REQUIRED!)
         blockchain.createBootstrapAdmin(
@@ -98,7 +98,7 @@ public class EncryptedBlockThreadSafetyTest {
         int operationsPerThread = 5;
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch completeLatch = new CountDownLatch(numThreads);
-        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
+        ExecutorService executor = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("TestWorker-", 0).factory()); // Java 25 Virtual Threads;
         
         AtomicInteger indexOperations = new AtomicInteger(0);
         AtomicInteger searchOperations = new AtomicInteger(0);
@@ -193,7 +193,7 @@ public class EncryptedBlockThreadSafetyTest {
         
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch completeLatch = new CountDownLatch(numCreatorThreads + numSearchThreads);
-        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
+        ExecutorService executor = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("TestWorker-", 0).factory()); // Java 25 Virtual Threads;
         
         AtomicInteger searchCount = new AtomicInteger(0);
         AtomicInteger createCount = new AtomicInteger(0);
@@ -319,7 +319,7 @@ public class EncryptedBlockThreadSafetyTest {
         int searchesPerThread = 20;
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch completeLatch = new CountDownLatch(numThreads);
-        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads;
+        ExecutorService executor = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("TestWorker-", 0).factory()); // Java 25 Virtual Threads;
         
         AtomicInteger successfulSearches = new AtomicInteger(0);
         AtomicInteger totalSearches = new AtomicInteger(0);

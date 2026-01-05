@@ -19,7 +19,6 @@ import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.CustomMetadataUtil;
 
-import static com.rbatllet.blockchain.util.CryptoUtil.getSecureRandom;
 import com.rbatllet.blockchain.util.JPAUtil;
 import com.rbatllet.blockchain.util.format.FormatUtil;
 import com.rbatllet.blockchain.util.validation.BlockValidationUtil;
@@ -2023,23 +2022,20 @@ public class UserFriendlyEncryptionAPI {
     }
 
     /**
-     * Generate a secure random password for encryption
+     * Generate a secure random password for encryption.
+     *
+     * <p>This method delegates to {@link PasswordUtil#generateSecurePassword(int)} to generate
+     * a password that meets all strong security requirements including uppercase, lowercase,
+     * digits, and special characters.</p>
+     *
      * @param length The desired password length (minimum 12 characters)
      * @return A cryptographically secure random password
+     * @see PasswordUtil#generateSecurePassword(int)
+     * @see PasswordUtil#validateStrongPassword(String)
      */
     public String generateSecurePassword(int length) {
         validateIntParameter(length, "Password length", 12, 256);
-
-        String chars =
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
-        StringBuilder password = new StringBuilder(length);
-        java.security.SecureRandom random = getSecureRandom();
-
-        for (int i = 0; i < length; i++) {
-            password.append(chars.charAt(random.nextInt(chars.length())));
-        }
-
-        return password.toString();
+        return PasswordUtil.generateSecurePassword(length);
     }
 
     /**
@@ -2189,32 +2185,8 @@ public class UserFriendlyEncryptionAPI {
     /**
      * Generate a cryptographically secure password with validation and optional confirmation.
      *
-     * <p>This method creates enterprise-grade passwords suitable for protecting sensitive
-     * blockchain data. It combines secure random generation, strength validation, and
-     * optional interactive confirmation for maximum security and usability.</p>
-     *
-     * <p><strong>Security Features:</strong></p>
-     * <ul>
-     *   <li>Cryptographically secure random generation using SecureRandom</li>
-     *   <li>Automatic validation against security best practices</li>
-     *   <li>Configurable length with minimum security requirements</li>
-     *   <li>Character set includes uppercase, lowercase, digits, and symbols</li>
-     *   <li>Multiple generation attempts to ensure quality</li>
-     * </ul>
-     *
-     * <p><strong>Password Strength Requirements:</strong></p>
-     * <ul>
-     *   <li>Minimum 12 characters (recommended: 16+ for high security)</li>
-     *   <li>Mix of uppercase and lowercase letters</li>
-     *   <li>Numbers and special characters included</li>
-     *   <li>No common patterns or dictionary words</li>
-     *   <li>Suitable for AES-256-GCM encryption protection</li>
-     * </ul>
-     *
-     * <p><strong>Interactive Confirmation:</strong><br>
-     * When {@code requireConfirmation} is true, the method logs the generated password
-     * and prompts for re-entry to ensure accuracy. This is recommended for critical
-     * operations where password mistakes could result in data loss.</p>
+     * <p>This method delegates to {@link PasswordUtil#generateValidatedPassword(int, boolean)}
+     * to create enterprise-grade passwords suitable for protecting sensitive blockchain data.</p>
      *
      * <p><strong>Usage Examples:</strong></p>
      * <pre>{@code
@@ -2245,6 +2217,7 @@ public class UserFriendlyEncryptionAPI {
      * @throws RuntimeException if secure password generation fails after multiple attempts
      * @see #storeSecret(String, String)
      * @see #storeEncryptedData(String, String)
+     * @see PasswordUtil#generateValidatedPassword(int, boolean)
      * @see PasswordUtil#generateSecurePassword(int)
      * @since 1.0
      */
@@ -2252,53 +2225,7 @@ public class UserFriendlyEncryptionAPI {
         int length,
         boolean requireConfirmation
     ) {
-        if (length < 12) {
-            throw new IllegalArgumentException(
-                "Password length must be at least 12 characters"
-            );
-        }
-        if (length > 256) {
-            throw new IllegalArgumentException(
-                "Password length cannot exceed 256 characters (DoS protection)"
-            );
-        }
-
-        String password;
-        int attempts = 0;
-        int maxAttempts = 5;
-
-        do {
-            password = generateSecurePassword(length);
-            attempts++;
-
-            if (attempts > maxAttempts) {
-                throw new RuntimeException(
-                    "Failed to generate valid password after " +
-                    maxAttempts +
-                    " attempts"
-                );
-            }
-        } while (!validatePassword(password));
-
-        if (requireConfirmation) {
-            logger.info(
-                "🔑 Generated secure password with length: {} characters",
-                password.length()
-            );
-            String confirmation = readPasswordSecurely(
-                "Please re-enter the generated password to confirm: "
-            );
-
-            if (confirmation == null || !password.equals(confirmation)) {
-                logger.warn(
-                    "❌ Password confirmation failed - attempt rejected"
-                );
-                return null;
-            }
-            logger.info("✅ Password confirmed successfully");
-        }
-
-        return password;
+        return PasswordUtil.generateValidatedPassword(length, requireConfirmation);
     }
 
     // ===== SECURITY VALIDATION HELPERS =====

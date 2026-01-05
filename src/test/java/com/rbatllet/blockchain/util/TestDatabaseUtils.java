@@ -1,4 +1,4 @@
-package com.rbatllet.blockchain.test.util;
+package com.rbatllet.blockchain.util;
 
 import java.security.PrivateKey;
 

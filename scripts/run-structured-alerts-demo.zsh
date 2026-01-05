@@ -3,11 +3,18 @@
 # Structured Alerts System Demo Script
 # Demonstrates JSON-structured alerts and monitoring capabilities
 
+# Script configuration
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Load common functions library
+source "${SCRIPT_DIR}/lib/common_functions.zsh"
+
 echo "🚨 Structured Alerts System Demo"
 echo "================================="
 
 # Change to project root directory
-cd "$(dirname "$0")/.."
+cd "$PROJECT_DIR"
 
 # Check if Maven is available
 if ! command -v mvn &> /dev/null; then
@@ -23,6 +30,13 @@ fi
 
 # Set environment variable for development configuration
 export ENV=development
+
+# Ensure genesis keys exist before running demo
+ensure_genesis_keys
+
+# Clean database before running demo (demo requires fresh state)
+echo "🧹 Cleaning database for fresh demo execution..."
+cleanup_database
 
 echo "📋 Compiling project..."
 mvn compile -q

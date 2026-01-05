@@ -58,7 +58,10 @@ main() {
     
     # Clean and compile
     cleanup_database
-    
+
+    # Ensure genesis admin keys exist (auto-generates if missing)
+    ensure_genesis_keys
+
     if ! compile_project; then
         exit 1
     fi

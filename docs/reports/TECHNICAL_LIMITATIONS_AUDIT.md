@@ -260,7 +260,7 @@ DatabaseConfig prodConfig = DatabaseConfig.createPostgreSQLConfig(
 ### 3.1 Maximum Block Data Size (HARD LIMIT)
 
 **Limits:**
-- **On-chain:** 1,048,576 bytes (1MB) max per block
+- **On-chain:** 10,485,760 bytes (10MB) max per block
 - **Off-chain threshold:** 524,288 bytes (512KB)
 
 **Location:** `Blockchain.MAX_BLOCK_SIZE_BYTES`, `OFF_CHAIN_THRESHOLD_BYTES`
@@ -268,14 +268,14 @@ DatabaseConfig prodConfig = DatabaseConfig.createPostgreSQLConfig(
 **Behavior:**
 ```
 Data ≤ 512KB: Stored on-chain (in database)
-Data > 512KB and ≤ 1MB: Stored on-chain (warning issued)
-Data > 1MB: Rejected with IllegalArgumentException
+Data > 512KB and ≤ 10MB: Stored on-chain (warning issued)
+Data > 10MB: Rejected with IllegalArgumentException
 ```
 
 **Impact:**
 - ✅ Prevents database bloat
 - ✅ Automatic off-chain storage for large data
-- ⚠️ Cannot store files >1MB in single block
+- ⚠️ Cannot store files >10MB in single block
 
 **Workaround for Large Files:**
 ```java
@@ -296,7 +296,7 @@ for (int offset = 0; offset < largeFile.length; offset += chunkSize) {
 }
 ```
 
-**Recommendation:** 🟡 Document chunk-based pattern for >1MB files. Consider adding `addLargeFile()` helper.
+**Recommendation:** 🟡 Document chunk-based pattern for >10MB files. Consider adding `addLargeFile()` helper.
 
 ---
 
@@ -337,7 +337,7 @@ off-chain-data/
 
 ### 3.3 Metadata Size Limit (SOFT LIMIT)
 
-**Limit:** Custom metadata JSON limited by block size (1MB total)
+**Limit:** Custom metadata JSON limited by block size (10MB total)
 
 **Location:** `Block.customMetadata` field (TEXT/CLOB)
 
@@ -667,7 +667,7 @@ blockchain-cli search --term "medical" --encrypted --password [pwd]
 **Current DoS Protections:**
 - ✅ Search result limits (10K max)
 - ✅ Batch size limits (10K max)
-- ✅ Block size limits (1MB max)
+- ✅ Block size limits (10MB max)
 - ❌ No per-user request throttling
 
 **Recommendation:** 🟡 Add rate limiting wrapper:

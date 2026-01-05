@@ -67,8 +67,9 @@ for file in "${DEMO_FILES[@]}"; do
     TOTAL=$((TOTAL + 1))
     filename=$(basename "$file")
     
-    # Check if file has waitForCompletion()
-    has_wait=$(grep -c "waitForCompletion()" "$file" 2>/dev/null)
+    # Check if file has waitForCompletion() or waitForCompletion(timeout)
+    # Match both patterns: waitForCompletion() and waitForCompletion(number)
+    has_wait=$(grep -cE "waitForCompletion\((\)|[0-9]+\))" "$file" 2>/dev/null)
     has_wait=${has_wait:-0}
     has_wait=$((has_wait))
     

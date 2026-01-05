@@ -34,12 +34,17 @@ public class TestDataConsistency {
         );
         System.out.println("2. ✅ Added authorized key for testing");
         
-        // Generate large data for off-chain storage (600KB)
+        // Generate large data for off-chain storage
+        // Off-chain threshold: 512KB, Max block size: 10MB
+        // Test 1: ~600KB (above 512KB threshold to trigger off-chain)
         StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < 60000; i++) {
+        for (int i = 0; i < 15000; i++) {  // 15000 × 41 chars = 615,000 bytes ≈ 600KB
             sb.append("This is test data for off-chain storage. ");
         }
         String largeData = sb.toString();
+
+        System.out.println("   📊 Test data size: " + largeData.length() + " bytes (" +
+                          String.format("%.2f", largeData.length() / 1024.0 / 1024.0) + " MB)");
         
         // Add block with off-chain data
         Block block = blockchain.addBlockAndReturn(largeData, privateKey, publicKey);
@@ -99,12 +104,32 @@ public class TestDataConsistency {
                 return;
             }
             
+            // Test 2: 2 MB file (validates increased block size limit)
+            System.out.println("6. 📊 Testing 2 MB file support...");
+            StringBuilder sb2 = new StringBuilder();
+            for (int i = 0; i < 50000; i++) {  // 50000 × 41 chars = 2,050,000 bytes ≈ 2 MB
+                sb2.append("This is test data for off-chain storage. ");
+            }
+            String data2MB = sb2.toString();
+            System.out.println("   📊 Test data size: " + data2MB.length() + " bytes (" +
+                              String.format("%.2f", data2MB.length() / 1024.0 / 1024.0) + " MB)");
+
+            Block block2MB = blockchain.addBlockAndReturn(data2MB, privateKey, publicKey);
+            if (block2MB != null && block2MB.hasOffChainData()) {
+                System.out.println("   ✅ Successfully stored 2 MB file");
+                System.out.println("   📁 Off-chain file: " + block2MB.getOffChainData().getFilePath());
+            } else {
+                System.out.println("   ❌ Failed to store 2 MB file");
+                return;
+            }
+
             System.out.println();
             System.out.println("🎉 ALL DATA CONSISTENCY TESTS PASSED!");
             System.out.println();
             System.out.println("✅ Rollback operations clean up off-chain files");
             System.out.println("✅ Orphaned file detection and cleanup works");
             System.out.println("✅ No data inconsistency between database and filesystem");
+            System.out.println("✅ Support for files up to 10 MB (600KB and 2MB tested)");
             
             // Show final detailed validation with off-chain data analysis
             System.out.println();

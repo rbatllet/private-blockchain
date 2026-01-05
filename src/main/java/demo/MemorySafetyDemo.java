@@ -126,7 +126,9 @@ public class MemorySafetyDemo {
         System.out.println("    🔐 Creating " + encryptedBlockIndices.size() + " encrypted blocks individually...");
         for (int i : encryptedBlockIndices) {
             String data = "Block #" + i + " - Transaction data for memory safety testing";
-            blockchain.addEncryptedBlock(data, "password" + i, keyPair.getPrivate(), keyPair.getPublic());
+            // NOTE: Using simple passwords for demo purposes only
+            // In production, always use strong, randomly-generated passwords
+            blockchain.addEncryptedBlock(data, "DemoPassword!2024#" + i, keyPair.getPrivate(), keyPair.getPublic());
         }
         System.out.println("    ✅ Created " + encryptedBlockIndices.size() + " encrypted blocks");
 
@@ -356,7 +358,8 @@ public class MemorySafetyDemo {
 
     private static void demoBeforeAfterComparison() {
         printSection("8. DEMO: BEFORE vs AFTER COMPARISON");
-        System.out.println("  📊 Memory usage comparison for 1000 blocks");
+        long totalBlocks = blockchain.getBlockCount();
+        System.out.println("  📊 Memory usage comparison for " + totalBlocks + " blocks (including genesis)");
         System.out.println();
 
         // Simulate "before" scenario (loading all blocks)
@@ -366,7 +369,8 @@ public class MemorySafetyDemo {
         long memoryBefore = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
 
         long startTime = System.currentTimeMillis();
-        List<Block> allBlocks = blockchain.getBlocksPaginated(0, 1000);
+        // Load ALL blocks including genesis (block 0) and last block (block 1000)
+        List<Block> allBlocks = blockchain.getBlocksPaginated(0, (int)totalBlocks);
         long elapsedBefore = System.currentTimeMillis() - startTime;
 
         long memoryAfterLoad = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
