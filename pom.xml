@@ -35,7 +35,7 @@
         <maven-execution-plugin.version>3.6.2</maven-execution-plugin.version>
         <maven-jacoco-plugin.version>0.8.14</maven-jacoco-plugin.version>
         <maven-surefire-plugin.version>3.5.4</maven-surefire-plugin.version>
-        <maven-shade-plugin.version>3.6.1</maven-shade-plugin.version>
+        <maven-jar-plugin.version>3.5.0</maven-jar-plugin.version>
     </properties>
 
     <dependencies>
@@ -240,11 +240,11 @@
                 </configuration>
             </plugin>
 
-            <!-- Maven Jar Plugin - Exclude demo and tools packages from JAR -->
+            <!-- Maven JAR Plugin for excluding demo and tools packages from JAR -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
-                <version>3.4.2</version>
+                <version>${maven-jar-plugin.version}</version>
                 <configuration>
                     <excludes>
                         <!-- Exclude demo classes from JAR -->
@@ -266,45 +266,6 @@
                         <include>**/*Tests.java</include>
                     </includes>
                 </configuration>
-            </plugin>
-            
-            <!-- Maven Shade Plugin for creating uber-JAR with dependencies -->
-            <!-- Excludes demo and tools packages from final JAR -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <version>${maven-shade-plugin.version}</version>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>shade</goal>
-                        </goals>
-                        <configuration>
-                            <shadedArtifactAttached>true</shadedArtifactAttached>
-                            <shadedClassifierName>jar-with-dependencies</shadedClassifierName>
-                            <filters>
-                                <filter>
-                                    <artifact>*:*</artifact>
-                                    <excludes>
-                                        <exclude>META-INF/*.SF</exclude>
-                                        <exclude>META-INF/*.DSA</exclude>
-                                        <exclude>META-INF/*.RSA</exclude>
-                                    </excludes>
-                                </filter>
-                                <filter>
-                                    <artifact>${project.groupId}:${project.artifactId}</artifact>
-                                    <excludes>
-                                        <!-- Exclude demo classes -->
-                                        <exclude>demo/**</exclude>
-                                        <!-- Exclude tools classes -->
-                                        <exclude>tools/**</exclude>
-                                    </excludes>
-                                </filter>
-                            </filters>
-                        </configuration>
-                    </execution>
-                </executions>
             </plugin>
             
             <!-- Maven Exec Plugin for running tests via JUnit Platform Console Launcher -->
