@@ -13,6 +13,7 @@ import com.rbatllet.blockchain.service.SecureBlockEncryptionService;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -71,7 +72,7 @@ public class SearchSpecialistAPIRigorousTest {
         // This ensures each test has access to a test block
         String[] keywords = {"rigorous", "test", "financial"};
         testBlock = api.storeSearchableData("Rigorous test financial data", testPassword, keywords);
-        
+
         // CRITICAL: Wait for async indexing to complete
         IndexingCoordinator.getInstance().waitForCompletion();
 
@@ -85,6 +86,28 @@ public class SearchSpecialistAPIRigorousTest {
             KeyPair testKeys = api.createUser("search-setup-user");
             searchAPI.initializeWithBlockchain(blockchain, testPassword, testKeys.getPrivate());
         }
+    }
+
+    @AfterEach
+    void tearDown() {
+        // CRITICAL: Wait for all async indexing to complete before shutdown (Phase 5.4)
+        try {
+            IndexingCoordinator.getInstance().waitForCompletion(5000); // 5 seconds
+        } catch (Exception e) {
+            // Ignore warnings during cleanup
+        }
+
+        // Shutdown blockchain (which also triggers IndexingCoordinator shutdown)
+        if (blockchain != null) {
+            try {
+                blockchain.shutdown();
+            } catch (Exception e) {
+                // Ignore warnings during cleanup
+            }
+        }
+
+        // CRITICAL: Clear shutdown flag for next test (Phase 5.4 singleton state management)
+        IndexingCoordinator.getInstance().clearShutdownFlag();
     }
     
     @Test
