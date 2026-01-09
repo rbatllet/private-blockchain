@@ -17,6 +17,7 @@ import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPOutputStream;
@@ -104,6 +105,9 @@ public class OffChainCleanupService {
     private final AtomicLong totalFilesDeleted = new AtomicLong(0);
     private final AtomicLong totalFilesCompressed = new AtomicLong(0);
     private final AtomicLong totalSpaceSaved = new AtomicLong(0);
+
+    // Thread safety: Per-file locks for concurrent compression operations
+    private final ConcurrentHashMap<String, Object> compressionLocks = new ConcurrentHashMap<>();
 
     /**
      * Creates a new OffChainCleanupService with default metrics service.
@@ -712,6 +716,21 @@ public class OffChainCleanupService {
             return false;
         }
 
+        // Thread safety: Use per-file lock to prevent concurrent compression of same file
+        String filePath = file.getAbsolutePath();
+        Object lock = compressionLocks.computeIfAbsent(filePath, k -> new Object());
+        
+        synchronized (lock) {
+            try {
+                return compressFileSynchronized(file);
+            } finally {
+                // Clean up lock if no longer needed
+                compressionLocks.remove(filePath);
+            }
+        }
+    }
+
+    private boolean compressFileSynchronized(File file) {
         File compressedFile = new File(file.getAbsolutePath() + GZIP_EXTENSION);
 
         // Skip if compressed version already exists
