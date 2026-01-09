@@ -41,7 +41,7 @@ This document provides performance benchmarking results for the Memory Safety Re
 - **OS**: macOS/Linux
 
 ### Software Stack
-- **Java Version**: OpenJDK 21
+- **Java Version**: OpenJDK 25+
 - **JPA Provider**: Hibernate 6.6.4.Final
 - **Connection Pool**: HikariCP 5.1.0
 - **Databases Tested**:

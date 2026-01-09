@@ -119,14 +119,14 @@ cleanup_database() {
 check_java() {
     if ! command -v java &> /dev/null; then
         echo "❌ Java is not installed or not in PATH"
-        echo "ℹ️  Please install Java 11 or higher"
+        echo "ℹ️  Please install Java 25 or higher"
         return 1
     fi
     
     # Check Java version
     local java_version=$(java -version 2>&1 | head -n 1 | cut -d'"' -f2 | cut -d'.' -f1)
-    if [[ "$java_version" -lt 11 ]]; then
-        echo "❌ Java version $java_version detected. Java 11 or higher is required."
+    if [[ "$java_version" -lt 25 ]]; then
+        echo "❌ Java version $java_version detected. Java 25 or higher is required."
         return 1
     fi
     

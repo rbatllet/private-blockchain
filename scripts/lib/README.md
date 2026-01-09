@@ -33,7 +33,7 @@ Cleans up all database and temporary files created by the blockchain:
 - Removes log files
 
 #### `check_java()`
-Checks if Java is installed and meets minimum version requirements (Java 11+).
+Checks if Java is installed and meets minimum version requirements (Java 25+).
 Returns 0 on success, 1 on failure.
 
 #### `check_maven()`

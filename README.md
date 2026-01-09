@@ -1903,7 +1903,7 @@ mvn exec:java -Dexec.mainClass="demo.BlockchainDemo"
 rm blockchain.db blockchain.db-*
 ./run_all_tests.zsh
 
-# Check Java version (should be 21+)
+# Check Java version (should be 25+)
 java -version
 
 # Clean build

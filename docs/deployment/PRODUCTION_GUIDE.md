@@ -20,7 +20,7 @@ Comprehensive production deployment guide for the Private Blockchain implementat
 - **RAM**: 8GB minimum, 16GB recommended  
 - **Storage**: 100GB SSD with high IOPS
 - **OS**: Ubuntu 20.04 LTS or RHEL 8+
-- **Java**: OpenJDK 21 or Oracle JDK 21
+- **Java**: OpenJDK 25 or Oracle JDK 25
 - **Network**: Dedicated VLAN for blockchain traffic
 
 #### Production Directory Structure
