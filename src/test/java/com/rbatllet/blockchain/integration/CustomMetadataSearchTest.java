@@ -2,6 +2,7 @@ package com.rbatllet.blockchain.integration;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.util.CryptoUtil;
 
@@ -642,6 +643,9 @@ public class CustomMetadataSearchTest {
         Block block3 = blockchain.addBlockAndReturn("Medical record 3", keyPair.getPrivate(), keyPair.getPublic());
         block3.setCustomMetadata(jsonMapper.writeValueAsString(record3));
         blockchain.updateBlock(block3);
+
+        // Wait for async indexing to complete before querying
+        IndexingCoordinator.getInstance().waitForCompletion();
 
         // Query 1: Find all active cardiology cases
         Map<String, String> cardiologyActive = new HashMap<>();
