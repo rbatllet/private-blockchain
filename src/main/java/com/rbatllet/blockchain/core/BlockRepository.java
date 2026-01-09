@@ -296,6 +296,7 @@ class BlockRepository {
                         // Use existing global transaction
                         EntityManager em = JPAUtil.getEntityManager();
                         em.merge(block);
+                        em.flush(); // Ensure changes are immediately written to database
                     } else {
                         // Create own transaction
                         EntityManager em = JPAUtil.getEntityManager();
@@ -306,6 +307,7 @@ class BlockRepository {
                             transaction.begin();
 
                             em.merge(block);
+                            em.flush(); // Ensure changes are immediately written to database
 
                             transaction.commit();
                         } catch (Exception e) {
