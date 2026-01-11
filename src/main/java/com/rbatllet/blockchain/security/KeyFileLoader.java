@@ -183,7 +183,59 @@ public class KeyFileLoader {
             return null;
         }
     }
-    
+
+    /**
+     * Load public key from DER format (binary)
+     */
+    private static PublicKey loadPublicKeyFromDER(Path keyFilePath) {
+        try {
+            byte[] keyBytes = Files.readAllBytes(keyFilePath);
+            X509EncodedKeySpec keySpec = new X509EncodedKeySpec(keyBytes);
+            KeyFactory keyFactory = KeyFactory.getInstance(CryptoUtil.SIGNATURE_ALGORITHM);
+            return keyFactory.generatePublic(keySpec);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Load public key from PEM format
+     */
+    private static PublicKey loadPublicKeyFromPEM(String pemContent) {
+        try {
+            var matcher = PUBLIC_KEY_PEM_PATTERN.matcher(pemContent);
+            if (matcher.find()) {
+                String base64Key = matcher.group(2).replaceAll("\\s", "");
+                return parsePublicKeyX509(base64Key);
+            }
+            return null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Load public key from raw Base64 format
+     */
+    private static PublicKey loadPublicKeyFromBase64(String base64Content) {
+        try {
+            String cleanBase64 = base64Content.replaceAll("\\s", "");
+            return parsePublicKeyX509(cleanBase64);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Parse public key from Base64 string using X.509 format
+     */
+    private static PublicKey parsePublicKeyX509(String base64Key) throws Exception {
+        byte[] keyBytes = Base64.getDecoder().decode(base64Key);
+        X509EncodedKeySpec keySpec = new X509EncodedKeySpec(keyBytes);
+        KeyFactory keyFactory = KeyFactory.getInstance(CryptoUtil.SIGNATURE_ALGORITHM);
+        return keyFactory.generatePublic(keySpec);
+    }
+
     /**
      * Parse private key from Base64 string using PKCS#8 format
      */
@@ -196,9 +248,8 @@ public class KeyFileLoader {
     
     /**
      * Load a public key from a file
-     * This method is provided for completeness, though typically
-     * public keys are derived from authorized keys in the blockchain
-     * 
+     * Supports multiple formats: PEM, DER, and raw Base64
+     *
      * @param keyFilePath Path to the public key file
      * @return PublicKey object or null if loading fails
      */
@@ -206,40 +257,84 @@ public class KeyFileLoader {
         if (keyFilePath == null || keyFilePath.trim().isEmpty()) {
             return null;
         }
-        
+
         try {
             Path path = Paths.get(keyFilePath);
-            
-            if (!Files.exists(path) || !Files.isReadable(path)) {
+
+            // Check if file exists
+            if (!Files.exists(path)) {
+                logger.error("🔍 Key file not found: {}", keyFilePath);
                 return null;
             }
-            
-            String content = Files.readString(path).trim();
-            
-            // Try PEM format
-            var matcher = PUBLIC_KEY_PEM_PATTERN.matcher(content);
-            if (matcher.find()) {
-                String base64Key = matcher.group(2).replaceAll("\\s", "");
-                byte[] keyBytes = Base64.getDecoder().decode(base64Key);
-                X509EncodedKeySpec keySpec = new X509EncodedKeySpec(keyBytes);
-                KeyFactory keyFactory = KeyFactory.getInstance(CryptoUtil.SIGNATURE_ALGORITHM);
-                return keyFactory.generatePublic(keySpec);
+
+            // Check if file is readable
+            if (!Files.isReadable(path)) {
+                logger.error("🔍 Key file is not readable: {}", keyFilePath);
+                return null;
             }
-            
-            // Try raw Base64
+
+            // Check if file is empty
+            if (Files.size(path) == 0) {
+                logger.error("🔍 Key file is empty: {}", keyFilePath);
+                return null;
+            }
+
+            // Try different formats
+            PublicKey publicKey = null;
+
+            // 1. First try DER format (binary) if file extension suggests it or if reading as text fails
+            if (keyFilePath.toLowerCase().endsWith(".der")) {
+                publicKey = loadPublicKeyFromDER(path);
+                if (publicKey != null) {
+                    return publicKey;
+                }
+            }
+
+            // 2. Try to read as text for PEM/Base64 formats
+            String content = null;
             try {
-                String cleanBase64 = content.replaceAll("\\s", "");
-                byte[] keyBytes = Base64.getDecoder().decode(cleanBase64);
-                X509EncodedKeySpec keySpec = new X509EncodedKeySpec(keyBytes);
-                KeyFactory keyFactory = KeyFactory.getInstance(CryptoUtil.SIGNATURE_ALGORITHM);
-                return keyFactory.generatePublic(keySpec);
-            } catch (Exception e) {
-                // Ignore and return null
+                content = Files.readString(path).trim();
+
+                if (content.isEmpty()) {
+                    logger.error("❌ Key file is empty: {}", keyFilePath);
+                    return null;
+                }
+
+                // 3. Try PEM format (most common)
+                publicKey = loadPublicKeyFromPEM(content);
+                if (publicKey != null) {
+                    return publicKey;
+                }
+
+                // 4. Try raw Base64 format
+                publicKey = loadPublicKeyFromBase64(content);
+                if (publicKey != null) {
+                    return publicKey;
+                }
+
+            } catch (Exception textReadException) {
+                // If reading as text fails, it might be a binary DER file
+                // Try DER format as fallback
+                publicKey = loadPublicKeyFromDER(path);
+                if (publicKey != null) {
+                    return publicKey;
+                }
             }
-            
+
+            // 5. Final attempt: try DER if not tried yet
+            if (!keyFilePath.toLowerCase().endsWith(".der") && content != null) {
+                publicKey = loadPublicKeyFromDER(path);
+                if (publicKey != null) {
+                    return publicKey;
+                }
+            }
+
+            logger.error("🔍 Unable to parse public key from file: {}", keyFilePath);
+            logger.error("🔍 Supported formats: PEM, DER, Base64");
             return null;
-            
+
         } catch (Exception e) {
+            logger.error("🔍 Error loading public key from file: {}", e.getMessage());
             return null;
         }
     }

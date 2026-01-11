@@ -17,7 +17,7 @@
         <maven.compiler.target>25</maven.compiler.target>
         <maven.compiler.release>25</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <hibernate.version>7.1.12.Final</hibernate.version>
+        <hibernate.version>7.1.14.Final</hibernate.version>
         <jakarta.persistence.version>3.2.0</jakarta.persistence.version>
         <sqlite.version>3.51.1.0</sqlite.version>
         <postgresql.version>42.7.8</postgresql.version>

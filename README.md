@@ -1310,8 +1310,12 @@ The security module provides essential cryptographic operations and secure key m
 
 2. **KeyFileLoader**
    - Loads ML-DSA-87 key pairs from files
-   - Supports both public and private keys in X.509/PKCS#8 formats
-   - Handles Base64 encoding for key storage
+   - Supports both public and private keys in multiple formats:
+     - **PEM** (PKCS#8 for private keys, X.509 for public keys)
+     - **DER** (binary ASN.1 encoding)
+     - **Base64** (raw encoding without headers)
+   - Automatic format detection with fallback mechanism
+   - Compatible with OpenSSL and Java-generated keys
    - Example usage:
      ```java
      KeyPair keys = KeyFileLoader.loadKeyPairFromFiles("private.key", "public.key");

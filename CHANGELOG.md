@@ -9,6 +9,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🔐 Security - Complete DER Format Support for KeyFileLoader
+
+**Implemented full DER binary format support for public key loading in KeyFileLoader.**
+
+#### Enhancements
+
+**New Methods:**
+- `loadPublicKeyFromDER(Path keyFilePath)` - Load public keys from binary DER files
+- `loadPublicKeyFromPEM(String pemContent)` - Refactored PEM loading for public keys
+- `loadPublicKeyFromBase64(String base64Content)` - Refactored Base64 loading for public keys
+- `parsePublicKeyX509(String base64Key)` - X.509 format parser for public keys
+
+**Symmetry Achieved:**
+- Public key loading now mirrors private key loading logic
+- Consistent error handling across all formats (PEM, DER, Base64)
+- Automatic format detection with fallback mechanism
+
+**Improved Robustness:**
+- Multiple validation checks (exists, readable, empty, size)
+- Binary DER support with automatic fallback if text reading fails
+- Extension-based detection (.der files prioritized for DER loading)
+- Comprehensive SLF4J logging for debugging
+
+**Test Coverage:**
+- 41 comprehensive unit tests in `KeyFileLoaderTest.java` (100% pass rate)
+- Tests for all three formats (PEM, DER, Base64) for both public and private keys
+- Error handling tests (empty files, corrupted files, invalid formats, permissions)
+- Cross-format consistency tests (verify PEM/DER/Base64 load identical keys)
+- Security tests (unreadable files, system path rejection)
+
+**Format Compatibility:**
+- Supports DER files from OpenSSL (with `-provparam ml-dsa.retain_seed=no`)
+- Supports DER files from Java KeyFactory
+- Full interoperability between Java 25 and OpenSSL 3.6+
+
+**Impact:**
+- Eliminates "Failed to load public key from file" errors for DER format
+- Enables external key management systems integration
+- Facilitates OpenSSL/Java cryptographic interoperability
+- Supports enterprise PKI workflows with standardized key formats
+
+---
+
 ### ⚡ Performance - Native Recipient Filtering (P0 Optimization)
 
 **Optimized block filtering by recipient with native database queries, eliminating O(n) linear scans.**

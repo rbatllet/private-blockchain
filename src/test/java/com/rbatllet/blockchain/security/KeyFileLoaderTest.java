@@ -92,11 +92,30 @@ public class KeyFileLoaderTest {
     }
 
     /**
+     * Helper method to create a Base64 format public key file
+     */
+    private Path createBase64PublicKeyFile(PublicKey publicKey) throws IOException {
+        Path keyFile = tempDir.resolve("public_key.b64");
+        String base64Key = Base64.getEncoder().encodeToString(publicKey.getEncoded());
+        Files.writeString(keyFile, base64Key);
+        return keyFile;
+    }
+
+    /**
      * Helper method to create a DER format private key file
      */
     private Path createDerPrivateKeyFile(PrivateKey privateKey) throws IOException {
         Path keyFile = tempDir.resolve("private_key.der");
         Files.write(keyFile, privateKey.getEncoded());
+        return keyFile;
+    }
+
+    /**
+     * Helper method to create a DER format public key file
+     */
+    private Path createDerPublicKeyFile(PublicKey publicKey) throws IOException {
+        Path keyFile = tempDir.resolve("public_key.der");
+        Files.write(keyFile, publicKey.getEncoded());
         return keyFile;
     }
 
@@ -159,17 +178,65 @@ public class KeyFileLoaderTest {
     void shouldLoadPublicKeyFromPemFile() throws Exception {
         // Generate a key pair
         KeyPair keyPair = generateKeyPair();
-        
+
         // Create a PEM file
         Path pemFile = createPemPublicKeyFile(keyPair.getPublic());
-        
+
         // Load the key
         PublicKey loadedKey = KeyFileLoader.loadPublicKeyFromFile(pemFile.toString());
-        
-        // Verify
+
+        // Verify - Rigorous assertions
         assertNotNull(loadedKey, "Should load public key from PEM file");
-        assertEquals(keyPair.getPublic().getAlgorithm(), loadedKey.getAlgorithm());
-        assertEquals(keyPair.getPublic().getFormat(), loadedKey.getFormat());
+        assertEquals(keyPair.getPublic().getAlgorithm(), loadedKey.getAlgorithm(),
+            "Loaded key should have same algorithm");
+        assertEquals(keyPair.getPublic().getFormat(), loadedKey.getFormat(),
+            "Loaded key should have same format");
+        assertArrayEquals(keyPair.getPublic().getEncoded(), loadedKey.getEncoded(),
+            "Loaded key bytes should match original key bytes");
+    }
+
+    @Test
+    @DisplayName("Should load public key from Base64 file")
+    void shouldLoadPublicKeyFromBase64File() throws Exception {
+        // Generate a key pair
+        KeyPair keyPair = generateKeyPair();
+
+        // Create a Base64 file
+        Path base64File = createBase64PublicKeyFile(keyPair.getPublic());
+
+        // Load the key
+        PublicKey loadedKey = KeyFileLoader.loadPublicKeyFromFile(base64File.toString());
+
+        // Verify - Rigorous assertions
+        assertNotNull(loadedKey, "Should load public key from Base64 file");
+        assertEquals(keyPair.getPublic().getAlgorithm(), loadedKey.getAlgorithm(),
+            "Loaded key should have same algorithm");
+        assertEquals(keyPair.getPublic().getFormat(), loadedKey.getFormat(),
+            "Loaded key should have same format");
+        assertArrayEquals(keyPair.getPublic().getEncoded(), loadedKey.getEncoded(),
+            "Loaded key bytes should match original key bytes");
+    }
+
+    @Test
+    @DisplayName("Should load public key from DER file")
+    void shouldLoadPublicKeyFromDerFile() throws Exception {
+        // Generate a key pair
+        KeyPair keyPair = generateKeyPair();
+
+        // Create a DER file
+        Path derFile = createDerPublicKeyFile(keyPair.getPublic());
+
+        // Load the key
+        PublicKey loadedKey = KeyFileLoader.loadPublicKeyFromFile(derFile.toString());
+
+        // Verify - Rigorous assertions
+        assertNotNull(loadedKey, "Should load public key from DER file");
+        assertEquals(keyPair.getPublic().getAlgorithm(), loadedKey.getAlgorithm(),
+            "Loaded key should have same algorithm");
+        assertEquals(keyPair.getPublic().getFormat(), loadedKey.getFormat(),
+            "Loaded key should have same format");
+        assertArrayEquals(keyPair.getPublic().getEncoded(), loadedKey.getEncoded(),
+            "Loaded key bytes should match original key bytes");
     }
 
     @Test
@@ -428,11 +495,193 @@ public class KeyFileLoaderTest {
         // Create corrupted DER file
         Path corruptedFile = tempDir.resolve("corrupted.der");
         Files.writeString(corruptedFile, "ThisIsNotValidDERContent");
-        
+
         // Try to load key
         PrivateKey key = KeyFileLoader.loadPrivateKeyFromFile(corruptedFile.toString());
-        
+
         // Verify
         assertNull(key, "Should return null for corrupted DER file");
+    }
+
+    @Test
+    @DisplayName("Should handle empty file for loadPublicKeyFromFile")
+    void shouldHandleEmptyFileForLoadPublicKey() throws IOException {
+        // Create empty file
+        Path emptyFile = tempDir.resolve("empty_public.pem");
+        Files.createFile(emptyFile);
+
+        // Try to load key
+        PublicKey key = KeyFileLoader.loadPublicKeyFromFile(emptyFile.toString());
+
+        // Verify
+        assertNull(key, "Should return null for empty file");
+    }
+
+    @Test
+    @DisplayName("Should handle corrupted PEM file for loadPublicKeyFromFile")
+    void shouldHandleCorruptedPemFileForLoadPublicKey() throws IOException {
+        // Create corrupted PEM file
+        Path corruptedFile = tempDir.resolve("corrupted_public.pem");
+        Files.writeString(corruptedFile,
+            "-----BEGIN PUBLIC KEY-----\n" +
+            "ThisIsNotValidBase64Content\n" +
+            "-----END PUBLIC KEY-----\n");
+
+        // Try to load key
+        PublicKey key = KeyFileLoader.loadPublicKeyFromFile(corruptedFile.toString());
+
+        // Verify
+        assertNull(key, "Should return null for corrupted PEM file");
+    }
+
+    @Test
+    @DisplayName("Should handle corrupted Base64 file for loadPublicKeyFromFile")
+    void shouldHandleCorruptedBase64FileForLoadPublicKey() throws IOException {
+        // Create corrupted Base64 file
+        Path corruptedFile = tempDir.resolve("corrupted_public.b64");
+        Files.writeString(corruptedFile, "ThisIsNotValidBase64Content");
+
+        // Try to load key
+        PublicKey key = KeyFileLoader.loadPublicKeyFromFile(corruptedFile.toString());
+
+        // Verify
+        assertNull(key, "Should return null for corrupted Base64 file");
+    }
+
+    @Test
+    @DisplayName("Should handle corrupted DER file for loadPublicKeyFromFile")
+    void shouldHandleCorruptedDerFileForLoadPublicKey() throws IOException {
+        // Create corrupted DER file
+        Path corruptedFile = tempDir.resolve("corrupted_public.der");
+        Files.writeString(corruptedFile, "ThisIsNotValidDERContent");
+
+        // Try to load key
+        PublicKey key = KeyFileLoader.loadPublicKeyFromFile(corruptedFile.toString());
+
+        // Verify
+        assertNull(key, "Should return null for corrupted DER file");
+    }
+
+    @Test
+    @DisplayName("Should handle unreadable file for loadPublicKeyFromFile")
+    void shouldHandleUnreadableFileForLoadPublicKey() throws Exception {
+        // Skip this test on Windows as file permissions work differently
+        if (!System.getProperty("os.name").toLowerCase().contains("win")) {
+            // Generate a key pair
+            KeyPair keyPair = generateKeyPair();
+
+            // Create a PEM file
+            Path pemFile = createPemPublicKeyFile(keyPair.getPublic());
+
+            try {
+                // Make file unreadable
+                Set<PosixFilePermission> perms = new HashSet<>();
+                Files.setPosixFilePermissions(pemFile, perms);
+
+                // Try to load key
+                PublicKey key = KeyFileLoader.loadPublicKeyFromFile(pemFile.toString());
+
+                // Verify
+                assertNull(key, "Should return null for unreadable file");
+            } catch (UnsupportedOperationException e) {
+                // Some file systems don't support POSIX permissions
+                System.out.println("Skipping unreadable file test due to filesystem limitations");
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("Should handle DER file without .der extension")
+    void shouldHandleDerFileWithoutDerExtension() throws Exception {
+        // Generate a key pair
+        KeyPair keyPair = generateKeyPair();
+
+        // Create a DER file with non-standard extension
+        Path derFile = tempDir.resolve("public_key.bin");
+        Files.write(derFile, keyPair.getPublic().getEncoded());
+
+        // Load the key (should still work because DER is tried as fallback)
+        PublicKey loadedKey = KeyFileLoader.loadPublicKeyFromFile(derFile.toString());
+
+        // Verify
+        assertNotNull(loadedKey, "Should load public key from DER file even without .der extension");
+        assertEquals(keyPair.getPublic().getAlgorithm(), loadedKey.getAlgorithm());
+        assertEquals(keyPair.getPublic().getFormat(), loadedKey.getFormat());
+    }
+
+    @Test
+    @DisplayName("Should load same public key from all formats (PEM, Base64, DER)")
+    void shouldLoadSamePublicKeyFromAllFormats() throws Exception {
+        // Generate a key pair
+        KeyPair keyPair = generateKeyPair();
+
+        // Create files in all three formats
+        Path pemFile = createPemPublicKeyFile(keyPair.getPublic());
+        Path base64File = createBase64PublicKeyFile(keyPair.getPublic());
+        Path derFile = createDerPublicKeyFile(keyPair.getPublic());
+
+        // Load keys from all three formats
+        PublicKey pemKey = KeyFileLoader.loadPublicKeyFromFile(pemFile.toString());
+        PublicKey base64Key = KeyFileLoader.loadPublicKeyFromFile(base64File.toString());
+        PublicKey derKey = KeyFileLoader.loadPublicKeyFromFile(derFile.toString());
+
+        // Verify all keys were loaded successfully
+        assertNotNull(pemKey, "PEM key should be loaded");
+        assertNotNull(base64Key, "Base64 key should be loaded");
+        assertNotNull(derKey, "DER key should be loaded");
+
+        // Verify all keys are identical (same bytes)
+        assertArrayEquals(pemKey.getEncoded(), base64Key.getEncoded(),
+            "PEM and Base64 keys should have identical bytes");
+        assertArrayEquals(pemKey.getEncoded(), derKey.getEncoded(),
+            "PEM and DER keys should have identical bytes");
+        assertArrayEquals(base64Key.getEncoded(), derKey.getEncoded(),
+            "Base64 and DER keys should have identical bytes");
+
+        // Verify all keys match original
+        assertArrayEquals(keyPair.getPublic().getEncoded(), pemKey.getEncoded(),
+            "PEM key should match original");
+        assertArrayEquals(keyPair.getPublic().getEncoded(), base64Key.getEncoded(),
+            "Base64 key should match original");
+        assertArrayEquals(keyPair.getPublic().getEncoded(), derKey.getEncoded(),
+            "DER key should match original");
+    }
+
+    @Test
+    @DisplayName("Should load same private key from all formats (PEM, Base64, DER)")
+    void shouldLoadSamePrivateKeyFromAllFormats() throws Exception {
+        // Generate a key pair
+        KeyPair keyPair = generateKeyPair();
+
+        // Create files in all three formats
+        Path pemFile = createPemPrivateKeyFile(keyPair.getPrivate());
+        Path base64File = createBase64PrivateKeyFile(keyPair.getPrivate());
+        Path derFile = createDerPrivateKeyFile(keyPair.getPrivate());
+
+        // Load keys from all three formats
+        PrivateKey pemKey = KeyFileLoader.loadPrivateKeyFromFile(pemFile.toString());
+        PrivateKey base64Key = KeyFileLoader.loadPrivateKeyFromFile(base64File.toString());
+        PrivateKey derKey = KeyFileLoader.loadPrivateKeyFromFile(derFile.toString());
+
+        // Verify all keys were loaded successfully
+        assertNotNull(pemKey, "PEM key should be loaded");
+        assertNotNull(base64Key, "Base64 key should be loaded");
+        assertNotNull(derKey, "DER key should be loaded");
+
+        // Verify all keys are identical (same bytes)
+        assertArrayEquals(pemKey.getEncoded(), base64Key.getEncoded(),
+            "PEM and Base64 keys should have identical bytes");
+        assertArrayEquals(pemKey.getEncoded(), derKey.getEncoded(),
+            "PEM and DER keys should have identical bytes");
+        assertArrayEquals(base64Key.getEncoded(), derKey.getEncoded(),
+            "Base64 and DER keys should have identical bytes");
+
+        // Verify all keys match original
+        assertArrayEquals(keyPair.getPrivate().getEncoded(), pemKey.getEncoded(),
+            "PEM key should match original");
+        assertArrayEquals(keyPair.getPrivate().getEncoded(), base64Key.getEncoded(),
+            "Base64 key should match original");
+        assertArrayEquals(keyPair.getPrivate().getEncoded(), derKey.getEncoded(),
+            "DER key should match original");
     }
 }

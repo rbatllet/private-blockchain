@@ -323,6 +323,45 @@ PrivateKey loadedPrivateKey = loadedKeyPair.getPrivate();
 PublicKey loadedPublicKey = loadedKeyPair.getPublic();
 ```
 
+### Supported File Formats
+
+KeyFileLoader supports multiple file formats for maximum interoperability:
+
+#### 1. PEM Format (PKCS#8)
+**Private Keys:**
+```
+-----BEGIN PRIVATE KEY-----
+MIIKAQIBADALBglghkgBZQMEAxMEggntMIIJ6QIBAASBAQ...
+-----END PRIVATE KEY-----
+```
+
+**Public Keys:**
+```
+-----BEGIN PUBLIC KEY-----
+MIIDQDALBglghkgBZQMEAxMDggMvADCCAykEggMA...
+-----END PUBLIC KEY-----
+```
+
+#### 2. DER Format (Binary)
+- Binary ASN.1 encoding
+- Automatic detection by `.der` file extension
+- Fallback mechanism for files without `.der` extension
+- Supports both OpenSSL-generated and Java-generated DER files
+- **OpenSSL compatibility**: Use `-provparam ml-dsa.retain_seed=no` for Java 25 compatibility
+
+#### 3. Base64 Format (Raw)
+- Raw Base64-encoded key material without PEM headers
+- Useful for embedding keys in configuration files
+- Automatic whitespace trimming
+
+**Format Detection:**
+- `.der` extension → DER binary format attempted first
+- Text readable → PEM or Base64 formats attempted
+- Binary or text read fails → DER format attempted as fallback
+- All formats validated for ML-DSA-87 compatibility
+
+**Note**: For production use with password protection, use `SecureKeyStorage` instead of `KeyFileLoader`.
+
 ## 📝 Usage Examples
 
 ### Complete Workflow
