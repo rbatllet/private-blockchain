@@ -2476,20 +2476,18 @@ public class Blockchain {
                             ? lastBlock.getHash()
                             : GENESIS_PREVIOUS_HASH
                     );
-                    // CRITICAL: Store original data unchanged to maintain hash integrity
-                    // The block hash is calculated using the original data
-                    // Encrypted content is stored separately in encryptionMetadata
-                    newBlock.setData(data); // Original unencrypted data for hash calculation
-                    newBlock.setEncryptionMetadata(blockData); // Store encrypted data here
+                    // SECURITY FIX: NEVER store unencrypted data in database for encrypted blocks
+                    // The block hash is calculated using ENCRYPTED data to maintain security
+                    // Store placeholder to indicate encryption - no sensitive data exposed
+                    newBlock.setData("[ENCRYPTED]"); // ✅ SECURITY: Placeholder, no sensitive data
+                    newBlock.setEncryptionMetadata(blockData); // ✅ Store ONLY encrypted data
                     newBlock.setIsEncrypted(true); // Mark as encrypted
                     newBlock.setTimestamp(blockTimestamp);
                     newBlock.setSignerPublicKey(publicKeyString);
                     newBlock.setOffChainData(offChainData);
 
-                    // 8. Calculate block hash (using placeholder data for consistent hashing)
-                    String blockContent = buildBlockContentForEncrypted(
-                        newBlock
-                    );
+                    // 8. Calculate block hash (uses encryptionMetadata for encrypted blocks)
+                    String blockContent = buildBlockContent(newBlock);
                     newBlock.setHash(CryptoUtil.calculateHash(blockContent));
 
                     // 9. Sign the block
@@ -2874,47 +2872,6 @@ public class Blockchain {
     }
 
     /**
-     * Build block content for encrypted blocks (for consistent hashing)
-     */
-    private String buildBlockContentForEncrypted(Block block) {
-        // Use epoch seconds for timestamp to ensure consistency with regular blocks
-        long timestampSeconds = block.getTimestamp() != null
-            ? block.getTimestamp().toEpochSecond(ZoneOffset.UTC)
-            : 0;
-
-        String content = (
-            block.getBlockNumber() +
-            (block.getPreviousHash() != null ? block.getPreviousHash() : "") +
-            (block.getData() != null ? block.getData() : "") + // Use actual data for hash calculation
-            timestampSeconds +
-            (block.getSignerPublicKey() != null
-                    ? block.getSignerPublicKey()
-                    : "") +
-            (block.getRecipientPublicKey() != null
-                    ? block.getRecipientPublicKey()
-                    : "")
-        );
-
-        // TRACE: Log detailed hash calculation inputs for encrypted blocks (only in trace mode)
-        if (logger.isTraceEnabled()) {
-            logger.trace("🔧 ENCRYPTED HASH DEBUG: Block #{} hash calculation:", block.getBlockNumber());
-            logger.trace("  - blockNumber: {}", block.getBlockNumber());
-            logger.trace("  - previousHash: {}", block.getPreviousHash());
-            logger.trace("  - data: {}", block.getData() != null ? block.getData().substring(0, Math.min(50, block.getData().length())) + "..." : "null");
-            logger.trace("  - timestampSeconds: {}", timestampSeconds);
-            logger.trace("  - signerPublicKey: {}", block.getSignerPublicKey() != null ? block.getSignerPublicKey().substring(0, Math.min(20, block.getSignerPublicKey().length())) + "..." : "null");
-            logger.trace("  - recipientPublicKey: {}", block.getRecipientPublicKey() != null ? block.getRecipientPublicKey().substring(0, Math.min(20, block.getRecipientPublicKey().length())) + "..." : "null");
-            logger.trace("  - Final content: {}", content.substring(0, Math.min(100, content.length())) + "...");
-        }
-        String calculatedHash = CryptoUtil.calculateHash(content);
-        if (logger.isTraceEnabled()) {
-            logger.trace("  - Calculated hash: {}", calculatedHash);
-        }
-
-        return content;
-    }
-
-    /**
      * Process keywords for encrypted blocks (encrypt keywords for privacy)
      */
     private void processEncryptedBlockKeywords(
@@ -3211,9 +3168,8 @@ public class Blockchain {
             }
 
             // 3. Verify hash integrity
-            // Use appropriate content building method based on encryption status
-            String blockContent = block.isDataEncrypted() ?
-                buildBlockContentForEncrypted(block) : buildBlockContent(block);
+            // buildBlockContent() automatically uses correct field based on encryption status
+            String blockContent = buildBlockContent(block);
             String calculatedHash = CryptoUtil.calculateHash(blockContent);
             if (!block.getHash().equals(calculatedHash)) {
                 logger.error(
@@ -3238,8 +3194,7 @@ public class Blockchain {
                 block.getSignerPublicKey()
             );
             // Use the same content building method as for hash calculation
-            String signatureContent = block.isDataEncrypted() ?
-                buildBlockContentForEncrypted(block) : buildBlockContent(block);
+            String signatureContent = buildBlockContent(block);
             if (
                 !CryptoUtil.verifySignature(
                     signatureContent,
@@ -4198,10 +4153,20 @@ public class Blockchain {
             ? block.getTimestamp().toEpochSecond(ZoneOffset.UTC)
             : 0;
 
+        // SECURITY FIX: Use appropriate data field based on encryption status
+        // For encrypted blocks, use encryptionMetadata (encrypted data) for hash calculation
+        // For unencrypted blocks, use data field
+        String dataForHash;
+        if (block.isDataEncrypted() && block.getEncryptionMetadata() != null) {
+            dataForHash = block.getEncryptionMetadata();
+        } else {
+            dataForHash = block.getData() != null ? block.getData() : "";
+        }
+
         String content =
             block.getBlockNumber() +
             (block.getPreviousHash() != null ? block.getPreviousHash() : "") +
-            (block.getData() != null ? block.getData() : "") +
+            dataForHash +
             timestampSeconds +
             (block.getSignerPublicKey() != null
                     ? block.getSignerPublicKey()
@@ -4215,7 +4180,8 @@ public class Blockchain {
             logger.trace("🔧 HASH DEBUG: Block #{} hash calculation:", block.getBlockNumber());
             logger.trace("  - blockNumber: {}", block.getBlockNumber());
             logger.trace("  - previousHash: {}", block.getPreviousHash());
-            logger.trace("  - data: {}", block.getData() != null ? block.getData().substring(0, Math.min(50, block.getData().length())) + "..." : "null");
+            logger.trace("  - isEncrypted: {}", block.isDataEncrypted());
+            logger.trace("  - dataForHash: {}", dataForHash.length() > 50 ? dataForHash.substring(0, 50) + "..." : dataForHash);
             logger.trace("  - timestampSeconds: {}", timestampSeconds);
             logger.trace("  - signerPublicKey: {}", block.getSignerPublicKey() != null ? block.getSignerPublicKey().substring(0, Math.min(20, block.getSignerPublicKey().length())) + "..." : "null");
             logger.trace("  - recipientPublicKey: {}", block.getRecipientPublicKey() != null ? block.getRecipientPublicKey().substring(0, Math.min(20, block.getRecipientPublicKey().length())) + "..." : "null");
@@ -9158,23 +9124,6 @@ public class Blockchain {
                     return false;
                 }
             });
-        } finally {
-            GLOBAL_BLOCKCHAIN_LOCK.unlockWrite(stamp);
-        }
-    }
-
-    /**
-     * Encrypt an existing unencrypted block with password (thread-safe)
-     *
-     * @param blockNumber The block number of the block to encrypt
-     * @param password The password for encryption
-     * @return true if encryption was successful, false if block was already encrypted or not found
-     * @since 1.0.5
-     */
-    public boolean encryptExistingBlock(Long blockNumber, String password) {
-        long stamp = GLOBAL_BLOCKCHAIN_LOCK.writeLock();
-        try {
-            return blockRepository.encryptExistingBlock(blockNumber, password);
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.unlockWrite(stamp);
         }

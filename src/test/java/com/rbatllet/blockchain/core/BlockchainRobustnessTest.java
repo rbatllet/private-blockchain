@@ -360,69 +360,6 @@ public class BlockchainRobustnessTest {
         logger.info("✅ updateBlock handles valid block correctly");
     }
 
-    // ========== encryptExistingBlock Tests ==========
-
-    @Test
-    @Order(18)
-    @DisplayName("encryptExistingBlock should validate null block number")
-    void testEncryptExistingBlockNullId() {
-        logTestContext("encryptExistingBlock", "null block number");
-
-        assertFalse(blockchain.encryptExistingBlock(null, "password"),
-            "Should return false for null block number");
-
-        logger.info("✅ encryptExistingBlock validates null block number");
-    }
-
-    @Test
-    @Order(19)
-    @DisplayName("encryptExistingBlock should validate null password")
-    void testEncryptExistingBlockNullPassword() {
-        logTestContext("encryptExistingBlock", "null password");
-
-        assertFalse(blockchain.encryptExistingBlock(1L, null),
-            "Should return false for null password");
-
-        logger.info("✅ encryptExistingBlock validates null password");
-    }
-
-    @Test
-    @Order(20)
-    @DisplayName("encryptExistingBlock should validate empty password")
-    void testEncryptExistingBlockEmptyPassword() {
-        logTestContext("encryptExistingBlock", "empty password");
-
-        assertFalse(blockchain.encryptExistingBlock(1L, ""),
-            "Should return false for empty password");
-
-        logger.info("✅ encryptExistingBlock validates empty password");
-    }
-
-    @Test
-    @Order(21)
-    @DisplayName("encryptExistingBlock should encrypt valid block")
-    void testEncryptExistingBlockValid() {
-        logTestContext("encryptExistingBlock", "valid block and password");
-
-        // Create a block
-        blockchain.addBlock("Sensitive data", privateKey, publicKey);
-        Block block = blockchain.getBlock(0L);
-
-        assertNotNull(block, "Block should exist");
-        assertNull(block.getEncryptionMetadata(), "Block should not be encrypted initially");
-
-        // Encrypt the block
-        boolean result = blockchain.encryptExistingBlock(block.getBlockNumber(), "securePassword123");
-
-        assertTrue(result, "Encryption should succeed");
-
-        // Verify encryption
-        Block encryptedBlock = blockchain.getBlock(0L);
-        assertNotNull(encryptedBlock.getEncryptionMetadata(), "Block should be encrypted");
-
-        logger.info("✅ encryptExistingBlock encrypts block correctly");
-    }
-
     // ========== Thread Safety Tests ==========
 
     @Test

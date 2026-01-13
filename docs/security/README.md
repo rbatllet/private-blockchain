@@ -11,7 +11,6 @@ This directory contains comprehensive security, encryption, and key management d
 | **[PRE_AUTHORIZATION_GUIDE.md](PRE_AUTHORIZATION_GUIDE.md)** | Pre-Authorization Security Model (v1.0.6+) | **REQUIRED** - User creation workflow |
 | **[ROLE_BASED_ACCESS_CONTROL.md](ROLE_BASED_ACCESS_CONTROL.md)** | 🆕 **v1.0.6** RBAC system with 4 roles (SUPER_ADMIN, ADMIN, USER, READ_ONLY) | Access control implementation |
 | **[ENCRYPTION_GUIDE.md](ENCRYPTION_GUIDE.md)** | Block encryption and metadata layer management | Encryption basics |
-| **[RETROACTIVE_ENCRYPTION_ARCHITECTURE.md](RETROACTIVE_ENCRYPTION_ARCHITECTURE.md)** | Retroactive encryption architecture and hash integrity | Advanced encryption |
 | **[KEY_MANAGEMENT_GUIDE.md](KEY_MANAGEMENT_GUIDE.md)** | Hierarchical key management with rotation | Key lifecycle |
 | **[BLOCKCHAIN_MASTER_ENCRYPTION_KEY.md](BLOCKCHAIN_MASTER_ENCRYPTION_KEY.md)** | 🆕 **v1.0.6** Blockchain Master Encryption Key (BMEK) architecture | Master key management |
 
@@ -26,7 +25,6 @@ This directory contains comprehensive security, encryption, and key management d
 | Document | Description | Recommended For |
 |----------|-------------|-----------------|
 | **[SECURITY_CLASSES_GUIDE.md](SECURITY_CLASSES_GUIDE.md)** | Security classes reference documentation | API reference |
-| **[RETROACTIVE_ENCRYPTION_QUICK_REFERENCE.md](RETROACTIVE_ENCRYPTION_QUICK_REFERENCE.md)** | Quick reference for retroactive encryption | Quick lookup |
 | **[KEY_DERIVATION_GUIDE.md](KEY_DERIVATION_GUIDE.md)** | Key derivation functions and PBKDF2 usage | Cryptographic key generation |
 | **[CALLER_IDENTIFICATION_PROPOSAL.md](CALLER_IDENTIFICATION_PROPOSAL.md)** | 🆕 **v1.0.6** Caller identification for RBAC implementation | Architecture reference |
 
@@ -43,8 +41,7 @@ This directory contains comprehensive security, encryption, and key management d
 1. **[SECURITY_GUIDE.md](SECURITY_GUIDE.md)** - Understand security fundamentals
 2. **[PRE_AUTHORIZATION_GUIDE.md](PRE_AUTHORIZATION_GUIDE.md)** - Learn user creation workflow (v1.0.6+)
 3. **[ENCRYPTION_GUIDE.md](ENCRYPTION_GUIDE.md)** - Learn encryption basics
-4. **[RETROACTIVE_ENCRYPTION_ARCHITECTURE.md](RETROACTIVE_ENCRYPTION_ARCHITECTURE.md)** - Understand retroactive encryption
-5. **[KEY_MANAGEMENT_GUIDE.md](KEY_MANAGEMENT_GUIDE.md)** - Master key management
+4. **[KEY_MANAGEMENT_GUIDE.md](KEY_MANAGEMENT_GUIDE.md)** - Master key management
 
 ### For Test Development (v1.0.6+)
 1. **[PRE_AUTHORIZATION_GUIDE.md](PRE_AUTHORIZATION_GUIDE.md)** - **REQUIRED** - Pre-authorization pattern for tests
@@ -56,9 +53,8 @@ This directory contains comprehensive security, encryption, and key management d
 3. **[ENCRYPTED_EXPORT_IMPORT_GUIDE.md](ENCRYPTED_EXPORT_IMPORT_GUIDE.md)** - Backup procedures
 
 ### For Compliance Requirements (GDPR, HIPAA)
-1. **[RETROACTIVE_ENCRYPTION_ARCHITECTURE.md](RETROACTIVE_ENCRYPTION_ARCHITECTURE.md)** - Right to be forgotten implementation
-2. **[ENCRYPTION_GUIDE.md](ENCRYPTION_GUIDE.md)** - Data protection mechanisms
-3. **[KEY_MANAGEMENT_GUIDE.md](KEY_MANAGEMENT_GUIDE.md)** - Key lifecycle for compliance
+1. **[ENCRYPTION_GUIDE.md](ENCRYPTION_GUIDE.md)** - Data protection mechanisms
+2. **[KEY_MANAGEMENT_GUIDE.md](KEY_MANAGEMENT_GUIDE.md)** - Key lifecycle for compliance
 
 ## 🔐 Security Architecture
 
@@ -97,17 +93,6 @@ Root Key (Master)
 EncryptionService encryption = new EncryptionService();
 String encrypted = encryption.encryptData("sensitive data", "password");
 blockchain.addBlock(encrypted, privateKey, publicKey);
-```
-
-### Retroactively Encrypt Existing Block
-```java
-// See: RETROACTIVE_ENCRYPTION_ARCHITECTURE.md
-// Encrypt block AFTER creation while maintaining hash integrity
-boolean success = blockchain.encryptExistingBlock(blockNumber, "secure-password");
-
-// Original data preserved in 'data' field for hash validation
-// Encrypted data stored in 'encryptionMetadata' field
-// Access requires correct password
 ```
 
 ### Manage Keys
@@ -202,5 +187,5 @@ If you discover a security vulnerability, please report it to the project mainta
 ---
 
 **Directory**: `docs/security/`
-**Files**: 17
-**Last Updated**: 2026-01-05
+**Files**: 15
+**Last Updated**: 2026-01-12

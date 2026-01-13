@@ -245,10 +245,10 @@ public class UserFriendlyEncryptionAPISecurityTest {
             assertNotNull(block.getEncryptionMetadata(), "Should have encryption metadata");
             assertFalse(block.getEncryptionMetadata().isEmpty(), "Encryption metadata should not be empty");
             
-            // Data field contains original data (for hash integrity)
-            // Encrypted version is stored in encryptionMetadata
-            assertEquals(sensitiveData, block.getData(), 
-                "Data field should contain original data for hash integrity");
+            // SECURITY FIX: Data field contains placeholder for encrypted blocks
+            // Hash is calculated over encryptionMetadata (encrypted data)
+            assertEquals("[ENCRYPTED]", block.getData(),
+                "Data field should be [ENCRYPTED] placeholder for security");
 
             // Verify search functionality works (may or may not find results depending on indexing)
             var results = api.searchExhaustive("financial", testPassword);
@@ -280,9 +280,9 @@ public class UserFriendlyEncryptionAPISecurityTest {
             assertTrue(block.getIsEncrypted(), "Block should be marked as encrypted");
             assertNotNull(block.getEncryptionMetadata(), "Should have encryption metadata");
             
-            // Data field contains original data (for hash integrity)
-            assertEquals(confidentialData, block.getData(), 
-                "Data field should contain original data for hash integrity");
+            // SECURITY FIX: Data field contains placeholder for encrypted blocks
+            assertEquals("[ENCRYPTED]", block.getData(),
+                "Data field should be [ENCRYPTED] placeholder for security");
 
             // Test search capabilities
             var publicResults = api.searchPublicFast("project");

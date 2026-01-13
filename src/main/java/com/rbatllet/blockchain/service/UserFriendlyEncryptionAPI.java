@@ -4286,14 +4286,35 @@ public class UserFriendlyEncryptionAPI {
             
             // Single optimized database query instead of N+1 individual queries
             List<Block> blocks = blockchain.batchRetrieveBlocksByHash(blockHashes);
-            
+
+            // SECURITY FIX: Decrypt blocks that are encrypted
+            List<Block> decryptedBlocks = new ArrayList<>();
+            for (Block block : blocks) {
+                if (block.getIsEncrypted() != null && block.getIsEncrypted() && block.getEncryptionMetadata() != null) {
+                    try {
+                        // Decrypt using the provided password
+                        String decryptedData = SecureBlockEncryptionService.decryptFromString(
+                                block.getEncryptionMetadata(), password);
+                        block.setData(decryptedData);
+                        decryptedBlocks.add(block);
+                    } catch (Exception e) {
+                        // Wrong password - skip this block
+                        logger.trace("Block #{} could not be decrypted with provided password", block.getBlockNumber());
+                    }
+                } else {
+                    // Not encrypted, add as-is
+                    decryptedBlocks.add(block);
+                }
+            }
+
             logger.info(
-                "✅ Found {} blocks from {} adaptive decryption results using batch optimization", 
-                blocks.size(), 
-                enhancedResults.size()
+                "✅ Found {} blocks from {} adaptive decryption results using batch optimization ({} decrypted)",
+                blocks.size(),
+                enhancedResults.size(),
+                decryptedBlocks.size()
             );
-            
-            return Collections.unmodifiableList(blocks);
+
+            return Collections.unmodifiableList(decryptedBlocks);
         } catch (Exception e) {
             logger.error("❌ Search with adaptive decryption failed", e);
             return Collections.emptyList();

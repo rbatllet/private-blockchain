@@ -300,11 +300,27 @@ class UserFriendlyEncryptionAPIBlockCorruptionTest {
         );
         assertNotNull(testBlock, "Test block should be created");
 
-        // Introduce subtle corruption - change one character in the original data
-        // This will break the hash since data field is part of hash calculation
-        String originalData = testBlock.getData();
-        String corruptedData = originalData.replace('B', 'X'); // Change first 'B' to 'X'
-        testBlock.setData(corruptedData);
+        // SECURITY FIX: After encryption security fix, encrypted blocks have data="[ENCRYPTED]"
+        // and the actual content is in encryptionMetadata. The hash is calculated over
+        // encryptionMetadata for encrypted blocks, not over the data field.
+        // Therefore, we must corrupt the field that's actually used in hash calculation.
+
+        String originalField;
+        String corruptedField;
+
+        if (testBlock.getIsEncrypted() != null && testBlock.getIsEncrypted() &&
+            testBlock.getEncryptionMetadata() != null) {
+            // For encrypted blocks: corrupt encryptionMetadata (which is used in hash)
+            originalField = testBlock.getEncryptionMetadata();
+            // Change first character to corrupt the encrypted data
+            corruptedField = "X" + originalField.substring(1);
+            testBlock.setEncryptionMetadata(corruptedField);
+        } else {
+            // For unencrypted blocks: corrupt data field (which is used in hash)
+            originalField = testBlock.getData();
+            corruptedField = originalField.replace('B', 'X'); // Change first 'B' to 'X'
+            testBlock.setData(corruptedField);
+        }
 
         // Test the isBlockCorrupted method
         var method = UserFriendlyEncryptionAPI.class.getDeclaredMethod(
@@ -322,8 +338,11 @@ class UserFriendlyEncryptionAPIBlockCorruptionTest {
         );
 
         System.out.println("✅ CORRUPTION PROPERLY DETECTED:");
-        System.out.println("Original data: " + originalData);
-        System.out.println("Corrupted data: " + corruptedData);
+        String fieldType = (testBlock.getIsEncrypted() != null && testBlock.getIsEncrypted())
+            ? "encryptionMetadata" : "data";
+        System.out.println("Corrupted field: " + fieldType);
+        System.out.println("Original value: " + originalField.substring(0, Math.min(50, originalField.length())) + "...");
+        System.out.println("Corrupted value: " + corruptedField.substring(0, Math.min(50, corruptedField.length())) + "...");
         System.out.println(
             "Validation result: " + (isCorrupted ? "DETECTED" : "MISSED")
         );

@@ -167,10 +167,11 @@ public class BlockEncryptionIntegrationTest {
         // RIGOROUS validation - Encryption markers
         assertTrue(medicalBlock.isDataEncrypted(), "Block should be marked as encrypted");
         // CRITICAL: In the new architecture, data field remains UNCHANGED
-        // This is essential to maintain blockchain hash integrity
+        // SECURITY FIX: Data field contains placeholder for encrypted blocks
         // Encrypted content is stored in encryptionMetadata, not in data field
-        assertEquals(MEDICAL_DATA, medicalBlock.getData(), 
-            "Data field must remain unchanged to maintain hash integrity");
+        // Hash is calculated over encryptionMetadata (encrypted data), not unencrypted data
+        assertEquals("[ENCRYPTED]", medicalBlock.getData(),
+            "Data field must be [ENCRYPTED] placeholder for security");
 
         // RIGOROUS validation - Encryption metadata
         assertNotNull(medicalBlock.getEncryptionMetadata(), "Encryption metadata should exist");
@@ -220,11 +221,11 @@ public class BlockEncryptionIntegrationTest {
 
         // RIGOROUS validation - Encryption markers
         assertTrue(financialBlock.isDataEncrypted(), "Block should be marked as encrypted");
-        // CRITICAL: In the new architecture, data field remains UNCHANGED
-        // This is essential to maintain blockchain hash integrity
+        // SECURITY FIX: Data field contains placeholder for encrypted blocks
         // Encrypted content is stored in encryptionMetadata, not in data field
-        assertEquals(FINANCIAL_DATA, financialBlock.getData(), 
-            "Data field must remain unchanged to maintain hash integrity");
+        // Hash is calculated over encryptionMetadata (encrypted data), not unencrypted data
+        assertEquals("[ENCRYPTED]", financialBlock.getData(),
+            "Data field must be [ENCRYPTED] placeholder for security");
 
         // RIGOROUS validation - Encryption metadata
         assertNotNull(financialBlock.getEncryptionMetadata(), "Encryption metadata should exist");
@@ -400,92 +401,6 @@ public class BlockEncryptionIntegrationTest {
     }
 
     @Test
-    @Order(6)
-    @DisplayName("Test encrypt existing block")
-    void testEncryptExistingBlock() {
-        // RIGOROUS validation - Retroactive encryption of existing block
-
-        // Create an unencrypted block first using Blockchain API
-        String unencryptedData = "This is some unencrypted test data that should be encrypted retroactively.";
-        boolean added = blockchain.addBlock(unencryptedData, keyPair.getPrivate(), keyPair.getPublic());
-        assertTrue(added, "Unencrypted block should be added");
-
-        // Get the block we just added
-        long blockCount = blockchain.getBlockCount();
-        Block unencryptedBlock = blockchain.getBlock(blockCount - 1);
-
-        // RIGOROUS validation - Initial unencrypted state
-        assertNotNull(unencryptedBlock, "Block should exist");
-        assertNotNull(unencryptedBlock.getBlockNumber(), "Block should have ID");
-        assertFalse(unencryptedBlock.isDataEncrypted(), "Block should NOT be encrypted initially");
-        assertEquals(unencryptedData, unencryptedBlock.getData(), "Data should be plaintext initially");
-        assertNull(unencryptedBlock.getEncryptionMetadata(), "Encryption metadata should be null initially");
-
-        // RIGOROUS validation - Store original block properties for comparison
-        Long originalId = unencryptedBlock.getBlockNumber();
-        Long originalBlockNumber = unencryptedBlock.getBlockNumber();
-        String originalHash = unencryptedBlock.getHash();
-        String originalSignature = unencryptedBlock.getSignature();
-
-        // Now encrypt the existing block
-        boolean encrypted = blockchain.encryptExistingBlock(unencryptedBlock.getBlockNumber(), testPassword);
-        assertTrue(encrypted, "Encryption should succeed");
-
-        // RIGOROUS validation - Encrypted state
-        Block encryptedBlock = blockchain.getBlock(unencryptedBlock.getBlockNumber());
-        assertNotNull(encryptedBlock, "Block should still exist after encryption");
-        assertTrue(encryptedBlock.isDataEncrypted(), "Block should now be marked as encrypted");
-        
-        // CRITICAL: Data field remains UNCHANGED to maintain hash integrity
-        // Encrypted data is stored in encryptionMetadata field, NOT in data field
-        // This is correct: changing 'data' would break the blockchain hash chain
-        assertEquals(unencryptedData, encryptedBlock.getData(), 
-                    "Data field must remain unchanged to maintain hash integrity");
-        
-        assertNotNull(encryptedBlock.getEncryptionMetadata(), "Encryption metadata should now exist");
-        assertFalse(encryptedBlock.getEncryptionMetadata().isEmpty(), "Encryption metadata should not be empty");
-
-        // RIGOROUS validation - Block identity and cryptographic properties preserved
-        assertEquals(originalId, encryptedBlock.getBlockNumber(), "Block number should remain same after encryption");
-        assertEquals(originalBlockNumber, encryptedBlock.getBlockNumber(), "Block number should remain same");
-        assertNotNull(encryptedBlock.getHash(), "Hash should still exist after encryption");
-        assertNotNull(encryptedBlock.getSignature(), "Signature should still exist after encryption");
-
-        // RIGOROUS validation - Hash and signature should remain unchanged (encryption doesn't affect blockchain integrity)
-        assertEquals(originalHash, encryptedBlock.getHash(), "Hash should remain unchanged after encryption");
-        assertEquals(originalSignature, encryptedBlock.getSignature(), "Signature should remain unchanged after encryption");
-
-        // RIGOROUS validation - No plaintext leakage after encryption
-        String encMetadata = encryptedBlock.getEncryptionMetadata();
-        assertFalse(encMetadata.contains("unencrypted test data"), "Encrypted metadata must not contain plaintext");
-        assertFalse(encMetadata.contains("retroactively"), "Encrypted metadata must not contain plaintext words");
-
-        // RIGOROUS validation - Decrypt with correct password
-        String decrypted = api.retrieveSecret(unencryptedBlock.getBlockNumber(), testPassword);
-        assertNotNull(decrypted, "Decryption should succeed");
-        assertEquals(unencryptedData, decrypted, "Decrypted data should EXACTLY match original unencrypted data");
-        assertEquals(unencryptedData.length(), decrypted.length(), "Decrypted length should match original");
-
-        // RIGOROUS validation - Wrong password fails
-        String wrongDecrypt = api.retrieveSecret(unencryptedBlock.getBlockNumber(), "WrongPassword");
-        assertNull(wrongDecrypt, "Wrong password should not decrypt retroactively encrypted block");
-
-        // RIGOROUS validation - Multiple decryptions produce same result
-        String decrypted2 = api.retrieveSecret(unencryptedBlock.getBlockNumber(), testPassword);
-        assertEquals(decrypted, decrypted2, "Multiple decryptions should produce identical results");
-
-        // RIGOROUS validation - Chain is still valid after retroactive encryption
-        ChainValidationResult validation = blockchain.validateChainDetailed();
-        assertTrue(validation.isValid(), "Chain should remain valid after retroactive encryption");
-
-        System.out.println("✅ Retroactive encryption RIGOROUSLY validated");
-        System.out.println("   Original data: " + unencryptedData);
-        System.out.println("   Block number preserved: " + originalId);
-        System.out.println("   Encrypted and decrypted successfully ✅");
-        System.out.println("   Chain integrity maintained ✅");
-    }
-
-    @Test
     @Order(7)
     @DisplayName("Test data integrity and security")
     void testDataIntegrityAndSecurity() {
@@ -524,14 +439,13 @@ public class BlockEncryptionIntegrationTest {
         assertFalse(financialMetadata.contains("John Manager"), "Must not contain authorizer name");
         assertFalse(financialMetadata.contains("TXN-2024-987654"), "Must not contain transaction ID");
 
-        // Test 3: Data fields remain UNCHANGED (hash integrity requirement)
-        // CRITICAL: In retroactive encryption architecture, 'data' field is NEVER modified
-        // This is essential to maintain blockchain hash integrity
-        // Encrypted content is stored in encryptionMetadata, not in data field
-        assertEquals(MEDICAL_DATA, medicalEncrypted.getData(), 
-            "Medical data field must remain unchanged to maintain hash integrity");
-        assertEquals(FINANCIAL_DATA, financialEncrypted.getData(), 
-            "Financial data field must remain unchanged to maintain hash integrity");
+        // Test 3: Data fields contain placeholder for encrypted blocks (SECURITY FIX)
+        // In the secure model, encrypted blocks have data="[ENCRYPTED]" (no sensitive data exposure)
+        // Hash is calculated over encryptionMetadata (encrypted data), not unencrypted data
+        assertEquals("[ENCRYPTED]", medicalEncrypted.getData(),
+            "Medical data field must be [ENCRYPTED] placeholder for security");
+        assertEquals("[ENCRYPTED]", financialEncrypted.getData(),
+            "Financial data field must be [ENCRYPTED] placeholder for security");
 
         // Test 4: Different blocks have different encryption metadata
         assertNotEquals(medicalMetadata, financialMetadata, "Different data should produce different encrypted metadata");

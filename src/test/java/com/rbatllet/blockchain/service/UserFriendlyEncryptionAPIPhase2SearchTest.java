@@ -51,8 +51,8 @@ public class UserFriendlyEncryptionAPIPhase2SearchTest {
         // Generate test key pair
         testKeyPair = CryptoUtil.generateKeyPair();
 
-        // Register authorized key
-        blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(testKeyPair.getPublic()), testUsername, bootstrapKeyPair, UserRole.USER);
+        // Register authorized key with ADMIN role (needed for creating encrypted blocks with BlockCreationOptions)
+        blockchain.addAuthorizedKey(CryptoUtil.publicKeyToString(testKeyPair.getPublic()), testUsername, bootstrapKeyPair, UserRole.ADMIN);
 
         // Initialize API with real blockchain
         api = new UserFriendlyEncryptionAPI(blockchain, testUsername, testKeyPair);
@@ -85,18 +85,27 @@ public class UserFriendlyEncryptionAPIPhase2SearchTest {
         block1.setContentCategory("documentation");
         blockchain.updateBlock(block1);
 
-        // Block 2: Medium-high relevance - contains "blockchain" multiple times
-        blockchain.addBlock(
+        // Block 2: ENCRYPTED - Medium-high relevance - contains "blockchain" and "sensitive" multiple times
+        // Initialize SearchSpecialistAPI first to enable encryption
+        blockchain.initializeAdvancedSearch(testPassword);
+        blockchain.getSearchSpecialistAPI().initializeWithBlockchain(blockchain, testPassword, testKeyPair.getPrivate());
+
+        // Create encrypted block using UserFriendlyEncryptionAPI
+        UserFriendlyEncryptionAPI.BlockCreationOptions options = new UserFriendlyEncryptionAPI.BlockCreationOptions()
+                .withPassword(testPassword)
+                .withEncryption(true)
+                .withCategory("security");
+
+        Block block2 = api.createBlockWithOptions(
             "Encrypted sensitive data about blockchain security. " +
             "Blockchain provides security through cryptography and blockchain consensus.",
-            testKeyPair.getPrivate(),
-            testKeyPair.getPublic()
+            options
         );
-        Block block2 = blockchain.getLastBlock();
-        block2.setContentCategory("security");
-        blockchain.updateBlock(block2);
-        // Encrypt the block with password
-        blockchain.encryptExistingBlock(block2.getBlockNumber(), testPassword);
+        
+        // Verify encrypted block was created successfully
+        assertNotNull(block2, "Encrypted block should be created");
+        assertTrue(block2.isDataEncrypted(), "Block 2 should be encrypted");
+        assertEquals("SECURITY", block2.getContentCategory(), "Block 2 should have security category");
 
         // Block 3: Low relevance - contains only one keyword
         blockchain.addBlock(

@@ -1079,6 +1079,12 @@ privateBlockchain/
 │   │   └── com/rbatllet/blockchain/              # Core blockchain implementation
 │   └── test/java/                                # Test suites
 ├── docs/                                         # Documentation
+├── docker/                                       # Docker configurations
+│   ├── docker-compose-mysql.yml                  # MySQL setup with SSL
+│   ├── docker-compose-postgres.yml               # PostgreSQL setup with SSL
+│   ├── mysql/                                    # MySQL configuration files
+│   ├── postgresql/                               # PostgreSQL configuration files
+│   └── *.zsh                                     # Docker management scripts
 ├── scripts/                                      # All executable scripts
 │   ├── lib/                                      # Common ZSH functions library
 │   │   ├── common_functions.zsh                  # Shared functions for all scripts
@@ -1097,86 +1103,60 @@ privateBlockchain/
 src/main/java/com/rbatllet/blockchain/
 ├── core/
 │   ├── Blockchain.java                           # Main blockchain logic (public API)
-│   └── BlockRepository.java                     # Package-private repository for block persistence (internal use only)
-├── dao/
-│   └── AuthorizedKeyDAO.java                    # Database operations for keys
+│   └── BlockRepository.java                      # Package-private repository for block persistence
 ├── entity/
-│   ├── Block.java                               # Block data model (Phase 5.0: manual assignment)
+│   ├── Block.java                               # Block data model
 │   ├── AuthorizedKey.java                       # Authorized key data model
 │   └── OffChainData.java                        # Off-chain data references
-├── recovery/
-│   ├── ChainRecoveryManager.java               # Handles blockchain recovery operations
-│   └── RecoveryConfig.java                      # Configuration for recovery processes
 ├── security/
 │   ├── KeyFileLoader.java                       # Secure key file loading (ML-DSA-87)
 │   ├── PasswordUtil.java                        # Password hashing and verification
 │   └── SecureKeyStorage.java                    # Secure storage for cryptographic keys (AES-256-GCM)
+├── service/
+│   ├── OffChainStorageService.java             # Off-chain storage with AES-256-GCM encryption
+│   ├── UserFriendlyEncryptionAPI.java          # Simplified encryption API
+│   ├── SearchSpecialistAPI.java                # Advanced search functionality
+│   └── ...                                      # Additional services
+├── recovery/
+│   ├── ChainRecoveryManager.java               # Blockchain recovery operations
+│   └── ...
+├── config/
+│   ├── DatabaseConfig.java                      # Database configuration and profiles
+│   ├── EncryptionConfig.java                    # Encryption configuration
+│   ├── JPAConfigurationStorage.java             # JPA-based configuration storage
+│   └── ...                                      # Additional config classes
+├── dto/
+│   ├── ChainExportData.java                     # Chain export data transfer object
+│   └── EncryptionExportData.java                # Encryption export data transfer object
 ├── util/
 │   ├── CryptoUtil.java                          # Cryptographic utilities
-│   ├── ExitUtil.java                            # Exit handling utilities
 │   ├── JPAUtil.java                             # JPA EntityManager management
-│   ├── format/
-│   │   └── FormatUtil.java                      # Formatting utilities
 │   └── validation/
-│       ├── BlockValidationResult.java           # Block validation result model
-│       └── BlockValidationUtil.java             # Block validation utilities (with comprehensive tests)
-└── validation/
-    ├── BlockStatus.java                        # Block status enumeration
-    ├── BlockValidationResult.java               # Block validation results
-    └── ChainValidationResult.java               # Chain validation results
+│       └── BlockValidationUtil.java             # Block validation utilities
+├── dao/
+│   └── AuthorizedKeyDAO.java                    # Data access for authorized keys
+├── validation/
+│   └── ...                                      # Validation models
+└── ...                                          # Additional packages (logging, maintenance, search, etc.)
 
 src/test/java/com/rbatllet/blockchain/
 ├── core/
-│   ├── BlockchainTest.java                             # Core blockchain tests
-│   ├── BlockchainAdditionalAdvancedFunctionsTest.java   # JUnit 6 test suite
-│   ├── BlockchainKeyAuthorizationTest.java             # Key authorization tests
-│   ├── CriticalConsistencyTest.java                    # Consistency validation tests
-│   ├── SimpleTemporalValidationTest.java               # Temporal validation tests
-│   ├── OffChainStorageTest.java                        # ✨ ENHANCED: Off-chain storage testing
-│   ├── DataConsistencyValidationTest.java              # ✨ ENHANCED: Data consistency tests
-│   └── TestEnvironmentValidator.java                   # Validates test environment
-├── dao/
-│   └── AuthorizedKeyDAOTest.java                     # Tests for key management
-├── util/validation/
-│   └── BlockValidationUtilTest.java                   # ✨ NEW: Comprehensive validation utility tests (26 tests)
-├── validation/
-│   └── BlockValidationResultTest.java                 # Block validation result tests
+│   ├── BlockchainTest.java                      # Core blockchain tests
+│   ├── OffChainStorageTest.java                 # Off-chain storage testing
+│   └── ...                                      # Additional core tests
 ├── advanced/
-│   └── DataIntegrityThreadSafetyTest.java             # ✨ ENHANCED: Thread safety tests
-└── recovery/
-    ├── ChainRecoveryManagerTest.java               # Tests for recovery scenarios
-    ├── ImprovedRollbackStrategyTest.java              # Enhanced rollback strategy tests
-    └── RecoveryConfigTest.java                        # Recovery configuration tests
+│   └── DataIntegrityThreadSafetyTest.java       # Thread safety tests
+├── recovery/
+│   └── ...                                      # Recovery scenario tests
+└── ...                                          # Additional test suites
 
-Configuration & Scripts:
-├── src/main/resources/META-INF/persistence.xml  # JPA configuration
-├── src/main/resources/logging.properties      # Logging configuration
-├── src/test/resources/test.properties         # Test configuration
-├── clean-database.zsh                            # Database cleanup utility
-├── run_all_tests.zsh                             # ✨ Complete test runner with enhanced validation
-├── run_advanced_tests.zsh                        # Advanced tests only
-├── run_advanced_thread_safety_tests.zsh          # Advanced thread safety tests
-├── run_basic_tests.zsh                           # Basic tests only
-├── run_api_migration_demo.zsh                    # ✨ ENHANCED: API migration demonstration
-├── run_crypto_security_demo.zsh                  # Cryptographic security demo
-├── run_enhanced_dangerous_delete_demo.zsh        # Enhanced key deletion demo
-├── run_thread_safety_test.zsh                    # Thread-safety testing
-├── run_recovery_tests.zsh                        # Recovery tests runner
-├── run_improved_rollback_test.zsh                # Improved rollback tests
-├── run_security_analysis.zsh                     # Security analysis tests
-├── run_security_tests.zsh                        # Security tests runner (ML-DSA-87 post-quantum)
-├── run_search_framework_demo.zsh               # ✨ NEW: Search framework system demonstration script
-├── test_race_condition_fix.zsh                   # Race condition testing
-├── test_thread_safety_full.zsh                  # ✨ ENHANCED: Comprehensive thread safety (production)
-├── test_thread_safety_simple.zsh               # ✨ NEW: Simple thread safety with detailed logging (debug)
-├── test_data_consistency.zsh                    # ✨ ENHANCED: Data consistency validation
-├── test_export_import.zsh                       # ✨ ENHANCED: Export/import functionality
-├── test_validation.zsh                          # ✨ ENHANCED: Comprehensive validation
-├── scripts/                                     # Script utilities directory
-│   ├── lib/common_functions.zsh                 # ✨ CORE: Common functions library
-│   ├── run_template.zsh                         # Template for new scripts
-│   └── check-db-cleanup.zsh                     # Database cleanup verification
-└── pom.xml                                      # Maven configuration
+scripts/
+├── run_all_tests.zsh                            # Complete test runner
+├── run_blockchain_demo.zsh                      # Basic blockchain demonstration
+├── run_search_framework_demo.zsh                # Search framework demonstration
+├── run_security_tests.zsh                       # Security tests (ML-DSA-87 post-quantum)
+├── test_data_consistency.zsh                    # Data consistency validation
+└── ...                                          # Additional scripts (70+ demo/test scripts)
 ```
 
 ## 🔧 Automation Scripts

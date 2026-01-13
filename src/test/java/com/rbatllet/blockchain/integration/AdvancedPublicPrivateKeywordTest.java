@@ -420,7 +420,12 @@ public class AdvancedPublicPrivateKeywordTest {
         List<Block> noPassword = medicalAPI.searchAndDecryptByTerms(
             new String[]{"diagnosis"}, null, 10);
         assertEquals(1, noPassword.size(), "Should only find medical block with public keyword");
-        assertTrue(noPassword.get(0).getData().contains("medical research"));
+        // SECURITY FIX: Without password, encrypted blocks have data="[ENCRYPTED]"
+        // To verify content, we need to provide the password
+        List<Block> noPasswordVerify = medicalAPI.searchAndDecryptByTerms(
+            new String[]{"diagnosis"}, medicalPassword, 10);
+        assertTrue(noPasswordVerify.get(0).getData().contains("medical research"),
+            "Medical password should decrypt medical content");
 
         // Search with MEDICAL password - should find medical
         List<Block> medPassword = medicalAPI.searchAndDecryptByTerms(
@@ -461,12 +466,13 @@ public class AdvancedPublicPrivateKeywordTest {
         List<Future<SearchResult>> futures = new ArrayList<>();
 
         for (int i = 0; i < 10; i++) {
-            // Public search (no password)
+            // Public search (with password to verify decrypted content)
+            // SECURITY FIX: Need password to decrypt and verify content
             futures.add(executor.submit(() -> {
                 try {
                     List<Block> results = medicalAPI.searchAndDecryptByTerms(
-                        new String[]{"medical"}, null, 20);
-                    return new SearchResult("public", results.size(), 
+                        new String[]{"medical"}, medicalPassword, 20);
+                    return new SearchResult("public", results.size(),
                         results.stream().allMatch(b -> b.getData().contains("Public")));
                 } catch (Exception e) {
                     return new SearchResult("public", 0, false, e);

@@ -153,9 +153,9 @@ public class UserFriendlyEncryptionAPIBlockCreationOptionsTest {
             assertEquals("SECRET", result.getContentCategory());
             assertTrue(result.getIsEncrypted());
             assertNotNull(result.getEncryptionMetadata(), "Should have encryption metadata");
-            // Data field contains original data (for hash integrity)
-            assertEquals("Top secret information", result.getData(), 
-                "Data field should contain original data for hash integrity");
+            // SECURITY FIX: Data field contains placeholder for encrypted blocks
+            assertEquals("[ENCRYPTED]", result.getData(),
+                "Data field should be [ENCRYPTED] placeholder for security");
         }
 
         @Test
@@ -198,9 +198,9 @@ public class UserFriendlyEncryptionAPIBlockCreationOptionsTest {
             assertEquals("top-secret project-alpha", result.getManualKeywords());
             assertTrue(result.getIsEncrypted());
             assertNotNull(result.getEncryptionMetadata(), "Should have encryption metadata");
-            // Data field contains original data (for hash integrity)
-            assertEquals("Project Alpha classified details", result.getData(),
-                "Data field should contain original data for hash integrity");
+            // SECURITY FIX: Data field contains placeholder for encrypted blocks
+            assertEquals("[ENCRYPTED]", result.getData(),
+                "Data field should be [ENCRYPTED] placeholder for security");
         }
     }
 

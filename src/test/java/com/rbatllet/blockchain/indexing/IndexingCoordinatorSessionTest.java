@@ -449,12 +449,16 @@ class IndexingCoordinatorSessionTest {
                     new IndexingCoordinator.IndexingRequest.Builder()
                         .operation("MULTIPLE_BLOCKS_TEST")
                         .forceExecution()
+                        .forceRebuild() // Force execution even if recently run
                         .minInterval(50) // Small interval
                         .build()
                 );
             futures.add(future);
             Thread.sleep(100); // Stagger operations
         }
+
+        // Wait for all indexing operations to complete
+        coordinator.waitForCompletion();
 
         // Then: Wait for all operations and verify mixed results
         int completedCount = 0;
