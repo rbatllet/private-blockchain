@@ -2571,6 +2571,152 @@ public class Blockchain {
     }
 
     /**
+     * Add a recipient-encrypted block using public key cryptography
+     *
+     * <p>The data will be encrypted using hybrid encryption (AES-256-GCM + ML-DSA-87)
+     * for the specified recipient. Only the recipient can decrypt the data.</p>
+     *
+     * <p><strong>SECURITY (v1.0.6):</strong> This method follows the correct encryption pattern:
+     * <ul>
+     *   <li>data field: "[ENCRYPTED]" placeholder</li>
+     *   <li>encryptionMetadata field: encrypted data (serialized EncryptedBlockData)</li>
+     *   <li>recipientPublicKey field: identifies the recipient</li>
+     * </ul></p>
+     *
+     * <p><strong>Phase 5.2 (v1.0.6):</strong> Async indexing - Block write returns immediately,
+     * indexing happens in background without blocking the caller.</p>
+     *
+     * @param encryptedData The encrypted data (serialized EncryptedBlockData from BlockDataEncryptionService)
+     * @param recipientPublicKey The recipient's public key string
+     * @param signerPrivateKey Private key for signing
+     * @param signerPublicKey Public key for verification
+     * @return The created recipient-encrypted block if successful, or null if error occurs
+     * @throws IllegalArgumentException if required parameters are null or empty
+     * @throws UnauthorizedKeyException if the signer key is not authorized
+     * @throws BlockValidationException if validation fails
+     */
+    public Block addRecipientEncryptedBlock(
+        String encryptedData,
+        String recipientPublicKey,
+        PrivateKey signerPrivateKey,
+        PublicKey signerPublicKey
+    ) {
+        // Validate required parameters
+        if (encryptedData == null || encryptedData.trim().isEmpty()) {
+            throw new IllegalArgumentException("Encrypted data cannot be null or empty");
+        }
+        if (recipientPublicKey == null || recipientPublicKey.trim().isEmpty()) {
+            throw new IllegalArgumentException("Recipient public key cannot be null or empty");
+        }
+
+        // Step 1: Create and save recipient-encrypted block inside writeLock
+        Block savedBlock = null;
+        long stamp = GLOBAL_BLOCKCHAIN_LOCK.writeLock();
+        try {
+            savedBlock = JPAUtil.executeInTransaction(em -> {
+                try {
+                    // 1. Validate input
+                    validateBlockInput("[ENCRYPTED]", signerPrivateKey, signerPublicKey);
+
+                    // 2. Check authorized keys for SIGNER
+                    String publicKeyString = CryptoUtil.publicKeyToString(signerPublicKey);
+                    LocalDateTime blockTimestamp = LocalDateTime.now();
+                    if (!authorizedKeyDAO.wasKeyAuthorizedAt(publicKeyString, blockTimestamp)) {
+                        logger.error("❌ Unauthorized public key for signer");
+                        throw new UnauthorizedKeyException(
+                            "Unauthorized key attempting to add recipient-encrypted block",
+                            publicKeyString,
+                            "ADD_RECIPIENT_ENCRYPTED_BLOCK",
+                            blockTimestamp
+                        );
+                    }
+
+                    // 3. Validate recipient exists in authorized keys (security check)
+                    if (!authorizedKeyDAO.wasKeyAuthorizedAt(recipientPublicKey, blockTimestamp)) {
+                        logger.error("❌ Recipient public key not found in authorized keys");
+                        throw new IllegalArgumentException(
+                            "Recipient public key '" + recipientPublicKey + "' is not authorized"
+                        );
+                    }
+
+                    // 4. Validate encrypted data size
+                    if (!validateDataSize(encryptedData)) {
+                        logger.error("❌ Encrypted data exceeds maximum block size limits");
+                        throw new BlockValidationException(
+                            "Encrypted data exceeds maximum block size limits",
+                            null,
+                            "ENCRYPTED_DATA_SIZE"
+                        );
+                    }
+
+                    // 5. Get last block and calculate next block number
+                    Block lastBlock = blockRepository.getLastBlockWithLock();
+                    Long nextBlockNumber = (lastBlock == null) ? 0L : lastBlock.getBlockNumber() + 1;
+
+                    // 6. Create the new recipient-encrypted block
+                    Block newBlock = new Block();
+                    newBlock.setBlockNumber(nextBlockNumber);
+                    newBlock.setPreviousHash(
+                        lastBlock != null ? lastBlock.getHash() : GENESIS_PREVIOUS_HASH
+                    );
+
+                    // SECURITY: Follow correct encryption pattern
+                    newBlock.setData("[ENCRYPTED]"); // ✅ Placeholder, no sensitive data
+                    newBlock.setEncryptionMetadata(encryptedData); // ✅ Store ONLY encrypted data
+                    newBlock.setIsEncrypted(true); // Mark as encrypted
+                    newBlock.setRecipientPublicKey(recipientPublicKey); // ✅ Recipient identifies encryption type
+                    newBlock.setTimestamp(blockTimestamp);
+                    newBlock.setSignerPublicKey(publicKeyString);
+
+                    // 7. Calculate block hash (uses encryptionMetadata for encrypted blocks)
+                    String blockContent = buildBlockContent(newBlock);
+                    newBlock.setHash(CryptoUtil.calculateHash(blockContent));
+
+                    // 8. Sign the block
+                    String signature = CryptoUtil.signData(blockContent, signerPrivateKey);
+                    newBlock.setSignature(signature);
+
+                    // 9. Validate the block before saving
+                    if (lastBlock != null && !validateBlock(newBlock, lastBlock)) {
+                        logger.error("❌ Recipient-encrypted block validation failed");
+                        return null;
+                    }
+
+                    // 10. Save the recipient-encrypted block
+                    blockRepository.saveBlock(newBlock);
+
+                    // Force flush for immediate visibility
+                    if (JPAUtil.hasActiveTransaction()) {
+                        EntityManager currentEm = JPAUtil.getEntityManager();
+                        currentEm.flush();
+                    }
+
+                    logger.info("🔐 Recipient-Encrypted Block #{} added successfully!",
+                                newBlock.getBlockNumber());
+                    return newBlock;
+                } catch (UnauthorizedKeyException | BlockValidationException | IllegalArgumentException e) {
+                    // Re-throw specific exceptions as-is
+                    throw e;
+                } catch (Exception e) {
+                    logger.error("❌ Error adding recipient-encrypted block", e);
+                    throw new RuntimeException("Failed to add recipient-encrypted block: " + e.getMessage(), e);
+                }
+            });
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.unlockWrite(stamp);
+        }
+
+        // DEADLOCK FIX: Index the block AFTER releasing writeLock
+        if (savedBlock != null) {
+            long blockNumber = savedBlock.getBlockNumber();
+            logger.debug("📊 Triggering background indexing for recipient-encrypted block #{}", blockNumber);
+            indexBlocksRangeAsync(blockNumber, blockNumber);
+        }
+
+        return savedBlock;
+    }
+
+    /**
      * Add a block with attached off-chain data
      *
      * <p><strong>Phase 5.2 (v1.0.6):</strong> Async indexing - Block write returns immediately,

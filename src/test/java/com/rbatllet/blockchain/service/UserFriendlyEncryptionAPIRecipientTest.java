@@ -81,13 +81,24 @@ class UserFriendlyEncryptionAPIRecipientTest {
         // Assert: Verify block was created and encrypted
         assertNotNull(encryptedBlock, "Encrypted block should be created");
         assertTrue(encryptedBlock.getIsEncrypted(), "Block should be marked as encrypted");
-        assertNotNull(encryptedBlock.getData(), "Block should have encrypted data");
-        // Verify recipient encryption marker is in encryptionMetadata (not in data field)
+        assertNotNull(encryptedBlock.getData(), "Block should have data placeholder");
+        assertEquals("[ENCRYPTED]", encryptedBlock.getData(), "Data should be [ENCRYPTED] placeholder");
+
+        // Verify recipient is set via recipientPublicKey (clean solution)
+        assertNotNull(encryptedBlock.getRecipientPublicKey(), "Recipient public key should be set");
+
+        // Verify encryptionMetadata contains encrypted data (not JSON)
         assertNotNull(encryptedBlock.getEncryptionMetadata(), "Block should have encryption metadata");
-        assertTrue(encryptedBlock.getEncryptionMetadata().contains("RECIPIENT_ENCRYPTED"), 
-            "Block should contain recipient encryption marker in metadata");
-        assertTrue(encryptedBlock.getEncryptionMetadata().contains("\"recipient\":\"" + recipientUsername + "\""), 
-            "Block metadata should contain recipient username");
+        assertTrue(encryptedBlock.getEncryptionMetadata().startsWith("GCM-v1.0"),
+            "encryptionMetadata should contain encrypted data starting with GCM-v1.0");
+
+        // Verify isRecipientEncrypted() works correctly
+        assertTrue(api.isRecipientEncrypted(encryptedBlock), "Block should be identified as recipient-encrypted");
+
+        // Verify getRecipientUsername() returns correct username
+        String retrievedUsername = api.getRecipientUsername(encryptedBlock);
+        assertEquals(recipientUsername, retrievedUsername, "Should retrieve correct recipient username");
+
         assertEquals("SECRET", encryptedBlock.getContentCategory(), "Category should be set correctly");
     }
 

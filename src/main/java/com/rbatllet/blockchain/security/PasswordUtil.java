@@ -275,7 +275,7 @@ public class PasswordUtil {
      * @param length The desired password length (minimum 12, maximum 256)
      * @return A cryptographically secure random password meeting all strong requirements
      * @throws IllegalArgumentException if length is less than 12 or greater than 256
-     * @since 1.0.7
+     * @since 1.0.6
      */
     public static String generateSecurePassword(int length) {
         if (length < 12) {
@@ -376,7 +376,7 @@ public class PasswordUtil {
      * @throws RuntimeException if secure password generation fails after multiple attempts
      * @see #generateSecurePassword(int)
      * @see #validateStrongPassword(String)
-     * @since 1.0.7
+     * @since 1.0.6
      */
     public static String generateValidatedPassword(int length, boolean requireConfirmation) {
         if (length < 12) {

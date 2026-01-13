@@ -13486,53 +13486,29 @@ public class UserFriendlyEncryptionAPI {
                     senderKeyPair.getPrivate()
                 );
 
-            // Create block with encrypted content
+            // Serialize encrypted data
             String serializedEncryptedData = encryptedData.serialize();
 
-            // CRITICAL: Add block to blockchain with recipient public key
-            // The recipient public key is set BEFORE persist (immutable field)
-            // This ensures the recipient is cryptographically bound to the block via the hash
-            Block encryptedBlock = blockchain.addBlockAndReturn(
+            // BUG FIX (v1.0.6): Use addRecipientEncryptedBlock() which follows correct pattern:
+            // - data field: "[ENCRYPTED]" placeholder
+            // - encryptionMetadata field: encrypted data (serialized EncryptedBlockData)
+            // - recipientPublicKey field: identifies the recipient
+            Block encryptedBlock = blockchain.addRecipientEncryptedBlock(
                 serializedEncryptedData,
+                recipientPublicKeyString,
                 senderKeyPair.getPrivate(),
-                senderKeyPair.getPublic(),
-                recipientPublicKeyString
+                senderKeyPair.getPublic()
             );
 
             if (encryptedBlock != null) {
-                // Mark block as encrypted and set recipient info using encryptionMetadata (thread-safe)
-                // SECURITY: Cannot modify 'data' field (immutable), use encryptionMetadata instead
-                final Block updatedBlock = JPAUtil.executeInTransaction(em -> {
-                    Block managedBlock = em.find(
-                        Block.class,
-                        encryptedBlock.getBlockNumber()
-                    );
-                    if (managedBlock != null) {
-                        managedBlock.setIsEncrypted(true);
-                        // Store recipient username in encryptionMetadata (mutable field)
-                        String recipientMetadata = "{\"type\":\"RECIPIENT_ENCRYPTED\",\"recipient\":\"" +
-                                                   recipientUsername + "\"}";
-                        managedBlock.setEncryptionMetadata(recipientMetadata);
-
-                        // Note: recipientPublicKey is already set before persist (immutable field)
-                        // No need to set it here (updatable=false)
-
-                        em.merge(managedBlock);
-                        em.flush(); // Ensure changes are persisted
-                        em.refresh(managedBlock); // Refresh to get updated state
-                        return managedBlock;
-                    }
-                    return encryptedBlock;
-                });
-
                 logger.info(
                     "✅ Created recipient-encrypted block for user: {}",
                     recipientUsername
                 );
-                return updatedBlock;
+                return encryptedBlock;
             }
 
-            return encryptedBlock;
+            return null;
         } catch (Exception e) {
             logger.error("❌ Failed to create recipient-encrypted block", e);
             throw new RuntimeException(
@@ -13563,28 +13539,23 @@ public class UserFriendlyEncryptionAPI {
             throw new IllegalArgumentException("Block is not encrypted");
         }
 
-        // Check if this is a recipient-encrypted block by reading encryptionMetadata
-        String encryptionMetadata = block.getEncryptionMetadata();
-        if (encryptionMetadata == null || !encryptionMetadata.contains("RECIPIENT_ENCRYPTED")) {
-            throw new IllegalArgumentException(
-                "Block is not recipient-encrypted"
-            );
+        // Check if this is a recipient-encrypted block
+        if (block.getRecipientPublicKey() == null) {
+            throw new IllegalArgumentException("Block is not recipient-encrypted");
         }
 
         try {
-            // Extract recipient username from encryptionMetadata
-            // Format: {"type":"RECIPIENT_ENCRYPTED","recipient":"username"}
-            String recipientUsername = null;
-            if (encryptionMetadata.contains("\"recipient\":\"")) {
-                int startIdx = encryptionMetadata.indexOf("\"recipient\":\"") + 13;
-                int endIdx = encryptionMetadata.indexOf("\"", startIdx);
-                if (endIdx > startIdx) {
-                    recipientUsername = encryptionMetadata.substring(startIdx, endIdx);
-                }
+            // Get recipient username from authorizedKeys (for logging only)
+            String recipientUsername = getRecipientUsername(block);
+            if (recipientUsername == null) {
+                recipientUsername = "unknown";
             }
-            
-            // The actual encrypted data is in the 'data' field (without prefix)
-            String serializedEncryptedData = block.getData();
+
+            // The encrypted data is in encryptionMetadata (correct pattern)
+            String serializedEncryptedData = block.getEncryptionMetadata();
+            if (serializedEncryptedData == null) {
+                throw new IllegalArgumentException("Encrypted data not found in encryptionMetadata");
+            }
 
             // Deserialize the encrypted data
             BlockDataEncryptionService.EncryptedBlockData encryptedData =
@@ -13623,11 +13594,8 @@ public class UserFriendlyEncryptionAPI {
         if (block == null || !block.getIsEncrypted()) {
             return false;
         }
-        String encryptionMetadata = block.getEncryptionMetadata();
-        return (
-            encryptionMetadata != null &&
-            encryptionMetadata.contains("RECIPIENT_ENCRYPTED")
-        );
+        // Clean solution: recipient-encrypted blocks have recipientPublicKey set
+        return block.getRecipientPublicKey() != null;
     }
 
     /**
@@ -13641,16 +13609,24 @@ public class UserFriendlyEncryptionAPI {
             return null;
         }
 
-        // Extract recipient from encryptionMetadata JSON
-        // Format: {"type":"RECIPIENT_ENCRYPTED","recipient":"username"}
-        String encryptionMetadata = block.getEncryptionMetadata();
-        if (encryptionMetadata != null && encryptionMetadata.contains("\"recipient\":\"")) {
-            int startIdx = encryptionMetadata.indexOf("\"recipient\":\"") + 13;
-            int endIdx = encryptionMetadata.indexOf("\"", startIdx);
-            if (endIdx > startIdx) {
-                return encryptionMetadata.substring(startIdx, endIdx);
+        // Clean solution: lookup username from authorizedKeys using recipientPublicKey
+        String recipientPublicKey = block.getRecipientPublicKey();
+        if (recipientPublicKey == null) {
+            return null;
+        }
+
+        // Find authorized key with matching public key
+        var authorizedKeys = blockchain.getAuthorizedKeys();
+        if (authorizedKeys == null) {
+            return null;
+        }
+
+        for (AuthorizedKey key : authorizedKeys) {
+            if (recipientPublicKey.equals(key.getPublicKey())) {
+                return key.getOwnerName();
             }
         }
+
         return null;
     }
 

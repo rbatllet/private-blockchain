@@ -3,6 +3,7 @@ package com.rbatllet.blockchain.core;
 import com.rbatllet.blockchain.config.MemorySafetyConstants;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.security.UserRole;
+import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.validation.ChainValidationResult;
 import org.junit.jupiter.api.AfterEach;
@@ -658,6 +659,52 @@ class BlockchainTest {
                 blockchain.countBlocksByRecipientPublicKey("");
             }, "Should throw exception for empty recipient public key");
         }
+
+        /**
+         * BUG REPRODUCTION TEST: Blocks with recipient public key should validate correctly.
+         *
+         * <p>This test reproduces a bug where blocks created with recipientPublicKey fail validation.
+         * The issue is in buildBlockContent() which incorrectly uses encryptionMetadata (JSON) instead
+         * of the encrypted data for hash calculation when the block is marked as encrypted.</p>
+         *
+         * <p><strong>Expected behavior:</strong> Blocks with recipientPublicKey should pass validation.</p>
+         * <p><strong>Bug:</strong> After createRecipientEncryptedBlock() sets encryptionMetadata to a JSON string,
+         * validateBlock() fails because buildBlockContent() uses the JSON for hash calculation instead of
+         * the actual encrypted data.</p>
+         */
+        @Test
+        @DisplayName("BUG: Blocks with recipient public key should validate correctly")
+        void shouldValidateBlocksWithRecipientPublicKey() {
+            // Add block with recipient public key
+            Block block = blockchain.addBlockAndReturn(
+                "Secret message for recipient",
+                senderKeyPair.getPrivate(),
+                senderKeyPair.getPublic(),
+                recipientPublicKey
+            );
+
+            assertNotNull(block, "Block should be created");
+            assertEquals(2, blockchain.getBlockCount(), "Should have 2 blocks (Genesis + new block)");
+            assertEquals(recipientPublicKey, block.getRecipientPublicKey(),
+                "Recipient public key should be set");
+
+            // CRITICAL: Validate the blockchain - this should pass but fails due to the bug
+            ChainValidationResult result = blockchain.validateChainDetailed();
+
+            // This assertion FAILS before the bug fix (blocks don't validate)
+            // and PASSES after the bug fix
+            assertTrue(result.isStructurallyIntact(),
+                "Blockchain with recipient block should be structurally intact. " +
+                "Bug: validateBlock() fails for blocks with recipientPublicKey because " +
+                "buildBlockContent() uses encryptionMetadata (JSON) instead of encrypted data for hash. " +
+                "Block data: [" + block.getData() + "], " +
+                "isEncrypted: [" + block.isDataEncrypted() + "], " +
+                "encryptionMetadata: [" + block.getEncryptionMetadata() + "]");
+            assertTrue(result.isFullyCompliant(),
+                "Blockchain with recipient block should be fully compliant. " +
+                "Bug: encryptionMetadata contains JSON metadata, not encrypted data, " +
+                "causing hash validation to fail.");
+        }
     }
 
     @Nested
@@ -876,6 +923,83 @@ class BlockchainTest {
                 "Should retrieve all accessible blocks");
             assertTrue(duration < 1_000_000_000L, // Less than 1 second
                 "Query should be efficient (indexed lookup, not full scan), took: " + duration / 1_000_000 + "ms");
+        }
+    }
+
+    @Nested
+    @DisplayName("UserFriendlyEncryptionAPI Recipient Encryption Tests")
+    class UserFriendlyEncryptionAPIRecipientTests {
+
+        private UserFriendlyEncryptionAPI api;
+
+        @BeforeEach
+        void setUpApiTests() {
+            api = new UserFriendlyEncryptionAPI(blockchain);
+        }
+
+        /**
+         * BUG REPRODUCTION TEST: Recipient-encrypted blocks via UserFriendlyEncryptionAPI should validate correctly.
+         *
+         * <p>This test reproduces the actual bug where blocks created with recipientUsername via
+         * UserFriendlyEncryptionAPI fail validation. The issue is in createRecipientEncryptedBlock()
+         * which sets encryptionMetadata to a JSON string instead of the encrypted data.</p>
+         *
+         * <p><strong>Expected behavior:</strong> Recipient-encrypted blocks should pass validation.</p>
+         * <p><strong>Bug:</strong> createRecipientEncryptedBlock() sets encryptionMetadata to JSON metadata
+         * (e.g., {"type":"RECIPIENT_ENCRYPTED","recipient":"username"}), but buildBlockContent() expects
+         * encryptionMetadata to contain the actual encrypted data for hash calculation.</p>
+         */
+        @Test
+        @DisplayName("BUG: Recipient-encrypted blocks via API should validate correctly")
+        void shouldValidateRecipientEncryptedBlocksCreatedViaAPI() {
+            // Arrange: Create sender and recipient users
+            KeyPair senderKeyPair = CryptoUtil.generateKeyPair();
+            String senderPublicKey = CryptoUtil.publicKeyToString(senderKeyPair.getPublic());
+
+            KeyPair recipientKeyPair = CryptoUtil.generateKeyPair();
+            String recipientPublicKey = CryptoUtil.publicKeyToString(recipientKeyPair.getPublic());
+
+            // Authorize both users
+            assertTrue(blockchain.addAuthorizedKey(senderPublicKey, "Sender", adminKeyPair, UserRole.USER),
+                "Sender authorization should succeed");
+            assertTrue(blockchain.addAuthorizedKey(recipientPublicKey, "Recipient", adminKeyPair, UserRole.USER),
+                "Recipient authorization should succeed");
+
+            // Act: Create recipient-encrypted block using UserFriendlyEncryptionAPI
+            String testContent = "Secret message for recipient via API";
+            UserFriendlyEncryptionAPI.BlockCreationOptions options =
+                new UserFriendlyEncryptionAPI.BlockCreationOptions()
+                    .withEncryption(true)
+                    .withRecipient("Recipient");  // This triggers createRecipientEncryptedBlock()
+
+            Block createdBlock = api.createBlockWithExistingUser(
+                testContent,
+                senderKeyPair,
+                options
+            );
+
+            // Assert: Block was created
+            assertNotNull(createdBlock, "Block should be created");
+            assertEquals(2, blockchain.getBlockCount(), "Should have 2 blocks (Genesis + new block)");
+            assertEquals(recipientPublicKey, createdBlock.getRecipientPublicKey(),
+                "Recipient public key should be set");
+
+            // CRITICAL: Validate the blockchain - this FAILS due to the bug
+            ChainValidationResult result = blockchain.validateChainDetailed();
+
+            // This assertion FAILS before the bug fix:
+            // validateBlock() fails because createRecipientEncryptedBlock() sets encryptionMetadata
+            // to JSON (e.g., {"type":"RECIPIENT_ENCRYPTED","recipient":"Recipient"})
+            // but buildBlockContent() expects encryptionMetadata to contain encrypted data for hash
+            assertTrue(result.isStructurallyIntact(),
+                "Blockchain with recipient-encrypted block should be structurally intact. " +
+                "BUG: encryptionMetadata contains JSON metadata, not encrypted data. " +
+                "Block data: [" + createdBlock.getData() + "], " +
+                "isEncrypted: [" + createdBlock.isDataEncrypted() + "], " +
+                "encryptionMetadata: [" + createdBlock.getEncryptionMetadata() + "]");
+            assertTrue(result.isFullyCompliant(),
+                "Blockchain should be fully compliant. " +
+                "BUG: Hash validation fails because buildBlockContent() uses JSON for hash instead of encrypted data.");
         }
     }
 
