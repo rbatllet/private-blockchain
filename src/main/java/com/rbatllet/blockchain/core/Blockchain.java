@@ -2685,10 +2685,11 @@ public class Blockchain {
                     // 10. Save the recipient-encrypted block
                     blockRepository.saveBlock(newBlock);
 
-                    // Force flush for immediate visibility
+                    // Force flush and refresh to ensure all fields are loaded from DB
                     if (JPAUtil.hasActiveTransaction()) {
                         EntityManager currentEm = JPAUtil.getEntityManager();
                         currentEm.flush();
+                        currentEm.refresh(newBlock); // Ensure recipientPublicKey is loaded
                     }
 
                     logger.info("🔐 Recipient-Encrypted Block #{} added successfully!",
