@@ -178,7 +178,7 @@ this.defaultKeyPair.set(keyPair);    // Result: username from B, keyPair from A
 
 **⚠️ CRITICAL: Recipient encryption storage mechanism changed**
 
-Recipient-encrypted blocks now store recipient information in the **mutable `encryptionMetadata` field** (as JSON), NOT in the immutable `data` field.
+Recipient-encrypted blocks now identify recipients using the **`recipientPublicKey` field**, a dedicated immutable field for recipient identity.
 
 ### Problem
 
@@ -189,20 +189,22 @@ block.setData("RECIPIENT_ENCRYPTED:username:" + encryptedContent);  // ❌ IGNOR
 
 This failed because `data` has `@Column(updatable=false)` for blockchain integrity protection. JPA silently ignored all `setData()` calls on existing blocks.
 
-### Solution
+### Solution (v1.0.6)
 
-Store recipient info in `encryptionMetadata` field as JSON:
+Use the dedicated `recipientPublicKey` field - clean and elegant:
 ```java
-// Correct format stored in encryptionMetadata field
-{"type":"RECIPIENT_ENCRYPTED","recipient":"username"}
+// Recipient-encrypted blocks are identified by recipientPublicKey != null
+newBlock.setRecipientPublicKey(recipientPublicKey);  // ✅ Proper field
+newBlock.setData("[ENCRYPTED]");                    // ✅ Placeholder
+newBlock.setEncryptionMetadata(encryptedData);       // ✅ Encrypted data
 ```
 
 ### Affected Methods (UserFriendlyEncryptionAPI.java)
 
-- `createRecipientEncryptedBlock()` - Stores JSON in encryptionMetadata
-- `decryptRecipientBlock()` - Reads from encryptionMetadata
-- `isRecipientEncrypted()` - Checks encryptionMetadata.contains("RECIPIENT_ENCRYPTED")
-- `getRecipientUsername()` - Extracts recipient from JSON
+- `createRecipientEncryptedBlock()` - Uses `addRecipientEncryptedBlock()`
+- `decryptRecipientBlock()` - Checks `recipientPublicKey != null`
+- `isRecipientEncrypted()` - Returns `recipientPublicKey != null`
+- `getRecipientUsername()` - Looks up username from authorizedKeys using recipientPublicKey
 
 ### Key Insight
 

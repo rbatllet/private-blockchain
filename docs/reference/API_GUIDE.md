@@ -413,9 +413,9 @@ Block result = api.createBlockWithOptions("Secret message for recipient", option
 // - Block encrypted using recipient's public key
 // - Only recipient can decrypt with their private key
 // - Thread-safe public key cryptography via BlockDataEncryptionService
-// - Recipient info stored in encryptionMetadata field as JSON
-// - Format: {"type":"RECIPIENT_ENCRYPTED","recipient":"username"}
-// - Encrypted data remains in immutable 'data' field (protected by JPA)
+// - Recipient identified by recipientPublicKey field (clean solution)
+// - Encrypted data stored in encryptionMetadata field
+// - Data field contains "[ENCRYPTED]" placeholder
 ```
 
 #### Custom Metadata Support

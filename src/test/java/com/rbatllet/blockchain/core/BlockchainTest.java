@@ -938,16 +938,19 @@ class BlockchainTest {
         }
 
         /**
-         * BUG REPRODUCTION TEST: Recipient-encrypted blocks via UserFriendlyEncryptionAPI should validate correctly.
+         * Recipient-encrypted blocks via UserFriendlyEncryptionAPI should validate correctly.
          *
-         * <p>This test reproduces the actual bug where blocks created with recipientUsername via
-         * UserFriendlyEncryptionAPI fail validation. The issue is in createRecipientEncryptedBlock()
-         * which sets encryptionMetadata to a JSON string instead of the encrypted data.</p>
+         * <p>This test verifies that blocks created with recipientUsername via
+         * UserFriendlyEncryptionAPI pass validation. The implementation uses addRecipientEncryptedBlock()
+         * which follows the correct pattern:
+         * <ul>
+         *   <li>data field: "[ENCRYPTED]" placeholder</li>
+         *   <li>encryptionMetadata field: encrypted data (serialized EncryptedBlockData)</li>
+         *   <li>recipientPublicKey field: identifies the recipient</li>
+         * </ul></p>
          *
-         * <p><strong>Expected behavior:</strong> Recipient-encrypted blocks should pass validation.</p>
-         * <p><strong>Bug:</strong> createRecipientEncryptedBlock() sets encryptionMetadata to JSON metadata
-         * (e.g., {"type":"RECIPIENT_ENCRYPTED","recipient":"username"}), but buildBlockContent() expects
-         * encryptionMetadata to contain the actual encrypted data for hash calculation.</p>
+         * <p><strong>Expected behavior:</strong> Recipient-encrypted blocks should pass validation
+         * because buildBlockContent() correctly uses encryptionMetadata (encrypted data) for hash calculation.</p>
          */
         @Test
         @DisplayName("BUG: Recipient-encrypted blocks via API should validate correctly")

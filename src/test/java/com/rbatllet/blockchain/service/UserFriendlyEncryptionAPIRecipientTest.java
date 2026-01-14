@@ -187,10 +187,9 @@ class UserFriendlyEncryptionAPIRecipientTest {
         assertNotNull(encryptedBlock, "Password-encrypted block should be created");
         assertTrue(encryptedBlock.getIsEncrypted(), "Block should be marked as encrypted");
         assertNotNull(encryptedBlock.getData(), "Block should have encrypted data");
-        // Password encrypted blocks don't have the recipient marker in metadata
-        String metadata = encryptedBlock.getEncryptionMetadata();
-        assertTrue(metadata == null || !metadata.contains("RECIPIENT_ENCRYPTED"), 
-            "Password-encrypted blocks should not have recipient marker in metadata");
+        // Password encrypted blocks don't have recipientPublicKey set
+        assertNull(encryptedBlock.getRecipientPublicKey(),
+            "Password-encrypted blocks should not have recipientPublicKey");
     }
 
     @Test
