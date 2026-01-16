@@ -12,7 +12,7 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 
 /**
- * Simple test to debug why EXHAUSTIVE_OFFCHAIN searches fail
+ * Simple test to debug why INCLUDE_ENCRYPTED searches fail
  */
 public class SimpleExhaustiveTest {
     

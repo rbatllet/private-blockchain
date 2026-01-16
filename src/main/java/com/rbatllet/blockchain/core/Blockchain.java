@@ -3037,6 +3037,8 @@ public class Blockchain {
                 // Separate keywords by public: prefix (lowercase for consistency with storage)
                 for (String keyword : manualKeywords) {
                     if (keyword.toLowerCase().startsWith("public:")) {
+                        // Keep the "public:" prefix for storage (required by UserFriendlyEncryptionAPI.isTermPublicInBlock)
+                        // The prefix is stripped later in FastIndexSearch.indexBlock for searching
                         publicKeywords.add(keyword.toLowerCase());
                     } else {
                         privateKeywords.add(keyword.toLowerCase());

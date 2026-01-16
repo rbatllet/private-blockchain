@@ -400,22 +400,27 @@ class FastIndexSearchRobustnessTest {
     @DisplayName("isFuzzyMatch should handle edge cases")
     void testIsFuzzyMatchEdgeCases() throws Exception {
         logTestContext("isFuzzyMatch", "edge cases");
-        
-        Method method = FastIndexSearch.class.getDeclaredMethod("isFuzzyMatch", String.class, String.class);
+
+        // isFuzzyMatch now has 3 parameters: (String query, String indexed, boolean enableFuzzy)
+        Method method = FastIndexSearch.class.getDeclaredMethod("isFuzzyMatch", String.class, String.class, boolean.class);
         method.setAccessible(true);
-        
+
         // Test identical strings (should return false as it's handled as exact match)
-        boolean result1 = (Boolean) method.invoke(fastIndexSearch, "test", "test");
+        boolean result1 = (Boolean) method.invoke(fastIndexSearch, "test", "test", true);
         assertFalse(result1, "Identical strings should not be fuzzy match");
-        
+
         // Test very short strings
-        boolean result2 = (Boolean) method.invoke(fastIndexSearch, "a", "b");
+        boolean result2 = (Boolean) method.invoke(fastIndexSearch, "a", "b", true);
         assertFalse(result2, "Very short strings should not fuzzy match");
-        
+
         // Test contains relationship
-        boolean result3 = (Boolean) method.invoke(fastIndexSearch, "test", "testing");
+        boolean result3 = (Boolean) method.invoke(fastIndexSearch, "test", "testing", true);
         assertTrue(result3, "Contains relationship should be fuzzy match");
-        
+
+        // Test with fuzzy disabled (should return false for non-exact matches)
+        boolean result4 = (Boolean) method.invoke(fastIndexSearch, "test", "testing", false);
+        assertFalse(result4, "With fuzzy disabled, should not match non-identical strings");
+
         logger.info("✅ Test passed: isFuzzyMatch handles edge cases correctly");
     }
 

@@ -139,7 +139,7 @@ public class SearchFrameworkEngine {
     private final OffChainFileSearch offChainFileSearch;
     private final OnChainContentSearch onChainContentSearch;
 
-    // Reference to blockchain for block hash lookups (for EXHAUSTIVE_OFFCHAIN search)
+    // Reference to blockchain for block hash lookups (for INCLUDE_ENCRYPTED search)
     private Blockchain blockchain;
     
     // 🔍 RACE CONDITION DEBUGGING: Instance identification
@@ -600,6 +600,7 @@ public class SearchFrameworkEngine {
 
         try {
             // Execute encrypted content search directly
+            // This searches ONLY encrypted/private metadata, not public keywords
             List<
                 EncryptedContentSearch.EncryptedSearchResult
             > encryptedResults = strategyRouter
@@ -648,11 +649,128 @@ public class SearchFrameworkEngine {
                 SearchStrategyRouter.SearchStrategy.ENCRYPTED_CONTENT,
                 null,
                 totalTimeMs,
-                SearchLevel.INCLUDE_DATA,
+                SearchLevel.INCLUDE_METADATA,
                 null
             );
         } catch (Exception e) {
             throw new RuntimeException("Encrypted search failed", e);
+        }
+    }
+
+    /**
+     * Comprehensive search with password - searches BOTH public metadata (with fuzzy)
+     * AND encrypted private content.
+     *
+     * <p>This method provides the most complete search experience for authenticated users,
+     * combining:</p>
+     * <ul>
+     *   <li>Public keyword search with fuzzy matching enabled (finds typos, variations)</li>
+     *   <li>Encrypted private content search (finds private keywords and encrypted data)</li>
+     *   <li>Deduplicated results ranked by relevance</li>
+     * </ul>
+     *
+     * <p><b>Security Design</b>: Following Elasticsearch best practices for Document/Field Level Security:</p>
+     * <ul>
+     *   <li>Public search (searchPublic): Exact match only - prevents privacy leaks</li>
+     *   <li>Authenticated search (searchSecure): Fuzzy matching allowed - better UX for password-protected searches</li>
+     * </ul>
+     *
+     * @param query Search query string
+     * @param password Password for decrypting encrypted content
+     * @param maxResults Maximum number of results to return
+     * @return SearchResult with combined public+encrypted results
+     */
+    public SearchResult searchComprehensive(
+        String query,
+        String password,
+        int maxResults
+    ) {
+        if (password == null || password.trim().isEmpty()) {
+            throw new IllegalArgumentException("Password required for comprehensive search");
+        }
+
+        long startTime = System.nanoTime();
+
+        try {
+            // Search 1: Public metadata with FUZZY matching enabled
+            // This allows authenticated users to find similar public keywords (typos, variations)
+            List<FastIndexSearch.FastSearchResult> publicResults = strategyRouter
+                .getFastIndexSearch()
+                .searchFast(query, maxResults, true); // enableFuzzy=true for authenticated searches
+
+            // Search 2: Encrypted private content
+            List<EncryptedContentSearch.EncryptedSearchResult> encryptedResults = strategyRouter
+                .getEncryptedContentSearch()
+                .searchEncryptedContent(query, password, maxResults);
+
+            // Combine results, avoiding duplicates (encrypted takes precedence)
+            Map<String, EnhancedSearchResult> combinedResults = new HashMap<>();
+
+            // Add public results first (lower priority)
+            for (FastIndexSearch.FastSearchResult result : publicResults) {
+                BlockMetadataLayers metadata = blockMetadataIndex.get(result.getBlockHash());
+
+                combinedResults.put(result.getBlockHash(), new EnhancedSearchResult(
+                    result.getBlockHash(),
+                    result.getRelevanceScore(),
+                    SearchStrategyRouter.SearchResultSource.PUBLIC_METADATA,
+                    "Public keyword match (with fuzzy matching)",
+                    result.getSearchTimeMs(),
+                    metadata != null ? metadata.getPublicLayer() : null,
+                    null, // No private access yet
+                    metadata != null ? metadata.getSecurityLevel() : null
+                ));
+            }
+
+            // Add encrypted results (higher priority, overwrites public if same block)
+            for (EncryptedContentSearch.EncryptedSearchResult result : encryptedResults) {
+                BlockMetadataLayers metadata = blockMetadataIndex.get(result.getBlockHash());
+
+                // Get private metadata if available
+                PrivateMetadata privateMetadata = null;
+                if (metadata != null && metadata.hasPrivateLayer()) {
+                    try {
+                        privateMetadata =
+                            metadataManager.decryptPrivateMetadata(
+                                metadata.getEncryptedPrivateLayer(),
+                                password
+                            );
+                    } catch (Exception e) {
+                        // Ignore decryption failures
+                    }
+                }
+
+                combinedResults.put(result.getBlockHash(), new EnhancedSearchResult(
+                    result.getBlockHash(),
+                    result.getRelevanceScore(),
+                    SearchStrategyRouter.SearchResultSource.ENCRYPTED_CONTENT,
+                    result.getMatchingSummary(),
+                    result.getSearchTimeMs(),
+                    metadata != null ? metadata.getPublicLayer() : null,
+                    privateMetadata,
+                    metadata != null ? metadata.getSecurityLevel() : null
+                ));
+            }
+
+            // Convert combined results to list and sort by relevance
+            List<EnhancedSearchResult> enhancedResults = combinedResults.values().stream()
+                .sorted((a, b) -> Double.compare(b.getRelevanceScore(), a.getRelevanceScore()))
+                .limit(maxResults)
+                .collect(Collectors.toList());
+
+            long endTime = System.nanoTime();
+            double totalTimeMs = (endTime - startTime) / 1_000_000.0;
+
+            return new SearchResult(
+                enhancedResults,
+                SearchStrategyRouter.SearchStrategy.HYBRID_CASCADE,
+                null,
+                totalTimeMs,
+                SearchLevel.INCLUDE_METADATA,
+                null
+            );
+        } catch (Exception e) {
+            throw new RuntimeException("Comprehensive search failed", e);
         }
     }
 
@@ -813,21 +931,21 @@ public class SearchFrameworkEngine {
                 SearchStrategyRouter.SearchStrategy.PARALLEL_MULTI,
                 null, // QueryAnalysis not needed for this method
                 totalTimeMs,
-                SearchLevel.EXHAUSTIVE_OFFCHAIN,
+                SearchLevel.INCLUDE_ENCRYPTED,
                 null // Success - no error message
             );
         } catch (Exception e) {
             long endTime = System.nanoTime();
             double totalTimeMs = (endTime - startTime) / 1_000_000.0;
 
-            logger.error("❌ EXHAUSTIVE_OFFCHAIN search failed", e);
+            logger.error("❌ INCLUDE_ENCRYPTED search failed", e);
 
             return new SearchResult(
                 new ArrayList<>(),
                 SearchStrategyRouter.SearchStrategy.PARALLEL_MULTI,
                 null, // QueryAnalysis not needed for error case
                 totalTimeMs,
-                SearchLevel.EXHAUSTIVE_OFFCHAIN,
+                SearchLevel.INCLUDE_ENCRYPTED,
                 "Off-chain search failed: " + e.getMessage()
             );
         }
@@ -1412,7 +1530,7 @@ public class SearchFrameworkEngine {
         String password,
         PrivateKey privateKey
     ) {
-        // Store blockchain reference for EXHAUSTIVE_OFFCHAIN searches
+        // Store blockchain reference for INCLUDE_ENCRYPTED searches
         this.blockchain = blockchain;
 
         // Detect test environment and adjust interval accordingly

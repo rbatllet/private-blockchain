@@ -275,7 +275,7 @@ public class SearchStrategyRouter {
             ))
             .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
         
-        return new AdvancedSearchResult(items, SearchLevel.INCLUDE_DATA,
+        return new AdvancedSearchResult(items, SearchLevel.INCLUDE_METADATA,
                                      encryptedResults.isEmpty() ? 0.0 : encryptedResults.get(0).getSearchTimeMs());
     }
     
@@ -319,7 +319,7 @@ public class SearchStrategyRouter {
             mergedResults.sort((a, b) -> Double.compare(b.getRelevanceScore(), a.getRelevanceScore()));
             
             double totalTime = fastResults.getSearchTimeMs() + encryptedResults.getSearchTimeMs();
-            return new AdvancedSearchResult(mergedResults, SearchLevel.INCLUDE_DATA, totalTime);
+            return new AdvancedSearchResult(mergedResults, SearchLevel.INCLUDE_METADATA, totalTime);
         }
         
         return fastResults;
@@ -366,7 +366,7 @@ public class SearchStrategyRouter {
                 .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
             
             double totalTime = Math.max(fastResults.getSearchTimeMs(), encryptedResults.getSearchTimeMs());
-            return new AdvancedSearchResult(finalResults, SearchLevel.INCLUDE_DATA, totalTime);
+            return new AdvancedSearchResult(finalResults, SearchLevel.INCLUDE_METADATA, totalTime);
             
         } catch (Exception e) {
             throw new RuntimeException("Parallel search execution failed", e);

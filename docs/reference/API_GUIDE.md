@@ -1521,8 +1521,8 @@ The blockchain now includes a comprehensive **hybrid search system** that allows
 The system supports three different search levels through the `SearchLevel` enum:
 
 1. **FAST_ONLY** - Searches only in keywords (fastest performance)
-2. **INCLUDE_DATA** - Searches in keywords + block data (balanced performance)  
-3. **EXHAUSTIVE_OFFCHAIN** - Searches everything including off-chain content (comprehensive but slower)
+2. **INCLUDE_METADATA** - Searches in keywords + block data (balanced performance)  
+3. **INCLUDE_ENCRYPTED** - Searches everything including off-chain content (comprehensive but slower)
 
 ##### Basic Search Methods
 
@@ -1538,8 +1538,8 @@ List<Block> top500Signer = blockchain.getBlocksBySignerPublicKey(publicKey, 500)
 
 // New hybrid search with different levels
 List<Block> fastResults = blockchain.searchBlocks("medical", SearchLevel.FAST_ONLY);
-List<Block> dataResults = blockchain.searchBlocks("patient", SearchLevel.INCLUDE_DATA);
-List<Block> exhaustiveResults = blockchain.searchBlocks("contract", SearchLevel.EXHAUSTIVE_OFFCHAIN);
+List<Block> dataResults = blockchain.searchBlocks("patient", SearchLevel.INCLUDE_METADATA);
+List<Block> exhaustiveResults = blockchain.searchBlocks("contract", SearchLevel.INCLUDE_ENCRYPTED);
 
 // Convenience methods for each search level
 List<Block> quickSearch = blockchain.searchBlocksFast("API");           // Keywords only
@@ -1629,17 +1629,17 @@ List<Block> fastResults = blockchain.searchBlocks("2024", SearchLevel.FAST_ONLY)
 endTime = System.nanoTime();
 System.out.println("FAST_ONLY: " + (endTime - startTime) / 1_000_000 + "ms");
 
-// INCLUDE_DATA - Balanced performance (keywords + block data)
+// INCLUDE_METADATA - Balanced performance (keywords + block data)
 startTime = System.nanoTime();
-List<Block> dataResults = blockchain.searchBlocks("2024", SearchLevel.INCLUDE_DATA);
+List<Block> dataResults = blockchain.searchBlocks("2024", SearchLevel.INCLUDE_METADATA);
 endTime = System.nanoTime();
-System.out.println("INCLUDE_DATA: " + (endTime - startTime) / 1_000_000 + "ms");
+System.out.println("INCLUDE_METADATA: " + (endTime - startTime) / 1_000_000 + "ms");
 
-// EXHAUSTIVE_OFFCHAIN - Comprehensive search (all content)
+// INCLUDE_ENCRYPTED - Comprehensive search (all content)
 startTime = System.nanoTime();
-List<Block> exhaustiveResults = blockchain.searchBlocks("2024", SearchLevel.EXHAUSTIVE_OFFCHAIN);
+List<Block> exhaustiveResults = blockchain.searchBlocks("2024", SearchLevel.INCLUDE_ENCRYPTED);
 endTime = System.nanoTime();
-System.out.println("EXHAUSTIVE_OFFCHAIN: " + (endTime - startTime) / 1_000_000 + "ms");
+System.out.println("INCLUDE_ENCRYPTED: " + (endTime - startTime) / 1_000_000 + "ms");
 ```
 
 ##### Complete Search Example
@@ -1691,8 +1691,8 @@ public class SearchFrameworkDemo {
         }
         
         // Include data search
-        System.out.println("\n2. INCLUDE_DATA Search for 'John':");
-        List<Block> dataResults = blockchain.searchBlocks("John", SearchLevel.INCLUDE_DATA);
+        System.out.println("\n2. INCLUDE_METADATA Search for 'John':");
+        List<Block> dataResults = blockchain.searchBlocks("John", SearchLevel.INCLUDE_METADATA);
         for (Block block : dataResults) {
             System.out.println("  Block #" + block.getBlockNumber() + " - " + 
                              block.getData().substring(0, Math.min(50, block.getData().length())) + "...");
@@ -1707,7 +1707,7 @@ public class SearchFrameworkDemo {
         
         // Email search (automatically extracted)
         System.out.println("\n4. Email Search for 'admin@company.com':");
-        List<Block> emailResults = blockchain.searchBlocks("admin@company.com", SearchLevel.INCLUDE_DATA);
+        List<Block> emailResults = blockchain.searchBlocks("admin@company.com", SearchLevel.INCLUDE_METADATA);
         for (Block block : emailResults) {
             System.out.println("  Block #" + block.getBlockNumber() + " contains email reference");
         }
@@ -2120,7 +2120,7 @@ List<Block> custom = blockchain.searchByCustomMetadataWithLimit(searchTerm, 100)
 
 // Multi-level content search with limit
 List<Block> blocks = blockchain.searchBlocksByContentWithLevel(searchTerm, SearchLevel.FAST_ONLY);  // Default 10K
-List<Block> limited = blockchain.searchBlocksByContentWithLevel(searchTerm, SearchLevel.EXHAUSTIVE_OFFCHAIN, 500);  // Custom limit
+List<Block> limited = blockchain.searchBlocksByContentWithLevel(searchTerm, SearchLevel.INCLUDE_ENCRYPTED, 500);  // Custom limit
 ```
 
 #### Block Operations
@@ -2210,8 +2210,8 @@ boolean deleted = storage.deleteData(metadata);
 ```java
 // New hybrid search methods with multiple levels
 List<Block> fastResults = blockchain.searchBlocks("searchTerm", SearchLevel.FAST_ONLY);
-List<Block> dataResults = blockchain.searchBlocks("searchTerm", SearchLevel.INCLUDE_DATA);
-List<Block> exhaustiveResults = blockchain.searchBlocks("searchTerm", SearchLevel.EXHAUSTIVE_OFFCHAIN);
+List<Block> dataResults = blockchain.searchBlocks("searchTerm", SearchLevel.INCLUDE_METADATA);
+List<Block> exhaustiveResults = blockchain.searchBlocks("searchTerm", SearchLevel.INCLUDE_ENCRYPTED);
 
 // Convenience methods for different search levels
 List<Block> quickSearch = blockchain.searchBlocksFast("keyword");        // Keywords only
@@ -2821,13 +2821,13 @@ public List<Block> searchBlocks(String searchTerm, SearchLevel level)
 ```
 - **Parameters:** 
   - `searchTerm`: Text to search for (case-insensitive, minimum 4 characters with intelligent exceptions)
-  - `level`: Search level (`FAST_ONLY`, `INCLUDE_DATA`, or `EXHAUSTIVE_OFFCHAIN`)
+  - `level`: Search level (`FAST_ONLY`, `INCLUDE_METADATA`, or `INCLUDE_ENCRYPTED`)
 - **Returns:** List of blocks matching the search term at the specified level
 - **Description:** Primary search method with configurable search depth
 - **Search Levels:**
   - `FAST_ONLY`: Searches only in keywords (fastest performance)
-  - `INCLUDE_DATA`: Searches in keywords + block data (balanced performance)  
-  - `EXHAUSTIVE_OFFCHAIN`: Searches everything including off-chain content (comprehensive)
+  - `INCLUDE_METADATA`: Searches in keywords + block data (balanced performance)  
+  - `INCLUDE_ENCRYPTED`: Searches everything including off-chain content (comprehensive)
 - **Thread-Safety:** Fully thread-safe with read locks
 
 ```java
@@ -2843,7 +2843,7 @@ public List<Block> searchBlocksComplete(String searchTerm)
 ```
 - **Parameters:** `searchTerm`: Text to search for (all content including off-chain)
 - **Returns:** List of blocks with matching content across all sources
-- **Description:** Convenience method for `searchBlocks(searchTerm, SearchLevel.EXHAUSTIVE_OFFCHAIN)`
+- **Description:** Convenience method for `searchBlocks(searchTerm, SearchLevel.INCLUDE_ENCRYPTED)`
 - **Performance:** Comprehensive but slower, includes off-chain data search
 
 ```java

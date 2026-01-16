@@ -25,7 +25,7 @@ import java.util.regex.Matcher;
  * - Context extraction for search results
  * - Thread-safe operations
  * 
- * This makes EXHAUSTIVE_OFFCHAIN truly exhaustive by searching ALL content
+ * This makes INCLUDE_ENCRYPTED truly exhaustive by searching ALL content
  */
 public class OnChainContentSearch {
     

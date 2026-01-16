@@ -8,7 +8,7 @@ import java.util.List;
 /**
  * Result container for off-chain file search operations
  *
- * Contains search results from EXHAUSTIVE_OFFCHAIN searches that
+ * Contains search results from INCLUDE_ENCRYPTED searches that
  * examine the actual content of encrypted off-chain files.
  */
 public class OffChainSearchResult implements SearchResultInterface {

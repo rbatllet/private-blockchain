@@ -5,6 +5,6 @@ package com.rbatllet.blockchain.search;
  */
 public enum SearchLevel {
     FAST_ONLY,
-    INCLUDE_DATA,
-    EXHAUSTIVE_OFFCHAIN
+    INCLUDE_METADATA,
+    INCLUDE_ENCRYPTED
 }

@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Test suite for OffChainFileSearch functionality
  * 
- * Tests the new EXHAUSTIVE_OFFCHAIN search capability that searches
+ * Tests the new INCLUDE_ENCRYPTED search capability that searches
  * within encrypted off-chain files stored by OffChainStorageService.
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)

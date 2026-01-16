@@ -1477,8 +1477,8 @@ class BlockRepository {
      * Thread-safe with rigorous validation.
      *
      * @param searchTerm The term to search for
-     * @param level      The search level (FAST_ONLY, INCLUDE_DATA,
-     *                   EXHAUSTIVE_OFFCHAIN)
+     * @param level      The search level (FAST_ONLY, INCLUDE_METADATA,
+     *                   INCLUDE_ENCRYPTED)
      * @return List of matching blocks (max 10,000 results for memory safety)
      * @throws IllegalArgumentException if searchTerm is empty or level is null
      */
@@ -1492,8 +1492,8 @@ class BlockRepository {
      * Thread-safe with rigorous validation.
      *
      * @param searchTerm The term to search for
-     * @param level      The search level (FAST_ONLY, INCLUDE_DATA,
-     *                   EXHAUSTIVE_OFFCHAIN)
+     * @param level      The search level (FAST_ONLY, INCLUDE_METADATA,
+     *                   INCLUDE_ENCRYPTED)
      * @param maxResults Maximum number of results to return
      * @return List of matching blocks, limited by maxResults
      * @throws IllegalArgumentException if searchTerm is empty, level is null, or
@@ -2088,8 +2088,8 @@ class BlockRepository {
                         "(LOWER(b.manualKeywords) LIKE :term OR LOWER(b.autoKeywords) LIKE :term OR LOWER(b.searchableContent) LIKE :term)");
                 break;
 
-            case INCLUDE_DATA:
-            case EXHAUSTIVE_OFFCHAIN:
+            case INCLUDE_METADATA:
+            case INCLUDE_ENCRYPTED:
                 // Keywords + block data
                 query.append(
                         "(LOWER(b.manualKeywords) LIKE :term OR LOWER(b.autoKeywords) LIKE :term OR LOWER(b.searchableContent) LIKE :term OR LOWER(b.data) LIKE :term)");

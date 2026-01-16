@@ -14,14 +14,18 @@ import java.util.stream.Collectors;
  * Performs sub-50ms searches across millions of blocks using only
  * public metadata layer. This search strategy provides instant results
  * without requiring passwords or decryption.
- * 
+ *
  * Features:
  * - In-memory index for instant lookups
  * - Relevance scoring with intelligent ranking
- * - Fuzzy matching for user-friendly queries
+ * - Optional fuzzy matching for authenticated searches (disabled for public search for security)
  * - Time-range filtering for efficient searches
  * - Content-type filtering for domain-specific searches
- * 
+ *
+ * Security Policy:
+ * - Public search (searchPublic): Exact match only - prevents privacy leaks through similar keywords
+ * - Secure search (searchSecure): Fuzzy matching enabled - allows finding similar keywords for authenticated users
+ *
  * Performance Target: <50ms for 1M+ blocks
  */
 public class FastIndexSearch {
@@ -58,8 +62,6 @@ public class FastIndexSearch {
         }
         
         // Index keywords
-        logger.debug("🔍 FastIndexSearch.indexBlock: block={}, keywords={}",
-            blockHash, publicLayer.getGeneralKeywords());
         for (String keyword : publicLayer.getGeneralKeywords()) {
             // Phase 5.4 FIX: Strip "public:" prefix for intuitive searching
             // Blocks are stored with "public:medical" but users search for "medical"
@@ -69,8 +71,6 @@ public class FastIndexSearch {
                 indexableKeyword = indexableKeyword.substring("public:".length());
             }
 
-            logger.debug("🔍 FastIndexSearch.indexBlock: adding keyword='{}' (original: '{}') for block={}",
-                indexableKeyword, keyword.toLowerCase(), blockHash);
             keywordIndex.computeIfAbsent(indexableKeyword, k -> ConcurrentHashMap.newKeySet())
                        .add(blockHash);
         }
@@ -118,10 +118,29 @@ public class FastIndexSearch {
      * @return Ranked list of matching block hashes
      */
     public List<FastSearchResult> searchFast(String query, int maxResults) {
+        return searchFast(query, maxResults, false); // Default: fuzzy matching disabled for security
+    }
+
+    /**
+     * Perform lightning-fast search with optional fuzzy matching
+     *
+     * SECURITY POLICY:
+     * - enableFuzzy=false: For PUBLIC search (searchPublic) - exact match only, prevents privacy leaks
+     * - enableFuzzy=true: For SECURE search (searchSecure) - fuzzy matching allowed for authenticated users
+     *
+     * This follows Elasticsearch best practices for Document/Field Level Security where
+     * authenticated searches can have more lenient matching while public searches must be exact.
+     *
+     * @param query Search query string
+     * @param maxResults Maximum number of results to return
+     * @param enableFuzzy Whether to enable fuzzy matching (true for authenticated searches only)
+     * @return Ranked list of matching block hashes
+     */
+    public List<FastSearchResult> searchFast(String query, int maxResults, boolean enableFuzzy) {
         if (query == null || query.trim().isEmpty()) {
             return new ArrayList<>();
         }
-        
+
         // Validate maxResults parameter
         if (maxResults < 0) {
             throw new IllegalArgumentException("maxResults cannot be negative: " + maxResults);
@@ -129,62 +148,64 @@ public class FastIndexSearch {
         if (maxResults == 0) {
             return new ArrayList<>();
         }
-        
+
         long startTime = System.nanoTime();
-        
+
         // Parse query into keywords
         Set<String> queryKeywords = parseQuery(query);
-        logger.debug("🔍 FastIndexSearch: query='{}', parsed keywords={}, total indexed keywords={}", 
-            query, queryKeywords, keywordIndex.size());
-        
+        logger.debug("🔍 FastIndexSearch: query='{}', parsed keywords={}, total indexed keywords={}, fuzzy={}",
+            query, queryKeywords, keywordIndex.size(), enableFuzzy);
+
         // Find matching blocks
         Map<String, Double> blockScores = new HashMap<>();
-        
+
         for (String keyword : queryKeywords) {
             // Exact matches
             Set<String> exactMatches = keywordIndex.get(keyword.toLowerCase());
-            logger.debug("🔍 FastIndexSearch: checking keyword='{}', exact matches={}", 
+            logger.debug("🔍 FastIndexSearch: checking keyword='{}', exact matches={}",
                 keyword.toLowerCase(), exactMatches != null ? exactMatches.size() : 0);
             if (exactMatches != null) {
                 for (String blockHash : exactMatches) {
                     blockScores.merge(blockHash, 3.0, Double::sum); // High score for exact match
                 }
             }
-            
-            // Fuzzy matches
-            for (Map.Entry<String, Set<String>> entry : keywordIndex.entrySet()) {
-                String indexedKeyword = entry.getKey();
-                if (isFuzzyMatch(keyword, indexedKeyword)) {
-                    double fuzzyScore = calculateFuzzyScore(keyword, indexedKeyword);
-                    for (String blockHash : entry.getValue()) {
-                        blockScores.merge(blockHash, fuzzyScore, Double::sum);
+
+            // Fuzzy matches (only if enabled and for authenticated searches)
+            if (enableFuzzy) {
+                for (Map.Entry<String, Set<String>> entry : keywordIndex.entrySet()) {
+                    String indexedKeyword = entry.getKey();
+                    if (isFuzzyMatch(keyword, indexedKeyword, enableFuzzy)) {
+                        double fuzzyScore = calculateFuzzyScore(keyword, indexedKeyword);
+                        for (String blockHash : entry.getValue()) {
+                            blockScores.merge(blockHash, fuzzyScore, Double::sum);
+                        }
                     }
                 }
             }
         }
-        
+
         // Calculate relevance scores
         List<FastSearchResult> results = blockScores.entrySet().stream()
             .map(entry -> {
                 String blockHash = entry.getKey();
                 double score = entry.getValue();
                 BlockMetadataLayers metadata = metadataCache.get(blockHash);
-                
+
                 // Enhance score with metadata richness
                 if (metadata != null) {
                     score += metadata.getMetadataRichness() * 0.1;
                 }
-                
+
                 long endTime = System.nanoTime();
                 double searchTimeMs = (endTime - startTime) / 1_000_000.0;
-                
-                return new FastSearchResult(blockHash, score, searchTimeMs, 
+
+                return new FastSearchResult(blockHash, score, searchTimeMs,
                                           metadata != null ? metadata.getPublicLayer() : null);
             })
             .sorted((a, b) -> Double.compare(b.getRelevanceScore(), a.getRelevanceScore()))
             .limit(maxResults)
             .collect(Collectors.toList());
-        
+
         return results;
     }
     
@@ -269,27 +290,45 @@ public class FastIndexSearch {
     
     /**
      * Check if two keywords are similar enough for fuzzy matching
+     *
+     * SECURITY POLICY: Fuzzy matching behavior depends on search context:
+     * - For PUBLIC search (searchPublic): ALWAYS returns false (exact match only)
+     * - For SECURE search (searchSecure): Uses fuzzy matching algorithm
+     *
+     * This design follows Elasticsearch best practices for Document/Field Level Security:
+     * - Public searches must be EXACT to guarantee privacy (no accidental exposure)
+     * - Authenticated searches can use fuzzy matching (user knows they're searching sensitive data)
+     *
+     * @param query The search query keyword
+     * @param indexed The indexed keyword
+     * @param enableFuzzy Whether fuzzy matching is allowed for this search context
+     * @return true if keywords should be considered a match, false otherwise
      */
-    private boolean isFuzzyMatch(String query, String indexed) {
+    private boolean isFuzzyMatch(String query, String indexed, boolean enableFuzzy) {
         if (query.equals(indexed)) {
             return false; // Already handled as exact match
         }
-        
+
+        // SECURITY: Fuzzy matching only allowed for authenticated searches
+        if (!enableFuzzy) {
+            return false;
+        }
+
         // Contains check
         if (indexed.contains(query) || query.contains(indexed)) {
             return true;
         }
-        
+
         // Edit distance check for words > 3 characters
         if (query.length() > 3 && indexed.length() > 3) {
             int editDistance = calculateEditDistance(query, indexed);
             int maxLength = Math.max(query.length(), indexed.length());
             return (double) editDistance / maxLength < 0.3; // 30% difference threshold
         }
-        
+
         return false;
     }
-    
+
     /**
      * Calculate fuzzy match score (0.0 to 1.0)
      */
@@ -297,33 +336,33 @@ public class FastIndexSearch {
         if (indexed.contains(query) || query.contains(indexed)) {
             return 1.5; // Contains match
         }
-        
+
         if (query.length() > 3 && indexed.length() > 3) {
             int editDistance = calculateEditDistance(query, indexed);
             int maxLength = Math.max(query.length(), indexed.length());
             return 1.0 - ((double) editDistance / maxLength);
         }
-        
+
         return 0.5; // Default fuzzy score
     }
-    
+
     /**
-     * Calculate edit distance between two strings
+     * Calculate edit distance between two strings (Levenshtein distance)
      */
     private int calculateEditDistance(String s1, String s2) {
         if (s1 == null || s2 == null) {
             throw new IllegalArgumentException("Strings cannot be null");
         }
-        
+
         int[][] dp = new int[s1.length() + 1][s2.length() + 1];
-        
+
         for (int i = 0; i <= s1.length(); i++) {
             dp[i][0] = i;
         }
         for (int j = 0; j <= s2.length(); j++) {
             dp[0][j] = j;
         }
-        
+
         for (int i = 1; i <= s1.length(); i++) {
             for (int j = 1; j <= s2.length(); j++) {
                 if (s1.charAt(i - 1) == s2.charAt(j - 1)) {
@@ -333,15 +372,11 @@ public class FastIndexSearch {
                 }
             }
         }
-        
+
         return dp[s1.length()][s2.length()];
     }
-    
+
     // ===== STATISTICS AND MONITORING =====
-    
-    /**
-     * Get search index statistics
-     */
     public FastIndexStats getIndexStats() {
         return new FastIndexStats(
             metadataCache.size(),

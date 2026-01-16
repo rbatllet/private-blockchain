@@ -637,8 +637,24 @@ public class SearchSpecialistAPI {
         if (maxResults <= 0) {
             throw new IllegalArgumentException("Maximum results must be positive");
         }
-        
-        SearchFrameworkEngine.SearchResult result = searchEngine.searchEncryptedOnly(query, password, maxResults);
+
+        // Comprehensive search: searches BOTH public metadata (with fuzzy) AND encrypted content
+        // This follows Elasticsearch best practices where authenticated searches can use fuzzy matching.
+        //
+        // Search strategy:
+        // 1. FastIndexSearch with fuzzy matching → finds PUBLIC keywords (exact or similar)
+        //    - Searches in keywordIndex (only contains explicitly marked public keywords)
+        //    - Fuzzy matching allows finding typos/variations of public keywords
+        // 2. EncryptedContentSearch → finds PRIVATE keywords and encrypted content
+        //    - Searches in encrypted metadata (requires password to decrypt)
+        //    - Finds private keywords that were NOT marked with "public:" prefix
+        // 3. Results are combined, deduplicated, and ranked by relevance
+        //
+        // Security guarantee: Private keywords are NEVER exposed to public search because:
+        // - They are stored encrypted in autoKeywords field
+        // - They are NOT indexed in FastIndexSearch.keywordIndex
+        // - They are ONLY accessible through EncryptedContentSearch with correct password
+        SearchFrameworkEngine.SearchResult result = searchEngine.searchComprehensive(query, password, maxResults);
         return result.getResults();
     }
     
@@ -819,7 +835,58 @@ public class SearchSpecialistAPI {
         
         return searchEngine.search(query, password, maxResults, config);
     }
-    
+
+    /**
+     * Performs an exhaustive search including off-chain files.
+     *
+     * <p>This method searches both on-chain and off-chain content, decrypting as needed.
+     * Off-chain files require the private key of the signer who created the blocks.</p>
+     *
+     * <p><strong>Requirements:</strong></p>
+     * <ul>
+     *   <li><strong>Password:</strong> Required for decrypting encrypted blocks</li>
+     *   <li><strong>Private Key:</strong> Required for decrypting off-chain files</li>
+     * </ul>
+     *
+     * @param query the search terms to look for
+     * @param password the password for decrypting encrypted blocks
+     * @param privateKey the private key for decrypting off-chain files
+     * @param maxResults maximum number of results to return
+     * @return search results with relevance scores and metadata
+     * @throws IllegalArgumentException if query, password, or privateKey is null
+     * @throws IllegalStateException if the search API is not initialized
+     */
+    public SearchFrameworkEngine.SearchResult searchExhaustiveOffChain(
+            String query,
+            String password,
+            PrivateKey privateKey,
+            int maxResults) {
+        // Validate initialization state
+        if (!isInitialized) {
+            throw new IllegalStateException("SearchSpecialistAPI is not initialized. " +
+                                          "Call initializeWithBlockchain() before performing search operations.");
+        }
+
+        // Validate parameters
+        if (query == null) {
+            throw new IllegalArgumentException("Query cannot be null");
+        }
+        if (query.trim().isEmpty()) {
+            throw new IllegalArgumentException("Query cannot be empty or contain only whitespace");
+        }
+        if (password == null) {
+            throw new IllegalArgumentException("Password cannot be null");
+        }
+        if (privateKey == null) {
+            throw new IllegalArgumentException("Private key cannot be null");
+        }
+        if (maxResults <= 0) {
+            throw new IllegalArgumentException("Maximum results must be positive");
+        }
+
+        return searchEngine.searchExhaustiveOffChain(query, password, privateKey, maxResults);
+    }
+
     // ===== SPECIALIZED SEARCH METHODS =====
     
     // Removed category-specific search methods - blockchain should be content-agnostic

@@ -31,9 +31,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.*;
 
 /**
- * COMPREHENSIVE EXHAUSTIVE_OFFCHAIN Search Test Suite
+ * COMPREHENSIVE INCLUDE_ENCRYPTED Search Test Suite
  *
- * Tests all aspects of the new EXHAUSTIVE_OFFCHAIN search functionality:
+ * Tests all aspects of the new INCLUDE_ENCRYPTED search functionality:
  * - Integration with real off-chain files
  * - Performance benchmarking
  * - Error handling and edge cases
@@ -120,7 +120,7 @@ public class ExhaustiveOffChainSearchTest {
     }
 
     private void createBasicTestBlockchain() throws Exception {
-        // Create simple test blocks for EXHAUSTIVE_OFFCHAIN testing
+        // Create simple test blocks for INCLUDE_ENCRYPTED testing
 
         // Medical block with off-chain content
         File medicalFile = new File(tempDir, "basic_medical.txt");
@@ -198,10 +198,10 @@ public class ExhaustiveOffChainSearchTest {
 
     @Test
     @Order(1)
-    @DisplayName("🔍 Basic EXHAUSTIVE_OFFCHAIN Search Integration")
+    @DisplayName("🔍 Basic INCLUDE_ENCRYPTED Search Integration")
     void testBasicExhaustiveOffChainSearch() throws Exception {
         System.out.println(
-            "🧪 Testing basic EXHAUSTIVE_OFFCHAIN search integration..."
+            "🧪 Testing basic INCLUDE_ENCRYPTED search integration..."
         );
 
         // We already have basic blocks from createBasicTestBlockchain()
@@ -214,7 +214,7 @@ public class ExhaustiveOffChainSearchTest {
         searchEngine.indexBlockchain(blockchain, testPassword, testPrivateKey);
         IndexingCoordinator.getInstance().waitForCompletion();
 
-        // Perform EXHAUSTIVE_OFFCHAIN search
+        // Perform INCLUDE_ENCRYPTED search
         long startTime = System.nanoTime();
         SearchResult result = searchEngine.searchExhaustiveOffChain(
             "medical",
@@ -239,7 +239,7 @@ public class ExhaustiveOffChainSearchTest {
         }
 
         assertTrue(result.isSuccessful(), "Search should be successful");
-        assertEquals(SearchLevel.EXHAUSTIVE_OFFCHAIN, result.getSearchLevel());
+        assertEquals(SearchLevel.INCLUDE_ENCRYPTED, result.getSearchLevel());
         assertEquals(
             SearchStrategyRouter.SearchStrategy.PARALLEL_MULTI,
             result.getStrategyUsed()
@@ -418,7 +418,7 @@ public class ExhaustiveOffChainSearchTest {
     @Order(4)
     @DisplayName("⚡ Performance Benchmarking")
     void testPerformanceBenchmark() throws Exception {
-        System.out.println("🧪 Testing EXHAUSTIVE_OFFCHAIN performance...");
+        System.out.println("🧪 Testing INCLUDE_ENCRYPTED performance...");
 
         // Create multiple blocks for performance testing
         int blockCount = 10;
@@ -607,7 +607,7 @@ public class ExhaustiveOffChainSearchTest {
     @Order(6)
     @DisplayName("🧵 Thread Safety Testing")
     void testThreadSafety() throws Exception {
-        System.out.println("🧪 Testing EXHAUSTIVE_OFFCHAIN thread safety...");
+        System.out.println("🧪 Testing INCLUDE_ENCRYPTED thread safety...");
 
         // Setup test data
         for (int i = 0; i < 5; i++) {
@@ -882,7 +882,7 @@ public class ExhaustiveOffChainSearchTest {
     @DisplayName("🎯 End-to-End Integration Scenario")
     void testEndToEndIntegrationScenario() throws Exception {
         System.out.println(
-            "🧪 Testing complete end-to-end EXHAUSTIVE_OFFCHAIN scenario..."
+            "🧪 Testing complete end-to-end INCLUDE_ENCRYPTED scenario..."
         );
 
         // Scenario: Medical records with mixed public/private data and off-chain files
@@ -975,7 +975,7 @@ public class ExhaustiveOffChainSearchTest {
             "Encrypted search should be successful"
         );
 
-        // EXHAUSTIVE_OFFCHAIN search
+        // INCLUDE_ENCRYPTED search
         SearchResult exhaustiveResult = searchEngine.searchExhaustiveOffChain(
             "medical",
             testPassword,

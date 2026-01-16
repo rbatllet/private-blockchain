@@ -17,7 +17,7 @@ import java.util.regex.Pattern;
  * Advanced Off-Chain File Search Implementation
  * 
  * Provides exhaustive search capabilities within encrypted off-chain files.
- * This completes the EXHAUSTIVE_OFFCHAIN search level by actually searching
+ * This completes the INCLUDE_ENCRYPTED search level by actually searching
  * inside encrypted files stored via OffChainStorageService.
  * 
  * Key Features:

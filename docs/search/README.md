@@ -47,7 +47,7 @@ api.setDefaultCredentials("username", userKeys);
 
 This directory contains comprehensive documentation for all search functionality in the Private Blockchain.
 
-## 📚 Documents in This Directory (11 files)
+## 📚 Documents in This Directory (12 files)
 
 ### 🎯 Start Here
 | Document | Description | Use Case |
@@ -61,6 +61,8 @@ This directory contains comprehensive documentation for all search functionality
 | **[INDEXING_GUIDE.md](INDEXING_GUIDE.md)** | Blockchain indexing guide (async vs sync) | Understanding indexing methods |
 | **[SEARCH_COMPARISON.md](SEARCH_COMPARISON.md)** | Detailed comparison of search implementations | Understanding differences |
 | **[SEARCH_PASSWORD_BEHAVIOR.md](SEARCH_PASSWORD_BEHAVIOR.md)** | How passwords affect search scope and strategy | Understanding password-based search |
+| **[FUZZY_MATCHING_TECHNICAL_GUIDE.md](FUZZY_MATCHING_TECHNICAL_GUIDE.md)** | Fuzzy matching algorithm and implementation | Understanding fuzzy search behavior |
+| **[PUBLIC_PRIVATE_KEYWORDS_TECHNICAL_GUIDE.md](PUBLIC_PRIVATE_KEYWORDS_TECHNICAL_GUIDE.md)** | Public/private keywords processing and storage | Understanding keyword visibility |
 
 ### 👤 User-Friendly Search
 | Document | Description | Use Case |
@@ -156,6 +158,6 @@ List<Block> results = engine.searchWithMetadata("keyword", filters);
 
 ---
 
-**Directory**: `docs/search/`  
-**Files**: 10  
-**Last Updated**: 2025-11-30
+**Directory**: `docs/search/`
+**Files**: 12
+**Last Updated**: 2025-01-16
