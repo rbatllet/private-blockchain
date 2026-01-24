@@ -331,6 +331,74 @@ public class UserFriendlyEncryptionAPI {
     }
 
     /**
+     * Store encrypted data with keywords, category, and custom metadata.
+     *
+     * <p>This method extends {@link #storeSecret(String, String)} to support search keywords,
+     * categorization, and custom metadata for advanced search and filtering capabilities.</p>
+     *
+     * @param secretData The data to encrypt and store
+     * @param password The encryption password
+     * @param keywords Search keywords (keywords with "public:" prefix are searchable without password)
+     * @param category Content category for classification
+     * @param metadata Custom metadata key-value pairs
+     * @return The created encrypted block
+     * @throws IllegalArgumentException if validation fails
+     * @since 1.0.6
+     */
+    public Block storeSecret(
+        String secretData,
+        String password,
+        String[] keywords,
+        String category,
+        Map<String, String> metadata
+    ) {
+        validateInputData(secretData, 50 * 1024 * 1024, "Secret data"); // 50MB limit
+        validatePasswordSecurity(password, "Password");
+        validateKeyPair();
+        KeyPair keyPair = getDefaultKeyPair();
+
+        // Use addEncryptedBlockWithKeywords which properly handles public: prefix and indexing
+        // Convert keywords to lowercase as expected by addEncryptedBlockWithKeywords
+        String[] processedKeywords;
+        if (keywords != null && keywords.length > 0) {
+            processedKeywords = new String[keywords.length];
+            for (int i = 0; i < keywords.length; i++) {
+                processedKeywords[i] = keywords[i].toLowerCase();
+            }
+        } else {
+            processedKeywords = new String[0];
+        }
+        String processedCategory = (category != null && !category.trim().isEmpty()) ? category : "USER_DEFINED";
+
+        Block block = blockchain.addEncryptedBlockWithKeywords(
+            secretData,
+            password,
+            processedKeywords,
+            processedCategory,
+            keyPair.getPrivate(),
+            keyPair.getPublic()
+        );
+
+        // Add custom metadata if provided
+        final Block finalBlock = block;
+        if (finalBlock != null && metadata != null && !metadata.isEmpty()) {
+            block = JPAUtil.executeInTransaction(em -> {
+                Block managedBlock = em.find(Block.class, finalBlock.getBlockNumber());
+                if (managedBlock != null) {
+                    CustomMetadataUtil.validateMetadata(metadata);
+                    String serializedMetadata = CustomMetadataUtil.serializeMetadata(metadata);
+                    managedBlock.setCustomMetadata(serializedMetadata);
+                    em.merge(managedBlock);
+                    return managedBlock;
+                }
+                return finalBlock;
+            });
+        }
+
+        return block;
+    }
+
+    /**
      * Store encrypted data with searchable identifier metadata for efficient retrieval.
      *
      * <p>This method combines secure data encryption with metadata indexing, allowing the stored
@@ -7668,7 +7736,6 @@ public class UserFriendlyEncryptionAPI {
                 searchEngine.searchExhaustiveOffChain(
                     query,
                     password,
-                    getDefaultKeyPair().getPrivate(),
                     100
                 );
 
@@ -11927,6 +11994,7 @@ public class UserFriendlyEncryptionAPI {
      * @param password Password for encryption
      * @param contentType MIME type of the file
      * @param keywords Search keywords for the block
+     * @param category Content category (optional, defaults to OFFCHAIN_DATA if not specified)
      * @return Block containing the data and linked to the off-chain file
      */
     public Block storeDataWithOffChainFile(
@@ -11934,7 +12002,8 @@ public class UserFriendlyEncryptionAPI {
         byte[] fileData,
         String password,
         String contentType,
-        String[] keywords
+        String[] keywords,
+        String category
     ) {
         validateKeyPair();
         validateInputData(blockData, 50 * 1024 * 1024, "Block data");
@@ -11968,7 +12037,8 @@ public class UserFriendlyEncryptionAPI {
                 keywords,
                 password,
                 getDefaultKeyPair().getPrivate(),
-                getDefaultKeyPair().getPublic()
+                getDefaultKeyPair().getPublic(),
+                category  // Pass category (can be null, defaults to OFFCHAIN_DATA)
             );
         } catch (Exception e) {
             logger.error("Failed to store data with off-chain file", e);
@@ -11993,7 +12063,8 @@ public class UserFriendlyEncryptionAPI {
         String textContent,
         String password,
         String filename,
-        String[] keywords
+        String[] keywords,
+        String category
     ) {
         validateKeyPair();
         validateInputData(blockData, 50 * 1024 * 1024, "Block data");
@@ -12027,7 +12098,8 @@ public class UserFriendlyEncryptionAPI {
                 keywords,
                 password,
                 getDefaultKeyPair().getPrivate(),
-                getDefaultKeyPair().getPublic()
+                getDefaultKeyPair().getPublic(),
+                category  // Pass category (can be null, defaults to OFFCHAIN_DATA in Blockchain)
             );
         } catch (Exception e) {
             logger.error("Failed to store data with off-chain text", e);
@@ -12054,7 +12126,8 @@ public class UserFriendlyEncryptionAPI {
         String password,
         String contentType,
         String[] publicKeywords,
-        String[] privateKeywords
+        String[] privateKeywords,
+        String category
     ) {
         validateKeyPair();
         validateInputData(blockData, 50 * 1024 * 1024, "Block data");
@@ -12094,7 +12167,8 @@ public class UserFriendlyEncryptionAPI {
                 allKeywords,
                 password,
                 getDefaultKeyPair().getPrivate(),
-                getDefaultKeyPair().getPublic()
+                getDefaultKeyPair().getPublic(),
+                category  // Pass category (can be null, defaults to OFFCHAIN_DATA)
             );
         } catch (Exception e) {
             logger.error(
@@ -13232,7 +13306,8 @@ public class UserFriendlyEncryptionAPI {
                         options.getKeywords(),
                         options.getPassword(),
                         userKeyPair.getPrivate(),
-                        userKeyPair.getPublic()
+                        userKeyPair.getPublic(),
+                        options.getCategory()  // Pass user-specified category (or null for OFFCHAIN_DATA default)
                     );
                 } catch (IOException e) {
                     logger.error(
@@ -13253,7 +13328,7 @@ public class UserFriendlyEncryptionAPI {
 
             // Handle encrypted blocks (only if not off-chain)
             if (options.isEncrypt()) {
-                final Block encryptedBlock;
+                Block encryptedBlock;
 
                 // Check if recipient-specific encryption is requested
                 if (
@@ -13271,84 +13346,41 @@ public class UserFriendlyEncryptionAPI {
                     !options.getPassword().trim().isEmpty()
                 ) {
                     // Password-based encryption
+                    // Use the new storeSecret() method that accepts keywords, category, and metadata
+                    // This ensures proper indexing with public: prefix handling
+                    encryptedBlock = storeSecret(
+                        content,
+                        options.getPassword(),
+                        options.getKeywords(),
+                        options.getCategory(),
+                        options.getMetadata()
+                    );
+
+                    // If identifier is also provided, store it separately
                     if (
                         options.getIdentifier() != null &&
-                        !options.getIdentifier().trim().isEmpty()
+                        !options.getIdentifier().trim().isEmpty() &&
+                        encryptedBlock != null
                     ) {
-                        encryptedBlock = storeDataWithIdentifier(
-                            content,
-                            options.getPassword(),
-                            options.getIdentifier()
-                        );
-                    } else {
-                        encryptedBlock = storeSecret(
-                            content,
-                            options.getPassword()
-                        );
+                        final Block finalEncryptedBlock = encryptedBlock;
+                        encryptedBlock = JPAUtil.executeInTransaction(em -> {
+                            Block managedBlock = em.find(Block.class, finalEncryptedBlock.getBlockNumber());
+                            if (managedBlock != null) {
+                                managedBlock.setCustomMetadata(
+                                    managedBlock.getCustomMetadata() != null
+                                        ? managedBlock.getCustomMetadata() + "\nidentifier:" + options.getIdentifier()
+                                        : "identifier:" + options.getIdentifier()
+                                );
+                                em.merge(managedBlock);
+                                return managedBlock;
+                            }
+                            return finalEncryptedBlock;
+                        });
                     }
                 } else {
                     throw new IllegalArgumentException(
                         "Encryption requested but neither recipient username nor password provided"
                     );
-                }
-
-                // Add category, keywords, and custom metadata to encrypted block if provided (thread-safe)
-                if (
-                    encryptedBlock != null &&
-                    (options.getCategory() != null ||
-                        (options.getKeywords() != null &&
-                            options.getKeywords().length > 0) ||
-                        (options.getMetadata() != null &&
-                            !options.getMetadata().isEmpty()))
-                ) {
-                    // Use JPA transaction for thread-safe block update
-                    Block updatedBlock = JPAUtil.executeInTransaction(em -> {
-                        Block managedBlock = em.find(
-                            Block.class,
-                            encryptedBlock.getBlockNumber()
-                        );
-                        if (managedBlock != null) {
-                            if (
-                                options.getCategory() != null &&
-                                !options.getCategory().trim().isEmpty()
-                            ) {
-                                managedBlock.setContentCategory(
-                                    options.getCategory().toUpperCase()
-                                );
-                            }
-                            if (
-                                options.getKeywords() != null &&
-                                options.getKeywords().length > 0
-                            ) {
-                                managedBlock.setManualKeywords(
-                                    String.join(
-                                        " ",
-                                        options.getKeywords()
-                                    ).toLowerCase()
-                                );
-                            }
-                            if (
-                                options.getMetadata() != null &&
-                                !options.getMetadata().isEmpty()
-                            ) {
-                                // Validate and serialize custom metadata
-                                CustomMetadataUtil.validateMetadata(
-                                    options.getMetadata()
-                                );
-                                String serializedMetadata =
-                                    CustomMetadataUtil.serializeMetadata(
-                                        options.getMetadata()
-                                    );
-                                managedBlock.setCustomMetadata(
-                                    serializedMetadata
-                                );
-                            }
-                            em.merge(managedBlock);
-                            return managedBlock;
-                        }
-                        return encryptedBlock;
-                    });
-                    return updatedBlock;
                 }
                 return encryptedBlock;
             } else {
@@ -13505,6 +13537,59 @@ public class UserFriendlyEncryptionAPI {
                     "✅ Created recipient-encrypted block for user: {}",
                     recipientUsername
                 );
+
+                // Update block with category, keywords, and custom metadata if provided (thread-safe)
+                if (
+                    options.getCategory() != null ||
+                    (options.getKeywords() != null && options.getKeywords().length > 0) ||
+                    (options.getMetadata() != null && !options.getMetadata().isEmpty())
+                ) {
+                    Block finalBlock = JPAUtil.executeInTransaction(em -> {
+                        Block managedBlock = em.find(Block.class, encryptedBlock.getBlockNumber());
+                        if (managedBlock != null) {
+                            // Update category
+                            if (
+                                options.getCategory() != null &&
+                                !options.getCategory().trim().isEmpty()
+                            ) {
+                                managedBlock.setContentCategory(
+                                    options.getCategory().toUpperCase()
+                                );
+                            }
+
+                            // Update keywords
+                            if (
+                                options.getKeywords() != null &&
+                                options.getKeywords().length > 0
+                            ) {
+                                // Convert keywords to lowercase with public: prefix preserved
+                                List<String> processedKeywords = new ArrayList<>();
+                                for (String keyword : options.getKeywords()) {
+                                    processedKeywords.add(keyword.toLowerCase());
+                                }
+                                String keywordString = String.join(" ", processedKeywords);
+                                managedBlock.setManualKeywords(keywordString);
+                            }
+
+                            // Update custom metadata
+                            if (
+                                options.getMetadata() != null &&
+                                !options.getMetadata().isEmpty()
+                            ) {
+                                CustomMetadataUtil.validateMetadata(options.getMetadata());
+                                String serializedMetadata =
+                                    CustomMetadataUtil.serializeMetadata(options.getMetadata());
+                                managedBlock.setCustomMetadata(serializedMetadata);
+                            }
+
+                            em.merge(managedBlock);
+                            return managedBlock;
+                        }
+                        return encryptedBlock;
+                    });
+                    return finalBlock;
+                }
+
                 return encryptedBlock;
             }
 
@@ -15067,30 +15152,53 @@ public class UserFriendlyEncryptionAPI {
      */
     public String retrieveSecret(Long blockNumber, String password) {
         logger.debug("🔓 DEBUG: retrieveSecret called for block number #{}", blockNumber);
-        
+
         // VALIDATION 1: null blockNumber → Exception (programming error)
         if (blockNumber == null) {
             throw new IllegalArgumentException("Block number cannot be null");
         }
-        
+
         // VALIDATION 2: null password → Exception (programming error)
         if (password == null) {
             throw new IllegalArgumentException("Password cannot be null");
         }
-        
+
         // VALIDATION 3: empty password → Exception (programming error)
         if (password.trim().isEmpty()) {
             throw new IllegalArgumentException("Password cannot be empty");
         }
-        
+
         try {
-            // CRITICAL: getDecryptedBlockData() now accepts block NUMBERS (not IDs)
-            // Tests pass block.getBlockNumber()
-            String decryptedData = blockchain.getDecryptedBlockData(blockNumber, password);
-            logger.info("🔓 DEBUG: Block number #{} decrypted successfully. Content: '{}'", 
-                       blockNumber, 
-                       decryptedData != null && decryptedData.length() > 100 
-                           ? decryptedData.substring(0, 100) + "..." 
+            // CRITICAL FIX: Get complete block to check for off-chain data
+            Block block = blockchain.getDecryptedBlock(blockNumber, password);
+
+            if (block == null) {
+                logger.debug("🔓 DEBUG: Block number #{} not found or decryption failed", blockNumber);
+                return null;
+            }
+
+            // Check if block has off-chain data and retrieve actual file content
+            if (block.hasOffChainData() && block.getOffChainData() != null) {
+                logger.debug("🔓 DEBUG: Block number #{} has off-chain data, retrieving file content", blockNumber);
+                try {
+                    byte[] offChainContent = offChainStorage.retrieveData(block.getOffChainData(), password);
+                    if (offChainContent != null) {
+                        String content = new String(offChainContent);
+                        logger.info("🔓 DEBUG: Off-chain file content retrieved for block #{}", blockNumber);
+                        return content;
+                    }
+                } catch (Exception e) {
+                    logger.warn("🔓 WARNING: Failed to retrieve off-chain content for block #{}: {}", blockNumber, e.getMessage());
+                    // Fall through to return block data as fallback
+                }
+            }
+
+            // Return block data (for non-off-chain blocks or as fallback)
+            String decryptedData = block.getData();
+            logger.info("🔓 DEBUG: Block number #{} decrypted successfully. Content: '{}'",
+                       blockNumber,
+                       decryptedData != null && decryptedData.length() > 100
+                           ? decryptedData.substring(0, 100) + "..."
                            : decryptedData);
             return decryptedData;
         } catch (Exception e) {

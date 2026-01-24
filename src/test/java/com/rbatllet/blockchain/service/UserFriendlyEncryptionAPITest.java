@@ -11,12 +11,17 @@ import java.security.KeyPair;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Comprehensive tests for the User-Friendly Encryption API
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class UserFriendlyEncryptionAPITest {
+    private static final Logger logger = LoggerFactory.getLogger(UserFriendlyEncryptionAPITest.class);
+
     
     private static Blockchain blockchain;
     private static UserFriendlyEncryptionAPI api;
@@ -31,7 +36,7 @@ public class UserFriendlyEncryptionAPITest {
     
     @BeforeAll
     static void setup() throws Exception {
-        System.out.println("\n=== Setting up User-Friendly Encryption API Tests ===");
+        logger.info("\n=== Setting up User-Friendly Encryption API Tests ===");
         blockchain = new Blockchain();
 
         // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
@@ -64,13 +69,13 @@ public class UserFriendlyEncryptionAPITest {
         financialPassword = "FinancialTest123!";
         secretPassword = "SecretTest123!@#";
 
-        System.out.println("✅ Test setup completed");
+        logger.info("✅ Test setup completed");
     }
     
     @Test
     @Order(1)
     void testSetupAndConfiguration() {
-        System.out.println("\n=== Testing Setup and Configuration ===");
+        logger.info("\n=== Testing Setup and Configuration ===");
         
         assertTrue(api.hasDefaultCredentials(), "Should have default credentials set");
         assertEquals("Test User", api.getDefaultUsername(), "Username should be set correctly");
@@ -88,23 +93,23 @@ public class UserFriendlyEncryptionAPITest {
         assertThrows(IllegalArgumentException.class, () -> api.generateSecurePassword(8), 
                     "Should reject passwords shorter than 12 characters");
         
-        System.out.println("✅ Setup and configuration tests passed");
+        logger.info("✅ Setup and configuration tests passed");
     }
     
     @Test
     @Order(2)
     void testEncryptedDataStorage() {
-        System.out.println("\n=== Testing Encrypted Data Storage ===");
+        logger.info("\n=== Testing Encrypted Data Storage ===");
         
         // Store medical record using granular search terms (public/private separation)
         String medicalData = "Patient: John Doe, Condition: Diabetes, Medication: Metformin";
         String[] publicMedicalTerms = {"patient", "medication"};  // General medical terms - public
         String[] privateMedicalTerms = {"diabetes", "metformin", "PATIENT_001", "john", "doe"};  // Specific/sensitive - private
-        System.out.println("🔍 Debug: About to store medical record with password: " + medicalPassword);
+        logger.info("🔍 Debug: About to store medical record with password: " + medicalPassword);
         medicalBlock = api.storeSearchableDataWithLayers(medicalData, medicalPassword, publicMedicalTerms, privateMedicalTerms);
         assertNotNull(medicalBlock, "Medical block should be created successfully");
         assertTrue(medicalBlock.isDataEncrypted(), "Medical block should be encrypted");
-        System.out.println("🔍 Debug: Medical block created with hash: " + medicalBlock.getHash());
+        logger.info("🔍 Debug: Medical block created with hash: " + medicalBlock.getHash());
         
         // Store financial record using granular search terms (public/private separation)
         String financialData = "Account: 123456789, Balance: $10,000, Transaction: Deposit $500";
@@ -131,16 +136,16 @@ public class UserFriendlyEncryptionAPITest {
         // Now initialize Search Framework to include both:
         // 1. Existing blocks without passwords (public metadata only)  
         // 2. Newly created blocks with registered passwords (private metadata too)
-        System.out.println("🔄 Initializing Search Framework with password registry...");
+        logger.info("🔄 Initializing Search Framework with password registry...");
         blockchain.initializeAdvancedSearch();
         
-        System.out.println("✅ Encrypted data storage tests passed");
+        logger.info("✅ Encrypted data storage tests passed");
     }
     
     @Test
     @Order(3)
     void testBlockchainStatus() {
-        System.out.println("\n=== Testing Blockchain Status ===");
+        logger.info("\n=== Testing Blockchain Status ===");
         
         assertTrue(api.hasEncryptedData(), "Blockchain should contain encrypted data");
         assertTrue(api.getEncryptedBlockCount() >= 4, "Should have at least 4 encrypted blocks");
@@ -151,13 +156,13 @@ public class UserFriendlyEncryptionAPITest {
         assertTrue(summary.contains("Encrypted blocks:"), "Summary should mention encrypted blocks");
         assertTrue(summary.contains("Unencrypted blocks:"), "Summary should mention unencrypted blocks");
         
-        System.out.println("✅ Blockchain status tests passed");
+        logger.info("✅ Blockchain status tests passed");
     }
     
     @Test
     @Order(4)
     void testEncryptionValidation() {
-        System.out.println("\n=== Testing Encryption Validation ===");
+        logger.info("\n=== Testing Encryption Validation ===");
         
         // Test block encryption check
         assertTrue(api.isBlockEncrypted(medicalBlock.getBlockNumber()), "Medical block should be encrypted");
@@ -171,13 +176,13 @@ public class UserFriendlyEncryptionAPITest {
         assertNotNull(validationReport, "Validation report should not be null");
         assertTrue(validationReport.contains("BLOCKCHAIN VALIDATION REPORT"), "Report should contain header");
         
-        System.out.println("✅ Encryption validation tests passed");
+        logger.info("✅ Encryption validation tests passed");
     }
     
     @Test
     @Order(5)
     void testDataRetrieval() {
-        System.out.println("\n=== Testing Data Retrieval ===");
+        logger.info("\n=== Testing Data Retrieval ===");
         
         // Test successful decryption
         String retrievedMedical = api.retrieveSecret(medicalBlock.getBlockNumber(), medicalPassword);
@@ -192,32 +197,32 @@ public class UserFriendlyEncryptionAPITest {
         String wrongPasswordResult = api.retrieveSecret(secretBlock.getBlockNumber(), "wrongpassword");
         assertNull(wrongPasswordResult, "Should fail with wrong password");
         
-        System.out.println("✅ Data retrieval tests passed");
+        logger.info("✅ Data retrieval tests passed");
     }
     
     @Test
     @Order(6)
     void testPrivacyPreservingSearch() {
-        System.out.println("\n=== Testing Privacy-Preserving Search ===");
-        System.out.println("🔍 Debug: Starting testPrivacyPreservingSearch...");
+        logger.info("\n=== Testing Privacy-Preserving Search ===");
+        logger.info("🔍 Debug: Starting testPrivacyPreservingSearch...");
         
         // Ensure Search Framework Engine is initialized for standalone test execution
         if (!blockchain.getSearchSpecialistAPI().isReady()) {
-            System.out.println("🔄 Search Framework Engine not ready, initializing...");
+            logger.info("🔄 Search Framework Engine not ready, initializing...");
             blockchain.initializeAdvancedSearch();
         }
         
         // Debug: Check search engine status  
-        System.out.println("🔍 Debug: Search Framework Engine ready: " + blockchain.getSearchSpecialistAPI().isReady());
-        System.out.println("🔍 Debug: Search engine stats: " + blockchain.getSearchSpecialistAPI().getStatistics().getTotalBlocksIndexed() + " blocks indexed");
+        logger.info("🔍 Debug: Search Framework Engine ready: " + blockchain.getSearchSpecialistAPI().isReady());
+        logger.info("🔍 Debug: Search engine stats: " + blockchain.getSearchSpecialistAPI().getStatistics().getTotalBlocksIndexed() + " blocks indexed");
         
         // Debug: Check what blocks exist in the blockchain
         long blockCount = blockchain.getBlockCount();
-        System.out.println("📊 Debug: Total blocks in blockchain: " + blockCount);
+        logger.info("📊 Debug: Total blocks in blockchain: " + blockCount);
         for (long i = 0; i < blockCount; i++) {
             Block block = blockchain.getBlock(i);
             if (block != null) {
-                System.out.println(String.format("   Block #%d: encrypted=%s, category=%s, data=%s",
+                logger.info(String.format("   Block #%d: encrypted=%s, category=%s, data=%s",
                     block.getBlockNumber(), block.isDataEncrypted(),
                     block.getContentCategory(),
                     block.getData() != null ? block.getData().substring(0, Math.min(50, block.getData().length())) + "..." : "null"));
@@ -226,17 +231,17 @@ public class UserFriendlyEncryptionAPITest {
         
         // Debug: Check encrypted block count
         long encryptedCount = api.getEncryptedBlockCount();
-        System.out.println("🔐 Debug: Encrypted blocks count: " + encryptedCount);
+        logger.info("🔐 Debug: Encrypted blocks count: " + encryptedCount);
         
         // Search by user-defined terms (metadata only) - this should work with public metadata
         // Note: This test may fail if run individually because it depends on blocks
         // created in testEncryptedDataStorage. Run the full test suite for reliable results.
         try {
             List<Block> patientRecords = api.findRecordsByIdentifier("patient");
-            System.out.println("🔍 Debug: Patient records found: " + patientRecords.size());
+            logger.info("🔍 Debug: Patient records found: " + patientRecords.size());
             if (patientRecords.size() == 0) {
-                System.out.println("⚠️ No patient records found - this is expected when running test individually");
-                System.out.println("   Run the full test suite for complete functionality testing");
+                logger.info("⚠️ No patient records found - this is expected when running test individually");
+                logger.info("   Run the full test suite for complete functionality testing");
                 return; // Skip remaining assertions for individual test runs
             }
             assertTrue(patientRecords.size() >= 1, "Should find patient records");
@@ -247,8 +252,8 @@ public class UserFriendlyEncryptionAPITest {
             List<Block> contractDocuments = api.findRecordsByIdentifier("contract");
             assertTrue(contractDocuments.size() >= 1, "Should find contract documents");
         } catch (AssertionError e) {
-            System.out.println("⚠️ Test failed - likely running individually without proper setup");
-            System.out.println("   Run the full test suite: mvn test -Dtest=UserFriendlyEncryptionAPITest");
+            logger.info("⚠️ Test failed - likely running individually without proper setup");
+            logger.info("   Run the full test suite: mvn test -Dtest=UserFriendlyEncryptionAPITest");
             throw e;
         }
         
@@ -256,7 +261,7 @@ public class UserFriendlyEncryptionAPITest {
         List<Block> encryptedResults = api.findEncryptedData("document");
         // Note: This may not find results if specific metadata is not available
         if (encryptedResults.size() == 0) {
-            System.out.println("ℹ️ No encrypted blocks found with 'document' term in public metadata");
+            logger.info("ℹ️ No encrypted blocks found with 'document' term in public metadata");
             // Try alternative terms that are more likely to be in public metadata
             encryptedResults = api.findEncryptedData("encrypted");
         }
@@ -270,25 +275,25 @@ public class UserFriendlyEncryptionAPITest {
             }
         }
         
-        System.out.println("✅ Privacy-preserving search tests passed");
+        logger.info("✅ Privacy-preserving search tests passed");
     }
     
     @Test
     @Order(7)
     void testSearchWithDecryption() {
-        System.out.println("\n=== Testing Search with Decryption ===");
+        logger.info("\n=== Testing Search with Decryption ===");
         
         // Debug: Check password registry status before search
         Object passwordStats = api.getPasswordRegistryStats();
-        System.out.println("🔍 Password Registry stats before search: " + passwordStats);
+        logger.info("🔍 Password Registry stats before search: " + passwordStats);
         
         // Debug: Check if the medical block hash is what we expect
-        System.out.println("🔍 Medical block hash: " + medicalBlock.getHash());
-        System.out.println("🔍 Medical password: " + medicalPassword);
+        logger.info("🔍 Medical block hash: " + medicalBlock.getHash());
+        logger.info("🔍 Medical password: " + medicalPassword);
         
         // Search and decrypt medical data (search for PRIVATE term using direct method)
         List<Block> decryptedMedical = api.searchAndDecryptByTerms(new String[]{"diabetes"}, medicalPassword, 10);
-        System.out.println("🔍 Found " + decryptedMedical.size() + " medical results");
+        logger.info("🔍 Found " + decryptedMedical.size() + " medical results");
         assertTrue(decryptedMedical.size() >= 1, "Should find medical records containing 'diabetes'");
         
         // Search and decrypt financial data (search for PUBLIC term)
@@ -299,13 +304,13 @@ public class UserFriendlyEncryptionAPITest {
         List<Block> wrongPasswordResults = api.searchAndDecryptByTerms(new String[]{"diabetes"}, "wrongpassword", 10);
         assertEquals(0, wrongPasswordResults.size(), "Should find no results with wrong password");
         
-        System.out.println("✅ Search with decryption tests passed");
+        logger.info("✅ Search with decryption tests passed");
     }
     
     @Test
     @Order(8)
     void testAdvancedSearch() {
-        System.out.println("\n=== Testing Advanced Search ===");
+        logger.info("\n=== Testing Advanced Search ===");
         
         // Add some public data for testing
         blockchain.addBlock("Public announcement about blockchain features", userKeys.getPrivate(), userKeys.getPublic());
@@ -313,7 +318,7 @@ public class UserFriendlyEncryptionAPITest {
         // Test Advanced Search without decryption
         List<Block> publicSearch = api.searchEverything("announcement");
         assertNotNull(publicSearch, "Search result should not be null");
-        System.out.println("Found " + publicSearch.size() + " blocks in public search");
+        logger.info("Found " + publicSearch.size() + " blocks in public search");
         
         // Since search might return 0 results due to indexing issues, we'll be more lenient
         assertTrue(publicSearch.size() >= 0, "Should return valid search results");
@@ -323,13 +328,13 @@ public class UserFriendlyEncryptionAPITest {
         assertNotNull(passwordSearch, "Search result should not be null");
         assertTrue(passwordSearch.size() >= 0, "Should return valid results");
         
-        System.out.println("✅ Advanced search tests passed");
+        logger.info("✅ Advanced search tests passed");
     }
     
     @Test
     @Order(9)
     void testErrorHandling() {
-        System.out.println("\n=== Testing Error Handling ===");
+        logger.info("\n=== Testing Error Handling ===");
         
         // Test operations without default credentials
         UserFriendlyEncryptionAPI apiWithoutCreds = new UserFriendlyEncryptionAPI(blockchain);
@@ -352,13 +357,13 @@ public class UserFriendlyEncryptionAPITest {
             api.retrieveSecret(1L, ""), 
             "Should reject empty password");
         
-        System.out.println("✅ Error handling tests passed");
+        logger.info("✅ Error handling tests passed");
     }
     
     @Test
     @Order(10)
     void testCompleteWorkflow() {
-        System.out.println("\n=== Testing Complete Workflow ===");
+        logger.info("\n=== Testing Complete Workflow ===");
 
         // RBAC FIX (v1.0.6): Test User is USER role and cannot create other users
         // Need to use admin credentials to create new user
@@ -392,16 +397,16 @@ public class UserFriendlyEncryptionAPITest {
         // Validate the blockchain
         assertTrue(api.validateEncryptedBlocks(), "Blockchain should remain valid");
         
-        System.out.println("✅ Complete workflow test passed");
+        logger.info("✅ Complete workflow test passed");
     }
     
     @AfterAll
     static void teardown() {
-        System.out.println("\n=== User-Friendly Encryption API Tests Completed ===");
-        System.out.println("✅ All tests passed successfully");
-        System.out.println("📊 Final blockchain status:");
-        System.out.println("   🔐 Encrypted blocks: " + api.getEncryptedBlockCount());
-        System.out.println("   📖 Unencrypted blocks: " + api.getUnencryptedBlockCount());
-        System.out.println("   ✅ Validation: " + (api.validateEncryptedBlocks() ? "PASSED" : "FAILED"));
+        logger.info("\n=== User-Friendly Encryption API Tests Completed ===");
+        logger.info("✅ All tests passed successfully");
+        logger.info("📊 Final blockchain status:");
+        logger.info("   🔐 Encrypted blocks: " + api.getEncryptedBlockCount());
+        logger.info("   📖 Unencrypted blocks: " + api.getUnencryptedBlockCount());
+        logger.info("   ✅ Validation: " + (api.validateEncryptedBlocks() ? "PASSED" : "FAILED"));
     }
 }

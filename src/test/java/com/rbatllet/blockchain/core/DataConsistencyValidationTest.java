@@ -17,11 +17,16 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Validation test for data consistency fixes
  */
 public class DataConsistencyValidationTest {
+    private static final Logger logger = LoggerFactory.getLogger(DataConsistencyValidationTest.class);
+
 
     private Blockchain blockchain;
     private KeyPair bootstrapKeyPair;
@@ -83,7 +88,7 @@ public class DataConsistencyValidationTest {
                 offChainDir.delete();
             }
         } catch (Exception e) {
-            System.err.println("Cleanup error: " + e.getMessage());
+            logger.error("Cleanup error: " + e.getMessage());
         }
     }
     
@@ -121,7 +126,7 @@ public class DataConsistencyValidationTest {
             assertNull(blockchain.getBlock(block2.getBlockNumber()));
             
             // Show detailed validation after rollback
-            System.out.println("🔍 Detailed validation after rollback with off-chain cleanup:");
+            logger.info("🔍 Detailed validation after rollback with off-chain cleanup:");
             blockchain.validateChainDetailed();
         }
     }
@@ -192,7 +197,7 @@ public class DataConsistencyValidationTest {
                 }
                 backupDir.delete();
             } catch (Exception e) {
-                System.err.println("Cleanup warning: " + e.getMessage());
+                logger.error("Cleanup warning: " + e.getMessage());
             }
         }
     }

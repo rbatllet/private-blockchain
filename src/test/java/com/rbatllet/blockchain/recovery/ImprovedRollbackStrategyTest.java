@@ -18,6 +18,9 @@ import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.TestGenesisKeyManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Tests for the improved intelligent rollback strategy
@@ -26,6 +29,8 @@ import com.rbatllet.blockchain.util.TestGenesisKeyManager;
  */
 @DisplayName("Improved Rollback Strategy Tests")
 class ImprovedRollbackStrategyTest {
+    private static final Logger logger = LoggerFactory.getLogger(ImprovedRollbackStrategyTest.class);
+
 
     private Blockchain blockchain;
     private ChainRecoveryManager recoveryManager;
@@ -69,8 +74,8 @@ class ImprovedRollbackStrategyTest {
         @Test
         @DisplayName("Should handle interleaved corruption intelligently")
         void shouldHandleInterleavedCorruptionIntelligently() {
-            System.out.println("\n🔬 TEST: Interleaved Corruption Scenario");
-            System.out.println("Scenario: User1-User2-User1-User2, delete User1 key");
+            logger.info("\n🔬 TEST: Interleaved Corruption Scenario");
+            logger.info("Scenario: User1-User2-User1-User2, delete User1 key");
             
             // Create users
             KeyPair user1 = CryptoUtil.generateKeyPair();
@@ -94,9 +99,9 @@ class ImprovedRollbackStrategyTest {
             assertTrue(initialValidation.isStructurallyIntact() && initialValidation.isFullyCompliant(), 
                 "Initial chain should be valid");
             
-            System.out.println("Initial chain: " + initialBlocks + " blocks");
-            System.out.println("Chain structurally intact: " + initialValidation.isStructurallyIntact());
-            System.out.println("Chain fully compliant: " + initialValidation.isFullyCompliant());
+            logger.info("Initial chain: " + initialBlocks + " blocks");
+            logger.info("Chain structurally intact: " + initialValidation.isStructurallyIntact());
+            logger.info("Chain fully compliant: " + initialValidation.isFullyCompliant());
             
             // Create corruption
             String interleavedReason = "Test interleaved corruption";
@@ -108,13 +113,13 @@ class ImprovedRollbackStrategyTest {
             assertTrue(corruptedValidation.isStructurallyIntact(), 
                 "Chain should still be structurally intact after key deletion");
             
-            System.out.println("After corruption - Chain structurally intact: " + corruptedValidation.isStructurallyIntact());
-            System.out.println("After corruption - Chain fully compliant: " + corruptedValidation.isFullyCompliant());
+            logger.info("After corruption - Chain structurally intact: " + corruptedValidation.isStructurallyIntact());
+            logger.info("After corruption - Chain fully compliant: " + corruptedValidation.isFullyCompliant());
             if (!corruptedValidation.isFullyCompliant()) {
-                System.out.println("Revoked blocks: " + corruptedValidation.getRevokedBlocks());
+                logger.info("Revoked blocks: " + corruptedValidation.getRevokedBlocks());
             }
             if (!corruptedValidation.isStructurallyIntact()) {
-                System.out.println("Invalid blocks: " + corruptedValidation.getInvalidBlocks());
+                logger.info("Invalid blocks: " + corruptedValidation.getInvalidBlocks());
             }
             
             // Attempt recovery
@@ -128,11 +133,11 @@ class ImprovedRollbackStrategyTest {
             assertTrue(recoveredValidation.isFullyCompliant(), "Chain should be fully compliant after recovery");
             assertNotNull(result.getMethod(), "Recovery method should be specified");
             
-            System.out.println("Recovery successful: " + result.isSuccess());
-            System.out.println("Recovery method: " + result.getMethod());
-            System.out.println("Final chain: " + blockchain.getBlockCount() + " blocks");
-            System.out.println("Final chain structurally intact: " + recoveredValidation.isStructurallyIntact());
-            System.out.println("Final chain fully compliant: " + recoveredValidation.isFullyCompliant());
+            logger.info("Recovery successful: " + result.isSuccess());
+            logger.info("Recovery method: " + result.getMethod());
+            logger.info("Final chain: " + blockchain.getBlockCount() + " blocks");
+            logger.info("Final chain structurally intact: " + recoveredValidation.isStructurallyIntact());
+            logger.info("Final chain fully compliant: " + recoveredValidation.isFullyCompliant());
             
             // Check preservation efficiency
             long finalBlocks = blockchain.getBlockCount();
@@ -145,16 +150,16 @@ class ImprovedRollbackStrategyTest {
                 }
             }
             
-            System.out.println("User2 blocks preserved: " + user2BlocksRemaining);
+            logger.info("User2 blocks preserved: " + user2BlocksRemaining);
             
             // The improved strategy should preserve some blocks when possible
             // At minimum, it should preserve genesis block
             assertTrue(finalBlocks >= 1, "Should preserve at least genesis block");
             
             if (user2BlocksRemaining > 0) {
-                System.out.println("✅ IMPROVEMENT VERIFIED: Valid blocks preserved!");
+                logger.info("✅ IMPROVEMENT VERIFIED: Valid blocks preserved!");
             } else {
-                System.out.println("ℹ️ Note: Conservative approach used (still safe)");
+                logger.info("ℹ️ Note: Conservative approach used (still safe)");
             }
 
             // Verify all preserved blocks are valid
@@ -170,8 +175,8 @@ class ImprovedRollbackStrategyTest {
         @Test
         @DisplayName("Should optimize rollback for end corruption")
         void shouldOptimizeRollbackForEndCorruption() {
-            System.out.println("\n🔬 TEST: End Corruption Scenario");
-            System.out.println("Scenario: Valid-Valid-Valid-Corrupt, should preserve first 3");
+            logger.info("\n🔬 TEST: End Corruption Scenario");
+            logger.info("Scenario: Valid-Valid-Valid-Corrupt, should preserve first 3");
             
             // Create users
             KeyPair validUser = CryptoUtil.generateKeyPair();
@@ -195,7 +200,7 @@ class ImprovedRollbackStrategyTest {
             assertTrue(initialValidation.isStructurallyIntact() && initialValidation.isFullyCompliant(), 
                 "Initial chain should be valid");
             
-            System.out.println("Initial chain: " + initialBlocks + " blocks");
+            logger.info("Initial chain: " + initialBlocks + " blocks");
             
             // Create corruption
             String endCorruptReason = "Test end corruption";
@@ -217,9 +222,9 @@ class ImprovedRollbackStrategyTest {
             assertTrue(recoveredValidation.isStructurallyIntact(), "Chain should be structurally intact after recovery");
             assertTrue(recoveredValidation.isFullyCompliant(), "Chain should be fully compliant after recovery");
             
-            System.out.println("Recovery successful: " + result.isSuccess());
-            System.out.println("Recovery method: " + result.getMethod());
-            System.out.println("Final chain: " + blockchain.getBlockCount() + " blocks");
+            logger.info("Recovery successful: " + result.isSuccess());
+            logger.info("Recovery method: " + result.getMethod());
+            logger.info("Final chain: " + blockchain.getBlockCount() + " blocks");
             
             // For end corruption, intelligent rollback should preserve more blocks
             long finalBlocks = blockchain.getBlockCount();
@@ -228,11 +233,11 @@ class ImprovedRollbackStrategyTest {
             assertTrue(finalBlocks >= 1, "Should preserve at least genesis block");
             
             if (finalBlocks >= 4) { // Genesis + 3 valid blocks
-                System.out.println("✅ EXCELLENT: All valid blocks preserved!");
+                logger.info("✅ EXCELLENT: All valid blocks preserved!");
             } else if (finalBlocks >= 2) {
-                System.out.println("✅ GOOD: Some valid blocks preserved!");
+                logger.info("✅ GOOD: Some valid blocks preserved!");
             } else {
-                System.out.println("ℹ️ Note: Conservative rollback used (still safe)");
+                logger.info("ℹ️ Note: Conservative rollback used (still safe)");
             }
 
             // Verify all preserved blocks are valid
@@ -249,7 +254,7 @@ class ImprovedRollbackStrategyTest {
         @Test
         @DisplayName("Should demonstrate security-first approach")
         void shouldDemonstrateSecurityFirstApproach() {
-            System.out.println("\n🔬 TEST: Security-First Approach Verification");
+            logger.info("\n🔬 TEST: Security-First Approach Verification");
             
             // Create a simple corruption scenario
             KeyPair user = CryptoUtil.generateKeyPair();
@@ -305,9 +310,9 @@ class ImprovedRollbackStrategyTest {
                 }
             }
 
-            System.out.println("✅ SECURITY VERIFIED: All blocks in recovered chain are cryptographically valid");
-            System.out.println("Recovery method used: " + result.getMethod());
-            System.out.println("Final blocks: " + finalBlockCount);
+            logger.info("✅ SECURITY VERIFIED: All blocks in recovered chain are cryptographically valid");
+            logger.info("Recovery method used: " + result.getMethod());
+            logger.info("Final blocks: " + finalBlockCount);
         }
     }
 
@@ -318,7 +323,7 @@ class ImprovedRollbackStrategyTest {
         @Test
         @DisplayName("Should provide detailed analysis information")
         void shouldProvideDetailedAnalysisInformation() {
-            System.out.println("\n🔬 TEST: Rollback Analysis Information");
+            logger.info("\n🔬 TEST: Rollback Analysis Information");
             
             // Create test scenario
             KeyPair user1 = CryptoUtil.generateKeyPair();
@@ -353,15 +358,15 @@ class ImprovedRollbackStrategyTest {
             assertTrue(result.getMessage().length() > 10, 
                 "Recovery message should be informative");
             
-            System.out.println("✅ ANALYSIS VERIFIED: Detailed recovery information provided");
-            System.out.println("Method: " + result.getMethod());
-            System.out.println("Message: " + result.getMessage());
+            logger.info("✅ ANALYSIS VERIFIED: Detailed recovery information provided");
+            logger.info("Method: " + result.getMethod());
+            logger.info("Message: " + result.getMessage());
         }
 
         @Test
         @DisplayName("Should handle edge cases gracefully")
         void shouldHandleEdgeCasesGracefully() {
-            System.out.println("\n🔬 TEST: Edge Cases Handling");
+            logger.info("\n🔬 TEST: Edge Cases Handling");
             
             // Test 1: Empty chain (only genesis)
             KeyPair user = CryptoUtil.generateKeyPair();
@@ -401,7 +406,7 @@ class ImprovedRollbackStrategyTest {
             assertTrue(shortChainValidation.isStructurallyIntact(), "Recovered short chain should be structurally intact");
             assertTrue(shortChainValidation.isFullyCompliant(), "Recovered short chain should be fully compliant");
             
-            System.out.println("✅ EDGE CASES VERIFIED: Graceful handling of unusual scenarios");
+            logger.info("✅ EDGE CASES VERIFIED: Graceful handling of unusual scenarios");
         }
     }
 

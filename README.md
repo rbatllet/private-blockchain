@@ -1748,7 +1748,7 @@ This project includes 65+ comprehensive documentation files organized into **11 
 | Run comprehensive tests (828+ tests, 72% coverage) | **README.md - Testing section** |
 | Run tests and troubleshoot issues | [Testing Guide](docs/testing/TESTING.md) |
 | **Test components with shared static state** | [Shared State Testing](docs/testing/SHARED_STATE_TESTING_PATTERNS.md) |
-| **Implement thread-safe multi-instance operations** | [Thread Safety & Semaphores](docs/development/SEMAPHORE_INDEXING_IMPLEMENTATION.md) |
+| **Implement thread-safe multi-instance operations** | [Thread Safety & Semaphores](docs/search/SEMAPHORE_INDEXING_IMPLEMENTATION.md) |
 | Understand technical implementation | [Technical Details](docs/reference/TECHNICAL_DETAILS.md) |
 | Deploy to production | [Production Guide](docs/deployment/PRODUCTION_GUIDE.md) |
 | Set up encryption and security | [Encryption Guide](docs/security/ENCRYPTION_GUIDE.md) |

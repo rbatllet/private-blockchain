@@ -344,8 +344,8 @@ done
 
 ## 📚 Related Documentation
 
-- **[VIRTUAL_THREADS_INVESTIGATION_REPORT.md](VIRTUAL_THREADS_INVESTIGATION_REPORT.md)** - Complete implementation details
-- **[JAVA_21_25_FEATURES_OPTIMIZATION_REPORT.md](JAVA_21_25_FEATURES_OPTIMIZATION_REPORT.md)** - Full Java 25 optimization guide
+- **[VIRTUAL_THREADS_INVESTIGATION_REPORT.md](../reports/VIRTUAL_THREADS_INVESTIGATION_REPORT.md)** - Complete implementation details
+- **[JAVA_21_25_FEATURES_OPTIMIZATION_REPORT.md](../reports/JAVA_21_25_FEATURES_OPTIMIZATION_REPORT.md)** - Full Java 25 optimization guide
 - **[PERFORMANCE_METRICS_GUIDE.md](../monitoring/PERFORMANCE_METRICS_GUIDE.md)** - General performance monitoring
 
 ---

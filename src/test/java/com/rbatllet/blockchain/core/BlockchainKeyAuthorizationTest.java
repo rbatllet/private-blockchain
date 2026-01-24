@@ -8,6 +8,8 @@ import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.validation.ChainValidationResult;
 import com.rbatllet.blockchain.util.TestDatabaseUtils;
 import org.junit.jupiter.api.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.File;
@@ -29,7 +31,9 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("Blockchain Key Authorization Tests")
 class BlockchainKeyAuthorizationTest {
 
-    private KeyPair aliceKeyPair;
+        private static final Logger logger = LoggerFactory.getLogger(BlockchainKeyAuthorizationTest.class);
+
+        private KeyPair aliceKeyPair;
     private KeyPair bobKeyPair;
     private String alicePublicKey;
     private String bobPublicKey;
@@ -238,10 +242,10 @@ class BlockchainKeyAuthorizationTest {
         boolean importResult = importedBlockchain.importChain(exportFile.getAbsolutePath());
         
         // 7. Log some debug info if import fails
-        if (!importResult) {
-            System.out.println("Import failed. Let's check the export file exists: " + exportFile.exists());
-            System.out.println("Export file size: " + exportFile.length());
-        }
+                if (!importResult) {
+                        logger.error("Import failed. Let's check the export file exists: {}", exportFile.exists());
+                        logger.error("Export file size: {}", exportFile.length());
+                }
         
         assertTrue(importResult, "Import should succeed");
         
@@ -348,8 +352,8 @@ class BlockchainKeyAuthorizationTest {
             }
         }
         
-        System.out.println("✅ Historical validation functionality - VALIDATED");
-        System.out.println("✅ Import with timestamp corrections - VALIDATED");
+        logger.info("✅ Historical validation functionality - VALIDATED");
+        logger.info("✅ Import with timestamp corrections - VALIDATED");
     }
 
     @Test
@@ -420,7 +424,7 @@ class BlockchainKeyAuthorizationTest {
             return authorizedKeyDAO.wasKeyAuthorizedAt(block.getSignerPublicKey(), block.getTimestamp());
             
         } catch (Exception e) {
-            System.err.println("Error validating historical block: " + e.getMessage());
+            logger.error("Error validating historical block: " + e.getMessage());
             return false;
         }
     }
@@ -607,5 +611,5 @@ class BlockchainKeyAuthorizationTest {
             }
         }
         
-        System.out.println("✅ Complex temporal history preserved through import/export");
+        logger.info("✅ Complex temporal history preserved through import/export");
     }}

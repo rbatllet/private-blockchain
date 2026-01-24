@@ -8,7 +8,6 @@ import tools.jackson.databind.ObjectMapper;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.security.PrivateKey;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
@@ -17,7 +16,7 @@ import java.util.regex.Pattern;
  * Advanced Off-Chain File Search Implementation
  * 
  * Provides exhaustive search capabilities within encrypted off-chain files.
- * This completes the INCLUDE_ENCRYPTED search level by actually searching
+ * This completes the INCLUDE_OFFCHAIN search level by actually searching
  * inside encrypted files stored via OffChainStorageService.
  * 
  * Key Features:
@@ -61,17 +60,15 @@ public class OffChainFileSearch {
     
     /**
      * Search for terms within off-chain files associated with blocks
-     * 
+     *
      * @param blocks List of blocks to search within
      * @param searchTerm The term to search for
      * @param password Password for decrypting off-chain files
-     * @param privateKey Private key for verification
      * @param maxResults Maximum number of results to return
      * @return Search results with matching off-chain content
      */
-    public OffChainSearchResult searchOffChainContent(List<Block> blocks, String searchTerm, 
-                                                     String password, PrivateKey privateKey, 
-                                                     int maxResults) {
+    public OffChainSearchResult searchOffChainContent(List<Block> blocks, String searchTerm,
+                                                     String password, int maxResults) {
         
         if (searchTerm == null || searchTerm.trim().isEmpty()) {
             return new OffChainSearchResult(searchTerm, new ArrayList<>(), 0);
@@ -95,7 +92,7 @@ public class OffChainFileSearch {
             }
             
             List<OffChainMatch> blockMatches = searchBlockOffChainData(
-                block, searchTerm, password, privateKey);
+                block, searchTerm, password);
             
             matches.addAll(blockMatches);
             totalFilesSearched += getOffChainFileCount(block);
@@ -126,8 +123,8 @@ public class OffChainFileSearch {
     /**
      * Search within off-chain data of a specific block
      */
-    private List<OffChainMatch> searchBlockOffChainData(Block block, String searchTerm, 
-                                                       String password, PrivateKey privateKey) {
+    private List<OffChainMatch> searchBlockOffChainData(Block block, String searchTerm,
+                                                       String password) {
         List<OffChainMatch> matches = new ArrayList<>();
         
         try {
@@ -181,8 +178,15 @@ public class OffChainFileSearch {
             
             // Decrypt and retrieve file content
             byte[] decryptedData = offChainService.retrieveData(offChainData, password);
-            
+
+            logger.info("🔍 Off-chain file decrypted: {} bytes, contentType={}, searchTerm={}, file={}",
+                decryptedData != null ? decryptedData.length : 0,
+                offChainData.getContentType(),
+                searchTerm,
+                offChainData.getFilePath());
+
             if (decryptedData == null || decryptedData.length == 0) {
+                logger.warn("⚠️ Decrypted data is null or empty for file: {}", offChainData.getFilePath());
                 return null;
             }
             

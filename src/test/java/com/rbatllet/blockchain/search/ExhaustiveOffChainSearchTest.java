@@ -29,11 +29,14 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
- * COMPREHENSIVE INCLUDE_ENCRYPTED Search Test Suite
+ * COMPREHENSIVE INCLUDE_OFFCHAIN Search Test Suite
  *
- * Tests all aspects of the new INCLUDE_ENCRYPTED search functionality:
+ * Tests all aspects of the new INCLUDE_OFFCHAIN search functionality:
  * - Integration with real off-chain files
  * - Performance benchmarking
  * - Error handling and edge cases
@@ -44,6 +47,8 @@ import org.junit.jupiter.api.*;
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class ExhaustiveOffChainSearchTest {
+    private static final Logger logger = LoggerFactory.getLogger(ExhaustiveOffChainSearchTest.class);
+
 
     private SearchFrameworkEngine searchEngine;
     private Blockchain blockchain;
@@ -71,7 +76,7 @@ public class ExhaustiveOffChainSearchTest {
         tempDir.mkdirs();
         tempDir.deleteOnExit();
 
-        System.out.println(
+        logger.info(
             "🧪 ExhaustiveOffChainSearchTest setup in: " +
             tempDir.getAbsolutePath()
         );
@@ -116,11 +121,11 @@ public class ExhaustiveOffChainSearchTest {
         // Create simple test blockchain
         createBasicTestBlockchain();
 
-        System.out.println("🔧 Test setup completed");
+        logger.info("🔧 Test setup completed");
     }
 
     private void createBasicTestBlockchain() throws Exception {
-        // Create simple test blocks for INCLUDE_ENCRYPTED testing
+        // Create simple test blocks for INCLUDE_OFFCHAIN testing
 
         // Medical block with off-chain content
         File medicalFile = new File(tempDir, "basic_medical.txt");
@@ -198,10 +203,10 @@ public class ExhaustiveOffChainSearchTest {
 
     @Test
     @Order(1)
-    @DisplayName("🔍 Basic INCLUDE_ENCRYPTED Search Integration")
+    @DisplayName("🔍 Basic INCLUDE_OFFCHAIN Search Integration")
     void testBasicExhaustiveOffChainSearch() throws Exception {
-        System.out.println(
-            "🧪 Testing basic INCLUDE_ENCRYPTED search integration..."
+        logger.info(
+            "🧪 Testing basic INCLUDE_OFFCHAIN search integration..."
         );
 
         // We already have basic blocks from createBasicTestBlockchain()
@@ -214,12 +219,11 @@ public class ExhaustiveOffChainSearchTest {
         searchEngine.indexBlockchain(blockchain, testPassword, testPrivateKey);
         IndexingCoordinator.getInstance().waitForCompletion();
 
-        // Perform INCLUDE_ENCRYPTED search
+        // Perform INCLUDE_OFFCHAIN search
         long startTime = System.nanoTime();
         SearchResult result = searchEngine.searchExhaustiveOffChain(
             "medical",
             testPassword,
-            testPrivateKey,
             10
         );
         long endTime = System.nanoTime();
@@ -230,16 +234,16 @@ public class ExhaustiveOffChainSearchTest {
 
         // Debug: Print error message if not successful
         if (!result.isSuccessful()) {
-            System.err.println(
+            logger.error(
                 "❌ Search not successful. Error: " + result.getErrorMessage()
             );
-            System.err.println("📊 Result count: " + result.getResultCount());
-            System.err.println("📊 Search level: " + result.getSearchLevel());
-            System.err.println("📊 Strategy used: " + result.getStrategyUsed());
+            logger.error("📊 Result count: " + result.getResultCount());
+            logger.error("📊 Search level: " + result.getSearchLevel());
+            logger.error("📊 Strategy used: " + result.getStrategyUsed());
         }
 
         assertTrue(result.isSuccessful(), "Search should be successful");
-        assertEquals(SearchLevel.INCLUDE_ENCRYPTED, result.getSearchLevel());
+        assertEquals(SearchLevel.INCLUDE_OFFCHAIN, result.getSearchLevel());
         assertEquals(
             SearchStrategyRouter.SearchStrategy.PARALLEL_MULTI,
             result.getStrategyUsed()
@@ -249,19 +253,19 @@ public class ExhaustiveOffChainSearchTest {
             "Search should complete within 5 seconds: " + searchTimeMs + "ms"
         );
 
-        System.out.println(
+        logger.info(
             "✅ Basic search completed in " +
             String.format("%.2f", searchTimeMs) +
             "ms"
         );
-        System.out.println("📊 Results found: " + result.getResultCount());
+        logger.info("📊 Results found: " + result.getResultCount());
     }
 
     @Test
     @Order(2)
     @DisplayName("📁 Off-Chain File Content Search")
     void testOffChainFileContentSearch() throws Exception {
-        System.out.println("🧪 Testing off-chain file content search...");
+        logger.info("🧪 Testing off-chain file content search...");
 
         // Create test file
         File testFile = new File(tempDir, "medical_record.txt");
@@ -313,7 +317,6 @@ public class ExhaustiveOffChainSearchTest {
         SearchResult result = searchEngine.searchExhaustiveOffChain(
             "diagnosis",
             testPassword,
-            testPrivateKey,
             10
         );
 
@@ -332,7 +335,7 @@ public class ExhaustiveOffChainSearchTest {
             );
 
         if (hasOffChainResults) {
-            System.out.println("✅ Off-chain content found successfully!");
+            logger.info("✅ Off-chain content found successfully!");
 
             // Test EnhancedSearchResult with OffChainMatch
             for (EnhancedSearchResult searchResult : result.getResults()) {
@@ -342,13 +345,13 @@ public class ExhaustiveOffChainSearchTest {
                     assertEquals("medical_record.txt", match.getFileName());
                     assertEquals("text/plain", match.getContentType());
                     assertTrue(match.getMatchCount() > 0);
-                    System.out.println(
+                    logger.info(
                         "📁 Off-chain match: " + match.getDetailedDescription()
                     );
                 }
             }
         } else {
-            System.out.println(
+            logger.info(
                 "ℹ️ No off-chain matches found (expected if file access fails)"
             );
         }
@@ -361,7 +364,7 @@ public class ExhaustiveOffChainSearchTest {
     @Order(3)
     @DisplayName("📊 JSON Content Type Search")
     void testJSONContentSearch() throws Exception {
-        System.out.println("🧪 Testing JSON off-chain content search...");
+        logger.info("🧪 Testing JSON off-chain content search...");
 
         // Create JSON test file
         File jsonFile = new File(tempDir, "patient_data.json");
@@ -399,14 +402,13 @@ public class ExhaustiveOffChainSearchTest {
                 List.of(testBlock),
                 "diabetes",
                 testPassword,
-                testPrivateKey,
                 5
             );
 
         assertNotNull(jsonResult);
         assertEquals("diabetes", jsonResult.getSearchTerm());
 
-        System.out.println(
+        logger.info(
             "📋 JSON search completed: " + jsonResult.getSearchSummary()
         );
 
@@ -418,7 +420,7 @@ public class ExhaustiveOffChainSearchTest {
     @Order(4)
     @DisplayName("⚡ Performance Benchmarking")
     void testPerformanceBenchmark() throws Exception {
-        System.out.println("🧪 Testing INCLUDE_ENCRYPTED performance...");
+        logger.info("🧪 Testing INCLUDE_OFFCHAIN performance...");
 
         // Create multiple blocks for performance testing
         int blockCount = 10;
@@ -502,7 +504,6 @@ public class ExhaustiveOffChainSearchTest {
             SearchResult result = searchEngine.searchExhaustiveOffChain(
                 "performance",
                 testPassword,
-                testPrivateKey,
                 10
             );
             long searchEndTime = System.nanoTime();
@@ -530,24 +531,24 @@ public class ExhaustiveOffChainSearchTest {
             "ms"
         );
 
-        System.out.println("📊 Performance Results:");
-        System.out.println("   📦 Blocks indexed: " + blockCount);
-        System.out.println(
+        logger.info("📊 Performance Results:");
+        logger.info("   📦 Blocks indexed: " + blockCount);
+        logger.info(
             "   ⏱️ Indexing time: " + String.format("%.2f", indexTimeMs) + "ms"
         );
-        System.out.println(
+        logger.info(
             "   🔍 Average search time: " +
             String.format("%.2f", avgSearchTime) +
             "ms"
         );
-        System.out.println("   🎯 Performance target: < 500ms ✅");
+        logger.info("   🎯 Performance target: < 500ms ✅");
     }
 
     @Test
     @Order(5)
     @DisplayName("🔐 Error Handling and Security")
     void testErrorHandlingAndSecurity() throws Exception {
-        System.out.println("🧪 Testing error handling and security...");
+        logger.info("🧪 Testing error handling and security...");
 
         // Create test block
         Block securityBlock = blockchain.addEncryptedBlockWithKeywords(
@@ -573,7 +574,6 @@ public class ExhaustiveOffChainSearchTest {
             searchEngine.searchExhaustiveOffChain(
                 "secure",
                 "wrong_password",
-                testPrivateKey,
                 10
             );
 
@@ -585,7 +585,6 @@ public class ExhaustiveOffChainSearchTest {
         SearchResult nullSearchResult = searchEngine.searchExhaustiveOffChain(
             null,
             testPassword,
-            testPrivateKey,
             10
         );
         assertNotNull(nullSearchResult);
@@ -595,19 +594,18 @@ public class ExhaustiveOffChainSearchTest {
         SearchResult emptySearchResult = searchEngine.searchExhaustiveOffChain(
             "",
             testPassword,
-            testPrivateKey,
             10
         );
         assertNotNull(emptySearchResult);
 
-        System.out.println("🔐 Security tests completed successfully");
+        logger.info("🔐 Security tests completed successfully");
     }
 
     @Test
     @Order(6)
     @DisplayName("🧵 Thread Safety Testing")
     void testThreadSafety() throws Exception {
-        System.out.println("🧪 Testing INCLUDE_ENCRYPTED thread safety...");
+        logger.info("🧪 Testing INCLUDE_OFFCHAIN thread safety...");
 
         // Setup test data
         for (int i = 0; i < 5; i++) {
@@ -695,7 +693,6 @@ public class ExhaustiveOffChainSearchTest {
                             searchEngine.searchExhaustiveOffChain(
                                 "thread",
                                 testPassword,
-                                testPrivateKey,
                                 5
                             );
 
@@ -703,7 +700,7 @@ public class ExhaustiveOffChainSearchTest {
                             successCount.incrementAndGet();
                         } else {
                             errorCount.incrementAndGet();
-                            System.err.println(
+                            logger.error(
                                 "❌ Thread " +
                                 threadId +
                                 " search " +
@@ -715,7 +712,7 @@ public class ExhaustiveOffChainSearchTest {
                     }
                 } catch (Exception e) {
                     errorCount.incrementAndGet();
-                    System.err.println(
+                    logger.error(
                         "❌ Thread " +
                         threadId +
                         " exception: " +
@@ -748,17 +745,17 @@ public class ExhaustiveOffChainSearchTest {
             "At least 80% of searches should succeed"
         );
 
-        System.out.println("🧵 Thread safety results:");
-        System.out.println(
+        logger.info("🧵 Thread safety results:");
+        logger.info(
             "   ✅ Successful searches: " +
             successCount.get() +
             "/" +
             totalSearches
         );
-        System.out.println(
+        logger.info(
             "   ❌ Failed searches: " + errorCount.get() + "/" + totalSearches
         );
-        System.out.println(
+        logger.info(
             "   📊 Success rate: " +
             String.format(
                 "%.1f",
@@ -772,7 +769,7 @@ public class ExhaustiveOffChainSearchTest {
     @Order(7)
     @DisplayName("💾 Cache Behavior Validation")
     void testCacheBehavior() throws Exception {
-        System.out.println("🧪 Testing off-chain search cache behavior...");
+        logger.info("🧪 Testing off-chain search cache behavior...");
 
         // Create test blocks
         for (int i = 0; i < 3; i++) {
@@ -826,7 +823,6 @@ public class ExhaustiveOffChainSearchTest {
         SearchResult firstResult = searchEngine.searchExhaustiveOffChain(
             "cache",
             testPassword,
-            testPrivateKey,
             5
         );
         long firstSearchEnd = System.nanoTime();
@@ -838,7 +834,6 @@ public class ExhaustiveOffChainSearchTest {
         SearchResult secondResult = searchEngine.searchExhaustiveOffChain(
             "cache",
             testPassword,
-            testPrivateKey,
             5
         );
         long secondSearchEnd = System.nanoTime();
@@ -863,26 +858,26 @@ public class ExhaustiveOffChainSearchTest {
         var emptyCacheStats = searchEngine.getOffChainSearchStats();
         assertEquals(0, emptyCacheStats.get("cacheSize"));
 
-        System.out.println("💾 Cache behavior results:");
-        System.out.println(
+        logger.info("💾 Cache behavior results:");
+        logger.info(
             "   🔍 First search time: " +
             String.format("%.2f", firstSearchTime) +
             "ms"
         );
-        System.out.println(
+        logger.info(
             "   ⚡ Second search time: " +
             String.format("%.2f", secondSearchTime) +
             "ms"
         );
-        System.out.println("   📊 Cache cleared successfully");
+        logger.info("   📊 Cache cleared successfully");
     }
 
     @Test
     @Order(8)
     @DisplayName("🎯 End-to-End Integration Scenario")
     void testEndToEndIntegrationScenario() throws Exception {
-        System.out.println(
-            "🧪 Testing complete end-to-end INCLUDE_ENCRYPTED scenario..."
+        logger.info(
+            "🧪 Testing complete end-to-end INCLUDE_OFFCHAIN scenario..."
         );
 
         // Scenario: Medical records with mixed public/private data and off-chain files
@@ -929,20 +924,20 @@ public class ExhaustiveOffChainSearchTest {
             10
         );
         if (!publicResult.isSuccessful()) {
-            System.err.println(
+            logger.error(
                 "❌ Public search failed. Error: " +
                 publicResult.getErrorMessage()
             );
         }
-        System.out.println("📊 Public search debug:");
-        System.out.println("   - Successful: " + publicResult.isSuccessful());
-        System.out.println(
+        logger.info("📊 Public search debug:");
+        logger.info("   - Successful: " + publicResult.isSuccessful());
+        logger.info(
             "   - Result count: " + publicResult.getResultCount()
         );
-        System.out.println(
+        logger.info(
             "   - Total time: " + publicResult.getTotalTimeMs() + "ms"
         );
-        System.out.println(
+        logger.info(
             "   - Total blocks in blockchain: " +
             blockchain.getBlockCount()
         );
@@ -953,7 +948,7 @@ public class ExhaustiveOffChainSearchTest {
         );
         // Temporarily remove the result count assertion to see if indexing is the issue
         if (publicResult.getResultCount() == 0) {
-            System.out.println(
+            logger.info(
                 "⚠️ Warning: Public search found 0 results, but continuing test..."
             );
         }
@@ -965,7 +960,7 @@ public class ExhaustiveOffChainSearchTest {
             10
         );
         if (!encryptedResult.isSuccessful()) {
-            System.err.println(
+            logger.error(
                 "❌ Encrypted search failed. Error: " +
                 encryptedResult.getErrorMessage()
             );
@@ -975,15 +970,14 @@ public class ExhaustiveOffChainSearchTest {
             "Encrypted search should be successful"
         );
 
-        // INCLUDE_ENCRYPTED search
+        // INCLUDE_OFFCHAIN search
         SearchResult exhaustiveResult = searchEngine.searchExhaustiveOffChain(
             "medical",
             testPassword,
-            testPrivateKey,
             10
         );
         if (!exhaustiveResult.isSuccessful()) {
-            System.err.println(
+            logger.error(
                 "❌ Exhaustive search failed. Error: " +
                 exhaustiveResult.getErrorMessage()
             );
@@ -1017,17 +1011,17 @@ public class ExhaustiveOffChainSearchTest {
             "ms"
         );
 
-        System.out.println("🎯 End-to-end scenario completed successfully:");
-        System.out.println(
+        logger.info("🎯 End-to-end scenario completed successfully:");
+        logger.info(
             "   📊 Public results: " + publicResult.getResultCount()
         );
-        System.out.println(
+        logger.info(
             "   🔐 Encrypted results: " + encryptedResult.getResultCount()
         );
-        System.out.println(
+        logger.info(
             "   🔍 Exhaustive results: " + exhaustiveResult.getResultCount()
         );
-        System.out.println(
+        logger.info(
             "   ⏱️ Total time: " +
             String.format("%.2f", exhaustiveResult.getTotalTimeMs()) +
             "ms"
@@ -1036,7 +1030,7 @@ public class ExhaustiveOffChainSearchTest {
 
     @AfterEach
     void tearDown() {
-        System.out.println("🧹 Cleaning up test");
+        logger.info("🧹 Cleaning up test");
 
         if (searchEngine != null) {
             searchEngine.clearOffChainCache();
@@ -1062,6 +1056,6 @@ public class ExhaustiveOffChainSearchTest {
             tempDir.delete();
         }
 
-        System.out.println("🏁 ExhaustiveOffChainSearchTest completed");
+        logger.info("🏁 ExhaustiveOffChainSearchTest completed");
     }
 }

@@ -6,12 +6,17 @@ import org.junit.jupiter.api.BeforeEach;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.security.KeyPair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Test class for hybrid encryption functionality using public/private keys
  * Tests the BlockDataEncryptionService with ML-DSA-87 key pairs
  */
 public class HybridEncryptionTest {
+    private static final Logger logger = LoggerFactory.getLogger(HybridEncryptionTest.class);
+
     
     private String testData;
     private KeyPair userKeyPair;
@@ -50,7 +55,7 @@ public class HybridEncryptionTest {
         
         assertEquals(testData, decrypted);
         
-        System.out.println("✅ Hybrid encryption/decryption successful");
+        logger.info("✅ Hybrid encryption/decryption successful");
     }
     
     @Test
@@ -74,7 +79,7 @@ public class HybridEncryptionTest {
             );
         });
         
-        System.out.println("✅ Different users correctly cannot decrypt each other's data");
+        logger.info("✅ Different users correctly cannot decrypt each other's data");
     }
     
     @Test
@@ -113,7 +118,7 @@ public class HybridEncryptionTest {
         );
         assertEquals(testData, decrypted);
         
-        System.out.println("✅ Serialization/deserialization working correctly");
+        logger.info("✅ Serialization/deserialization working correctly");
     }
     
     @Test
@@ -138,7 +143,7 @@ public class HybridEncryptionTest {
             wrongKeyPair.getPrivate()
         ));
         
-        System.out.println("✅ Integrity verification working correctly");
+        logger.info("✅ Integrity verification working correctly");
     }
     
     @Test
@@ -166,7 +171,7 @@ public class HybridEncryptionTest {
         
         assertEquals(largeDataString, decrypted);
         
-        System.out.println("✅ Large data encryption successful - Size: " + largeDataString.length() + " chars");
+        logger.info("✅ Large data encryption successful - Size: " + largeDataString.length() + " chars");
     }
     
     @Test
@@ -220,7 +225,7 @@ public class HybridEncryptionTest {
         assertThrows(Exception.class, () -> 
             BlockDataEncryptionService.decryptBlockData(encryptedForUser3, user1KeyPair.getPrivate()));
         
-        System.out.println("✅ Multiple users encryption working correctly");
+        logger.info("✅ Multiple users encryption working correctly");
     }
     
     @Test
@@ -242,7 +247,7 @@ public class HybridEncryptionTest {
             BlockDataEncryptionService.decryptBlockData(corruptedData, userKeyPair.getPrivate());
         });
         
-        System.out.println("✅ Corrupted data correctly detected and rejected");
+        logger.info("✅ Corrupted data correctly detected and rejected");
     }
     
     @Test
@@ -269,6 +274,6 @@ public class HybridEncryptionTest {
         assertEquals(data1, decrypted1);
         assertEquals(data2, decrypted2);
         
-        System.out.println("✅ Deterministic key derivation working correctly");
+        logger.info("✅ Deterministic key derivation working correctly");
     }
 }

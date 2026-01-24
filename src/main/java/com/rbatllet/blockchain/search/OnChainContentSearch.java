@@ -5,7 +5,6 @@ import com.rbatllet.blockchain.service.SecureBlockEncryptionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.security.PrivateKey;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
@@ -25,7 +24,7 @@ import java.util.regex.Matcher;
  * - Context extraction for search results
  * - Thread-safe operations
  * 
- * This makes INCLUDE_ENCRYPTED truly exhaustive by searching ALL content
+ * This makes INCLUDE_OFFCHAIN truly exhaustive by searching ALL content
  */
 public class OnChainContentSearch {
     
@@ -41,17 +40,15 @@ public class OnChainContentSearch {
     
     /**
      * Search within on-chain block content
-     * 
+     *
      * @param blocks List of blocks to search within
      * @param searchTerm The search term or regex pattern
      * @param password Password for decrypting encrypted blocks
-     * @param privateKey Private key for verification (if needed)
      * @param maxResults Maximum number of results to return
      * @return OnChainSearchResult containing all matches
      */
     public OnChainSearchResult searchOnChainContent(List<Block> blocks, String searchTerm,
-                                                   String password, PrivateKey privateKey,
-                                                   int maxResults) {
+                                                   String password, int maxResults) {
         
         logger.info("🔍 Starting on-chain content search for: \"{}\"", searchTerm);
         
@@ -74,7 +71,7 @@ public class OnChainContentSearch {
             blocksSearched++;
             
             // Get block content
-            String content = extractBlockContent(block, password, privateKey);
+            String content = extractBlockContent(block, password);
             if (content == null || content.isEmpty()) {
                 continue;
             }
@@ -107,7 +104,7 @@ public class OnChainContentSearch {
     /**
      * Extract content from a block (decrypt if necessary)
      */
-    private String extractBlockContent(Block block, String password, PrivateKey privateKey) {
+    private String extractBlockContent(Block block, String password) {
         if (block.getData() == null) {
             return null;
         }

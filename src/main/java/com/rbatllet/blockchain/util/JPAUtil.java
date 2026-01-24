@@ -363,9 +363,6 @@ public class JPAUtil {
     }
     
     /**
-     * Thread-safe shutdown method
-     */
-    /**
      * Clean up ThreadLocal variables to prevent memory leaks
      * This method should be called when threads are done with database operations
      */

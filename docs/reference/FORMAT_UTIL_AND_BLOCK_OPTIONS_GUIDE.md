@@ -287,7 +287,8 @@ Block result = api.createBlockWithOptions("Document metadata", options);
 
 // Result:
 // - File stored off-chain with AES encryption
-// - Block category automatically set to "OFF_CHAIN_LINKED"
+// - Block category set to user-specified value (or "OFFCHAIN_DATA" if not specified)
+// - hasOffChainData() indicates off-chain status
 // - MIME type detection (application/pdf)
 // - Thread-safe file operations and blockchain updates
 ```

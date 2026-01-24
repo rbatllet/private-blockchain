@@ -20,6 +20,9 @@ import com.rbatllet.blockchain.search.SearchFrameworkEngine.IndexingResult;
 import com.rbatllet.blockchain.util.TestDatabaseUtils;
 import com.rbatllet.blockchain.util.TestGenesisKeyManager;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Test suite for synchronous blockchain indexing (indexBlockchainSync)
@@ -32,6 +35,8 @@ import com.rbatllet.blockchain.util.CryptoUtil;
  */
 @DisplayName("🔄 SearchFrameworkEngine Synchronous Indexing Tests")
 public class SearchFrameworkSyncIndexingTest {
+    private static final Logger logger = LoggerFactory.getLogger(SearchFrameworkSyncIndexingTest.class);
+
     
     private SearchFrameworkEngine searchEngine;
     private Blockchain testBlockchain;
@@ -160,7 +165,7 @@ public class SearchFrameworkSyncIndexingTest {
     @DisplayName("Should be searchable immediately after indexBlockchainSync")
     void shouldBeSearchableImmediately() {
         // Given - Index synchronously
-        System.out.println("🔍 Starting synchronous indexing...");
+        logger.info("🔍 Starting synchronous indexing...");
         IndexingResult indexResult = searchEngine.indexBlockchainSync(
             testBlockchain, 
             testPassword, 
@@ -171,7 +176,7 @@ public class SearchFrameworkSyncIndexingTest {
         assertTrue(indexResult.getBlocksIndexed() > 0, "Should have indexed blocks");
         
         // When - Search immediately (no waitForCompletion needed!)
-        System.out.println("🔎 Performing search...");
+        logger.info("🔎 Performing search...");
         SearchFrameworkEngine.SearchResult searchResult = 
             searchEngine.searchPublicOnly("test", 10);
         
@@ -263,7 +268,7 @@ public class SearchFrameworkSyncIndexingTest {
         assertEquals(asyncResult.getResultCount(), syncResult.getResultCount(),
             "Both patterns should produce same results");
         
-        System.out.println("✅ Sync pattern is simpler: 2 steps vs 3 steps");
+        logger.info("✅ Sync pattern is simpler: 2 steps vs 3 steps");
         
         engine1.shutdown();
         engine2.shutdown();

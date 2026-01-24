@@ -12,12 +12,17 @@ import java.util.List;
 import java.util.concurrent.*;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Test thread-safety of block number assignment using manual assignment within write lock (Phase 5.0)
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class BlockNumberThreadSafetyTest {
+    private static final Logger logger = LoggerFactory.getLogger(BlockNumberThreadSafetyTest.class);
+
     
     private static Blockchain blockchain;
     private static KeyPair authorizedKeyPair;
@@ -49,7 +54,7 @@ public class BlockNumberThreadSafetyTest {
     @Test
     @Order(1)
     void testSequentialBlockCreation() {
-        System.out.println("\n=== Testing Sequential Block Creation ===");
+        logger.info("\n=== Testing Sequential Block Creation ===");
         
         // Create 5 blocks sequentially
         List<Block> blocks = new ArrayList<>();
@@ -65,7 +70,7 @@ public class BlockNumberThreadSafetyTest {
             assertEquals(Long.valueOf(i), block.getBlockNumber(), "Block number should be " + i);
             blocks.add(block);
 
-            System.out.println("✅ Block #" + i + " created successfully with block number: " + block.getBlockNumber());
+            logger.info("✅ Block #" + i + " created successfully with block number: " + block.getBlockNumber());
         }
         
         // Verify all blocks have sequential numbers
@@ -73,13 +78,13 @@ public class BlockNumberThreadSafetyTest {
             assertEquals(Long.valueOf(i + 1), blocks.get(i).getBlockNumber());
         }
         
-        System.out.println("✅ Sequential block creation test passed");
+        logger.info("✅ Sequential block creation test passed");
     }
     
     @Test
     @Order(2)
     void testSequentialEncryptedBlockCreation() {
-        System.out.println("\n=== Testing Sequential Encrypted Block Creation ===");
+        logger.info("\n=== Testing Sequential Encrypted Block Creation ===");
         
         // Create 5 encrypted blocks sequentially
         List<Block> blocks = new ArrayList<>();
@@ -97,16 +102,16 @@ public class BlockNumberThreadSafetyTest {
             assertTrue(block.isDataEncrypted(), "Block should be encrypted");
             blocks.add(block);
 
-            System.out.println("✅ Encrypted Block #" + i + " created successfully with block number: " + block.getBlockNumber());
+            logger.info("✅ Encrypted Block #" + i + " created successfully with block number: " + block.getBlockNumber());
         }
         
-        System.out.println("✅ Sequential encrypted block creation test passed");
+        logger.info("✅ Sequential encrypted block creation test passed");
     }
     
     @Test
     @Order(3)
     void testMixedBlockCreation() {
-        System.out.println("\n=== Testing Mixed Block Creation ===");
+        logger.info("\n=== Testing Mixed Block Creation ===");
         
         // Create mixed public and encrypted blocks
         List<Block> blocks = new ArrayList<>();
@@ -121,7 +126,7 @@ public class BlockNumberThreadSafetyTest {
         assertEquals(Long.valueOf(1), block1.getBlockNumber());
         assertFalse(block1.isDataEncrypted());
         blocks.add(block1);
-        System.out.println("✅ Public Block #1 created");
+        logger.info("✅ Public Block #1 created");
         
         // Block 2: Encrypted
         Block block2 = blockchain.addEncryptedBlock(
@@ -134,7 +139,7 @@ public class BlockNumberThreadSafetyTest {
         assertEquals(Long.valueOf(2), block2.getBlockNumber());
         assertTrue(block2.isDataEncrypted());
         blocks.add(block2);
-        System.out.println("✅ Encrypted Block #2 created");
+        logger.info("✅ Encrypted Block #2 created");
         
         // Block 3: Public
         Block block3 = blockchain.addBlockAndReturn(
@@ -146,7 +151,7 @@ public class BlockNumberThreadSafetyTest {
         assertEquals(Long.valueOf(3), block3.getBlockNumber());
         assertFalse(block3.isDataEncrypted());
         blocks.add(block3);
-        System.out.println("✅ Public Block #3 created");
+        logger.info("✅ Public Block #3 created");
         
         // Block 4: Encrypted
         Block block4 = blockchain.addEncryptedBlock(
@@ -159,19 +164,19 @@ public class BlockNumberThreadSafetyTest {
         assertEquals(Long.valueOf(4), block4.getBlockNumber());
         assertTrue(block4.isDataEncrypted());
         blocks.add(block4);
-        System.out.println("✅ Encrypted Block #4 created");
+        logger.info("✅ Encrypted Block #4 created");
         
         // Verify blockchain integrity
         boolean isValid = blockchain.isStructurallyIntact();
         assertTrue(isValid, "Blockchain should be valid after mixed block creation");
         
-        System.out.println("✅ Mixed block creation test passed");
+        logger.info("✅ Mixed block creation test passed");
     }
     
     @Test
     @Order(4)
     void testConcurrentBlockCreation() {
-        System.out.println("\n=== Testing Concurrent Block Creation ===");
+        logger.info("\n=== Testing Concurrent Block Creation ===");
         
         int numberOfThreads = 5;
         int blocksPerThread = 3;
@@ -195,16 +200,16 @@ public class BlockNumberThreadSafetyTest {
                         
                         if (block != null) {
                             threadBlocks.add(block);
-                            System.out.println("✅ " + threadName + " created block #" + block.getBlockNumber());
+                            logger.info("✅ " + threadName + " created block #" + block.getBlockNumber());
                         } else {
-                            System.err.println("❌ " + threadName + " failed to create block #" + i);
+                            logger.error("❌ " + threadName + " failed to create block #" + i);
                         }
                         
                         // Small delay to allow thread interleaving
                         Thread.sleep(10);
                         
                     } catch (Exception e) {
-                        System.err.println("❌ " + threadName + " exception: " + e.getMessage());
+                        logger.error("❌ " + threadName + " exception: " + e.getMessage());
                     }
                 }
                 
@@ -221,7 +226,7 @@ public class BlockNumberThreadSafetyTest {
                 List<Block> threadBlocks = future.get(30, TimeUnit.SECONDS);
                 allBlocks.addAll(threadBlocks);
             } catch (Exception e) {
-                System.err.println("❌ Error getting thread results: " + e.getMessage());
+                logger.error("❌ Error getting thread results: " + e.getMessage());
             }
         }
         
@@ -229,7 +234,7 @@ public class BlockNumberThreadSafetyTest {
         
         // Verify results
         assertFalse(allBlocks.isEmpty(), "Should have created some blocks");
-        System.out.println("📊 Total blocks created: " + allBlocks.size());
+        logger.info("📊 Total blocks created: " + allBlocks.size());
         
         // Check for duplicate block numbers
         List<Long> blockNumbers = new ArrayList<>();
@@ -240,7 +245,7 @@ public class BlockNumberThreadSafetyTest {
         List<Long> sortedNumbers = new ArrayList<>(blockNumbers);
         Collections.sort(sortedNumbers);
         
-        System.out.println("📋 Block numbers created: " + sortedNumbers);
+        logger.info("📋 Block numbers created: " + sortedNumbers);
         
         // Verify no duplicates
         for (int i = 1; i < sortedNumbers.size(); i++) {
@@ -252,6 +257,6 @@ public class BlockNumberThreadSafetyTest {
         boolean isValid = blockchain.isStructurallyIntact();
         assertTrue(isValid, "Blockchain should be valid after concurrent block creation");
         
-        System.out.println("✅ Concurrent block creation test passed");
+        logger.info("✅ Concurrent block creation test passed");
     }
 }

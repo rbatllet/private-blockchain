@@ -19,11 +19,16 @@ import java.util.HashSet;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Comprehensive tests for the KeyFileLoader class
  */
 public class KeyFileLoaderTest {
+    private static final Logger logger = LoggerFactory.getLogger(KeyFileLoaderTest.class);
+
 
     @TempDir
     Path tempDir;
@@ -453,7 +458,7 @@ public class KeyFileLoaderTest {
                 assertNull(key, "Should return null for unreadable file");
             } catch (UnsupportedOperationException e) {
                 // Some file systems don't support POSIX permissions
-                System.out.println("Skipping unreadable file test due to filesystem limitations");
+                logger.info("Skipping unreadable file test due to filesystem limitations");
             }
         }
     }
@@ -585,7 +590,7 @@ public class KeyFileLoaderTest {
                 assertNull(key, "Should return null for unreadable file");
             } catch (UnsupportedOperationException e) {
                 // Some file systems don't support POSIX permissions
-                System.out.println("Skipping unreadable file test due to filesystem limitations");
+                logger.info("Skipping unreadable file test due to filesystem limitations");
             }
         }
     }

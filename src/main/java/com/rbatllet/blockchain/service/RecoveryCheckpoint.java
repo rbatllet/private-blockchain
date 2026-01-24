@@ -357,7 +357,7 @@ public class RecoveryCheckpoint {
             sb.append(String.format("⌛ Expires: %s\n", expiresAt));
         }
 
-        sb.append(String.format("\n🔗 Chain State:\n"));
+        sb.append("\n🔗 Chain State:\n");
         sb.append(
             String.format(
                 "  - Last Block: #%s\n",

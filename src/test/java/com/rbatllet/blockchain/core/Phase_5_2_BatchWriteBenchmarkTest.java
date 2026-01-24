@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import org.junit.jupiter.api.DisplayName;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Tag;
@@ -49,6 +51,8 @@ import com.rbatllet.blockchain.util.JPAUtil;
 @Tag("batch-write")
 public class Phase_5_2_BatchWriteBenchmarkTest {
 
+    private static final Logger logger = LoggerFactory.getLogger(Phase_5_2_BatchWriteBenchmarkTest.class);
+
     private static final double BASELINE_BLOCKS_PER_SEC = 181.6; // Phase 5.0 measured baseline
     private static final int TOTAL_BLOCKS = 1000;
 
@@ -68,36 +72,36 @@ public class Phase_5_2_BatchWriteBenchmarkTest {
         long avgBatchLatencyMs;
 
         void report() {
-            System.out.println("\n" + "=".repeat(80));
-            System.out.println("📊 BATCH WRITE BENCHMARK - Batch Size: " + batchSize);
-            System.out.println("=".repeat(80));
-            System.out.println("  Batch size:         " + batchSize + " blocks/batch");
-            System.out.println("  Total blocks:       " + totalBlocks);
-            System.out.println();
+            logger.info("\n{}", "=".repeat(80));
+            logger.info("📊 BATCH WRITE BENCHMARK - Batch Size: {}", batchSize);
+            logger.info("{}", "=".repeat(80));
+            logger.info("  Batch size:         {} blocks/batch", batchSize);
+            logger.info("  Total blocks:       {}", totalBlocks);
+            logger.info("");
 
-            System.out.println("  ⚡ WRITE-ONLY (skipIndexing=true):");
-            System.out.println("    Duration:         " + writeDurationMs + "ms");
-            System.out.println("    Throughput:       " + String.format("%.1f", writeBlocksPerSecond) + " blocks/sec");
-            System.out.println("    Improvement:      " + String.format("%.1fx", writeImprovementFactor) + " vs baseline");
-            System.out.println();
+            logger.info("  ⚡ WRITE-ONLY (skipIndexing=true):");
+            logger.info("    Duration:         {}ms", writeDurationMs);
+            logger.info("    Throughput:       {} blocks/sec", String.format("%.1f", writeBlocksPerSecond));
+            logger.info("    Improvement:      {} vs baseline", String.format("%.1fx", writeImprovementFactor));
+            logger.info("");
 
-            System.out.println("  📊 COMPLETE (with async indexing):");
-            System.out.println("    Duration:         " + totalDurationMs + "ms");
-            System.out.println("    Throughput:       " + String.format("%.1f", blocksPerSecond) + " blocks/sec");
-            System.out.println("    Improvement:      " + String.format("%.1fx", improvementFactor) + " vs baseline");
-            System.out.println("    Avg batch:        " + avgBatchLatencyMs + "ms");
-            System.out.println();
+            logger.info("  📊 COMPLETE (with async indexing):");
+            logger.info("    Duration:         {}ms", totalDurationMs);
+            logger.info("    Throughput:       {} blocks/sec", String.format("%.1f", blocksPerSecond));
+            logger.info("    Improvement:      {} vs baseline", String.format("%.1fx", improvementFactor));
+            logger.info("    Avg batch:        {}ms", avgBatchLatencyMs);
+            logger.info("");
 
             if (writeImprovementFactor >= 25.0) {
-                System.out.println("  🚀 OUTSTANDING: 25x+ write throughput!");
+                logger.info("  🚀 OUTSTANDING: 25x+ write throughput!");
             } else if (writeImprovementFactor >= 15.0) {
-                System.out.println("  ✅ EXCELLENT: 15x+ write throughput!");
+                logger.info("  ✅ EXCELLENT: 15x+ write throughput!");
             } else if (writeImprovementFactor >= 5.0) {
-                System.out.println("  ✅ GOOD: 5x+ write throughput!");
+                logger.info("  ✅ GOOD: 5x+ write throughput!");
             } else {
-                System.out.println("  ⚠️  BELOW TARGET: < 5x write throughput");
+                logger.warn("  ⚠️  BELOW TARGET: < 5x write throughput");
             }
-            System.out.println("=".repeat(80));
+            logger.info("{}", "=".repeat(80));
         }
     }
 
@@ -106,8 +110,8 @@ public class Phase_5_2_BatchWriteBenchmarkTest {
     @DisplayName("Phase 5.2: Compare Batch Sizes (10, 100, 1000) vs Single Block")
     @Timeout(600) // 10 minutes
     void benchmarkBatchSizeComparison() throws Exception {
-        System.out.println("\n🚀 PHASE 5.2 BENCHMARK: Batch Write API Performance");
-        System.out.println("Testing " + TOTAL_BLOCKS + " total blocks with different batch sizes");
+        logger.info("\n🚀 PHASE 5.2 BENCHMARK: Batch Write API Performance");
+        logger.info("Testing {} total blocks with different batch sizes", TOTAL_BLOCKS);
 
         // Initialize database
         DatabaseConfig h2Config = DatabaseConfig.createH2TestConfig();
@@ -137,9 +141,9 @@ public class Phase_5_2_BatchWriteBenchmarkTest {
         List<BatchBenchmarkResult> results = new ArrayList<>();
 
         for (int batchSize : batchSizes) {
-            System.out.println("\n" + "=".repeat(80));
-            System.out.println("Testing batch size: " + batchSize);
-            System.out.println("=".repeat(80));
+            logger.info("\n{}", "=".repeat(80));
+            logger.info("Testing batch size: {}", batchSize);
+            logger.info("{}", "=".repeat(80));
 
             // Clear blockchain for clean test
             blockchain.clearAndReinitialize();
@@ -152,7 +156,7 @@ public class Phase_5_2_BatchWriteBenchmarkTest {
             blockchain.addAuthorizedKey(publicKeyStr, "BenchmarkUser", bootstrapKeyPair, UserRole.USER);
 
             // Warm-up
-            System.out.println("🔥 Warming up JVM...");
+            logger.info("🔥 Warming up JVM...");
             runBatchTest(blockchain, keyPair, batchSize, 100);
 
             // Force GC
@@ -160,30 +164,30 @@ public class Phase_5_2_BatchWriteBenchmarkTest {
             Thread.sleep(100);
 
             // Actual benchmark
-            System.out.println("📊 Running benchmark...");
+            logger.info("📊 Running benchmark...");
             BatchBenchmarkResult result = runBatchTest(blockchain, keyPair, batchSize, TOTAL_BLOCKS);
             result.report();
             results.add(result);
         }
 
         // Summary
-        System.out.println("\n" + "=".repeat(80));
-        System.out.println("📊 PHASE 5.2 BENCHMARK SUMMARY");
-        System.out.println("=".repeat(80));
-        System.out.println(String.format("%-15s | %-15s | %-20s | %-15s",
+        logger.info("\n{}", "=".repeat(80));
+        logger.info("📊 PHASE 5.2 BENCHMARK SUMMARY");
+        logger.info("{}", "=".repeat(80));
+        logger.info(String.format("%-15s | %-15s | %-20s | %-15s",
             "Batch Size", "Duration", "Throughput", "Improvement"));
-        System.out.println("-".repeat(80));
+        logger.info("{}", "-".repeat(80));
 
         for (BatchBenchmarkResult result : results) {
-            System.out.println(String.format("%-15d | %-15dms | %-20s | %-15s",
+            logger.info(String.format("%-15d | %-15dms | %-20s | %-15s",
                 result.batchSize,
                 result.totalDurationMs,
                 String.format("%.1f blocks/sec", result.blocksPerSecond),
                 String.format("%.1fx", result.improvementFactor)));
         }
 
-        System.out.println("=".repeat(80));
-        System.out.println("\n✅ Phase 5.2 Batch Write API verified successfully!");
+        logger.info("{}", "=".repeat(80));
+        logger.info("\n✅ Phase 5.2 Batch Write API verified successfully!");
 
         JPAUtil.shutdown();
     }
@@ -234,7 +238,7 @@ public class Phase_5_2_BatchWriteBenchmarkTest {
 
         long writeEndTime = System.currentTimeMillis();
         long writeDuration = writeEndTime - writeStartTime;
-        System.out.println(" " + blocksWritten + " blocks written");
+        logger.info(" " + blocksWritten + " blocks written");
 
         // PHASE 2: Measure COMPLETE throughput (with async indexing)
         // Re-run same test to measure total time including background indexing

@@ -20,6 +20,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * EXHAUSTIVE ADVANCED SEARCH ENGINE TEST SUITE
@@ -37,6 +40,8 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class SearchFrameworkExhaustiveTest {
+    private static final Logger logger = LoggerFactory.getLogger(SearchFrameworkExhaustiveTest.class);
+
     
     private SearchFrameworkEngine searchEngine;
     private SearchSpecialistAPI specialistAPI;
@@ -125,8 +130,8 @@ public class SearchFrameworkExhaustiveTest {
     @Order(1)
     @DisplayName("Exhaustive Fast Public Search - All Strategies")
     void testExhaustiveFastPublicSearch() {
-        System.out.println("\n⚡ TESTING FAST PUBLIC SEARCH CAPABILITIES");
-        System.out.println("==========================================");
+        logger.info("\n⚡ TESTING FAST PUBLIC SEARCH CAPABILITIES");
+        logger.info("==========================================");
         
         // Test various search patterns
         String[] searchQueries = {
@@ -169,8 +174,8 @@ public class SearchFrameworkExhaustiveTest {
     @Order(2)
     @DisplayName("Exhaustive Fast Search - Complex Queries")
     void testExhaustiveFastSearchComplexQueries() {
-        System.out.println("\n🔍 TESTING COMPLEX FAST SEARCH QUERIES");
-        System.out.println("======================================");
+        logger.info("\n🔍 TESTING COMPLEX FAST SEARCH QUERIES");
+        logger.info("======================================");
         
         String[] complexQueries = {
             "financial transaction SWIFT",
@@ -203,8 +208,8 @@ public class SearchFrameworkExhaustiveTest {
     @Order(10)
     @DisplayName("Exhaustive Encrypted Content Search - Deep Analysis")
     void testExhaustiveEncryptedContentSearch() {
-        System.out.println("\n🔐 TESTING ENCRYPTED CONTENT SEARCH CAPABILITIES");
-        System.out.println("===============================================");
+        logger.info("\n🔐 TESTING ENCRYPTED CONTENT SEARCH CAPABILITIES");
+        logger.info("===============================================");
         
         String[] encryptedQueries = {
             "account transfer amount",
@@ -239,8 +244,8 @@ public class SearchFrameworkExhaustiveTest {
     @Order(11)
     @DisplayName("Exhaustive Encrypted Search - Wrong Password Handling")
     void testExhaustiveEncryptedSearchWrongPassword() {
-        System.out.println("\n🔒 TESTING ENCRYPTED SEARCH PASSWORD PROTECTION");
-        System.out.println("===============================================");
+        logger.info("\n🔒 TESTING ENCRYPTED SEARCH PASSWORD PROTECTION");
+        logger.info("===============================================");
         
         String query = "sensitive confidential information";
         
@@ -268,8 +273,8 @@ public class SearchFrameworkExhaustiveTest {
     @Order(20)
     @DisplayName("Exhaustive Public Search - All Query Types")
     void testExhaustivePublicSearch() {
-        System.out.println("\n🔍 TESTING PUBLIC SEARCH CAPABILITIES");
-        System.out.println("====================================");
+        logger.info("\n🔍 TESTING PUBLIC SEARCH CAPABILITIES");
+        logger.info("====================================");
         
         String[] queries = {
             "contains:financial_data",
@@ -307,8 +312,8 @@ public class SearchFrameworkExhaustiveTest {
     @Order(21)
     @DisplayName("Exhaustive Public Search - Privacy Verification")
     void testExhaustivePrivacyVerification() {
-        System.out.println("\n🔒 TESTING PUBLIC SEARCH PRIVACY PROTECTION");
-        System.out.println("==========================================");
+        logger.info("\n🔒 TESTING PUBLIC SEARCH PRIVACY PROTECTION");
+        logger.info("==========================================");
         
         // Test that public search doesn't leak sensitive information
         SearchResult result = searchEngine.searchPublicOnly("personal", 20);
@@ -331,8 +336,8 @@ public class SearchFrameworkExhaustiveTest {
     @Order(30)
     @DisplayName("Exhaustive Intelligent Routing - All Scenarios")
     void testExhaustiveIntelligentRouting() {
-        System.out.println("\n🧠 TESTING INTELLIGENT STRATEGY ROUTING");
-        System.out.println("======================================");
+        logger.info("\n🧠 TESTING INTELLIGENT STRATEGY ROUTING");
+        logger.info("======================================");
         
         // Test simple queries (should route to FAST)
         SearchResult simpleResult = searchEngine.search("medical", null, 10);
@@ -369,8 +374,8 @@ public class SearchFrameworkExhaustiveTest {
     @Order(40)
     @DisplayName("Exhaustive Specialist API - All Methods")
     void testExhaustiveSpecialistAPI() {
-        System.out.println("\n🎯 TESTING SPECIALIST ADVANCED SEARCH API");
-        System.out.println("==========================================");
+        logger.info("\n🎯 TESTING SPECIALIST ADVANCED SEARCH API");
+        logger.info("==========================================");
         
         // Clear global processing map to allow specialist API to index blocks
         SearchFrameworkEngine.resetGlobalState();
@@ -430,8 +435,8 @@ public class SearchFrameworkExhaustiveTest {
     @Order(50)
     @DisplayName("Exhaustive Performance Testing - Concurrent Operations")
     void testExhaustivePerformanceConcurrentOperations() {
-        System.out.println("\n🚀 TESTING CONCURRENT PERFORMANCE");
-        System.out.println("================================");
+        logger.info("\n🚀 TESTING CONCURRENT PERFORMANCE");
+        logger.info("================================");
         
         int numThreads = 10;
         int queriesPerThread = 5;
@@ -499,8 +504,8 @@ public class SearchFrameworkExhaustiveTest {
     @Order(51)
     @DisplayName("Exhaustive Performance Testing - Memory Efficiency")
     void testExhaustivePerformanceMemoryEfficiency() {
-        System.out.println("\n💾 TESTING MEMORY EFFICIENCY");
-        System.out.println("===========================");
+        logger.info("\n💾 TESTING MEMORY EFFICIENCY");
+        logger.info("===========================");
         
         Runtime runtime = Runtime.getRuntime();
         
@@ -545,8 +550,8 @@ public class SearchFrameworkExhaustiveTest {
     @Order(60)
     @DisplayName("Exhaustive Security Testing - Data Isolation")
     void testExhaustiveSecurityDataIsolation() {
-        System.out.println("\n🛡️ TESTING SECURITY AND DATA ISOLATION");
-        System.out.println("======================================");
+        logger.info("\n🛡️ TESTING SECURITY AND DATA ISOLATION");
+        logger.info("======================================");
         
         // Test that different search strategies maintain proper data isolation
         SearchResult publicResult = searchEngine.searchPublicOnly("sensitive", 10);
@@ -594,8 +599,8 @@ public class SearchFrameworkExhaustiveTest {
     @Order(70)
     @DisplayName("Exhaustive Real-World Scenarios - Enterprise Use Cases")
     void testExhaustiveRealWorldScenarios() {
-        System.out.println("\n🏢 TESTING REAL-WORLD ENTERPRISE SCENARIOS");
-        System.out.println("=========================================");
+        logger.info("\n🏢 TESTING REAL-WORLD ENTERPRISE SCENARIOS");
+        logger.info("=========================================");
         
         // Initialize specialist API for real-world scenarios
         specialistAPI.initializeWithBlockchain(testBlockchain, testPassword, testPrivateKey);
@@ -636,7 +641,7 @@ public class SearchFrameworkExhaustiveTest {
     // ===== HELPER METHODS =====
     
     private void createExhaustiveTestBlockchain() throws Exception {
-        System.out.println("🏗️ Creating exhaustive test blockchain...");
+        logger.info("🏗️ Creating exhaustive test blockchain...");
         
         // Authorize the test key for adding blocks
         String publicKeyString = CryptoUtil.publicKeyToString(testPublicKey);

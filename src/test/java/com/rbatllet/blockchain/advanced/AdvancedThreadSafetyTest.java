@@ -19,12 +19,17 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Advanced Thread-Safety Tests for Private Blockchain
  * Tests complex scenarios that combine multiple operations to detect hidden race conditions
  */
 public class AdvancedThreadSafetyTest {
+    private static final Logger logger = LoggerFactory.getLogger(AdvancedThreadSafetyTest.class);
+
 
     private Blockchain blockchain;
     private ExecutorService executorService;
@@ -118,15 +123,15 @@ public class AdvancedThreadSafetyTest {
         assertTrue(completed, "Test should complete within timeout");
         
         // Verify results
-        System.out.println("🔍 Mixed Operations Results:");
-        System.out.println("   - Successful operations: " + successfulOperations.get());
-        System.out.println("   - Failed operations: " + failedOperations.get());
-        System.out.println("   - Total blocks: " + blockchain.getBlockCount());
-        System.out.println("   - Active keys: " + blockchain.getAuthorizedKeys().size());
+        logger.info("🔍 Mixed Operations Results:");
+        logger.info("   - Successful operations: " + successfulOperations.get());
+        logger.info("   - Failed operations: " + failedOperations.get());
+        logger.info("   - Total blocks: " + blockchain.getBlockCount());
+        logger.info("   - Active keys: " + blockchain.getAuthorizedKeys().size());
         
         // Print any errors
         if (!errors.isEmpty()) {
-            System.out.println("❌ Errors encountered:");
+            logger.info("❌ Errors encountered:");
             errors.forEach(System.out::println);
         }
         
@@ -190,11 +195,11 @@ public class AdvancedThreadSafetyTest {
         List<Long> sortedNumbers = new ArrayList<>(blockNumbers);
         Collections.sort(sortedNumbers);
         
-        System.out.println("⚡ High-Speed Race Results:");
-        System.out.println("   - Successful blocks: " + successfulBlocks.get());
-        System.out.println("   - Failed blocks: " + failedBlocks.get());
-        System.out.println("   - Unique block numbers: " + blockNumbers.size());
-        System.out.println("   - Expected blocks: " + blockchain.getBlockCount());
+        logger.info("⚡ High-Speed Race Results:");
+        logger.info("   - Successful blocks: " + successfulBlocks.get());
+        logger.info("   - Failed blocks: " + failedBlocks.get());
+        logger.info("   - Unique block numbers: " + blockNumbers.size());
+        logger.info("   - Expected blocks: " + blockchain.getBlockCount());
         
         // Critical assertions
         assertEquals(successfulBlocks.get(), blockNumbers.size(), "Each successful block should have unique number");
@@ -276,14 +281,14 @@ public class AdvancedThreadSafetyTest {
         boolean completed = endLatch.await(40, TimeUnit.SECONDS);
         assertTrue(completed, "Key lifecycle test should complete within timeout");
         
-        System.out.println("🔀 Key Lifecycle Results:");
-        System.out.println("   - Key operations: " + keyOperations.get());
-        System.out.println("   - Block operations: " + blockOperations.get());
-        System.out.println("   - Final block count: " + blockchain.getBlockCount());
-        System.out.println("   - Final active keys: " + blockchain.getAuthorizedKeys().size());
+        logger.info("🔀 Key Lifecycle Results:");
+        logger.info("   - Key operations: " + keyOperations.get());
+        logger.info("   - Block operations: " + blockOperations.get());
+        logger.info("   - Final block count: " + blockchain.getBlockCount());
+        logger.info("   - Final active keys: " + blockchain.getAuthorizedKeys().size());
         
         // Show some operation log for debugging
-        System.out.println("📝 Operation samples:");
+        logger.info("📝 Operation samples:");
         operationLog.stream().limit(10).forEach(System.out::println);
         
         ChainValidationResult stressResult = blockchain.validateChainDetailed();
@@ -316,10 +321,10 @@ public class AdvancedThreadSafetyTest {
         
         // Add detailed timing and logging
         long startTime = System.currentTimeMillis();
-        System.out.println("🌊 Starting validation flood test at " + startTime);
-        System.out.println("   - Thread count: " + THREAD_COUNT);
-        System.out.println("   - Operations per thread: 15");
-        System.out.println("   - Total expected operations: " + (THREAD_COUNT * 15));
+        logger.info("🌊 Starting validation flood test at " + startTime);
+        logger.info("   - Thread count: " + THREAD_COUNT);
+        logger.info("   - Operations per thread: 15");
+        logger.info("   - Total expected operations: " + (THREAD_COUNT * 15));
         
         for (int i = 0; i < THREAD_COUNT; i++) {
             final int threadId = i;
@@ -357,27 +362,27 @@ public class AdvancedThreadSafetyTest {
         }
         
         startLatch.countDown();
-        System.out.println("🌊 All threads started, waiting for completion...");
+        logger.info("🌊 All threads started, waiting for completion...");
         
         boolean completed = endLatch.await(40, TimeUnit.SECONDS);
         long endTime = System.currentTimeMillis();
         long duration = endTime - startTime;
         
-        System.out.println("🌊 Test completed in " + duration + "ms, success: " + completed);
+        logger.info("🌊 Test completed in " + duration + "ms, success: " + completed);
         
         if (!completed) {
-            System.err.println("❌ Test timeout reached. Remaining threads: " + endLatch.getCount());
-            System.err.println("Current block count: " + blockchain.getBlockCount());
-            System.err.println("Validations performed: " + validationCount.get());
-            System.err.println("Read operations: " + readOperations.get());  
-            System.err.println("Write operations: " + writeOperations.get());
+            logger.error("❌ Test timeout reached. Remaining threads: " + endLatch.getCount());
+            logger.error("Current block count: " + blockchain.getBlockCount());
+            logger.error("Validations performed: " + validationCount.get());
+            logger.error("Read operations: " + readOperations.get());  
+            logger.error("Write operations: " + writeOperations.get());
         }
         
-        System.out.println("🌊 Validation Flood Results:");
-        System.out.println("   - Validations performed: " + validationCount.get());
-        System.out.println("   - Read operations: " + readOperations.get());
-        System.out.println("   - Write operations: " + writeOperations.get());
-        System.out.println("   - Final block count: " + blockchain.getBlockCount());
+        logger.info("🌊 Validation Flood Results:");
+        logger.info("   - Validations performed: " + validationCount.get());
+        logger.info("   - Read operations: " + readOperations.get());
+        logger.info("   - Write operations: " + writeOperations.get());
+        logger.info("   - Final block count: " + blockchain.getBlockCount());
         
         assertTrue(completed, "Validation flood test should complete within timeout. Duration: " + duration + "ms");
         

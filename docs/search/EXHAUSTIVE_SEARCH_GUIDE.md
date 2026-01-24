@@ -10,7 +10,7 @@ The Advanced Search Engine now supports **TRUE exhaustive search** that combines
 
 ## 🔍 Search Levels
 
-### INCLUDE_ENCRYPTED (TRUE Exhaustive)
+### INCLUDE_OFFCHAIN (TRUE Exhaustive)
 Searches across ALL content types:
 ```java
 SearchResult result = searchEngine.searchExhaustiveOffChain(
@@ -25,9 +25,9 @@ SearchResult result = searchEngine.searchExhaustiveOffChain(
 5. ✅ Private metadata (encrypted keywords, sensitive terms)
 
 ### Other Search Levels
-- `FAST_ONLY`: Keywords only (fastest, ~10-20ms) - Searches public metadata keywords
-- `INCLUDE_METADATA`: Keywords + block data (~30-60ms) - Searches on-chain content with password
-- `INCLUDE_ENCRYPTED`: Everything including off-chain (~50-600ms) - Searches all content with signer key
+- `FAST_ONLY`: Public keywords only (fastest, ~10-20ms) - No password needed
+- `INCLUDE_DATA`: Public + Private keywords + block content (~30-60ms) - Password for encrypted content
+- `INCLUDE_OFFCHAIN`: Public + Private keywords + block content + encrypted + off-chain (~50-600ms) - Password for encrypted/off-chain
 
 ## 📝 Practical Examples
 

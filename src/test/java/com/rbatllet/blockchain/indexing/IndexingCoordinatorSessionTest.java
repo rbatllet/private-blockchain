@@ -20,6 +20,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * 🧪 Rigorous tests for IndexingCoordinator Session/EntityManager handling
@@ -41,6 +44,8 @@ import org.junit.jupiter.api.Timeout;
  */
 @DisplayName("🎯 IndexingCoordinator Session Management Tests")
 class IndexingCoordinatorSessionTest {
+    private static final Logger logger = LoggerFactory.getLogger(IndexingCoordinatorSessionTest.class);
+
 
     private IndexingCoordinator coordinator;
     private Blockchain testBlockchain;
@@ -158,7 +163,7 @@ class IndexingCoordinatorSessionTest {
             );
         }
 
-        System.out.println(
+        logger.info(
             "📊 Session closed before indexing - Attempts: " +
             indexingAttempts.get() +
             ", Successful: " +
@@ -188,7 +193,7 @@ class IndexingCoordinatorSessionTest {
                 
                 if (em != null && em.isOpen()) {
                     // Simulate: start of indexing operation
-                    System.out.println("✅ EntityManager open at start");
+                    logger.info("✅ EntityManager open at start");
                     
                     // Simulate some work
                     Thread.sleep(100);
@@ -198,7 +203,7 @@ class IndexingCoordinatorSessionTest {
                     // while async indexing is still running
                     em.close();
                     sessionClosedMidOperation.set(true);
-                    System.out.println("❌ EntityManager closed mid-operation");
+                    logger.info("❌ EntityManager closed mid-operation");
                     
                     // Try to continue indexing with closed session
                     if (!em.isOpen()) {
@@ -265,7 +270,7 @@ class IndexingCoordinatorSessionTest {
             );
         }
 
-        System.out.println(
+        logger.info(
             "📊 Session closed during indexing - Attempts: " +
             indexingAttempts.get() +
             ", Successful: " +
@@ -343,7 +348,7 @@ class IndexingCoordinatorSessionTest {
             // Main thread commits and closes session (RACE CONDITION TRIGGER)
             tx.commit();
             em.close();
-            System.out.println("🏁 Main thread: transaction committed, EntityManager closed");
+            logger.info("🏁 Main thread: transaction committed, EntityManager closed");
             
             // Signal that transaction is committed
             transactionCommittedLatch.countDown();
@@ -385,7 +390,7 @@ class IndexingCoordinatorSessionTest {
             }
         }
 
-        System.out.println(
+        logger.info(
             "📊 Race condition test - Race detected: " +
             raceConditionDetected.get() +
             ", Attempts: " +
@@ -479,7 +484,7 @@ class IndexingCoordinatorSessionTest {
             }
         }
 
-        System.out.println(
+        logger.info(
             "📊 Multiple blocks test - Total attempts: " +
             indexingAttempts.get() +
             ", Completed: " +
@@ -563,7 +568,7 @@ class IndexingCoordinatorSessionTest {
         assertEquals(0, failedBlockIds.size(), "Should have 0 failed block IDs");
         assertEquals("BLOCK_1", indexedBlockIds.get(0), "Should index correct block");
 
-        System.out.println(
+        logger.info(
             "📊 Data integrity - Indexed: " +
             indexedBlockIds +
             ", Failed: " +
@@ -648,8 +653,8 @@ class IndexingCoordinatorSessionTest {
             assertTrue(details.contains("Thread:"), "Should contain thread information");
             assertTrue(details.contains("EntityManager"), "Should contain EntityManager status");
             
-            System.out.println("📋 Captured error details:");
-            System.out.println(details);
+            logger.info("📋 Captured error details:");
+            logger.info(details);
             
         } catch (ExecutionException e) {
             // Also acceptable - check exception message

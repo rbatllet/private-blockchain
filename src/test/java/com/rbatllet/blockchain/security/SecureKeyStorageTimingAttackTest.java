@@ -15,6 +15,9 @@ import java.util.List;
 import com.rbatllet.blockchain.util.CryptoUtil;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * OWASP-Compliant Timing Attack Prevention Tests for SecureKeyStorage.
@@ -36,6 +39,8 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @DisplayName("🔐 OWASP Timing Attack Prevention Tests")
 public class SecureKeyStorageTimingAttackTest {
+    private static final Logger logger = LoggerFactory.getLogger(SecureKeyStorageTimingAttackTest.class);
+
 
     @TempDir
     Path tempDir;
@@ -121,9 +126,9 @@ public class SecureKeyStorageTimingAttackTest {
         ));
 
         // Print all timing results
-        System.out.println("\n📊 OWASP Timing Attack Prevention - Execution Times:");
+        logger.info("\n📊 OWASP Timing Attack Prevention - Execution Times:");
         scenarios.forEach(scenario ->
-            System.out.println(String.format("  %-30s: %dms", scenario.name, scenario.executionTimeMs))
+            logger.info(String.format("  %-30s: %dms", scenario.name, scenario.executionTimeMs))
         );
 
         // Verify ALL scenarios take at least MINIMUM_EXECUTION_TIME_MS
@@ -136,7 +141,7 @@ public class SecureKeyStorageTimingAttackTest {
             )
         );
 
-        System.out.println("✅ All scenarios enforce minimum execution time!");
+        logger.info("✅ All scenarios enforce minimum execution time!");
     }
 
     /**
@@ -188,10 +193,10 @@ public class SecureKeyStorageTimingAttackTest {
         long avgFileNotFound = fileNotFoundTimes.stream().mapToLong(Long::longValue).sum() / samples;
         long avgWrongPassword = wrongPasswordTimes.stream().mapToLong(Long::longValue).sum() / samples;
 
-        System.out.println("\n📊 OWASP Constant-Time Verification (avg over " + samples + " samples):");
-        System.out.println("  Null username:    " + avgNullUsername + "ms");
-        System.out.println("  File not found:   " + avgFileNotFound + "ms");
-        System.out.println("  Wrong password:   " + avgWrongPassword + "ms");
+        logger.info("\n📊 OWASP Constant-Time Verification (avg over " + samples + " samples):");
+        logger.info("  Null username:    " + avgNullUsername + "ms");
+        logger.info("  File not found:   " + avgFileNotFound + "ms");
+        logger.info("  Wrong password:   " + avgWrongPassword + "ms");
 
         // Verify variance is within acceptable range
         long maxVariance = Math.max(
@@ -202,14 +207,14 @@ public class SecureKeyStorageTimingAttackTest {
             )
         );
 
-        System.out.println("  Max variance:     " + maxVariance + "ms (max allowed: " + MAX_TIMING_VARIANCE_MS + "ms)");
+        logger.info("  Max variance:     " + maxVariance + "ms (max allowed: " + MAX_TIMING_VARIANCE_MS + "ms)");
 
         assertTrue(maxVariance <= MAX_TIMING_VARIANCE_MS,
             String.format("Timing variance %dms exceeds threshold %dms! " +
                          "Attackers could distinguish failure types via timing analysis.",
                          maxVariance, MAX_TIMING_VARIANCE_MS));
 
-        System.out.println("✅ Constant-time behavior verified across all failure scenarios!");
+        logger.info("✅ Constant-time behavior verified across all failure scenarios!");
     }
 
     /**
@@ -252,18 +257,18 @@ public class SecureKeyStorageTimingAttackTest {
         long avgFileExists = fileExistsTimes.stream().mapToLong(Long::longValue).sum() / samples;
         long avgFileNotExists = fileNotExistsTimes.stream().mapToLong(Long::longValue).sum() / samples;
 
-        System.out.println("\n📊 File Existence Timing Analysis:");
-        System.out.println("  File exists (wrong password): " + avgFileExists + "ms");
-        System.out.println("  File not exists:              " + avgFileNotExists + "ms");
+        logger.info("\n📊 File Existence Timing Analysis:");
+        logger.info("  File exists (wrong password): " + avgFileExists + "ms");
+        logger.info("  File not exists:              " + avgFileNotExists + "ms");
 
         long variance = Math.abs(avgFileExists - avgFileNotExists);
-        System.out.println("  Variance:                     " + variance + "ms");
+        logger.info("  Variance:                     " + variance + "ms");
 
         assertTrue(variance <= MAX_TIMING_VARIANCE_MS,
             String.format("File existence can be detected via timing! Variance %dms > %dms",
                          variance, MAX_TIMING_VARIANCE_MS));
 
-        System.out.println("✅ File existence cannot be detected via timing analysis!");
+        logger.info("✅ File existence cannot be detected via timing analysis!");
     }
 
     /**
@@ -307,18 +312,18 @@ public class SecureKeyStorageTimingAttackTest {
         long avgSuccess = successTimes.stream().mapToLong(Long::longValue).sum() / samples;
         long avgFailure = failureTimes.stream().mapToLong(Long::longValue).sum() / samples;
 
-        System.out.println("\n📊 Success vs Failure Timing:");
-        System.out.println("  Success (correct password): " + avgSuccess + "ms");
-        System.out.println("  Failure (wrong password):   " + avgFailure + "ms");
+        logger.info("\n📊 Success vs Failure Timing:");
+        logger.info("  Success (correct password): " + avgSuccess + "ms");
+        logger.info("  Failure (wrong password):   " + avgFailure + "ms");
 
         long variance = Math.abs(avgSuccess - avgFailure);
-        System.out.println("  Variance:                   " + variance + "ms");
+        logger.info("  Variance:                   " + variance + "ms");
 
         assertTrue(variance <= MAX_TIMING_VARIANCE_MS,
             String.format("Success/failure can be distinguished via timing! Variance %dms > %dms",
                          variance, MAX_TIMING_VARIANCE_MS));
 
-        System.out.println("✅ Success and failure paths have similar timing!");
+        logger.info("✅ Success and failure paths have similar timing!");
     }
 
     // Helper method to measure execution time

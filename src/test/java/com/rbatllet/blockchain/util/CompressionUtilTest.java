@@ -5,12 +5,17 @@ import org.junit.jupiter.api.DisplayName;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Test class for CompressionUtil
  * Validates compression, decompression, and utility functionality
  */
 public class CompressionUtilTest {
+    private static final Logger logger = LoggerFactory.getLogger(CompressionUtilTest.class);
+
     
     @Test
     @DisplayName("Basic compression and decompression should work")
@@ -67,7 +72,7 @@ public class CompressionUtilTest {
         
         assertEquals(jsonMetadata, decompressed);
         
-        System.out.println("📊 JSON Compression Stats: " + stats);
+        logger.info("📊 JSON Compression Stats: " + stats);
     }
     
     @Test
@@ -156,7 +161,7 @@ public class CompressionUtilTest {
         
         assertEquals(data, decompressed);
         
-        System.out.println("📊 Large Data Compression: " + stats);
+        logger.info("📊 Large Data Compression: " + stats);
     }
     
     @Test
@@ -178,7 +183,7 @@ public class CompressionUtilTest {
         String decompressed = CompressionUtil.decompressString(compressed);
         assertEquals(data, decompressed);
         
-        System.out.println("📊 Random Data Compression: " + 
+        logger.info("📊 Random Data Compression: " + 
                           (wasCompressed ? "Compressed" : "Stored uncompressed"));
     }
     
@@ -192,6 +197,6 @@ public class CompressionUtilTest {
         
         assertEquals(unicodeData, decompressed);
         
-        System.out.println("✅ Unicode compression test passed");
+        logger.info("✅ Unicode compression test passed");
     }
 }

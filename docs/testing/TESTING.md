@@ -534,9 +534,9 @@ void setUp() {
 **Coverage**: Complete hybrid search functionality
 
 **Test Methods:**
-- `testFastOnlySearch()` - Keywords-only search performance and accuracy
-- `testIncludeDataSearch()` - Keywords + block data search functionality
-- `testExhaustiveOffchainSearch()` - Complete content search including off-chain data
+- `testFastOnlySearch()` - Public keywords-only search performance and accuracy
+- `testIncludeDataSearch()` - Public + Private keywords + block content search functionality
+- `testExhaustiveOffchainSearch()` - Complete content search including off-chain data (Public + Private keywords + content + encrypted + off-chain)
 - `testSearchByCategory()` - Content category filtering and validation
 - `testSearchTermValidation()` - Search term validation with intelligent exceptions
 - Search validation is now handled internally by the Search Framework Engine
@@ -548,7 +548,7 @@ void setUp() {
 - `testSearchResultConsistency()` - Result consistency and ordering validation
 
 **Key Features Tested:**
-- Multi-level search (FAST_ONLY, INCLUDE_METADATA, INCLUDE_ENCRYPTED)
+- Multi-level search (FAST_ONLY, INCLUDE_DATA, INCLUDE_OFFCHAIN)
 - Automatic keyword extraction (dates, numbers, emails, codes, technical terms)
 - Content categorization (MEDICAL, FINANCE, TECHNICAL, LEGAL)
 - Search validation with 4+ character minimum and intelligent exceptions
@@ -762,7 +762,7 @@ mvn exec:java -Dexec.mainClass="demo.CoreFunctionsDemo"
 **Coverage**: Complete hybrid search functionality
 
 **Demonstrates:**
-- Multi-level search (FAST_ONLY, INCLUDE_METADATA, INCLUDE_ENCRYPTED)
+- Multi-level search (FAST_ONLY, INCLUDE_DATA, INCLUDE_OFFCHAIN)
 - Automatic keyword extraction from universal elements
 - Content categorization (MEDICAL, FINANCE, TECHNICAL, LEGAL)
 - Search validation with intelligent exceptions
@@ -783,8 +783,8 @@ mvn exec:java -Dexec.mainClass="demo.SearchFrameworkDemo"
 ✅ Blockchain initialized
 ✅ Created test blocks with different categories
 🔍 Demonstrating FAST_ONLY search...
-🔍 Demonstrating INCLUDE_METADATA search...
-🔍 Demonstrating INCLUDE_ENCRYPTED search...
+🔍 Demonstrating INCLUDE_DATA search...
+🔍 Demonstrating INCLUDE_OFFCHAIN search...
 🔍 Demonstrating category search...
 📊 Performance comparison completed
 🎉 SEARCH DEMO COMPLETED SUCCESSFULLY!

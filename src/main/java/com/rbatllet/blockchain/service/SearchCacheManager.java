@@ -475,12 +475,13 @@ public class SearchCacheManager {
 
         public String getFormattedSummary() {
             return String.format(
-                "📊 Cache Statistics:\n" +
-                "  - Size: %d entries\n" +
-                "  - Hit Rate: %.2f%%\n" +
-                "  - Hits/Misses: %d/%d\n" +
-                "  - Evictions: %d\n" +
-                "  - Memory Usage: %.2f MB",
+                    """
+                            📊 Cache Statistics:
+                              - Size: %d entries
+                              - Hit Rate: %.2f%%
+                              - Hits/Misses: %d/%d
+                              - Evictions: %d
+                              - Memory Usage: %.2f MB""",
                 size,
                 hitRate,
                 hits,

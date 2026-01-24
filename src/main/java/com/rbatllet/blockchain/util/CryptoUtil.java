@@ -1,15 +1,33 @@
 package com.rbatllet.blockchain.util;
 
 import java.nio.charset.StandardCharsets;
-import java.security.*;
+import java.security.KeyFactory;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.SecureRandom;
+import java.security.Signature;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
+
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
@@ -480,7 +498,7 @@ public class CryptoUtil {
             KeyPair keyPair = generateKeyPair();
             String keyId = UUID.randomUUID().toString();
             LocalDateTime now = LocalDateTime.now();
-            LocalDateTime expiresAt = now.plus(ROOT_KEY_VALIDITY_DAYS, ChronoUnit.DAYS);
+            LocalDateTime expiresAt = now.plusDays(ROOT_KEY_VALIDITY_DAYS);
             
             KeyInfo keyInfo = new KeyInfo(
                 keyId,
@@ -529,7 +547,7 @@ public class CryptoUtil {
             KeyPair keyPair = generateKeyPair();
             String keyId = UUID.randomUUID().toString();
             LocalDateTime now = LocalDateTime.now();
-            LocalDateTime expiresAt = now.plus(INTERMEDIATE_KEY_VALIDITY_DAYS, ChronoUnit.DAYS);
+            LocalDateTime expiresAt = now.plusDays(INTERMEDIATE_KEY_VALIDITY_DAYS);
             
             // Ensure child key doesn't outlive parent
             if (expiresAt.isAfter(parentKey.getExpiresAt())) {
@@ -584,7 +602,7 @@ public class CryptoUtil {
             KeyPair keyPair = generateKeyPair();
             String keyId = UUID.randomUUID().toString();
             LocalDateTime now = LocalDateTime.now();
-            LocalDateTime expiresAt = now.plus(OPERATIONAL_KEY_VALIDITY_DAYS, ChronoUnit.DAYS);
+            LocalDateTime expiresAt = now.plusDays(OPERATIONAL_KEY_VALIDITY_DAYS);
             
             // Ensure child key doesn't outlive parent
             if (expiresAt.isAfter(parentKey.getExpiresAt())) {
@@ -697,7 +715,7 @@ public class CryptoUtil {
         KeyPair keyPair = generateKeyPair();
         String keyId = UUID.randomUUID().toString();
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime expiresAt = now.plus(ROOT_KEY_VALIDITY_DAYS, ChronoUnit.DAYS);
+        LocalDateTime expiresAt = now.plusDays(ROOT_KEY_VALIDITY_DAYS);
         
         KeyInfo keyInfo = new KeyInfo(
             keyId,
@@ -725,7 +743,7 @@ public class CryptoUtil {
         KeyPair keyPair = generateKeyPair();
         String keyId = UUID.randomUUID().toString();
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime expiresAt = now.plus(INTERMEDIATE_KEY_VALIDITY_DAYS, ChronoUnit.DAYS);
+        LocalDateTime expiresAt = now.plusDays(INTERMEDIATE_KEY_VALIDITY_DAYS);
         
         if (expiresAt.isAfter(parentKey.getExpiresAt())) {
             expiresAt = parentKey.getExpiresAt();
@@ -758,7 +776,7 @@ public class CryptoUtil {
         KeyPair keyPair = generateKeyPair();
         String keyId = UUID.randomUUID().toString();
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime expiresAt = now.plus(OPERATIONAL_KEY_VALIDITY_DAYS, ChronoUnit.DAYS);
+        LocalDateTime expiresAt = now.plusDays(OPERATIONAL_KEY_VALIDITY_DAYS);
         
         if (expiresAt.isAfter(parentKey.getExpiresAt())) {
             expiresAt = parentKey.getExpiresAt();

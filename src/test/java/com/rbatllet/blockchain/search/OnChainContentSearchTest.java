@@ -1,15 +1,10 @@
 package com.rbatllet.blockchain.search;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.rbatllet.blockchain.entity.Block;
-import com.rbatllet.blockchain.search.OnChainContentSearch.OnChainMatch;
-import com.rbatllet.blockchain.search.OnChainContentSearch.OnChainSearchResult;
-import com.rbatllet.blockchain.service.SecureBlockEncryptionService;
-import com.rbatllet.blockchain.service.SecureBlockEncryptionService.SecureEncryptedData;
-import com.rbatllet.blockchain.util.CryptoUtil;
-import java.security.KeyPair;
-import java.security.PrivateKey;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -17,7 +12,22 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.junit.jupiter.api.*;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
+
+import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.search.OnChainContentSearch.OnChainMatch;
+import com.rbatllet.blockchain.search.OnChainContentSearch.OnChainSearchResult;
+import com.rbatllet.blockchain.service.SecureBlockEncryptionService;
+import com.rbatllet.blockchain.service.SecureBlockEncryptionService.SecureEncryptedData;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Comprehensive test suite for OnChainContentSearch
@@ -33,25 +43,23 @@ import org.junit.jupiter.api.*;
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class OnChainContentSearchTest {
+    private static final Logger logger = LoggerFactory.getLogger(OnChainContentSearchTest.class);
+
 
     private OnChainContentSearch onChainSearch;
     private String testPassword;
-    private PrivateKey testPrivateKey;
 
     @BeforeEach
     void setUp() throws Exception {
         onChainSearch = new OnChainContentSearch();
         testPassword = "TestPassword123!";
-
-        KeyPair keyPair = CryptoUtil.generateKeyPair();
-        testPrivateKey = keyPair.getPrivate();
     }
 
     @Test
     @Order(1)
     @DisplayName("🔍 Search in Plain Text Blocks")
     void testPlainTextBlockSearch() {
-        System.out.println("🧪 Testing plain text block search...");
+        logger.info("🧪 Testing plain text block search...");
 
         List<Block> blocks = new ArrayList<>();
 
@@ -78,7 +86,6 @@ public class OnChainContentSearchTest {
             blocks,
             "medical",
             testPassword,
-            testPrivateKey,
             10
         );
 
@@ -106,7 +113,7 @@ public class OnChainContentSearchTest {
             );
         }
 
-        System.out.println(
+        logger.info(
             "✅ Plain text search: " + result.getSearchSummary()
         );
     }
@@ -115,7 +122,7 @@ public class OnChainContentSearchTest {
     @Order(2)
     @DisplayName("🔐 Search in Encrypted Blocks with Correct Password")
     void testEncryptedBlockSearchWithPassword() throws Exception {
-        System.out.println(
+        logger.info(
             "🧪 Testing encrypted block search with correct password..."
         );
 
@@ -147,7 +154,6 @@ public class OnChainContentSearchTest {
             blocks,
             "medical",
             testPassword,
-            testPrivateKey,
             10
         );
 
@@ -172,7 +178,7 @@ public class OnChainContentSearchTest {
             "Encrypted matches get bonus score"
         );
 
-        System.out.println(
+        logger.info(
             "✅ Encrypted search with password: " + result.getSearchSummary()
         );
     }
@@ -181,7 +187,7 @@ public class OnChainContentSearchTest {
     @Order(3)
     @DisplayName("❌ Search in Encrypted Blocks with Wrong Password")
     void testEncryptedBlockSearchWithWrongPassword() throws Exception {
-        System.out.println(
+        logger.info(
             "🧪 Testing encrypted block search with wrong password..."
         );
 
@@ -207,7 +213,6 @@ public class OnChainContentSearchTest {
             blocks,
             "medical",
             "WrongPassword123",
-            testPrivateKey,
             10
         );
 
@@ -224,7 +229,7 @@ public class OnChainContentSearchTest {
             "Should not decrypt any blocks"
         );
 
-        System.out.println(
+        logger.info(
             "✅ Wrong password test: " + result.getSearchSummary()
         );
     }
@@ -233,7 +238,7 @@ public class OnChainContentSearchTest {
     @Order(4)
     @DisplayName("🎯 Mixed Content Search (Plain + Encrypted)")
     void testMixedContentSearch() throws Exception {
-        System.out.println("🧪 Testing mixed content search...");
+        logger.info("🧪 Testing mixed content search...");
 
         List<Block> blocks = new ArrayList<>();
 
@@ -261,7 +266,6 @@ public class OnChainContentSearchTest {
             blocks,
             "medical",
             testPassword,
-            testPrivateKey,
             10
         );
 
@@ -285,7 +289,7 @@ public class OnChainContentSearchTest {
         assertEquals(2, plainCount, "Should have 2 plain text matches");
         assertEquals(2, encryptedCount, "Should have 2 encrypted matches");
 
-        System.out.println(
+        logger.info(
             "✅ Mixed content search: " + result.getSearchSummary()
         );
     }
@@ -294,7 +298,7 @@ public class OnChainContentSearchTest {
     @Order(5)
     @DisplayName("🧵 Thread Safety Test")
     void testThreadSafety() throws Exception {
-        System.out.println("🧪 Testing thread safety of on-chain search...");
+        logger.info("🧪 Testing thread safety of on-chain search...");
 
         // Create test blocks
         List<Block> blocks = new ArrayList<>();
@@ -334,7 +338,6 @@ public class OnChainContentSearchTest {
                                 blocks,
                                 searchTerm,
                                 testPassword,
-                                testPrivateKey,
                                 10
                             );
 
@@ -344,7 +347,7 @@ public class OnChainContentSearchTest {
                     }
                 } catch (Exception e) {
                     errorCount.incrementAndGet();
-                    System.err.println(
+                    logger.error(
                         "❌ Thread " + threadId + " error: " + e.getMessage()
                     );
                 } finally {
@@ -369,17 +372,17 @@ public class OnChainContentSearchTest {
         );
         assertEquals(0, errorCount.get(), "No errors should occur");
 
-        System.out.println("✅ Thread safety test passed:");
-        System.out.println("   🔍 Total searches: " + totalSearches);
-        System.out.println("   ✅ Successful: " + successCount.get());
-        System.out.println("   ❌ Errors: " + errorCount.get());
+        logger.info("✅ Thread safety test passed:");
+        logger.info("   🔍 Total searches: " + totalSearches);
+        logger.info("   ✅ Successful: " + successCount.get());
+        logger.info("   ❌ Errors: " + errorCount.get());
     }
 
     @Test
     @Order(6)
     @DisplayName("⚡ Performance Test")
     void testPerformance() throws Exception {
-        System.out.println("🧪 Testing search performance...");
+        logger.info("🧪 Testing search performance...");
 
         // Create larger dataset
         List<Block> blocks = new ArrayList<>();
@@ -412,7 +415,6 @@ public class OnChainContentSearchTest {
             blocks,
             "medical",
             testPassword,
-            testPrivateKey,
             50
         );
         long endTime = System.nanoTime();
@@ -427,18 +429,18 @@ public class OnChainContentSearchTest {
             result.getTotalBlocksSearched()
         );
 
-        System.out.println("⚡ Performance results:");
-        System.out.println(
+        logger.info("⚡ Performance results:");
+        logger.info(
             "   📊 Blocks searched: " + result.getTotalBlocksSearched()
         );
-        System.out.println(
+        logger.info(
             "   🔐 Encrypted blocks: " + result.getEncryptedBlocksDecrypted()
         );
-        System.out.println("   🎯 Matches found: " + result.getMatchCount());
-        System.out.println(
+        logger.info("   🎯 Matches found: " + result.getMatchCount());
+        logger.info(
             "   ⏱️ Search time: " + String.format("%.2f", searchTimeMs) + "ms"
         );
-        System.out.println(
+        logger.info(
             "   📈 Per block: " +
             String.format("%.2f", searchTimeMs / 100) +
             "ms"
@@ -455,7 +457,7 @@ public class OnChainContentSearchTest {
     @Order(7)
     @DisplayName("🔍 Case Sensitivity and Special Characters")
     void testCaseSensitivityAndSpecialChars() {
-        System.out.println(
+        logger.info(
             "🧪 Testing case sensitivity and special characters..."
         );
 
@@ -470,7 +472,6 @@ public class OnChainContentSearchTest {
             blocks,
             "medical",
             testPassword,
-            testPrivateKey,
             10
         );
 
@@ -491,7 +492,6 @@ public class OnChainContentSearchTest {
             blocks,
             "medical",
             testPassword,
-            testPrivateKey,
             10
         );
 
@@ -501,21 +501,20 @@ public class OnChainContentSearchTest {
             "Should find medical in special contexts"
         );
 
-        System.out.println("✅ Case sensitivity test passed");
+        logger.info("✅ Case sensitivity test passed");
     }
 
     @Test
     @Order(8)
     @DisplayName("🛡️ Edge Cases")
     void testEdgeCases() {
-        System.out.println("🧪 Testing edge cases...");
+        logger.info("🧪 Testing edge cases...");
 
         // Empty block list
         OnChainSearchResult result = onChainSearch.searchOnChainContent(
             new ArrayList<>(),
             "test",
             testPassword,
-            testPrivateKey,
             10
         );
         assertNotNull(result);
@@ -526,7 +525,6 @@ public class OnChainContentSearchTest {
             List.of(createPlainTextBlock(1L, "test")),
             null,
             testPassword,
-            testPrivateKey,
             10
         );
         assertNotNull(result);
@@ -537,7 +535,6 @@ public class OnChainContentSearchTest {
             List.of(createPlainTextBlock(1L, "test")),
             "",
             testPassword,
-            testPrivateKey,
             10
         );
         assertNotNull(result);
@@ -553,13 +550,12 @@ public class OnChainContentSearchTest {
             List.of(nullDataBlock),
             "test",
             testPassword,
-            testPrivateKey,
             10
         );
         assertNotNull(result);
         assertEquals(0, result.getMatchCount());
 
-        System.out.println("✅ Edge cases handled correctly");
+        logger.info("✅ Edge cases handled correctly");
     }
 
     // Helper methods

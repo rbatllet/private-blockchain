@@ -1,35 +1,39 @@
 package com.rbatllet.blockchain.search;
 
-import com.rbatllet.blockchain.entity.Block;
-import com.rbatllet.blockchain.util.CryptoUtil;
-import org.junit.jupiter.api.*;
-import java.security.KeyPair;
-import java.security.PrivateKey;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
+
+import com.rbatllet.blockchain.entity.Block;
 
 /**
  * Test suite for OffChainFileSearch functionality
  * 
- * Tests the new INCLUDE_ENCRYPTED search capability that searches
+ * Tests the new INCLUDE_OFFCHAIN search capability that searches
  * within encrypted off-chain files stored by OffChainStorageService.
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class OffChainFileSearchTest {
     
     private OffChainFileSearch offChainFileSearch;
-    private PrivateKey testPrivateKey;
     private String testPassword;
     
     @BeforeEach
     void setUp() throws Exception {
-        offChainFileSearch = new OffChainFileSearch();
-        
-        // Generate test key pair
-        KeyPair keyPair = CryptoUtil.generateKeyPair();
-        testPrivateKey = keyPair.getPrivate();
+        offChainFileSearch = new OffChainFileSearch();        
         testPassword = "testPassword123";
     }
     
@@ -54,7 +58,7 @@ public class OffChainFileSearchTest {
         List<Block> emptyBlocks = new ArrayList<>();
         
         OffChainSearchResult result = offChainFileSearch.searchOffChainContent(
-            emptyBlocks, "test", testPassword, testPrivateKey, 10);
+            emptyBlocks, "test", testPassword, 10);
         
         assertNotNull(result);
         assertEquals("test", result.getSearchTerm());
@@ -71,21 +75,21 @@ public class OffChainFileSearchTest {
         
         // Test with null query
         OffChainSearchResult result1 = offChainFileSearch.searchOffChainContent(
-            blocks, null, testPassword, testPrivateKey, 10);
+            blocks, null, testPassword, 10);
         
         assertNotNull(result1);
         assertFalse(result1.hasMatches());
         
         // Test with empty query
         OffChainSearchResult result2 = offChainFileSearch.searchOffChainContent(
-            blocks, "", testPassword, testPrivateKey, 10);
+            blocks, "", testPassword, 10);
         
         assertNotNull(result2);
         assertFalse(result2.hasMatches());
         
         // Test with whitespace query
         OffChainSearchResult result3 = offChainFileSearch.searchOffChainContent(
-            blocks, "   ", testPassword, testPrivateKey, 10);
+            blocks, "   ", testPassword, 10);
         
         assertNotNull(result3);
         assertFalse(result3.hasMatches());
@@ -107,7 +111,7 @@ public class OffChainFileSearchTest {
         blocks.add(block);
         
         OffChainSearchResult result = offChainFileSearch.searchOffChainContent(
-            blocks, "test", testPassword, testPrivateKey, 10);
+            blocks, "test", testPassword, 10);
         
         assertNotNull(result);
         assertEquals("test", result.getSearchTerm());
@@ -139,7 +143,7 @@ public class OffChainFileSearchTest {
         List<Block> blocks = new ArrayList<>();
         
         OffChainSearchResult result = offChainFileSearch.searchOffChainContent(
-            blocks, "test query", testPassword, testPrivateKey, 5);
+            blocks, "test query", testPassword, 5);
         
         assertNotNull(result);
         assertNotNull(result.getSearchSummary());
@@ -157,7 +161,7 @@ public class OffChainFileSearchTest {
         // Test with different max results values
         for (int maxResults : new int[]{1, 5, 10, 100}) {
             OffChainSearchResult result = offChainFileSearch.searchOffChainContent(
-                blocks, "test", testPassword, testPrivateKey, maxResults);
+                blocks, "test", testPassword, maxResults);
             
             assertNotNull(result);
             assertTrue(result.getMatchCount() <= maxResults);

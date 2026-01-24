@@ -345,7 +345,7 @@ public class SearchStatisticsDiscrepancyTest {
             // Small delay to ensure database operations complete
             Thread.sleep(50);
         } catch (Exception e) {
-            System.err.println("Warning: Failed to clear database: " + e.getMessage());
+            logger.error("Warning: Failed to clear database: " + e.getMessage());
         }
     }
 }

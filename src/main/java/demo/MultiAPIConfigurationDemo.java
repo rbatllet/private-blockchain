@@ -150,7 +150,7 @@ public class MultiAPIConfigurationDemo {
         dataAPI.storeSearchableData("Search test data", password, new String[]{"search", "test", "data"});
         
         // Wait for background indexing to complete
-        com.rbatllet.blockchain.indexing.IndexingCoordinator.getInstance().waitForCompletion(5000);
+        IndexingCoordinator.getInstance().waitForCompletion(5000);
         
         // High Security Search
         System.out.println("🔒 High Security Search:");
@@ -251,7 +251,7 @@ public class MultiAPIConfigurationDemo {
         dataAPI.storeSearchableData("Unified configuration test data", password, new String[]{"unified", "config", "test"});
         
         // Wait for background indexing to complete
-        com.rbatllet.blockchain.indexing.IndexingCoordinator.getInstance().waitForCompletion(5000);
+        IndexingCoordinator.getInstance().waitForCompletion(5000);
         
         // SearchSpecialistAPI with same unified config
         SearchSpecialistAPI searchAPI = new SearchSpecialistAPI(blockchain, password, userKeys.getPrivate(), unifiedConfig);

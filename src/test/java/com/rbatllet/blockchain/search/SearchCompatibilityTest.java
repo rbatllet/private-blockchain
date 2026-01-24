@@ -23,6 +23,9 @@ import java.util.Set;
 import java.util.HashSet;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Compatibility tests between searchAndDecryptByTerms and SearchSpecialistAPI
@@ -30,6 +33,8 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class SearchCompatibilityTest {
+    private static final Logger logger = LoggerFactory.getLogger(SearchCompatibilityTest.class);
+
     
     private Blockchain blockchain;
     private KeyPair bootstrapKeyPair;
@@ -98,7 +103,7 @@ public class SearchCompatibilityTest {
         
         assertTrue(searchAPI.isReady(), "SearchSpecialistAPI should be ready");
         
-        System.out.println("✅ Setup completed - SearchSpecialistAPI initialized with test data");
+        logger.info("✅ Setup completed - SearchSpecialistAPI initialized with test data");
     }
     
     private void createTestData() throws Exception {
@@ -141,7 +146,7 @@ public class SearchCompatibilityTest {
     @Order(1)
     @DisplayName("Test compatibility for simple search terms")
     void testSimpleSearchTermCompatibility() throws Exception {
-        System.out.println("🔍 Testing simple search term compatibility...");
+        logger.info("🔍 Testing simple search term compatibility...");
         
         String[] testTerms = {"blockchain", "healthcare", "financial", "education", "public"};
         
@@ -152,14 +157,14 @@ public class SearchCompatibilityTest {
             // Search using SearchSpecialistAPI
             List<EnhancedSearchResult> apiResults = searchAPI.searchSecure(term, testPassword);
             
-            System.out.println("📊 Term '" + term + "': Direct=" + directResults.size() + ", API=" + apiResults.size());
+            logger.info("📊 Term '" + term + "': Direct=" + directResults.size() + ", API=" + apiResults.size());
             
             // Debug output for failed searches
             if (directResults.isEmpty()) {
-                System.out.println("⚠️ Direct search returned no results for: " + term);
+                logger.info("⚠️ Direct search returned no results for: " + term);
             }
             if (apiResults.isEmpty()) {
-                System.out.println("⚠️ API search returned no results for: " + term);
+                logger.info("⚠️ API search returned no results for: " + term);
             }
             
             // Both should return results for valid terms
@@ -176,7 +181,7 @@ public class SearchCompatibilityTest {
     @Order(2)
     @DisplayName("Test compatibility for multi-word queries")
     void testMultiWordQueryCompatibility() throws Exception {
-        System.out.println("🔍 Testing multi-word query compatibility...");
+        logger.info("🔍 Testing multi-word query compatibility...");
         
         String[] multiWordQueries = {
             "blockchain technology",
@@ -193,7 +198,7 @@ public class SearchCompatibilityTest {
             // Search using SearchSpecialistAPI
             List<EnhancedSearchResult> apiResults = searchAPI.searchSecure(query, testPassword);
             
-            System.out.println("📊 Query '" + query + "': Direct=" + directResults.size() + ", API=" + apiResults.size());
+            logger.info("📊 Query '" + query + "': Direct=" + directResults.size() + ", API=" + apiResults.size());
             
             // Both should handle multi-word queries
             assertNotNull(directResults, "Direct search should handle multi-word query: " + query);
@@ -205,7 +210,7 @@ public class SearchCompatibilityTest {
     @Order(3)
     @DisplayName("Test password sensitivity compatibility")
     void testPasswordSensitivityCompatibility() throws Exception {
-        System.out.println("🔍 Testing password sensitivity compatibility...");
+        logger.info("🔍 Testing password sensitivity compatibility...");
         
         String correctPassword = testPassword;
         String wrongPassword = "WrongPassword123!";
@@ -215,13 +220,13 @@ public class SearchCompatibilityTest {
         List<Block> directCorrect = api.searchAndDecryptByTerms(new String[]{searchTerm}, correctPassword, 10);
         List<EnhancedSearchResult> apiCorrect = searchAPI.searchSecure(searchTerm, correctPassword);
         
-        System.out.println("📊 Correct password: Direct=" + directCorrect.size() + ", API=" + apiCorrect.size());
+        logger.info("📊 Correct password: Direct=" + directCorrect.size() + ", API=" + apiCorrect.size());
         
         // Test with wrong password
         List<Block> directWrong = api.searchAndDecryptByTerms(new String[]{searchTerm}, wrongPassword, 10);
         List<EnhancedSearchResult> apiWrong = searchAPI.searchSecure(searchTerm, wrongPassword);
         
-        System.out.println("📊 Wrong password: Direct=" + directWrong.size() + ", API=" + apiWrong.size());
+        logger.info("📊 Wrong password: Direct=" + directWrong.size() + ", API=" + apiWrong.size());
         
         // Both should return more results with correct password
         assertTrue(directCorrect.size() > 0, "Direct search should find results with correct password");
@@ -238,7 +243,7 @@ public class SearchCompatibilityTest {
     @Order(4)
     @DisplayName("Test search result content consistency")
     void testSearchResultContentConsistency() throws Exception {
-        System.out.println("🔍 Testing search result content consistency...");
+        logger.info("🔍 Testing search result content consistency...");
         
         String searchTerm = "technology";
         
@@ -246,26 +251,26 @@ public class SearchCompatibilityTest {
         List<Block> directResults = api.searchAndDecryptByTerms(new String[]{searchTerm}, testPassword, 10);
         List<EnhancedSearchResult> apiResults = searchAPI.searchSecure(searchTerm, testPassword);
         
-        System.out.println("📊 Found " + directResults.size() + " direct results and " + apiResults.size() + " API results");
+        logger.info("📊 Found " + directResults.size() + " direct results and " + apiResults.size() + " API results");
         
         // Extract block hashes for comparison
         Set<String> directHashes = new HashSet<>();
         for (Block block : directResults) {
             directHashes.add(block.getHash());
-            System.out.println("📋 Direct result: " + block.getHash().substring(0, 8) + "...");
+            logger.info("📋 Direct result: " + block.getHash().substring(0, 8) + "...");
         }
         
         Set<String> apiHashes = new HashSet<>();
         for (EnhancedSearchResult result : apiResults) {
             apiHashes.add(result.getBlockHash());
-            System.out.println("📋 API result: " + result.getBlockHash().substring(0, 8) + "...");
+            logger.info("📋 API result: " + result.getBlockHash().substring(0, 8) + "...");
         }
         
         // Check for overlap in results
         Set<String> intersection = new HashSet<>(directHashes);
         intersection.retainAll(apiHashes);
         
-        System.out.println("📊 Common results: " + intersection.size());
+        logger.info("📊 Common results: " + intersection.size());
         
         // Both methods should find some common blocks - this is the expected behavior
         assertTrue(!intersection.isEmpty(), "Both methods should find some common blocks");
@@ -275,7 +280,7 @@ public class SearchCompatibilityTest {
     @Order(5)
     @DisplayName("Test performance comparison")
     void testPerformanceComparison() throws Exception {
-        System.out.println("🔍 Testing performance comparison...");
+        logger.info("🔍 Testing performance comparison...");
         
         String searchTerm = "blockchain";
         int iterations = 10;
@@ -300,9 +305,9 @@ public class SearchCompatibilityTest {
         }
         double apiAvg = (apiTotal / iterations) / 1_000_000.0;
         
-        System.out.println("📊 Performance comparison:");
-        System.out.println("  Direct search average: " + String.format("%.2f", directAvg) + "ms");
-        System.out.println("  API search average: " + String.format("%.2f", apiAvg) + "ms");
+        logger.info("📊 Performance comparison:");
+        logger.info("  Direct search average: " + String.format("%.2f", directAvg) + "ms");
+        logger.info("  API search average: " + String.format("%.2f", apiAvg) + "ms");
         
         // Both methods should complete within reasonable time
         // With large datasets and encryption, allow up to 30 seconds for complex searches
@@ -314,36 +319,36 @@ public class SearchCompatibilityTest {
     @Order(6)
     @DisplayName("Test edge case compatibility")
     void testEdgeCaseCompatibility() throws Exception {
-        System.out.println("🔍 Testing edge case compatibility...");
+        logger.info("🔍 Testing edge case compatibility...");
         
         // Test empty query handling
         try {
             List<Block> directEmpty = api.searchAndDecryptByTerms(new String[]{""}, testPassword, 10);
-            System.out.println("📊 Direct empty query: " + directEmpty.size() + " results");
+            logger.info("📊 Direct empty query: " + directEmpty.size() + " results");
         } catch (Exception e) {
-            System.out.println("📊 Direct empty query threw: " + e.getClass().getSimpleName());
+            logger.info("📊 Direct empty query threw: " + e.getClass().getSimpleName());
         }
         
         try {
             List<EnhancedSearchResult> apiEmpty = searchAPI.searchSecure("", testPassword);
-            System.out.println("📊 API empty query: " + apiEmpty.size() + " results");
+            logger.info("📊 API empty query: " + apiEmpty.size() + " results");
         } catch (Exception e) {
-            System.out.println("📊 API empty query threw: " + e.getClass().getSimpleName());
+            logger.info("📊 API empty query threw: " + e.getClass().getSimpleName());
         }
         
         // Test null password handling
         try {
             List<Block> directNull = api.searchAndDecryptByTerms(new String[]{"blockchain"}, null, 10);
-            System.out.println("📊 Direct null password: " + directNull.size() + " results");
+            logger.info("📊 Direct null password: " + directNull.size() + " results");
         } catch (Exception e) {
-            System.out.println("📊 Direct null password threw: " + e.getClass().getSimpleName());
+            logger.info("📊 Direct null password threw: " + e.getClass().getSimpleName());
         }
         
         try {
             List<EnhancedSearchResult> apiNull = searchAPI.searchSecure("blockchain", null);
-            System.out.println("📊 API null password: " + apiNull.size() + " results");
+            logger.info("📊 API null password: " + apiNull.size() + " results");
         } catch (Exception e) {
-            System.out.println("📊 API null password threw: " + e.getClass().getSimpleName());
+            logger.info("📊 API null password threw: " + e.getClass().getSimpleName());
         }
         
         // Test non-existent term
@@ -351,7 +356,7 @@ public class SearchCompatibilityTest {
         List<Block> directNonExistent = api.searchAndDecryptByTerms(new String[]{nonExistentTerm}, testPassword, 10);
         List<EnhancedSearchResult> apiNonExistent = searchAPI.searchSecure(nonExistentTerm, testPassword);
         
-        System.out.println("📊 Non-existent term: Direct=" + directNonExistent.size() + ", API=" + apiNonExistent.size());
+        logger.info("📊 Non-existent term: Direct=" + directNonExistent.size() + ", API=" + apiNonExistent.size());
         
         // Both should return empty results for non-existent terms
         assertTrue(directNonExistent.isEmpty(), "Direct search should return empty for non-existent term");

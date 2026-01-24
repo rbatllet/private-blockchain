@@ -17,7 +17,7 @@ This directory contains comprehensive testing guides, thread-safety standards, a
 | **[THREAD_SAFETY_TESTS.md](THREAD_SAFETY_TESTS.md)** | Thread-safety testing guide | Concurrent testing |
 | **[SHARED_STATE_TESTING_PATTERNS.md](SHARED_STATE_TESTING_PATTERNS.md)** | Testing static/singleton shared state | Complex test scenarios |
 | **[PHASE_5_4_TEST_ISOLATION_GUIDE.md](PHASE_5_4_TEST_ISOLATION_GUIDE.md)** | Phase 5.4 singleton state management patterns | Async indexing test isolation |
-| **[Thread Safety & Semaphores](../development/SEMAPHORE_INDEXING_IMPLEMENTATION.md)** | Per-block semaphore coordination | Concurrent indexing |
+| **[Thread Safety & Semaphores](../search/SEMAPHORE_INDEXING_IMPLEMENTATION.md)** | Per-block semaphore coordination | Concurrent indexing |
 
 ## 🚀 Recommended Reading Order
 

@@ -23,8 +23,13 @@ import static org.junit.jupiter.api.Assertions.*;
  * Tests advanced search, exhaustive search, and search performance features
  * UPDATED: Now uses real Blockchain instead of mocks for better integration testing
  */
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @DisplayName("🔍 UserFriendlyEncryptionAPI Phase 2 - Advanced Search Tests")
 public class UserFriendlyEncryptionAPIPhase2SearchTest {
+    private static final Logger logger = LoggerFactory.getLogger(UserFriendlyEncryptionAPIPhase2SearchTest.class);
 
     private Blockchain blockchain;
     private UserFriendlyEncryptionAPI api;
@@ -291,15 +296,15 @@ public class UserFriendlyEncryptionAPIPhase2SearchTest {
             assertNotNull(result, "Search result should not be null");
             assertFalse(result.getMatches().isEmpty(), "Should have matches");
 
-            System.out.println("\n=== Relevance Score Debug ===");
-            System.out.println("Total matches: " + result.getMatches().size());
+            logger.info("\n=== Relevance Score Debug ===");
+            logger.info("Total matches: {}", result.getMatches().size());
 
             // Verify relevance scores are calculated
             for (AdvancedSearchResult.SearchMatch match : result.getMatches()) {
-                System.out.println(String.format("Block %d: score=%.4f, data=%s",
-                                                match.getBlock().getBlockNumber(),
-                                                match.getRelevanceScore(),
-                                                match.getBlock().getData().substring(0, Math.min(60, match.getBlock().getData().length()))));
+                logger.info("Block {}: score={}.4f, data={}",
+                    match.getBlock().getBlockNumber(),
+                    match.getRelevanceScore(),
+                    match.getBlock().getData().substring(0, Math.min(60, match.getBlock().getData().length())));
                 assertTrue(match.getRelevanceScore() >= 0.0,
                           "Relevance score should be non-negative");
             }
@@ -519,16 +524,16 @@ public class UserFriendlyEncryptionAPIPhase2SearchTest {
                     testKeyPair.getPublic()
                 );
                 if (!added && i < 5) {
-                    System.out.println("WARNING: Failed to add block " + i);
+                    logger.warn("WARNING: Failed to add block {}", i);
                 }
             }
 
             long finalBlockCount = blockchain.getBlockCount();
-            System.out.println("\n=== Block Count Debug ===");
-            System.out.println("Initial count: " + initialBlockCount);
-            System.out.println("Final count: " + finalBlockCount);
-            System.out.println("Expected: " + (initialBlockCount + 96));
-            System.out.println("Actually added: " + (finalBlockCount - initialBlockCount));
+            logger.info("\n=== Block Count Debug ===");
+            logger.info("Initial count: {}", initialBlockCount);
+            logger.info("Final count: {}", finalBlockCount);
+            logger.info("Expected: {}", (initialBlockCount + 96));
+            logger.info("Actually added: {}", (finalBlockCount - initialBlockCount));
 
             Map<String, Object> criteria = new HashMap<>();
             criteria.put("keywords", "blockchain");
@@ -537,21 +542,21 @@ public class UserFriendlyEncryptionAPIPhase2SearchTest {
             AdvancedSearchResult result = api.performAdvancedSearch(criteria, null, 100);
 
             // Then
-            System.out.println("\n=== Search Results ===");
-            System.out.println("Total found: " + result.getMatches().size());
-            System.out.println("First 10 matches:");
+            logger.info("\n=== Search Results ===");
+            logger.info("Total found: {}", result.getMatches().size());
+            logger.info("First 10 matches:");
             for (int i = 0; i < Math.min(10, result.getMatches().size()); i++) {
                 AdvancedSearchResult.SearchMatch match = result.getMatches().get(i);
                 String dataPreview = match.getBlock().getData();
                 if (dataPreview.length() > 60) {
                     dataPreview = dataPreview.substring(0, 60) + "...";
                 }
-                System.out.println(String.format("  [%d] Block %d: score=%.2f, encrypted=%b, data=%s",
-                                               i,
-                                               match.getBlock().getBlockNumber(),
-                                               match.getRelevanceScore(),
-                                               match.getBlock().isDataEncrypted(),
-                                               dataPreview));
+                logger.info("  [{}] Block {}: score={}.2f, encrypted={}, data={}",
+                    i,
+                    match.getBlock().getBlockNumber(),
+                    match.getRelevanceScore(),
+                    match.getBlock().isDataEncrypted(),
+                    dataPreview);
             }
 
             assertNotNull(result, "Should handle large dataset");

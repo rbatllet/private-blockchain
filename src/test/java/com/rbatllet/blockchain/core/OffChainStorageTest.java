@@ -1,16 +1,12 @@
 package com.rbatllet.blockchain.core;
 
-import com.rbatllet.blockchain.entity.Block;
-import com.rbatllet.blockchain.entity.OffChainData;
-import com.rbatllet.blockchain.security.UserRole;
-import com.rbatllet.blockchain.util.TestGenesisKeyManager;
-import com.rbatllet.blockchain.service.OffChainStorageService;
-import com.rbatllet.blockchain.util.CryptoUtil;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.parallel.ResourceLock;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -19,7 +15,20 @@ import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.entity.OffChainData;
+import com.rbatllet.blockchain.security.UserRole;
+import com.rbatllet.blockchain.service.OffChainStorageService;
+import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.util.TestGenesisKeyManager;
 
 /**
  * Test suite for off-chain storage functionality
@@ -27,6 +36,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @ResourceLock("blockchain-config") // Prevents parallel execution with other tests using same lock
 public class OffChainStorageTest {
+    private static final Logger logger = LoggerFactory.getLogger(OffChainStorageTest.class);
 
     private Blockchain blockchain;
     private OffChainStorageService offChainService;
@@ -63,7 +73,7 @@ public class OffChainStorageTest {
         blockchain.addAuthorizedKey(testPublicKeyString, "TestUser", bootstrapKeyPair, UserRole.USER);
 
         // Show initial blockchain state with detailed validation
-        System.out.println("🔍 Initial blockchain state:");
+        logger.info("🔍 Initial blockchain state:");
         blockchain.validateChainDetailed();
     }
     
@@ -85,7 +95,7 @@ public class OffChainStorageTest {
                 offChainDir.delete();
             }
         } catch (Exception e) {
-            System.err.println("Cleanup error: " + e.getMessage());
+            logger.error("Cleanup error: " + e.getMessage());
         }
     }
     
@@ -172,7 +182,7 @@ public class OffChainStorageTest {
         assertTrue(blockchain.verifyAllOffChainIntegrity());
         
         // Show detailed validation with off-chain data analysis
-        System.out.println("🔍 Detailed validation after off-chain integration:");
+        logger.info("🔍 Detailed validation after off-chain integration:");
         blockchain.validateChainDetailed();
     }
     
@@ -360,7 +370,7 @@ public class OffChainStorageTest {
             }
             backupDir.delete();
         } catch (Exception e) {
-            System.err.println("Cleanup warning: " + e.getMessage());
+            logger.error("Cleanup warning: " + e.getMessage());
         }
     }
     

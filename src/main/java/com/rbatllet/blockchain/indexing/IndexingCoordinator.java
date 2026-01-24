@@ -425,6 +425,7 @@ public class IndexingCoordinator {
         testMode.set(true);  // Enable test mode to skip interval checks
         indexers.clear();
         indexingProgress.clear();
+        activeIndexingTasks.set(0);  // Reset active task counter to prevent test isolation issues
         logger.info("🔄 IndexingCoordinator reset completed in test mode");
     }
 

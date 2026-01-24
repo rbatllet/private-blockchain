@@ -15,6 +15,9 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Integration test for Block encryption functionality
@@ -24,6 +27,8 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class BlockEncryptionIntegrationTest {
+    private static final Logger logger = LoggerFactory.getLogger(BlockEncryptionIntegrationTest.class);
+
 
     private static Blockchain blockchain;
     private static UserFriendlyEncryptionAPI api;
@@ -102,7 +107,7 @@ public class BlockEncryptionIntegrationTest {
 
     @BeforeAll
     static void setUpClass() {
-        System.out.println("🔧 BlockEncryptionIntegrationTest.setUpClass() - Initializing test environment");
+        logger.info("🔧 BlockEncryptionIntegrationTest.setUpClass() - Initializing test environment");
         
         // CRITICAL: Reset IndexingCoordinator state from previous tests
         IndexingCoordinator.getInstance().clearShutdownFlag();
@@ -193,11 +198,11 @@ public class BlockEncryptionIntegrationTest {
         assertNotNull(retrievedBlock, "Block should be retrievable from blockchain");
         assertEquals(medicalBlock.getBlockNumber(), retrievedBlock.getBlockNumber(), "Retrieved block number should match");
 
-        System.out.println("✅ Medical block saved with RIGOROUS encryption validation - ID: " + medicalBlock.getBlockNumber());
-        System.out.println("   Block Number: " + medicalBlock.getBlockNumber());
-        System.out.println("   Encryption metadata length: " + medicalBlock.getEncryptionMetadata().length());
-        System.out.println("   Hash: " + medicalBlock.getHash().substring(0, 20) + "...");
-        System.out.println("   No plaintext leakage verified ✅");
+        logger.info("✅ Medical block saved with RIGOROUS encryption validation - ID: " + medicalBlock.getBlockNumber());
+        logger.info("   Block Number: " + medicalBlock.getBlockNumber());
+        logger.info("   Encryption metadata length: " + medicalBlock.getEncryptionMetadata().length());
+        logger.info("   Hash: " + medicalBlock.getHash().substring(0, 20) + "...");
+        logger.info("   No plaintext leakage verified ✅");
     }
 
     @Test
@@ -251,11 +256,11 @@ public class BlockEncryptionIntegrationTest {
         assertNotEquals(medicalBlock.getEncryptionMetadata(), financialBlock.getEncryptionMetadata(),
             "Different data should produce different encryption metadata");
 
-        System.out.println("✅ Financial block saved with RIGOROUS encryption validation - ID: " + financialBlock.getBlockNumber());
-        System.out.println("   Block Number: " + financialBlock.getBlockNumber());
-        System.out.println("   Encryption metadata length: " + financialBlock.getEncryptionMetadata().length());
-        System.out.println("   Hash: " + financialBlock.getHash().substring(0, 20) + "...");
-        System.out.println("   No plaintext leakage verified ✅");
+        logger.info("✅ Financial block saved with RIGOROUS encryption validation - ID: " + financialBlock.getBlockNumber());
+        logger.info("   Block Number: " + financialBlock.getBlockNumber());
+        logger.info("   Encryption metadata length: " + financialBlock.getEncryptionMetadata().length());
+        logger.info("   Hash: " + financialBlock.getHash().substring(0, 20) + "...");
+        logger.info("   No plaintext leakage verified ✅");
     }
 
     @Test
@@ -295,11 +300,11 @@ public class BlockEncryptionIntegrationTest {
         String decryptedData2 = api.retrieveSecret(medicalBlock.getBlockNumber(), testPassword);
         assertEquals(decryptedData, decryptedData2, "Multiple decryption attempts should produce identical results");
 
-        System.out.println("✅ Medical block decrypted successfully with RIGOROUS validation");
-        System.out.println("   Decrypted data length: " + decryptedData.length() + " chars");
-        System.out.println("   Original data length: " + MEDICAL_DATA.length() + " chars");
-        System.out.println("   Data preview: " + decryptedData.substring(0, 100) + "...");
-        System.out.println("   All sensitive fields verified present ✅");
+        logger.info("✅ Medical block decrypted successfully with RIGOROUS validation");
+        logger.info("   Decrypted data length: " + decryptedData.length() + " chars");
+        logger.info("   Original data length: " + MEDICAL_DATA.length() + " chars");
+        logger.info("   Data preview: " + decryptedData.substring(0, 100) + "...");
+        logger.info("   All sensitive fields verified present ✅");
     }
 
     @Test
@@ -344,11 +349,11 @@ public class BlockEncryptionIntegrationTest {
         String medicalDecrypted = api.retrieveSecret(medicalBlock.getBlockNumber(), testPassword);
         assertNotEquals(medicalDecrypted, decryptedData, "Medical and financial data should be different");
 
-        System.out.println("✅ Financial block decrypted successfully with RIGOROUS validation");
-        System.out.println("   Decrypted data length: " + decryptedData.length() + " chars");
-        System.out.println("   Original data length: " + FINANCIAL_DATA.length() + " chars");
-        System.out.println("   Data preview: " + decryptedData.substring(0, 100) + "...");
-        System.out.println("   All sensitive fields verified present ✅");
+        logger.info("✅ Financial block decrypted successfully with RIGOROUS validation");
+        logger.info("   Decrypted data length: " + decryptedData.length() + " chars");
+        logger.info("   Original data length: " + FINANCIAL_DATA.length() + " chars");
+        logger.info("   Data preview: " + decryptedData.substring(0, 100) + "...");
+        logger.info("   All sensitive fields verified present ✅");
     }
 
     @Test
@@ -395,9 +400,9 @@ public class BlockEncryptionIntegrationTest {
         String financialWrongPwd = api.retrieveSecret(financialBlock.getBlockNumber(), "AnotherWrongPassword");
         assertNull(financialWrongPwd, "Wrong password should fail for financial block too");
 
-        System.out.println("✅ Wrong password RIGOROUSLY tested - all scenarios handled correctly");
-        System.out.println("   Tested: wrong password, typo, empty, null, case-sensitive");
-        System.out.println("   Correct password still works after failed attempts ✅");
+        logger.info("✅ Wrong password RIGOROUSLY tested - all scenarios handled correctly");
+        logger.info("   Tested: wrong password, typo, empty, null, case-sensitive");
+        logger.info("   Correct password still works after failed attempts ✅");
     }
 
     @Test
@@ -472,10 +477,10 @@ public class BlockEncryptionIntegrationTest {
         boolean financialLooksEncrypted = financialMetadata.matches("[A-Za-z0-9+/=|]+");
         assertTrue(financialLooksEncrypted, "Financial metadata should look like encrypted/encoded data (Base64 + pipes)");
 
-        System.out.println("✅ RIGOROUS data integrity and security validation passed");
-        System.out.println("   Medical metadata: " + medicalMetadata.length() + " chars, no plaintext leaks ✅");
-        System.out.println("   Financial metadata: " + financialMetadata.length() + " chars, no plaintext leaks ✅");
-        System.out.println("   All sensitive fields verified encrypted ✅");
+        logger.info("✅ RIGOROUS data integrity and security validation passed");
+        logger.info("   Medical metadata: " + medicalMetadata.length() + " chars, no plaintext leaks ✅");
+        logger.info("   Financial metadata: " + financialMetadata.length() + " chars, no plaintext leaks ✅");
+        logger.info("   All sensitive fields verified encrypted ✅");
     }
 
     @Test
@@ -589,11 +594,11 @@ public class BlockEncryptionIntegrationTest {
         long blockCountAfter = blockchain.getBlockCount();
         assertEquals(blockCountBefore, blockCountAfter, "Block count should not change during validation");
 
-        System.out.println("✅ RIGOROUS chain validation with encrypted blocks passed");
-        System.out.println("   Total blocks: " + blockchain.getBlockCount());
-        System.out.println("   Validation result: " + result.getSummary());
-        System.out.println("   Encrypted blocks verified intact ✅");
-        System.out.println("   Decryption still works after validation ✅");
+        logger.info("✅ RIGOROUS chain validation with encrypted blocks passed");
+        logger.info("   Total blocks: " + blockchain.getBlockCount());
+        logger.info("   Validation result: " + result.getSummary());
+        logger.info("   Encrypted blocks verified intact ✅");
+        logger.info("   Decryption still works after validation ✅");
     }
 
     @Test
@@ -649,10 +654,10 @@ public class BlockEncryptionIntegrationTest {
             }
         }
 
-        System.out.println("✅ RIGOROUS search encrypted data validation passed");
-        System.out.println("   Medical results: " + medicalResults.size() + " block(s)");
-        System.out.println("   Financial results: " + financialResults.size() + " block(s)");
-        System.out.println("   All found blocks verified encrypted ✅");
+        logger.info("✅ RIGOROUS search encrypted data validation passed");
+        logger.info("   Medical results: " + medicalResults.size() + " block(s)");
+        logger.info("   Financial results: " + financialResults.size() + " block(s)");
+        logger.info("   All found blocks verified encrypted ✅");
     }
 
     @Test
@@ -712,11 +717,11 @@ public class BlockEncryptionIntegrationTest {
         assertNotNull(newBlockExists, "New block should exist");
         assertTrue(newBlockExists.isDataEncrypted(), "New block should be encrypted");
 
-        System.out.println("✅ RIGOROUS re-encryption validation passed");
-        System.out.println("   Original block: " + medicalBlock.getBlockNumber() + " (password: old)");
-        System.out.println("   New block: " + reEncryptedBlock.getBlockNumber() + " (password: new)");
-        System.out.println("   Old password works ONLY on original block ✅");
-        System.out.println("   New password works ONLY on new block ✅");
-        System.out.println("   Both blocks coexist independently ✅");
+        logger.info("✅ RIGOROUS re-encryption validation passed");
+        logger.info("   Original block: " + medicalBlock.getBlockNumber() + " (password: old)");
+        logger.info("   New block: " + reEncryptedBlock.getBlockNumber() + " (password: new)");
+        logger.info("   Old password works ONLY on original block ✅");
+        logger.info("   New password works ONLY on new block ✅");
+        logger.info("   Both blocks coexist independently ✅");
     }
 }

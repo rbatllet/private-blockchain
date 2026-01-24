@@ -15,12 +15,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * 🧪 Tests for IndexingCoordinator - validates prevention of infinite loops
  */
 @DisplayName("🎯 IndexingCoordinator Tests")
 class IndexingCoordinatorTest {
+    private static final Logger logger = LoggerFactory.getLogger(IndexingCoordinatorTest.class);
+
 
     private IndexingCoordinator coordinator;
     private Blockchain testBlockchain;
@@ -55,7 +60,7 @@ class IndexingCoordinatorTest {
 
         coordinator.registerIndexer("TEST_INDEXER", request -> {
             int count = executionCount.incrementAndGet();
-            System.out.println("🔍 Test indexer execution #" + count);
+            logger.info("🔍 Test indexer execution #" + count);
 
             if (count == 1) {
                 executionLatch.countDown();
@@ -130,7 +135,7 @@ class IndexingCoordinatorTest {
         if ("FAILED".equals(result2.getStatus())) failedExecutions++;
         if ("FAILED".equals(result3.getStatus())) failedExecutions++;
 
-        System.out.println(
+        logger.info(
             "📊 Execution results: " +
             result1.getStatus() +
             ", " +
@@ -138,7 +143,7 @@ class IndexingCoordinatorTest {
             ", " +
             result3.getStatus()
         );
-        System.out.println(
+        logger.info(
             "📊 Total executions: " +
             executionCount.get() +
             ", Completed: " +
@@ -270,7 +275,7 @@ class IndexingCoordinatorTest {
             }
         }
 
-        System.out.println(
+        logger.info(
             "📊 Concurrent test - Total executions: " +
             executionCount.get() +
             ", Successful: " +
@@ -338,13 +343,13 @@ class IndexingCoordinatorTest {
 
         long duration = System.currentTimeMillis() - startTime;
 
-        System.out.println(
+        logger.info(
             "📊 Interval test - Duration: " +
             duration +
             "ms, Executions: " +
             executionCount.get()
         );
-        System.out.println(
+        logger.info(
             "📊 Results: " +
             actualResult1.getStatus() +
             ", " +

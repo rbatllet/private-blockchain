@@ -9,20 +9,25 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Thread-safety test for the blockchain
  * This test verifies that concurrent operations work correctly
  */
 public class ThreadSafetyTest {
+    private static final Logger logger = LoggerFactory.getLogger(ThreadSafetyTest.class);
+
     
     private static final int THREAD_COUNT = 10;
     private static final int BLOCKS_PER_THREAD = 5;
     
     @Test
     public void testBlockchainThreadSafety() {
-        System.out.println("🧪 Starting Thread-Safety Test for Blockchain");
-        System.out.println("Threads: " + THREAD_COUNT + ", Blocks per thread: " + BLOCKS_PER_THREAD);
+        logger.info("🧪 Starting Thread-Safety Test for Blockchain");
+        logger.info("Threads: " + THREAD_COUNT + ", Blocks per thread: " + BLOCKS_PER_THREAD);
         
         try {
             // Initialize blockchain
@@ -36,10 +41,10 @@ public class ThreadSafetyTest {
             // Add authorized key
             boolean keyAdded = blockchain.createBootstrapAdmin(publicKeyString, "TestUser");
             if (!keyAdded) {
-                System.err.println("❌ Failed to add authorized key");
+                logger.error("❌ Failed to add authorized key");
                 return;
             }
-            System.out.println("✅ Authorized key added successfully");
+            logger.info("✅ Authorized key added successfully");
             
             // Test concurrent block addition
             testConcurrentBlockAddition(blockchain, keyPair);
@@ -55,33 +60,33 @@ public class ThreadSafetyTest {
             boolean isStructurallyIntact = validationResult.isStructurallyIntact();
             boolean isFullyCompliant = validationResult.isFullyCompliant();
             
-            System.out.println("🔍 Final chain validation:");
-            System.out.println("   - Structurally intact: " + (isStructurallyIntact ? "✅ YES" : "❌ NO"));
-            System.out.println("   - Fully compliant: " + (isFullyCompliant ? "✅ YES" : "❌ NO"));
+            logger.info("🔍 Final chain validation:");
+            logger.info("   - Structurally intact: " + (isStructurallyIntact ? "✅ YES" : "❌ NO"));
+            logger.info("   - Fully compliant: " + (isFullyCompliant ? "✅ YES" : "❌ NO"));
             if (!isFullyCompliant) {
-                System.out.println("   - Revoked blocks: " + validationResult.getRevokedBlocks());
+                logger.info("   - Revoked blocks: " + validationResult.getRevokedBlocks());
             }
             if (!isStructurallyIntact) {
-                System.out.println("   - Invalid blocks: " + validationResult.getInvalidBlocks());
+                logger.info("   - Invalid blocks: " + validationResult.getInvalidBlocks());
             }
             
-            System.out.println("📊 Final blockchain stats:");
-            System.out.println("   - Total blocks: " + blockchain.getBlockCount());
-            System.out.println("   - Expected blocks: " + (1 + THREAD_COUNT * BLOCKS_PER_THREAD)); // +1 for genesis
+            logger.info("📊 Final blockchain stats:");
+            logger.info("   - Total blocks: " + blockchain.getBlockCount());
+            logger.info("   - Expected blocks: " + (1 + THREAD_COUNT * BLOCKS_PER_THREAD)); // +1 for genesis
             
             if (isStructurallyIntact && blockchain.getBlockCount() == (1 + THREAD_COUNT * BLOCKS_PER_THREAD)) {
-                System.out.println("🎉 Thread-safety test PASSED!");
+                logger.info("🎉 Thread-safety test PASSED!");
             } else {
-                System.out.println("💥 Thread-safety test FAILED!");
+                logger.info("💥 Thread-safety test FAILED!");
             }
             
         } catch (Exception e) {
-            System.err.println("💥 Test failed with exception: " + e.getMessage());
+            logger.error("💥 Test failed with exception: " + e.getMessage());
             e.printStackTrace();
         }
     }    
     private static void testConcurrentBlockAddition(Blockchain blockchain, KeyPair keyPair) {
-        System.out.println("\n🧪 Testing concurrent block addition...");
+        logger.info("\n🧪 Testing concurrent block addition...");
         
         ExecutorService executor = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("TestWorker-", 0).factory()); // Java 25 Virtual Threads;
         CountDownLatch latch = new CountDownLatch(THREAD_COUNT);
@@ -98,17 +103,17 @@ public class ThreadSafetyTest {
                         
                         if (success) {
                             successCount.incrementAndGet();
-                            System.out.println("✅ Thread " + threadId + " added block " + j);
+                            logger.info("✅ Thread " + threadId + " added block " + j);
                         } else {
                             failureCount.incrementAndGet();
-                            System.err.println("❌ Thread " + threadId + " failed to add block " + j);
+                            logger.error("❌ Thread " + threadId + " failed to add block " + j);
                         }
                         
                         // Small delay to increase chance of race conditions
                         Thread.sleep(10);
                     }
                 } catch (Exception e) {
-                    System.err.println("💥 Thread " + threadId + " exception: " + e.getMessage());
+                    logger.error("💥 Thread " + threadId + " exception: " + e.getMessage());
                     failureCount.addAndGet(BLOCKS_PER_THREAD);
                 } finally {
                     latch.countDown();
@@ -120,18 +125,18 @@ public class ThreadSafetyTest {
             latch.await();
             executor.shutdown();
             
-            System.out.println("📊 Concurrent block addition results:");
-            System.out.println("   - Successful blocks: " + successCount.get());
-            System.out.println("   - Failed blocks: " + failureCount.get());
-            System.out.println("   - Expected blocks: " + (THREAD_COUNT * BLOCKS_PER_THREAD));
+            logger.info("📊 Concurrent block addition results:");
+            logger.info("   - Successful blocks: " + successCount.get());
+            logger.info("   - Failed blocks: " + failureCount.get());
+            logger.info("   - Expected blocks: " + (THREAD_COUNT * BLOCKS_PER_THREAD));
             
         } catch (InterruptedException e) {
-            System.err.println("Test interrupted: " + e.getMessage());
+            logger.error("Test interrupted: " + e.getMessage());
         }
     }
     
     private static void testConcurrentKeyOperations(Blockchain blockchain) {
-        System.out.println("\n🧪 Testing concurrent key operations...");
+        logger.info("\n🧪 Testing concurrent key operations...");
         
         ExecutorService executor = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("TestWorker-", 0).factory()); // Java 25 Virtual Threads;
         CountDownLatch latch = new CountDownLatch(THREAD_COUNT);
@@ -149,7 +154,7 @@ public class ThreadSafetyTest {
                     // Add key
                     boolean added = blockchain.createBootstrapAdmin(publicKeyString, ownerName);
                     if (added) {
-                        System.out.println("✅ Thread " + threadId + " added key for " + ownerName);
+                        logger.info("✅ Thread " + threadId + " added key for " + ownerName);
                         
                         // Wait a bit
                         Thread.sleep(50);
@@ -157,17 +162,17 @@ public class ThreadSafetyTest {
                         // Revoke key
                         boolean revoked = blockchain.revokeAuthorizedKey(publicKeyString);
                         if (revoked) {
-                            System.out.println("✅ Thread " + threadId + " revoked key for " + ownerName);
+                            logger.info("✅ Thread " + threadId + " revoked key for " + ownerName);
                             successCount.incrementAndGet();
                         } else {
-                            System.err.println("❌ Thread " + threadId + " failed to revoke key");
+                            logger.error("❌ Thread " + threadId + " failed to revoke key");
                         }
                     } else {
-                        System.err.println("❌ Thread " + threadId + " failed to add key");
+                        logger.error("❌ Thread " + threadId + " failed to add key");
                     }
                     
                 } catch (Exception e) {
-                    System.err.println("💥 Thread " + threadId + " key operation exception: " + e.getMessage());
+                    logger.error("💥 Thread " + threadId + " key operation exception: " + e.getMessage());
                 } finally {
                     latch.countDown();
                 }
@@ -178,17 +183,17 @@ public class ThreadSafetyTest {
             latch.await();
             executor.shutdown();
             
-            System.out.println("📊 Concurrent key operations results:");
-            System.out.println("   - Successful operations: " + successCount.get());
-            System.out.println("   - Expected operations: " + THREAD_COUNT);
+            logger.info("📊 Concurrent key operations results:");
+            logger.info("   - Successful operations: " + successCount.get());
+            logger.info("   - Expected operations: " + THREAD_COUNT);
             
         } catch (InterruptedException e) {
-            System.err.println("Key operations test interrupted: " + e.getMessage());
+            logger.error("Key operations test interrupted: " + e.getMessage());
         }
     }
     
     private static void testConcurrentReadOperations(Blockchain blockchain) {
-        System.out.println("\n🧪 Testing concurrent read operations...");
+        logger.info("\n🧪 Testing concurrent read operations...");
 
         ExecutorService executor = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("TestWorker-", 0).factory()); // Java 25 Virtual Threads;
         CountDownLatch latch = new CountDownLatch(THREAD_COUNT);
@@ -205,14 +210,14 @@ public class ThreadSafetyTest {
 
                     // Validate consistency
                     if (blockCount > 0 && lastBlock != null && authorizedKeys != null) {
-                        System.out.println("✅ Thread " + threadId + " read operations consistent");
+                        logger.info("✅ Thread " + threadId + " read operations consistent");
                         successCount.incrementAndGet();
                     } else {
-                        System.err.println("❌ Thread " + threadId + " read operations inconsistent");
+                        logger.error("❌ Thread " + threadId + " read operations inconsistent");
                     }
 
                 } catch (Exception e) {
-                    System.err.println("💥 Thread " + threadId + " read exception: " + e.getMessage());
+                    logger.error("💥 Thread " + threadId + " read exception: " + e.getMessage());
                 } finally {
                     latch.countDown();
                 }
@@ -223,12 +228,12 @@ public class ThreadSafetyTest {
             latch.await();
             executor.shutdown();
             
-            System.out.println("📊 Concurrent read operations results:");
-            System.out.println("   - Consistent reads: " + successCount.get());
-            System.out.println("   - Expected consistent reads: " + THREAD_COUNT);
+            logger.info("📊 Concurrent read operations results:");
+            logger.info("   - Consistent reads: " + successCount.get());
+            logger.info("   - Expected consistent reads: " + THREAD_COUNT);
             
         } catch (InterruptedException e) {
-            System.err.println("Read operations test interrupted: " + e.getMessage());
+            logger.error("Read operations test interrupted: " + e.getMessage());
         }
     }
     

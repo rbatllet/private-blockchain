@@ -12,6 +12,9 @@ import java.security.KeyPair;
 import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Simple test to verify the temporal validation fixes work correctly
@@ -19,6 +22,8 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @DisplayName("Simple Temporal Validation Test")
 class SimpleTemporalValidationTest {
+    private static final Logger logger = LoggerFactory.getLogger(SimpleTemporalValidationTest.class);
+
 
     private Blockchain blockchain;
     private KeyPair aliceKeyPair;
@@ -90,7 +95,7 @@ class SimpleTemporalValidationTest {
         assertTrue(dao.wasKeyAuthorizedAt(bobPublicKey, historicalBlock.getTimestamp()),
                 "Historical block should remain temporally valid after revocation");
 
-        System.out.println("✅ Basic temporal validation works correctly!");
+        logger.info("✅ Basic temporal validation works correctly!");
     }
 
     @Test
@@ -129,7 +134,7 @@ class SimpleTemporalValidationTest {
         // 8. Verify we have at least the expected blocks
         assertTrue(blockchain.getBlockCount() >= 2, "Should have at least 2 blocks"); // Genesis + 2 Bob blocks
 
-        System.out.println("✅ Re-authorization works correctly!");
+        logger.info("✅ Re-authorization works correctly!");
     }
 
     @Test
@@ -158,6 +163,6 @@ class SimpleTemporalValidationTest {
         // 5. Key should not be active after revocation
         assertFalse(key.wasActiveAt(now.minusMinutes(15)), "Key should not be active after revocation");
         
-        System.out.println("✅ Entity temporal validation method works correctly!");
+        logger.info("✅ Entity temporal validation method works correctly!");
     }
 }

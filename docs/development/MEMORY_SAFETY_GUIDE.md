@@ -109,5 +109,5 @@ PROGRESS_REPORT_INTERVAL = 5000           // Progress logging interval
 
 ## See Also
 
-- [Streaming Patterns Guide](STREAMING_PATTERNS_GUIDE.md) - Detailed streaming API patterns
+- [Streaming Patterns Guide](../data-management/STREAMING_PATTERNS_GUIDE.md) - Detailed streaming API patterns
 - [API Guide](../reference/API_GUIDE.md) - Complete API reference

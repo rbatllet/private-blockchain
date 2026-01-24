@@ -27,14 +27,15 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.Timeout;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.rbatllet.blockchain.config.DatabaseConfig;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.indexing.IndexingCoordinator;
-import com.rbatllet.blockchain.util.TestGenesisKeyManager;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.JPAUtil;
-
+import com.rbatllet.blockchain.util.TestGenesisKeyManager;
 /**
  * Phase 5.2: Async/Background Indexing Comprehensive Test Suite
  *
@@ -68,6 +69,7 @@ import com.rbatllet.blockchain.util.JPAUtil;
 @Tag("async")
 @Tag("indexing")
 public class Phase_5_2_AsyncIndexingTest {
+    private static final Logger logger = LoggerFactory.getLogger(Phase_5_2_AsyncIndexingTest.class);
 
     private static Blockchain blockchain;
     private static KeyPair bootstrapKeyPair;
@@ -454,7 +456,7 @@ public class Phase_5_2_AsyncIndexingTest {
                         if (result.isSuccess()) {
                             successCount.incrementAndGet();
                         } else {
-                            System.err.println("Thread " + threadId + " indexing failed: " +
+                            logger.error("Thread " + threadId + " indexing failed: " +
                                 result.getStatus() + " - " + result.getMessage());
                         }
                     } catch (Exception e) {
@@ -605,97 +607,115 @@ public class Phase_5_2_AsyncIndexingTest {
         @Test
         @Order(50)
         @DisplayName("6.1 Async indexing should provide throughput improvement")
-        @Timeout(120)
+        @Timeout(180)
         void testAsyncIndexingThroughputImprovement() throws Exception {
             int totalBlocks = 100;
+            int iterations = 3;  // Run multiple times for robustness
 
-            // Baseline: Sync indexing (traditional approach)
-            blockchain.clearAndReinitialize();
-            blockchain.createBootstrapAdmin(
-                CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
-                "BOOTSTRAP_ADMIN"
-            );
+            double avgSyncThroughput = 0;
+            double avgAsyncWriteThroughput = 0;
+            double avgAsyncThroughput = 0;
 
-            List<Blockchain.BlockWriteRequest> requests1 = new ArrayList<>();
-            for (int i = 0; i < totalBlocks; i++) {
-                requests1.add(new Blockchain.BlockWriteRequest(
-                    "Sync Block " + i,
-                    userKeys.getPrivate(),
-                    userKeys.getPublic()
-                ));
-            }
+            logger.info("\n📊 THROUGHPUT COMPARISON (running {} iterations for robustness):", iterations);
+            logger.info("  Iteration | Sync (ms) | Async Write (ms) | Ratio");
+            logger.info("  -----------|-----------|------------------|-------");
 
-            long syncStart = System.currentTimeMillis();
-            blockchain.addBlocksBatch(requests1); // Default: includes sync indexing
-            long syncDuration = System.currentTimeMillis() - syncStart;
-            double syncThroughput = (totalBlocks * 1000.0) / syncDuration;
-
-            System.out.println("\n📊 THROUGHPUT COMPARISON:");
-            System.out.println("  Sync indexing:   " + syncDuration + "ms (" +
-                String.format("%.1f", syncThroughput) + " blocks/sec)");
-
-            // Test: Async indexing (skipIndexing=true for fair comparison)
-            blockchain.clearAndReinitialize();
-            blockchain.createBootstrapAdmin(
-                CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
-                "BOOTSTRAP_ADMIN"
-            );
-
-            List<Blockchain.BlockWriteRequest> requests2 = new ArrayList<>();
-            for (int i = 0; i < totalBlocks; i++) {
-                requests2.add(new Blockchain.BlockWriteRequest(
-                    "Async Block " + i,
-                    userKeys.getPrivate(),
-                    userKeys.getPublic()
-                ));
-            }
-
-            long asyncStart = System.currentTimeMillis();
-            List<Block> blocks = blockchain.addBlocksBatch(requests2, true); // skipIndexing=true
-            long writeDuration = System.currentTimeMillis() - asyncStart;
-            double writeThroughput = (totalBlocks * 1000.0) / writeDuration;
-
-            // Now do indexing separately
-            long indexingStart = System.currentTimeMillis();
-            CompletableFuture<IndexingCoordinator.IndexingResult> future =
-                blockchain.indexBlocksRangeAsync(
-                    blocks.get(0).getBlockNumber(),
-                    blocks.get(blocks.size() - 1).getBlockNumber()
+            for (int iter = 0; iter < iterations; iter++) {
+                // Baseline: Sync indexing (traditional approach)
+                blockchain.clearAndReinitialize();
+                blockchain.createBootstrapAdmin(
+                    CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+                    "BOOTSTRAP_ADMIN"
                 );
-            IndexingCoordinator.IndexingResult result = future.get(60, TimeUnit.SECONDS);
-            long indexingDuration = System.currentTimeMillis() - indexingStart;
-            long totalAsyncDuration = writeDuration + indexingDuration;
-            double asyncThroughput = (totalBlocks * 1000.0) / totalAsyncDuration;
 
-            // Verify indexing completed successfully
-            assertTrue(result.isSuccess(),
-                "Async indexing should succeed, was: " + result.getStatus() + " - " + result.getMessage());
+                List<Blockchain.BlockWriteRequest> requests1 = new ArrayList<>();
+                for (int i = 0; i < totalBlocks; i++) {
+                    requests1.add(new Blockchain.BlockWriteRequest(
+                        "Sync Block " + i,
+                        userKeys.getPrivate(),
+                        userKeys.getPublic()
+                    ));
+                }
 
-            System.out.println("  Async write:     " + writeDuration + "ms (" +
-                String.format("%.1f", writeThroughput) + " blocks/sec) - WRITE ONLY (skipIndexing=true)");
-            System.out.println("  Async indexing:  " + indexingDuration + "ms (async background)");
-            System.out.println("  Async total:     " + totalAsyncDuration + "ms (" +
-                String.format("%.1f", asyncThroughput) + " blocks/sec) - COMPLETE");
+                long syncStart = System.currentTimeMillis();
+                blockchain.addBlocksBatch(requests1); // Default: includes sync indexing
+                long syncDuration = System.currentTimeMillis() - syncStart;
+                double syncThroughput = (totalBlocks * 1000.0) / syncDuration;
 
-            double improvement = writeThroughput / syncThroughput;
-            System.out.println("  Improvement:     " + String.format("%.1fx", improvement) + " (write-only vs sync)");
+                // Test: Async indexing (skipIndexing=true for fair comparison)
+                blockchain.clearAndReinitialize();
+                blockchain.createBootstrapAdmin(
+                    CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
+                    "BOOTSTRAP_ADMIN"
+                );
+
+                List<Blockchain.BlockWriteRequest> requests2 = new ArrayList<>();
+                for (int i = 0; i < totalBlocks; i++) {
+                    requests2.add(new Blockchain.BlockWriteRequest(
+                        "Async Block " + i,
+                        userKeys.getPrivate(),
+                        userKeys.getPublic()
+                    ));
+                }
+
+                long asyncStart = System.currentTimeMillis();
+                List<Block> blocks = blockchain.addBlocksBatch(requests2, true); // skipIndexing=true
+                long writeDuration = System.currentTimeMillis() - asyncStart;
+                double writeThroughput = (totalBlocks * 1000.0) / writeDuration;
+
+                // Now do indexing separately
+                long indexingStart = System.currentTimeMillis();
+                CompletableFuture<IndexingCoordinator.IndexingResult> future =
+                    blockchain.indexBlocksRangeAsync(
+                        blocks.get(0).getBlockNumber(),
+                        blocks.get(blocks.size() - 1).getBlockNumber()
+                    );
+                IndexingCoordinator.IndexingResult result = future.get(60, TimeUnit.SECONDS);
+                long indexingDuration = System.currentTimeMillis() - indexingStart;
+                long totalAsyncDuration = writeDuration + indexingDuration;
+                double asyncThroughput = (totalBlocks * 1000.0) / totalAsyncDuration;
+
+                // Verify indexing completed successfully
+                assertTrue(result.isSuccess(),
+                    "Async indexing should succeed, was: " + result.getStatus() + " - " + result.getMessage());
+
+                double ratio = (writeThroughput / syncThroughput) * 100;
+                logger.info("  {}/{}        | {} ms   | {} ms ({}/sec)  | {}%",
+                    iter + 1, iterations, syncDuration, writeDuration, String.format("%.1f", writeThroughput), String.format("%.1f", ratio));
+
+                avgSyncThroughput += syncThroughput;
+                avgAsyncWriteThroughput += writeThroughput;
+                avgAsyncThroughput += asyncThroughput;
+            }
+
+            // Calculate averages
+            avgSyncThroughput /= iterations;
+            avgAsyncWriteThroughput /= iterations;
+            avgAsyncThroughput /= iterations;
+
+            double avgImprovement = avgAsyncWriteThroughput / avgSyncThroughput;
+            logger.info("  -----------|-----------|------------------|-------");
+            logger.info("  AVERAGE    |           |                  |");
+            logger.info("  Sync:       {} blocks/sec", String.format("%.1f", avgSyncThroughput));
+            logger.info("  Async write: {} blocks/sec - WRITE ONLY (skipIndexing=true)", String.format("%.1f", avgAsyncWriteThroughput));
+            logger.info("  Async total: {} blocks/sec - COMPLETE", String.format("%.1f", avgAsyncThroughput));
+            logger.info("  Improvement: {} (write-only vs sync)", String.format("%.1fx", avgImprovement));
 
             // ROBUST TEST: Allow 30% margin for timing variance (CI/CD environments, JVM warm-up)
             // Async write (without indexing) should be at least 70% of sync (with indexing)
             // Note: Timing variance can occur due to JVM JIT compilation, GC, system load
             double minExpectedRatio = 0.7;
-            assertTrue(writeThroughput >= (syncThroughput * minExpectedRatio),
-                String.format("Async write throughput (%.1f) should be at least %.0f%% of sync (%.1f), got %.1f%%",
-                    writeThroughput, minExpectedRatio * 100, syncThroughput, 
-                    (writeThroughput / syncThroughput) * 100));
+            assertTrue(avgAsyncWriteThroughput >= (avgSyncThroughput * minExpectedRatio),
+                String.format("Average async write throughput (%.1f) should be at least %.0f%% of sync (%.1f), got %.1f%%",
+                    avgAsyncWriteThroughput, minExpectedRatio * 100, avgSyncThroughput,
+                    (avgAsyncWriteThroughput / avgSyncThroughput) * 100));
 
             // Log actual improvement for monitoring
-            if (writeThroughput > syncThroughput) {
-                System.out.println("  ✅ Async faster: " + String.format("%.1fx improvement", improvement));
+            if (avgAsyncWriteThroughput > avgSyncThroughput) {
+                logger.info("  ✅ Async faster: {} improvement", String.format("%.1fx", avgImprovement));
             } else {
-                System.out.println("  ⚠️  Within tolerance: " + 
-                    String.format("%.1f%% of sync (>= %.0f%% required)", 
-                        (writeThroughput / syncThroughput) * 100, minExpectedRatio * 100));
+                logger.warn("  ⚠️  Within tolerance: {} of sync (>= {} required)",
+                        String.format("%.1f%%", (avgAsyncWriteThroughput / avgSyncThroughput) * 100), String.format("%.0f%%", minExpectedRatio * 100));
             }
         }
     }

@@ -10,11 +10,16 @@ import org.junit.jupiter.api.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.security.KeyPair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Debug test to understand encryption metadata format
  */
 public class DebugEncryptionFormatTest {
+    private static final Logger logger = LoggerFactory.getLogger(DebugEncryptionFormatTest.class);
+
 
     private static Blockchain blockchain;
     private static KeyPair bootstrapKeyPair;
@@ -59,7 +64,7 @@ public class DebugEncryptionFormatTest {
     
     @Test
     void debugEncryptionFormat() {
-        System.out.println("\n=== Debug Encryption Format ===");
+        logger.info("\n=== Debug Encryption Format ===");
         
         // Create an encrypted block with category
         Block encryptedBlock = blockchain.addEncryptedBlockWithKeywords(
@@ -72,25 +77,25 @@ public class DebugEncryptionFormatTest {
         );
         
         assertNotNull(encryptedBlock);
-        System.out.println("Encrypted block created successfully");
+        logger.info("Encrypted block created successfully");
         
         // Analyze the encryption metadata format
         String metadata = encryptedBlock.getEncryptionMetadata();
-        System.out.println("\nEncryption Metadata Analysis:");
-        System.out.println("Length: " + metadata.length() + " characters");
-        System.out.println("First 100 chars: " + metadata.substring(0, Math.min(100, metadata.length())));
-        System.out.println("Last 100 chars: " + metadata.substring(Math.max(0, metadata.length() - 100)));
+        logger.info("\nEncryption Metadata Analysis:");
+        logger.info("Length: " + metadata.length() + " characters");
+        logger.info("First 100 chars: " + metadata.substring(0, Math.min(100, metadata.length())));
+        logger.info("Last 100 chars: " + metadata.substring(Math.max(0, metadata.length() - 100)));
         
         // Check format characteristics
-        System.out.println("\nFormat Analysis:");
-        System.out.println("Contains ':' separators: " + metadata.contains(":"));
-        System.out.println("Starts with base64-like: " + metadata.substring(0, Math.min(50, metadata.length())).matches("^[A-Za-z0-9+/]*$"));
-        System.out.println("Is pure base64: " + metadata.matches("^[A-Za-z0-9+/]+=*$"));
+        logger.info("\nFormat Analysis:");
+        logger.info("Contains ':' separators: " + metadata.contains(":"));
+        logger.info("Starts with base64-like: " + metadata.substring(0, Math.min(50, metadata.length())).matches("^[A-Za-z0-9+/]*$"));
+        logger.info("Is pure base64: " + metadata.matches("^[A-Za-z0-9+/]+=*$"));
         
         // Check each component if there are separators
         if (metadata.contains(":")) {
             String[] parts = metadata.split(":");
-            System.out.println("Number of parts separated by ':': " + parts.length);
+            logger.info("Number of parts separated by ':': " + parts.length);
             for (int i = 0; i < parts.length; i++) {
                 System.out.printf("Part %d: length=%d, preview=%s%n", 
                     i, parts[i].length(), 
@@ -99,23 +104,23 @@ public class DebugEncryptionFormatTest {
         }
         
         // Test other fields
-        System.out.println("\nOther Field Analysis:");
-        System.out.println("Data field: " + encryptedBlock.getData());
-        System.out.println("Manual keywords: " + encryptedBlock.getManualKeywords());
-        System.out.println("Auto keywords: " + encryptedBlock.getAutoKeywords());
-        System.out.println("Searchable content: " + encryptedBlock.getSearchableContent());
-        System.out.println("Category: " + encryptedBlock.getContentCategory());
-        System.out.println("Is encrypted: " + encryptedBlock.isDataEncrypted());
+        logger.info("\nOther Field Analysis:");
+        logger.info("Data field: " + encryptedBlock.getData());
+        logger.info("Manual keywords: " + encryptedBlock.getManualKeywords());
+        logger.info("Auto keywords: " + encryptedBlock.getAutoKeywords());
+        logger.info("Searchable content: " + encryptedBlock.getSearchableContent());
+        logger.info("Category: " + encryptedBlock.getContentCategory());
+        logger.info("Is encrypted: " + encryptedBlock.isDataEncrypted());
         
         // Test validation
         var validationResult = blockchain.validateChainDetailed();
-        System.out.println("\nValidation Result:");
-        System.out.println(validationResult.getSummary());
+        logger.info("\nValidation Result:");
+        logger.info(validationResult.getSummary());
         
         if (!validationResult.isValid()) {
             for (var blockResult : validationResult.getBlockResults()) {
                 if (!blockResult.isValid()) {
-                    System.out.println("Block #" + blockResult.getBlock().getBlockNumber() + 
+                    logger.info("Block #" + blockResult.getBlock().getBlockNumber() + 
                                      " validation error: " + blockResult.getErrorMessage());
                 }
             }

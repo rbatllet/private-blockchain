@@ -16,12 +16,17 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Race Condition Fix Verification Test
  * Specifically tests the fix for high-speed block number race conditions
  */
 public class RaceConditionFixTest {
+    private static final Logger logger = LoggerFactory.getLogger(RaceConditionFixTest.class);
+
 
     private Blockchain blockchain;
     private ExecutorService executorService;
@@ -77,7 +82,7 @@ public class RaceConditionFixTest {
                             // Check for duplicate block numbers
                             if (!observedBlockNumbers.add(blockNumber)) {
                                 raceConditionsDetected.incrementAndGet();
-                                System.err.println("RACE CONDITION DETECTED: Duplicate block number " + blockNumber + 
+                                logger.error("RACE CONDITION DETECTED: Duplicate block number " + blockNumber + 
                                     " from thread " + threadId);
                             }
                         } else {
@@ -89,7 +94,7 @@ public class RaceConditionFixTest {
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 } catch (Exception e) {
-                    System.err.println("Thread " + threadId + " error: " + e.getMessage());
+                    logger.error("Thread " + threadId + " error: " + e.getMessage());
                     failedBlocks.incrementAndGet();
                 } finally {
                     endLatch.countDown();
@@ -108,15 +113,15 @@ public class RaceConditionFixTest {
         assertTrue(completed, "Race condition fix test should complete within timeout");
 
         // Analyze results
-        System.out.println("🎯 Race Condition Fix Test Results:");
-        System.out.println("   - Execution time: " + (endTime - startTime) + "ms");
-        System.out.println("   - Successful blocks: " + successfulBlocks.get());
-        System.out.println("   - Failed blocks: " + failedBlocks.get());
-        System.out.println("   - Unique block numbers: " + observedBlockNumbers.size());
-        System.out.println("   - Race conditions detected: " + raceConditionsDetected.get());
-        System.out.println("   - Total blockchain blocks: " + blockchain.getBlockCount());
-        System.out.println("   - Expected total: " + (successfulBlocks.get() + 1)); // +1 for genesis
-        System.out.println("   - Theoretical maximum: " + EXPECTED_TOTAL_BLOCKS);
+        logger.info("🎯 Race Condition Fix Test Results:");
+        logger.info("   - Execution time: " + (endTime - startTime) + "ms");
+        logger.info("   - Successful blocks: " + successfulBlocks.get());
+        logger.info("   - Failed blocks: " + failedBlocks.get());
+        logger.info("   - Unique block numbers: " + observedBlockNumbers.size());
+        logger.info("   - Race conditions detected: " + raceConditionsDetected.get());
+        logger.info("   - Total blockchain blocks: " + blockchain.getBlockCount());
+        logger.info("   - Expected total: " + (successfulBlocks.get() + 1)); // +1 for genesis
+        logger.info("   - Theoretical maximum: " + EXPECTED_TOTAL_BLOCKS);
 
         // Critical assertions
         assertEquals(0, raceConditionsDetected.get(), 
@@ -149,7 +154,7 @@ public class RaceConditionFixTest {
             }
         }
 
-        System.out.println("✅ Race condition fix verification: PASSED!");
+        logger.info("✅ Race condition fix verification: PASSED!");
     }
 
     @Test
@@ -198,11 +203,11 @@ public class RaceConditionFixTest {
         long executionTime = endTime - startTime;
         double blocksPerSecond = (double) successfulBlocks.get() / (executionTime / 1000.0);
         
-        System.out.println("📊 Performance Impact Results:");
-        System.out.println("   - Total execution time: " + executionTime + "ms");
-        System.out.println("   - Successful blocks: " + successfulBlocks.get());
-        System.out.println("   - Blocks per second: " + String.format("%.2f", blocksPerSecond));
-        System.out.println("   - Average time per block: " + String.format("%.2f", executionTime / (double) successfulBlocks.get()) + "ms");
+        logger.info("📊 Performance Impact Results:");
+        logger.info("   - Total execution time: " + executionTime + "ms");
+        logger.info("   - Successful blocks: " + successfulBlocks.get());
+        logger.info("   - Blocks per second: " + String.format("%.2f", blocksPerSecond));
+        logger.info("   - Average time per block: " + String.format("%.2f", executionTime / (double) successfulBlocks.get()) + "ms");
 
         // Verify reasonable performance (should be able to handle at least 10 blocks/second under concurrency)
         assertTrue(blocksPerSecond >= 5.0, 
@@ -212,6 +217,6 @@ public class RaceConditionFixTest {
         assertTrue(validationResult.isStructurallyIntact(), "Chain should be structurally intact");
         assertTrue(validationResult.isFullyCompliant(), "Chain should be fully compliant");
         
-        System.out.println("✅ Performance impact assessment: ACCEPTABLE");
+        logger.info("✅ Performance impact assessment: ACCEPTABLE");
     }
 }

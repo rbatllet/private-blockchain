@@ -25,6 +25,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -792,6 +793,34 @@ class BlockRepository {
      *                                  positive
      */
     public List<Block> getEncryptedBlocksPaginated(long offset, int limit) {
+        return getEncryptedBlocksPaginatedInternal(offset, limit, false);
+    }
+
+    /**
+     * Get encrypted blocks in DESCENDING order by block number (newest first).
+     * Optimized for search operations to prioritize recent blocks.
+     *
+     * <p><b>Performance Note:</b> Use with pagination limits to avoid loading
+     * too many blocks into memory. Recommended: 50-100 blocks per batch.</p>
+     *
+     * @param offset Number of blocks to skip (for pagination)
+     * @param limit Maximum number of blocks to return
+     * @return List of encrypted blocks, newest first
+     * @throws IllegalArgumentException if offset or limit are invalid
+     */
+    public List<Block> getEncryptedBlocksPaginatedDesc(long offset, int limit) {
+        return getEncryptedBlocksPaginatedInternal(offset, limit, true);
+    }
+
+    /**
+     * Internal implementation for paginated encrypted blocks queries.
+     *
+     * @param offset Number of blocks to skip (for pagination)
+     * @param limit Maximum number of blocks to return
+     * @param descending If true, ORDER BY DESC; if false, natural ASC order
+     * @return List of encrypted blocks
+     */
+    private List<Block> getEncryptedBlocksPaginatedInternal(long offset, int limit, boolean descending) {
         if (offset < 0) {
             throw new IllegalArgumentException("Offset cannot be negative");
         }
@@ -808,13 +837,85 @@ class BlockRepository {
 
         EntityManager em = JPAUtil.getEntityManager();
         try {
-            // ORDER BY removed: blockNumber is @Id with unique index, ASC order is guaranteed
-            TypedQuery<Block> query = em.createQuery(
-                    "SELECT b FROM Block b WHERE b.isEncrypted = true",
-                    Block.class);
-            query.setFirstResult((int) offset); // Safe cast after validation
+            String jpql = descending
+                ? "SELECT b FROM Block b WHERE b.isEncrypted = true ORDER BY b.blockNumber DESC"
+                : "SELECT b FROM Block b WHERE b.isEncrypted = true";
+            TypedQuery<Block> query = em.createQuery(jpql, Block.class);
+            query.setFirstResult((int) offset);
             query.setMaxResults(limit);
             return query.getResultList();
+        } finally {
+            if (!JPAUtil.hasActiveTransaction()) {
+                em.close();
+            }
+        }
+    }
+
+    /**
+     * Get encrypted blocks excluding specific block hashes.
+     *
+     * <p>Useful for pagination when some blocks are already processed.
+     * Filters out blocks by hash at SQL level to reduce network I/O and memory usage.</p>
+     *
+     * <p><b>P2 OPTIMIZATION:</b> SQL-level duplicate exclusion for 20-30% DB load reduction.</p>
+     *
+     * <p><b>JPA Parameter Limit:</b> This method handles the JPA parameter limit (~1000-2000)
+     * by falling back to standard pagination when the exclusion list is too large.</p>
+     *
+     * @param offset Number of blocks to skip (for pagination)
+     * @param limit Maximum number of blocks to return
+     * @param excludeHashes Block hashes to exclude (already found blocks)
+     * @return List of encrypted blocks (excluding specified hashes), newest first
+     * @throws IllegalArgumentException if offset or limit are invalid
+     * @since P2 optimization (2026-01-24)
+     */
+    public List<Block> getEncryptedBlocksExcluding(long offset, int limit, Set<String> excludeHashes) {
+        // Fast path: no exclusions
+        if (excludeHashes == null || excludeHashes.isEmpty()) {
+            return getEncryptedBlocksPaginatedDesc(offset, limit);
+        }
+
+        // JPA parameter limit safety check
+        // Most JPA implementations support 1000-2000 parameters in IN clause
+        // We use 1000 as conservative limit
+        final int MAX_EXCLUDE_HASHES = 1000;
+        if (excludeHashes.size() > MAX_EXCLUDE_HASHES) {
+            logger.warn("⚠️ Exclude list too large ({} hashes), using fallback pagination. " +
+                       "Consider increasing cache TTL or batch size.",
+                excludeHashes.size());
+            return getEncryptedBlocksPaginatedDesc(offset, limit);
+        }
+
+        if (offset < 0) {
+            throw new IllegalArgumentException("Offset cannot be negative");
+        }
+        if (limit <= 0) {
+            throw new IllegalArgumentException("Limit must be positive");
+        }
+        if (offset > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException(
+                "Offset " + offset + " exceeds maximum pagination offset (" +
+                Integer.MAX_VALUE + "). Use smaller batch sizes.");
+        }
+
+        EntityManager em = JPAUtil.getEntityManager();
+        try {
+            String jpql = "SELECT b FROM Block b " +
+                          "WHERE b.isEncrypted = true " +
+                          "AND b.hash NOT IN :excludeHashes " +
+                          "ORDER BY b.blockNumber DESC";
+
+            TypedQuery<Block> query = em.createQuery(jpql, Block.class);
+            query.setParameter("excludeHashes", excludeHashes);
+            query.setFirstResult((int) offset);
+            query.setMaxResults(limit);
+
+            List<Block> results = query.getResultList();
+
+            logger.debug("🔍 getEncryptedBlocksExcluding: excluded {} hashes, returned {} blocks",
+                excludeHashes.size(), results.size());
+
+            return results;
         } finally {
             if (!JPAUtil.hasActiveTransaction()) {
                 em.close();
@@ -1477,8 +1578,8 @@ class BlockRepository {
      * Thread-safe with rigorous validation.
      *
      * @param searchTerm The term to search for
-     * @param level      The search level (FAST_ONLY, INCLUDE_METADATA,
-     *                   INCLUDE_ENCRYPTED)
+     * @param level      The search level (FAST_ONLY, INCLUDE_DATA,
+     *                   INCLUDE_OFFCHAIN)
      * @return List of matching blocks (max 10,000 results for memory safety)
      * @throws IllegalArgumentException if searchTerm is empty or level is null
      */
@@ -1492,8 +1593,8 @@ class BlockRepository {
      * Thread-safe with rigorous validation.
      *
      * @param searchTerm The term to search for
-     * @param level      The search level (FAST_ONLY, INCLUDE_METADATA,
-     *                   INCLUDE_ENCRYPTED)
+     * @param level      The search level (FAST_ONLY, INCLUDE_DATA,
+     *                   INCLUDE_OFFCHAIN)
      * @param maxResults Maximum number of results to return
      * @return List of matching blocks, limited by maxResults
      * @throws IllegalArgumentException if searchTerm is empty, level is null, or
@@ -2088,8 +2189,8 @@ class BlockRepository {
                         "(LOWER(b.manualKeywords) LIKE :term OR LOWER(b.autoKeywords) LIKE :term OR LOWER(b.searchableContent) LIKE :term)");
                 break;
 
-            case INCLUDE_METADATA:
-            case INCLUDE_ENCRYPTED:
+            case INCLUDE_DATA:
+            case INCLUDE_OFFCHAIN:
                 // Keywords + block data
                 query.append(
                         "(LOWER(b.manualKeywords) LIKE :term OR LOWER(b.autoKeywords) LIKE :term OR LOWER(b.searchableContent) LIKE :term OR LOWER(b.data) LIKE :term)");
@@ -2212,10 +2313,24 @@ class BlockRepository {
         }
 
         // Decrypt data if the block is encrypted
-        if (block.isDataEncrypted() && block.getEncryptionMetadata() != null) {
+        if (block.isDataEncrypted()) {
             try {
-                String decryptedData = SecureBlockEncryptionService.decryptFromString(
-                        block.getEncryptionMetadata(), password);
+                String decryptedData;
+
+                // CRITICAL FIX: Handle both encryption metadata formats
+                // 1. Standard encrypted blocks: encryptionMetadata field contains encrypted data
+                // 2. Off-chain blocks: data field contains encrypted data directly
+                if (block.getEncryptionMetadata() != null) {
+                    // Standard encrypted block - decrypt from encryptionMetadata
+                    decryptedData = SecureBlockEncryptionService.decryptFromString(
+                            block.getEncryptionMetadata(), password);
+                } else {
+                    // Off-chain block - decrypt from data field directly
+                    // For off-chain blocks, encrypted data is stored in data field, not encryptionMetadata
+                    decryptedData = SecureBlockEncryptionService.decryptFromString(
+                            block.getData(), password);
+                }
+
                 block.setData(decryptedData);
             } catch (Exception e) {
                 // Check if this is a Tag mismatch error (wrong password - expected in

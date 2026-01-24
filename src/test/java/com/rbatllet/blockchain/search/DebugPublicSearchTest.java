@@ -15,7 +15,12 @@ import java.util.List;
 /**
  * Debug test to understand how public search works
  */
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class DebugPublicSearchTest {
+    private static final Logger logger = LoggerFactory.getLogger(DebugPublicSearchTest.class);
 
     private Blockchain blockchain;
     private KeyPair bootstrapKeyPair;
@@ -63,7 +68,7 @@ public class DebugPublicSearchTest {
 
     @Test
     public void debugPublicSearchIndexing() {
-        System.out.println("🔍 DEBUG: Testing how public search indexing works");
+        logger.info("🔍 DEBUG: Testing how public search indexing works");
         
         // Store data with explicit public/private separation
         encryptionAPI.storeSearchableDataWithLayers(
@@ -73,27 +78,27 @@ public class DebugPublicSearchTest {
             new String[]{"hypertension"} // private terms
         );
         
-        System.out.println("✅ Data stored with public: [medical], private: [hypertension]");
+        logger.info("✅ Data stored with public: [medical], private: [hypertension]");
         
         // Test 1: Search for public term directly
         List<SearchFrameworkEngine.EnhancedSearchResult> results1 = searchAPI.searchAll("medical");
-        System.out.println("🔍 Search 'medical': " + results1.size() + " results");
+        logger.info("🔍 Search 'medical': {} results", results1.size());
         
         // Test 2: Search for public term with prefix
         List<SearchFrameworkEngine.EnhancedSearchResult> results2 = searchAPI.searchAll("public:medical");
-        System.out.println("🔍 Search 'public:medical': " + results2.size() + " results");
+        logger.info("🔍 Search 'public:medical': {} results", results2.size());
         
         // Test 3: Search for private term (should be 0)
         List<SearchFrameworkEngine.EnhancedSearchResult> results3 = searchAPI.searchAll("hypertension");
-        System.out.println("🔍 Search 'hypertension': " + results3.size() + " results");
+        logger.info("🔍 Search 'hypertension': {} results", results3.size());
         
         // Test 4: Search using searchSecure (should find both)
         List<SearchFrameworkEngine.EnhancedSearchResult> results4 = searchAPI.searchSecure("medical", "testPassword");
-        System.out.println("🔍 SearchSecure 'medical': " + results4.size() + " results");
+        logger.info("🔍 SearchSecure 'medical': {} results", results4.size());
         
         List<SearchFrameworkEngine.EnhancedSearchResult> results5 = searchAPI.searchSecure("hypertension", "testPassword");
-        System.out.println("🔍 SearchSecure 'hypertension': " + results5.size() + " results");
+        logger.info("🔍 SearchSecure 'hypertension': {} results", results5.size());
         
-        System.out.println("\n🔍 DEBUG: With option B, searchAll should find ALL terms (public and private)");
+        logger.info("\n🔍 DEBUG: With option B, searchAll should find ALL terms (public and private)");
     }
 }

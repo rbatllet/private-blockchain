@@ -1210,7 +1210,7 @@ public void setAutoChunkEnabled(boolean enabled) { ... }
 ### Internal Documentation
 
 - [API_GUIDE.md](../reference/API_GUIDE.md) - Current API reference
-- [MEMORY_SAFETY_GUIDE.md](./MEMORY_SAFETY_GUIDE.md) - Memory-efficient patterns
+- [MEMORY_SAFETY_GUIDE.md](../development/MEMORY_SAFETY_GUIDE.md) - Memory-efficient patterns
 - [STREAMING_PATTERNS_GUIDE.md](./STREAMING_PATTERNS_GUIDE.md) - Streaming APIs
 - [SEARCH_APIS_COMPARISON.md](../search/SEARCH_APIS_COMPARISON.md) - Search strategies
 

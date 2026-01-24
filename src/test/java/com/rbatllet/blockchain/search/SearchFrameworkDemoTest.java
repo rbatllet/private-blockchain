@@ -23,6 +23,9 @@ import com.rbatllet.blockchain.search.SearchFrameworkEngine.EnhancedSearchResult
 import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.TestGenesisKeyManager;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Test based on SearchFrameworkDemo to detect hidden issues
@@ -32,6 +35,8 @@ import com.rbatllet.blockchain.util.CryptoUtil;
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class SearchFrameworkDemoTest {
+    private static final Logger logger = LoggerFactory.getLogger(SearchFrameworkDemoTest.class);
+
     
     private Blockchain blockchain;
     private KeyPair bootstrapKeyPair;
@@ -178,7 +183,7 @@ public class SearchFrameworkDemoTest {
             assertNotNull(results, "Search results should not be null for term: " + term);
             
             // Log the search result for debugging
-            System.out.println("Search for '" + term + "': " + results.size() + " results");
+            logger.info("Search for '" + term + "': " + results.size() + " results");
             
             // Note: We can't assert results.size() > 0 because there might be indexing issues
             // But we can verify the search doesn't crash
@@ -201,7 +206,7 @@ public class SearchFrameworkDemoTest {
             assertNotNull(results, "Secure search results should not be null for term: " + term);
             
             // Log the search result for debugging
-            System.out.println("Secure search for '" + term + "': " + results.size() + " results");
+            logger.info("Secure search for '" + term + "': " + results.size() + " results");
         }
     }
     
@@ -221,7 +226,7 @@ public class SearchFrameworkDemoTest {
             assertNotNull(results, "Intelligent search results should not be null for term: " + term);
             
             // Log the search result for debugging
-            System.out.println("Intelligent search for '" + term + "': " + results.size() + " results");
+            logger.info("Intelligent search for '" + term + "': " + results.size() + " results");
         }
     }
     

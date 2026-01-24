@@ -13,6 +13,9 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.List;
 import org.junit.jupiter.api.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * BASIC SEARCH FRAMEWORK ENGINE TEST SUITE
@@ -22,6 +25,8 @@ import org.junit.jupiter.api.*;
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class SearchFrameworkBasicTest {
+    private static final Logger logger = LoggerFactory.getLogger(SearchFrameworkBasicTest.class);
+
 
     private SearchSpecialistAPI specialistAPI;
     private Blockchain testBlockchain;
@@ -82,29 +87,29 @@ public class SearchFrameworkBasicTest {
         // Test statistics from the SearchSpecialistAPI
         SearchStats stats = specialistAPI.getStatistics();
         assertNotNull(stats, "Stats should not be null");
-        System.out.println("📊 SearchSpecialistAPI stats:");
-        System.out.println(
+        logger.info("📊 SearchSpecialistAPI stats:");
+        logger.info(
             "   - Total blocks indexed: " + stats.getTotalBlocksIndexed()
         );
-        System.out.println("   - Router stats: " + stats.getRouterStats());
-        System.out.println(
+        logger.info("   - Router stats: " + stats.getRouterStats());
+        logger.info(
             "   - Estimated memory: " +
             stats.getEstimatedMemoryBytes() +
             " bytes"
         );
-        System.out.println(
+        logger.info(
             "   - Actual blockchain blocks: " +
             testBlockchain.getBlockCount()
         );
 
         // Try a simple search to verify the search engine is working
         List<EnhancedSearchResult> searchResults = specialistAPI.searchAll("financial");
-        System.out.println("   - Search test results: " + searchResults.size());
+        logger.info("   - Search test results: " + searchResults.size());
 
         // Show performance metrics for additional debugging
         String metrics = specialistAPI.getPerformanceMetrics();
-        System.out.println("📈 Performance metrics:");
-        System.out.println(metrics);
+        logger.info("📈 Performance metrics:");
+        logger.info(metrics);
 
         // We'll accept that the API is working if it's ready and can perform searches
         // The indexing statistics might be reported differently than expected
@@ -113,7 +118,7 @@ public class SearchFrameworkBasicTest {
             "SearchSpecialistAPI should be ready and functional"
         );
         
-        System.out.println(
+        logger.info(
             "✅ SearchSpecialistAPI is ready and functional"
         );
     }
@@ -279,11 +284,11 @@ public class SearchFrameworkBasicTest {
         // Test statistics (verify API functionality instead of internal statistics)
         SearchStats stats = specialistAPI.getStatistics();
         assertNotNull(stats);
-        System.out.println("📊 Specialist API stats:");
-        System.out.println(
+        logger.info("📊 Specialist API stats:");
+        logger.info(
             "   - Total blocks indexed: " + stats.getTotalBlocksIndexed()
         );
-        System.out.println("   - Router stats: " + stats.getRouterStats());
+        logger.info("   - Router stats: " + stats.getRouterStats());
         
         // Instead of checking internal statistics, verify API is functional
         assertTrue(specialistAPI.isReady(), 
@@ -303,10 +308,10 @@ public class SearchFrameworkBasicTest {
         assertNotNull(diagnostics);
         assertTrue(diagnostics.contains("Search Framework Engine Diagnostics"));
 
-        System.out.println("=== PERFORMANCE METRICS ===");
-        System.out.println(metrics);
-        System.out.println("\n=== DIAGNOSTICS ===");
-        System.out.println(diagnostics);
+        logger.info("=== PERFORMANCE METRICS ===");
+        logger.info(metrics);
+        logger.info("\n=== DIAGNOSTICS ===");
+        logger.info(diagnostics);
     }
 
     // ===== ERROR HANDLING TESTS =====
@@ -329,7 +334,7 @@ public class SearchFrameworkBasicTest {
             "Should throw exception for empty query"
         );
 
-        System.out.println("Error handling tests completed successfully");
+        logger.info("Error handling tests completed successfully");
     }
 
     @Test

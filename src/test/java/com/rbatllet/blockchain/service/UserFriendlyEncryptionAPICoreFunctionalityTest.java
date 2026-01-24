@@ -15,6 +15,9 @@ import java.security.KeyPair;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Tests for UserFriendlyEncryptionAPI core functionality methods with 0% coverage
@@ -22,6 +25,8 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @DisplayName("🎯 UserFriendlyEncryptionAPI Core Functionality Tests")
 public class UserFriendlyEncryptionAPICoreFunctionalityTest {
+    private static final Logger logger = LoggerFactory.getLogger(UserFriendlyEncryptionAPICoreFunctionalityTest.class);
+
 
     private UserFriendlyEncryptionAPI api;
     private Blockchain realBlockchain;
@@ -63,7 +68,7 @@ public class UserFriendlyEncryptionAPICoreFunctionalityTest {
             realBlockchain.initializeAdvancedSearch(testPassword);
             realBlockchain.getSearchSpecialistAPI().initializeWithBlockchain(realBlockchain, testPassword, defaultKeyPair.getPrivate());
         } catch (Exception e) {
-            System.err.println("⚠️ Warning: SearchSpecialistAPI initialization failed: " + e.getMessage());
+            logger.error("⚠️ Warning: SearchSpecialistAPI initialization failed: " + e.getMessage());
         }
         
         // CRITICAL: Store block references to use directly (avoid contamination from previous test runs)

@@ -16,12 +16,17 @@ import java.security.KeyPair;
 import java.util.Map;
 import java.util.Set;
 import java.util.HashSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Comprehensive test suite for newly implemented metadata extraction methods
  * Tests extractOwnerDetails(), extractTechnicalDetails(), and extractValidationInfo()
  */
 class MetadataExtractionMethodsTest {
+    private static final Logger logger = LoggerFactory.getLogger(MetadataExtractionMethodsTest.class);
+
 
     private Blockchain blockchain;
     private KeyPair bootstrapKeyPair;
@@ -102,7 +107,7 @@ class MetadataExtractionMethodsTest {
         assertTrue(ownerDetails.contains("category:medical"), "Should contain content category");
         assertTrue(ownerDetails.contains("content_size:"), "Should contain content size");
         
-        System.out.println("✅ Owner details extracted: " + ownerDetails);
+        logger.info("✅ Owner details extracted: " + ownerDetails);
     }
 
     @Test
@@ -166,9 +171,9 @@ class MetadataExtractionMethodsTest {
         assertNotNull(keywordDensity, "Keyword density should be calculated");
         assertTrue(keywordDensity >= 0, "Keyword density should be non-negative");
         
-        System.out.println("✅ Technical details keys: " + techDetails.keySet());
-        System.out.println("📊 Content length: " + contentLength);
-        System.out.println("📊 Keyword density: " + String.format("%.2f%%", keywordDensity));
+        logger.info("✅ Technical details keys: " + techDetails.keySet());
+        logger.info("📊 Content length: " + contentLength);
+        logger.info("📊 Keyword density: " + String.format("%.2f%%", keywordDensity));
     }
 
     @Test
@@ -230,10 +235,10 @@ class MetadataExtractionMethodsTest {
         assertTrue(timestampValidation.equals("valid_range") || timestampValidation.equals("suspicious_timestamp"),
                   "Timestamp validation should be valid_range or suspicious_timestamp");
         
-        System.out.println("✅ Validation info keys: " + validationInfo.keySet());
-        System.out.println("🛡️ Hash algorithm: " + validationInfo.get("block_hash_algorithm"));
-        System.out.println("🛡️ Has digital signature: " + hasSignature);
-        System.out.println("🛡️ Timestamp validation: " + timestampValidation);
+        logger.info("✅ Validation info keys: " + validationInfo.keySet());
+        logger.info("🛡️ Hash algorithm: " + validationInfo.get("block_hash_algorithm"));
+        logger.info("🛡️ Has digital signature: " + hasSignature);
+        logger.info("🛡️ Timestamp validation: " + timestampValidation);
     }
 
     @Test
@@ -280,8 +285,8 @@ class MetadataExtractionMethodsTest {
         assertNotNull(fileSize, "Off-chain file size should be available");
         assertTrue(fileSize > 0, "Off-chain file size should be positive");
         
-        System.out.println("✅ Off-chain file path: " + filePath);
-        System.out.println("📦 Off-chain file size: " + fileSize + " bytes");
+        logger.info("✅ Off-chain file path: " + filePath);
+        logger.info("📦 Off-chain file size: " + fileSize + " bytes");
     }
 
     @Test
@@ -329,8 +334,8 @@ class MetadataExtractionMethodsTest {
         long totalTime = endTime - startTime;
         double avgTimePerBlock = totalTime / (double) numBlocks;
         
-        System.out.println("✅ Generated metadata for " + numBlocks + " blocks in " + totalTime + "ms");
-        System.out.println("⚡ Average time per block: " + String.format("%.2f", avgTimePerBlock) + "ms");
+        logger.info("✅ Generated metadata for " + numBlocks + " blocks in " + totalTime + "ms");
+        logger.info("⚡ Average time per block: " + String.format("%.2f", avgTimePerBlock) + "ms");
         
         // Performance assertion - should be reasonable
         assertTrue(avgTimePerBlock < 500, "Average metadata generation should be under 500ms per block");
@@ -377,6 +382,6 @@ class MetadataExtractionMethodsTest {
             }
         }
         
-        System.out.println("✅ Owner details privacy-safe: " + ownerDetails);
+        logger.info("✅ Owner details privacy-safe: " + ownerDetails);
     }
 }

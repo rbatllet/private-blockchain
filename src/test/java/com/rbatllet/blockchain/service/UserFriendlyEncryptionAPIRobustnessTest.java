@@ -581,7 +581,7 @@ public class UserFriendlyEncryptionAPIRobustnessTest {
             assertThrows(
                 Exception.class,
                 () -> {
-                    api.storeDataWithOffChainFile(null, null, null, null, null);
+                    api.storeDataWithOffChainFile(null, null, null, null, null, null);
                 },
                 "Should throw exception for null parameters"
             );
@@ -595,7 +595,7 @@ public class UserFriendlyEncryptionAPIRobustnessTest {
             assertThrows(
                 Exception.class,
                 () -> {
-                    api.storeDataWithOffChainText(null, null, null, null, null);
+                    api.storeDataWithOffChainText(null, null, null, null, null, null);
                 },
                 "Should throw exception for null parameters"
             );
@@ -610,6 +610,7 @@ public class UserFriendlyEncryptionAPIRobustnessTest {
                 Exception.class,
                 () -> {
                     api.storeSearchableDataWithOffChainFile(
+                        null,
                         null,
                         null,
                         null,

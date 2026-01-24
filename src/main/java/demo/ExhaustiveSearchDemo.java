@@ -295,7 +295,7 @@ public class ExhaustiveSearchDemo {
         
         long startTime = System.nanoTime();
         SearchResult result = searchEngine.searchExhaustiveOffChain(
-            searchTerm, password, privateKey, 20);
+            searchTerm, password, 20);
         long endTime = System.nanoTime();
         double searchTimeMs = (endTime - startTime) / 1_000_000.0;
         
@@ -357,7 +357,7 @@ public class ExhaustiveSearchDemo {
         for (String term : testTerms) {
             long startTime = System.nanoTime();
             SearchResult result = searchEngine.searchExhaustiveOffChain(
-                term, password, privateKey, 10);
+                term, password, 10);
             long endTime = System.nanoTime();
             
             double searchTimeMs = (endTime - startTime) / 1_000_000.0;
@@ -384,13 +384,13 @@ public class ExhaustiveSearchDemo {
         
         // First search (populate cache)
         long firstStart = System.nanoTime();
-        searchEngine.searchExhaustiveOffChain(cacheTestTerm, password, privateKey, 10);
+        searchEngine.searchExhaustiveOffChain(cacheTestTerm, password, 10);
         long firstEnd = System.nanoTime();
         double firstSearchTime = (firstEnd - firstStart) / 1_000_000.0;
         
         // Second search (use cache)
         long secondStart = System.nanoTime();
-        searchEngine.searchExhaustiveOffChain(cacheTestTerm, password, privateKey, 10);
+        searchEngine.searchExhaustiveOffChain(cacheTestTerm, password, 10);
         long secondEnd = System.nanoTime();
         double secondSearchTime = (secondEnd - secondStart) / 1_000_000.0;
         
@@ -408,7 +408,7 @@ public class ExhaustiveSearchDemo {
         // Test with wrong password
         System.out.println("   🧪 Testing wrong password protection...");
         SearchResult wrongPasswordResult = searchEngine.searchExhaustiveOffChain(
-            "confidential", "WrongPassword123!", privateKey, 10);
+            "confidential", "WrongPassword123!", 10);
         
         if (wrongPasswordResult.isSuccessful()) {
             int resultCount = wrongPasswordResult.getResultCount();

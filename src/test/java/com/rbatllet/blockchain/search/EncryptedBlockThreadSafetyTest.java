@@ -18,6 +18,9 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Thread-Safety Test Suite for Encrypted Block Creation and Search Operations
@@ -27,6 +30,8 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class EncryptedBlockThreadSafetyTest {
+    private static final Logger logger = LoggerFactory.getLogger(EncryptedBlockThreadSafetyTest.class);
+
     
     private Blockchain blockchain;
     private KeyPair bootstrapKeyPair;
@@ -86,8 +91,8 @@ public class EncryptedBlockThreadSafetyTest {
     @Order(1)
     @DisplayName("Concurrent Search Index Operations - Thread Safety")
     void testConcurrentSearchIndexOperations() throws InterruptedException {
-        System.out.println("\n🔐 TESTING CONCURRENT SEARCH INDEX OPERATIONS");
-        System.out.println("============================================");
+        logger.info("\n🔐 TESTING CONCURRENT SEARCH INDEX OPERATIONS");
+        logger.info("============================================");
         
         // Pre-create some blocks
         for (int i = 0; i < 5; i++) {
@@ -158,15 +163,15 @@ public class EncryptedBlockThreadSafetyTest {
         assertTrue(searchOperations.get() > 0, "Should complete some search operations");
         assertTrue(errors.get() < numThreads * operationsPerThread / 2, "Most operations should succeed");
         
-        System.out.println("✅ Concurrent search index operations: PASSED");
+        logger.info("✅ Concurrent search index operations: PASSED");
     }
     
     @Test
     @Order(2)
     @DisplayName("Concurrent Search During Block Creation - Thread Safety")
     void testConcurrentSearchDuringBlockCreation() throws InterruptedException {
-        System.out.println("\n🔍 TESTING CONCURRENT SEARCH DURING BLOCK CREATION");
-        System.out.println("=================================================");
+        logger.info("\n🔍 TESTING CONCURRENT SEARCH DURING BLOCK CREATION");
+        logger.info("=================================================");
         
         // Pre-create some blocks for initial search results
         for (int i = 0; i < 5; i++) {
@@ -295,15 +300,15 @@ public class EncryptedBlockThreadSafetyTest {
         assertEquals(0, createErrors.get(), "No create operations should fail");
         assertEquals(0, searchErrors.get(), "No search operations should fail");
         
-        System.out.println("✅ Concurrent search during block creation: PASSED");
+        logger.info("✅ Concurrent search during block creation: PASSED");
     }
     
     @Test
     @Order(3)
     @DisplayName("Search Index Integrity Under Concurrency")
     void testSearchIndexIntegrityUnderConcurrency() throws InterruptedException {
-        System.out.println("\n🔍 TESTING SEARCH INDEX INTEGRITY UNDER CONCURRENCY");
-        System.out.println("==================================================");
+        logger.info("\n🔍 TESTING SEARCH INDEX INTEGRITY UNDER CONCURRENCY");
+        logger.info("==================================================");
         
         // Pre-create some blocks
         for (int i = 0; i < 5; i++) {
@@ -378,7 +383,7 @@ public class EncryptedBlockThreadSafetyTest {
         assertTrue(successfulSearches.get() > 0, "Should have some successful searches");
         assertTrue(finalStats.getTotalBlocksIndexed() >= 0 || searchEngine.search("TestData", testPassword, 10).isSuccessful(), "Search index should remain intact");
         
-        System.out.println("✅ Search index integrity under concurrency: PASSED");
+        logger.info("✅ Search index integrity under concurrency: PASSED");
     }
     
     private String generateTestData(int length) {

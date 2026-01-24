@@ -162,18 +162,23 @@ public class UserFriendlyEncryptionAPIBlockCreationOptionsTest {
         @DisplayName("✅ Should create encrypted block with keywords (thread-safe)")
         void shouldCreateEncryptedBlockWithKeywords() {
             // Given
-            String[] keywords = {"classified", "military", "urgent"};
+            // Add public: prefix to make keywords searchable without password
+            String[] keywords = {"public:classified", "public:military", "public:urgent"};
             BlockCreationOptions options = new BlockCreationOptions()
                     .withPassword(testPassword)
                     .withEncryption(true)
                     .withKeywords(keywords);
-            
+
             // When
             Block result = api.createBlockWithOptions("Military classified data", options);
-            
+
             // Then
             assertNotNull(result);
-            assertEquals("classified military urgent", result.getManualKeywords());
+            // Keywords with public: prefix are stored WITH prefix in manualKeywords
+            // The prefix is stripped during indexing for searching
+            assertTrue(result.getManualKeywords().contains("public:classified"));
+            assertTrue(result.getManualKeywords().contains("public:military"));
+            assertTrue(result.getManualKeywords().contains("public:urgent"));
             assertTrue(result.getIsEncrypted());
         }
 
@@ -181,7 +186,8 @@ public class UserFriendlyEncryptionAPIBlockCreationOptionsTest {
         @DisplayName("✅ Should create encrypted block with category and keywords")
         void shouldCreateEncryptedBlockWithCategoryAndKeywords() {
             // Given
-            String[] keywords = {"top-secret", "project-alpha"};
+            // Add public: prefix to make keywords searchable without password
+            String[] keywords = {"public:top-secret", "public:project-alpha"};
             BlockCreationOptions options = new BlockCreationOptions()
                     .withPassword(testPassword)
                     .withEncryption(true)
@@ -191,11 +197,13 @@ public class UserFriendlyEncryptionAPIBlockCreationOptionsTest {
             
             // When
             Block result = api.createBlockWithOptions("Project Alpha classified details", options);
-            
+
             // Then
             assertNotNull(result);
             assertEquals("PROJECT", result.getContentCategory());
-            assertEquals("top-secret project-alpha", result.getManualKeywords());
+            // Keywords with public: prefix are stored WITH prefix in manualKeywords
+            assertTrue(result.getManualKeywords().contains("public:top-secret"));
+            assertTrue(result.getManualKeywords().contains("public:project-alpha"));
             assertTrue(result.getIsEncrypted());
             assertNotNull(result.getEncryptionMetadata(), "Should have encryption metadata");
             // SECURITY FIX: Data field contains placeholder for encrypted blocks
@@ -228,10 +236,12 @@ public class UserFriendlyEncryptionAPIBlockCreationOptionsTest {
             
             // Then
             assertNotNull(result);
-            assertTrue(result.hasOffChainData());
-            assertNotNull(result.getOffChainData());
-            // Off-chain storage sets category to OFF_CHAIN_LINKED automatically
-            assertEquals("OFF_CHAIN_LINKED", result.getContentCategory());
+            // CRITICAL: Verify hasOffChainData() first to confirm it's actually an off-chain block
+            // This prevents false positives if someone sets category to "OFFCHAIN_DATA" manually
+            assertTrue(result.hasOffChainData(), "Block should have off-chain data");
+            assertNotNull(result.getOffChainData(), "Off-chain data should not be null");
+            // Category is preserved when specified by user
+            assertEquals("DOCUMENT", result.getContentCategory());
             assertEquals("text/plain", result.getOffChainData().getContentType());
             assertTrue(result.getIsEncrypted()); // Off-chain with password creates encrypted block
         }
@@ -260,12 +270,38 @@ public class UserFriendlyEncryptionAPIBlockCreationOptionsTest {
             assertNotNull(result);
             assertTrue(result.hasOffChainData());
             assertTrue(result.getIsEncrypted()); // Should be encrypted with password
-            // Keywords are encrypted when password is provided - verify they exist but may be encrypted
-            assertNotNull(result.getManualKeywords());
-            assertTrue(result.getManualKeywords().length() > 0, "Keywords should exist");
-            // Off-chain storage overrides category to OFF_CHAIN_LINKED
-            assertEquals("OFF_CHAIN_LINKED", result.getContentCategory());
+            // Keywords without "public:" prefix are encrypted (autoKeywords), not public (manualKeywords)
+            assertNotNull(result.getAutoKeywords());
+            assertTrue(result.getAutoKeywords().length() > 0, "Keywords should exist");
+            // Off-chain storage preserves user's category (CONFIDENTIAL in this case)
+            assertEquals("CONFIDENTIAL", result.getContentCategory());
             assertEquals("application/pdf", result.getOffChainData().getContentType());
+        }
+
+        @Test
+        @DisplayName("✅ Should default to OFFCHAIN_DATA when category not specified for off-chain block")
+        void shouldDefaultToOffchainDataWhenCategoryNotSpecified() throws IOException {
+            // Given - Create temporary file
+            Path testFile = tempDir.resolve("offchain-no-category.txt");
+            String fileContent = "Off-chain content without explicit category";
+            Files.writeString(testFile, fileContent);
+
+            // Note: No .withCategory() specified - should default to OFFCHAIN_DATA
+            BlockCreationOptions options = new BlockCreationOptions()
+                    .withOffChain(true)
+                    .withOffChainFilePath(testFile.toString())
+                    .withPassword(testPassword)
+                    .withUsername("offchainnocategory");
+
+            // When
+            Block result = api.createBlockWithOptions("Off-chain without category", options);
+
+            // Then
+            assertNotNull(result);
+            assertTrue(result.hasOffChainData(), "Block should have off-chain data");
+            // Default category when not specified is OFFCHAIN_DATA
+            assertEquals("OFFCHAIN_DATA", result.getContentCategory());
+            assertEquals("text/plain", result.getOffChainData().getContentType());
         }
 
         @Test

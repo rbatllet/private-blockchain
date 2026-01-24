@@ -55,6 +55,9 @@ import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.TestGenesisKeyManager;
 import com.rbatllet.blockchain.util.CustomMetadataUtil;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Comprehensive test suite for previously untested UserFriendlyEncryptionAPI methods
@@ -80,6 +83,7 @@ import com.rbatllet.blockchain.util.CryptoUtil;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Execution(ExecutionMode.SAME_THREAD)
 class UserFriendlyEncryptionAPIUntestedMethodsTest {
+    private static final Logger logger = LoggerFactory.getLogger(UserFriendlyEncryptionAPIUntestedMethodsTest.class);
 
     @Mock
     private Blockchain mockBlockchain;
@@ -169,7 +173,7 @@ class UserFriendlyEncryptionAPIUntestedMethodsTest {
             tempBlockchain.clearAndReinitialize();
         } catch (Exception e) {
             // Log but don't fail the test for cleanup issues
-            System.err.println("Warning: Failed to clean database after test: " + e.getMessage());
+            logger.error("Warning: Failed to clean database after test: " + e.getMessage());
         }
     }
     
@@ -203,7 +207,7 @@ class UserFriendlyEncryptionAPIUntestedMethodsTest {
             realBlockchain.getSearchSpecialistAPI().initializeWithBlockchain(realBlockchain, TEST_PASSWORD, testKeyPair.getPrivate());
         } catch (Exception e) {
             // Log but don't fail - some tests may not need search functionality
-            System.err.println("Warning: SearchSpecialistAPI initialization failed: " + e.getMessage());
+            logger.error("Warning: SearchSpecialistAPI initialization failed: " + e.getMessage());
         }
 
         return new UserFriendlyEncryptionAPI(realBlockchain, TEST_USERNAME, testKeyPair, testConfig);
@@ -572,41 +576,42 @@ class UserFriendlyEncryptionAPIUntestedMethodsTest {
         
         // Mock the blockchain methods that might be called internally  
         lenient().when(mockBlockchain.addBlockWithOffChainData(
-            anyString(), 
-            any(OffChainData.class), 
-            any(String[].class), 
-            anyString(), 
-            any(PrivateKey.class), 
-            any(PublicKey.class)))
+            anyString(),
+            any(OffChainData.class),
+            any(String[].class),
+            anyString(),
+            any(PrivateKey.class),
+            any(PublicKey.class),
+            anyString()))
             .thenReturn(mockBlock);
         lenient().when(mockBlockchain.addEncryptedBlockWithKeywords(any(), any(), any(), any(), any(), any()))
             .thenReturn(mockBlock);
         
         Block result = api.storeDataWithOffChainFile(
-            "Large document content", largeFileData, TEST_PASSWORD, "application/pdf", publicTerms);
-        
+            "Large document content", largeFileData, TEST_PASSWORD, "application/pdf", publicTerms, "LARGE_DOCUMENT");
+
         assertNotNull(result, "Should successfully store large file off-chain");
         assertEquals(1L, result.getBlockNumber(), "Should return correct block");
-        
+
         // Verify that filename was processed correctly in the off-chain data
         assertNotNull(result.getOffChainData(), "Block should have off-chain data");
-        assertTrue(result.getOffChainData().getFilePath().contains("large-document"), 
+        assertTrue(result.getOffChainData().getFilePath().contains("large-document"),
             "Off-chain file path should contain filename: " + filename);
-        
+
         // Test with null file data
         assertThrows(IllegalArgumentException.class, () -> {
-            api.storeDataWithOffChainFile("content", null, TEST_PASSWORD, "application/pdf", publicTerms);
+            api.storeDataWithOffChainFile("content", null, TEST_PASSWORD, "application/pdf", publicTerms, "TEST_NULL_FILE");
         }, "Should throw exception for null file data");
-        
+
         // Test with null content type (should be allowed)
         assertDoesNotThrow(() -> {
-            api.storeDataWithOffChainFile("content", largeFileData, TEST_PASSWORD, null, publicTerms);
+            api.storeDataWithOffChainFile("content", largeFileData, TEST_PASSWORD, null, publicTerms, "TEST_NULL_CONTENT_TYPE");
         }, "Should allow null content type");
-        
+
         // Test file size limits - now properly enforced in the API
         byte[] oversizedFile = new byte[100 * 1024 * 1024]; // 100MB - should exceed 50MB limit
         assertThrows(IllegalArgumentException.class, () -> {
-            api.storeDataWithOffChainFile("content", oversizedFile, TEST_PASSWORD, "application/pdf", publicTerms);
+            api.storeDataWithOffChainFile("content", oversizedFile, TEST_PASSWORD, "application/pdf", publicTerms, "TEST_OVERSIZED");
         }, "Should throw exception for oversized files exceeding 50MB limit");
     }
 
@@ -635,12 +640,14 @@ class UserFriendlyEncryptionAPIUntestedMethodsTest {
         
         // Mock the blockchain methods that might be called
         lenient().when(mockBlockchain.addBlockWithOffChainData(
-            anyString(), 
-            any(OffChainData.class), 
-            any(String[].class), 
-            anyString(), 
-            any(PrivateKey.class), 
-            any(PublicKey.class)))
+            anyString(),
+            any(OffChainData.class),
+            any(String[].class),
+            anyString(),
+            any(PrivateKey.class),
+            any(PublicKey.class),
+            anyString()  // category parameter
+        ))
             .thenReturn(mockBlock);
         lenient().when(mockBlockchain.addEncryptedBlockWithKeywords(any(), any(), any(), any(), any(), any()))
             .thenReturn(mockBlock);
@@ -649,24 +656,24 @@ class UserFriendlyEncryptionAPIUntestedMethodsTest {
         String strongPassword = "StrongOffchainPassword123!";
         // Correct parameter order: (blockData, textContent, password, filename, keywords)
         Block result = api.storeDataWithOffChainText(
-            "Summary", textContent, strongPassword, filename, publicTerms);
+            "Summary", textContent, strongPassword, filename, publicTerms, "LARGE_TEXT_SUMMARY");
 
         assertNotNull(result, "Should successfully store large text off-chain");
 
         // Test with moderate size text (should stay on-chain)
         String moderateText = "This is a moderate size text that should stay on-chain.";
         Block onChainResult = api.storeDataWithOffChainText(
-            moderateText, moderateText, strongPassword, "small.txt", publicTerms);
+            moderateText, moderateText, strongPassword, "small.txt", publicTerms, "MODERATE_TEXT");
         
         assertNotNull(onChainResult, "Should handle moderate text on-chain");
         
         // Test parameter validation (using strong password for v1.0.6+)
         assertThrows(IllegalArgumentException.class, () -> {
-            api.storeDataWithOffChainText(null, textContent, strongPassword, filename, publicTerms);
+            api.storeDataWithOffChainText(null, textContent, strongPassword, filename, publicTerms, "TEST_NULL_SUMMARY");
         }, "Should throw exception for null summary");
 
         assertThrows(IllegalArgumentException.class, () -> {
-            api.storeDataWithOffChainText("summary", null, strongPassword, filename, publicTerms);
+            api.storeDataWithOffChainText("summary", null, strongPassword, filename, publicTerms, "TEST_NULL_CONTENT");
         }, "Should throw exception for null text content");
     }
 
@@ -895,10 +902,10 @@ class UserFriendlyEncryptionAPIUntestedMethodsTest {
     @Order(20)
     @DisplayName("Test storeSearchableDataWithOffChainFile() - Off-chain searchable data storage")
     void testStoreSearchableDataWithOffChainFile() throws Exception {
-        // Method signature: (blockData, fileData, password, contentType, publicKeywords, privateKeywords)
+        // Method signature: (blockData, fileData, password, contentType, publicKeywords, privateKeywords, category)
         Method storeMethod = UserFriendlyEncryptionAPI.class
             .getDeclaredMethod("storeSearchableDataWithOffChainFile",
-                String.class, byte[].class, String.class, String.class, String[].class, String[].class);
+                String.class, byte[].class, String.class, String.class, String[].class, String[].class, String.class);
         storeMethod.setAccessible(true);
 
         UserFriendlyEncryptionAPI realApi = createApiWithRealBlockchain();
@@ -912,8 +919,8 @@ class UserFriendlyEncryptionAPIUntestedMethodsTest {
         String[] privateTerms = {"private", "confidential"};
 
         assertDoesNotThrow(() -> {
-            // Pass password as 3rd parameter (correct method signature)
-            storeMethod.invoke(realApi, summary, fileContent, strongPassword, contentType, publicTerms, privateTerms);
+            // Pass password as 3rd parameter and category as 7th parameter (correct method signature)
+            storeMethod.invoke(realApi, summary, fileContent, strongPassword, contentType, publicTerms, privateTerms, "SEARCHABLE_DOCUMENT");
             // Result could be Block or Long depending on implementation
         }, "Off-chain searchable data storage should complete without errors");
     }

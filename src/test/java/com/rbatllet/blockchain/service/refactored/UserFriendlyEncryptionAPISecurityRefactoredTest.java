@@ -15,6 +15,9 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Refactored security tests demonstrating new test utilities usage.
@@ -25,6 +28,8 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @DisplayName("🔐 UserFriendlyEncryptionAPI Security Tests (Refactored)")
 class UserFriendlyEncryptionAPISecurityRefactoredTest extends UserFriendlyEncryptionAPIBaseTest {
+    private static final Logger logger = LoggerFactory.getLogger(UserFriendlyEncryptionAPISecurityRefactoredTest.class);
+
 
     @Nested
     @DisplayName("🔒 Password Security Tests")
@@ -186,6 +191,6 @@ class UserFriendlyEncryptionAPISecurityRefactoredTest extends UserFriendlyEncryp
     @Override
     protected void cleanUp() {
         // Optional cleanup specific to security tests
-        System.out.println("🧹 Cleaning up security test resources");
+        logger.info("🧹 Cleaning up security test resources");
     }
 }

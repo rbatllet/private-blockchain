@@ -950,7 +950,7 @@ coordinator.registerIndexer("RECIPIENT_INDEX_REBUILD", request -> {
 
 ## 🔗 Related Documentation
 
-- **[Semaphore-Based Block Indexing Implementation](../development/SEMAPHORE_INDEXING_IMPLEMENTATION.md)** - Complete technical guide on per-block semaphores for thread-safe concurrent indexing
+- **[Semaphore-Based Block Indexing Implementation](../search/SEMAPHORE_INDEXING_IMPLEMENTATION.md)** - Complete technical guide on per-block semaphores for thread-safe concurrent indexing
 - **[Search Framework Guide](../search/SEARCH_FRAMEWORK_GUIDE.md)** - Advanced search engine with indexing coordination
 - **[Thread Safety Standards](../testing/THREAD_SAFETY_STANDARDS.md)** - General thread safety guidelines and best practices
 - **[Performance Optimization](../reports/PERFORMANCE_OPTIMIZATION_SUMMARY.md)** - Performance tuning for indexing and search operations

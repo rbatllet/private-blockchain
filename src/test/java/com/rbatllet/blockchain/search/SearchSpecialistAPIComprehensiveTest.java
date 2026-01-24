@@ -21,6 +21,9 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Comprehensive test suite for SearchSpecialistAPI
@@ -28,6 +31,8 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class SearchSpecialistAPIComprehensiveTest {
+    private static final Logger logger = LoggerFactory.getLogger(SearchSpecialistAPIComprehensiveTest.class);
+
     
     private Blockchain blockchain;
     private KeyPair bootstrapKeyPair;
@@ -123,14 +128,14 @@ public class SearchSpecialistAPIComprehensiveTest {
     @Order(1)
     @DisplayName("Test 1: searchAll() - Generic search functionality")
     void testSearchAll() throws Exception {
-        System.out.println("=== TEST 1: searchAll() GENERIC FUNCTIONALITY ===");
+        logger.info("=== TEST 1: searchAll() GENERIC FUNCTIONALITY ===");
         
         // Test with different search terms
         String[] testTerms = {"financial", "healthcare", "confidential", "nonexistent"};
         
         for (String term : testTerms) {
             List<EnhancedSearchResult> results = searchAPI.searchAll(term);
-            System.out.println("📊 searchAll('" + term + "'): " + results.size() + " results");
+            logger.info("📊 searchAll('" + term + "'): " + results.size() + " results");
             
             if (term.equals("nonexistent")) {
                 assertEquals(0, results.size(), "Should find no results for non-existent term");
@@ -143,37 +148,37 @@ public class SearchSpecialistAPIComprehensiveTest {
         List<EnhancedSearchResult> limitedResults = searchAPI.searchAll("financial", 3);
         assertTrue(limitedResults.size() <= 3, "Should respect result limit");
         
-        System.out.println("✅ searchAll() generic functionality validated");
+        logger.info("✅ searchAll() generic functionality validated");
     }
     
     @Test
     @Order(2)
     @DisplayName("Test 2: searchSecure() - Encrypted content access")
     void testSearchSecure() throws Exception {
-        System.out.println("\n=== TEST 2: searchSecure() ENCRYPTED CONTENT ACCESS ===");
+        logger.info("\n=== TEST 2: searchSecure() ENCRYPTED CONTENT ACCESS ===");
         
         // Test with correct password
         List<EnhancedSearchResult> correctResults = searchAPI.searchSecure("financial", testPassword);
-        System.out.println("📊 searchSecure with correct password: " + correctResults.size() + " results");
+        logger.info("📊 searchSecure with correct password: " + correctResults.size() + " results");
         assertTrue(correctResults.size() > 0, "Should find results with correct password");
         
         // Test with wrong password
         List<EnhancedSearchResult> wrongResults = searchAPI.searchSecure("financial", "wrongpassword");
-        System.out.println("📊 searchSecure with wrong password: " + wrongResults.size() + " results");
+        logger.info("📊 searchSecure with wrong password: " + wrongResults.size() + " results");
         // Wrong password should still return some results from public metadata
         
         // Test with custom limit
         List<EnhancedSearchResult> limitedSecureResults = searchAPI.searchSecure("healthcare", testPassword, 5);
         assertTrue(limitedSecureResults.size() <= 5, "Should respect custom limit");
         
-        System.out.println("✅ searchSecure() encrypted content access validated");
+        logger.info("✅ searchSecure() encrypted content access validated");
     }
     
     @Test
     @Order(3)
     @DisplayName("Test 3: searchIntelligent() - Adaptive search strategy")
     void testSearchIntelligent() throws Exception {
-        System.out.println("\n=== TEST 3: searchIntelligent() ADAPTIVE STRATEGY ===");
+        logger.info("\n=== TEST 3: searchIntelligent() ADAPTIVE STRATEGY ===");
         
         // Test intelligent search with different complexities
         String[] queries = {
@@ -185,7 +190,7 @@ public class SearchSpecialistAPIComprehensiveTest {
         
         for (String query : queries) {
             List<EnhancedSearchResult> results = searchAPI.searchIntelligent(query, testPassword, 10);
-            System.out.println("📊 searchIntelligent('" + query + "'): " + results.size() + " results");
+            logger.info("📊 searchIntelligent('" + query + "'): " + results.size() + " results");
             
             // Validate results have metadata
             for (EnhancedSearchResult result : results) {
@@ -194,14 +199,14 @@ public class SearchSpecialistAPIComprehensiveTest {
             }
         }
         
-        System.out.println("✅ searchIntelligent() adaptive strategy validated");
+        logger.info("✅ searchIntelligent() adaptive strategy validated");
     }
     
     @Test
     @Order(4)
     @DisplayName("Test 4: searchAdvanced() - Expert-level control")
     void testSearchAdvanced() throws Exception {
-        System.out.println("\n=== TEST 4: searchAdvanced() EXPERT CONTROL ===");
+        logger.info("\n=== TEST 4: searchAdvanced() EXPERT CONTROL ===");
         
         // Test with different encryption configs
         EncryptionConfig[] configs = {
@@ -212,25 +217,25 @@ public class SearchSpecialistAPIComprehensiveTest {
         
         for (EncryptionConfig config : configs) {
             SearchResult result = searchAPI.searchAdvanced("financial", testPassword, config, 10);
-            System.out.println("📊 searchAdvanced with " + config.getClass().getSimpleName() + ":");
-            System.out.println("    Success: " + result.isSuccessful());
-            System.out.println("    Results: " + result.getResultCount());
-            System.out.println("    Strategy: " + result.getStrategyUsed());
-            System.out.println("    Time: " + result.getTotalTimeMs() + "ms");
+            logger.info("📊 searchAdvanced with " + config.getClass().getSimpleName() + ":");
+            logger.info("    Success: " + result.isSuccessful());
+            logger.info("    Results: " + result.getResultCount());
+            logger.info("    Strategy: " + result.getStrategyUsed());
+            logger.info("    Time: " + result.getTotalTimeMs() + "ms");
             
             assertTrue(result.isSuccessful(), "Advanced search should be successful");
             assertTrue(result.getResultCount() >= 0, "Should have valid result count");
             assertTrue(result.getTotalTimeMs() > 0, "Should have positive execution time");
         }
         
-        System.out.println("✅ searchAdvanced() expert control validated");
+        logger.info("✅ searchAdvanced() expert control validated");
     }
     
     @Test
     @Order(5)
     @DisplayName("Test 5: Performance comparison between methods")
     void testPerformanceComparison() throws Exception {
-        System.out.println("\n=== TEST 5: PERFORMANCE COMPARISON ===");
+        logger.info("\n=== TEST 5: PERFORMANCE COMPARISON ===");
         
         String searchTerm = "financial";
         int iterations = 5;
@@ -265,24 +270,24 @@ public class SearchSpecialistAPIComprehensiveTest {
         }
         double intelligentAvg = (intelligentTotal / iterations) / 1_000_000.0;
         
-        System.out.println("📊 Performance Results (average over " + iterations + " iterations):");
-        System.out.println("    searchAll: " + String.format("%.2f", simpleAvg) + "ms");
-        System.out.println("    searchSecure: " + String.format("%.2f", secureAvg) + "ms");
-        System.out.println("    searchIntelligent: " + String.format("%.2f", intelligentAvg) + "ms");
+        logger.info("📊 Performance Results (average over " + iterations + " iterations):");
+        logger.info("    searchAll: " + String.format("%.2f", simpleAvg) + "ms");
+        logger.info("    searchSecure: " + String.format("%.2f", secureAvg) + "ms");
+        logger.info("    searchIntelligent: " + String.format("%.2f", intelligentAvg) + "ms");
         
         // All methods should complete within reasonable time
         assertTrue(simpleAvg < 1000, "searchAll should complete within 1 second");
         assertTrue(secureAvg < 1000, "searchSecure should complete within 1 second");
         assertTrue(intelligentAvg < 1000, "searchIntelligent should complete within 1 second");
         
-        System.out.println("✅ Performance comparison validated");
+        logger.info("✅ Performance comparison validated");
     }
     
     @Test
     @Order(6)
     @DisplayName("Test 6: Result consistency between methods")
     void testResultConsistency() throws Exception {
-        System.out.println("\n=== TEST 6: RESULT CONSISTENCY ===");
+        logger.info("\n=== TEST 6: RESULT CONSISTENCY ===");
         
         String searchTerm = "financial";
         
@@ -291,10 +296,10 @@ public class SearchSpecialistAPIComprehensiveTest {
         List<EnhancedSearchResult> secureResults = searchAPI.searchSecure(searchTerm, testPassword);
         List<EnhancedSearchResult> intelligentResults = searchAPI.searchIntelligent(searchTerm, testPassword, 20);
         
-        System.out.println("📊 Result counts:");
-        System.out.println("    searchAll: " + simpleResults.size());
-        System.out.println("    searchSecure: " + secureResults.size());
-        System.out.println("    searchIntelligent: " + intelligentResults.size());
+        logger.info("📊 Result counts:");
+        logger.info("    searchAll: " + simpleResults.size());
+        logger.info("    searchSecure: " + secureResults.size());
+        logger.info("    searchIntelligent: " + intelligentResults.size());
         
         // Since all methods now use the same defaultPassword, they should return similar results
         // Allow for small variations due to different search strategies
@@ -309,52 +314,52 @@ public class SearchSpecialistAPIComprehensiveTest {
             assertTrue(result.getRelevanceScore() > 0, "Simple result should have positive relevance");
         }
         
-        System.out.println("✅ Result consistency validated");
+        logger.info("✅ Result consistency validated");
     }
     
     @Test
     @Order(7)
     @DisplayName("Test 7: API state management")
     void testAPIStateManagement() throws Exception {
-        System.out.println("\n=== TEST 7: API STATE MANAGEMENT ===");
+        logger.info("\n=== TEST 7: API STATE MANAGEMENT ===");
         
         // Test isReady()
         assertTrue(searchAPI.isReady(), "API should be ready after initialization");
         
         // Test statistics
         SearchStats stats = searchAPI.getStatistics();
-        System.out.println("📊 Search statistics:");
-        System.out.println("    Total blocks indexed: " + stats.getTotalBlocksIndexed());
-        System.out.println("    Memory usage: " + stats.getEstimatedMemoryBytes() + " bytes");
+        logger.info("📊 Search statistics:");
+        logger.info("    Total blocks indexed: " + stats.getTotalBlocksIndexed());
+        logger.info("    Memory usage: " + stats.getEstimatedMemoryBytes() + " bytes");
         
         assertTrue(stats.getTotalBlocksIndexed() > 0, "Should have indexed blocks");
         assertTrue(stats.getEstimatedMemoryBytes() > 0, "Should have memory usage");
         
         // Test password registry
         BlockPasswordRegistry.RegistryStats registryStats = searchAPI.getPasswordRegistryStats();
-        System.out.println("📊 Password registry:");
-        System.out.println("    Registered blocks: " + registryStats.getRegisteredBlocks());
-        System.out.println("    Memory usage: " + registryStats.getEstimatedMemoryBytes() + " bytes");
+        logger.info("📊 Password registry:");
+        logger.info("    Registered blocks: " + registryStats.getRegisteredBlocks());
+        logger.info("    Memory usage: " + registryStats.getEstimatedMemoryBytes() + " bytes");
         
         assertTrue(registryStats.getRegisteredBlocks() >= 0, "Should have valid registry count");
         
         // Test registered blocks
         Set<String> registeredBlocks = searchAPI.getRegisteredBlocks();
-        System.out.println("📊 Registered blocks count: " + registeredBlocks.size());
+        logger.info("📊 Registered blocks count: " + registeredBlocks.size());
         
         // Test capabilities
         String capabilities = searchAPI.getCapabilitiesSummary();
-        System.out.println("📊 Capabilities: " + capabilities);
+        logger.info("📊 Capabilities: " + capabilities);
         assertNotNull(capabilities, "Should have capabilities summary");
         
-        System.out.println("✅ API state management validated");
+        logger.info("✅ API state management validated");
     }
     
     @Test
     @Order(8)
     @DisplayName("Test 8: Constructor validation - proper initialization required")
     void testConstructorComparison() throws Exception {
-        System.out.println("\n=== TEST 8: CONSTRUCTOR VALIDATION ===");
+        logger.info("\n=== TEST 8: CONSTRUCTOR VALIDATION ===");
         
         // Test that constructor requires proper initialization
         SearchSpecialistAPI api = new SearchSpecialistAPI(blockchain, testPassword, userKeys.getPrivate());
@@ -362,17 +367,17 @@ public class SearchSpecialistAPIComprehensiveTest {
         
         // Test search with properly constructed API (should find results)
         List<EnhancedSearchResult> results = api.searchAll("financial");
-        System.out.println("📊 Constructor search results: " + results.size());
+        logger.info("📊 Constructor search results: " + results.size());
         assertTrue(results.size() > 0, "Properly constructed API should find results immediately");
         
-        System.out.println("✅ Constructor validation passed");
+        logger.info("✅ Constructor validation passed");
     }
     
     @Test
     @Order(9)
     @DisplayName("Test 9: Error handling and edge cases")
     void testErrorHandling() throws Exception {
-        System.out.println("\n=== TEST 9: ERROR HANDLING ===");
+        logger.info("\n=== TEST 9: ERROR HANDLING ===");
         
         // Test null/empty queries
         assertThrows(IllegalArgumentException.class, () -> {
@@ -402,14 +407,14 @@ public class SearchSpecialistAPIComprehensiveTest {
             searchAPI.searchSecure("test", "");
         }, "Should throw exception for empty password");
         
-        System.out.println("✅ Error handling validated");
+        logger.info("✅ Error handling validated");
     }
     
     @Test
     @Order(10)
     @DisplayName("Test 10: Search with special characters and unicode")
     void testSpecialCharactersAndUnicode() throws Exception {
-        System.out.println("\n=== TEST 10: SPECIAL CHARACTERS AND UNICODE ===");
+        logger.info("\n=== TEST 10: SPECIAL CHARACTERS AND UNICODE ===");
         
         // Test with special characters
         String[] specialQueries = {
@@ -425,7 +430,7 @@ public class SearchSpecialistAPIComprehensiveTest {
         for (String query : specialQueries) {
             try {
                 List<EnhancedSearchResult> results = searchAPI.searchAll(query);
-                System.out.println("📊 Special query '" + query + "': " + results.size() + " results");
+                logger.info("📊 Special query '" + query + "': " + results.size() + " results");
                 // Should not throw exceptions, even if no results found
                 assertTrue(results.size() >= 0, "Should handle special characters gracefully");
             } catch (Exception e) {
@@ -433,6 +438,6 @@ public class SearchSpecialistAPIComprehensiveTest {
             }
         }
         
-        System.out.println("✅ Special characters and unicode handling validated");
+        logger.info("✅ Special characters and unicode handling validated");
     }
 }

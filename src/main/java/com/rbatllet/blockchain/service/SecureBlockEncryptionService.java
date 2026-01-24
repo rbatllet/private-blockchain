@@ -5,6 +5,7 @@ import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Base64;
 
 import static com.rbatllet.blockchain.util.CryptoUtil.getSecureRandom;
@@ -231,9 +232,7 @@ public class SecureBlockEncryptionService {
      */
     private static void clearByteArray(byte[] array) {
         if (array != null) {
-            for (int i = 0; i < array.length; i++) {
-                array[i] = 0;
-            }
+            Arrays.fill(array, (byte) 0);
         }
     }
     

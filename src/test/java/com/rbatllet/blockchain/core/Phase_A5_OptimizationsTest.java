@@ -6,6 +6,8 @@ import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.TestGenesisKeyManager;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.security.KeyPair;
@@ -37,6 +39,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 @DisplayName("Phase A.5: Optimizations Verification (Auto-Detect Database)")
 public class Phase_A5_OptimizationsTest {
 
+    private static final Logger logger = LoggerFactory.getLogger(Phase_A5_OptimizationsTest.class);
+
     private Blockchain blockchain;
     private BlockRepository blockRepository;
     private KeyPair bootstrapKeyPair;
@@ -60,10 +64,10 @@ public class Phase_A5_OptimizationsTest {
         // Detect database type
         if (POSTGRESQL_ENV_CONFIGURED) {
             databaseType = "PostgreSQL";
-            System.out.println("📊 PostgreSQL Configuration Detected");
+            logger.info("📊 PostgreSQL Configuration Detected");
         } else {
             databaseType = "H2 (in-memory)";
-            System.out.println("📊 Using H2 in-memory database");
+            logger.info("📊 Using H2 in-memory database");
         }
 
         blockchain = new Blockchain();
@@ -85,7 +89,7 @@ public class Phase_A5_OptimizationsTest {
         String publicKeyStr = CryptoUtil.publicKeyToString(keyPair.getPublic());
         blockchain.addAuthorizedKey(publicKeyStr, "TestUser", bootstrapKeyPair, UserRole.USER);
 
-        System.out.println("✅ " + databaseType + " Connection Established");
+        logger.info("✅ {} Connection Established", databaseType);
     }
 
     @AfterEach
@@ -93,7 +97,7 @@ public class Phase_A5_OptimizationsTest {
         try {
             blockchain.clearAndReinitialize();
         } catch (Exception e) {
-            System.out.println("⚠️ Cleanup error: " + e.getMessage());
+            logger.info("⚠️ Cleanup error: " + e.getMessage());
             // Don't fail the test on cleanup error
         }
     }
@@ -105,7 +109,7 @@ public class Phase_A5_OptimizationsTest {
     @DisplayName("Phase A.5 Optimization: streamAllBlocksInBatches() with H2")
     void testStreamAllBlocksInBatchesOptimization() throws Exception {
         // Phase 5.2: Use batch write API for faster test setup (3000 blocks)
-        System.out.println("📝 Creating 3,000 test blocks using batch API...");
+            logger.info("📝 Creating 3,000 test blocks using batch API...");
         List<Blockchain.BlockWriteRequest> requests = new ArrayList<>();
         for (int i = 0; i < 3000; i++) {
             requests.add(new Blockchain.BlockWriteRequest(
@@ -113,10 +117,10 @@ public class Phase_A5_OptimizationsTest {
             ));
         }
         blockchain.addBlocksBatch(requests);
-        System.out.println("  ✅ 3,000 blocks created with batch write API");
+        logger.info("  ✅ 3,000 blocks created with batch write API");
 
         // Test streaming in batches (this is the Phase A.5 optimization)
-        System.out.println("🚀 Testing streamAllBlocksInBatches()...");
+        logger.info("🚀 Testing streamAllBlocksInBatches()...");
         long startTime = System.currentTimeMillis();
 
         final int[] processedCount = {0};
@@ -126,13 +130,13 @@ public class Phase_A5_OptimizationsTest {
 
         long duration = System.currentTimeMillis() - startTime;
 
-        System.out.println("⏱️  Batch processing: " + duration + "ms");
-        System.out.println("📊 Blocks processed: " + processedCount[0]);
+        logger.info("⏱️  Batch processing: {}ms", duration);
+        logger.info("📊 Blocks processed: {}", processedCount[0]);
 
         assertTrue(processedCount[0] > 0, "❌ Should process blocks");
         assertTrue(duration < 30000, "❌ H2 optimization should be fast");
 
-        System.out.println("✅ streamAllBlocksInBatches() optimization verified");
+        logger.info("✅ streamAllBlocksInBatches() optimization verified");
     }
 
     // ==================== ITERATION LIMIT ENFORCEMENT ====================
@@ -144,8 +148,8 @@ public class Phase_A5_OptimizationsTest {
         int maxIterations = MemorySafetyConstants.MAX_JSON_METADATA_ITERATIONS;
         assertEquals(100, maxIterations, "❌ MAX_JSON_METADATA_ITERATIONS must be 100");
 
-        System.out.println("✅ MAX_JSON_METADATA_ITERATIONS = " + maxIterations);
-        System.out.println("  Max blocks processable = " + (maxIterations * 1000) + " (100 iterations × 1000 batch size)");
+        logger.info("✅ MAX_JSON_METADATA_ITERATIONS = {}", maxIterations);
+        logger.info("  Max blocks processable = {} (100 iterations × 1000 batch size)", (maxIterations * 1000));
     }
 
     // ==================== TYPE SAFETY WITH LONG OFFSETS ====================
@@ -159,7 +163,7 @@ public class Phase_A5_OptimizationsTest {
             blockchain.addBlock("Test " + i, keyPair.getPrivate(), keyPair.getPublic());
         }
 
-        System.out.println("🔍 Testing type safety with long offsets...");
+        logger.info("🔍 Testing type safety with long offsets...");
 
         // Test with various offset values
         long[] offsets = {0L, 10L, 50L, 100L, 1000L};
@@ -170,13 +174,13 @@ public class Phase_A5_OptimizationsTest {
                         "test", "key", offset, 10);
 
                 assertNotNull(results, "❌ Should handle offset " + offset);
-                System.out.println("  ✅ Offset " + offset + " handled (long type)");
+                logger.info("  ✅ Offset {} handled (long type)", offset);
             } catch (Exception e) {
                 fail("❌ Failed with offset " + offset + ": " + e.getMessage());
             }
         }
 
-        System.out.println("✅ Type safety with long offsets verified");
+        logger.info("✅ Type safety with long offsets verified");
     }
 
     // ==================== STREAMING WITHOUT ITERATION LIMIT ====================
@@ -186,13 +190,13 @@ public class Phase_A5_OptimizationsTest {
     @DisplayName("Phase A.5 Optimization: Streaming methods process blocks without limit")
     void testStreamingMethodsNoIterationLimit() throws Exception {
         // Create 2K blocks
-        System.out.println("📝 Creating 2,000 test blocks...");
+        logger.info("📝 Creating 2,000 test blocks...");
         for (int i = 0; i < 2000; i++) {
             blockchain.addBlock("Stream test " + i, keyPair.getPrivate(), keyPair.getPublic());
-            if ((i + 1) % 1000 == 0) System.out.println("  ✅ " + (i + 1) + " blocks");
+            if ((i + 1) % 1000 == 0) logger.info("  ✅ {} blocks", (i + 1));
         }
 
-        System.out.println("🚀 Testing streamByCustomMetadata()...");
+        logger.info("🚀 Testing streamByCustomMetadata()...");
 
         // Count how many blocks we can process with streaming
         // If iteration limit was enforced, we'd be capped at 100 * 1000 = 100K
@@ -203,11 +207,11 @@ public class Phase_A5_OptimizationsTest {
             count.incrementAndGet();
         });
 
-        System.out.println("📊 Blocks processed by streaming: " + count.get());
+        logger.info("📊 Blocks processed by streaming: {}", count.get());
 
         // Streaming should work (even if count is 0 because no matching blocks)
         // The important thing is it doesn't crash or timeout
-        System.out.println("✅ Streaming methods execute without iteration limit");
+        logger.info("✅ Streaming methods execute without iteration limit");
     }
 
     // ==================== MEMORY EFFICIENCY ====================
@@ -217,13 +221,13 @@ public class Phase_A5_OptimizationsTest {
     @DisplayName("Phase A.5 Optimization: Streaming doesn't accumulate all blocks in memory")
     void testStreamingMemoryEfficiency() throws Exception {
         // Create 2K blocks
-        System.out.println("📝 Creating 2,000 test blocks...");
+        logger.info("📝 Creating 2,000 test blocks...");
         for (int i = 0; i < 2000; i++) {
             blockchain.addBlock("Memory test " + i, keyPair.getPrivate(), keyPair.getPublic());
-            if ((i + 1) % 1000 == 0) System.out.println("  ✅ " + (i + 1) + " blocks");
+            if ((i + 1) % 1000 == 0) logger.info("  ✅ {} blocks", (i + 1));
         }
 
-        System.out.println("🚀 Testing memory efficiency...");
+        logger.info("🚀 Testing memory efficiency...");
 
         // Force garbage collection to get accurate baseline
         System.gc();
@@ -243,15 +247,15 @@ public class Phase_A5_OptimizationsTest {
         long endMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
         long memoryUsed = endMemory - startMemory;
 
-        System.out.println("⏱️  Processed in " + count.get() + " batches");
-        System.out.println("💾 Memory delta: " + (memoryUsed / 1_000_000) + "MB");
+        logger.info("⏱️  Processed in {} batches", count.get());
+        logger.info("💾 Memory delta: {}MB", (memoryUsed / 1_000_000));
 
         // Should use reasonable memory (streaming one batch at a time)
         // Relaxed from 150MB to 160MB to account for JVM overhead and GC timing
         assertTrue(memoryUsed < 160_000_000, // 160MB
                 "❌ Should use < 160MB, used: " + (memoryUsed / 1_000_000) + "MB");
 
-        System.out.println("✅ Streaming memory efficiency verified");
+        logger.info("✅ Streaming memory efficiency verified");
     }
 
     // ==================== PAGINATION CORRECTNESS ====================
@@ -261,13 +265,13 @@ public class Phase_A5_OptimizationsTest {
     @DisplayName("Phase A.5 Optimization: H2 Pagination performance")
     void testH2PaginationPerformance() throws Exception {
         // Create 2K blocks
-        System.out.println("📝 Creating 2,000 test blocks...");
+        logger.info("📝 Creating 2,000 test blocks...");
         for (int i = 0; i < 2000; i++) {
             blockchain.addBlock("Perf test " + i, keyPair.getPrivate(), keyPair.getPublic());
-            if ((i + 1) % 1000 == 0) System.out.println("  ✅ " + (i + 1) + " blocks");
+            if ((i + 1) % 1000 == 0) logger.info("  ✅ {} blocks", (i + 1));
         }
 
-        System.out.println("🚀 Testing H2 pagination...");
+        logger.info("🚀 Testing H2 pagination...");
         long startTime = System.currentTimeMillis();
 
         int batchCount = 0;
@@ -281,14 +285,14 @@ public class Phase_A5_OptimizationsTest {
 
         long duration = System.currentTimeMillis() - startTime;
 
-        System.out.println("⏱️  Pagination: " + duration + "ms");
-        System.out.println("📊 Batches: " + batchCount);
-        System.out.println("📊 Total blocks: " + totalBlocks);
+        logger.info("⏱️  Pagination: {}ms", duration);
+        logger.info("📊 Batches: {}", batchCount);
+        logger.info("📊 Total blocks: {}", totalBlocks);
 
         // H2 with proper indexing should be fast
         assertTrue(duration < 10000, "❌ Should complete within 10 seconds");
 
-        System.out.println("✅ H2 pagination performance acceptable");
+        logger.info("✅ H2 pagination performance acceptable");
     }
 
     // ==================== CONSTANT DEFINITIONS ====================
@@ -297,18 +301,18 @@ public class Phase_A5_OptimizationsTest {
     @Order(7)
     @DisplayName("Phase A.5 Optimization: All memory safety constants are correctly defined")
     void testMemorySafetyConstants() {
-        System.out.println("🔍 Verifying memory safety constants...");
+        logger.info("🔍 Verifying memory safety constants...");
 
         // Verify all constants exist and have reasonable values
         assertEquals(100, MemorySafetyConstants.MAX_JSON_METADATA_ITERATIONS,
                 "❌ MAX_JSON_METADATA_ITERATIONS should be 100");
-        System.out.println("  ✅ MAX_JSON_METADATA_ITERATIONS = 100");
+        logger.info("  ✅ MAX_JSON_METADATA_ITERATIONS = 100");
 
         // These should also exist (defined elsewhere in MemorySafetyConstants)
         assertTrue(MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS > 0,
                 "❌ DEFAULT_MAX_SEARCH_RESULTS should be positive");
-        System.out.println("  ✅ DEFAULT_MAX_SEARCH_RESULTS = " + MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS);
+        logger.info("  ✅ DEFAULT_MAX_SEARCH_RESULTS = {}", MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS);
 
-        System.out.println("✅ All memory safety constants verified");
+        logger.info("✅ All memory safety constants verified");
     }
 }

@@ -6,6 +6,7 @@ import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.util.TestGenesisKeyManager;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.AfterEach;
@@ -114,11 +115,12 @@ public class PublicPrefixEncryptedBlockTest {
         logger.info("📝 Step 2: Indexing the block...");
         searchAPI.initializeWithBlockchain(blockchain, testPassword, userKeyPair.getPrivate());
 
-        // Wait for indexing
+        // Wait for indexing to complete
         try {
-            Thread.sleep(2000);
+            IndexingCoordinator.getInstance().waitForCompletion();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            throw new RuntimeException("Indexing interrupted", e);
         }
 
         // Step 3: Search for PUBLIC keyword with searchPublic (ignores password, searches only public metadata)

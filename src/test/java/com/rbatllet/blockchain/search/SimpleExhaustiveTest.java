@@ -10,15 +10,20 @@ import org.junit.jupiter.api.Test;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
- * Simple test to debug why INCLUDE_ENCRYPTED searches fail
+ * Simple test to debug why INCLUDE_OFFCHAIN searches fail
  */
 public class SimpleExhaustiveTest {
+    private static final Logger logger = LoggerFactory.getLogger(SimpleExhaustiveTest.class);
+
     
     @Test
     void debugExhaustiveSearch() throws Exception {
-        System.out.println("🔍 DEBUG: Starting simple exhaustive search test");
+        logger.info("🔍 DEBUG: Starting simple exhaustive search test");
         
         // Setup
         Blockchain blockchain = new Blockchain();
@@ -37,38 +42,38 @@ public class SimpleExhaustiveTest {
         // Create genesis admin
         String publicKeyString = CryptoUtil.publicKeyToString(publicKey);
         boolean keyAuthorized = blockchain.createBootstrapAdmin(publicKeyString, "TestUser");
-        System.out.println("🔑 Genesis admin created: " + keyAuthorized);
+        logger.info("🔑 Genesis admin created: " + keyAuthorized);
         
         // Create simple block
         boolean blockCreated = blockchain.addBlock(
             "Medical record with patient information", 
             privateKey, publicKey);
-        System.out.println("📦 Block created: " + blockCreated);
-        System.out.println("📊 Total blocks: " + blockchain.getBlockCount());
+        logger.info("📦 Block created: " + blockCreated);
+        logger.info("📊 Total blocks: " + blockchain.getBlockCount());
         
         // Index blockchain
         searchEngine.indexBlockchain(blockchain, password, privateKey);
         IndexingCoordinator.getInstance().waitForCompletion();
-        System.out.println("📋 Blockchain indexed");
+        logger.info("📋 Blockchain indexed");
         
         // Perform exhaustive search
-        System.out.println("🔍 Performing exhaustive search for 'medical'");
+        logger.info("🔍 Performing exhaustive search for 'medical'");
         SearchResult result = searchEngine.searchExhaustiveOffChain(
-            "medical", password, privateKey, 10);
+            "medical", password, 10);
         
         // Debug output
-        System.out.println("📊 DEBUG RESULTS:");
-        System.out.println("   isSuccessful(): " + result.isSuccessful());
-        System.out.println("   getErrorMessage(): " + result.getErrorMessage());
-        System.out.println("   getResultCount(): " + result.getResultCount());
-        System.out.println("   getSearchLevel(): " + result.getSearchLevel());
-        System.out.println("   getStrategyUsed(): " + result.getStrategyUsed());
-        System.out.println("   getTotalTimeMs(): " + result.getTotalTimeMs());
+        logger.info("📊 DEBUG RESULTS:");
+        logger.info("   isSuccessful(): " + result.isSuccessful());
+        logger.info("   getErrorMessage(): " + result.getErrorMessage());
+        logger.info("   getResultCount(): " + result.getResultCount());
+        logger.info("   getSearchLevel(): " + result.getSearchLevel());
+        logger.info("   getStrategyUsed(): " + result.getStrategyUsed());
+        logger.info("   getTotalTimeMs(): " + result.getTotalTimeMs());
         
         if (result.getErrorMessage() != null) {
-            System.err.println("❌ ERROR: " + result.getErrorMessage());
+            logger.error("❌ ERROR: " + result.getErrorMessage());
         }
         
-        System.out.println("✅ Debug test completed");
+        logger.info("✅ Debug test completed");
     }
 }

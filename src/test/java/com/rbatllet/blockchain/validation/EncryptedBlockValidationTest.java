@@ -11,12 +11,17 @@ import org.junit.jupiter.api.*;
 import java.security.KeyPair;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Test enhanced validateChainDetailed() functionality for encrypted blocks
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class EncryptedBlockValidationTest {
+    private static final Logger logger = LoggerFactory.getLogger(EncryptedBlockValidationTest.class);
+
 
     private static Blockchain blockchain;
     private static KeyPair bootstrapKeyPair;
@@ -61,7 +66,7 @@ public class EncryptedBlockValidationTest {
     @Test
     @Order(1)
     void testValidEncryptedBlockValidation() {
-        System.out.println("\n=== Testing Valid Encrypted Block Validation ===");
+        logger.info("\n=== Testing Valid Encrypted Block Validation ===");
         
         // Create a valid encrypted block
         Block encryptedBlock = blockchain.addEncryptedBlockWithKeywords(
@@ -76,7 +81,7 @@ public class EncryptedBlockValidationTest {
         assertNotNull(encryptedBlock);
         assertTrue(encryptedBlock.isDataEncrypted());
         assertEquals("MEDICAL", encryptedBlock.getContentCategory());
-        System.out.println("✅ Encrypted block created: " + encryptedBlock.getBlockNumber());
+        logger.info("✅ Encrypted block created: " + encryptedBlock.getBlockNumber());
         
         // Test individual block validation
         var validationResult = EncryptedBlockValidator.validateEncryptedBlock(encryptedBlock);
@@ -86,23 +91,23 @@ public class EncryptedBlockValidationTest {
         assertTrue(validationResult.isFormatCorrect());
         assertNull(validationResult.getErrorMessage());
         
-        System.out.println("✅ Individual encrypted block validation passed");
-        System.out.println(validationResult.getDetailedReport());
+        logger.info("✅ Individual encrypted block validation passed");
+        logger.info(validationResult.getDetailedReport());
         
         // Test chain validation with encrypted blocks
         var chainValidation = blockchain.validateChainDetailed();
         assertTrue(chainValidation.isStructurallyIntact());
         assertTrue(chainValidation.isFullyCompliant());
         
-        System.out.println("✅ Chain validation with encrypted blocks passed");
-        System.out.println("   Total blocks: " + chainValidation.getTotalBlocks());
-        System.out.println("   Valid blocks: " + chainValidation.getValidBlocks());
+        logger.info("✅ Chain validation with encrypted blocks passed");
+        logger.info("   Total blocks: " + chainValidation.getTotalBlocks());
+        logger.info("   Valid blocks: " + chainValidation.getValidBlocks());
     }
     
     @Test
     @Order(2)
     void testCorruptedEncryptedBlockDetection() {
-        System.out.println("\n=== Testing Corrupted Encrypted Block Detection ===");
+        logger.info("\n=== Testing Corrupted Encrypted Block Detection ===");
         
         // Create a valid encrypted block first
         Block encryptedBlock = blockchain.addEncryptedBlockWithKeywords(
@@ -115,7 +120,7 @@ public class EncryptedBlockValidationTest {
         );
         
         assertNotNull(encryptedBlock);
-        System.out.println("✅ Valid encrypted block created: " + encryptedBlock.getBlockNumber());
+        logger.info("✅ Valid encrypted block created: " + encryptedBlock.getBlockNumber());
         
         // Simulate corruption scenarios
         
@@ -131,7 +136,7 @@ public class EncryptedBlockValidationTest {
         assertFalse(validation1.isEncryptionIntact());
         assertFalse(validation1.isMetadataValid());
         assertTrue(validation1.getErrorMessage().contains("missing"));
-        System.out.println("✅ Detected missing encryption metadata");
+        logger.info("✅ Detected missing encryption metadata");
         
         // 2. Test invalid encryption metadata format
         // UPDATED: Data field is NOT validated anymore (maintains hash integrity)
@@ -146,7 +151,7 @@ public class EncryptedBlockValidationTest {
         assertFalse(validation2.isValid());
         assertFalse(validation2.isEncryptionIntact());
         assertTrue(validation2.getErrorMessage().contains("corrupted"));
-        System.out.println("✅ Detected corrupted encryption metadata");
+        logger.info("✅ Detected corrupted encryption metadata");
         
         // 3. Test corruption detection
         Block corruptedBlock3 = new Block();
@@ -159,19 +164,19 @@ public class EncryptedBlockValidationTest {
         assertFalse(validation3.isValid());
         assertFalse(validation3.isEncryptionIntact());
         assertTrue(validation3.getErrorMessage().contains("corrupted"));
-        System.out.println("✅ Detected corrupted encryption (validation3)");
+        logger.info("✅ Detected corrupted encryption (validation3)");
         
         // 4. Test corruption detection
         var corruption3 = EncryptedBlockValidator.detectCorruption(corruptedBlock3);
         assertTrue(corruption3.isPossiblyCorrupted());
         assertTrue(corruption3.getIssues().contains("Corruption markers detected"));
-        System.out.println("✅ Corruption detection working: " + corruption3);
+        logger.info("✅ Corruption detection working: " + corruption3);
     }
     
     @Test
     @Order(3)
     void testMixedBlockchainValidation() {
-        System.out.println("\n=== Testing Mixed Blockchain Validation ===");
+        logger.info("\n=== Testing Mixed Blockchain Validation ===");
         
         // Create a mix of encrypted and unencrypted blocks
         Block publicBlock1 = blockchain.addBlockAndReturn(
@@ -204,7 +209,7 @@ public class EncryptedBlockValidationTest {
             authorizedKeyPair.getPublic()
         );
         
-        System.out.println("✅ Mixed blockchain created:");
+        logger.info("✅ Mixed blockchain created:");
         System.out.printf("   Public block #%d: %s%n", publicBlock1.getBlockNumber(), 
             publicBlock1.isDataEncrypted() ? "ENCRYPTED" : "PUBLIC");
         System.out.printf("   Encrypted block #%d: %s%n", encryptedBlock1.getBlockNumber(), 
@@ -222,25 +227,25 @@ public class EncryptedBlockValidationTest {
         // UPDATED: Chain may have authorization warnings from previous test cleanup
         // but structure is intact and blocks are valid
         // Check structural integrity only (not full compliance which includes auth)
-        System.out.println("✅ Mixed blockchain validation passed");
-        System.out.println("   Structural integrity: " + chainValidation.isStructurallyIntact());
-        System.out.println("   Total blocks: " + chainValidation.getTotalBlocks());
-        System.out.println("   Valid blocks: " + chainValidation.getValidBlocks());
-        System.out.println("   Invalid blocks: " + chainValidation.getInvalidBlocks());
-        System.out.println("   Revoked blocks: " + chainValidation.getRevokedBlocks());
+        logger.info("✅ Mixed blockchain validation passed");
+        logger.info("   Structural integrity: " + chainValidation.isStructurallyIntact());
+        logger.info("   Total blocks: " + chainValidation.getTotalBlocks());
+        logger.info("   Valid blocks: " + chainValidation.getValidBlocks());
+        logger.info("   Invalid blocks: " + chainValidation.getInvalidBlocks());
+        logger.info("   Revoked blocks: " + chainValidation.getRevokedBlocks());
         
         // Get validation report
         String report = blockchain.getValidationReport();
         assertNotNull(report);
         assertTrue(report.contains("BLOCKCHAIN VALIDATION REPORT"));
-        System.out.println("\n📊 Validation Report:");
-        System.out.println(report);
+        logger.info("\n📊 Validation Report:");
+        logger.info(report);
     }
     
     @Test
     @Order(4)
     void testPasswordValidation() {
-        System.out.println("\n=== Testing Password-based Validation ===");
+        logger.info("\n=== Testing Password-based Validation ===");
         
         // Create encrypted block
         Block encryptedBlock = blockchain.addEncryptedBlock(
@@ -251,19 +256,19 @@ public class EncryptedBlockValidationTest {
         );
         
         assertNotNull(encryptedBlock);
-        System.out.println("✅ Encrypted block created: " + encryptedBlock.getBlockNumber());
+        logger.info("✅ Encrypted block created: " + encryptedBlock.getBlockNumber());
         
         // Test correct password
         boolean canDecryptCorrect = EncryptedBlockValidator.canDecryptWithPassword(
             encryptedBlock, ENCRYPTION_PASSWORD);
         assertTrue(canDecryptCorrect);
-        System.out.println("✅ Correct password validation passed");
+        logger.info("✅ Correct password validation passed");
         
         // Test wrong password
         boolean canDecryptWrong = EncryptedBlockValidator.canDecryptWithPassword(
             encryptedBlock, "WrongPassword123");
         assertFalse(canDecryptWrong);
-        System.out.println("✅ Wrong password correctly rejected");
+        logger.info("✅ Wrong password correctly rejected");
         
         // Test password validation on non-encrypted block
         Block publicBlock = blockchain.addBlockAndReturn(
@@ -275,13 +280,13 @@ public class EncryptedBlockValidationTest {
         boolean canDecryptPublic = EncryptedBlockValidator.canDecryptWithPassword(
             publicBlock, ENCRYPTION_PASSWORD);
         assertFalse(canDecryptPublic); // Should return false for non-encrypted blocks
-        System.out.println("✅ Password validation correctly handles non-encrypted blocks");
+        logger.info("✅ Password validation correctly handles non-encrypted blocks");
     }
     
     @Test
     @Order(5)
     void testValidationStatistics() {
-        System.out.println("\n=== Testing Validation Statistics ===");
+        logger.info("\n=== Testing Validation Statistics ===");
         
         // Create test blockchain with various types
         blockchain.addBlockAndReturn("Public block 1", authorizedKeyPair.getPrivate(), authorizedKeyPair.getPublic());
@@ -296,17 +301,17 @@ public class EncryptedBlockValidationTest {
         assertTrue(stats.contains("Encrypted blocks"));
         assertTrue(stats.contains("Unencrypted blocks"));
         
-        System.out.println("📊 Search/Validation Statistics:");
-        System.out.println(stats);
+        logger.info("📊 Search/Validation Statistics:");
+        logger.info(stats);
         
         // Validate chain and get detailed report
         var validation = blockchain.validateChainDetailed();
         String report = validation.getDetailedReport();
         assertNotNull(report);
         
-        System.out.println("📋 Detailed Validation Report:");
-        System.out.println(report);
+        logger.info("📋 Detailed Validation Report:");
+        logger.info(report);
         
-        System.out.println("✅ Validation statistics working correctly");
+        logger.info("✅ Validation statistics working correctly");
     }
 }

@@ -17,12 +17,17 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Data Integrity and Persistence Thread-Safety Tests
  * Focuses on ensuring data consistency under concurrent access
  */
 public class DataIntegrityThreadSafetyTest {
+    private static final Logger logger = LoggerFactory.getLogger(DataIntegrityThreadSafetyTest.class);
+
 
     private Blockchain blockchain;
     private ExecutorService executorService;
@@ -111,18 +116,18 @@ public class DataIntegrityThreadSafetyTest {
         var validationResult = blockchain.validateChainDetailed();
         boolean finalIntegrityCheck = validationResult.isStructurallyIntact() && validationResult.isFullyCompliant();
 
-        System.out.println("🔐 Data Integrity Results:");
-        System.out.println("   - Total operations: " + totalOperations.get());
-        System.out.println("   - Data corruptions: " + dataCorruptions.get());
-        System.out.println("   - Hash mismatches: " + hashMismatches.get());
-        System.out.println("   - Signature failures: " + signatureFailures.get());
-        System.out.println("   - Final block count: " + blockchain.getBlockCount());
-        System.out.println("   - Final integrity check: " + (finalIntegrityCheck ? "✅ PASS" : "❌ FAIL"));
-        System.out.println("   - Structurally intact: " + validationResult.isStructurallyIntact());
-        System.out.println("   - Fully compliant: " + validationResult.isFullyCompliant());
+        logger.info("🔐 Data Integrity Results:");
+        logger.info("   - Total operations: " + totalOperations.get());
+        logger.info("   - Data corruptions: " + dataCorruptions.get());
+        logger.info("   - Hash mismatches: " + hashMismatches.get());
+        logger.info("   - Signature failures: " + signatureFailures.get());
+        logger.info("   - Final block count: " + blockchain.getBlockCount());
+        logger.info("   - Final integrity check: " + (finalIntegrityCheck ? "✅ PASS" : "❌ FAIL"));
+        logger.info("   - Structurally intact: " + validationResult.isStructurallyIntact());
+        logger.info("   - Fully compliant: " + validationResult.isFullyCompliant());
 
         if (!integrityErrors.isEmpty()) {
-            System.out.println("⚠️ Integrity errors:");
+            logger.info("⚠️ Integrity errors:");
             integrityErrors.stream().limit(5).forEach(System.out::println);
         }
 
@@ -215,13 +220,13 @@ public class DataIntegrityThreadSafetyTest {
             }
         }
 
-        System.out.println("⏱️ Timestamp Consistency Results:");
-        System.out.println("   - Timestamp inconsistencies: " + timestampInconsistencies.get());
-        System.out.println("   - Timestamp ordering issues: " + timestampOrderingIssues);
-        System.out.println("   - Total blocks analyzed: " + allBlocks.size());
+        logger.info("⏱️ Timestamp Consistency Results:");
+        logger.info("   - Timestamp inconsistencies: " + timestampInconsistencies.get());
+        logger.info("   - Timestamp ordering issues: " + timestampOrderingIssues);
+        logger.info("   - Total blocks analyzed: " + allBlocks.size());
 
         if (!timestampErrors.isEmpty()) {
-            System.out.println("⚠️ Timestamp errors:");
+            logger.info("⚠️ Timestamp errors:");
             timestampErrors.stream().limit(3).forEach(System.out::println);
         }
 
@@ -291,7 +296,7 @@ public class DataIntegrityThreadSafetyTest {
         assertTrue(completed, "Block numbering test should complete within timeout");
 
         // Show detailed validation after concurrent operations
-        System.out.println("🔍 Detailed validation after concurrent block number sequence operations:");
+        logger.info("🔍 Detailed validation after concurrent block number sequence operations:");
         blockchain.validateChainDetailed();
         
         // Verify final sequence integrity
@@ -310,14 +315,14 @@ public class DataIntegrityThreadSafetyTest {
             }
         }
 
-        System.out.println("🔢 Block Numbering Results:");
-        System.out.println("   - Successful blocks: " + successfulBlocks.get());
-        System.out.println("   - Observed unique numbers: " + observedBlockNumbers.size());
-        System.out.println("   - Sequence gaps: " + sequenceGaps);
-        System.out.println("   - Total blocks: " + blockchain.getBlockCount());
+        logger.info("🔢 Block Numbering Results:");
+        logger.info("   - Successful blocks: " + successfulBlocks.get());
+        logger.info("   - Observed unique numbers: " + observedBlockNumbers.size());
+        logger.info("   - Sequence gaps: " + sequenceGaps);
+        logger.info("   - Total blocks: " + blockchain.getBlockCount());
 
         if (!sequenceErrors.isEmpty()) {
-            System.out.println("⚠️ Sequence errors:");
+            logger.info("⚠️ Sequence errors:");
             sequenceErrors.stream().limit(3).forEach(System.out::println);
         }
 

@@ -6,6 +6,8 @@ import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.TestGenesisKeyManager;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import org.junit.jupiter.api.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.security.KeyPair;
@@ -22,6 +24,8 @@ import java.util.List;
  */
 @DisplayName("Phase A.5 Diagnostic: Core Functionality Verification")
 public class Phase_A5_DiagnosticTest {
+
+    private static final Logger logger = LoggerFactory.getLogger(Phase_A5_DiagnosticTest.class);
 
     private Blockchain blockchain;
     private BlockRepository blockRepository;
@@ -60,7 +64,7 @@ public class Phase_A5_DiagnosticTest {
     void testIterationLimitConstant() {
         int maxIterations = MemorySafetyConstants.MAX_JSON_METADATA_ITERATIONS;
         assertEquals(100, maxIterations, "❌ MAX_JSON_METADATA_ITERATIONS should be 100");
-        System.out.println("✅ MAX_JSON_METADATA_ITERATIONS = 100");
+        logger.info("✅ MAX_JSON_METADATA_ITERATIONS = 100");
     }
 
     @Test
@@ -74,7 +78,7 @@ public class Phase_A5_DiagnosticTest {
         // Verify block was created
         long finalCount = blockchain.getBlockCount();
         assertTrue(finalCount > initialCount, "❌ Block count should increase");
-        System.out.println("✅ Block created successfully (count: " + initialCount + " → " + finalCount + ")");
+        logger.info("✅ Block created successfully (count: {} → {})", initialCount, finalCount);
     }
 
     @Test
@@ -86,17 +90,17 @@ public class Phase_A5_DiagnosticTest {
         }
 
         long blockCount = blockchain.getBlockCount();
-        System.out.println("✅ Created " + blockCount + " blocks");
+        logger.info("✅ Created {} blocks", blockCount);
 
         // Test batch processing (streams blocks in 1000-block batches)
         final int[] batchCount = {0};
         blockchain.processChainInBatches(batch -> {
             batchCount[0]++;
-            System.out.println("  📊 Batch " + batchCount[0] + ": " + batch.size() + " blocks");
+            logger.info("  📊 Batch {}: {} blocks", batchCount[0], batch.size());
         }, 1000);
 
         assertTrue(batchCount[0] > 0, "❌ Should process at least one batch");
-        System.out.println("✅ Batch processing completed (" + batchCount[0] + " batch(es))");
+        logger.info("✅ Batch processing completed ({} batch(es))", batchCount[0]);
     }
 
     @Test
@@ -115,7 +119,7 @@ public class Phase_A5_DiagnosticTest {
                 List<Block> results = blockRepository.searchByCustomMetadataKeyValuePaginated(
                         "key", "value", offset, 10);
                 assertNotNull(results, "❌ Results should not be null");
-                System.out.println("✅ Offset " + offset + " (long type) handled correctly");
+                logger.info("✅ Offset {} (long type) handled correctly", offset);
             } catch (Exception e) {
                 fail("❌ Failed with offset " + offset + ": " + e.getMessage());
             }

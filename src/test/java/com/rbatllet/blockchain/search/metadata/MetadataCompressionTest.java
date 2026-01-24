@@ -11,12 +11,17 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.security.KeyPair;
 import java.time.LocalDateTime;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Test class for metadata compression and encryption integration
  * Validates that metadata compression works with the Advanced Search architecture
  */
 public class MetadataCompressionTest {
+    private static final Logger logger = LoggerFactory.getLogger(MetadataCompressionTest.class);
+
     
     private MetadataLayerManager metadataManager;
     private KeyPair keyPair;
@@ -105,9 +110,9 @@ public class MetadataCompressionTest {
         assertNotNull(decryptedPrivate.getSpecificKeywords());
         assertTrue(decryptedPrivate.getSpecificKeywords().size() > 0);
         
-        System.out.println("✅ Medical metadata compression test completed");
-        System.out.println("📊 Public keywords: " + publicLayer.getGeneralKeywords().size());
-        System.out.println("🔒 Private keywords: " + decryptedPrivate.getSpecificKeywords().size());
+        logger.info("✅ Medical metadata compression test completed");
+        logger.info("📊 Public keywords: " + publicLayer.getGeneralKeywords().size());
+        logger.info("🔒 Private keywords: " + decryptedPrivate.getSpecificKeywords().size());
     }
     
     @Test
@@ -182,7 +187,7 @@ public class MetadataCompressionTest {
         assertTrue(decryptedPrivate.getSpecificKeywords().size() > 5, 
                   "Financial data should extract multiple sensitive keywords");
         
-        System.out.println("✅ Financial metadata compression test completed");
+        logger.info("✅ Financial metadata compression test completed");
     }
     
     @Test
@@ -210,7 +215,7 @@ public class MetadataCompressionTest {
         assertNotNull(decryptedLegacy);
         assertEquals("TEST_DETAILED", decryptedLegacy.getDetailedCategory());
         
-        System.out.println("✅ Backwards compatibility test passed");
+        logger.info("✅ Backwards compatibility test passed");
     }
     
     @Test
@@ -246,7 +251,7 @@ public class MetadataCompressionTest {
         assertNotNull(smallDecrypted);
         assertNotNull(largeDecrypted);
         
-        System.out.println("✅ Variable data size compression test completed");
+        logger.info("✅ Variable data size compression test completed");
     }
     
     @Test
@@ -269,7 +274,7 @@ public class MetadataCompressionTest {
         
         assertNotNull(decrypted);
         
-        System.out.println("✅ Performance config compression test completed");
+        logger.info("✅ Performance config compression test completed");
     }
     
     private Block createTestBlock(String hash, String data) {

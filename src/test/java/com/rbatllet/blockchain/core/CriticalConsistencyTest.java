@@ -17,6 +17,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Blockchain consistency test - Verification of critical inconsistencies
@@ -24,6 +27,8 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @DisplayName("Critical Blockchain Consistency Tests")
 class CriticalConsistencyTest {
+    private static final Logger logger = LoggerFactory.getLogger(CriticalConsistencyTest.class);
+
 
     private KeyPair bootstrapKeyPair;
     private KeyPair aliceKeyPair;
@@ -99,7 +104,7 @@ class CriticalConsistencyTest {
             assertTrue(concurrencyResult.isFullyCompliant(), "Chain should be fully compliant after concurrency test");
             assertTrue(concurrencyResult.isStructurallyIntact(), "Chain should be structurally intact after concurrency test");
             
-            System.out.println("✅ Concurrency test passed - No pool exhaustion");
+            logger.info("✅ Concurrency test passed - No pool exhaustion");
             
         } finally {
             executor.shutdown();
@@ -132,7 +137,7 @@ class CriticalConsistencyTest {
         ChainValidationResult rapidCyclesResult = blockchain.validateChainDetailed();
         assertTrue(rapidCyclesResult.isStructurallyIntact(), "Chain should be structurally intact after rapid key cycles");
         // Note: May not be fully compliant due to revoked keys, but structure should be intact
-        System.out.println("✅ Rapid key cycles test passed");
+        logger.info("✅ Rapid key cycles test passed");
     }
 
     @Test
@@ -174,7 +179,7 @@ class CriticalConsistencyTest {
         assertTrue(importedResult.isStructurallyIntact(), "Imported chain must be structurally intact");
         assertTrue(imported.addBlock("Post-import", aliceKeyPair.getPrivate(), aliceKeyPair.getPublic()));
         
-        System.out.println("✅ Import/Export edge cases passed");
+        logger.info("✅ Import/Export edge cases passed");
     }
 
     @Test
@@ -214,7 +219,7 @@ class CriticalConsistencyTest {
         ChainValidationResult rollbackResult = blockchain.validateChainDetailed();
         assertTrue(rollbackResult.isFullyCompliant(), "Chain should be fully compliant after rollback");
         assertTrue(rollbackResult.isStructurallyIntact(), "Chain should be structurally intact after rollback");
-        System.out.println("✅ Rollback consistency test passed");
+        logger.info("✅ Rollback consistency test passed");
     }
 
     @Test
@@ -250,7 +255,7 @@ class CriticalConsistencyTest {
         assertTrue(massRollbackResult.isFullyCompliant(), "Chain should be fully compliant after mass rollback");
         assertTrue(massRollbackResult.isStructurallyIntact(), "Chain should be structurally intact after mass rollback");
         
-        System.out.println("✅ Mass operations test passed");
+        logger.info("✅ Mass operations test passed");
     }
 
     @Test
@@ -289,14 +294,14 @@ class CriticalConsistencyTest {
         assertTrue(errorRecoveryResult.isFullyCompliant(), "Chain should remain fully compliant after failed operations");
         assertTrue(errorRecoveryResult.isStructurallyIntact(), "Chain should remain structurally intact after failed operations");
         
-        System.out.println("✅ Error state recovery test passed");
+        logger.info("✅ Error state recovery test passed");
     }
 
     @Test
     @Order(7)
     @DisplayName("🏁 Final Comprehensive Test")
     void testFinalComprehensive() throws Exception {
-        System.out.println("🔍 Running final comprehensive consistency test...");
+        logger.info("🔍 Running final comprehensive consistency test...");
 
         Blockchain blockchain = new Blockchain();
 
@@ -350,10 +355,10 @@ class CriticalConsistencyTest {
         assertTrue(finalResult.isFullyCompliant(), "Final chain must be fully compliant");
         assertTrue(finalResult.isStructurallyIntact(), "Final chain must be structurally intact");
         
-        System.out.println("🎉 FINAL COMPREHENSIVE TEST PASSED!");
-        System.out.println("   Chain validation: " + finalResult.getSummary());
-        System.out.println("   Chain blocks: " + imported.getBlockCount());
-        System.out.println("   Active keys: " + imported.getAuthorizedKeys().size());
-        System.out.println("   ✅ ALL CONSISTENCY CHECKS PASSED!");
+        logger.info("🎉 FINAL COMPREHENSIVE TEST PASSED!");
+        logger.info("   Chain validation: " + finalResult.getSummary());
+        logger.info("   Chain blocks: " + imported.getBlockCount());
+        logger.info("   Active keys: " + imported.getAuthorizedKeys().size());
+        logger.info("   ✅ ALL CONSISTENCY CHECKS PASSED!");
     }
 }

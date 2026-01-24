@@ -8,12 +8,17 @@ import org.junit.jupiter.api.*;
 import java.security.KeyPair;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Test encryption functionality in the Blockchain core class
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class BlockchainEncryptionTest {
+    private static final Logger logger = LoggerFactory.getLogger(BlockchainEncryptionTest.class);
+
     
     private static Blockchain blockchain;
     private static KeyPair authorizedKeyPair;
@@ -79,7 +84,7 @@ public class BlockchainEncryptionTest {
         assertEquals(PUBLIC_DATA, publicBlock.getData());
         assertNull(publicBlock.getEncryptionMetadata());
 
-        System.out.println("✅ Public block added successfully - ID: " + publicBlock.getBlockNumber());
+        logger.info("✅ Public block added successfully - ID: " + publicBlock.getBlockNumber());
     }
     
     @Test
@@ -104,7 +109,7 @@ public class BlockchainEncryptionTest {
         assertFalse(encryptedBlock.getEncryptionMetadata().contains("123-45-6789"));
         assertFalse(encryptedBlock.getEncryptionMetadata().contains("Hypertension"));
 
-        System.out.println("✅ Encrypted block added successfully - ID: " + encryptedBlock.getBlockNumber());
+        logger.info("✅ Encrypted block added successfully - ID: " + encryptedBlock.getBlockNumber());
     }
     
     @Test
@@ -136,7 +141,7 @@ public class BlockchainEncryptionTest {
         // Searchable content should be empty for privacy
         assertTrue(encryptedBlock.getSearchableContent().isEmpty());
 
-        System.out.println("✅ Encrypted block with keywords added successfully - ID: " + encryptedBlock.getBlockNumber());
+        logger.info("✅ Encrypted block with keywords added successfully - ID: " + encryptedBlock.getBlockNumber());
     }
     
     @Test
@@ -161,7 +166,7 @@ public class BlockchainEncryptionTest {
         assertNotNull(decryptedData);
         assertEquals(CONFIDENTIAL_DATA, decryptedData);
         
-        System.out.println("✅ Block data decrypted successfully");
+        logger.info("✅ Block data decrypted successfully");
     }
     
     @Test
@@ -185,7 +190,7 @@ public class BlockchainEncryptionTest {
         
         assertNull(decryptedData); // Should fail
         
-        System.out.println("✅ Wrong password correctly rejected");
+        logger.info("✅ Wrong password correctly rejected");
     }
     
     @Test
@@ -210,7 +215,7 @@ public class BlockchainEncryptionTest {
         assertFalse(blockchain.isBlockEncrypted(publicBlock.getBlockNumber()));
         assertTrue(blockchain.isBlockEncrypted(encryptedBlock.getBlockNumber()));
         
-        System.out.println("✅ Block encryption status correctly detected");
+        logger.info("✅ Block encryption status correctly detected");
     }
     
     @Test
@@ -272,7 +277,7 @@ public class BlockchainEncryptionTest {
         assertEquals("Secret financial data: Budget $1M", decrypted1);
         assertEquals("Confidential HR data: Employee evaluations", decrypted2);
         
-        System.out.println("✅ Mixed block types (public and encrypted) working correctly");
+        logger.info("✅ Mixed block types (public and encrypted) working correctly");
     }
     
     @Test
@@ -295,8 +300,8 @@ public class BlockchainEncryptionTest {
         boolean isValid = blockchain.isStructurallyIntact();
         assertTrue(isValid, "Chain should remain valid after adding encrypted blocks");
 
-        System.out.println("✅ Blockchain integrity maintained with encrypted blocks");
-        System.out.println("   Chain is valid: " + isValid);
+        logger.info("✅ Blockchain integrity maintained with encrypted blocks");
+        logger.info("   Chain is valid: " + isValid);
     }
     
     @Test
@@ -326,7 +331,7 @@ public class BlockchainEncryptionTest {
         String result = blockchain.getDecryptedBlockData(999999L, ENCRYPTION_PASSWORD);
         assertNull(result);
         
-        System.out.println("✅ Encryption error handling working correctly");
+        logger.info("✅ Encryption error handling working correctly");
     }
     
     @Test

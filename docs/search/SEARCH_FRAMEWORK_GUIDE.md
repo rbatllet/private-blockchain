@@ -1134,7 +1134,7 @@ try {
 - **[IndexingSyncDemo](../../src/main/java/demo/IndexingSyncDemo.java)** - Working demo with 4 practical examples
 - [API Guide](../reference/API_GUIDE.md) - Complete API reference
 - [Thread Safety & Concurrent Indexing](../monitoring/INDEXING_COORDINATOR_EXAMPLES.md#thread-safety--concurrent-indexing) - Per-block semaphore coordination
-- [Semaphore-Based Block Indexing Implementation](../development/SEMAPHORE_INDEXING_IMPLEMENTATION.md) - Complete technical guide
+- [Semaphore-Based Block Indexing Implementation](SEMAPHORE_INDEXING_IMPLEMENTATION.md) - Complete technical guide
 - [IndexingCoordinator Examples](../monitoring/INDEXING_COORDINATOR_EXAMPLES.md) - Practical examples for indexing coordination and loop prevention
 - [Granular Term Visibility Demo](../scripts/run_granular_term_visibility_demo.zsh) - Interactive demonstration
 - [Search Comparison](SEARCH_COMPARISON.md) - Performance benchmarks

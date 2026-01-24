@@ -53,8 +53,8 @@ The Advanced Search Engine offers 5 main search types, each optimized for differ
 | Exhaustive analysis | ❌ | ❌ | ❌ | ✅ | ❌ |
 | **🎯 SEARCH LEVELS** |||||
 | FAST_ONLY | ✅ | ✅ | ❌ | ❌ | ✅ |
-| INCLUDE_METADATA | ✅ | ❌ | ✅ | ❌ | ✅ |
-| INCLUDE_ENCRYPTED | ❌ | ❌ | ❌ | ✅ | ❌ |
+| INCLUDE_DATA | ✅ | ❌ | ✅ | ❌ | ✅ |
+| INCLUDE_OFFCHAIN | ✅ | ❌ | ❌ | ✅ | ❌ |
 
 **Legend:**  
 ✅ = Fully supported  

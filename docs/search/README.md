@@ -47,7 +47,7 @@ api.setDefaultCredentials("username", userKeys);
 
 This directory contains comprehensive documentation for all search functionality in the Private Blockchain.
 
-## 📚 Documents in This Directory (12 files)
+## 📚 Documents in This Directory (18 files)
 
 ### 🎯 Start Here
 | Document | Description | Use Case |
@@ -59,10 +59,18 @@ This directory contains comprehensive documentation for all search functionality
 |----------|-------------|----------|
 | **[SEARCH_FRAMEWORK_GUIDE.md](SEARCH_FRAMEWORK_GUIDE.md)** | Complete guide to Search Framework Engine | Professional search with caching |
 | **[INDEXING_GUIDE.md](INDEXING_GUIDE.md)** | Blockchain indexing guide (async vs sync) | Understanding indexing methods |
+| **[SEMAPHORE_INDEXING_IMPLEMENTATION.md](SEMAPHORE_INDEXING_IMPLEMENTATION.md)** | Per-block semaphore coordination for concurrent indexing | Understanding thread-safe indexing patterns |
 | **[SEARCH_COMPARISON.md](SEARCH_COMPARISON.md)** | Detailed comparison of search implementations | Understanding differences |
 | **[SEARCH_PASSWORD_BEHAVIOR.md](SEARCH_PASSWORD_BEHAVIOR.md)** | How passwords affect search scope and strategy | Understanding password-based search |
 | **[FUZZY_MATCHING_TECHNICAL_GUIDE.md](FUZZY_MATCHING_TECHNICAL_GUIDE.md)** | Fuzzy matching algorithm and implementation | Understanding fuzzy search behavior |
 | **[PUBLIC_PRIVATE_KEYWORDS_TECHNICAL_GUIDE.md](PUBLIC_PRIVATE_KEYWORDS_TECHNICAL_GUIDE.md)** | Public/private keywords processing and storage | Understanding keyword visibility |
+
+### 🚀 Performance & Optimization
+| Document | Description | Use Case |
+|----------|-------------|----------|
+| **[ENCRYPTED_BLOCKS_PAGINATION_OPTIMIZATION.md](ENCRYPTED_BLOCKS_PAGINATION_OPTIMIZATION.md)** | Performance optimization for encrypted blocks pagination | Understanding P0+P1+P2 optimizations (up to 500x improvement) |
+| **[ENCRYPTED_CONTENT_SEARCH_DESIGN.md](ENCRYPTED_CONTENT_SEARCH_DESIGN.md)** | Design and implementation of encrypted content search | Understanding encrypted search architecture |
+| **[SEARCH_METRICS_PERSISTENCE.md](SEARCH_METRICS_PERSISTENCE.md)** | Search metrics persistence and analysis | Tracking search performance metrics |
 
 ### 👤 User-Friendly Search
 | Document | Description | Use Case |
@@ -159,5 +167,5 @@ List<Block> results = engine.searchWithMetadata("keyword", filters);
 ---
 
 **Directory**: `docs/search/`
-**Files**: 12
-**Last Updated**: 2025-01-16
+**Files**: 18
+**Last Updated**: 2026-01-24

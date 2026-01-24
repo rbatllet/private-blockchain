@@ -225,43 +225,43 @@ public class SearchSpecialistAPIOnOffChainTest {
     @Order(2)
     @DisplayName("Test 2: Off-chain search capabilities")
     void testOffChainSearch() throws Exception {
-        System.out.println("\n=== TEST 2: OFF-CHAIN SEARCH CAPABILITIES ===");
+        logger.info("\n=== TEST 2: OFF-CHAIN SEARCH CAPABILITIES ===");
         
         // Search for off-chain specific terms
         List<EnhancedSearchResult> documentResults = searchAPI.searchAll("document");
         List<EnhancedSearchResult> sensitiveResults = searchAPI.searchAll("sensitive");
         List<EnhancedSearchResult> generalResults = searchAPI.searchAll("general");
         
-        System.out.println("📊 Off-chain search results:");
-        System.out.println("  'document': " + documentResults.size() + " results");
-        System.out.println("  'sensitive': " + sensitiveResults.size() + " results");
-        System.out.println("  'general': " + generalResults.size() + " results");
+        logger.info("📊 Off-chain search results:");
+        logger.info("  'document': " + documentResults.size() + " results");
+        logger.info("  'sensitive': " + sensitiveResults.size() + " results");
+        logger.info("  'general': " + generalResults.size() + " results");
         
         // Note: Off-chain search capability depends on SearchFrameworkEngine implementation
         // The results might be 0 if off-chain indexing is not fully implemented
-        System.out.println("ℹ️  Off-chain search results depend on SearchFrameworkEngine implementation");
+        logger.info("ℹ️  Off-chain search results depend on SearchFrameworkEngine implementation");
         
         // Verify search doesn't crash with off-chain terms
         assertTrue(documentResults.size() >= 0, "Document search should not crash");
         assertTrue(sensitiveResults.size() >= 0, "Sensitive search should not crash");
         assertTrue(generalResults.size() >= 0, "General search should not crash");
         
-        System.out.println("✅ Off-chain search validation completed");
+        logger.info("✅ Off-chain search validation completed");
     }
     
     @Test
     @Order(3)
     @DisplayName("Test 3: Mixed on-chain and off-chain search")
     void testMixedSearch() throws Exception {
-        System.out.println("\n=== TEST 3: MIXED ON-CHAIN AND OFF-CHAIN SEARCH ===");
+        logger.info("\n=== TEST 3: MIXED ON-CHAIN AND OFF-CHAIN SEARCH ===");
         
         // Search for terms that might appear in both on-chain and off-chain content
         List<EnhancedSearchResult> dataResults = searchAPI.searchAll("data");
         List<EnhancedSearchResult> informationResults = searchAPI.searchAll("information");
         
-        System.out.println("📊 Mixed search results:");
-        System.out.println("  'data': " + dataResults.size() + " results");
-        System.out.println("  'information': " + informationResults.size() + " results");
+        logger.info("📊 Mixed search results:");
+        logger.info("  'data': " + dataResults.size() + " results");
+        logger.info("  'information': " + informationResults.size() + " results");
         
         // Verify mixed search works
         assertTrue(dataResults.size() >= 0, "Data search should work across all sources");
@@ -269,30 +269,30 @@ public class SearchSpecialistAPIOnOffChainTest {
         
         // Test intelligent search with mixed content
         List<EnhancedSearchResult> intelligentResults = searchAPI.searchIntelligent("data AND information", testPassword, 20);
-        System.out.println("  intelligent mixed search: " + intelligentResults.size() + " results");
+        logger.info("  intelligent mixed search: " + intelligentResults.size() + " results");
         
         assertTrue(intelligentResults.size() >= 0, "Intelligent mixed search should work");
         
-        System.out.println("✅ Mixed search validation completed");
+        logger.info("✅ Mixed search validation completed");
     }
     
     @Test
     @Order(4)
     @DisplayName("Test 4: Encrypted vs non-encrypted search")
     void testEncryptedVsPublicSearch() throws Exception {
-        System.out.println("\n=== TEST 4: ENCRYPTED VS PUBLIC SEARCH ===");
+        logger.info("\n=== TEST 4: ENCRYPTED VS PUBLIC SEARCH ===");
         
         // Test secure search with correct password
         List<EnhancedSearchResult> secureResults = searchAPI.searchSecure("financial", testPassword);
-        System.out.println("📊 Secure search with correct password: " + secureResults.size() + " results");
+        logger.info("📊 Secure search with correct password: " + secureResults.size() + " results");
         
         // Test secure search with wrong password
         List<EnhancedSearchResult> wrongPasswordResults = searchAPI.searchSecure("financial", "wrongpassword");
-        System.out.println("📊 Secure search with wrong password: " + wrongPasswordResults.size() + " results");
+        logger.info("📊 Secure search with wrong password: " + wrongPasswordResults.size() + " results");
         
         // Test simple search (should access both encrypted and public with default password)
         List<EnhancedSearchResult> simpleResults = searchAPI.searchAll("financial");
-        System.out.println("📊 Simple search: " + simpleResults.size() + " results");
+        logger.info("📊 Simple search: " + simpleResults.size() + " results");
         
         // Verify encrypted content is accessible with correct password
         assertTrue(secureResults.size() > 0, "Should find encrypted content with correct password");
@@ -301,23 +301,23 @@ public class SearchSpecialistAPIOnOffChainTest {
         assertTrue(simpleResults.size() > 0, "Simple search should find content using default password");
         
         // Compare results
-        System.out.println("📊 Comparison:");
-        System.out.println("  Secure (correct pwd): " + secureResults.size());
-        System.out.println("  Secure (wrong pwd): " + wrongPasswordResults.size());
-        System.out.println("  Simple (default pwd): " + simpleResults.size());
+        logger.info("📊 Comparison:");
+        logger.info("  Secure (correct pwd): " + secureResults.size());
+        logger.info("  Secure (wrong pwd): " + wrongPasswordResults.size());
+        logger.info("  Simple (default pwd): " + simpleResults.size());
         
-        System.out.println("✅ Encrypted vs public search validation completed");
+        logger.info("✅ Encrypted vs public search validation completed");
     }
     
     @Test
     @Order(5)
     @DisplayName("Test 5: Search result metadata analysis")
     void testSearchResultMetadata() throws Exception {
-        System.out.println("\n=== TEST 5: SEARCH RESULT METADATA ANALYSIS ===");
+        logger.info("\n=== TEST 5: SEARCH RESULT METADATA ANALYSIS ===");
         
         // Get comprehensive results
         List<EnhancedSearchResult> allResults = searchAPI.searchIntelligent("data", testPassword, 50);
-        System.out.println("📊 Total results for analysis: " + allResults.size());
+        logger.info("📊 Total results for analysis: " + allResults.size());
         
         // Analyze result metadata
         int onChainCount = 0;
@@ -326,10 +326,10 @@ public class SearchSpecialistAPIOnOffChainTest {
         int publicCount = 0;
         
         for (EnhancedSearchResult result : allResults) {
-            System.out.println("🔍 Result: " + result.getBlockHash().substring(0, 8) + "...");
-            System.out.println("  Relevance: " + result.getRelevanceScore());
-            System.out.println("  Source: " + result.getSource());
-            System.out.println("  Summary: " + result.getSummary());
+            logger.info("🔍 Result: " + result.getBlockHash().substring(0, 8) + "...");
+            logger.info("  Relevance: " + result.getRelevanceScore());
+            logger.info("  Source: " + result.getSource());
+            logger.info("  Summary: " + result.getSummary());
             
             // Count by source type (this is conceptual - actual implementation may vary)
             if (result.getSource().toString().contains("CHAIN")) {
@@ -345,25 +345,25 @@ public class SearchSpecialistAPIOnOffChainTest {
             assertNotNull(result.getSource(), "Result should have source information");
         }
         
-        System.out.println("📊 Metadata analysis summary:");
-        System.out.println("  On-chain results: " + onChainCount);
-        System.out.println("  Off-chain results: " + offChainCount);
-        System.out.println("  Encrypted results: " + encryptedCount);
-        System.out.println("  Public results: " + publicCount);
+        logger.info("📊 Metadata analysis summary:");
+        logger.info("  On-chain results: " + onChainCount);
+        logger.info("  Off-chain results: " + offChainCount);
+        logger.info("  Encrypted results: " + encryptedCount);
+        logger.info("  Public results: " + publicCount);
         
-        System.out.println("✅ Search result metadata analysis completed");
+        logger.info("✅ Search result metadata analysis completed");
     }
     
     @Test
     @Order(6)
     @DisplayName("Test 6: Search performance across data types")
     void testPerformanceAcrossDataTypes() throws Exception {
-        System.out.println("\n=== TEST 6: SEARCH PERFORMANCE ACROSS DATA TYPES ===");
+        logger.info("\n=== TEST 6: SEARCH PERFORMANCE ACROSS DATA TYPES ===");
         
         String[] testQueries = {"data", "financial", "document", "blockchain", "information"};
         
         for (String query : testQueries) {
-            System.out.println("🔍 Testing performance for query: '" + query + "'");
+            logger.info("🔍 Testing performance for query: '" + query + "'");
             
             // Test simple search performance
             long startTime = System.nanoTime();
@@ -383,9 +383,9 @@ public class SearchSpecialistAPIOnOffChainTest {
             long intelligentTime = System.nanoTime() - startTime;
             double intelligentMs = intelligentTime / 1_000_000.0;
             
-            System.out.println("  Simple: " + simpleResults.size() + " results in " + String.format("%.2f", simpleMs) + "ms");
-            System.out.println("  Secure: " + secureResults.size() + " results in " + String.format("%.2f", secureMs) + "ms");
-            System.out.println("  Intelligent: " + intelligentResults.size() + " results in " + String.format("%.2f", intelligentMs) + "ms");
+            logger.info("  Simple: " + simpleResults.size() + " results in " + String.format("%.2f", simpleMs) + "ms");
+            logger.info("  Secure: " + secureResults.size() + " results in " + String.format("%.2f", secureMs) + "ms");
+            logger.info("  Intelligent: " + intelligentResults.size() + " results in " + String.format("%.2f", intelligentMs) + "ms");
             
             // Verify reasonable performance
             assertTrue(simpleMs < 2000, "Simple search should complete within 2 seconds");
@@ -393,41 +393,41 @@ public class SearchSpecialistAPIOnOffChainTest {
             assertTrue(intelligentMs < 2000, "Intelligent search should complete within 2 seconds");
         }
         
-        System.out.println("✅ Performance testing across data types completed");
+        logger.info("✅ Performance testing across data types completed");
     }
     
     @Test
     @Order(7)
     @DisplayName("Test 7: Search scope validation")
     void testSearchScopeValidation() throws Exception {
-        System.out.println("\n=== TEST 7: SEARCH SCOPE VALIDATION ===");
+        logger.info("\n=== TEST 7: SEARCH SCOPE VALIDATION ===");
         
         // Test that search actually covers the intended scope
         SearchStats stats = searchAPI.getStatistics();
-        System.out.println("📊 Search engine statistics:");
-        System.out.println("  Total blocks indexed: " + stats.getTotalBlocksIndexed());
-        System.out.println("  Memory usage: " + stats.getEstimatedMemoryBytes() + " bytes");
+        logger.info("📊 Search engine statistics:");
+        logger.info("  Total blocks indexed: " + stats.getTotalBlocksIndexed());
+        logger.info("  Memory usage: " + stats.getEstimatedMemoryBytes() + " bytes");
         
         // Get capabilities summary
         String capabilities = searchAPI.getCapabilitiesSummary();
-        System.out.println("📊 Search capabilities: " + capabilities);
+        logger.info("📊 Search capabilities: " + capabilities);
         
         // Test specific search patterns
         List<EnhancedSearchResult> allDataResults = searchAPI.searchAll("*");
-        System.out.println("📊 Wildcard search results: " + allDataResults.size());
+        logger.info("📊 Wildcard search results: " + allDataResults.size());
         
         // Test empty query handling
         try {
             searchAPI.searchAll("");
             fail("Should throw exception for empty query");
         } catch (IllegalArgumentException e) {
-            System.out.println("✅ Empty query correctly rejected: " + e.getMessage());
+            logger.info("✅ Empty query correctly rejected: " + e.getMessage());
         }
         
         // Verify search scope includes our test data
         assertTrue(stats.getTotalBlocksIndexed() >= 2, "Should have indexed at least our test blocks");
         assertNotNull(capabilities, "Should have capabilities summary");
         
-        System.out.println("✅ Search scope validation completed");
+        logger.info("✅ Search scope validation completed");
     }
 }

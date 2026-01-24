@@ -1,5 +1,6 @@
 package com.rbatllet.blockchain.search.strategy;
 
+import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.search.SearchLevel;
 import com.rbatllet.blockchain.search.metadata.BlockMetadataLayers;
 import com.rbatllet.blockchain.config.EncryptionConfig;
@@ -28,22 +29,39 @@ import java.util.concurrent.Executors;
  * between speed, privacy, and completeness.
  */
 public class SearchStrategyRouter {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(SearchStrategyRouter.class);
-    
+
     private final FastIndexSearch fastIndexSearch;
     private final EncryptedContentSearch encryptedContentSearch;
     private final ExecutorService executorService;
-    
+
+    /**
+     * Default constructor for backward compatibility.
+     * Encrypted content search will be limited to cached metadata only.
+     */
     public SearchStrategyRouter() {
+        this(null);
+    }
+
+    /**
+     * Constructor with Blockchain for full encrypted content search.
+     *
+     * @param blockchain Blockchain instance for decrypting blocks during search
+     */
+    public SearchStrategyRouter(Blockchain blockchain) {
         this.fastIndexSearch = new FastIndexSearch();
-        this.encryptedContentSearch = new EncryptedContentSearch();
+        this.encryptedContentSearch = new EncryptedContentSearch(blockchain);
         // Java 25 Virtual Threads (Phase 1.5): Unlimited concurrent search strategies
         // Benefits: Better than cached pool (no thread creation overhead), 10x-50x improvement
         // Thread Naming: Uses "StrategyWorker-N" for better observability in logs
         this.executorService = Executors.newThreadPerTaskExecutor(
             Thread.ofVirtual().name("StrategyWorker-", 0).factory()
         );
+
+        if (blockchain == null) {
+            logger.warn("⚠️ SearchStrategyRouter created without Blockchain - encrypted content search will be limited to cached metadata only");
+        }
     }
     
     /**
@@ -142,7 +160,9 @@ public class SearchStrategyRouter {
         QueryComplexity complexity = analyzeQueryComplexity(query);
         
         // Check authentication availability
-        boolean hasPassword = password != null && !password.trim().isEmpty();
+        // Treat empty string as valid password (hasPassword=true) to enable HYBRID_CASCADE for content search
+        // This allows INCLUDE_DATA with empty password to search both keywords and non-encrypted content
+        boolean hasPassword = password != null; // Treat empty string as having password (for content search)
         
         // Determine security requirements
         SecurityLevel securityLevel = config != null ? config.getSecurityLevel() : SecurityLevel.PERFORMANCE;
@@ -275,7 +295,7 @@ public class SearchStrategyRouter {
             ))
             .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
         
-        return new AdvancedSearchResult(items, SearchLevel.INCLUDE_METADATA,
+        return new AdvancedSearchResult(items, SearchLevel.INCLUDE_DATA,
                                      encryptedResults.isEmpty() ? 0.0 : encryptedResults.get(0).getSearchTimeMs());
     }
     
@@ -319,7 +339,7 @@ public class SearchStrategyRouter {
             mergedResults.sort((a, b) -> Double.compare(b.getRelevanceScore(), a.getRelevanceScore()));
             
             double totalTime = fastResults.getSearchTimeMs() + encryptedResults.getSearchTimeMs();
-            return new AdvancedSearchResult(mergedResults, SearchLevel.INCLUDE_METADATA, totalTime);
+            return new AdvancedSearchResult(mergedResults, SearchLevel.INCLUDE_DATA, totalTime);
         }
         
         return fastResults;
@@ -366,7 +386,7 @@ public class SearchStrategyRouter {
                 .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
             
             double totalTime = Math.max(fastResults.getSearchTimeMs(), encryptedResults.getSearchTimeMs());
-            return new AdvancedSearchResult(finalResults, SearchLevel.INCLUDE_METADATA, totalTime);
+            return new AdvancedSearchResult(finalResults, SearchLevel.INCLUDE_DATA, totalTime);
             
         } catch (Exception e) {
             throw new RuntimeException("Parallel search execution failed", e);

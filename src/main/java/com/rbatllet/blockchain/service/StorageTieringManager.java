@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -143,7 +144,7 @@ public class StorageTieringManager {
                 }
             }
             
-            sb.append(String.format("\n💾 Storage Efficiency:\n"));
+            sb.append("\n💾 Storage Efficiency:\n");
             sb.append(String.format("  - Total Data Size: %.2f MB\n", 
                 totalDataSize / (1024.0 * 1024.0)));
             sb.append(String.format("  - Compressed Size: %.2f MB\n", 
@@ -544,7 +545,7 @@ public class StorageTieringManager {
             // Use GZIP compression for data tiering
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             GZIPOutputStream gzipOut = new GZIPOutputStream(baos);
-            gzipOut.write(data.getBytes("UTF-8"));
+            gzipOut.write(data.getBytes(StandardCharsets.UTF_8));
             gzipOut.close();
             
             // Convert to Base64 for string storage
@@ -570,7 +571,7 @@ public class StorageTieringManager {
             }
             gzipIn.close();
             
-            return new String(baos.toByteArray(), "UTF-8");
+            return baos.toString(StandardCharsets.UTF_8);
         } catch (Exception e) {
             logger.warn("⚠️ Decompression failed, returning as-is: {}", e.getMessage());
             return compressedData;

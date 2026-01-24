@@ -17,12 +17,17 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Advanced Thread-Safety Tests focusing on Edge Cases and Recovery Scenarios
  * Tests complex scenarios that could expose subtle race conditions
  */
 public class EdgeCaseThreadSafetyTest {
+    private static final Logger logger = LoggerFactory.getLogger(EdgeCaseThreadSafetyTest.class);
+
 
     private Blockchain blockchain;
     private ExecutorService executorService;
@@ -121,16 +126,16 @@ public class EdgeCaseThreadSafetyTest {
         boolean completed = endLatch.await(40, TimeUnit.SECONDS);
         assertTrue(completed, "Stress test should complete within timeout");
 
-        System.out.println("💥 Simultaneous Operations Results:");
-        System.out.println("   - Add block operations: " + addBlockOps.get());
-        System.out.println("   - Rollback operations: " + rollbackOps.get());
-        System.out.println("   - Validation operations: " + validationOps.get());
-        System.out.println("   - Search operations: " + searchOps.get());
-        System.out.println("   - Final block count: " + blockchain.getBlockCount());
-        System.out.println("   - Errors: " + errors.size());
+        logger.info("💥 Simultaneous Operations Results:");
+        logger.info("   - Add block operations: " + addBlockOps.get());
+        logger.info("   - Rollback operations: " + rollbackOps.get());
+        logger.info("   - Validation operations: " + validationOps.get());
+        logger.info("   - Search operations: " + searchOps.get());
+        logger.info("   - Final block count: " + blockchain.getBlockCount());
+        logger.info("   - Errors: " + errors.size());
 
         if (!errors.isEmpty()) {
-            System.out.println("❌ Errors encountered:");
+            logger.info("❌ Errors encountered:");
             errors.stream().limit(5).forEach(System.out::println);
         }
 
@@ -193,11 +198,11 @@ public class EdgeCaseThreadSafetyTest {
         assertNull(criticalError.get(), "No critical errors should occur: " + 
             (criticalError.get() != null ? criticalError.get().getMessage() : ""));
 
-        System.out.println("⚡ Extreme Concurrency Results:");
-        System.out.println("   - Successful bursts: " + successfulBursts.get());
-        System.out.println("   - Failed bursts: " + failedBursts.get());
-        System.out.println("   - Total blocks: " + blockchain.getBlockCount());
-        System.out.println("   - Expected blocks: " + (successfulBursts.get() + 1)); // +1 for genesis
+        logger.info("⚡ Extreme Concurrency Results:");
+        logger.info("   - Successful bursts: " + successfulBursts.get());
+        logger.info("   - Failed bursts: " + failedBursts.get());
+        logger.info("   - Total blocks: " + blockchain.getBlockCount());
+        logger.info("   - Expected blocks: " + (successfulBursts.get() + 1)); // +1 for genesis
 
         var validationResult = blockchain.validateChainDetailed();
         assertTrue(validationResult.isStructurallyIntact(), "Chain should be structurally intact after extreme concurrency");

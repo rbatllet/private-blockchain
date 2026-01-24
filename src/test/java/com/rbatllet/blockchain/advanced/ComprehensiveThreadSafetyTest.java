@@ -11,6 +11,9 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Comprehensive Thread Safety Test Suite
@@ -18,6 +21,8 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class ComprehensiveThreadSafetyTest {
+    private static final Logger logger = LoggerFactory.getLogger(ComprehensiveThreadSafetyTest.class);
+
 
     private Blockchain blockchain;
     private ExecutorService executorService;
@@ -51,7 +56,7 @@ class ComprehensiveThreadSafetyTest {
     @DisplayName("🎯 Sequential Block Number Verification")
     @Timeout(60)
     void testSequentialBlockNumberGeneration() throws InterruptedException {
-        System.out.println("🎯 Testing sequential block number generation under extreme concurrency...");
+        logger.info("🎯 Testing sequential block number generation under extreme concurrency...");
         
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
@@ -89,7 +94,7 @@ class ComprehensiveThreadSafetyTest {
                         }
                     }
                 } catch (Exception e) {
-                    System.err.println("Thread " + threadId + " error: " + e.getMessage());
+                    logger.error("Thread " + threadId + " error: " + e.getMessage());
                     e.printStackTrace();
                 } finally {
                     endLatch.countDown();
@@ -107,12 +112,12 @@ class ComprehensiveThreadSafetyTest {
         List<Long> sortedNumbers = new ArrayList<>(generatedNumbers);
         Collections.sort(sortedNumbers);
         
-        System.out.println("📊 Sequential Test Results:");
-        System.out.println("   - Execution time: " + (endTime - startTime) + "ms");
-        System.out.println("   - Successful blocks: " + successfulBlocks.get());
-        System.out.println("   - Failed blocks: " + failedBlocks.get());
-        System.out.println("   - Unique numbers generated: " + new HashSet<>(generatedNumbers).size());
-        System.out.println("   - Total blockchain blocks: " + blockchain.getBlockCount());
+        logger.info("📊 Sequential Test Results:");
+        logger.info("   - Execution time: " + (endTime - startTime) + "ms");
+        logger.info("   - Successful blocks: " + successfulBlocks.get());
+        logger.info("   - Failed blocks: " + failedBlocks.get());
+        logger.info("   - Unique numbers generated: " + new HashSet<>(generatedNumbers).size());
+        logger.info("   - Total blockchain blocks: " + blockchain.getBlockCount());
         
         // Critical verifications
         assertEquals(successfulBlocks.get(), new HashSet<>(generatedNumbers).size(), 
@@ -137,7 +142,7 @@ class ComprehensiveThreadSafetyTest {
     @DisplayName("🎯 Block Number Uniqueness Under Extreme Load")
     @Timeout(300)
     void testBlockNumberUniquenessExtremeLoad() throws InterruptedException {
-        System.out.println("🎯 Testing block number uniqueness under EXTREME load...");
+        logger.info("🎯 Testing block number uniqueness under EXTREME load...");
 
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         String publicKey = CryptoUtil.publicKeyToString(keyPair.getPublic());
@@ -177,7 +182,7 @@ class ComprehensiveThreadSafetyTest {
                             }
                         } catch (Exception e) {
                             failedBlocks.incrementAndGet();
-                            System.err.println("Thread " + threadId + " error: " + e.getMessage());
+                            logger.error("Thread " + threadId + " error: " + e.getMessage());
                         }
                     }
                 } catch (InterruptedException e) {
@@ -207,20 +212,20 @@ class ComprehensiveThreadSafetyTest {
             }
         }
         
-        System.out.println("📊 Extreme Load Uniqueness Results:");
-        System.out.println("   - Execution time: " + (endTime - startTime) + "ms");
-        System.out.println("   - Total threads: " + threadCount);
-        System.out.println("   - Blocks per thread: " + blocksPerThread);
-        System.out.println("   - Expected total blocks: " + (threadCount * blocksPerThread));
-        System.out.println("   - Successful blocks: " + successfulBlocks.get());
-        System.out.println("   - Failed blocks: " + failedBlocks.get());
-        System.out.println("   - Created block numbers: " + createdNumbers.size());
-        System.out.println("   - Unique block numbers: " + uniqueNumbers.size());
-        System.out.println("   - Duplicate numbers found: " + duplicates.size());
-        System.out.println("   - Final blockchain size: " + blockchain.getBlockCount());
+        logger.info("📊 Extreme Load Uniqueness Results:");
+        logger.info("   - Execution time: " + (endTime - startTime) + "ms");
+        logger.info("   - Total threads: " + threadCount);
+        logger.info("   - Blocks per thread: " + blocksPerThread);
+        logger.info("   - Expected total blocks: " + (threadCount * blocksPerThread));
+        logger.info("   - Successful blocks: " + successfulBlocks.get());
+        logger.info("   - Failed blocks: " + failedBlocks.get());
+        logger.info("   - Created block numbers: " + createdNumbers.size());
+        logger.info("   - Unique block numbers: " + uniqueNumbers.size());
+        logger.info("   - Duplicate numbers found: " + duplicates.size());
+        logger.info("   - Final blockchain size: " + blockchain.getBlockCount());
         
         if (!duplicates.isEmpty()) {
-            System.err.println("   - Duplicate numbers: " + duplicates);
+            logger.error("   - Duplicate numbers: " + duplicates);
         }
         
         // Critical assertions

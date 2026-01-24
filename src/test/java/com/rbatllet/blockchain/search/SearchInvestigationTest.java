@@ -16,12 +16,17 @@ import java.security.KeyPair;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Investigation test to understand why smartSearchWithPassword returns 0 results
  * while searchAndDecryptByTerms works correctly
  */
 public class SearchInvestigationTest {
+    private static final Logger logger = LoggerFactory.getLogger(SearchInvestigationTest.class);
+
     
     private Blockchain blockchain;
     private KeyPair bootstrapKeyPair;
@@ -82,113 +87,113 @@ public class SearchInvestigationTest {
     @Test
     @DisplayName("Deep investigation: smartSearchWithPassword vs searchAndDecryptByTerms")
     void testSearchInvestigation() throws Exception {
-        System.out.println("=== SMART SEARCH INVESTIGATION ===");
+        logger.info("=== SMART SEARCH INVESTIGATION ===");
         
         // 1. CRITICAL FIX: Initialize Search Framework BEFORE storing data
         blockchain.initializeAdvancedSearch(testPassword);
-        System.out.println("✅ Search Framework initialized");
+        logger.info("✅ Search Framework initialized");
         
         // 2. Store data with SearchSpecialistAPI properly initialized
         String[] keywords = {"financial", "test", "investigation"};
         Block storedBlock = api.storeSearchableData("Test financial data for investigation", testPassword, keywords);
         
-        System.out.println("✅ Stored block #" + storedBlock.getBlockNumber() + " with keywords: " + String.join(", ", keywords));
+        logger.info("✅ Stored block #" + storedBlock.getBlockNumber() + " with keywords: " + String.join(", ", keywords));
         
         // CRITICAL: Wait for async indexing to complete before searching
         IndexingCoordinator.getInstance().waitForCompletion();
         
         // 3. Test both search methods with identical parameters
-        System.out.println("\n🔍 Comparing search methods:");
+        logger.info("\n🔍 Comparing search methods:");
         
         // Method 1: smartSearchWithPassword (failing)
         List<Block> smartResults = api.smartSearchWithPassword("financial", testPassword);
-        System.out.println("🧠 smartSearchWithPassword('financial'): " + smartResults.size() + " results");
+        logger.info("🧠 smartSearchWithPassword('financial'): " + smartResults.size() + " results");
         
         // Method 2: searchAndDecryptByTerms (working)
         List<Block> decryptResults = api.searchAndDecryptByTerms(new String[]{"financial"}, testPassword, 10);
-        System.out.println("🔓 searchAndDecryptByTerms(['financial']): " + decryptResults.size() + " results");
+        logger.info("🔓 searchAndDecryptByTerms(['financial']): " + decryptResults.size() + " results");
         
         // 4. Analyze the internal search flow
-        System.out.println("\n🔍 Internal search flow analysis:");
+        logger.info("\n🔍 Internal search flow analysis:");
         
         // Check SearchSpecialistAPI state
         SearchSpecialistAPI searchAPI = blockchain.getSearchSpecialistAPI();
-        System.out.println("📊 SearchSpecialistAPI.isReady(): " + searchAPI.isReady());
+        logger.info("📊 SearchSpecialistAPI.isReady(): " + searchAPI.isReady());
         
         // 5. Test with different search strategies directly
         if (searchAPI.isReady()) {
-            System.out.println("\n🎯 Testing SearchSpecialistAPI methods directly:");
+            logger.info("\n🎯 Testing SearchSpecialistAPI methods directly:");
             
             // Test searchIntelligent (used by smartSearchWithPassword)
             List<SearchFrameworkEngine.EnhancedSearchResult> intelligentResults = 
                 searchAPI.searchIntelligent("financial", testPassword, 10);
-            System.out.println("🧠 searchIntelligent('financial'): " + intelligentResults.size() + " results");
+            logger.info("🧠 searchIntelligent('financial'): " + intelligentResults.size() + " results");
             
             // Test searchSecure
             List<SearchFrameworkEngine.EnhancedSearchResult> secureResults = 
                 searchAPI.searchSecure("financial", testPassword, 10);
-            System.out.println("🔐 searchSecure('financial'): " + secureResults.size() + " results");
+            logger.info("🔐 searchSecure('financial'): " + secureResults.size() + " results");
             
             // Test searchAll
             List<SearchFrameworkEngine.EnhancedSearchResult> simpleResults = 
                 searchAPI.searchAll("financial");
-            System.out.println("⚡ searchAll('financial'): " + simpleResults.size() + " results");
+            logger.info("⚡ searchAll('financial'): " + simpleResults.size() + " results");
         }
         
         // 6. Check password registry
-        System.out.println("\n🔑 Password registry analysis:");
+        logger.info("\n🔑 Password registry analysis:");
         try {
             // Get password registry stats through blockchain
-            System.out.println("📊 Blockchain has search framework initialized: " + 
+            logger.info("📊 Blockchain has search framework initialized: " + 
                              (blockchain.getSearchSpecialistAPI() != null));
         } catch (Exception e) {
-            System.out.println("❌ Error accessing password registry: " + e.getMessage());
+            logger.info("❌ Error accessing password registry: " + e.getMessage());
         }
         
         // 7. Trace smartSearchWithPassword execution path
-        System.out.println("\n🔍 Tracing smartSearchWithPassword execution:");
+        logger.info("\n🔍 Tracing smartSearchWithPassword execution:");
         
         try {
             // Call searchWithAdaptiveDecryption directly (internal method used by smartSearchWithPassword)
             List<Block> adaptiveResults = api.searchWithAdaptiveDecryption("financial", testPassword, 10);
-            System.out.println("🔄 searchWithAdaptiveDecryption('financial'): " + adaptiveResults.size() + " results");
+            logger.info("🔄 searchWithAdaptiveDecryption('financial'): " + adaptiveResults.size() + " results");
         } catch (Exception e) {
-            System.out.println("❌ searchWithAdaptiveDecryption failed: " + e.getMessage());
+            logger.info("❌ searchWithAdaptiveDecryption failed: " + e.getMessage());
         }
         
         // 8. Check if the issue is password-related
-        System.out.println("\n🔐 Password validation test:");
+        logger.info("\n🔐 Password validation test:");
         
         List<Block> wrongPasswordResults = api.searchAndDecryptByTerms(new String[]{"financial"}, "wrongpassword", 10);
-        System.out.println("❌ searchAndDecryptByTerms with wrong password: " + wrongPasswordResults.size() + " results");
+        logger.info("❌ searchAndDecryptByTerms with wrong password: " + wrongPasswordResults.size() + " results");
         
         try {
             List<Block> wrongPasswordSmart = api.smartSearchWithPassword("financial", "wrongpassword");
-            System.out.println("❌ smartSearchWithPassword with wrong password: " + wrongPasswordSmart.size() + " results");
+            logger.info("❌ smartSearchWithPassword with wrong password: " + wrongPasswordSmart.size() + " results");
         } catch (Exception e) {
-            System.out.println("❌ smartSearchWithPassword with wrong password threw: " + e.getMessage());
+            logger.info("❌ smartSearchWithPassword with wrong password threw: " + e.getMessage());
         }
         
         // 9. Summary and hypothesis
-        System.out.println("\n📋 INVESTIGATION SUMMARY:");
-        System.out.println("✅ searchAndDecryptByTerms works: " + (decryptResults.size() > 0));
-        System.out.println("❌ smartSearchWithPassword fails: " + (smartResults.size() == 0));
-        System.out.println("🔍 SearchSpecialistAPI ready: " + searchAPI.isReady());
+        logger.info("\n📋 INVESTIGATION SUMMARY:");
+        logger.info("✅ searchAndDecryptByTerms works: " + (decryptResults.size() > 0));
+        logger.info("❌ smartSearchWithPassword fails: " + (smartResults.size() == 0));
+        logger.info("🔍 SearchSpecialistAPI ready: " + searchAPI.isReady());
         
         if (smartResults.size() == 0 && decryptResults.size() > 0) {
-            System.out.println("\n💡 HYPOTHESIS: smartSearchWithPassword has a different execution path");
-            System.out.println("   that doesn't properly access the stored data or password registry.");
-            System.out.println("   The issue is likely in the searchWithAdaptiveDecryption method");
-            System.out.println("   or in how it interfaces with the SearchSpecialistAPI.");
+            logger.info("\n💡 HYPOTHESIS: smartSearchWithPassword has a different execution path");
+            logger.info("   that doesn't properly access the stored data or password registry.");
+            logger.info("   The issue is likely in the searchWithAdaptiveDecryption method");
+            logger.info("   or in how it interfaces with the SearchSpecialistAPI.");
         }
         
-        System.out.println("\n=== END INVESTIGATION ===");
+        logger.info("\n=== END INVESTIGATION ===");
     }
     
     @Test
     @DisplayName("Minimal reproduction case for smartSearchWithPassword")
     void testMinimalSmartSearchReproduction() throws Exception {
-        System.out.println("\n=== MINIMAL REPRODUCTION TEST ===");
+        logger.info("\n=== MINIMAL REPRODUCTION TEST ===");
         
         // CRITICAL FIX: Initialize SearchSpecialistAPI BEFORE storing data
         blockchain.initializeAdvancedSearch(testPassword);
@@ -204,17 +209,17 @@ public class SearchInvestigationTest {
         List<Block> smartResults = api.smartSearchWithPassword("test", testPassword);
         List<Block> decryptResults = api.searchAndDecryptByTerms(new String[]{"test"}, testPassword, 10);
         
-        System.out.println("📊 Simple case results:");
-        System.out.println("   smartSearchWithPassword: " + smartResults.size());
-        System.out.println("   searchAndDecryptByTerms: " + decryptResults.size());
+        logger.info("📊 Simple case results:");
+        logger.info("   smartSearchWithPassword: " + smartResults.size());
+        logger.info("   searchAndDecryptByTerms: " + decryptResults.size());
         
         // Both methods should now return results (fixing the original 0 results bug)
         // However, they may return different counts due to different search algorithms
         assertTrue(smartResults.size() > 0, "smartSearchWithPassword should return results (was 0 before bug fix)");
         assertTrue(decryptResults.size() > 0, "searchAndDecryptByTerms should return results");
         
-        System.out.println("✅ Both methods now return results - the original bug has been fixed!");
+        logger.info("✅ Both methods now return results - the original bug has been fixed!");
         
-        System.out.println("=== END MINIMAL REPRODUCTION ===");
+        logger.info("=== END MINIMAL REPRODUCTION ===");
     }
 }

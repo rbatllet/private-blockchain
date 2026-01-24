@@ -18,6 +18,9 @@ import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.TestGenesisKeyManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Critical vulnerability demonstration test for UserFriendlyEncryptionAPI.
@@ -29,6 +32,8 @@ import com.rbatllet.blockchain.util.TestGenesisKeyManager;
  */
 @DisplayName("🚨 CRITICAL: Blockchain Corruption Vulnerability Tests")
 class UserFriendlyEncryptionAPIBlockCorruptionTest {
+    private static final Logger logger = LoggerFactory.getLogger(UserFriendlyEncryptionAPIBlockCorruptionTest.class);
+
 
     private UserFriendlyEncryptionAPI api;
     private Blockchain blockchain;
@@ -182,17 +187,17 @@ class UserFriendlyEncryptionAPIBlockCorruptionTest {
         );
 
         // Step 8: Demonstrate the scope of corruption
-        System.out.println("🚨 BLOCKCHAIN CORRUPTION DEMONSTRATED:");
-        System.out.println("Original block2 hash: " + originalCurrentHash);
-        System.out.println("New block2 hash after repair: " + newCurrentHash);
-        System.out.println("Original previous hash: " + originalPreviousHash);
-        System.out.println(
+        logger.info("🚨 BLOCKCHAIN CORRUPTION DEMONSTRATED:");
+        logger.info("Original block2 hash: " + originalCurrentHash);
+        logger.info("New block2 hash after repair: " + newCurrentHash);
+        logger.info("Original previous hash: " + originalPreviousHash);
+        logger.info(
             "Current previous hash: " + currentBlock.getPreviousHash()
         );
-        System.out.println(
+        logger.info(
             "Block3 still points to: " + subsequentBlock.getPreviousHash()
         );
-        System.out.println("Chain is now BROKEN!");
+        logger.info("Chain is now BROKEN!");
     }
 
     @Test
@@ -243,10 +248,10 @@ class UserFriendlyEncryptionAPIBlockCorruptionTest {
 
         // VULNERABILITY: The new hash may not match the block's actual content
         // This could create subtle data integrity issues
-        System.out.println("🚨 BLOCK REPAIR INTEGRITY ISSUE:");
-        System.out.println("Original hash: " + originalHash);
-        System.out.println("Repaired hash: " + newHash);
-        System.out.println(
+        logger.info("🚨 BLOCK REPAIR INTEGRITY ISSUE:");
+        logger.info("Original hash: " + originalHash);
+        logger.info("Repaired hash: " + newHash);
+        logger.info(
             "Hash regeneration may not match actual block content!"
         );
     }
@@ -281,12 +286,12 @@ class UserFriendlyEncryptionAPIBlockCorruptionTest {
         // Performance warning if detection takes too long
         if (duration > 1000) {
             // More than 1 second for 100 blocks
-            System.out.println(
+            logger.info(
                 "⚠️ PERFORMANCE WARNING: Corruption detection took " +
                 duration +
                 "ms for 100 blocks"
             );
-            System.out.println("This could timeout on large blockchains!");
+            logger.info("This could timeout on large blockchains!");
         }
     }
 
@@ -337,13 +342,13 @@ class UserFriendlyEncryptionAPIBlockCorruptionTest {
             "✅ SECURITY FIX: Validation now properly detects data corruption!"
         );
 
-        System.out.println("✅ CORRUPTION PROPERLY DETECTED:");
+        logger.info("✅ CORRUPTION PROPERLY DETECTED:");
         String fieldType = (testBlock.getIsEncrypted() != null && testBlock.getIsEncrypted())
             ? "encryptionMetadata" : "data";
-        System.out.println("Corrupted field: " + fieldType);
-        System.out.println("Original value: " + originalField.substring(0, Math.min(50, originalField.length())) + "...");
-        System.out.println("Corrupted value: " + corruptedField.substring(0, Math.min(50, corruptedField.length())) + "...");
-        System.out.println(
+        logger.info("Corrupted field: " + fieldType);
+        logger.info("Original value: " + originalField.substring(0, Math.min(50, originalField.length())) + "...");
+        logger.info("Corrupted value: " + corruptedField.substring(0, Math.min(50, corruptedField.length())) + "...");
+        logger.info(
             "Validation result: " + (isCorrupted ? "DETECTED" : "MISSED")
         );
     }

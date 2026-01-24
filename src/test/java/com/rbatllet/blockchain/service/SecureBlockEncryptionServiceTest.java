@@ -3,11 +3,16 @@ package com.rbatllet.blockchain.service;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import static org.junit.jupiter.api.Assertions.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Test for the secure block encryption service
  */
 public class SecureBlockEncryptionServiceTest {
+    private static final Logger logger = LoggerFactory.getLogger(SecureBlockEncryptionServiceTest.class);
+
     
     private String testData;
     private String testPassword;
@@ -35,7 +40,7 @@ public class SecureBlockEncryptionServiceTest {
         String decrypted = SecureBlockEncryptionService.decryptWithPassword(encrypted, testPassword);
         assertEquals(testData, decrypted);
         
-        System.out.println("✅ Basic encryption/decryption successful");
+        logger.info("✅ Basic encryption/decryption successful");
     }
     
     @Test
@@ -50,7 +55,7 @@ public class SecureBlockEncryptionServiceTest {
         String decrypted = SecureBlockEncryptionService.decryptFromString(encryptedString, testPassword);
         assertEquals(testData, decrypted);
         
-        System.out.println("✅ String convenience methods working");
+        logger.info("✅ String convenience methods working");
     }
     
     @Test
@@ -68,7 +73,7 @@ public class SecureBlockEncryptionServiceTest {
         assertEquals(testData, decrypted1);
         assertEquals(testData, decrypted2);
         
-        System.out.println("✅ Unique encryptions (random salt/IV) working");
+        logger.info("✅ Unique encryptions (random salt/IV) working");
     }
     
     @Test
@@ -80,7 +85,7 @@ public class SecureBlockEncryptionServiceTest {
             SecureBlockEncryptionService.decryptFromString(encrypted, "WrongPassword123");
         });
         
-        System.out.println("✅ Wrong password correctly rejected");
+        logger.info("✅ Wrong password correctly rejected");
     }
     
     @Test
@@ -94,7 +99,7 @@ public class SecureBlockEncryptionServiceTest {
             SecureBlockEncryptionService.decryptFromString(corrupted, testPassword);
         });
         
-        System.out.println("✅ Data corruption correctly detected");
+        logger.info("✅ Data corruption correctly detected");
     }
     
     @Test
@@ -108,7 +113,7 @@ public class SecureBlockEncryptionServiceTest {
         // Wrong password should not verify
         assertFalse(SecureBlockEncryptionService.verifyIntegrity(encrypted, "WrongPassword"));
         
-        System.out.println("✅ Integrity verification working");
+        logger.info("✅ Integrity verification working");
     }
     
     @Test
@@ -129,7 +134,7 @@ public class SecureBlockEncryptionServiceTest {
         
         assertEquals(largeDataString, decrypted);
         
-        System.out.println("✅ Large data encryption successful - Size: " + largeDataString.length() + " chars");
+        logger.info("✅ Large data encryption successful - Size: " + largeDataString.length() + " chars");
     }
     
     @Test
@@ -146,7 +151,7 @@ public class SecureBlockEncryptionServiceTest {
         assertFalse(encrypted.contains("SSN"));
         assertFalse(encrypted.contains("CREDIT_CARD"));
         
-        System.out.println("✅ No plaintext leakage detected in encrypted data");
+        logger.info("✅ No plaintext leakage detected in encrypted data");
     }
     
     @Test
@@ -174,7 +179,7 @@ public class SecureBlockEncryptionServiceTest {
         String decrypted = SecureBlockEncryptionService.decryptWithPassword(deserialized, testPassword);
         assertEquals(testData, decrypted);
         
-        System.out.println("✅ Serialization/deserialization working correctly");
+        logger.info("✅ Serialization/deserialization working correctly");
     }
     
     @Test
@@ -198,9 +203,9 @@ public class SecureBlockEncryptionServiceTest {
         assertNotNull(hash);
         assertEquals(64, hash.length()); // SHA-3-256 = 64 hex chars
         
-        System.out.println("✅ Security parameters validated");
-        System.out.println("   Salt length: " + salt.length() + " chars");
-        System.out.println("   IV length: " + iv.length() + " chars");
-        System.out.println("   Hash length: " + hash.length() + " chars");
+        logger.info("✅ Security parameters validated");
+        logger.info("   Salt length: " + salt.length() + " chars");
+        logger.info("   IV length: " + iv.length() + " chars");
+        logger.info("   Hash length: " + hash.length() + " chars");
     }
 }

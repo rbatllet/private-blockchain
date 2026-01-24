@@ -23,6 +23,9 @@ import java.security.KeyPair;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Rigorous test suite for SearchSpecialistAPI to identify and fix
@@ -30,6 +33,8 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class SearchSpecialistAPIRigorousTest {
+    private static final Logger logger = LoggerFactory.getLogger(SearchSpecialistAPIRigorousTest.class);
+
     
     private Blockchain blockchain;
     private KeyPair bootstrapKeyPair;
@@ -114,10 +119,10 @@ public class SearchSpecialistAPIRigorousTest {
     @Order(1)
     @DisplayName("Test 1: SearchSpecialistAPI Initialization State")
     void testSearchSpecialistAPIInitialization() throws Exception {
-        System.out.println("=== TEST 1: INITIALIZATION STATE ===");
+        logger.info("=== TEST 1: INITIALIZATION STATE ===");
 
         // Use new improved constructor that requires blockchain, password, and private key
-        System.out.println("🔑 Creating SearchSpecialistAPI with improved constructor...");
+        logger.info("🔑 Creating SearchSpecialistAPI with improved constructor...");
 
         // RBAC FIX (v1.0.6): Need admin credentials to create new user
         KeyPair adminKeys = CryptoUtil.generateKeyPair();
@@ -131,45 +136,45 @@ public class SearchSpecialistAPIRigorousTest {
         searchAPI = new SearchSpecialistAPI(blockchain, testPassword, userKeys.getPrivate());
         
         // After initialization
-        System.out.println("📊 SearchSpecialistAPI ready after init: " + searchAPI.isReady());
+        logger.info("📊 SearchSpecialistAPI ready after init: " + searchAPI.isReady());
         
         if (searchAPI.isReady()) {
             SearchStats stats = searchAPI.getStatistics();
-            System.out.println("📊 Blocks indexed: " + stats.getTotalBlocksIndexed());
-            System.out.println("📊 Memory usage: " + stats.getEstimatedMemoryBytes() + " bytes");
+            logger.info("📊 Blocks indexed: " + stats.getTotalBlocksIndexed());
+            logger.info("📊 Memory usage: " + stats.getEstimatedMemoryBytes() + " bytes");
             
             String capabilities = searchAPI.getCapabilitiesSummary();
-            System.out.println("📊 Capabilities: " + capabilities);
+            logger.info("📊 Capabilities: " + capabilities);
         }
         
         assertTrue(searchAPI != null, "SearchSpecialistAPI should not be null");
         assertTrue(searchAPI.isReady(), "SearchSpecialistAPI should be ready after initialization");
-        System.out.println("✅ Initialization test passed");
+        logger.info("✅ Initialization test passed");
     }
     
     @Test
     @Order(2)
     @DisplayName("Test 2: Compare Data Storage Methods")
     void testDataStorageComparison() throws Exception {
-        System.out.println("\n=== TEST 2: DATA STORAGE COMPARISON ===");
+        logger.info("\n=== TEST 2: DATA STORAGE COMPARISON ===");
 
         // testBlock is already initialized in setUp(), just verify and display info
-        System.out.println("📝 Using existing block #" + testBlock.getBlockNumber());
-        System.out.println("📝 Block data: " + testBlock.getData());
-        System.out.println("📝 Is encrypted: " + testBlock.isDataEncrypted());
-        System.out.println("📝 Manual keywords: " + testBlock.getManualKeywords());
-        System.out.println("📝 Auto keywords: " + testBlock.getAutoKeywords());
+        logger.info("📝 Using existing block #" + testBlock.getBlockNumber());
+        logger.info("📝 Block data: " + testBlock.getData());
+        logger.info("📝 Is encrypted: " + testBlock.isDataEncrypted());
+        logger.info("📝 Manual keywords: " + testBlock.getManualKeywords());
+        logger.info("📝 Auto keywords: " + testBlock.getAutoKeywords());
         
-        System.out.println("✅ Data storage test completed");
+        logger.info("✅ Data storage test completed");
         
         assertNotNull(testBlock, "Test block should be stored");
         assertTrue(testBlock.isDataEncrypted(), "Test block should be encrypted");
         
         // Check that keywords are stored (might be null if encryption moved them to different field)
-        System.out.println("📊 Keyword analysis:");
-        System.out.println("   Manual keywords null: " + (testBlock.getManualKeywords() == null));
-        System.out.println("   Auto keywords null: " + (testBlock.getAutoKeywords() == null));
-        System.out.println("   Searchable content: " + testBlock.getSearchableContent());
+        logger.info("📊 Keyword analysis:");
+        logger.info("   Manual keywords null: " + (testBlock.getManualKeywords() == null));
+        logger.info("   Auto keywords null: " + (testBlock.getAutoKeywords() == null));
+        logger.info("   Searchable content: " + testBlock.getSearchableContent());
         
         // Keywords might be stored in different fields for encrypted blocks
         boolean hasKeywords = testBlock.getManualKeywords() != null || 
@@ -183,7 +188,7 @@ public class SearchSpecialistAPIRigorousTest {
     @Order(3)
     @DisplayName("Test 3: Search Method Comparison")
     void testSearchMethodComparison() throws Exception {
-        System.out.println("\n=== TEST 3: SEARCH METHOD COMPARISON ===");
+        logger.info("\n=== TEST 3: SEARCH METHOD COMPARISON ===");
 
         // testBlock and searchAPI are already initialized in setUp()
         
@@ -191,47 +196,47 @@ public class SearchSpecialistAPIRigorousTest {
         
         // Method 1: searchAndDecryptByTerms (working baseline)
         List<Block> workingResults = api.searchAndDecryptByTerms(new String[]{searchTerm}, testPassword, 10);
-        System.out.println("✅ searchAndDecryptByTerms('" + searchTerm + "'): " + workingResults.size() + " results");
+        logger.info("✅ searchAndDecryptByTerms('" + searchTerm + "'): " + workingResults.size() + " results");
         
         // Method 2: SearchSpecialistAPI methods (failing)
         List<EnhancedSearchResult> intelligentResults = searchAPI.searchIntelligent(searchTerm, testPassword, 10);
-        System.out.println("❌ searchIntelligent('" + searchTerm + "'): " + intelligentResults.size() + " results");
+        logger.info("❌ searchIntelligent('" + searchTerm + "'): " + intelligentResults.size() + " results");
         
         List<EnhancedSearchResult> secureResults = searchAPI.searchSecure(searchTerm, testPassword, 10);
-        System.out.println("❌ searchSecure('" + searchTerm + "'): " + secureResults.size() + " results");
+        logger.info("❌ searchSecure('" + searchTerm + "'): " + secureResults.size() + " results");
         
         List<EnhancedSearchResult> simpleResults = searchAPI.searchAll(searchTerm);
-        System.out.println("❌ searchAll('" + searchTerm + "'): " + simpleResults.size() + " results");
+        logger.info("❌ searchAll('" + searchTerm + "'): " + simpleResults.size() + " results");
         
         // DEBUG: Check if autoKeywords can be decrypted
-        System.out.println("\\n🔍 DEBUG: Testing autoKeywords decryption:");
+        logger.info("\\n🔍 DEBUG: Testing autoKeywords decryption:");
         if (testBlock.getAutoKeywords() != null) {
-            System.out.println("   autoKeywords raw: " + testBlock.getAutoKeywords().substring(0, Math.min(50, testBlock.getAutoKeywords().length())) + "...");
+            logger.info("   autoKeywords raw: " + testBlock.getAutoKeywords().substring(0, Math.min(50, testBlock.getAutoKeywords().length())) + "...");
             try {
                 String decryptedKeywords = SecureBlockEncryptionService.decryptFromString(
                     testBlock.getAutoKeywords(), testPassword);
-                System.out.println("   autoKeywords decrypted: " + decryptedKeywords);
+                logger.info("   autoKeywords decrypted: " + decryptedKeywords);
             } catch (Exception e) {
-                System.out.println("   autoKeywords decryption failed: " + e.getMessage());
+                logger.info("   autoKeywords decryption failed: " + e.getMessage());
                 // DEBUG: Let's see the actual format
-                System.out.println("   autoKeywords parts: " + testBlock.getAutoKeywords().split("\\|").length);
+                logger.info("   autoKeywords parts: " + testBlock.getAutoKeywords().split("\\|").length);
                 String[] parts = testBlock.getAutoKeywords().split("\\|");
                 for (int i = 0; i < Math.min(parts.length, 3); i++) {
-                    System.out.println("   part[" + i + "]: " + parts[i]);
+                    logger.info("   part[" + i + "]: " + parts[i]);
                 }
             }
         } else {
-            System.out.println("   autoKeywords is null");
+            logger.info("   autoKeywords is null");
         }
         
         // Analysis
-        System.out.println("\n📊 COMPARISON ANALYSIS:");
-        System.out.println("   Working method finds: " + workingResults.size() + " blocks");
-        System.out.println("   SearchSpecialistAPI finds: " + (intelligentResults.size() + secureResults.size() + simpleResults.size()) + " total results");
+        logger.info("\n📊 COMPARISON ANALYSIS:");
+        logger.info("   Working method finds: " + workingResults.size() + " blocks");
+        logger.info("   SearchSpecialistAPI finds: " + (intelligentResults.size() + secureResults.size() + simpleResults.size()) + " total results");
         
         // This test should fail - demonstrating the bug
         if (workingResults.size() > 0 && intelligentResults.size() == 0) {
-            System.out.println("🚨 BUG CONFIRMED: SearchSpecialistAPI methods fail while searchAndDecryptByTerms works");
+            logger.info("🚨 BUG CONFIRMED: SearchSpecialistAPI methods fail while searchAndDecryptByTerms works");
         }
         
         assertTrue(workingResults.size() > 0, "searchAndDecryptByTerms should find results");
@@ -243,30 +248,30 @@ public class SearchSpecialistAPIRigorousTest {
     @Order(4)
     @DisplayName("Test 4: Internal SearchSpecialistAPI State Analysis")
     void testSearchSpecialistAPIInternalState() throws Exception {
-        System.out.println("\n=== TEST 4: INTERNAL STATE ANALYSIS ===");
+        logger.info("\n=== TEST 4: INTERNAL STATE ANALYSIS ===");
         
         // searchAPI is already initialized in setUp()
 
         // Analyze internal state
-        System.out.println("🔍 SearchSpecialistAPI Internal Analysis:");
-        System.out.println("   isReady(): " + searchAPI.isReady());
+        logger.info("🔍 SearchSpecialistAPI Internal Analysis:");
+        logger.info("   isReady(): " + searchAPI.isReady());
 
         SearchStats stats = searchAPI.getStatistics();
-        System.out.println("   Total blocks indexed: " + stats.getTotalBlocksIndexed());
-        System.out.println("   Memory usage: " + stats.getEstimatedMemoryBytes() + " bytes");
+        logger.info("   Total blocks indexed: " + stats.getTotalBlocksIndexed());
+        logger.info("   Memory usage: " + stats.getEstimatedMemoryBytes() + " bytes");
 
         // Password registry stats
         RegistryStats registryStats = searchAPI.getPasswordRegistryStats();
-        System.out.println("   Password registry blocks: " + registryStats.getRegisteredBlocks());
-        System.out.println("   Password registry memory: " + registryStats.getEstimatedMemoryBytes() + " bytes");
+        logger.info("   Password registry blocks: " + registryStats.getRegisteredBlocks());
+        logger.info("   Password registry memory: " + registryStats.getEstimatedMemoryBytes() + " bytes");
 
         // Diagnostics
         String diagnostics = searchAPI.runDiagnostics();
-        System.out.println("🔧 Diagnostics: " + diagnostics);
+        logger.info("🔧 Diagnostics: " + diagnostics);
 
         // Performance metrics
         String metrics = searchAPI.getPerformanceMetrics();
-        System.out.println("📊 Performance metrics: " + metrics);
+        logger.info("📊 Performance metrics: " + metrics);
 
         assertTrue(searchAPI.isReady(), "SearchSpecialistAPI should be ready");
         assertTrue(stats.getTotalBlocksIndexed() > 0, "Should have indexed at least one block");
@@ -276,38 +281,38 @@ public class SearchSpecialistAPIRigorousTest {
     @Order(5)
     @DisplayName("Test 5: Password Registry Analysis")
     void testPasswordRegistryAnalysis() throws Exception {
-        System.out.println("\n=== TEST 5: PASSWORD REGISTRY ANALYSIS ===");
+        logger.info("\n=== TEST 5: PASSWORD REGISTRY ANALYSIS ===");
 
         // testBlock and searchAPI are already initialized in setUp()
         
         // Check password registry
         RegistryStats registryStats = searchAPI.getPasswordRegistryStats();
-        System.out.println("📊 Password registry blocks: " + registryStats.getRegisteredBlocks());
-        System.out.println("📊 Password registry memory: " + registryStats.getEstimatedMemoryBytes() + " bytes");
+        logger.info("📊 Password registry blocks: " + registryStats.getRegisteredBlocks());
+        logger.info("📊 Password registry memory: " + registryStats.getEstimatedMemoryBytes() + " bytes");
         
         // Try to search with different password scenarios
-        System.out.println("\n🔐 Testing password scenarios:");
+        logger.info("\n🔐 Testing password scenarios:");
         
         // Correct password
         List<EnhancedSearchResult> correctPwdResults = searchAPI.searchSecure("financial", testPassword, 10);
-        System.out.println("   Correct password: " + correctPwdResults.size() + " results");
+        logger.info("   Correct password: " + correctPwdResults.size() + " results");
         
         // Wrong password
         List<EnhancedSearchResult> wrongPwdResults = searchAPI.searchSecure("financial", "wrongpassword", 10);
-        System.out.println("   Wrong password: " + wrongPwdResults.size() + " results");
+        logger.info("   Wrong password: " + wrongPwdResults.size() + " results");
         
         // No password (simple search)
         List<EnhancedSearchResult> noPwdResults = searchAPI.searchAll("financial");
-        System.out.println("   No password: " + noPwdResults.size() + " results");
+        logger.info("   No password: " + noPwdResults.size() + " results");
         
         // Compare with working method
         List<Block> workingResults = api.searchAndDecryptByTerms(new String[]{"financial"}, testPassword, 10);
-        System.out.println("   Working method: " + workingResults.size() + " results");
+        logger.info("   Working method: " + workingResults.size() + " results");
         
-        System.out.println("\n💡 Password Registry Hypothesis:");
+        logger.info("\n💡 Password Registry Hypothesis:");
         if (workingResults.size() > 0 && correctPwdResults.size() == 0) {
-            System.out.println("   SearchSpecialistAPI may not have the correct password mapping for blocks");
-            System.out.println("   or the initialization with null password prevents proper indexing");
+            logger.info("   SearchSpecialistAPI may not have the correct password mapping for blocks");
+            logger.info("   or the initialization with null password prevents proper indexing");
         }
     }
     
@@ -315,14 +320,14 @@ public class SearchSpecialistAPIRigorousTest {
     @Order(6)
     @DisplayName("Test 6: Direct SearchFrameworkEngine Testing")
     void testDirectSearchFrameworkEngine() throws Exception {
-        System.out.println("\n=== TEST 6: DIRECT SEARCH FRAMEWORK ENGINE ===");
+        logger.info("\n=== TEST 6: DIRECT SEARCH FRAMEWORK ENGINE ===");
 
         // testBlock and searchAPI are already initialized in setUp()
         
         // Test if we can access the underlying SearchFrameworkEngine
         try {
             // This might not be directly accessible, but let's see what we can test
-            System.out.println("🔧 Testing underlying search engine capabilities");
+            logger.info("🔧 Testing underlying search engine capabilities");
             
             // Test through SearchSpecialistAPI's advanced search
             SearchResult advancedResult = searchAPI.searchAdvanced(
@@ -331,20 +336,20 @@ public class SearchSpecialistAPIRigorousTest {
                 EncryptionConfig.createHighSecurityConfig(), 
                 10);
             
-            System.out.println("🔍 Advanced search result:");
-            System.out.println("   Success: " + advancedResult.isSuccessful());
-            System.out.println("   Result count: " + advancedResult.getResultCount());
-            System.out.println("   Strategy used: " + advancedResult.getStrategyUsed());
-            System.out.println("   Total time: " + advancedResult.getTotalTimeMs() + "ms");
+            logger.info("🔍 Advanced search result:");
+            logger.info("   Success: " + advancedResult.isSuccessful());
+            logger.info("   Result count: " + advancedResult.getResultCount());
+            logger.info("   Strategy used: " + advancedResult.getStrategyUsed());
+            logger.info("   Total time: " + advancedResult.getTotalTimeMs() + "ms");
             
             if (advancedResult.getErrorMessage() != null) {
-                System.out.println("   Error: " + advancedResult.getErrorMessage());
+                logger.info("   Error: " + advancedResult.getErrorMessage());
             }
             
             assertTrue(advancedResult.isSuccessful(), "Advanced search should be successful");
             
         } catch (Exception e) {
-            System.out.println("❌ Direct engine test failed: " + e.getMessage());
+            logger.info("❌ Direct engine test failed: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -353,37 +358,37 @@ public class SearchSpecialistAPIRigorousTest {
     @Order(7)
     @DisplayName("Test 7: Root Cause Hypothesis Testing")
     void testRootCauseHypothesis() throws Exception {
-        System.out.println("\n=== TEST 7: ROOT CAUSE HYPOTHESIS ===");
+        logger.info("\n=== TEST 7: ROOT CAUSE HYPOTHESIS ===");
         
         // Hypothesis 1: Initialization with null password is the problem
-        System.out.println("🧪 HYPOTHESIS 1: Null password initialization");
-        System.out.println("   Current initializeAdvancedSearch() uses password=null");
-        System.out.println("   This means only public metadata gets indexed");
-        System.out.println("   But our test blocks have encrypted keywords that require password access");
+        logger.info("🧪 HYPOTHESIS 1: Null password initialization");
+        logger.info("   Current initializeAdvancedSearch() uses password=null");
+        logger.info("   This means only public metadata gets indexed");
+        logger.info("   But our test blocks have encrypted keywords that require password access");
         
         // Hypothesis 2: Metadata indexing vs direct block access
-        System.out.println("\n🧪 HYPOTHESIS 2: Indexing approach difference");
-        System.out.println("   searchAndDecryptByTerms: Direct block access + keyword matching");
-        System.out.println("   SearchSpecialistAPI: Metadata index + search engine");
-        System.out.println("   The metadata index may not contain the keywords we're searching for");
+        logger.info("\n🧪 HYPOTHESIS 2: Indexing approach difference");
+        logger.info("   searchAndDecryptByTerms: Direct block access + keyword matching");
+        logger.info("   SearchSpecialistAPI: Metadata index + search engine");
+        logger.info("   The metadata index may not contain the keywords we're searching for");
         
         // Hypothesis 3: Test with different block types
-        System.out.println("\n🧪 HYPOTHESIS 3: Block type compatibility");
+        logger.info("\n🧪 HYPOTHESIS 3: Block type compatibility");
         
         // Test with a simple non-encrypted block
         try {
             // This would require access to addBlock directly, which may not be available
-            System.out.println("   Testing with different block types would require direct blockchain access");
+            logger.info("   Testing with different block types would require direct blockchain access");
         } catch (Exception e) {
-            System.out.println("   Cannot test different block types in this context");
+            logger.info("   Cannot test different block types in this context");
         }
         
         // Summary
-        System.out.println("\n📋 ROOT CAUSE ANALYSIS SUMMARY:");
-        System.out.println("   1. SearchSpecialistAPI initialized with null password");
-        System.out.println("   2. Only public metadata gets indexed, not encrypted keywords");
-        System.out.println("   3. searchAndDecryptByTerms bypasses the index and searches directly");
-        System.out.println("   4. FIX: Initialize SearchSpecialistAPI with proper password management");
-        System.out.println("        or modify indexing to handle encrypted keywords properly");
+        logger.info("\n📋 ROOT CAUSE ANALYSIS SUMMARY:");
+        logger.info("   1. SearchSpecialistAPI initialized with null password");
+        logger.info("   2. Only public metadata gets indexed, not encrypted keywords");
+        logger.info("   3. searchAndDecryptByTerms bypasses the index and searches directly");
+        logger.info("   4. FIX: Initialize SearchSpecialistAPI with proper password management");
+        logger.info("        or modify indexing to handle encrypted keywords properly");
     }
 }

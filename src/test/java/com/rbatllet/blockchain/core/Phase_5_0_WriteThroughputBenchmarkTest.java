@@ -21,6 +21,9 @@ import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.TestGenesisKeyManager;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.JPAUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Phase 5.0: Write Throughput Benchmark
@@ -55,6 +58,8 @@ import com.rbatllet.blockchain.util.JPAUtil;
 @Tag("phase5")
 @Tag("write-performance")
 public class Phase_5_0_WriteThroughputBenchmarkTest {
+    private static final Logger logger = LoggerFactory.getLogger(Phase_5_0_WriteThroughputBenchmarkTest.class);
+
 
     private static final int WARM_UP_BLOCKS = 100;
     private static final int BENCHMARK_BLOCKS = 1000;
@@ -75,30 +80,30 @@ public class Phase_5_0_WriteThroughputBenchmarkTest {
         long maxBlockLatencyMs;
 
         void report() {
-            System.out.println("\n" + "=".repeat(80));
-            System.out.println("📊 WRITE THROUGHPUT BENCHMARK RESULTS - " + databaseType);
-            System.out.println("=".repeat(80));
-            System.out.println("  Database:           " + databaseType);
-            System.out.println("  Blocks written:     " + blockCount);
-            System.out.println("  Total duration:     " + totalDurationMs + "ms");
-            System.out.println("  Avg latency/block:  " + avgBlockLatencyMs + "ms");
-            System.out.println("  Min latency:        " + minBlockLatencyMs + "ms");
-            System.out.println("  Max latency:        " + maxBlockLatencyMs + "ms");
-            System.out.println();
-            System.out.println("  🎯 THROUGHPUT:      " + String.format("%.1f", blocksPerSecond) + " blocks/sec");
-            System.out.println("  📈 IMPROVEMENT:     " + String.format("%.1fx", improvementFactor) + " vs baseline (" + BASELINE_BLOCKS_PER_SEC + " blocks/sec)");
-            System.out.println();
+            logger.info("\n" + "=".repeat(80));
+            logger.info("📊 WRITE THROUGHPUT BENCHMARK RESULTS - " + databaseType);
+            logger.info("=".repeat(80));
+            logger.info("  Database:           " + databaseType);
+            logger.info("  Blocks written:     " + blockCount);
+            logger.info("  Total duration:     " + totalDurationMs + "ms");
+            logger.info("  Avg latency/block:  " + avgBlockLatencyMs + "ms");
+            logger.info("  Min latency:        " + minBlockLatencyMs + "ms");
+            logger.info("  Max latency:        " + maxBlockLatencyMs + "ms");
+            logger.info("");
+            logger.info("  🎯 THROUGHPUT:      " + String.format("%.1f", blocksPerSecond) + " blocks/sec");
+            logger.info("  📈 IMPROVEMENT:     " + String.format("%.1fx", improvementFactor) + " vs baseline (" + BASELINE_BLOCKS_PER_SEC + " blocks/sec)");
+            logger.info("");
 
             if (improvementFactor >= 10.0) {
-                System.out.println("  ✅ EXCELLENT: 10x+ improvement achieved!");
+                logger.info("  ✅ EXCELLENT: 10x+ improvement achieved!");
             } else if (improvementFactor >= 5.0) {
-                System.out.println("  ✅ GOOD: 5x+ improvement achieved!");
+                logger.info("  ✅ GOOD: 5x+ improvement achieved!");
             } else if (improvementFactor >= 3.0) {
-                System.out.println("  ⚠️  ACCEPTABLE: 3x+ improvement (target: 5-10x)");
+                logger.info("  ⚠️  ACCEPTABLE: 3x+ improvement (target: 5-10x)");
             } else {
-                System.out.println("  ❌ BELOW TARGET: < 3x improvement (investigate JDBC batching)");
+                logger.info("  ❌ BELOW TARGET: < 3x improvement (investigate JDBC batching)");
             }
-            System.out.println("=".repeat(80));
+            logger.info("=".repeat(80));
         }
     }
 
@@ -109,7 +114,7 @@ public class Phase_5_0_WriteThroughputBenchmarkTest {
     @DisplayName("Phase 5.0 Benchmark 1: H2 (Default Database) Write Throughput")
     @Timeout(300) // 5 minutes
     void benchmarkH2WriteThroughput() throws Exception {
-        System.out.println("\n🚀 PHASE 5.0 BENCHMARK: H2 (Default Database)");
+        logger.info("\n🚀 PHASE 5.0 BENCHMARK: H2 (Default Database)");
 
         DatabaseConfig h2Config = DatabaseConfig.createH2TestConfig();
         JPAUtil.initialize(h2Config);
@@ -133,12 +138,12 @@ public class Phase_5_0_WriteThroughputBenchmarkTest {
     @Timeout(300) // 5 minutes
     void benchmarkPostgreSQLWriteThroughput() throws Exception {
         if (!isPostgreSQLConfigured()) {
-            System.out.println("\n⏭️  PostgreSQL not configured - skipping benchmark");
-            System.out.println("   To enable: Set BLOCKCHAIN_DB_HOST, BLOCKCHAIN_DB_NAME, BLOCKCHAIN_DB_USER, BLOCKCHAIN_DB_PASSWORD");
+            logger.info("\n⏭️  PostgreSQL not configured - skipping benchmark");
+            logger.info("   To enable: Set BLOCKCHAIN_DB_HOST, BLOCKCHAIN_DB_NAME, BLOCKCHAIN_DB_USER, BLOCKCHAIN_DB_PASSWORD");
             return;
         }
 
-        System.out.println("\n🚀 PHASE 5.0 BENCHMARK: PostgreSQL (Production Database)");
+        logger.info("\n🚀 PHASE 5.0 BENCHMARK: PostgreSQL (Production Database)");
 
         String host = System.getenv("BLOCKCHAIN_DB_HOST");
         String dbName = System.getenv("BLOCKCHAIN_DB_NAME");
@@ -167,12 +172,12 @@ public class Phase_5_0_WriteThroughputBenchmarkTest {
     @Timeout(300) // 5 minutes
     void benchmarkMySQLWriteThroughput() throws Exception {
         if (!isMySQLConfigured()) {
-            System.out.println("\n⏭️  MySQL not configured - skipping benchmark");
-            System.out.println("   To enable: Set MYSQL_DB_HOST, MYSQL_DB_NAME, MYSQL_DB_USER, MYSQL_DB_PASSWORD");
+            logger.info("\n⏭️  MySQL not configured - skipping benchmark");
+            logger.info("   To enable: Set MYSQL_DB_HOST, MYSQL_DB_NAME, MYSQL_DB_USER, MYSQL_DB_PASSWORD");
             return;
         }
 
-        System.out.println("\n🚀 PHASE 5.0 BENCHMARK: MySQL (Production Database)");
+        logger.info("\n🚀 PHASE 5.0 BENCHMARK: MySQL (Production Database)");
 
         String host = System.getenv("MYSQL_DB_HOST");
         String dbName = System.getenv("MYSQL_DB_NAME");
@@ -200,8 +205,8 @@ public class Phase_5_0_WriteThroughputBenchmarkTest {
     @DisplayName("Phase 5.0 Benchmark 4: SQLite Write Throughput (demos only)")
     @Timeout(300) // 5 minutes
     void benchmarkSQLiteWriteThroughput() throws Exception {
-        System.out.println("\n🚀 PHASE 5.0 BENCHMARK: SQLite (Demos Only)");
-        System.out.println("⚠️  Note: SQLite has single-writer limitation, lower throughput expected");
+        logger.info("\n🚀 PHASE 5.0 BENCHMARK: SQLite (Demos Only)");
+        logger.info("⚠️  Note: SQLite has single-writer limitation, lower throughput expected");
 
         DatabaseConfig sqliteConfig = DatabaseConfig.createSQLiteConfig();
         JPAUtil.initialize(sqliteConfig);
@@ -238,18 +243,18 @@ public class Phase_5_0_WriteThroughputBenchmarkTest {
         blockchain.addAuthorizedKey(publicKeyStr, "BenchmarkUser", bootstrapKeyPair, UserRole.USER);
 
         // ========== WARM-UP PHASE ==========
-        System.out.println("🔥 Warming up JVM (writing " + WARM_UP_BLOCKS + " blocks)...");
+        logger.info("🔥 Warming up JVM (writing " + WARM_UP_BLOCKS + " blocks)...");
         for (int i = 0; i < WARM_UP_BLOCKS; i++) {
             blockchain.addBlock("Warm-up block " + i, keyPair.getPrivate(), keyPair.getPublic());
         }
-        System.out.println("✅ Warm-up complete");
+        logger.info("✅ Warm-up complete");
 
         // Force GC before benchmark
         System.gc();
         Thread.sleep(100);
 
         // ========== BENCHMARK PHASE ==========
-        System.out.println("\n📊 Starting benchmark (writing " + BENCHMARK_BLOCKS + " blocks)...");
+        logger.info("\n📊 Starting benchmark (writing " + BENCHMARK_BLOCKS + " blocks)...");
 
         // Build batch requests for maximum throughput
         List<Blockchain.BlockWriteRequest> requests = new ArrayList<>();
@@ -269,7 +274,7 @@ public class Phase_5_0_WriteThroughputBenchmarkTest {
         
         long benchmarkEndTime = System.currentTimeMillis();
         
-        System.out.println("\n✅ Benchmark complete");
+        logger.info("\n✅ Benchmark complete");
 
         // Calculate per-block latencies for reporting (synthetic based on total time)
         List<Long> blockLatencies = new ArrayList<>();
@@ -278,7 +283,7 @@ public class Phase_5_0_WriteThroughputBenchmarkTest {
         for (int i = 0; i < BENCHMARK_BLOCKS; i++) {
             blockLatencies.add(avgLatency);
         }
-        System.out.println("\n✅ Benchmark complete");
+        logger.info("\n✅ Benchmark complete");
 
         // ========== CALCULATE RESULTS ==========
         WriteBenchmarkResult result = new WriteBenchmarkResult();

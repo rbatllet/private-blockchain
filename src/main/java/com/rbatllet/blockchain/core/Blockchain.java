@@ -192,6 +192,9 @@ public class Blockchain {
         this.searchFrameworkEngine = new SearchFrameworkEngine(searchConfig);
         this.searchSpecialistAPI = new SearchSpecialistAPI(true, this.searchFrameworkEngine); // Pass the indexed instance
 
+        // Initialize blockchain reference for encrypted content search
+        this.searchFrameworkEngine.setBlockchain(this);
+
         initializeGenesisBlock();
 
         // Note: Bootstrap admin creation is now EXPLICIT via createBootstrapAdmin()
@@ -911,6 +914,26 @@ public class Blockchain {
                     }
 
                     // 11. ENHANCED: Process keywords for search functionality
+                    // For NON-ENCRYPTED blocks, reject "public:" prefix since all data is public anyway
+                    if (manualKeywords != null && manualKeywords.length > 0) {
+                        for (String keyword : manualKeywords) {
+                            if (keyword != null && keyword.toLowerCase().startsWith("public:")) {
+                                logger.error(
+                                    "❌ Invalid keyword 'public:' prefix for non-encrypted block. " +
+                                    "The 'public:' prefix is only meaningful for encrypted blocks where " +
+                                    "it distinguishes between searchable-without-password (public) and " +
+                                    "searchable-only-with-password (private) keywords. For non-encrypted blocks, " +
+                                    "all keywords are public by default."
+                                );
+                                throw new IllegalArgumentException(
+                                    "Invalid keyword 'public:' prefix for non-encrypted block. " +
+                                    "The 'public:' prefix is only allowed for encrypted blocks. " +
+                                    "For non-encrypted blocks, all keywords are publicly searchable."
+                                );
+                            }
+                        }
+                    }
+
                     processBlockKeywords(
                         newBlock,
                         data,
@@ -926,6 +949,10 @@ public class Blockchain {
                     // and flush before transaction commit
 
                     return newBlock; // ✅ RETURN THE ACTUAL CREATED BLOCK
+                } catch (IllegalArgumentException | IllegalStateException e) {
+                    // Preserve validation exceptions - don't wrap them, don't return null
+                    logger.error("❌ Validation error adding block", e);
+                    throw e;
                 } catch (Exception e) {
                     logger.error("❌ Error adding block", e);
                     return null;
@@ -2368,6 +2395,22 @@ public class Blockchain {
         PrivateKey signerPrivateKey,
         PublicKey signerPublicKey
     ) {
+        // Default to skipAutoIndexing=false for backward compatibility
+        // Note: Auto-indexing skips encrypted blocks (no password available)
+        // Use skipAutoIndexing=true with indexBlockchainSync() for proper encrypted block indexing
+        return addEncryptedBlockWithKeywords(data, encryptionPassword, manualKeywords, category,
+            signerPrivateKey, signerPublicKey, false);
+    }
+
+    public Block addEncryptedBlockWithKeywords(
+        String data,
+        String encryptionPassword,
+        String[] manualKeywords,
+        String category,
+        PrivateKey signerPrivateKey,
+        PublicKey signerPublicKey,
+        boolean skipAutoIndexing
+    ) {
         if (encryptionPassword == null || encryptionPassword.trim().isEmpty()) {
             throw new IllegalArgumentException(
                 "Encryption password cannot be null or empty"
@@ -2541,7 +2584,7 @@ public class Blockchain {
         // Search indexing requires reading blocks from DAO, which would attempt to acquire
         // readLock. Cannot acquire readLock while holding writeLock.
         // Phase 5.4: Trigger async indexing with private key passthrough (FIX: no ./keys/ dependency)
-        if (savedBlock != null) {
+        if (savedBlock != null && !skipAutoIndexing) {
             long blockNumber = savedBlock.getBlockNumber();
 
             logger.debug("📊 Triggering background indexing for encrypted block #{} with private key passthrough",
@@ -2742,7 +2785,8 @@ public class Blockchain {
         String[] keywords,
         String encryptionPassword,
         PrivateKey signerPrivateKey,
-        PublicKey signerPublicKey
+        PublicKey signerPublicKey,
+        String category
     ) {
         if (offChainData == null) {
             throw new IllegalArgumentException("Off-chain data cannot be null");
@@ -2804,6 +2848,13 @@ public class Blockchain {
                     newBlock.setSignerPublicKey(publicKeyString);
                     newBlock.setOffChainData(offChainData); // Link off-chain data
 
+                    // 5.5. Set category (user-specified, or OFFCHAIN_DATA as default)
+                    if (category != null && !category.trim().isEmpty()) {
+                        newBlock.setContentCategory(category.toUpperCase());
+                    } else {
+                        newBlock.setContentCategory("OFFCHAIN_DATA");
+                    }
+
                     // 6. Encrypt the main block data
                     String encryptedData =
                         SecureBlockEncryptionService.encryptToString(
@@ -2813,25 +2864,51 @@ public class Blockchain {
                     newBlock.setData(encryptedData);
                     newBlock.setIsEncrypted(true);
 
-                    // 7. Process keywords for search
+                    // 7. Process keywords for search - separate public and private keywords
                     if (keywords != null && keywords.length > 0) {
-                        // Encrypt keywords for search
-                        String encryptedKeywords =
-                            SecureBlockEncryptionService.encryptToString(
-                                String.join(" ", keywords),
-                                encryptionPassword
-                            );
-                        newBlock.setAutoKeywords(encryptedKeywords);
-                        newBlock.setManualKeywords(encryptedKeywords);
-                        newBlock.setSearchableContent(
-                            String.join(" ", keywords)
-                        );
+                        List<String> publicKeywords = new ArrayList<>();
+                        List<String> privateKeywords = new ArrayList<>();
+
+                        // Separate keywords by public: prefix
+                        for (String keyword : keywords) {
+                            if (keyword.toLowerCase().startsWith("public:")) {
+                                // Keep the "public:" prefix for storage (required by FastIndexSearch)
+                                // The prefix is stripped later during search
+                                publicKeywords.add(keyword.toLowerCase());
+                            } else {
+                                // Private keywords will be encrypted
+                                privateKeywords.add(keyword.toLowerCase());
+                            }
+                        }
+
+                        // Store public keywords UNENCRYPTED in manualKeywords (searchable without password)
+                        if (!publicKeywords.isEmpty()) {
+                            String publicKeywordString = String.join(" ", publicKeywords);
+                            newBlock.setManualKeywords(publicKeywordString);
+                            if (logger.isDebugEnabled()) {
+                                logger.debug("🔍 Stored public keywords (unencrypted): {}", publicKeywordString);
+                            }
+                        }
+
+                        // Store private keywords ENCRYPTED in autoKeywords (requires password for search)
+                        if (!privateKeywords.isEmpty()) {
+                            String privateKeywordString = String.join(" ", privateKeywords);
+                            String encryptedKeywords =
+                                SecureBlockEncryptionService.encryptToString(
+                                    privateKeywordString,
+                                    encryptionPassword
+                                );
+                            newBlock.setAutoKeywords(encryptedKeywords);
+                            if (logger.isDebugEnabled()) {
+                                logger.debug("🔐 Stored private keywords (encrypted): {} keywords", privateKeywords.size());
+                            }
+                        }
+
+                        // Store all keywords (both public and private) for content search
+                        newBlock.setSearchableContent(String.join(" ", keywords));
                     }
 
-                    // 8. Set content category
-                    newBlock.setContentCategory("OFF_CHAIN_LINKED");
-
-                    // 9. Calculate block hash
+                    // 8. Calculate block hash (category is preserved from user input, off-chain is indicated by offChainData field)
                     String blockHash = CryptoUtil.calculateHash(
                         newBlock.toString()
                     );
@@ -3006,6 +3083,43 @@ public class Blockchain {
     }
 
     /**
+     * Decrypt and retrieve complete block (including off-chain data)
+     * Unlike getDecryptedBlockData(), this returns the full Block object
+     * with OffChainData loaded, allowing retrieval of off-chain file content.
+     *
+     * @param blockNumber The block number of the encrypted block
+     * @param decryptionPassword The password for decryption
+     * @return The decrypted block, or null if failed
+     */
+    public Block getDecryptedBlock(Long blockNumber, String decryptionPassword) {
+        if (
+            blockNumber == null ||
+            decryptionPassword == null ||
+            decryptionPassword.trim().isEmpty()
+        ) {
+            throw new IllegalArgumentException(
+                "Block number and decryption password cannot be null or empty"
+            );
+        }
+
+        long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
+        try {
+            return blockRepository.getBlockWithDecryption(
+                blockNumber,
+                decryptionPassword
+            );
+        } catch (Exception e) {
+            logger.debug(
+                "Failed to decrypt block (expected with wrong password)",
+                e
+            );
+            return null;
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
+        }
+    }
+
+    /**
      * Check if a block is encrypted
      */
     public boolean isBlockEncrypted(Long blockNumber) {
@@ -3029,10 +3143,12 @@ public class Blockchain {
         String encryptionPassword
     ) {
         try {
+            // Declare privateKeywords list outside the if block so it's available later
+            List<String> privateKeywords = new ArrayList<>();
+
             // 1. Manual keywords - separate public and private keywords
             if (manualKeywords != null && manualKeywords.length > 0) {
                 List<String> publicKeywords = new ArrayList<>();
-                List<String> privateKeywords = new ArrayList<>();
 
                 // Separate keywords by public: prefix (lowercase for consistency with storage)
                 for (String keyword : manualKeywords) {
@@ -3059,25 +3175,6 @@ public class Blockchain {
                         );
                     }
                 }
-
-                // Store private keywords encrypted in autoKeywords field
-                if (!privateKeywords.isEmpty()) {
-                    String privateKeywordString = String.join(
-                        " ",
-                        privateKeywords
-                    );
-                    String encryptedPrivateKeywords =
-                        SecureBlockEncryptionService.encryptToString(
-                            privateKeywordString,
-                            encryptionPassword
-                        );
-                    block.setAutoKeywords(encryptedPrivateKeywords);
-                    if (logger.isDebugEnabled()) {
-                        logger.debug(
-                            "🔍 Stored encrypted private keywords in autoKeywords"
-                        );
-                    }
-                }
             }
 
             // 2. Category (can be unencrypted for classification, or encrypted for privacy)
@@ -3089,50 +3186,48 @@ public class Blockchain {
                 block.setContentCategory("USER_DEFINED");
             }
 
-            // 3. Auto keywords (encrypted) - suggest terms from original data before encryption
+            // 3. Auto-extracted keywords from content
             Set<String> suggestedTerms = extractSimpleSearchTerms(
                 originalData,
                 10
             );
-            if (!suggestedTerms.isEmpty()) {
-                String autoKeywords = String.join(" ", suggestedTerms);
-                String encryptedAutoKeywords =
+
+            // 4. Combine ALL private keywords (manual + auto-extracted) and encrypt ONCE
+            // This fixes the bug where encrypted strings were appended, making decryption impossible
+            List<String> allPrivateKeywords = new ArrayList<>();
+            allPrivateKeywords.addAll(privateKeywords);
+            allPrivateKeywords.addAll(suggestedTerms);
+
+            if (!allPrivateKeywords.isEmpty()) {
+                String allPrivateKeywordsString = String.join(" ", allPrivateKeywords);
+                String encryptedAllPrivateKeywords =
                     SecureBlockEncryptionService.encryptToString(
-                        autoKeywords,
+                        allPrivateKeywordsString,
                         encryptionPassword
                     );
-                // If we already have auto keywords (from private keywords above), append
-                String existingAutoKeywords = block.getAutoKeywords();
-                if (
-                    existingAutoKeywords != null &&
-                    !existingAutoKeywords.trim().isEmpty()
-                ) {
-                    String combined = existingAutoKeywords + " " + encryptedAutoKeywords;
-                    // Validate combined length before setting (database limit: 1024 chars)
-                    if (combined.length() > 1024) {
-                        throw new IllegalArgumentException(
-                            "Combined encrypted keywords exceed database limit of 1024 characters (got: " +
-                            combined.length() + " characters). " +
-                            "The content generates too many keywords when encrypted. " +
-                            "Please reduce content size or use fewer manual keywords."
-                        );
-                    }
-                    block.setAutoKeywords(combined);
-                } else {
-                    // Validate encrypted keywords length before setting
-                    if (encryptedAutoKeywords.length() > 1024) {
-                        throw new IllegalArgumentException(
-                            "Encrypted keywords exceed database limit of 1024 characters (got: " +
-                            encryptedAutoKeywords.length() + " characters). " +
-                            "The content is too large for encrypted keyword extraction. " +
-                            "Please reduce content size."
-                        );
-                    }
-                    block.setAutoKeywords(encryptedAutoKeywords);
+
+                // Validate encrypted keywords length before setting (database limit: 1024 chars)
+                if (encryptedAllPrivateKeywords.length() > 1024) {
+                    throw new IllegalArgumentException(
+                        "Encrypted keywords exceed database limit of 1024 characters (got: " +
+                        encryptedAllPrivateKeywords.length() + " characters). " +
+                        "The content generates too many keywords when encrypted. " +
+                        "Please reduce content size or use fewer manual keywords."
+                    );
+                }
+
+                block.setAutoKeywords(encryptedAllPrivateKeywords);
+                if (logger.isDebugEnabled()) {
+                    logger.debug(
+                        "🔍 Stored encrypted private+auto keywords ({} total terms: {} manual, {} auto)",
+                        allPrivateKeywords.size(),
+                        privateKeywords.size(),
+                        suggestedTerms.size()
+                    );
                 }
             }
 
-            // 4. Searchable content - leave empty for encrypted blocks to maintain privacy
+            // 5. Searchable content - leave empty for encrypted blocks to maintain privacy
             // Search on encrypted blocks would require decryption first
             block.setSearchableContent("");
         } catch (Exception e) {
@@ -6487,6 +6582,58 @@ public class Blockchain {
         long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
         try {
             return blockRepository.getEncryptedBlocksPaginated(offset, limit);
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
+        }
+    }
+
+    /**
+     * Get encrypted blocks in DESCENDING order by block number (newest first).
+     *
+     * <p>Optimized for search operations to prioritize recent blocks.</p>
+     *
+     * <p><b>Thread Safety:</b> Uses read locking for concurrent access</p>
+     *
+     * @param offset Number of blocks to skip (for pagination)
+     * @param limit Maximum number of blocks to return (recommended: 50-100)
+     * @return List of encrypted blocks, newest first
+     * @since 1.0.6
+     */
+    public List<Block> getEncryptedBlocksPaginatedDesc(long offset, int limit) {
+        long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
+        try {
+            return blockRepository.getEncryptedBlocksPaginatedDesc(offset, limit);
+        } finally {
+            GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
+        }
+    }
+
+    /**
+     * Get encrypted blocks in descending order by block number, excluding specific hashes
+     *
+     * <p>This method improves search performance by filtering out already-found blocks
+     * at the SQL level, reducing unnecessary data transfer and processing.</p>
+     *
+     * <p><b>Performance Optimization (P2):</b></p>
+     * <ul>
+     *   <li>Eliminates 20-30% of redundant block retrieval</li>
+     *   <li>Uses SQL NOT IN clause for efficient server-side filtering</li>
+     *   <li>Respects JPA parameter limits (max 1000 hashes)</li>
+     *   <li>Falls back to standard pagination if exclusion list too large</li>
+     * </ul>
+     *
+     * <p><b>Thread Safety:</b> Uses read locking for concurrent access</p>
+     *
+     * @param offset Number of blocks to skip (for pagination)
+     * @param limit Maximum number of blocks to return
+     * @param excludeHashes Set of block hashes to exclude (max 1000)
+     * @return List of encrypted blocks (excluding specified hashes), newest first
+     * @since 1.0.6
+     */
+    public List<Block> getEncryptedBlocksExcluding(long offset, int limit, Set<String> excludeHashes) {
+        long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
+        try {
+            return blockRepository.getEncryptedBlocksExcluding(offset, limit, excludeHashes);
         } finally {
             GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
         }

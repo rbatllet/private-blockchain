@@ -1,6 +1,7 @@
 package demo;
 
 import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.search.SearchSpecialistAPI;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.EnhancedSearchResult;
@@ -62,7 +63,7 @@ public class DynamicSearchConfigurationDemo {
                 new String[]{"business", "standard", "data"});
             
             // Wait for indexing to complete
-            com.rbatllet.blockchain.indexing.IndexingCoordinator.getInstance().waitForCompletion(5000);
+            IndexingCoordinator.getInstance().waitForCompletion(5000);
             
             System.out.println("✅ Stored 3 blocks with searchable keywords");
             System.out.println();

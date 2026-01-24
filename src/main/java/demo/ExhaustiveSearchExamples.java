@@ -140,7 +140,7 @@ public class ExhaustiveSearchExamples {
         // Search on-chain content
         System.out.println("Searching for 'diabetes' in on-chain content...");
         SearchResult result = searchEngine.searchExhaustiveOffChain(
-            "diabetes", DEMO_PASSWORD, privateKey, 10);
+            "diabetes", DEMO_PASSWORD, 10);
         
         // Display results
         if (result.isSuccessful()) {
@@ -219,7 +219,8 @@ public class ExhaustiveSearchExamples {
             new String[]{"medical", "patient", "record", "offchain", "hypertension", "cardiac", "diagnosis"},
             DEMO_PASSWORD,
             privateKey,
-            publicKey
+            publicKey,
+            "MEDICAL_RECORD"  // Category for medical off-chain blocks
         );
         
         // Index blockchain with off-chain content
@@ -228,7 +229,7 @@ public class ExhaustiveSearchExamples {
         // Search for content in off-chain file
         System.out.println("Searching for 'hypertension' in off-chain files...");
         SearchResult result = searchEngine.searchExhaustiveOffChain(
-            "hypertension", DEMO_PASSWORD, privateKey, 10);
+            "hypertension", DEMO_PASSWORD, 10);
         
         // Display results
         if (result.isSuccessful()) {
@@ -339,7 +340,7 @@ public class ExhaustiveSearchExamples {
         // Exhaustive search across all content types
         System.out.println("Searching for 'financial' across all content types...");
         SearchResult result = searchEngine.searchExhaustiveOffChain(
-            "financial", DEMO_PASSWORD, privateKey, 20);
+            "financial", DEMO_PASSWORD, 20);
         
         // Analyze search distribution
         if (result.isSuccessful()) {
@@ -429,7 +430,7 @@ public class ExhaustiveSearchExamples {
         // Test 1: Search with correct password
         System.out.println("🔑 Test 1: Search with CORRECT password");
         SearchResult correctResult = searchEngine.searchExhaustiveOffChain(
-            "confidential", DEMO_PASSWORD, privateKey, 10);
+            "confidential", DEMO_PASSWORD, 10);
         
         if (correctResult.isSuccessful()) {
             System.out.println("✅ Access granted - Found " + correctResult.getResultCount() + " results");
@@ -442,7 +443,7 @@ public class ExhaustiveSearchExamples {
         // Test 2: Search with wrong password
         System.out.println("🚫 Test 2: Search with WRONG password");
         SearchResult wrongResult = searchEngine.searchExhaustiveOffChain(
-            "confidential", "wrong_password", privateKey, 10);
+            "confidential", "wrong_password", 10);
         
         if (wrongResult.isSuccessful()) {
             System.out.println("⚠️ Limited access - Found " + wrongResult.getResultCount() + " results (public only)");
@@ -515,7 +516,7 @@ public class ExhaustiveSearchExamples {
         System.out.println("🔄 First search (populating cache)...");
         long firstStart = System.nanoTime();
         SearchResult firstResult = searchEngine.searchExhaustiveOffChain(
-            "medical", DEMO_PASSWORD, privateKey, 10);
+            "medical", DEMO_PASSWORD, 10);
         long firstEnd = System.nanoTime();
         double firstTime = (firstEnd - firstStart) / 1_000_000.0;
         System.out.println("   Time: " + String.format("%.2f", firstTime) + "ms");
@@ -525,7 +526,7 @@ public class ExhaustiveSearchExamples {
         System.out.println("⚡ Second search (using cache)...");
         long secondStart = System.nanoTime();
         SearchResult secondResult = searchEngine.searchExhaustiveOffChain(
-            "medical", DEMO_PASSWORD, privateKey, 10);
+            "medical", DEMO_PASSWORD, 10);
         long secondEnd = System.nanoTime();
         double secondTime = (secondEnd - secondStart) / 1_000_000.0;
         System.out.println("   Time: " + String.format("%.2f", secondTime) + "ms");
@@ -605,7 +606,7 @@ public class ExhaustiveSearchExamples {
                 try {
                     for (int s = 0; s < searchesPerThread; s++) {
                         SearchResult result = searchEngine.searchExhaustiveOffChain(
-                            "thread", DEMO_PASSWORD, privateKey, 5);
+                            "thread", DEMO_PASSWORD, 5);
                         
                         System.out.println("   Thread " + threadId + "-" + s + ": " + 
                             result.getResultCount() + " results (" + 

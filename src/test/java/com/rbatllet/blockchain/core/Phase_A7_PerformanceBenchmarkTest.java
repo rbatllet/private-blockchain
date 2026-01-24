@@ -1,19 +1,32 @@
 package com.rbatllet.blockchain.core;
 
-import com.rbatllet.blockchain.config.DatabaseConfig;
-import com.rbatllet.blockchain.entity.Block;
-import com.rbatllet.blockchain.indexing.IndexingCoordinator;
-import com.rbatllet.blockchain.security.UserRole;
-import com.rbatllet.blockchain.util.TestGenesisKeyManager;
-import com.rbatllet.blockchain.util.CryptoUtil;
-import com.rbatllet.blockchain.util.JPAUtil;
-import org.junit.jupiter.api.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.security.KeyPair;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.Timeout;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.rbatllet.blockchain.config.DatabaseConfig;
+import com.rbatllet.blockchain.entity.Block;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
+import com.rbatllet.blockchain.security.UserRole;
+import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.util.JPAUtil;
+import com.rbatllet.blockchain.util.TestGenesisKeyManager;
 
 /**
  * Phase A.7: Performance Benchmarking
@@ -46,6 +59,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Tag("performance")
 @Tag("benchmark")
 public class Phase_A7_PerformanceBenchmarkTest {
+    private static final Logger logger = LoggerFactory.getLogger(Phase_A7_PerformanceBenchmarkTest.class);
 
     private Blockchain blockchain;
     private KeyPair bootstrapKeyPair;
@@ -99,11 +113,11 @@ public class Phase_A7_PerformanceBenchmarkTest {
         }
 
         void report() {
-            System.out.println("\n📊 BENCHMARK: " + testName);
-            System.out.println("  Blocks:        " + blockCount);
-            System.out.println("  Duration:      " + durationMs + "ms");
-            System.out.println("  Memory delta:  " + (memoryDelta / 1_000_000) + "MB");
-            System.out.println("  Throughput:    " + String.format("%.1f", throughputBlocksPerSec) + " blocks/sec");
+            logger.info("\n📊 BENCHMARK: {}", testName);
+            logger.info("  Blocks:        {}", blockCount);
+            logger.info("  Duration:      {}ms", durationMs);
+            logger.info("  Memory delta:  {}MB", (memoryDelta / 1_000_000));
+            logger.info("  Throughput:    {} blocks/sec", String.format("%.1f", throughputBlocksPerSec));
         }
     }
 
@@ -124,7 +138,7 @@ public class Phase_A7_PerformanceBenchmarkTest {
     }
 
     private void generateBlocks(int count) throws Exception {
-        System.out.println("📝 Generating " + count + " benchmark blocks...");
+        logger.info("📝 Generating {} benchmark blocks...", count);
         // Use batch write with skipIndexing for performance benchmarks
         List<Blockchain.BlockWriteRequest> requests = new ArrayList<>();
         for (int i = 0; i < count; i++) {
@@ -135,7 +149,7 @@ public class Phase_A7_PerformanceBenchmarkTest {
             ));
         }
         blockchain.addBlocksBatch(requests, true);  // skipIndexing=true for performance benchmark
-        System.out.println("  ✅ " + count + " blocks");
+        logger.info("  ✅ {} blocks", count);
     }
 
     // ==================== TEST 1: PROCESSCHAINBATCHES VS PAGINATED ====================
@@ -145,11 +159,11 @@ public class Phase_A7_PerformanceBenchmarkTest {
     @DisplayName("Phase A.7 Benchmark 1: processChainInBatches() vs getBlocksPaginated()")
     @Timeout(600) // 10 minutes
     void benchmarkProcessChainInBatchesVsPaginated() throws Exception {
-        System.out.println("\n🚀 BENCHMARK 1: Batch Processing vs Pagination");
+        logger.info("\n🚀 BENCHMARK 1: Batch Processing vs Pagination");
         generateBlocks(BENCHMARK_SIZE);
 
         // Benchmark 1: processChainInBatches()
-        System.out.println("\n📊 Method 1: processChainInBatches()");
+        logger.info("\n📊 Method 1: processChainInBatches()");
         forceGarbageCollection();
         long memBefore1 = getMemoryUsage();
         long startTime1 = System.currentTimeMillis();
@@ -172,7 +186,7 @@ public class Phase_A7_PerformanceBenchmarkTest {
         result1.report();
 
         // Benchmark 2: getBlocksPaginated()
-        System.out.println("\n📊 Method 2: getBlocksPaginated()");
+        logger.info("\n📊 Method 2: getBlocksPaginated()");
         forceGarbageCollection();
         long memBefore2 = getMemoryUsage();
         long startTime2 = System.currentTimeMillis();
@@ -199,9 +213,9 @@ public class Phase_A7_PerformanceBenchmarkTest {
         result2.report();
 
         // Analysis
-        System.out.println("\n📈 ANALYSIS:");
-        System.out.println("  Batch processing is " + String.format("%.1f%%", (duration2 - duration1) * 100.0 / duration2) + " faster");
-        System.out.println("  Memory usage similar: " + Math.abs(result1.memoryDelta - result2.memoryDelta) + " bytes difference");
+        logger.info("\n📈 ANALYSIS:");
+        logger.info("  Batch processing is {} faster", String.format("%.1f%%", (duration2 - duration1) * 100.0 / duration2));
+        logger.info("  Memory usage similar: {} bytes difference", Math.abs(result1.memoryDelta - result2.memoryDelta));
 
         assertEquals(BENCHMARK_SIZE + 1, count1.get(), "Batch: should process all blocks (including genesis)");
         assertEquals(BENCHMARK_SIZE + 1, count2, "Paginated: should process all blocks (including genesis)");
@@ -214,13 +228,13 @@ public class Phase_A7_PerformanceBenchmarkTest {
     @DisplayName("Phase A.7 Benchmark 2: Batch Size Impact (100, 1K, 5K, 10K)")
     @Timeout(600) // 10 minutes
     void benchmarkBatchSizeImpact() throws Exception {
-        System.out.println("\n🚀 BENCHMARK 2: Batch Size Impact");
+        logger.info("\n🚀 BENCHMARK 2: Batch Size Impact");
         generateBlocks(BENCHMARK_SIZE);
 
         int[] batchSizes = {100, 1000, 5000, 10000};
 
         for (int batchSize : batchSizes) {
-            System.out.println("\n📊 Batch size: " + batchSize);
+            logger.info("\n📊 Batch size: {}", batchSize);
             forceGarbageCollection();
             long memBefore = getMemoryUsage();
             long startTime = System.currentTimeMillis();
@@ -244,7 +258,7 @@ public class Phase_A7_PerformanceBenchmarkTest {
             assertEquals(BENCHMARK_SIZE + 1, count.get(), "Should process all blocks (including genesis)");
         }
 
-        System.out.println("\n💡 Note: Batch size 1000 is optimal (balance of memory and throughput)");
+        logger.info("\n💡 Note: Batch size 1000 is optimal (balance of memory and throughput)");
     }
 
     // ==================== TEST 3: SEARCH PERFORMANCE ====================
@@ -254,24 +268,24 @@ public class Phase_A7_PerformanceBenchmarkTest {
     @DisplayName("Phase A.7 Benchmark 3: Search with limit vs custom metadata")
     @Timeout(300) // 5 minutes
     void benchmarkSearchOperations() throws Exception {
-        System.out.println("\n🚀 BENCHMARK 3: Search Operations Performance");
+        logger.info("\n🚀 BENCHMARK 3: Search Operations Performance");
         generateBlocks(BENCHMARK_SIZE);
 
         // Benchmark 1: Search by category
-        System.out.println("\n📊 Search by category");
+        logger.info("\n📊 Search by category");
         long startTime1 = System.currentTimeMillis();
         List<Block> results1 = blockchain.searchByCategory("test", 10000);
         long duration1 = System.currentTimeMillis() - startTime1;
-        System.out.println("  Duration: " + duration1 + "ms, Results: " + results1.size());
+        logger.info("  Duration: {}ms, Results: {}", duration1, results1.size());
 
         // Benchmark 2: Search by custom metadata
-        System.out.println("\n📊 Search by custom metadata");
+        logger.info("\n📊 Search by custom metadata");
         long startTime2 = System.currentTimeMillis();
         List<Block> results2 = blockchain.searchByCustomMetadata("test");
         long duration2 = System.currentTimeMillis() - startTime2;
-        System.out.println("  Duration: " + duration2 + "ms, Results: " + results2.size());
+        logger.info("  Duration: {}ms, Results: {}", duration2, results2.size());
 
-        System.out.println("\n💡 Search operations are responsive even with large datasets");
+        logger.info("\n💡 Search operations are responsive even with large datasets");
         assertTrue(duration1 < 30_000, "Category search should be < 30s");
         assertTrue(duration2 < 30_000, "Metadata search should be < 30s");
     }
@@ -283,10 +297,10 @@ public class Phase_A7_PerformanceBenchmarkTest {
     @DisplayName("Phase A.7 Benchmark 4: Pagination Scalability")
     @Timeout(300) // 5 minutes
     void benchmarkPaginationScalability() throws Exception {
-        System.out.println("\n🚀 BENCHMARK 4: Pagination Scalability");
+        logger.info("\n🚀 BENCHMARK 4: Pagination Scalability");
         generateBlocks(BENCHMARK_SIZE);
 
-        System.out.println("\n📊 Paginating through " + BENCHMARK_SIZE + " blocks");
+        logger.info("\n📊 Paginating through {} blocks", BENCHMARK_SIZE);
         forceGarbageCollection();
         long memBefore = getMemoryUsage();
         long startTime = System.currentTimeMillis();
@@ -324,10 +338,10 @@ public class Phase_A7_PerformanceBenchmarkTest {
     @DisplayName("Phase A.7 Benchmark 5: Chain Validation Throughput")
     @Timeout(300) // 5 minutes
     void benchmarkValidationThroughput() throws Exception {
-        System.out.println("\n🚀 BENCHMARK 5: Chain Validation Throughput");
+        logger.info("\n🚀 BENCHMARK 5: Chain Validation Throughput");
         generateBlocks(BENCHMARK_SIZE);
 
-        System.out.println("\n📊 Validating " + BENCHMARK_SIZE + " blocks");
+        logger.info("\n📊 Validating {} blocks", BENCHMARK_SIZE);
         long startTime = System.currentTimeMillis();
 
         // Use simple validation count
@@ -353,26 +367,26 @@ public class Phase_A7_PerformanceBenchmarkTest {
     @Order(6)
     @DisplayName("Phase A.7 Summary: Performance Verification")
     void benchmarkSummary() {
-        System.out.println("\n" + "=".repeat(80));
-        System.out.println("📊 PHASE A.7 PERFORMANCE BENCHMARKING SUMMARY");
-        System.out.println("=".repeat(80));
+        logger.info("\n{}", "=".repeat(80));
+        logger.info("📊 PHASE A.7 PERFORMANCE BENCHMARKING SUMMARY");
+        logger.info("{}", "=".repeat(80));
 
-        System.out.println("\n✅ Performance Verified:");
-        System.out.println("  • processChainInBatches() is fast and memory-efficient");
-        System.out.println("  • Batch processing maintains constant ~50MB memory");
-        System.out.println("  • Batch size 1000 is optimal for most use cases");
-        System.out.println("  • Search operations respond in < 30 seconds");
-        System.out.println("  • Pagination is memory-safe (< 50MB delta)");
-        System.out.println("  • Validation throughput: 1000+ blocks/sec");
+        logger.info("\n✅ Performance Verified:");
+        logger.info("  • processChainInBatches() is fast and memory-efficient");
+        logger.info("  • Batch processing maintains constant ~50MB memory");
+        logger.info("  • Batch size 1000 is optimal for most use cases");
+        logger.info("  • Search operations respond in < 30 seconds");
+        logger.info("  • Pagination is memory-safe (< 50MB delta)");
+        logger.info("  • Validation throughput: 1000+ blocks/sec");
 
-        System.out.println("\n🎯 Recommendations:");
-        System.out.println("  1. Use processChainInBatches() for large chain processing");
-        System.out.println("  2. Use batch size 1000 by default");
-        System.out.println("  3. Use search methods with reasonable limits (10K)");
-        System.out.println("  4. Pagination is safe for accumulated results");
-        System.out.println("  5. Memory safety is proven at scale (50K+ blocks)");
+        logger.info("\n🎯 Recommendations:");
+        logger.info("  1. Use processChainInBatches() for large chain processing");
+        logger.info("  2. Use batch size 1000 by default");
+        logger.info("  3. Use search methods with reasonable limits (10K)");
+        logger.info("  4. Pagination is safe for accumulated results");
+        logger.info("  5. Memory safety is proven at scale (50K+ blocks)");
 
-        System.out.println("\n" + "=".repeat(80));
+        logger.info("\n{}", "=".repeat(80));
     }
 
 }

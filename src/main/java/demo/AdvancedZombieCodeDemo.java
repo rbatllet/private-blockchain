@@ -630,7 +630,8 @@ public class AdvancedZombieCodeDemo {
                 documentKeywords,
                 documentPassword,
                 userKeys.getPrivate(),
-                userKeys.getPublic()
+                userKeys.getPublic(),
+                "FINANCIAL_REPORT"  // Category for financial off-chain documents
             );
 
             System.out.println("✅ Large financial document stored securely");
@@ -667,7 +668,8 @@ public class AdvancedZombieCodeDemo {
                 binaryKeywords,
                 binaryPassword,
                 userKeys.getPrivate(),
-                userKeys.getPublic()
+                userKeys.getPublic(),
+                "PDF_DOCUMENT"  // Category for PDF off-chain files
             );
 
             System.out.println(
@@ -799,7 +801,8 @@ public class AdvancedZombieCodeDemo {
                 altKeywords,
                 altPassword,
                 alternativeUser.getPrivate(),
-                alternativeUser.getPublic()
+                alternativeUser.getPublic(),
+                "TEST_ALTERNATIVE"  // Category for alternative user test
             );
 
             if (createdBlock != null) {

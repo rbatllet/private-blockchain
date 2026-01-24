@@ -13,6 +13,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Extreme Thread Safety Test
@@ -20,6 +23,8 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class ExtremeThreadSafetyTest {
+    private static final Logger logger = LoggerFactory.getLogger(ExtremeThreadSafetyTest.class);
+
 
     private Blockchain blockchain;
     private ExecutorService executorService;
@@ -68,7 +73,7 @@ class ExtremeThreadSafetyTest {
     @DisplayName("🔥 Extreme Test: Insert + Rollback + Validation Concurrency")
     @Timeout(120)
     void testExtremeInsertionRollbackConcurrency() throws InterruptedException {
-        System.out.println("🔥 Starting extreme insertion and rollback concurrency test...");
+        logger.info("🔥 Starting extreme insertion and rollback concurrency test...");
         
         // Test configuration
         int INSERTION_THREADS = 15;      // 15 threads inserting blocks
@@ -220,37 +225,37 @@ class ExtremeThreadSafetyTest {
         // RESULTS ANALYSIS
         assertTrue(completed, "Test should complete within timeout");
         
-        System.out.println("🔥 EXTREME TEST RESULTS:");
-        System.out.println("   ⏱️  Execution time: " + (endTime - startTime) + "ms");
-        System.out.println("   📊 INSERTIONS:");
-        System.out.println("      ✅ Successful: " + successfulInsertions.get());
-        System.out.println("      ❌ Failed: " + failedInsertions.get());
-        System.out.println("   🔄 ROLLBACKS:");
-        System.out.println("      ✅ Successful: " + successfulRollbacks.get());
-        System.out.println("      ❌ Failed: " + failedRollbacks.get());
-        System.out.println("   🔍 VALIDATIONS:");
-        System.out.println("      ✅ Valid: " + validationPasses.get());
-        System.out.println("      ❌ Invalid: " + validationFails.get());
-        System.out.println("   🏗️  Final blockchain state:");
-        System.out.println("      📦 Total blocks: " + blockchain.getBlockCount());
+        logger.info("🔥 EXTREME TEST RESULTS:");
+        logger.info("   ⏱️  Execution time: " + (endTime - startTime) + "ms");
+        logger.info("   📊 INSERTIONS:");
+        logger.info("      ✅ Successful: " + successfulInsertions.get());
+        logger.info("      ❌ Failed: " + failedInsertions.get());
+        logger.info("   🔄 ROLLBACKS:");
+        logger.info("      ✅ Successful: " + successfulRollbacks.get());
+        logger.info("      ❌ Failed: " + failedRollbacks.get());
+        logger.info("   🔍 VALIDATIONS:");
+        logger.info("      ✅ Valid: " + validationPasses.get());
+        logger.info("      ❌ Invalid: " + validationFails.get());
+        logger.info("   🏗️  Final blockchain state:");
+        logger.info("      📦 Total blocks: " + blockchain.getBlockCount());
         var finalValidation = blockchain.validateChainDetailed();
-        System.out.println("      🔗 Chain structurally intact: " + finalValidation.isStructurallyIntact());
-        System.out.println("      🔗 Chain fully compliant: " + finalValidation.isFullyCompliant());
+        logger.info("      🔗 Chain structurally intact: " + finalValidation.isStructurallyIntact());
+        logger.info("      🔗 Chain fully compliant: " + finalValidation.isFullyCompliant());
         if (!finalValidation.isFullyCompliant()) {
-            System.out.println("      ⚠️  Revoked blocks: " + finalValidation.getRevokedBlocks());
+            logger.info("      ⚠️  Revoked blocks: " + finalValidation.getRevokedBlocks());
         }
         if (!finalValidation.isStructurallyIntact()) {
-            System.out.println("      ❌ Invalid blocks: " + finalValidation.getInvalidBlocks());
+            logger.info("      ❌ Invalid blocks: " + finalValidation.getInvalidBlocks());
         }
-        System.out.println("   ⚠️  Inconsistencies detected: " + inconsistencies.size());
+        logger.info("   ⚠️  Inconsistencies detected: " + inconsistencies.size());
         
         // Show inconsistencies if they exist
         if (!inconsistencies.isEmpty()) {
-            System.out.println("   🚨 INCONSISTENCY DETAILS:");
+            logger.info("   🚨 INCONSISTENCY DETAILS:");
             inconsistencies.stream().limit(10).forEach(inc -> 
-                System.out.println("      - " + inc));
+                logger.info("      - " + inc));
             if (inconsistencies.size() > 10) {
-                System.out.println("      ... and " + (inconsistencies.size() - 10) + " more");
+                logger.info("      ... and " + (inconsistencies.size() - 10) + " more");
             }
         }
         
@@ -288,7 +293,7 @@ class ExtremeThreadSafetyTest {
         assertTrue(validationSuccessRate > 0.8, 
             "At least 80% of validations must pass: " + validationSuccessRate);
         
-        System.out.println("✅ EXTREME TEST PASSED: Thread-safety confirmed under extreme conditions!");
+        logger.info("✅ EXTREME TEST PASSED: Thread-safety confirmed under extreme conditions!");
     }
 
     @Test
@@ -296,7 +301,7 @@ class ExtremeThreadSafetyTest {
     @DisplayName("🎯 Complex Test: Insert + Authorization/Revocation + Rollback")
     @Timeout(120)
     void testComplexKeyManagementAndRollback() throws InterruptedException {
-        System.out.println("🎯 Complex key management and rollback test...");
+        logger.info("🎯 Complex key management and rollback test...");
         
         int OPERATION_THREADS = 12;
         CountDownLatch startLatch = new CountDownLatch(1);
@@ -436,22 +441,22 @@ class ExtremeThreadSafetyTest {
         long endTime = System.currentTimeMillis();
         
         // Final analysis
-        System.out.println("🎯 COMPLEX TEST RESULTS:");
-        System.out.println("   ⏱️  Time: " + (endTime - startTime) + "ms");
-        System.out.println("   📊 Total operations: " + totalOperations.get());
-        System.out.println("   ✅ Successful operations: " + successfulOperations.get());
-        System.out.println("   📈 Success rate: " + 
+        logger.info("🎯 COMPLEX TEST RESULTS:");
+        logger.info("   ⏱️  Time: " + (endTime - startTime) + "ms");
+        logger.info("   📊 Total operations: " + totalOperations.get());
+        logger.info("   ✅ Successful operations: " + successfulOperations.get());
+        logger.info("   📈 Success rate: " + 
             String.format("%.2f%%", 100.0 * successfulOperations.get() / totalOperations.get()));
-        System.out.println("   🏗️  Final blocks: " + blockchain.getBlockCount());
+        logger.info("   🏗️  Final blocks: " + blockchain.getBlockCount());
         var finalValidationResult = blockchain.validateChainDetailed();
-        System.out.println("   🔗 Chain structurally intact: " + finalValidationResult.isStructurallyIntact());
-        System.out.println("   🔗 Chain fully compliant: " + finalValidationResult.isFullyCompliant());
-        System.out.println("   🔑 Authorized keys: " + blockchain.getAuthorizedKeys().size());
+        logger.info("   🔗 Chain structurally intact: " + finalValidationResult.isStructurallyIntact());
+        logger.info("   🔗 Chain fully compliant: " + finalValidationResult.isFullyCompliant());
+        logger.info("   🔑 Authorized keys: " + blockchain.getAuthorizedKeys().size());
         
         // Show operation log (last 20)
-        System.out.println("   📝 Last operations:");
+        logger.info("   📝 Last operations:");
         operationLog.stream().skip(Math.max(0, operationLog.size() - 20))
-            .forEach(log -> System.out.println("      " + log));
+            .forEach(log -> logger.info("      " + log));
         
         // Critical validations
         assertTrue(completed, "Test must complete on time");
@@ -462,6 +467,6 @@ class ExtremeThreadSafetyTest {
         assertTrue(successfulOperations.get() > totalOperations.get() * 0.7, 
             "At least 70% of operations must be successful");
         
-        System.out.println("✅ COMPLEX TEST PASSED: Thread-safety confirmed in mixed operations!");
+        logger.info("✅ COMPLEX TEST PASSED: Thread-safety confirmed in mixed operations!");
     }
 }

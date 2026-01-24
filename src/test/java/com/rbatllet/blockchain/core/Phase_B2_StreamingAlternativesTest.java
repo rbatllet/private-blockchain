@@ -14,6 +14,9 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Phase B.2: Streaming Alternatives for Paginated Methods
@@ -36,6 +39,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class Phase_B2_StreamingAlternativesTest {
+    private static final Logger logger = LoggerFactory.getLogger(Phase_B2_StreamingAlternativesTest.class);
+
 
     private static Blockchain blockchain;
     private static KeyPair bootstrapKeyPair;
@@ -44,8 +49,8 @@ public class Phase_B2_StreamingAlternativesTest {
 
     @BeforeAll
     static void setup() throws Exception {
-        System.out.println("\n📊 PHASE B.2: STREAMING ALTERNATIVES TEST SUITE");
-        System.out.println("================================================");
+        logger.info("\n📊 PHASE B.2: STREAMING ALTERNATIVES TEST SUITE");
+        logger.info("================================================");
 
         // Use H2 in-memory for fast test execution
         DatabaseConfig config = DatabaseConfig.createH2TestConfig();
@@ -59,14 +64,14 @@ public class Phase_B2_StreamingAlternativesTest {
         keyPair = CryptoUtil.generateKeyPair();
         publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
 
-        System.out.println("✅ H2 test database initialized");
-        System.out.println("✅ Blockchain initialized");
+        logger.info("✅ H2 test database initialized");
+        logger.info("✅ Blockchain initialized");
     }
 
     @AfterAll
     static void tearDown() {
         JPAUtil.shutdown();
-        System.out.println("\n✅ Phase B.2 tests completed\n");
+        logger.info("\n✅ Phase B.2 tests completed\n");
     }
 
     @BeforeEach
@@ -105,7 +110,7 @@ public class Phase_B2_StreamingAlternativesTest {
     @Order(1)
     @DisplayName("Phase B.2 Test 1: streamBlocksByTimeRange() filters by time correctly")
     void testStreamBlocksByTimeRange() throws Exception {
-        System.out.println("\n🚀 TEST 1: Stream Blocks By Time Range");
+        logger.info("\n🚀 TEST 1: Stream Blocks By Time Range");
 
         // Create blocks with different timestamps
         LocalDateTime now = LocalDateTime.now();
@@ -124,19 +129,19 @@ public class Phase_B2_StreamingAlternativesTest {
 
         blockchain.streamBlocksByTimeRange(startTime, endTime, block -> {
             count.incrementAndGet();
-            System.out.println("  ✅ Block #" + block.getBlockNumber() + " - " + block.getTimestamp());
+            logger.info("  ✅ Block #" + block.getBlockNumber() + " - " + block.getTimestamp());
         });
 
         // Should include genesis + 3 blocks = 4 total (all within range due to test timing)
         assertTrue(count.get() >= 3, "Should stream at least 3 blocks within time range");
-        System.out.println("  📊 Streamed " + count.get() + " blocks");
+        logger.info("  📊 Streamed " + count.get() + " blocks");
     }
 
     @Test
     @Order(2)
     @DisplayName("Phase B.2 Test 2: streamBlocksByTimeRange() rejects null parameters")
     void testStreamBlocksByTimeRange_NullParameters() {
-        System.out.println("\n🚀 TEST 2: streamBlocksByTimeRange() Null Parameter Validation");
+        logger.info("\n🚀 TEST 2: streamBlocksByTimeRange() Null Parameter Validation");
 
         assertThrows(IllegalArgumentException.class, () -> {
             blockchain.streamBlocksByTimeRange(null, LocalDateTime.now(), block -> {});
@@ -146,7 +151,7 @@ public class Phase_B2_StreamingAlternativesTest {
             blockchain.streamBlocksByTimeRange(LocalDateTime.now(), null, block -> {});
         }, "Should reject null end time");
 
-        System.out.println("  ✅ Null parameter validation works correctly");
+        logger.info("  ✅ Null parameter validation works correctly");
     }
 
     // ========================================================================
@@ -157,7 +162,7 @@ public class Phase_B2_StreamingAlternativesTest {
     @Order(3)
     @DisplayName("Phase B.2 Test 3: streamEncryptedBlocks() filters encrypted blocks only")
     void testStreamEncryptedBlocks() throws Exception {
-        System.out.println("\n🚀 TEST 3: Stream Encrypted Blocks");
+        logger.info("\n🚀 TEST 3: Stream Encrypted Blocks");
 
         // Create mixed blocks (encrypted and non-encrypted)
         blockchain.addBlock("Plain block 1", keyPair.getPrivate(), keyPair.getPublic());
@@ -170,11 +175,11 @@ public class Phase_B2_StreamingAlternativesTest {
         blockchain.streamEncryptedBlocks(block -> {
             assertTrue(block.isDataEncrypted(), "Should only stream encrypted blocks");
             encryptedCount.incrementAndGet();
-            System.out.println("  ✅ Encrypted Block #" + block.getBlockNumber());
+            logger.info("  ✅ Encrypted Block #" + block.getBlockNumber());
         });
 
         assertEquals(2, encryptedCount.get(), "Should stream exactly 2 encrypted blocks");
-        System.out.println("  📊 Streamed " + encryptedCount.get() + " encrypted blocks");
+        logger.info("  📊 Streamed " + encryptedCount.get() + " encrypted blocks");
     }
 
     // ========================================================================
@@ -185,7 +190,7 @@ public class Phase_B2_StreamingAlternativesTest {
     @Order(4)
     @DisplayName("Phase B.2 Test 4: streamBlocksWithOffChainData() filters off-chain blocks only")
     void testStreamBlocksWithOffChainData() throws Exception {
-        System.out.println("\n🚀 TEST 4: Stream Blocks With Off-Chain Data");
+        logger.info("\n🚀 TEST 4: Stream Blocks With Off-Chain Data");
 
         // Create small on-chain block
         blockchain.addBlock("Small block", keyPair.getPrivate(), keyPair.getPublic());
@@ -203,11 +208,11 @@ public class Phase_B2_StreamingAlternativesTest {
         blockchain.streamBlocksWithOffChainData(block -> {
             assertTrue(block.hasOffChainData(), "Should only stream off-chain blocks");
             offChainCount.incrementAndGet();
-            System.out.println("  ✅ Off-Chain Block #" + block.getBlockNumber());
+            logger.info("  ✅ Off-Chain Block #" + block.getBlockNumber());
         });
 
         assertEquals(1, offChainCount.get(), "Should stream exactly 1 off-chain block");
-        System.out.println("  📊 Streamed " + offChainCount.get() + " off-chain blocks");
+        logger.info("  📊 Streamed " + offChainCount.get() + " off-chain blocks");
     }
 
     // ========================================================================
@@ -218,7 +223,7 @@ public class Phase_B2_StreamingAlternativesTest {
     @Order(5)
     @DisplayName("Phase B.2 Test 5: streamBlocksAfter() filters blocks after specific number")
     void testStreamBlocksAfter() throws Exception {
-        System.out.println("\n🚀 TEST 5: Stream Blocks After Specific Block Number");
+        logger.info("\n🚀 TEST 5: Stream Blocks After Specific Block Number");
 
         // Create 10 blocks
         for (int i = 1; i <= 10; i++) {
@@ -235,26 +240,26 @@ public class Phase_B2_StreamingAlternativesTest {
             minBlockNumber.set(Math.min(minBlockNumber.get(), block.getBlockNumber().intValue()));
             assertTrue(block.getBlockNumber() > blockNumber,
                 "All blocks should have number > " + blockNumber);
-            System.out.println("  ✅ Block #" + block.getBlockNumber());
+            logger.info("  ✅ Block #" + block.getBlockNumber());
         });
 
         // Should stream blocks 6-10 = 5 blocks
         assertEquals(5, count.get(), "Should stream exactly 5 blocks after block #5");
         assertTrue(minBlockNumber.get() > blockNumber, "Minimum block number should be > " + blockNumber);
-        System.out.println("  📊 Streamed " + count.get() + " blocks after #" + blockNumber);
+        logger.info("  📊 Streamed " + count.get() + " blocks after #" + blockNumber);
     }
 
     @Test
     @Order(6)
     @DisplayName("Phase B.2 Test 6: streamBlocksAfter() rejects null block number")
     void testStreamBlocksAfter_NullParameter() {
-        System.out.println("\n🚀 TEST 6: streamBlocksAfter() Null Parameter Validation");
+        logger.info("\n🚀 TEST 6: streamBlocksAfter() Null Parameter Validation");
 
         assertThrows(IllegalArgumentException.class, () -> {
             blockchain.streamBlocksAfter(null, block -> {});
         }, "Should reject null block number");
 
-        System.out.println("  ✅ Null parameter validation works correctly");
+        logger.info("  ✅ Null parameter validation works correctly");
     }
 
     // ========================================================================
@@ -265,10 +270,10 @@ public class Phase_B2_StreamingAlternativesTest {
     @Order(7)
     @DisplayName("Phase B.2 Test 7: All streaming methods maintain constant memory")
     void testStreamingMemorySafety() throws Exception {
-        System.out.println("\n🚀 TEST 7: Streaming Memory Safety");
+        logger.info("\n🚀 TEST 7: Streaming Memory Safety");
 
         // Create 1000 blocks for testing (use batch write for performance + skip indexing for memory safety)
-        System.out.println("  📦 Creating 1000 test blocks...");
+        logger.info("  📦 Creating 1000 test blocks...");
         List<Blockchain.BlockWriteRequest> requests = new ArrayList<>();
         for (int i = 1; i <= 1000; i++) {
             requests.add(new Blockchain.BlockWriteRequest(
@@ -303,15 +308,15 @@ public class Phase_B2_StreamingAlternativesTest {
         long memoryAfterBlocksAfter = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
         long deltaBlocksAfter = memoryAfterBlocksAfter - initialMemory;
 
-        System.out.println("  📊 Memory Usage:");
-        System.out.println("    Initial: " + (initialMemory / 1024 / 1024) + " MB");
-        System.out.println("    After streamBlocksByTimeRange: " + (memoryAfterTimeRange / 1024 / 1024) + " MB (delta: " + (deltaTimeRange / 1024 / 1024) + " MB)");
-        System.out.println("    After streamBlocksAfter: " + (memoryAfterBlocksAfter / 1024 / 1024) + " MB (delta: " + (deltaBlocksAfter / 1024 / 1024) + " MB)");
+        logger.info("  📊 Memory Usage:");
+        logger.info("    Initial: " + (initialMemory / 1024 / 1024) + " MB");
+        logger.info("    After streamBlocksByTimeRange: " + (memoryAfterTimeRange / 1024 / 1024) + " MB (delta: " + (deltaTimeRange / 1024 / 1024) + " MB)");
+        logger.info("    After streamBlocksAfter: " + (memoryAfterBlocksAfter / 1024 / 1024) + " MB (delta: " + (deltaBlocksAfter / 1024 / 1024) + " MB)");
 
         // Memory delta should be < 150MB for 1000 blocks (increased from 100MB due to JVM overhead)
         assertTrue(deltaTimeRange < 150_000_000, "Memory delta should be < 150MB (was " + (deltaTimeRange / 1024 / 1024) + " MB)");
         assertTrue(deltaBlocksAfter < 150_000_000, "Memory delta should be < 150MB (was " + (deltaBlocksAfter / 1024 / 1024) + " MB)");
 
-        System.out.println("  ✅ Memory safety verified");
+        logger.info("  ✅ Memory safety verified");
     }
 }

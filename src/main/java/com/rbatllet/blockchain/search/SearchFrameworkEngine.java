@@ -132,14 +132,14 @@ import org.slf4j.LoggerFactory;
 public class SearchFrameworkEngine {
 
     private final MetadataLayerManager metadataManager;
-    private final SearchStrategyRouter strategyRouter;
+    private SearchStrategyRouter strategyRouter;  // Made non-final to allow blockchain initialization
     private final EncryptionConfig defaultConfig;
     private final ExecutorService indexingExecutor;
     private final Map<String, BlockMetadataLayers> blockMetadataIndex;
     private final OffChainFileSearch offChainFileSearch;
     private final OnChainContentSearch onChainContentSearch;
 
-    // Reference to blockchain for block hash lookups (for INCLUDE_ENCRYPTED search)
+    // Reference to blockchain for block hash lookups (for INCLUDE_OFFCHAIN search)
     private Blockchain blockchain;
     
     // 🔍 RACE CONDITION DEBUGGING: Instance identification
@@ -330,10 +330,32 @@ public class SearchFrameworkEngine {
         this.blockchain = null; // Will be set when blockchain indexing is performed
         
         // 🔍 RACE CONDITION DEBUGGING: Log instance creation
-        logger.info("🏗️ NEW SearchFrameworkEngine instance created: {} | Map: {} | Thread: {}", 
-            this.instanceId, 
+        logger.info("🏗️ NEW SearchFrameworkEngine instance created: {} | Map: {} | Thread: {}",
+            this.instanceId,
             System.identityHashCode(this.blockMetadataIndex),
             Thread.currentThread().getName());
+    }
+
+    /**
+     * Initialize the blockchain reference for encrypted content search.
+     * This must be called after Blockchain construction to enable full search capabilities.
+     *
+     * <p>When called, re-creates the SearchStrategyRouter with the blockchain reference,
+     * enabling query-time decryption of encrypted block content for INCLUDE_DATA searches.</p>
+     *
+     * @param blockchain The blockchain instance (must not be null)
+     */
+    public void setBlockchain(Blockchain blockchain) {
+        if (blockchain == null) {
+            throw new IllegalArgumentException("Blockchain cannot be null");
+        }
+
+        this.blockchain = blockchain;
+
+        // Re-create SearchStrategyRouter with blockchain for full encrypted content search
+        this.strategyRouter = new SearchStrategyRouter(blockchain);
+
+        logger.info("✅ SearchFrameworkEngine initialized with Blockchain for encrypted content search");
     }
 
     // ===== CORE SEARCH METHODS =====
@@ -649,7 +671,7 @@ public class SearchFrameworkEngine {
                 SearchStrategyRouter.SearchStrategy.ENCRYPTED_CONTENT,
                 null,
                 totalTimeMs,
-                SearchLevel.INCLUDE_METADATA,
+                SearchLevel.INCLUDE_DATA,
                 null
             );
         } catch (Exception e) {
@@ -766,7 +788,7 @@ public class SearchFrameworkEngine {
                 SearchStrategyRouter.SearchStrategy.HYBRID_CASCADE,
                 null,
                 totalTimeMs,
-                SearchLevel.INCLUDE_METADATA,
+                SearchLevel.INCLUDE_DATA,
                 null
             );
         } catch (Exception e) {
@@ -792,7 +814,6 @@ public class SearchFrameworkEngine {
      *
      * @param query Search term
      * @param password Encryption password
-     * @param privateKey Private key for decryption
      * @param maxResults Maximum results (1 to 10,000)
      * @return SearchResult with top maxResults sorted by relevance
      *
@@ -803,7 +824,6 @@ public class SearchFrameworkEngine {
     public SearchResult searchExhaustiveOffChain(
         String query,
         String password,
-        PrivateKey privateKey,
         int maxResults
     ) {
         long startTime = System.nanoTime();
@@ -822,28 +842,58 @@ public class SearchFrameworkEngine {
             }
 
             logger.debug(
-                "🔍 Starting TRUE EXHAUSTIVE search (on-chain + off-chain) for: \"{}\" with maxResults: {}",
+                "🔍 Starting TRUE EXHAUSTIVE search (FAST + encrypted + on-chain + off-chain) for: \"{}\" with maxResults: {}",
                 query,
                 maxResults
             );
 
-            // Step 1: Perform regular encrypted search first
-            SearchResult regularResults = searchEncryptedOnly(
-                query,
-                password,
-                maxResults
-            );
+            // ✅ HYBRID SEARCH PATTERN: Execute multiple search strategies in optimal order
+            // Step 0: FAST public search (public keywords from manualKeywords) - fastest, ~10-20ms
+            SearchResult fastResults = searchPublicOnly(query, maxResults);
+            logger.debug("🔍 FAST public search completed: {} results", fastResults.getResults().size());
 
-            // ✅ PRIORITY QUEUE: Keep only top N results (min-heap)
+            // Step 1: Encrypted metadata search (private keywords from autoKeywords)
+            // CRITICAL FIX: Only perform encrypted search if password is provided
+            // Without password, encrypted content cannot be decrypted, so skip this step
+            // Previously, this would throw IllegalArgumentException and abort the entire search
+            SearchResult encryptedResults;
+            if (password != null && !password.trim().isEmpty()) {
+                encryptedResults = searchEncryptedOnly(query, password, maxResults);
+                logger.debug("🔍 Encrypted search completed: {} results", encryptedResults.getResults().size());
+            } else {
+                // No password - skip encrypted search but continue with on-chain and off-chain
+                encryptedResults = new SearchResult(
+                    new ArrayList<>(),
+                    SearchStrategyRouter.SearchStrategy.ENCRYPTED_CONTENT,
+                    null,
+                    0.0,
+                    SearchLevel.INCLUDE_DATA,
+                    null
+                );
+                logger.debug("🔍 Encrypted search skipped (no password provided)");
+            }
+
+            // ✅ MERGE STRATEGY: Combine results from multiple searches with deduplication
+            // Using PriorityQueue (min-heap) for efficient top-N selection
             final int BUFFER_SIZE = maxResults * 2;
             final PriorityQueue<EnhancedSearchResult> topResults = new PriorityQueue<>(
                 BUFFER_SIZE,
                 Comparator.comparingDouble(EnhancedSearchResult::getRelevanceScore)  // Min-heap
             );
+            final Set<String> seenHashes = ConcurrentHashMap.newKeySet(); // Thread-safe deduplication
 
-            // Add initial regular results to priority queue
-            for (EnhancedSearchResult result : regularResults.getResults()) {
-                addToTopResults(topResults, result, BUFFER_SIZE);
+            // Add FAST public results first (highest priority)
+            for (EnhancedSearchResult result : fastResults.getResults()) {
+                if (seenHashes.add(result.getBlockHash())) {
+                    addToTopResults(topResults, result, BUFFER_SIZE);
+                }
+            }
+
+            // Add encrypted results (skip duplicates)
+            for (EnhancedSearchResult result : encryptedResults.getResults()) {
+                if (seenHashes.add(result.getBlockHash())) {
+                    addToTopResults(topResults, result, BUFFER_SIZE);
+                }
             }
 
             // MEMORY SAFETY: Process blocks in batches WITHOUT accumulating all in memory
@@ -877,13 +927,14 @@ public class SearchFrameworkEngine {
                             batchBlocks,
                             query,
                             password,
-                            privateKey,
                             maxResults
                         );
 
                     // Add on-chain results to top results
                     for (EnhancedSearchResult result : convertOnChainToEnhancedResults(batchOnChainResults, password)) {
-                        addToTopResults(topResults, result, BUFFER_SIZE);
+                        if (seenHashes.add(result.getBlockHash())) {  // Deduplicate by block hash
+                            addToTopResults(topResults, result, BUFFER_SIZE);
+                        }
                     }
                 }, MemorySafetyConstants.DEFAULT_BATCH_SIZE);
 
@@ -900,13 +951,14 @@ public class SearchFrameworkEngine {
                             Collections.singletonList(block),
                             query,
                             password,
-                            privateKey,
                             maxResults
                         );
 
                     // Add off-chain results to top results
                     for (EnhancedSearchResult result : convertOffChainToEnhancedResults(blockOffChainResult, password)) {
-                        addToTopResults(topResults, result, BUFFER_SIZE);
+                        if (seenHashes.add(result.getBlockHash())) {  // Deduplicate by block hash
+                            addToTopResults(topResults, result, BUFFER_SIZE);
+                        }
                     }
                 });
             }
@@ -931,21 +983,21 @@ public class SearchFrameworkEngine {
                 SearchStrategyRouter.SearchStrategy.PARALLEL_MULTI,
                 null, // QueryAnalysis not needed for this method
                 totalTimeMs,
-                SearchLevel.INCLUDE_ENCRYPTED,
+                SearchLevel.INCLUDE_OFFCHAIN,
                 null // Success - no error message
             );
         } catch (Exception e) {
             long endTime = System.nanoTime();
             double totalTimeMs = (endTime - startTime) / 1_000_000.0;
 
-            logger.error("❌ INCLUDE_ENCRYPTED search failed", e);
+            logger.error("❌ INCLUDE_OFFCHAIN search failed", e);
 
             return new SearchResult(
                 new ArrayList<>(),
                 SearchStrategyRouter.SearchStrategy.PARALLEL_MULTI,
                 null, // QueryAnalysis not needed for error case
                 totalTimeMs,
-                SearchLevel.INCLUDE_ENCRYPTED,
+                SearchLevel.INCLUDE_OFFCHAIN,
                 "Off-chain search failed: " + e.getMessage()
             );
         }
@@ -1312,28 +1364,18 @@ public class SearchFrameworkEngine {
                         );
 
                         if (!userTerms.isEmpty()) {
-                            // STRATEGY 1: Use user-defined terms for indexing
-                            Set<String> publicTerms = new HashSet<>();
-                            Set<String> privateTerms = new HashSet<>();
-
-                            // Simple distribution: user has full control over term placement
-                            if (block.isDataEncrypted()) {
-                                // For encrypted blocks, put all user terms in private layer for maximum privacy
-                                // Users can explicitly use the UserFriendlyEncryptionAPI methods to control
-                                // public vs private term distribution if needed
-                                privateTerms.addAll(userTerms);
-                            } else {
-                                // For unencrypted blocks, all terms go to public layer
-                                publicTerms.addAll(userTerms);
-                            }
-
+                            // STRATEGY 1: User terms were found, but let MetadataLayerManager handle everything
+                            // It will:
+                            // 1. Extract public keywords from manualKeywords (stripping "public:" prefix)
+                            // 2. Extract private keywords from autoKeywords (decrypting with password)
+                            // This ensures both public and private keywords are properly indexed
                             indexBlockWithUserTerms(
                                 block,
                                 password,
                                 privateKey,
                                 defaultConfig,
-                                publicTerms.isEmpty() ? null : publicTerms,
-                                privateTerms.isEmpty() ? null : privateTerms
+                                null,  // Let MetadataLayerManager extract from manualKeywords
+                                null   // Let MetadataLayerManager extract from autoKeywords
                             );
                         } else {
                             // STRATEGY 2: No user terms - use automatic content extraction
@@ -1530,7 +1572,7 @@ public class SearchFrameworkEngine {
         String password,
         PrivateKey privateKey
     ) {
-        // Store blockchain reference for INCLUDE_ENCRYPTED searches
+        // Store blockchain reference for INCLUDE_OFFCHAIN searches
         this.blockchain = blockchain;
 
         // Detect test environment and adjust interval accordingly
@@ -1648,10 +1690,22 @@ public class SearchFrameworkEngine {
             logger.debug("✅ [{}] Acquired indexing lock", shortHash);
             
             // Double-check if already indexed after acquiring lock
-            BlockMetadataLayers existing = globalProcessingMap.get(blockHash);
-            if (existing != null && !existing.isProcessingPlaceholder()) {
-                logger.info("⏭️ [{}] Already indexed (detected after lock acquisition), skipping", shortHash);
-                return;
+            BlockMetadataLayers existingGlobal = globalProcessingMap.get(blockHash);
+            BlockMetadataLayers existingLocal = blockMetadataIndex.get(blockHash);
+
+            if (existingGlobal != null && !existingGlobal.isProcessingPlaceholder()) {
+                // Block is indexed globally, but check if we have it locally
+                if (existingLocal != null) {
+                    logger.info("⏭️ [{}] Already indexed locally and globally, skipping", shortHash);
+                    return;
+                } else {
+                    // Indexed by another instance - copy metadata locally
+                    logger.info("📋 [{}] Indexed globally but not locally - copying metadata", shortHash);
+                    blockMetadataIndex.put(blockHash, existingGlobal);
+                    strategyRouter.indexBlock(blockHash, existingGlobal);
+                    logger.info("✅ [{}] Metadata copied from global to local index", shortHash);
+                    return;
+                }
             }
             
             // Mark as processing
@@ -1669,10 +1723,24 @@ public class SearchFrameworkEngine {
                 // Store metadata
                 blockMetadataIndex.put(blockHash, metadata);
                 globalProcessingMap.put(blockHash, metadata);
-                
+
                 // Index in strategy router
                 strategyRouter.indexBlock(block.getHash(), metadata);
-                
+
+                // Index non-encrypted content for content search without password
+                if (!block.isDataEncrypted()) {
+                    String content = block.getData();
+                    if (content != null && !content.trim().isEmpty()) {
+                        logger.debug("✅ [{}] Indexing non-encrypted content (length={}) for content search", shortHash, content.length());
+                        strategyRouter.getEncryptedContentSearch().indexNonEncryptedContent(block.getHash(), content);
+                        logger.debug("✅ [{}] Indexed non-encrypted content for content search", shortHash);
+                    } else {
+                        logger.debug("⚠️ [{}] Skipping non-encrypted content indexing - content is null or empty", shortHash);
+                    }
+                } else {
+                    logger.debug("⚠️ [{}] Skipping non-encrypted content indexing - block is encrypted", shortHash);
+                }
+
                 logger.info("✅ [{}] Successfully indexed", shortHash);
                 
             } catch (Exception e) {
@@ -1749,10 +1817,9 @@ public class SearchFrameworkEngine {
             return;
         }
 
-        // Atomic check-and-reserve to prevent race conditions
         String blockHash = block.getHash();
         String shortHash = blockHash.substring(0, Math.min(8, blockHash.length()));
-        
+
         // Get caller information for detailed tracking
         StackTraceElement[] stack = Thread.currentThread().getStackTrace();
         String callerInfo = "UNKNOWN";
@@ -1763,90 +1830,116 @@ public class SearchFrameworkEngine {
                 break;
             }
         }
-        
-        // 🔍 ENHANCED RACE CONDITION DEBUGGING
-        logger.info("🟨 INDEX BLOCK WITH USER TERMS ATTEMPT: {} | Instance: {} | Map: {} | MapSize: {} | Thread: {} | Caller: {}", 
-            shortHash, 
+
+        logger.debug("🟨 INDEX BLOCK WITH USER TERMS ATTEMPT: {} | Instance: {} | Thread: {} | Caller: {}",
+            shortHash,
             this.instanceId,
-            System.identityHashCode(this.blockMetadataIndex),
-            this.blockMetadataIndex.size(),
             Thread.currentThread().getName(),
             callerInfo);
-        
-        // 🔍 DEBUG: Check current map state before putIfAbsent
-        BlockMetadataLayers existingValue = globalProcessingMap.get(blockHash);
-        logger.info("🔍 PRE-ATOMIC CHECK (USER TERMS): {} | Existing: {} | IsPlaceholder: {} | Instance: {}", 
-            shortHash,
-            existingValue != null ? "EXISTS" : "NULL",
-            existingValue != null ? existingValue.isProcessingPlaceholder() : "N/A",
-            this.instanceId);
-        
-        // Use putIfAbsent for atomic check-and-reserve
-        BlockMetadataLayers putResult = globalProcessingMap.putIfAbsent(blockHash, BlockMetadataLayers.PROCESSING_PLACEHOLDER);
-        
-        // 🔍 DEBUG: Detailed putIfAbsent result logging
-        logger.debug("🔒 ATOMIC OPERATION RESULT (USER TERMS): {} | PutIfAbsent returned: {} | Instance: {} | MapSize: {}", 
-            shortHash,
-            putResult != null ? (putResult.isProcessingPlaceholder() ? "PLACEHOLDER" : "REAL_METADATA") : "NULL",
-            this.instanceId,
-            globalProcessingMap.size());
-            
-        if (putResult != null) {
-            logger.debug("⏭️ SKIPPED user terms block (already indexed/processing): {} | Instance: {} | Thread: {} | Caller: {}", 
+
+        // SYNC FIX: Use semaphore-based synchronization (consistent with indexBlock())
+        // This ensures proper waiting when another thread is processing the same block
+        Semaphore semaphore = blockIndexingSemaphores.computeIfAbsent(
+            blockHash,
+            k -> new Semaphore(1, true) // fair semaphore, 1 permit
+        );
+
+        try {
+            logger.debug("🔒 [{}] Waiting to acquire indexing lock (user terms)...", shortHash);
+            semaphore.acquire();
+            logger.debug("✅ [{}] Acquired indexing lock (user terms)", shortHash);
+
+            // Double-check if already indexed after acquiring lock
+            BlockMetadataLayers existingGlobal = globalProcessingMap.get(blockHash);
+            BlockMetadataLayers existingLocal = blockMetadataIndex.get(blockHash);
+
+            if (existingGlobal != null && !existingGlobal.isProcessingPlaceholder()) {
+                // Block is indexed globally, check if we have it locally
+                if (existingLocal != null) {
+                    logger.debug("⏭️ [{}] Already indexed locally and globally (user terms), skipping", shortHash);
+                    return;
+                } else {
+                    // Indexed by another instance - copy metadata locally
+                    logger.info("📋 [{}] Indexed globally but not locally (user terms) - copying metadata", shortHash);
+                    blockMetadataIndex.put(blockHash, existingGlobal);
+                    strategyRouter.indexBlock(blockHash, existingGlobal);
+                    logger.info("✅ [{}] Metadata copied from global to local index (user terms)", shortHash);
+                    return;
+                }
+            }
+
+            // Mark as processing
+            globalProcessingMap.put(blockHash, BlockMetadataLayers.PROCESSING_PLACEHOLDER);
+
+            logger.debug("🔒 RESERVED user terms block for processing: {} | Instance: {} | Thread: {} | Caller: {}",
                 shortHash,
                 this.instanceId,
                 Thread.currentThread().getName(),
                 callerInfo);
-            return;
-        }
-        
-        logger.debug("🔒 RESERVED user terms block for processing: {} | Instance: {} | Thread: {} | Caller: {}", 
-            shortHash,
-            this.instanceId,
-            Thread.currentThread().getName(),
-            callerInfo);
 
-        try {
-            // Generate metadata layers with user-defined terms
-            BlockMetadataLayers metadata =
-                metadataManager.generateMetadataLayers(
-                    block,
-                    config,
-                    password,
-                    privateKey,
-                    publicSearchTerms,
-                    privateSearchTerms
+            try {
+                // Generate metadata layers with user-defined terms
+                BlockMetadataLayers metadata =
+                    metadataManager.generateMetadataLayers(
+                        block,
+                        config,
+                        password,
+                        privateKey,
+                        publicSearchTerms,
+                        privateSearchTerms
+                    );
+
+                // Replace placeholder with actual metadata in BOTH maps
+                blockMetadataIndex.put(blockHash, metadata);  // Instance map for data storage
+                globalProcessingMap.put(blockHash, metadata); // Global map for coordination
+
+                // Index in search strategy router
+                strategyRouter.indexBlock(blockHash, metadata);
+
+                // Index non-encrypted content for content search (same logic as indexBlock)
+                if (!block.isDataEncrypted()) {
+                    String content = block.getData();
+                    if (content != null && !content.trim().isEmpty()) {
+                        logger.debug("✅ [{}] Indexing non-encrypted content (length={}) for content search", shortHash, content.length());
+                        strategyRouter.getEncryptedContentSearch().indexNonEncryptedContent(block.getHash(), content);
+                        logger.debug("✅ [{}] Indexed non-encrypted content for content search", shortHash);
+                    } else {
+                        logger.debug("⚠️ [{}] Skipping non-encrypted content indexing - content is null or empty", shortHash);
+                    }
+                } else {
+                    logger.debug("⚠️ [{}] Skipping non-encrypted content indexing - block is encrypted", shortHash);
+                }
+
+                logger.info("✅ INDEXED user terms block: {} | Instance: {} | Public: {}, Private: {} | Thread: {} | Caller: {}",
+                    shortHash,
+                    this.instanceId,
+                    (publicSearchTerms != null ? publicSearchTerms.size() : 0),
+                    (privateSearchTerms != null ? privateSearchTerms.size() : 0),
+                    Thread.currentThread().getName(),
+                    callerInfo
                 );
-
-            // Replace placeholder with actual metadata in BOTH maps
-            blockMetadataIndex.put(blockHash, metadata);  // Instance map for data storage
-            globalProcessingMap.put(blockHash, metadata); // Global map for coordination
-
-            // Index in search strategy router
-            strategyRouter.indexBlock(blockHash, metadata);
-
-            logger.info("✅ INDEXED user terms block: {} | Instance: {} | Public: {}, Private: {} | Thread: {} | Caller: {}",
-                shortHash,
-                this.instanceId,
-                (publicSearchTerms != null ? publicSearchTerms.size() : 0),
-                (privateSearchTerms != null ? privateSearchTerms.size() : 0),
-                Thread.currentThread().getName(),
-                callerInfo
-            );
-        } catch (Exception e) {
-            // Remove placeholder on failure to allow retry
-            BlockMetadataLayers removedValue = blockMetadataIndex.remove(blockHash);
-            logger.error("❌ Failed to index user terms block: {} | Instance: {} | Removed: {} | Thread: {} | Caller: {} | Error: {}", 
-                shortHash,
-                this.instanceId,
-                removedValue != null ? (removedValue.isProcessingPlaceholder() ? "PLACEHOLDER" : "REAL_METADATA") : "NULL",
-                Thread.currentThread().getName(),
-                callerInfo,
-                e.getMessage(), e);
-            throw new RuntimeException(
-                "Failed to index block with user terms " + block.getHash(),
-                e
-            );
+            } catch (Exception e) {
+                // Remove placeholder on failure from BOTH maps to allow retry
+                blockMetadataIndex.remove(blockHash);
+                globalProcessingMap.remove(blockHash); // SYNC FIX: Also remove from global map
+                logger.error("❌ Failed to index user terms block: {} | Instance: {} | Thread: {} | Caller: {} | Error: {}",
+                    shortHash,
+                    this.instanceId,
+                    Thread.currentThread().getName(),
+                    callerInfo,
+                    e.getMessage(), e);
+                throw new RuntimeException(
+                    "Failed to index block with user terms " + block.getHash(),
+                    e
+                );
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.warn("⚠️ [{}] Interrupted while waiting for indexing lock (user terms)", shortHash);
+            throw new RuntimeException("Interrupted while indexing block " + blockHash, e);
+        } finally {
+            semaphore.release();
+            logger.debug("🔓 [{}] Released indexing lock (user terms)", shortHash);
         }
     }
 
@@ -2070,9 +2163,9 @@ public class SearchFrameworkEngine {
      * @param config Encryption configuration
      */
     private void indexBlockWithExplicitStrategy(
-        Block block, 
+        Block block,
         String blockSpecificPassword,
-        PrivateKey privateKey, 
+        PrivateKey privateKey,
         EncryptionConfig config
     ) {
         if (block == null || block.getHash() == null) {
@@ -2082,7 +2175,7 @@ public class SearchFrameworkEngine {
 
         String blockHash = block.getHash();
         String shortHash = blockHash.substring(0, Math.min(8, blockHash.length()));
-        
+
         // Get caller information for detailed tracking
         StackTraceElement[] stack = Thread.currentThread().getStackTrace();
         String callerInfo = "UNKNOWN";
@@ -2093,88 +2186,125 @@ public class SearchFrameworkEngine {
                 break;
             }
         }
-        
-        // 🔍 ENHANCED DEBUGGING
-        logger.info("🟦 EXPLICIT STRATEGY INDEX ATTEMPT: {} | Instance: {} | Thread: {} | Caller: {}", 
-            shortHash, 
+
+        logger.debug("🟦 EXPLICIT STRATEGY INDEX ATTEMPT: {} | Instance: {} | Thread: {} | Caller: {}",
+            shortHash,
             this.instanceId,
             Thread.currentThread().getName(),
             callerInfo);
-        
-        // Atomic check-and-reserve to prevent race conditions
-        BlockMetadataLayers putResult = globalProcessingMap.putIfAbsent(blockHash, BlockMetadataLayers.PROCESSING_PLACEHOLDER);
-        
-        logger.debug("🔒 ATOMIC OPERATION RESULT (EXPLICIT): {} | PutIfAbsent returned: {} | Instance: {}", 
-            shortHash,
-            putResult != null ? (putResult.isProcessingPlaceholder() ? "PLACEHOLDER" : "REAL_METADATA") : "NULL",
-            this.instanceId);
-            
-        if (putResult != null) {
-            logger.debug("⏭️ SKIPPED block (already indexed/processing): {} | Instance: {} | Thread: {}", 
+
+        // SYNC FIX: Use semaphore-based synchronization (consistent with indexBlock())
+        // This ensures proper waiting when another thread is processing the same block
+        Semaphore semaphore = blockIndexingSemaphores.computeIfAbsent(
+            blockHash,
+            k -> new Semaphore(1, true) // fair semaphore, 1 permit
+        );
+
+        try {
+            logger.debug("🔒 [{}] Waiting to acquire indexing lock (explicit strategy)...", shortHash);
+            semaphore.acquire();
+            logger.debug("✅ [{}] Acquired indexing lock (explicit strategy)", shortHash);
+
+            // Double-check if already indexed after acquiring lock
+            BlockMetadataLayers existingGlobal = globalProcessingMap.get(blockHash);
+            BlockMetadataLayers existingLocal = blockMetadataIndex.get(blockHash);
+
+            if (existingGlobal != null && !existingGlobal.isProcessingPlaceholder()) {
+                // Block is indexed globally, check if we have it locally
+                if (existingLocal != null) {
+                    logger.debug("⏭️ [{}] Already indexed locally and globally (explicit strategy), skipping", shortHash);
+                    return;
+                } else {
+                    // Indexed by another instance - copy metadata locally
+                    logger.info("📋 [{}] Indexed globally but not locally (explicit strategy) - copying metadata", shortHash);
+                    blockMetadataIndex.put(blockHash, existingGlobal);
+                    strategyRouter.indexBlock(blockHash, existingGlobal);
+                    logger.info("✅ [{}] Metadata copied from global to local index (explicit strategy)", shortHash);
+                    return;
+                }
+            }
+
+            // Mark as processing
+            globalProcessingMap.put(blockHash, BlockMetadataLayers.PROCESSING_PLACEHOLDER);
+
+            logger.debug("🔒 RESERVED block for processing (explicit strategy): {} | Instance: {} | Thread: {}",
                 shortHash,
                 this.instanceId,
                 Thread.currentThread().getName());
-            return;
-        }
-        
-        logger.debug("🔒 RESERVED block for processing: {} | Instance: {} | Thread: {}", 
-            shortHash,
-            this.instanceId,
-            Thread.currentThread().getName());
-        
-        // STEP 1: Select strategy ONCE upfront (no guessing, no retries)
-        IndexingStrategy strategy = selectIndexingStrategy(block, blockSpecificPassword);
-        
-        logger.info("📋 Indexing block {} with strategy: {} | Instance: {} | Thread: {} | Caller: {}", 
-            shortHash, 
-            strategy.getDescription(), 
-            this.instanceId, 
-            Thread.currentThread().getName(),
-            callerInfo
-        );
-        
-        // STEP 2: Execute the selected strategy ONCE (no fallbacks hiding bugs)
-        try {
-            BlockMetadataLayers metadata = generateMetadataForStrategy(
-                block, 
-                strategy, 
-                blockSpecificPassword, 
-                privateKey, 
-                config
-            );
-            
-            // Store metadata in both maps
-            blockMetadataIndex.put(blockHash, metadata);
-            globalProcessingMap.put(blockHash, metadata);
-            strategyRouter.indexBlock(blockHash, metadata);
-            
-            logger.info("✅ SUCCESSFULLY indexed block {} with strategy: {} | Instance: {} | Thread: {}", 
-                shortHash, 
-                strategy.getDescription(),
-                this.instanceId,
-                Thread.currentThread().getName()
-            );
-            
-        } catch (Exception e) {
-            // NO FALLBACKS - Report failure clearly for diagnosis
-            logger.error("❌ FAILED to index block {} with strategy: {} | Instance: {} | Thread: {} | Error: {}", 
-                shortHash, 
+
+            // STEP 1: Select strategy ONCE upfront (no guessing, no retries)
+            IndexingStrategy strategy = selectIndexingStrategy(block, blockSpecificPassword);
+
+            logger.info("📋 Indexing block {} with strategy: {} | Instance: {} | Thread: {} | Caller: {}",
+                shortHash,
                 strategy.getDescription(),
                 this.instanceId,
                 Thread.currentThread().getName(),
-                e.getMessage(), 
-                e
+                callerInfo
             );
-            
-            // Clean up placeholder
-            blockMetadataIndex.remove(blockHash);
-            globalProcessingMap.remove(blockHash);
-            
-            // CRITICAL: Don't hide the failure
-            // In production: Log and continue (don't break indexing pipeline)
-            // In testing: We want to see failures clearly in logs
-            logger.error("🚨 Block {} will not be searchable - indexing failed with strategy: {}", 
-                shortHash, strategy.getDescription());
+
+            // STEP 2: Execute the selected strategy ONCE (no fallbacks hiding bugs)
+            try {
+                BlockMetadataLayers metadata = generateMetadataForStrategy(
+                    block,
+                    strategy,
+                    blockSpecificPassword,
+                    privateKey,
+                    config
+                );
+
+                // Store metadata in both maps
+                blockMetadataIndex.put(blockHash, metadata);
+                globalProcessingMap.put(blockHash, metadata);
+                strategyRouter.indexBlock(blockHash, metadata);
+
+                // Index non-encrypted content for content search (same logic as indexBlock)
+                if (!block.isDataEncrypted()) {
+                    String content = block.getData();
+                    if (content != null && !content.trim().isEmpty()) {
+                        logger.debug("✅ [{}] Indexing non-encrypted content (length={}) for content search", shortHash, content.length());
+                        strategyRouter.getEncryptedContentSearch().indexNonEncryptedContent(block.getHash(), content);
+                        logger.debug("✅ [{}] Indexed non-encrypted content for content search", shortHash);
+                    } else {
+                        logger.debug("⚠️ [{}] Skipping non-encrypted content indexing - content is null or empty", shortHash);
+                    }
+                } else {
+                    logger.debug("⚠️ [{}] Skipping non-encrypted content indexing - block is encrypted", shortHash);
+                }
+
+                logger.info("✅ SUCCESSFULLY indexed block {} with strategy: {} | Instance: {} | Thread: {}",
+                    shortHash,
+                    strategy.getDescription(),
+                    this.instanceId,
+                    Thread.currentThread().getName()
+                );
+
+            } catch (Exception e) {
+                // NO FALLBACKS - Report failure clearly for diagnosis
+                logger.error("❌ FAILED to index block {} with strategy: {} | Instance: {} | Thread: {} | Error: {}",
+                    shortHash,
+                    strategy.getDescription(),
+                    this.instanceId,
+                    Thread.currentThread().getName(),
+                    e.getMessage(),
+                    e
+                );
+
+                // Clean up placeholder from BOTH maps
+                blockMetadataIndex.remove(blockHash);
+                globalProcessingMap.remove(blockHash);
+
+                // CRITICAL: Don't hide the failure
+                logger.error("🚨 Block {} will not be searchable - indexing failed with strategy: {}",
+                    shortHash, strategy.getDescription());
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.warn("⚠️ [{}] Interrupted while waiting for indexing lock (explicit strategy)", shortHash);
+            throw new RuntimeException("Interrupted while indexing block " + blockHash, e);
+        } finally {
+            semaphore.release();
+            logger.debug("🔓 [{}] Released indexing lock (explicit strategy)", shortHash);
         }
     }
 
@@ -2217,6 +2347,14 @@ public class SearchFrameworkEngine {
     public void clearIndexes() {
         blockMetadataIndex.clear();
         strategyRouter.clearIndexes();
+        // CRITICAL FIX: Clear global processing map to prevent stale metadata from preventing reindexing
+        // After clearing indexes, the next indexBlockchain call should always reindex, not skip due to existing metadata
+        resetGlobalState();
+        // CRITICAL FIX: Clear IndexingCoordinator tracking to prevent interval check from skipping reindexing
+        // After clearing indexes, the next indexBlockchain call should always reindex, not skip due to "recent" indexing
+        IndexingCoordinator coordinator = IndexingCoordinator.getInstance();
+        coordinator.indexingProgress.clear();
+        logger.debug("🔍 Cleared IndexingCoordinator interval tracking along with search indexes and global maps");
     }
 
     public void clearAll() {

@@ -10,12 +10,17 @@ import java.io.InputStream;
 import java.io.PrintStream;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Comprehensive test suite for PasswordUtil
  * Tests password validation, security features, and edge cases
  */
 public class PasswordUtilTest {
+    private static final Logger logger = LoggerFactory.getLogger(PasswordUtilTest.class);
+
 
     private final InputStream originalIn = System.in;
     private final PrintStream originalOut = System.out;
@@ -261,19 +266,19 @@ public class PasswordUtilTest {
         String unicodePassword = "测试密码123好"; // Chinese characters + numbers (8 characters)
         
         // Print each character's Unicode value for debugging
-        System.err.println("Unicode password: " + unicodePassword);
-        System.err.println("Unicode password length: " + unicodePassword.length());
+        logger.error("Unicode password: " + unicodePassword);
+        logger.error("Unicode password length: " + unicodePassword.length());
         
         // Print Unicode code points for each character
         StringBuilder debug = new StringBuilder("Unicode code points: ");
         for (int i = 0; i < unicodePassword.length(); i++) {
             debug.append(String.format("\\u%04x ", (int)unicodePassword.charAt(i)));
         }
-        System.err.println(debug.toString());
+        logger.error(debug.toString());
         
         // This should be valid if it meets the criteria
         boolean result = PasswordUtil.isValidPassword(unicodePassword);
-        System.err.println("Password validation result: " + result);
+        logger.error("Password validation result: " + result);
         
         // Result depends on whether Unicode letters count as "letters"
         // Current implementation should handle this correctly

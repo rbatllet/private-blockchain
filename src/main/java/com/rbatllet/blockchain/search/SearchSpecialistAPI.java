@@ -178,10 +178,48 @@ public class SearchSpecialistAPI {
      * @see EncryptionConfig for available configuration options
      */
     public SearchSpecialistAPI(Blockchain blockchain, String password, PrivateKey privateKey, EncryptionConfig config) {
+        this(blockchain, password, privateKey, config, false);
+    }
+
+    /**
+     * Creates a new SearchSpecialistAPI instance for public-only searches (FAST_ONLY).
+     *
+     * <p>This constructor is optimized for searches that do NOT require password decryption,
+     * such as FAST_ONLY searches. It skips password-dependent initialization and uses the
+     * blockchain's existing search engine directly.</p>
+     *
+     * <p><strong>Use Cases:</strong></p>
+     * <ul>
+     *   <li>Searching for blocks with "public:" prefix keywords (without password)</li>
+     *   <li>Searching non-encrypted blocks</li>
+     *   <li>FAST_ONLY search level where encrypted content is not needed</li>
+     * </ul>
+     *
+     * @param blockchain the blockchain instance to use for search operations. Must not be null.
+     * @param privateKey the private key for secure operations. Must not be null.
+     * @throws IllegalArgumentException if blockchain or privateKey is null
+     * @throws RuntimeException if initialization fails
+     * @since 1.0.6
+     */
+    public SearchSpecialistAPI(Blockchain blockchain, PrivateKey privateKey) {
+        this(blockchain, null, privateKey, EncryptionConfig.createHighSecurityConfig(), true);
+    }
+
+    /**
+     * Common initialization logic for all constructors.
+     *
+     * @param blockchain the blockchain instance
+     * @param password the password (can be null for public-only searches)
+     * @param privateKey the private key
+     * @param config the encryption configuration
+     * @param isPublicOnly if true, skip password-dependent initialization
+     */
+    private SearchSpecialistAPI(Blockchain blockchain, String password, PrivateKey privateKey,
+                                EncryptionConfig config, boolean isPublicOnly) {
         if (blockchain == null) {
             throw new IllegalArgumentException("Blockchain cannot be null");
         }
-        if (password == null) {
+        if (!isPublicOnly && password == null) {
             throw new IllegalArgumentException("Password cannot be null");
         }
         if (privateKey == null) {
@@ -192,8 +230,6 @@ public class SearchSpecialistAPI {
         }
 
         // PHASE 5.4 FIX: Validate that blockchain has blocks before initializing search
-        // This prevents the common mistake of initializing SearchSpecialistAPI on an empty blockchain,
-        // which would result in 0 indexed blocks and subsequent search failures.
         long blockCount = blockchain.getBlockCount();
         if (blockCount == 0) {
             String errorMsg = "⚠️ SearchSpecialistAPI initialization ERROR: Blockchain is empty (0 blocks).\n" +
@@ -227,23 +263,28 @@ public class SearchSpecialistAPI {
         this.passwordRegistry = new BlockPasswordRegistry();
         this.encryptionConfig = config;
         this.isDirectlyInstantiated = false; // Created with proper parameters
-        
-        // Initialize immediately with blockchain - but only do advanced search init
+        this.defaultPassword = password;
+
+        // Initialize immediately with blockchain
         try {
-            blockchain.initializeAdvancedSearch(password);
-            
-            // No need to re-index, the blockchain's engine is already indexed
-            logger.info("🔄 Using blockchain's existing SearchFrameworkEngine with {} blocks", 
-                       this.searchEngine.getSearchStats().getTotalBlocksIndexed());
-            
-            this.defaultPassword = password;
+            if (!isPublicOnly) {
+                // Full initialization with password for encrypted content search
+                blockchain.initializeAdvancedSearch(password);
+                logger.info("🔄 Using blockchain's existing SearchFrameworkEngine with {} blocks",
+                           this.searchEngine.getSearchStats().getTotalBlocksIndexed());
+            } else {
+                // Public-only search: skip password initialization, use existing engine
+                logger.info("🔍 Public-only search mode: using blockchain's existing SearchFrameworkEngine with {} blocks",
+                           this.searchEngine.getSearchStats().getTotalBlocksIndexed());
+            }
+
             this.isInitialized = true;
-            
+
             // Debug: Log detailed information about indexing
             logger.info("🔍 SearchSpecialistAPI indexing details - Blockchain size: {}, Indexed blocks: {}",
                        blockchain.getBlockCount(), this.searchEngine.getSearchStats().getTotalBlocksIndexed());
-            
-            logger.info("✅ SearchSpecialistAPI created and initialized with blockchain - {} blocks indexed, config: {}", 
+
+            logger.info("✅ SearchSpecialistAPI created and initialized with blockchain - {} blocks indexed, config: {}",
                        this.searchEngine.getSearchStats().getTotalBlocksIndexed(), config.getSecurityLevel());
         } catch (Exception e) {
             logger.error("❌ Failed to initialize SearchSpecialistAPI with blockchain: " + e.getMessage());
@@ -840,26 +881,23 @@ public class SearchSpecialistAPI {
      * Performs an exhaustive search including off-chain files.
      *
      * <p>This method searches both on-chain and off-chain content, decrypting as needed.
-     * Off-chain files require the private key of the signer who created the blocks.</p>
+     * Off-chain files are decrypted using the provided password.</p>
      *
      * <p><strong>Requirements:</strong></p>
      * <ul>
-     *   <li><strong>Password:</strong> Required for decrypting encrypted blocks</li>
-     *   <li><strong>Private Key:</strong> Required for decrypting off-chain files</li>
+     *   <li><strong>Password:</strong> Required for decrypting encrypted blocks and off-chain files</li>
      * </ul>
      *
      * @param query the search terms to look for
-     * @param password the password for decrypting encrypted blocks
-     * @param privateKey the private key for decrypting off-chain files
+     * @param password the password for decrypting encrypted blocks and off-chain files
      * @param maxResults maximum number of results to return
      * @return search results with relevance scores and metadata
-     * @throws IllegalArgumentException if query, password, or privateKey is null
+     * @throws IllegalArgumentException if query or password is null
      * @throws IllegalStateException if the search API is not initialized
      */
     public SearchFrameworkEngine.SearchResult searchExhaustiveOffChain(
             String query,
             String password,
-            PrivateKey privateKey,
             int maxResults) {
         // Validate initialization state
         if (!isInitialized) {
@@ -877,14 +915,11 @@ public class SearchSpecialistAPI {
         if (password == null) {
             throw new IllegalArgumentException("Password cannot be null");
         }
-        if (privateKey == null) {
-            throw new IllegalArgumentException("Private key cannot be null");
-        }
         if (maxResults <= 0) {
             throw new IllegalArgumentException("Maximum results must be positive");
         }
 
-        return searchEngine.searchExhaustiveOffChain(query, password, privateKey, maxResults);
+        return searchEngine.searchExhaustiveOffChain(query, password, maxResults);
     }
 
     // ===== SPECIALIZED SEARCH METHODS =====

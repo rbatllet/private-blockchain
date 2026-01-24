@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.util.Arrays;
 import java.util.Base64;
 
 import static com.rbatllet.blockchain.util.CryptoUtil.getSecureRandom;
@@ -394,7 +395,7 @@ public class BlockDataEncryptionService {
         MessageDigest digest = MessageDigest.getInstance(CryptoUtil.HASH_ALGORITHM);
         digest.update(KEK_DERIVATION_INFO.getBytes(StandardCharsets.UTF_8));
         digest.update(keyBytes);
-        
+
         byte[] hash = digest.digest();
         // Use full 32 bytes for AES-256
         return hash;
@@ -443,9 +444,7 @@ public class BlockDataEncryptionService {
      */
     private static void clearByteArray(byte[] array) {
         if (array != null) {
-            for (int i = 0; i < array.length; i++) {
-                array[i] = 0;
-            }
+            Arrays.fill(array, (byte) 0);
         }
     }
     

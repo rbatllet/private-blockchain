@@ -378,9 +378,7 @@ public class PerformanceMetricsService {
         if (activeAlerts.size() > 50) {
             // Remove oldest alerts
             while (activeAlerts.size() > 50) {
-                if (!activeAlerts.isEmpty()) {
-                    activeAlerts.remove(0);
-                }
+                activeAlerts.remove(0);
             }
         }
         

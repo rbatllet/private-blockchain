@@ -28,12 +28,17 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import com.rbatllet.blockchain.util.CryptoUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Advanced test suite for SecureKeyStorage
  * Tests concurrency, security edge cases, performance, and error conditions
  */
 public class SecureKeyStorageAdvancedTest {
+    private static final Logger logger = LoggerFactory.getLogger(SecureKeyStorageAdvancedTest.class);
+
 
     @TempDir
     Path tempDir;
@@ -221,7 +226,7 @@ public class SecureKeyStorageAdvancedTest {
             } catch (Exception e) {
                 // Some file systems may not support certain characters
                 // This is acceptable behavior
-                System.out.println("Expected exception for problematic owner name: " + owner + " - " + e.getMessage());
+                logger.info("Expected exception for problematic owner name: " + owner + " - " + e.getMessage());
             }
         }
     }
@@ -268,7 +273,7 @@ public class SecureKeyStorageAdvancedTest {
         }
         
         long saveTime = System.currentTimeMillis() - startTime;
-        System.out.println("Time to save " + keyCount + " keys: " + saveTime + "ms");
+        logger.info("Time to save " + keyCount + " keys: " + saveTime + "ms");
         
         // List all keys
         startTime = System.currentTimeMillis();
@@ -276,7 +281,7 @@ public class SecureKeyStorageAdvancedTest {
         long listTime = System.currentTimeMillis() - startTime;
         
         assertTrue(storedKeys.length >= keyCount, "Should list at least " + keyCount + " keys");
-        System.out.println("Time to list " + storedKeys.length + " keys: " + listTime + "ms");
+        logger.info("Time to list " + storedKeys.length + " keys: " + listTime + "ms");
         
         // Load all keys
         startTime = System.currentTimeMillis();
@@ -293,7 +298,7 @@ public class SecureKeyStorageAdvancedTest {
         long loadTime = System.currentTimeMillis() - startTime;
         
         assertEquals(keyCount, successfulLoads, "Should successfully load all keys");
-        System.out.println("Time to load " + keyCount + " keys: " + loadTime + "ms");
+        logger.info("Time to load " + keyCount + " keys: " + loadTime + "ms");
         
         // Performance assertions (reasonable for modern systems)
         assertTrue(saveTime < 30000, "Save time should be reasonable"); // 30 seconds max

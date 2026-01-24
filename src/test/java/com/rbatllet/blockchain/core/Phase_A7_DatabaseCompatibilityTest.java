@@ -12,6 +12,9 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.security.KeyPair;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Phase A.7: Database Compatibility Testing
@@ -40,6 +43,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Tag("integration")
 @Tag("database")
 public class Phase_A7_DatabaseCompatibilityTest {
+    private static final Logger logger = LoggerFactory.getLogger(Phase_A7_DatabaseCompatibilityTest.class);
+
 
     private Blockchain blockchain;
     private static KeyPair bootstrapKeyPair; // Shared across all tests
@@ -89,12 +94,12 @@ public class Phase_A7_DatabaseCompatibilityTest {
      * Generate test blocks
      */
     private void generateBlocks(int count) throws Exception {
-        System.out.println("📝 Generating " + count + " blocks for " + databaseType);
+        logger.info("📝 Generating " + count + " blocks for " + databaseType);
         for (int i = 0; i < count; i++) {
             blockchain.addBlock("Test block " + i, keyPair.getPrivate(), keyPair.getPublic());
 
             if ((i + 1) % 10000 == 0) {
-                System.out.println("  ✅ " + (i + 1) + " blocks");
+                logger.info("  ✅ " + (i + 1) + " blocks");
             }
         }
     }
@@ -106,7 +111,7 @@ public class Phase_A7_DatabaseCompatibilityTest {
     @DisplayName("Phase A.7 Test 1: H2 Database - Memory Safety")
     @Timeout(300) // 5 minutes
     void testH2MemorySafety() throws Exception {
-        System.out.println("\n🚀 TEST 1: H2 Database Memory Safety");
+        logger.info("\n🚀 TEST 1: H2 Database Memory Safety");
         databaseType = "H2";
 
         // Setup with H2
@@ -132,7 +137,7 @@ public class Phase_A7_DatabaseCompatibilityTest {
         // Measure memory during processing
         forceGarbageCollection();
         long memBefore = getMemoryUsage();
-        System.out.println("💾 Memory before: " + (memBefore / 1_000_000) + "MB");
+        logger.info("💾 Memory before: " + (memBefore / 1_000_000) + "MB");
 
         // Process blocks
         AtomicInteger count = new AtomicInteger(0);
@@ -145,13 +150,13 @@ public class Phase_A7_DatabaseCompatibilityTest {
         long memAfter = getMemoryUsage();
         long memDelta = memAfter - memBefore;
 
-        System.out.println("💾 Memory delta: " + (memDelta / 1_000_000) + "MB");
-        System.out.println("📊 Blocks processed: " + count.get());
+        logger.info("💾 Memory delta: " + (memDelta / 1_000_000) + "MB");
+        logger.info("📊 Blocks processed: " + count.get());
 
         assertTrue(memDelta < 100_000_000, "H2: Memory delta too high");
         assertEquals(BLOCK_COUNT + 1, count.get(), "H2: Should process all blocks (including genesis)");
 
-        System.out.println("✅ H2 memory safety VERIFIED");
+        logger.info("✅ H2 memory safety VERIFIED");
     }
 
     // ==================== TEST 2: SQLite DATABASE ====================
@@ -161,7 +166,7 @@ public class Phase_A7_DatabaseCompatibilityTest {
     @DisplayName("Phase A.7 Test 2: SQLite Database - Memory Safety")
     @Timeout(300) // 5 minutes
     void testSQLiteMemorySafety() throws Exception {
-        System.out.println("\n🚀 TEST 2: SQLite Database Memory Safety");
+        logger.info("\n🚀 TEST 2: SQLite Database Memory Safety");
         databaseType = "SQLite";
 
         // Setup with SQLite
@@ -199,12 +204,12 @@ public class Phase_A7_DatabaseCompatibilityTest {
         long memAfter = getMemoryUsage();
         long memDelta = memAfter - memBefore;
 
-        System.out.println("💾 Memory delta: " + (memDelta / 1_000_000) + "MB");
+        logger.info("💾 Memory delta: " + (memDelta / 1_000_000) + "MB");
 
         assertTrue(memDelta < 100_000_000, "SQLite: Memory delta too high");
         assertEquals(BLOCK_COUNT + 1, count.get(), "SQLite: Should process all blocks (including genesis)");
 
-        System.out.println("✅ SQLite memory safety VERIFIED");
+        logger.info("✅ SQLite memory safety VERIFIED");
     }
 
     // ==================== TEST 3: PostgreSQL DATABASE ====================
@@ -214,11 +219,11 @@ public class Phase_A7_DatabaseCompatibilityTest {
     @DisplayName("Phase A.7 Test 3: PostgreSQL Database - Memory Safety (auto-detected)")
     @Timeout(300) // 5 minutes
     void testPostgreSQLMemorySafety() throws Exception {
-        System.out.println("\n🚀 TEST 3: PostgreSQL Database Memory Safety");
+        logger.info("\n🚀 TEST 3: PostgreSQL Database Memory Safety");
 
         if (!isPostgreSQLConfigured()) {
-            System.out.println("⏭️  PostgreSQL not configured - skipping");
-            System.out.println("   Set env vars: BLOCKCHAIN_DB_HOST, BLOCKCHAIN_DB_NAME, BLOCKCHAIN_DB_USER, BLOCKCHAIN_DB_PASSWORD");
+            logger.info("⏭️  PostgreSQL not configured - skipping");
+            logger.info("   Set env vars: BLOCKCHAIN_DB_HOST, BLOCKCHAIN_DB_NAME, BLOCKCHAIN_DB_USER, BLOCKCHAIN_DB_PASSWORD");
             return;
         }
 
@@ -230,7 +235,7 @@ public class Phase_A7_DatabaseCompatibilityTest {
         String user = System.getenv("BLOCKCHAIN_DB_USER");
         String password = System.getenv("BLOCKCHAIN_DB_PASSWORD");
 
-        System.out.println("🔥 PostgreSQL: " + host + "/" + dbName);
+        logger.info("🔥 PostgreSQL: " + host + "/" + dbName);
 
         DatabaseConfig pgConfig = DatabaseConfig.createPostgreSQLConfig(host, dbName, user, password);
         JPAUtil.initialize(pgConfig);
@@ -266,12 +271,12 @@ public class Phase_A7_DatabaseCompatibilityTest {
         long memAfter = getMemoryUsage();
         long memDelta = memAfter - memBefore;
 
-        System.out.println("💾 Memory delta: " + (memDelta / 1_000_000) + "MB");
+        logger.info("💾 Memory delta: " + (memDelta / 1_000_000) + "MB");
 
         assertTrue(memDelta < 100_000_000, "PostgreSQL: Memory delta too high");
         assertEquals(BLOCK_COUNT, count.get(), "PostgreSQL: Should process all blocks");
 
-        System.out.println("✅ PostgreSQL memory safety VERIFIED");
+        logger.info("✅ PostgreSQL memory safety VERIFIED");
     }
 
     // ==================== TEST 4: SEARCH COMPATIBILITY ====================
@@ -281,7 +286,7 @@ public class Phase_A7_DatabaseCompatibilityTest {
     @DisplayName("Phase A.7 Test 4: Search operations compatible across databases")
     @Timeout(300) // 5 minutes
     void testSearchCompatibility() throws Exception {
-        System.out.println("\n🚀 TEST 4: Search Compatibility");
+        logger.info("\n🚀 TEST 4: Search Compatibility");
 
         // Use H2 for this test
         DatabaseConfig h2Config = DatabaseConfig.createH2TestConfig();
@@ -301,30 +306,30 @@ public class Phase_A7_DatabaseCompatibilityTest {
         blockchain.addAuthorizedKey(publicKeyStr, "TestUser", bootstrapKeyPair, UserRole.USER);
 
         // Generate blocks with searchable content
-        System.out.println("📝 Generating blocks with searchable content");
+        logger.info("📝 Generating blocks with searchable content");
         for (int i = 0; i < 5000; i++) {
             String content = (i % 10 == 0) ? "SEARCHABLE_KEYWORD_" + i : "regular_" + i;
             blockchain.addBlock(content, keyPair.getPrivate(), keyPair.getPublic());
 
             if ((i + 1) % 1000 == 0) {
-                System.out.println("  ✅ " + (i + 1) + " blocks");
+                logger.info("  ✅ " + (i + 1) + " blocks");
             }
         }
 
         // Test search
-        System.out.println("🔍 Testing search functionality");
+        logger.info("🔍 Testing search functionality");
         List<Block> results = blockchain.searchByCategory("test", 1000);
-        System.out.println("📊 Search returned: " + results.size() + " results");
+        logger.info("📊 Search returned: " + results.size() + " results");
 
         // Test pagination
-        System.out.println("📄 Testing pagination");
+        logger.info("📄 Testing pagination");
         List<Block> page1 = blockchain.getBlocksPaginated(0, 100);
         List<Block> page2 = blockchain.getBlocksPaginated(100, 100);
 
         assertTrue(page1.size() > 0, "Page 1 should have results");
         assertNotEquals(page1.get(0).getHash(), page2.get(0).getHash(), "Pages should be different");
 
-        System.out.println("✅ Search and pagination compatible across databases");
+        logger.info("✅ Search and pagination compatible across databases");
     }
 
     // ==================== TEST 5: PAGINATION MEMORY SAFETY ====================
@@ -334,7 +339,7 @@ public class Phase_A7_DatabaseCompatibilityTest {
     @DisplayName("Phase A.7 Test 5: Pagination memory-safe with large datasets")
     @Timeout(300) // 5 minutes
     void testPaginationMemorySafety() throws Exception {
-        System.out.println("\n🚀 TEST 5: Pagination Memory Safety");
+        logger.info("\n🚀 TEST 5: Pagination Memory Safety");
 
         // Use H2
         DatabaseConfig h2Config = DatabaseConfig.createH2TestConfig();
@@ -357,7 +362,7 @@ public class Phase_A7_DatabaseCompatibilityTest {
         generateBlocks(BLOCK_COUNT);
 
         // Paginate through all blocks
-        System.out.println("📄 Paginating through 50K blocks");
+        logger.info("📄 Paginating through 50K blocks");
         long totalProcessed = 0;
         long offset = 0L;
         int pageSize = 1000;
@@ -373,7 +378,7 @@ public class Phase_A7_DatabaseCompatibilityTest {
             offset += pageSize;
 
             if (totalProcessed % 10000 == 0) {
-                System.out.println("  ✅ Processed " + totalProcessed + " blocks");
+                logger.info("  ✅ Processed " + totalProcessed + " blocks");
             }
         }
 
@@ -381,13 +386,13 @@ public class Phase_A7_DatabaseCompatibilityTest {
         long memAfter = getMemoryUsage();
         long memDelta = memAfter - memBefore;
 
-        System.out.println("💾 Memory delta during pagination: " + (memDelta / 1_000_000) + "MB");
-        System.out.println("📊 Total blocks paginated: " + totalProcessed);
+        logger.info("💾 Memory delta during pagination: " + (memDelta / 1_000_000) + "MB");
+        logger.info("📊 Total blocks paginated: " + totalProcessed);
 
         assertEquals(BLOCK_COUNT + 1, totalProcessed, "Should paginate all blocks (including genesis)");
         assertTrue(memDelta < 50_000_000, "Pagination memory delta should be < 50MB");
 
-        System.out.println("✅ Pagination is memory-safe");
+        logger.info("✅ Pagination is memory-safe");
     }
 
 }

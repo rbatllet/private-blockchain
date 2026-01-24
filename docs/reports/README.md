@@ -27,6 +27,8 @@ This directory separates **analytical reports** from **developer guides** to imp
 | Document | Description | Date | Status |
 |----------|-------------|------|--------|
 | **[WRITE_THROUGHPUT_OPTIMIZATION_PROPOSALS.md](WRITE_THROUGHPUT_OPTIMIZATION_PROPOSALS.md)** | 🆕 **Write throughput optimization proposals (5 strategies, IDENTITY generator issue)** | 2025-10-29 | 🚨 Critical |
+| **[VIRTUAL_THREADS_INVESTIGATION_REPORT.md](VIRTUAL_THREADS_INVESTIGATION_REPORT.md)** | 🆕 **Investigation results of virtual threads implementation and performance characteristics** | 2026-01-24 | ✅ Completed |
+| **[JAVA_21_25_FEATURES_OPTIMIZATION_REPORT.md](JAVA_21_25_FEATURES_OPTIMIZATION_REPORT.md)** | 🆕 **Java 21-25 features analysis and optimization opportunities** | 2026-01-24 | ✅ Reference |
 | **[PERFORMANCE_BENCHMARK_REPORT.md](PERFORMANCE_BENCHMARK_REPORT.md)** | Performance benchmarks for memory safety refactoring (Phases A.1-A.8, B.1-B.2) | 2025-10-27 | ✅ Reference |
 | **[PERFORMANCE_OPTIMIZATION_PLAN.md](PERFORMANCE_OPTIMIZATION_PLAN.md)** | Performance optimization roadmap | 2025-10-03 | ℹ️ Planning |
 | **[PERFORMANCE_OPTIMIZATION_SUMMARY.md](PERFORMANCE_OPTIMIZATION_SUMMARY.md)** | Summary of performance improvements achieved | 2025-10-03 | ℹ️ Reference |
@@ -93,13 +95,15 @@ This directory separates **analytical reports** from **developer guides** to imp
 
 ### Most Important Reports (Start Here)
 
-1. **[WRITE_THROUGHPUT_OPTIMIZATION_PROPOSALS.md](WRITE_THROUGHPUT_OPTIMIZATION_PROPOSALS.md)** - 🆕 🚨 **CRITICAL: IDENTITY generator blocks JDBC batching (5-10x perf impact)**
-2. **[POST_QUANTUM_MIGRATION_PLAN.md](POST_QUANTUM_MIGRATION_PLAN.md)** - 🆕 🔐 **Post-quantum cryptography roadmap (ML-DSA hybrid signatures, NIST 2024)**
-3. **[MEMORY_STREAMING_OPTIMIZATIONS_PHASE_4.md](MEMORY_STREAMING_OPTIMIZATIONS_PHASE_4.md)** - 🆕 Phase 4 streaming optimizations (2-3GB savings)
-4. **[MEMORY_OPTIMIZATION_PRIORITIES_1_2_3.md](MEMORY_OPTIMIZATION_PRIORITIES_1_2_3.md)** - 🆕 Completed optimizations (4GB saved)
-5. **[STAMPEDLOCK_AUDIT_REPORT.md](STAMPEDLOCK_AUDIT_REPORT.md)** - Understand current lock architecture
-6. **[ATOMIC_REFERENCE_AUDIT_REPORT.md](ATOMIC_REFERENCE_AUDIT_REPORT.md)** - Learn atomicity best practices
-7. **[GLOBAL_BLOCKCHAIN_LOCK_ANALYSIS.md](GLOBAL_BLOCKCHAIN_LOCK_ANALYSIS.md)** - Understand blockchain lock design
+1. **[WRITE_THROUGHPUT_OPTIMIZATION_PROPOSALS.md](WRITE_THROUGHPUT_OPTIMIZATION_PROPOSALS.md)** - 🚨 **CRITICAL: IDENTITY generator blocks JDBC batching (5-10x perf impact)**
+2. **[POST_QUANTUM_MIGRATION_PLAN.md](POST_QUANTUM_MIGRATION_PLAN.md)** - 🔐 **Post-quantum cryptography roadmap (ML-DSA hybrid signatures, NIST 2024)**
+3. **[VIRTUAL_THREADS_INVESTIGATION_REPORT.md](VIRTUAL_THREADS_INVESTIGATION_REPORT.md)** - 🆕 Virtual threads investigation and implementation analysis
+4. **[JAVA_21_25_FEATURES_OPTIMIZATION_REPORT.md](JAVA_21_25_FEATURES_OPTIMIZATION_REPORT.md)** - 🆕 Java 21-25 features analysis and optimization opportunities
+5. **[MEMORY_STREAMING_OPTIMIZATIONS_PHASE_4.md](MEMORY_STREAMING_OPTIMIZATIONS_PHASE_4.md)** - Phase 4 streaming optimizations (2-3GB savings)
+6. **[MEMORY_OPTIMIZATION_PRIORITIES_1_2_3.md](MEMORY_OPTIMIZATION_PRIORITIES_1_2_3.md)** - Completed optimizations (4GB saved)
+7. **[STAMPEDLOCK_AUDIT_REPORT.md](STAMPEDLOCK_AUDIT_REPORT.md)** - Understand current lock architecture
+8. **[ATOMIC_REFERENCE_AUDIT_REPORT.md](ATOMIC_REFERENCE_AUDIT_REPORT.md)** - Learn atomicity best practices
+9. **[GLOBAL_BLOCKCHAIN_LOCK_ANALYSIS.md](GLOBAL_BLOCKCHAIN_LOCK_ANALYSIS.md)** - Understand blockchain lock design
 
 ### Historical Context
 
@@ -116,12 +120,12 @@ This directory separates **analytical reports** from **developer guides** to imp
 | Category | Reports | Total Pages (est.) |
 |----------|---------|-------------------|
 | Lock & Concurrency | 6 | ~100 pages |
-| Performance | 4 | ~50 pages |
+| Performance | 6 | ~130 pages |
 | Memory Optimization | 5 | ~170 pages |
 | Security & Cryptography | 2 | ~50 pages |
 | Robustness | 9 | ~100 pages |
 | Implementation | 6 | ~50 pages |
-| **TOTAL** | **32** | **~520 pages** |
+| **TOTAL** | **34** | **~600 pages** |
 
 ## 🎯 Report Quality Standards
 
@@ -147,6 +151,6 @@ All reports in this directory follow these standards:
 ---
 
 **Directory Created**: 2025-10-04
-**Total Reports**: 30
+**Total Reports**: 34
 **Status**: Active - New reports added as needed
-**Last Updated**: 2026-01-12
+**Last Updated**: 2026-01-24
