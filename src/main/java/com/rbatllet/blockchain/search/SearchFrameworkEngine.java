@@ -358,6 +358,15 @@ public class SearchFrameworkEngine {
         logger.info("✅ SearchFrameworkEngine initialized with Blockchain for encrypted content search");
     }
 
+    /**
+     * Gets the blockchain instance.
+     *
+     * @return the blockchain instance, or null if not set
+     */
+    public Blockchain getBlockchain() {
+        return blockchain;
+    }
+
     // ===== CORE SEARCH METHODS =====
 
     /**
@@ -621,16 +630,78 @@ public class SearchFrameworkEngine {
         long startTime = System.nanoTime();
 
         try {
-            // Execute encrypted content search directly
-            // This searches ONLY encrypted/private metadata, not public keywords
-            List<
-                EncryptedContentSearch.EncryptedSearchResult
-            > encryptedResults = strategyRouter
+            // Search 1: Public keywords with EXACT match only (NO fuzzy matching)
+            // This prevents false positives from fuzzy matching
+            List<FastIndexSearch.FastSearchResult> publicResults = strategyRouter
+                .getFastIndexSearch()
+                .searchFast(query, maxResults, false); // enableFuzzy=FALSE for exact match
+
+            // Search 2: Encrypted private content
+            List<EncryptedContentSearch.EncryptedSearchResult> encryptedResults = strategyRouter
                 .getEncryptedContentSearch()
                 .searchEncryptedContent(query, password, maxResults);
 
-            List<EnhancedSearchResult> enhancedResults = new ArrayList<>();
+            // PERFORMANCE OPTIMIZATION: Build encryption status map using batch processing
+            // Collect all unique hashes from both result sets
+            Set<String> allHashes = new HashSet<>();
+            for (FastIndexSearch.FastSearchResult result : publicResults) {
+                allHashes.add(result.getBlockHash());
+            }
             for (EncryptedContentSearch.EncryptedSearchResult result : encryptedResults) {
+                allHashes.add(result.getBlockHash());
+            }
+
+            // Build encryption status index using batch processing (O(n) with batching, not O(n²))
+            // This processes ALL blockchain blocks in batches, checking only relevant hashes
+            Map<String, Boolean> encryptionStatusMap = new HashMap<>(allHashes.size());
+            blockchain.processChainInBatches(batch -> {
+                for (Block block : batch) {
+                    if (allHashes.contains(block.getHash())) {
+                        encryptionStatusMap.put(block.getHash(), block.isDataEncrypted());
+                    }
+                }
+            }, MemorySafetyConstants.DEFAULT_BATCH_SIZE);
+
+            // Filter results using the encryption status map (O(1) lookups)
+            List<FastIndexSearch.FastSearchResult> encryptedPublicResults = new ArrayList<>();
+            for (FastIndexSearch.FastSearchResult result : publicResults) {
+                Boolean isEncrypted = encryptionStatusMap.get(result.getBlockHash());
+                if (Boolean.TRUE.equals(isEncrypted)) {
+                    encryptedPublicResults.add(result);
+                }
+            }
+
+            List<EncryptedContentSearch.EncryptedSearchResult> filteredEncryptedResults = new ArrayList<>();
+            for (EncryptedContentSearch.EncryptedSearchResult result : encryptedResults) {
+                Boolean isEncrypted = encryptionStatusMap.get(result.getBlockHash());
+                if (Boolean.TRUE.equals(isEncrypted)) {
+                    filteredEncryptedResults.add(result);
+                }
+            }
+
+            // MEMORY OPTIMIZATION: Pre-size HashMap to avoid rehashing
+            // Worst case: all results are unique (no duplicates)
+            int estimatedSize = encryptedPublicResults.size() + filteredEncryptedResults.size();
+            Map<String, EnhancedSearchResult> combinedResults = new HashMap<>(estimatedSize);
+
+            // Add public results first (lower priority)
+            for (FastIndexSearch.FastSearchResult result : encryptedPublicResults) {
+                BlockMetadataLayers metadata = blockMetadataIndex.get(result.getBlockHash());
+
+                combinedResults.put(result.getBlockHash(), new EnhancedSearchResult(
+                    result.getBlockHash(),
+                    result.getRelevanceScore(),
+                    SearchStrategyRouter.SearchResultSource.PUBLIC_METADATA,
+                    "Public keyword match (exact, encrypted block only)",
+                    result.getSearchTimeMs(),
+                    metadata != null ? metadata.getPublicLayer() : null,
+                    null, // No private access yet
+                    metadata != null ? metadata.getSecurityLevel() : null
+                ));
+            }
+
+            // Add encrypted results (higher priority, overwrites public if same block)
+            for (EncryptedContentSearch.EncryptedSearchResult result : filteredEncryptedResults) {
                 BlockMetadataLayers metadata = blockMetadataIndex.get(
                     result.getBlockHash()
                 );
@@ -649,19 +720,23 @@ public class SearchFrameworkEngine {
                     }
                 }
 
-                enhancedResults.add(
-                    new EnhancedSearchResult(
-                        result.getBlockHash(),
-                        result.getRelevanceScore(),
-                        SearchStrategyRouter.SearchResultSource.ENCRYPTED_CONTENT,
-                        result.getMatchingSummary(),
-                        result.getSearchTimeMs(),
-                        metadata != null ? metadata.getPublicLayer() : null,
-                        privateMetadata,
-                        metadata != null ? metadata.getSecurityLevel() : null
-                    )
-                );
+                combinedResults.put(result.getBlockHash(), new EnhancedSearchResult(
+                    result.getBlockHash(),
+                    result.getRelevanceScore(),
+                    SearchStrategyRouter.SearchResultSource.ENCRYPTED_CONTENT,
+                    result.getMatchingSummary(),
+                    result.getSearchTimeMs(),
+                    metadata != null ? metadata.getPublicLayer() : null,
+                    privateMetadata,
+                    metadata != null ? metadata.getSecurityLevel() : null
+                ));
             }
+
+            // Convert combined results to list and sort by relevance
+            List<EnhancedSearchResult> enhancedResults = combinedResults.values().stream()
+                .sorted((a, b) -> Double.compare(b.getRelevanceScore(), a.getRelevanceScore()))
+                .limit(maxResults)
+                .collect(Collectors.toList());
 
             long endTime = System.nanoTime();
             double totalTimeMs = (endTime - startTime) / 1_000_000.0;

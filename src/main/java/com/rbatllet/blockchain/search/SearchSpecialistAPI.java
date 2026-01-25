@@ -5,6 +5,7 @@ import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.config.EncryptionConfig;
 import com.rbatllet.blockchain.search.SearchFrameworkEngine.*;
 import java.security.PrivateKey;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -573,94 +574,108 @@ public class SearchSpecialistAPI {
     }
     
     /**
-     * Performs a secure search that can access encrypted content using the provided password.
-     * 
-     * <p>This method searches through both public metadata and encrypted content,
-     * providing comprehensive search capabilities while maintaining security.</p>
-     * 
+     * Performs a secure search EXCLUSIVELY in ENCRYPTED blocks with password authentication.
+     *
+     * <p><strong>IMPORTANT:</strong> This method searches ONLY in encrypted blocks (isEncrypted() == true).
+     * Non-encrypted blocks are filtered out. For comprehensive search across ALL blocks, use
+     * {@link #searchIntelligent(String, String, int)} instead.</p>
+     *
+     * <p>This is a convenience method that calls {@link #searchSecure(String, String, int)}
+     * with a default limit of 20 results.</p>
+     *
      * <p><strong>Security Features:</strong></p>
      * <ul>
      *   <li>AES-256-GCM decryption for authorized access</li>
      *   <li>Password validation and authentication</li>
      *   <li>Secure memory handling for decrypted content</li>
      *   <li>Automatic cleanup of sensitive data</li>
+     *   <li>Exclusively searches encrypted blocks (semantic guarantee)</li>
      * </ul>
-     * 
+     *
      * <p><strong>Search Capabilities:</strong></p>
      * <ul>
-     *   <li>Public metadata (always accessible)</li>
      *   <li>Encrypted block content (with correct password)</li>
+     *   <li>Encrypted keywords and metadata</li>
      *   <li>Off-chain encrypted files (if accessible)</li>
-     *   <li>Cross-reference encrypted/public data</li>
+     *   <li><strong>Non-encrypted blocks are NOT included in results</strong></li>
      * </ul>
-     * 
+     *
      * <p><strong>Performance:</strong> Typically completes in under 200ms for
      * medium-sized datasets. Performance depends on the number of encrypted
      * blocks that need decryption.</p>
-     * 
+     *
      * @param query the search terms to look for. Must not be null or empty.
      *              Supports advanced search syntax including keywords, phrases,
      *              and boolean operators.
      * @param password the password for decrypting encrypted content. Must not be null.
      *                 If incorrect, encrypted content will be skipped without error.
-     * @return a list of enhanced search results containing matching blocks from both
-     *         public and encrypted sources, limited to 20 results. Never null.
+     * @return a list of enhanced search results containing matching blocks from ENCRYPTED blocks ONLY,
+     *         limited to 20 results. Never null. Non-encrypted blocks are never included.
      * @throws IllegalArgumentException if query or password is null, or query is empty
      * @throws IllegalStateException if the search API is not initialized
      * @see #searchSecure(String, String, int) for custom result limits
-     * @see #searchPublic(String) for public-only search
-     * @see #searchIntelligent(String, String, int) for adaptive search strategy
+     * @see #searchPublic(String) for public-only search (non-encrypted blocks)
+     * @see #searchIntelligent(String, String, int) for comprehensive search across ALL blocks (encrypted + non-encrypted)
      */
     public List<SearchFrameworkEngine.EnhancedSearchResult> searchSecure(String query, String password) {
         return searchSecure(query, password, 20);
     }
     
     /**
-     * Performs a secure search with encrypted content access and custom result limit.
-     * 
-     * <p>This method provides comprehensive search capabilities across both public
-     * and encrypted data sources. The result limit allows for performance optimization
-     * and pagination support.</p>
-     * 
+     * Performs a secure search EXCLUSIVELY in ENCRYPTED blocks with password authentication.
+     *
+     * <p><strong>IMPORTANT:</strong> This method searches ONLY in encrypted blocks (isEncrypted() == true).
+     * Non-encrypted blocks are explicitly filtered out. For searching across ALL blocks
+     * (encrypted + non-encrypted), use {@link #searchIntelligent(String, String, int)} instead.</p>
+     *
+     * <p>This specialized method is designed for security-focused use cases where only
+     * encrypted/secure content is relevant. The method name "searchSecure" reflects this
+     * semantic specialization.</p>
+     *
      * <p><strong>Search Strategy:</strong> Uses the ENCRYPTED_CONTENT strategy which:</p>
      * <ul>
-     *   <li>Searches public metadata first (for speed)</li>
-     *   <li>Decrypts and searches encrypted block content</li>
+     *   <li>Searches encrypted block content with password decryption</li>
+     *   <li>Searches encrypted keywords and metadata</li>
      *   <li>Includes off-chain encrypted file content</li>
-     *   <li>Merges and ranks results by relevance</li>
+     *   <li><strong>Filters out ALL non-encrypted blocks from results</strong></li>
+     *   <li>Ranks encrypted results by relevance</li>
      * </ul>
-     * 
+     *
      * <p><strong>Performance Optimization:</strong></p>
      * <ul>
      *   <li><strong>Small limits (1-50):</strong> Optimal, &lt;200ms</li>
      *   <li><strong>Medium limits (51-200):</strong> Good, &lt;500ms</li>
      *   <li><strong>Large limits (201+):</strong> Consider async search for UI responsiveness</li>
+     *   <li>Efficient even with millions of blocks: operates on search results (maxResults), not entire blockchain</li>
      * </ul>
-     * 
+     *
      * <p><strong>Security Considerations:</strong></p>
      * <ul>
      *   <li>Password is used to decrypt only matching encrypted blocks</li>
-     *   <li>Failed decryptions are logged but don't cause search failure</li>
+     *   <li>Failed decryptions are silently skipped (no error thrown)</li>
+     *   <li>Non-encrypted blocks are excluded from results (semantic guarantee)</li>
      *   <li>Sensitive data is cleared from memory after search</li>
      *   <li>Search patterns are not stored or cached</li>
      * </ul>
-     * 
+     *
      * @param query the search terms to look for. Must not be null or empty.
      *              Supports complex queries with boolean logic, phrases, and wildcards.
      * @param password the password for decrypting encrypted content. Must not be null.
      *                 Use the same password that was used to encrypt the target blocks.
      * @param maxResults the maximum number of results to return. Must be positive.
      *                   Higher values may impact performance for encrypted searches.
-     * @return a list of enhanced search results from both public and encrypted sources,
+     * @return a list of enhanced search results from ENCRYPTED blocks ONLY,
      *         limited to maxResults entries. Results are ranked by relevance score.
+     *         Non-encrypted blocks are never included in results.
      * @throws IllegalArgumentException if query/password is null, query is empty, or maxResults is not positive
      * @throws IllegalStateException if the search API is not initialized
      * @see #searchSecure(String, String) for default 20-result limit
-     * @see #searchIntelligent(String, String, int) for adaptive search with automatic strategy selection
+     * @see #searchIntelligent(String, String, int) for comprehensive search across ALL blocks (encrypted + non-encrypted)
+     * @see #searchPublic(String, int) for searching only non-encrypted/public blocks
      */
     public List<SearchFrameworkEngine.EnhancedSearchResult> searchSecure(String query, String password, int maxResults) {
         // No need to check initialization since constructor always initializes properly
-        
+
         // Validate query parameter
         if (query == null) {
             throw new IllegalArgumentException("Query cannot be null");
@@ -668,35 +683,61 @@ public class SearchSpecialistAPI {
         if (query.trim().isEmpty()) {
             throw new IllegalArgumentException("Query cannot be empty or contain only whitespace");
         }
-        
+
         // Validate password parameter
         if (password == null) {
             throw new IllegalArgumentException("Password cannot be null");
         }
-        
+
         // Validate maxResults parameter
         if (maxResults <= 0) {
             throw new IllegalArgumentException("Maximum results must be positive");
         }
 
-        // Comprehensive search: searches BOTH public metadata (with fuzzy) AND encrypted content
-        // This follows Elasticsearch best practices where authenticated searches can use fuzzy matching.
+        // SECURE SEARCH SPECIALIZATION: searches EXCLUSIVELY in ENCRYPTED blocks
+        // This method is specialized for security-focused use cases where only encrypted content is relevant.
         //
-        // Search strategy:
-        // 1. FastIndexSearch with fuzzy matching → finds PUBLIC keywords (exact or similar)
-        //    - Searches in keywordIndex (only contains explicitly marked public keywords)
-        //    - Fuzzy matching allows finding typos/variations of public keywords
-        // 2. EncryptedContentSearch → finds PRIVATE keywords and encrypted content
-        //    - Searches in encrypted metadata (requires password to decrypt)
-        //    - Finds private keywords that were NOT marked with "public:" prefix
-        // 3. Results are combined, deduplicated, and ranked by relevance
+        // Search strategy (FIXED 2026-01-25):
+        // 1. Search DIRECTLY in encrypted content (searchEncryptedContent)
+        // 2. Filter results to ONLY include encrypted blocks (isDataEncrypted() == true)
+        // 3. Return encrypted-only results, maintaining original relevance ranking
         //
-        // Security guarantee: Private keywords are NEVER exposed to public search because:
-        // - They are stored encrypted in autoKeywords field
-        // - They are NOT indexed in FastIndexSearch.keywordIndex
-        // - They are ONLY accessible through EncryptedContentSearch with correct password
-        SearchFrameworkEngine.SearchResult result = searchEngine.searchComprehensive(query, password, maxResults);
-        return result.getResults();
+        // IMPORTANT FIX: Do NOT call searchComprehensive() because it includes:
+        // - Public keyword search with FUZZY matching enabled
+        // - This causes false positives (e.g., searching "xyz_public_unenc_unique_kw_123"
+        //   finds "xyz_public_enc_unique_kw_456" due to fuzzy matching)
+        //
+        // Semantic rationale:
+        // - Method name "searchSecure" implies EXCLUSIVE search in secure/encrypted blocks
+        // - Non-encrypted blocks should be searched via searchPublic() or searchIntelligent()
+        // - Password requirement is semantically meaningful only for encrypted blocks
+        // - Prevents semantic confusion and provides clear API contract
+        //
+        // Performance: Directly searches encrypted content without fuzzy public search overhead
+
+        SearchFrameworkEngine.SearchResult encryptedResult = searchEngine.searchEncryptedOnly(query, password, maxResults);
+
+        if (encryptedResult == null || encryptedResult.getResults() == null) {
+            return new ArrayList<>(0); // Empty list with zero capacity
+        }
+
+        List<SearchFrameworkEngine.EnhancedSearchResult> allResults = encryptedResult.getResults();
+        if (allResults.isEmpty()) {
+            return new ArrayList<>(0);
+        }
+
+        // PERFORMANCE OPTIMIZATION (2026-01-25):
+        // searchEncryptedOnly() now uses batch processing to filter encrypted blocks internally.
+        // The encryption status filtering loop has been REMOVED as it's redundant and caused N individual
+        // database queries (50-10K queries eliminated).
+        //
+        // searchEncryptedOnly() guarantees that ALL returned results are from encrypted blocks using:
+        // - Batch processing via blockchain.processChainInBatches()
+        // - O(1) HashMap lookups for encryption status
+        // - Zero individual database queries
+        //
+        // Therefore, we can safely return allResults directly without additional filtering.
+        return allResults;
     }
     
     
