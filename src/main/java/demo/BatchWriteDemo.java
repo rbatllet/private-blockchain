@@ -86,7 +86,10 @@ public class BatchWriteDemo {
         System.out.println("  ✅ H2 in-memory database initialized");
 
         blockchain = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
         blockchain.clearAndReinitialize();
+        
         System.out.println("  ✅ Blockchain initialized");
 
         // Load bootstrap admin keys
@@ -150,6 +153,7 @@ public class BatchWriteDemo {
 
         // Clear and reinitialize
         blockchain.clearAndReinitialize();
+
         blockchain.createBootstrapAdmin(
             CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
             "BOOTSTRAP_ADMIN"
@@ -205,6 +209,7 @@ public class BatchWriteDemo {
 
         // Clear and reinitialize
         blockchain.clearAndReinitialize();
+
         blockchain.createBootstrapAdmin(
             CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
             "BOOTSTRAP_ADMIN"
@@ -283,6 +288,7 @@ public class BatchWriteDemo {
 
         // Clear and reinitialize
         blockchain.clearAndReinitialize();
+        
         blockchain.createBootstrapAdmin(
             CryptoUtil.publicKeyToString(bootstrapKeyPair.getPublic()),
             "BOOTSTRAP_ADMIN"

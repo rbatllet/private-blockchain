@@ -80,10 +80,13 @@ public class TestOffChainValidation {
         
         // Clean up any existing files
         cleanupFiles();
-        
+
         // Initialize blockchain
         blockchain = new Blockchain();
-        
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
         // Generate test keys
         var keyPair = CryptoUtil.generateKeyPair();
         privateKey = keyPair.getPrivate();

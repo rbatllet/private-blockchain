@@ -74,6 +74,10 @@ public class StreamingApisDemo {
         System.out.println("  ✅ H2 file-based database initialized (./streaming_demo_db)");
 
         blockchain = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
         System.out.println("  ✅ Blockchain initialized");
 
         keyPair = CryptoUtil.generateKeyPair();

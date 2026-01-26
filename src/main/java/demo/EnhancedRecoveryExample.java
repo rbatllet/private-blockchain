@@ -33,6 +33,8 @@ public class EnhancedRecoveryExample {
         try {
             // Initialize blockchain
             Blockchain blockchain = new Blockchain();
+
+            // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
             blockchain.clearAndReinitialize();
             
             // Create recovery manager
@@ -123,10 +125,11 @@ public class EnhancedRecoveryExample {
             
             // Initialize blockchain
             Blockchain blockchain = new Blockchain();
+
+            // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
             blockchain.clearAndReinitialize();
             
-            ChainRecoveryManager recoveryManager = 
-                new ChainRecoveryManager(blockchain);
+            ChainRecoveryManager recoveryManager = new ChainRecoveryManager(blockchain);
             
             // Create a more complex scenario
             KeyPair adminKeyPair = CryptoUtil.generateKeyPair();
@@ -237,6 +240,8 @@ public class EnhancedRecoveryExample {
             
             // Initialize with production settings
             Blockchain blockchain = new Blockchain();
+
+            // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
             blockchain.clearAndReinitialize();
             
             ChainRecoveryManager recoveryManager = 

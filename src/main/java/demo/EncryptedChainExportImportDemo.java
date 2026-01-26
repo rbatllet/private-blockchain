@@ -18,11 +18,15 @@ public class EncryptedChainExportImportDemo {
     public static void main(String[] args) throws Exception {
         System.out.println("=== 🔐 TESTING ENCRYPTED CHAIN EXPORT/IMPORT ===");
         System.out.println();
-        
+
         // Initialize blockchain and encryption
         Blockchain blockchain = new Blockchain();
-        String masterPassword = "SuperSecurePassword123!";
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
         
+        String masterPassword = "SuperSecurePassword123!";
+
         // Generate key pair
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         PrivateKey privateKey = keyPair.getPrivate();

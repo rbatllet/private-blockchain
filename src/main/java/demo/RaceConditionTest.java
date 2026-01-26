@@ -15,13 +15,18 @@ public class RaceConditionTest {
     public static void main(String[] args) throws Exception {
         System.out.println("🔍 RACE CONDITION FIX VALIDATION TEST");
         System.out.println("=====================================");
-        
+
         // Setup
         Blockchain blockchain = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+        
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         PrivateKey privateKey = keyPair.getPrivate();
         PublicKey publicKey = keyPair.getPublic();
-        
+
+
         // Add authorized key
         String publicKeyString = CryptoUtil.publicKeyToString(publicKey);
         blockchain.createBootstrapAdmin(

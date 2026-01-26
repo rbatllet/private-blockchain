@@ -36,6 +36,10 @@ public class SearchSpecialistAPIErrorDemo {
         try {
             // Create blockchain (auto-creates bootstrap admin)
             Blockchain blockchain = new Blockchain();
+
+            // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+            blockchain.clearAndReinitialize();
+            
             String password = "DemoPassword123!";
 
             // Load bootstrap admin keys

@@ -2,6 +2,7 @@ package demo;
 
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.config.DatabaseConfig;
+import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.JPAUtil;
 
@@ -89,6 +90,14 @@ public class DatabaseConfigDemo {
         System.out.println("📋 Demo 2: H2 In-Memory Configuration (Testing)");
         System.out.println("-".repeat(70));
 
+        // Wait for any pending indexing to complete before switching databases
+        try {
+            IndexingCoordinator.getInstance().waitForCompletion();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.err.println("⚠️ Interrupted while waiting for indexing completion");
+        }
+
         // Switch to H2 for testing
         DatabaseConfig h2Config = DatabaseConfig.createH2TestConfig();
         System.out.println("Switching to H2 in-memory database...");
@@ -105,6 +114,14 @@ public class DatabaseConfigDemo {
         // Test blockchain operation with H2
         System.out.println("\n🔗 Testing blockchain operation with H2...");
         testBlockchainOperation();
+
+        // Wait for any pending indexing to complete before switching databases
+        try {
+            IndexingCoordinator.getInstance().waitForCompletion();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.err.println("⚠️ Interrupted while waiting for indexing completion");
+        }
 
         // Switch back to SQLite
         System.out.println("\n🔄 Switching back to SQLite...");
@@ -196,6 +213,9 @@ public class DatabaseConfigDemo {
         try {
             // Create blockchain instance
             Blockchain blockchain = new Blockchain();
+
+            // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+            blockchain.clearAndReinitialize();
 
             // Generate test keys
             KeyPair keys = CryptoUtil.generateKeyPair();

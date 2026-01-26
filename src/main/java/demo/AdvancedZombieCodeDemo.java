@@ -45,6 +45,10 @@ public class AdvancedZombieCodeDemo {
                 "1️⃣ Setting up advanced blockchain with exposed zombie code..."
             );
             Blockchain blockchain = new Blockchain();
+
+            // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+            blockchain.clearAndReinitialize();
+            
             System.out.println("✅ Blockchain initialized (bootstrap admin created)");
 
             // Load bootstrap admin keys

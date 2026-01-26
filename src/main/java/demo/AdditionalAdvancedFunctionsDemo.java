@@ -25,7 +25,10 @@ public class AdditionalAdvancedFunctionsDemo {
         try {
             // Initialize blockchain
             Blockchain blockchain = new Blockchain();
-            
+
+            // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+            blockchain.clearAndReinitialize();
+
             // Setup test users
             KeyPair alice = CryptoUtil.generateKeyPair();
             KeyPair bob = CryptoUtil.generateKeyPair();
@@ -159,6 +162,10 @@ public class AdditionalAdvancedFunctionsDemo {
             
             // Create a new blockchain to test import
             Blockchain newBlockchain = new Blockchain();
+
+            // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+            blockchain.clearAndReinitialize();
+
             System.out.println("   📝 New blockchain created with " + newBlockchain.getBlockCount() + " blocks (just genesis)");
             
             boolean imported = newBlockchain.importChain(exportPath);

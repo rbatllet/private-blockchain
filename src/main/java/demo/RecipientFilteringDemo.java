@@ -63,6 +63,8 @@ public class RecipientFilteringDemo {
         printHeader("🚀 INITIALIZING BLOCKCHAIN");
 
         blockchain = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
         blockchain.clearAndReinitialize();
 
         // Create admin

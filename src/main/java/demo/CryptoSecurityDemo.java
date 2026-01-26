@@ -47,6 +47,8 @@ public class CryptoSecurityDemo {
         try {
             // Clean up the database using Blockchain API
             Blockchain blockchain = new Blockchain();
+
+            // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
             blockchain.clearAndReinitialize();
 
             // EXPLICIT bootstrap admin creation after reset (security best practice)

@@ -40,7 +40,13 @@ public class JPAConfigurationStorageDemo {
             System.err.println("❌ Demo failed: " + e.getMessage());
             e.printStackTrace();
         } finally {
-            JPAUtil.closeEntityManager();
+            // Close database connections before classloader closes
+            try {
+                JPAUtil.shutdown();
+                System.out.println("✅ Database connections closed");
+            } catch (Exception e) {
+                System.err.println("⚠️ Error closing database: " + e.getMessage());
+            }
         }
     }
 

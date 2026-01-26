@@ -40,6 +40,9 @@ public class SearchSpecialistAPIDemo {
             System.out.println("📊 Setting up specialized search environment...");
             Blockchain blockchain = new Blockchain();
 
+            // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+            blockchain.clearAndReinitialize();
+
             // Load bootstrap admin keys
             KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(
                 "./keys/genesis-admin.private",

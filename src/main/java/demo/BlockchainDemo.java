@@ -21,6 +21,9 @@ public class BlockchainDemo {
             // 1. Create blockchain instance
             Blockchain blockchain = new Blockchain();
 
+            // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+            blockchain.clearAndReinitialize();
+
             // 2. Load bootstrap admin keys (RBAC v1.0.6: Production pattern)
             System.out.println("🔐 Loading bootstrap admin credentials...");
             KeyPair bootstrapKeys = KeyFileLoader.loadKeyPairFromFiles(

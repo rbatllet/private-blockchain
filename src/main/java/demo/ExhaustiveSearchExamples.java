@@ -9,6 +9,7 @@ import com.rbatllet.blockchain.search.SearchFrameworkEngine.EnhancedSearchResult
 import com.rbatllet.blockchain.search.OffChainMatch;
 import com.rbatllet.blockchain.service.OffChainStorageService;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.util.JPAUtil;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -83,12 +84,20 @@ public class ExhaustiveSearchExamples {
             
             cleanupTempDirectory();
             System.out.println("✅ All examples completed successfully!");
-            
+
         } catch (Exception e) {
             System.err.println("❌ Example failed: " + e.getMessage());
             e.printStackTrace();
+        } finally {
+            // Close database connections before exiting
+            try {
+                JPAUtil.shutdown();
+                System.out.println("✅ Database connections closed");
+            } catch (Exception e) {
+                System.err.println("⚠️ Error closing database: " + e.getMessage());
+            }
         }
-        
+
         // Force exit to stop background threads
         System.exit(0);
     }
@@ -593,7 +602,9 @@ public class ExhaustiveSearchExamples {
         // Concurrent search test
         int threadCount = 5;
         int searchesPerThread = 3;
-        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads
+        ExecutorService executor = Executors.newThreadPerTaskExecutor(
+            Thread.ofVirtual().name("ExhaustiveSearch-", 0).factory()
+        );
         CountDownLatch latch = new CountDownLatch(threadCount);
         
         System.out.println("🧵 Running " + threadCount + " threads with " + searchesPerThread + " searches each...");

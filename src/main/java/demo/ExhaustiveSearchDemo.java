@@ -52,12 +52,16 @@ public class ExhaustiveSearchDemo {
             KeyPair keyPair = CryptoUtil.generateKeyPair();
             PrivateKey privateKey = keyPair.getPrivate();
             PublicKey publicKey = keyPair.getPublic();
-            
+
             Blockchain blockchain = new Blockchain();
+
+            // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+            blockchain.clearAndReinitialize();
+            
             SearchFrameworkEngine searchEngine = new SearchFrameworkEngine(
                 EncryptionConfig.createHighSecurityConfig());
             OffChainStorageService offChainService = new OffChainStorageService();
-            
+
             // CRITICAL: Authorize the key before adding blocks
             String publicKeyString = CryptoUtil.publicKeyToString(publicKey);
             boolean keyAuthorized = blockchain.createBootstrapAdmin(

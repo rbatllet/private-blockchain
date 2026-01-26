@@ -37,12 +37,16 @@ public class IndexingSyncDemo {
             System.out.println("\n" + "=".repeat(80));
             System.out.println("🚀 INDEXING GUIDE EXAMPLES DEMO - Following Documentation Exactly");
             System.out.println("=".repeat(80));
-            
+
             // Initialize shared blockchain once
             System.out.println("\n🔧 Initializing shared blockchain instance...");
             sharedBlockchain = new Blockchain();
-            System.out.println("✅ Blockchain initialized\n");
+
+            // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+            sharedBlockchain.clearAndReinitialize();
             
+            System.out.println("✅ Blockchain initialized\n");
+
             // Run all 4 examples from the documentation
             runExample1_UnitTestPattern();
             cleanupBetweenExamples();
@@ -81,13 +85,17 @@ public class IndexingSyncDemo {
             System.out.println("\n🧹 Cleaning up for next example...");
             // Reset global state of search framework
             SearchFrameworkEngine.resetGlobalState();
+
             // Wait for indexing coordinator to complete
             IndexingCoordinator.getInstance().waitForCompletion();
+
             // Reset indexing coordinator tracking to allow immediate re-indexing
             IndexingCoordinator.getInstance().reset();
+
             // Clear and reinitialize blockchain for next example
             sharedBlockchain.clearAndReinitialize();
             System.out.println("✅ Blockchain cleared and reinitialized\n");
+            
             // Small delay to ensure cleanup
             Thread.sleep(200);
         } catch (Exception e) {

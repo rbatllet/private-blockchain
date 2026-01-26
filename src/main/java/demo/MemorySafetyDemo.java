@@ -80,6 +80,8 @@ public class MemorySafetyDemo {
         System.out.println("  ✅ H2 file-based database initialized (./memory_safety_demo_db)");
 
         blockchain = new Blockchain();
+        blockchain.clearAndReinitialize();
+
         System.out.println("  ✅ Blockchain initialized");
 
         keyPair = CryptoUtil.generateKeyPair();

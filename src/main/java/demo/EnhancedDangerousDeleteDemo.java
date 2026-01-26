@@ -21,6 +21,8 @@ public class EnhancedDangerousDeleteDemo {
             System.out.println("=======================================\n");
             
             Blockchain blockchain = new Blockchain();
+
+            // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
             blockchain.clearAndReinitialize(); // Start clean
 
             // Create admin user (required for dangerous operations)

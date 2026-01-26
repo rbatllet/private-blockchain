@@ -23,7 +23,10 @@ public class CoreFunctionsDemo {
             // ===============================
             System.out.println("1. 🔍 DEMONSTRATING: Initialize Blockchain + Genesis Block");
             Blockchain blockchain = new Blockchain();
-            
+
+            // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+            blockchain.clearAndReinitialize();
+
             // Verify genesis block exists
             long initialBlocks = blockchain.getBlockCount();
             System.out.println("   ✅ Genesis block created");

@@ -4,6 +4,7 @@ import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.util.JPAUtil;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -92,10 +93,13 @@ public class ComprehensiveThreadSafetyTest {
         
         // Initialize blockchain
         blockchain = new Blockchain();
-        
+
         // CRITICAL FIX: Clear database completely to ensure clean state
         System.out.println("🧹 Clearing blockchain database for clean test state...");
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
         blockchain.clearAndReinitialize();
+        
         logger.info("🧹 Blockchain database cleared and reinitialized");
         
         // Generate multiple key pairs for testing
@@ -135,7 +139,9 @@ public class ComprehensiveThreadSafetyTest {
         System.out.println("📝 Test 1: Concurrent Block Addition");
         logger.info("📝 Test 1: Concurrent Block Addition");
 
-        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads
+        ExecutorService executor = Executors.newThreadPerTaskExecutor(
+            Thread.ofVirtual().name("BlockAdd-", 0).factory()
+        );
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch endLatch = new CountDownLatch(NUM_THREADS);
         
@@ -230,7 +236,9 @@ public class ComprehensiveThreadSafetyTest {
         System.out.println("📝 Test 2: Concurrent Mixed Operations");
         logger.info("📝 Test 2: Concurrent Mixed Operations");
 
-        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads
+        ExecutorService executor = Executors.newThreadPerTaskExecutor(
+            Thread.ofVirtual().name("MixedOp-", 0).factory()
+        );
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch endLatch = new CountDownLatch(NUM_THREADS);
         
@@ -325,7 +333,9 @@ public class ComprehensiveThreadSafetyTest {
         System.out.println("📝 Test 3: Concurrent Validation Stress");
         logger.info("📝 Test 3: Concurrent Validation Stress");
 
-        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads
+        ExecutorService executor = Executors.newThreadPerTaskExecutor(
+            Thread.ofVirtual().name("Validation-", 0).factory()
+        );
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch endLatch = new CountDownLatch(NUM_THREADS);
         
@@ -381,7 +391,9 @@ public class ComprehensiveThreadSafetyTest {
         System.out.println("📝 Test 4: Concurrent Off-Chain Operations");
         logger.info("📝 Test 4: Concurrent Off-Chain Operations");
 
-        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads
+        ExecutorService executor = Executors.newThreadPerTaskExecutor(
+            Thread.ofVirtual().name("OffChain-", 0).factory()
+        );
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch endLatch = new CountDownLatch(NUM_THREADS);
         
@@ -455,10 +467,12 @@ public class ComprehensiveThreadSafetyTest {
             blockchain.addBlockAndReturn("Block " + i, privateKeys[0], publicKeys[0]);
         }
 
-        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads
+        ExecutorService executor = Executors.newThreadPerTaskExecutor(
+            Thread.ofVirtual().name("Rollback-", 0).factory()
+        );
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch endLatch = new CountDownLatch(NUM_THREADS);
-        
+
         AtomicInteger rollbackAttempts = new AtomicInteger(0);
         AtomicInteger rollbackSuccesses = new AtomicInteger(0);
         
@@ -520,7 +534,9 @@ public class ComprehensiveThreadSafetyTest {
         System.out.println("📝 Test 6: Concurrent Export/Import Safety");
         logger.info("📝 Test 6: Concurrent Export/Import Safety");
 
-        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads
+        ExecutorService executor = Executors.newThreadPerTaskExecutor(
+            Thread.ofVirtual().name("ExportImport-", 0).factory()
+        );
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch endLatch = new CountDownLatch(Math.min(NUM_THREADS, 5));
         
@@ -593,7 +609,9 @@ public class ComprehensiveThreadSafetyTest {
         logger.info("📝 Test 7: Edge Case Thread Safety");
 
         // Test rapid key authorization/revocation
-        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads
+        ExecutorService executor = Executors.newThreadPerTaskExecutor(
+            Thread.ofVirtual().name("EdgeCase-", 0).factory()
+        );
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch endLatch = new CountDownLatch(NUM_THREADS);
         
@@ -871,6 +889,15 @@ public class ComprehensiveThreadSafetyTest {
     
     private static void cleanup() {
         System.out.println("🧹 Cleaning up test environment...");
+
+        // Close database connections before cleaning up files
+        try {
+            JPAUtil.shutdown();
+            System.out.println("✅ Database connections closed");
+        } catch (Exception e) {
+            System.err.println("⚠️ Error closing database: " + e.getMessage());
+        }
+
         cleanupFiles();
         System.out.println("✅ Cleanup completed");
     }

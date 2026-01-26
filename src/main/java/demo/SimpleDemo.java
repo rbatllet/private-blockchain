@@ -16,8 +16,12 @@ public class SimpleDemo {
         try {
             // 1. Create blockchain instance
             Blockchain blockchain = new Blockchain();
-            System.out.println("✅ Blockchain created");
+
+            // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+            blockchain.clearAndReinitialize();
             
+            System.out.println("✅ Blockchain created");
+
             // 2. Generate key pair
             KeyPair keyPair = CryptoUtil.generateKeyPair();
             String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());

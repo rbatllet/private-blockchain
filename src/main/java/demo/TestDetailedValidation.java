@@ -22,7 +22,10 @@ public class TestDetailedValidation {
         try {
             // Initialize blockchain
             Blockchain blockchain = new Blockchain();
-            
+
+            // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+            blockchain.clearAndReinitialize();
+
             // Generate key pairs
             KeyPair keyPair1 = CryptoUtil.generateKeyPair();
             PrivateKey privateKey1 = keyPair1.getPrivate();

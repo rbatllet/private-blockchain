@@ -19,12 +19,15 @@ public class UserFriendlyEncryptionDemo {
         System.out.println("=== 🔐 USER-FRIENDLY ENCRYPTION API DEMO ===\n");
 
         try {
-            // 1. Setup - Create blockchain
+            // 1. Setup - Create blockchain with clean state
             System.out.println(
                 "1️⃣ Setting up blockchain and user-friendly API..."
             );
             Blockchain blockchain = new Blockchain();
-            System.out.println("✅ Blockchain initialized");
+
+            // Clear existing data to ensure clean demo state
+            blockchain.clearAndReinitialize();
+            System.out.println("✅ Blockchain initialized with clean state");
 
             // 2. Load bootstrap admin keys to authorize user creation
             System.out.println("2️⃣ Loading bootstrap admin credentials...");

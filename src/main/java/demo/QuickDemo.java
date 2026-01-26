@@ -9,9 +9,13 @@ public class QuickDemo {
     
     public static void main(String[] args) {
         System.out.println("=== 📊 QUICK DEMO ===");
-        
+
         try {
             Blockchain blockchain = new Blockchain();
+
+            // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+            blockchain.clearAndReinitialize();
+            
             KeyPair keyPair = CryptoUtil.generateKeyPair();
             String publicKeyString = CryptoUtil.publicKeyToString(keyPair.getPublic());
 

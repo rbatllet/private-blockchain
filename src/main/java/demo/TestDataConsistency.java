@@ -17,10 +17,13 @@ public class TestDataConsistency {
     public static void main(String[] args) throws Exception {
         System.out.println("=== 🧪 TESTING DATA CONSISTENCY FIXES ===");
         System.out.println();
-        
+
         // Initialize blockchain
         Blockchain blockchain = new Blockchain();
-        
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+
         // Generate key pair for testing
         KeyPair keyPair = CryptoUtil.generateKeyPair();
         PrivateKey privateKey = keyPair.getPrivate();

@@ -33,6 +33,10 @@ public class MultilingualBlockchainDemo {
 
         // Initialize blockchain
         Blockchain blockchain = new Blockchain();
+
+        // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+        blockchain.clearAndReinitialize();
+        
         System.out.println("✅ Blockchain initialized");
 
         // Load bootstrap admin keys

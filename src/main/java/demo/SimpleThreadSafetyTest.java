@@ -4,6 +4,7 @@ import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.util.JPAUtil;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -106,8 +107,10 @@ public class SimpleThreadSafetyTest {
         }
         logger.debug("Generated and authorized {} key pairs", NUM_THREADS);
 
-        // Concurrent execution (Java 25 Virtual Threads)
-        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
+        // Concurrent execution (Java 25 Virtual Threads with named threads)
+        ExecutorService executor = Executors.newThreadPerTaskExecutor(
+            Thread.ofVirtual().name("BlockCreate-", 0).factory()
+        );
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch endLatch = new CountDownLatch(NUM_THREADS);
         
@@ -227,7 +230,9 @@ public class SimpleThreadSafetyTest {
         );
         logger.debug("Key pair generated and authorized for off-chain test");
 
-        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads
+        ExecutorService executor = Executors.newThreadPerTaskExecutor(
+            Thread.ofVirtual().name("OffChain-", 0).factory()
+        );
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch endLatch = new CountDownLatch(NUM_THREADS);
         
@@ -360,7 +365,9 @@ public class SimpleThreadSafetyTest {
         }
         logger.debug("Created 10 test blocks for validation stress testing");
 
-        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // Java 25 Virtual Threads
+        ExecutorService executor = Executors.newThreadPerTaskExecutor(
+            Thread.ofVirtual().name("Validation-", 0).factory()
+        );
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch endLatch = new CountDownLatch(NUM_THREADS);
         
@@ -449,7 +456,17 @@ public class SimpleThreadSafetyTest {
     private static void cleanup() {
         try {
             logger.debug("Cleaning up test environment...");
-            
+
+            // Close database connections before cleaning up files
+            try {
+                JPAUtil.shutdown();
+                System.out.println("✅ Database connections closed");
+                logger.debug("Database connections closed");
+            } catch (Exception e) {
+                System.err.println("⚠️ Error closing database: " + e.getMessage());
+                logger.warn("Error closing database: {}", e.getMessage());
+            }
+
             // Clean up database files
             deleteFileIfExists("blockchain.db");
             deleteFileIfExists("blockchain.db-shm");

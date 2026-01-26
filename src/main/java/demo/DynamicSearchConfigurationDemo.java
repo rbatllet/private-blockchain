@@ -28,10 +28,13 @@ public class DynamicSearchConfigurationDemo {
         System.out.println("=== 🔍 SEARCH API COMPARISON DEMO ===");
         System.out.println("Comparing TWO approaches to use SearchSpecialistAPI");
         System.out.println();
-        
+
         try {
             Blockchain blockchain = new Blockchain();
-            
+
+            // RBAC FIX (v1.0.6): Clear database before bootstrap to avoid "Existing users" error
+            blockchain.clearAndReinitialize();
+
             // Setup with CryptoUtil
             KeyPair bootstrapKeys = CryptoUtil.generateKeyPair();
             String publicKeyString = CryptoUtil.publicKeyToString(bootstrapKeys.getPublic());
