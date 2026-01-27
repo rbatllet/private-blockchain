@@ -17,7 +17,7 @@ import java.util.List;
  *   <li>Native recipient filtering with indexed queries (O(1))</li>
  *   <li>Counting blocks by recipient with native queries</li>
  *   <li>Hash integrity: recipientPublicKey included in hash calculation</li>
- *   <li>Thread-safe operations with GLOBAL_BLOCKCHAIN_LOCK</li>
+ *   <li>Thread-safe operations with StampedLock</li>
  * </ul>
  *
  * <p><b>Performance Improvement:</b></p>
@@ -336,7 +336,7 @@ public class RecipientFilteringDemo {
         System.out.println("   ✓ Native recipient filtering with indexed queries (O(1))");
         System.out.println("   ✓ Counting blocks by recipient with native queries");
         System.out.println("   ✓ Hash integrity: recipientPublicKey included in hash");
-        System.out.println("   ✓ Thread-safe operations with GLOBAL_BLOCKCHAIN_LOCK");
+        System.out.println("   ✓ Thread-safe operations with StampedLock");
         System.out.println("   ✓ Memory safety with limit parameters");
 
         System.out.println();

@@ -914,7 +914,9 @@ public class AdvancedZombieCodeDemo {
         } catch (Exception e) {
             System.err.println("❌ Demo failed: " + e.getMessage());
             e.printStackTrace();
-        }
+        } finally {
+            JPAUtil.shutdown();
+        }   
     }
 
     /**

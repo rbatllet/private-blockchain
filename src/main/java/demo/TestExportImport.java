@@ -3,6 +3,8 @@ package demo;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.util.JPAUtil;
+
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -167,5 +169,6 @@ public class TestExportImport {
         } else {
             System.out.println("4. ❌ Failed to create large block with off-chain data");
         }
+        JPAUtil.shutdown();
     }
 }

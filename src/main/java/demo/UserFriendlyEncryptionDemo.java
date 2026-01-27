@@ -6,6 +6,8 @@ import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.util.JPAUtil;
+
 import java.security.KeyPair;
 import java.util.List;
 
@@ -551,5 +553,6 @@ public class UserFriendlyEncryptionDemo {
             System.err.println("❌ Demo failed: " + e.getMessage());
             e.printStackTrace();
         }
+        JPAUtil.shutdown();
     }
 }

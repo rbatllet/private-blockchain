@@ -3,6 +3,8 @@ package demo;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.util.JPAUtil;
+
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -76,7 +78,7 @@ public class EncryptedChainExportImportDemo {
         System.out.println("   📁 Off-chain blocks: " + offChainBlocks);
         
         // Test enhanced export for encrypted chains
-        System.out.println("\\n6. 🔐 Testing encrypted chain export...");
+        System.out.println("6. 🔐 Testing encrypted chain export...");
         String exportFilePath = "encrypted-chain-export.json";
         boolean exportSuccess = blockchain.exportEncryptedChain(exportFilePath, masterPassword);
         
@@ -97,26 +99,26 @@ public class EncryptedChainExportImportDemo {
             }
             
             // Clear blockchain and test import
-            System.out.println("\\n7. 🧹 Clearing blockchain for import test...");
+            System.out.println("7. 🧹 Clearing blockchain for import test...");
             blockchain.clearAndReinitialize();
 
-            // Verify blockchain is empty
-            if (blockchain.getBlockCount() == 0) {
-                System.out.println("   ✅ Blockchain cleared successfully");
+            // Verify blockchain only has genesis block
+            if (blockchain.getBlockCount() == 1) { // Only Genesis block remains
+                System.out.println("   ✅ Blockchain cleared successfully (only Genesis block remains)");
             } else {
-                System.out.println("   ❌ Failed to clear blockchain!");
+                System.out.println("   ❌ Failed to clear blockchain! Block count: " + blockchain.getBlockCount());
                 return;
             }
             
             // Test enhanced import for encrypted chains
-            System.out.println("\\n8. 📥 Testing encrypted chain import...");
+            System.out.println("8. 📥 Testing encrypted chain import...");
             boolean importSuccess = blockchain.importEncryptedChain(exportFilePath, masterPassword);
             
             if (importSuccess) {
                 System.out.println("   ✅ Encrypted import completed successfully");
 
                 // Verify all blocks are restored
-                System.out.println("\\n9. 🔍 Verifying restored blockchain...");
+                System.out.println("9. 🔍 Verifying restored blockchain...");
                 long restoredBlockCount = blockchain.getBlockCount();
                 System.out.println("   📦 Total restored blocks: " + restoredBlockCount);
                 
@@ -169,21 +171,21 @@ public class EncryptedChainExportImportDemo {
                 }
                 
                 // Final validation
-                System.out.println("\\n10. 🔍 Final chain validation...");
+                System.out.println("10. 🔍 Final chain validation...");
                 var validationResult = blockchain.validateChainDetailed();
                 System.out.println("   🔍 Structurally Intact: " + validationResult.isStructurallyIntact());
                 System.out.println("   ✅ Fully Compliant: " + validationResult.isFullyCompliant());
                 System.out.println("   📊 Valid Blocks: " + validationResult.getValidBlocks() + "/" + validationResult.getTotalBlocks());
                 
                 if (validationResult.isFullyCompliant()) {
-                    System.out.println("\\n🎉 ALL ENCRYPTED EXPORT/IMPORT TESTS PASSED!");
-                    System.out.println("\\n✅ Enhanced export includes encryption keys");
+                    System.out.println("🎉 ALL ENCRYPTED EXPORT/IMPORT TESTS PASSED!");
+                    System.out.println("✅ Enhanced export includes encryption keys");
                     System.out.println("✅ Enhanced import properly restores encryption context");
                     System.out.println("✅ Encrypted blocks remain decryptable after import");
                     System.out.println("✅ Off-chain encrypted data integrity maintained");
                     System.out.println("✅ Chain validation passes after encrypted import");
                 } else {
-                    System.out.println("\\n⚠️ Validation issues found after import");
+                    System.out.println("⚠️ Validation issues found after import");
                 }
                 
             } else {
@@ -193,7 +195,7 @@ public class EncryptedChainExportImportDemo {
         } else {
             System.out.println("   ❌ Encrypted export failed!");
         }
-        
         System.out.println("\\n=== Demo completed ===");
+        JPAUtil.shutdown();
     }
 }

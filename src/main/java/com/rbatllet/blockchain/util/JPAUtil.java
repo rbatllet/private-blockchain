@@ -32,6 +32,14 @@ public class JPAUtil {
     // FIXED: Lazy initialization instead of static block to prevent ExceptionInInitializerError
     // This ensures that JPAUtil can recover from initialization failures in tests
     static {
+        // Disable MySQL JDBC abandoned connection cleanup thread early
+        // (before any JDBC driver is loaded) to prevent shutdown hook warnings
+        try {
+            System.setProperty("com.mysql.cj.disableAbandonedConnectionCleanup", "true");
+        } catch (Exception e) {
+            // Ignore if property cannot be set
+        }
+
         // Register shutdown hook once (but don't initialize yet)
         registerShutdownHookOnce();
     }
@@ -233,12 +241,12 @@ public class JPAUtil {
     public static DatabaseConfig getCurrentConfig() {
         return currentConfig;
     }
-    
+
     public static EntityManagerFactory getEntityManagerFactory() {
         ensureInitialized();
         return entityManagerFactory;
     }
-    
+
     /**
      * Get EntityManager for current thread
      * Creates a new one if none exists for this thread
@@ -252,7 +260,7 @@ public class JPAUtil {
         }
         return em;
     }
-    
+
     /**
      * Begin a global transaction for the current thread
      * This allows multiple DAO operations to participate in the same transaction
@@ -269,7 +277,7 @@ public class JPAUtil {
             threadLocalTransaction.set(transaction);
         }
     }
-    
+
     /**
      * Commit the global transaction for the current thread
      */
@@ -280,7 +288,7 @@ public class JPAUtil {
             threadLocalTransaction.remove();
         }
     }
-    
+
     /**
      * Rollback the global transaction for the current thread
      */
@@ -291,7 +299,7 @@ public class JPAUtil {
             threadLocalTransaction.remove();
         }
     }
-    
+
     /**
      * Check if there's an active global transaction
      */
@@ -303,7 +311,7 @@ public class JPAUtil {
         }
         return false;
     }
-    
+
     /**
      * Close the EntityManager for the current thread
      * This should be called at the end of request processing
@@ -316,7 +324,7 @@ public class JPAUtil {
         }
         threadLocalTransaction.remove();
     }
-    
+
     /**
      * Execute a block of code within a transaction
      * Automatically handles commit/rollback
@@ -361,7 +369,7 @@ public class JPAUtil {
             }
         }
     }
-    
+
     /**
      * Clean up ThreadLocal variables to prevent memory leaks
      * This method should be called when threads are done with database operations
@@ -392,7 +400,7 @@ public class JPAUtil {
             threadLocalTransaction.remove();
         }
     }
-    
+
     /**
      * Force cleanup of all thread-local variables (for testing)
      */
@@ -483,7 +491,7 @@ public class JPAUtil {
             initLock.unlock();
         }
     }
-    
+
     /**
      * Functional interface for transaction callbacks
      */

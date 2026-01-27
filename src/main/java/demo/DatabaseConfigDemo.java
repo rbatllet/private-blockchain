@@ -24,8 +24,7 @@ public class DatabaseConfigDemo {
         try {
             // Initialize with SQLite for this demo (instead of default H2)
             System.out.println("ℹ️  Initializing with SQLite for demonstration purposes...");
-            // Close any existing EntityManagerFactory first
-            JPAUtil.closeEntityManager();
+            
             // Now initialize with SQLite
             JPAUtil.initialize(DatabaseConfig.createSQLiteConfig());
             System.out.println();
@@ -58,7 +57,7 @@ public class DatabaseConfigDemo {
             e.printStackTrace();
         } finally {
             // Cleanup
-            JPAUtil.closeEntityManager();
+            JPAUtil.shutdown();
         }
     }
 
@@ -227,6 +226,14 @@ public class DatabaseConfigDemo {
             // Add a test block
             String testData = "Test data - " + System.currentTimeMillis();
             boolean added = blockchain.addBlock(testData, keys.getPrivate(), keys.getPublic());
+
+            // Wait for background indexing to complete before shutting down
+            try {
+                IndexingCoordinator.getInstance().waitForCompletion();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                System.err.println("   ⚠️ Interrupted while waiting for indexing completion");
+            }
 
             if (added) {
                 System.out.println("   ✅ Block added successfully");

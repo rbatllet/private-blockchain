@@ -198,7 +198,7 @@ public class DatabaseConfig {
     public static DatabaseConfig createH2TestConfig() {
         return builder()
             .databaseType(DatabaseType.H2)
-            .databaseUrl("jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL")
+            .databaseUrl("jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL")
             .username("sa")
             .password("")
             .poolMinSize(DEFAULT_H2_POOL_MIN)
@@ -229,7 +229,7 @@ public class DatabaseConfig {
     public static DatabaseConfig createH2FileConfig(String filePath) {
         return builder()
             .databaseType(DatabaseType.H2)
-            .databaseUrl("jdbc:h2:file:" + filePath + ";MODE=PostgreSQL")
+            .databaseUrl("jdbc:h2:file:" + filePath + ";DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL")
             .username("sa")
             .password("")
             .poolMinSize(DEFAULT_H2_POOL_MIN)

@@ -4,6 +4,7 @@ import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.util.JPAUtil;
 
 import java.io.File;
 import java.security.KeyPair;
@@ -121,6 +122,8 @@ public class TestDetailedValidation {
             if (offChainDir.exists()) {
                 deleteDirectory(offChainDir);
             }
+            JPAUtil.shutdown();
+            System.out.println("✅ Cleanup completed.");
             
         } catch (Exception e) {
             System.err.println("Warning: Could not clean up all files: " + e.getMessage());

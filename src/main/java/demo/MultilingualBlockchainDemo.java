@@ -7,6 +7,7 @@ import com.rbatllet.blockchain.security.KeyFileLoader;
 import com.rbatllet.blockchain.service.UserFriendlyEncryptionAPI;
 import com.rbatllet.blockchain.service.AdvancedSearchResult;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.util.JPAUtil;
 import com.rbatllet.blockchain.validation.ChainValidationResult;
 
 import java.security.KeyPair;
@@ -200,5 +201,7 @@ public class MultilingualBlockchainDemo {
         System.out.println("   - Multilingual blocks: 6");
         System.out.println("   - Languages demonstrated: 6");
         System.out.println("   - Search methods tested: 8");
+
+        JPAUtil.shutdown();
     }
 }
