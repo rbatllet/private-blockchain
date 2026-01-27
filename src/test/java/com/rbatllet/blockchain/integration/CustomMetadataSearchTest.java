@@ -197,6 +197,10 @@ public class CustomMetadataSearchTest {
         block3.setCustomMetadata(jsonMapper.writeValueAsString(metadata3));
         blockchain.updateBlock(block3);
 
+        // CRITICAL: Wait for async indexing to complete before searching
+        // Without this, tests may flake on slower CI systems (GitHub Actions)
+        IndexingCoordinator.getInstance().waitForCompletion();
+
         // Search for high priority - should find block1 and block3
         List<Block> highPriority = api.searchByCustomMetadataKeyValue("priority", "high");
         assertEquals(2, highPriority.size(), "Should find 2 high priority blocks");
@@ -548,6 +552,9 @@ public class CustomMetadataSearchTest {
         Block block = blockchain.addBlockAndReturn("Whitespace data", keyPair.getPrivate(), keyPair.getPublic());
         block.setCustomMetadata(jsonMapper.writeValueAsString(metadata));
         blockchain.updateBlock(block);
+
+        // CRITICAL: Wait for async indexing to complete before searching
+        IndexingCoordinator.getInstance().waitForCompletion();
 
         // Search for whitespace value (exact match)
         List<Block> results1 = api.searchByCustomMetadataKeyValue("department", "   ");
