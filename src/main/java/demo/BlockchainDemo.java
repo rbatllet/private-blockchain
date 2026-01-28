@@ -122,8 +122,8 @@ public class BlockchainDemo {
             // Show different chain views available
             System.out.println("\n🔍 Available chain views:");
             System.out.println("   📁 Full chain: " + blockchain.getBlockCount() + " blocks (audit trail)");
-            System.out.println("   ✅ Valid chain: " + blockchain.getValidChain().size() + " blocks (operational use)");
-            System.out.println("   ⚠️ Orphaned blocks: " + blockchain.getOrphanedBlocks().size() + " blocks");
+            System.out.println("   ✅ Valid chain: [use streamValidChain() for memory-safe access]");
+            System.out.println("   ⚠️ Orphaned blocks: [use streamOrphanedBlocks() for memory-safe access]");
             
             System.out.println("\n💡 Modern API Benefits:");
             System.out.println("   ✅ Comprehensive validation with detailed diagnostics");

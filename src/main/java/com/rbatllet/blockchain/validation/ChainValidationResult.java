@@ -4,6 +4,7 @@ import com.rbatllet.blockchain.entity.Block;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import java.util.stream.Collectors;
 
 /**
@@ -66,43 +67,59 @@ public class ChainValidationResult {
     }
     
     /**
-     * Returns blocks that have been affected by key revocations
+     * Stream blocks that have been affected by key revocations (memory-efficient).
+     *
+     * <p><b>Memory-Efficient:</b> Returns a Stream that processes blocks without creating
+     * an intermediate List. Use this for processing large numbers of orphaned blocks.</p>
+     *
+     * @return Stream of orphaned blocks (blocks affected by key revocations)
      */
-    public List<Block> getOrphanedBlocks() {
+    public Stream<Block> streamOrphanedBlocks() {
         return blockResults.stream()
             .filter(result -> result.getStatus() == BlockStatus.REVOKED)
-            .map(BlockValidationResult::getBlock)
-            .collect(Collectors.toList());
+            .map(BlockValidationResult::getBlock);
     }
-    
+
     /**
-     * Returns blocks that are structurally/cryptographically invalid
+     * Stream blocks that are structurally/cryptographically invalid (memory-efficient).
+     *
+     * <p><b>Memory-Efficient:</b> Returns a Stream that processes blocks without creating
+     * an intermediate List. Use this for processing large numbers of invalid blocks.</p>
+     *
+     * @return Stream of invalid blocks
      */
-    public List<Block> getInvalidBlocksList() {
+    public Stream<Block> streamInvalidBlocks() {
         return blockResults.stream()
             .filter(result -> result.getStatus() == BlockStatus.INVALID)
-            .map(BlockValidationResult::getBlock)
-            .collect(Collectors.toList());
+            .map(BlockValidationResult::getBlock);
     }
-    
+
     /**
-     * Returns blocks that are completely valid
+     * Stream blocks that are completely valid (memory-efficient).
+     *
+     * <p><b>Memory-Efficient:</b> Returns a Stream that processes blocks without creating
+     * an intermediate List. Use this for processing large blockchains.</p>
+     *
+     * @return Stream of valid blocks
      */
-    public List<Block> getValidBlocksList() {
+    public Stream<Block> streamValidBlocks() {
         return blockResults.stream()
             .filter(result -> result.getStatus() == BlockStatus.VALID)
-            .map(BlockValidationResult::getBlock)
-            .collect(Collectors.toList());
+            .map(BlockValidationResult::getBlock);
     }
     
     /**
-     * Returns affected block numbers for revoked keys
+     * Stream affected block numbers for revoked keys (memory-efficient).
+     *
+     * <p><b>Memory-Efficient:</b> Returns a Stream that processes block numbers without creating
+     * an intermediate List. Use this for processing large numbers of affected blocks.</p>
+     *
+     * @return Stream of affected block numbers (sorted)
      */
-    public List<Long> getAffectedBlockNumbers() {
-        return getOrphanedBlocks().stream()
+    public Stream<Long> streamAffectedBlockNumbers() {
+        return streamOrphanedBlocks()
             .map(Block::getBlockNumber)
-            .sorted()
-            .collect(Collectors.toList());
+            .sorted();
     }
     
     private String generateSummary() {
@@ -153,7 +170,7 @@ public class ChainValidationResult {
         
         if (revokedBlocks > 0) {
             sb.append("🔍 REVOKED BLOCKS:\n");
-            getOrphanedBlocks().forEach(block -> 
+            streamOrphanedBlocks().forEach(block ->
                 sb.append("   - Block #").append(block.getBlockNumber())
                   .append(" (signed by revoked key)\n"));
             sb.append("\n");

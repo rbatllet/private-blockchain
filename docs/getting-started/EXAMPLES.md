@@ -1985,24 +1985,25 @@ public class BlockchainCLI {
             // Compliance validation results
             System.out.println("2. AUTHORIZATION COMPLIANCE: " + 
                 (fullyCompliant ? "✅ FULLY COMPLIANT" : "⚠️  PARTIALLY COMPLIANT"));
-            
+
             // Detailed issues
             if (!structurallyIntact) {
                 System.out.println("\n❌ INVALID BLOCKS DETECTED (" + result.getInvalidBlocks() + "):");
-                result.getInvalidBlocksList().forEach(block -> 
-                    System.out.println("   - Block " + block.getIndex() + 
-                                    " | Hash: " + block.getHash().substring(0, 16) + "..." +
-                                    " | Issue: " + block.getValidationMessage()));
+                result.streamInvalidBlocks()
+                    .forEach(block ->
+                        System.out.println("   - Block " + block.getIndex() +
+                                        " | Hash: " + block.getHash().substring(0, 16) + "..." +
+                                        " | Issue: " + block.getValidationMessage()));
             }
-            
+
             if (!fullyCompliant) {
                 System.out.println("\n⚠️  REVOKED KEYS DETECTED (" + result.getRevokedBlocks() + " blocks affected):");
-                result.getOrphanedBlocks().stream()
+                result.streamOrphanedBlocks()
                     .limit(5) // Show first 5 for brevity
-                    .forEach(block -> 
-                        System.out.println("   - Block " + block.getIndex() + 
+                    .forEach(block ->
+                        System.out.println("   - Block " + block.getIndex() +
                                         " | Signed by: " + block.getSignedBy().substring(0, 16) + "..."));
-                
+
                 if (result.getRevokedBlocks() > 5) {
                     System.out.println("   ... and " + (result.getRevokedBlocks() - 5) + " more");
                 }

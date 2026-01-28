@@ -88,7 +88,8 @@ public class UserFriendlyEncryptionAPIPhase1Test {
         mockAuthorizedKeys.add(key1);
         
         // Setup blockchain mock behavior
-        when(mockBlockchain.getValidChain()).thenReturn(mockBlocks);
+        // Use thenAnswer to create a new Stream each time (Streams can only be consumed once)
+        when(mockBlockchain.streamValidChain()).thenAnswer(invocation -> mockBlocks.stream());
         when(mockBlockchain.getBlockCount()).thenReturn((long) mockBlocks.size());
         when(mockBlockchain.getBlock(anyLong())).thenAnswer(invocation -> {
             Long blockNumber = invocation.getArgument(0);
@@ -256,7 +257,7 @@ public class UserFriendlyEncryptionAPIPhase1Test {
         @DisplayName("Should validate empty blockchain gracefully")
         void shouldValidateEmptyBlockchainGracefully() {
             // Given - Empty blockchain
-            when(mockBlockchain.getValidChain()).thenReturn(new ArrayList<>());
+            when(mockBlockchain.streamValidChain()).thenReturn(new ArrayList<Block>().stream());
             when(mockBlockchain.getBlockCount()).thenReturn(0L);
 
             // When
@@ -286,7 +287,7 @@ public class UserFriendlyEncryptionAPIPhase1Test {
         @DisplayName("Should handle validation exceptions gracefully")
         void shouldHandleValidationExceptionsGracefully() {
             // Given - Mock blockchain that throws exceptions
-            when(mockBlockchain.getValidChain()).thenThrow(new RuntimeException("Blockchain error"));
+            when(mockBlockchain.streamValidChain()).thenThrow(new RuntimeException("Blockchain error"));
 
             // When
             ValidationReport result = api.performComprehensiveValidation();
@@ -339,7 +340,7 @@ public class UserFriendlyEncryptionAPIPhase1Test {
         @DisplayName("Should diagnose empty blockchain health")
         void shouldDiagnoseEmptyBlockchainHealth() {
             // Given - Empty blockchain
-            when(mockBlockchain.getValidChain()).thenReturn(new ArrayList<>());
+            when(mockBlockchain.streamValidChain()).thenReturn(new ArrayList<Block>().stream());
             when(mockBlockchain.getBlockCount()).thenReturn(0L);
 
             // When
@@ -370,7 +371,7 @@ public class UserFriendlyEncryptionAPIPhase1Test {
                 block.setTimestamp(LocalDateTime.now().minusMinutes(i));
                 largeBlockchain.add(block);
             }
-            when(mockBlockchain.getValidChain()).thenReturn(largeBlockchain);
+            when(mockBlockchain.streamValidChain()).thenReturn(largeBlockchain.stream());
             when(mockBlockchain.getBlockCount()).thenReturn((long) largeBlockchain.size());
             when(mockBlockchain.getBlock(anyLong())).thenAnswer(invocation -> {
                 Long blockNumber = invocation.getArgument(0);
@@ -392,7 +393,7 @@ public class UserFriendlyEncryptionAPIPhase1Test {
         @DisplayName("Should handle health diagnosis exceptions gracefully")
         void shouldHandleHealthDiagnosisExceptionsGracefully() {
             // Given - Mock blockchain that throws exceptions
-            when(mockBlockchain.getValidChain()).thenThrow(new RuntimeException("Health check error"));
+            when(mockBlockchain.streamValidChain()).thenThrow(new RuntimeException("Health check error"));
 
             // When
             HealthReport result = api.performHealthDiagnosis();

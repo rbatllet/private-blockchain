@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.security.KeyPair;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -93,8 +95,11 @@ class UserFriendlyEncryptionAPIBlockCorruptionTest {
         assertNotNull(block3, "Third block should be created");
 
         // Verify initial blockchain integrity
-        List<Block> initialChain = blockchain.getValidChain();
-        assertTrue(initialChain.size() >= 3, "Should have at least 3 blocks");
+        AtomicLong blockCount = new AtomicLong(0);
+        try (Stream<Block> stream = blockchain.streamValidChain()) {
+            stream.forEach(block -> blockCount.incrementAndGet());
+        }
+        assertTrue(blockCount.get() >= 3, "Should have at least 3 blocks");
 
         // Verify the chain is initially valid
         assertTrue(
@@ -103,8 +108,14 @@ class UserFriendlyEncryptionAPIBlockCorruptionTest {
         );
 
         // Step 2: Get the blocks and verify their connections
-        Block currentBlock = findBlockInChain(initialChain, block2.getHash());
-        Block previousBlock = findBlockInChain(initialChain, block1.getHash());
+        Block currentBlock;
+        Block previousBlock;
+        try (Stream<Block> stream = blockchain.streamValidChain()) {
+            currentBlock = findBlockInChain(stream, block2.getHash());
+        }
+        try (Stream<Block> stream = blockchain.streamValidChain()) {
+            previousBlock = findBlockInChain(stream, block1.getHash());
+        }
 
         assertNotNull(currentBlock, "Current block should be found in chain");
         assertNotNull(previousBlock, "Previous block should be found in chain");
@@ -153,10 +164,10 @@ class UserFriendlyEncryptionAPIBlockCorruptionTest {
         );
 
         // Verify the subsequent block still exists and is unchanged
-        Block subsequentBlock = findBlockInChain(
-            blockchain.getValidChain(),
-            block3.getHash()
-        );
+        Block subsequentBlock;
+        try (Stream<Block> stream = blockchain.streamValidChain()) {
+            subsequentBlock = findBlockInChain(stream, block3.getHash());
+        }
         assertNotNull(subsequentBlock, "Subsequent block should exist");
 
         // The subsequent block should still point to the original hash (unchanged)
@@ -356,11 +367,11 @@ class UserFriendlyEncryptionAPIBlockCorruptionTest {
     /**
      * Helper method to find a block by hash in the chain
      */
-    private Block findBlockInChain(List<Block> chain, String hash) {
-        return chain
-            .stream()
+    private Block findBlockInChain(Stream<Block> chainStream, String hash) {
+        return chainStream
             .filter(block -> hash.equals(block.getHash()))
             .findFirst()
             .orElse(null);
     }
+
 }

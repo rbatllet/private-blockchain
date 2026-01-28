@@ -131,11 +131,17 @@ long getInvalidBlocks()
 // Get the COUNT of revoked blocks (returns long, not list)
 long getRevokedBlocks()
 
-// Get the LIST of invalid blocks (use this to iterate over blocks)
-List<Block> getInvalidBlocksList()
+// ⚡ MEMORY-SAFE: Stream orphaned blocks without loading all into memory
+Stream<Block> streamOrphanedBlocks()
 
-// Get the LIST of revoked/orphaned blocks (use this to iterate over blocks)
-List<Block> getOrphanedBlocks()
+// ⚡ MEMORY-SAFE: Stream valid blocks without loading all into memory
+Stream<Block> streamValidBlocks()
+
+// ⚡ MEMORY-SAFE: Stream invalid blocks without loading all into memory
+Stream<Block> streamInvalidBlocks()
+
+// ⚡ MEMORY-SAFE: Stream affected block numbers without loading all into memory
+Stream<Long> streamAffectedBlockNumbers()
 
 // Get a summary of the validation results
 String toString()
@@ -151,38 +157,40 @@ ChainValidationResult result = blockchain.validateChainDetailed();
 if (!result.isStructurallyIntact()) {
     System.err.println("❌ CRITICAL: Blockchain structure is compromised!");
     System.err.println("Invalid blocks: " + result.getInvalidBlocks());
-    
-    // Handle invalid blocks (corrupted or tampered)
-    for (Block invalidBlock : result.getInvalidBlocksList()) {
-        System.err.println(String.format(
-            " - Block #%d (Hash: %s...) has invalid structure",
-            invalidBlock.getBlockNumber(),
-            invalidBlock.getHash().substring(0, 16)
-        ));
-    }
-    
+
+    // Handle invalid blocks (corrupted or tampered) - MEMORY-SAFE
+    result.streamInvalidBlocks()
+        .forEach(invalidBlock -> {
+            System.err.println(String.format(
+                " - Block #%d (Hash: %s...) has invalid structure",
+                invalidBlock.getBlockNumber(),
+                invalidBlock.getHash().substring(0, 16)
+            ));
+        });
+
     // In production, you might want to trigger an alert or recovery process here
     triggerRecoveryProcess(result);
-    
+
 } else if (!result.isFullyCompliant()) {
     // Chain is structurally sound but has authorization issues
     System.out.println("⚠️  WARNING: Some blocks have authorization issues");
     System.out.println("Revoked blocks: " + result.getRevokedBlocks());
-    
-    // Handle revoked blocks (signed by revoked keys)
-    for (Block revokedBlock : result.getOrphanedBlocks()) {
-        String signer = revokedBlock.getSignerPublicKey() != null ? 
-            revokedBlock.getSignerPublicKey().substring(0, 16) + "..." : "unknown";
-            
-        System.out.println(String.format(
-            " - Block #%d (Signed by: %s) was signed by a revoked key",
-            revokedBlock.getBlockNumber(),
-            signer
-        ));
-    }
-    
+
+    // Handle revoked blocks (signed by revoked keys) - MEMORY-SAFE
+    result.streamOrphanedBlocks()
+        .forEach(revokedBlock -> {
+            String signer = revokedBlock.getSignerPublicKey() != null ?
+                revokedBlock.getSignerPublicKey().substring(0, 16) + "..." : "unknown";
+
+            System.out.println(String.format(
+                " - Block #%d (Signed by: %s) was signed by a revoked key",
+                revokedBlock.getBlockNumber(),
+                signer
+            ));
+        });
+
     // You might want to re-sign these blocks or mark them for review
-    handleRevokedBlocks(result.getOrphanedBlocks());
+    handleRevokedBlocks(result.streamOrphanedBlocks());
     
 } else {
     // Chain is fully valid
@@ -211,24 +219,24 @@ metrics.recordValidationResult(
    - `isFullyCompliant()`: `true`
    - `getInvalidBlocks()`: 0
    - `getRevokedBlocks()`: 0
-   - `getInvalidBlocksList()`: Empty list
-   - `getOrphanedBlocks()`: Empty list
+   - `streamInvalidBlocks()`: Empty stream
+   - `streamOrphanedBlocks()`: Empty stream
 
 2. **Structurally Valid but with Revoked Keys**
    - `isStructurallyIntact()`: `true`
    - `isFullyCompliant()`: `false`
    - `getInvalidBlocks()`: 0
    - `getRevokedBlocks()`: Count > 0
-   - `getInvalidBlocksList()`: Empty list
-   - `getOrphanedBlocks()`: List of blocks signed by revoked keys
+   - `streamInvalidBlocks()`: Empty stream
+   - `streamOrphanedBlocks()`: Stream of blocks signed by revoked keys
 
 3. **Structurally Invalid**
    - `isStructurallyIntact()`: `false`
    - `isFullyCompliant()`: `false` (always false if not structurally intact)
    - `getInvalidBlocks()`: Count > 0
    - `getRevokedBlocks()`: May be > 0
-   - `getInvalidBlocksList()`: List of blocks with invalid hashes or signatures
-   - `getOrphanedBlocks()`: May include additional revoked blocks
+   - `streamInvalidBlocks()`: Stream of blocks with invalid hashes or signatures
+   - `streamOrphanedBlocks()`: May include additional revoked blocks
 
 ### Best Practices
 
@@ -236,6 +244,21 @@ metrics.recordValidationResult(
 - Use `toString()` for user-friendly status messages
 - Log detailed validation results for debugging
 - Consider automatic recovery procedures for common issues
+- **⚠️ Memory-Safe Chain Access**: All chain access now uses streaming methods
+  - **ChainValidationResult**: `streamOrphanedBlocks()`, `streamInvalidBlocks()`, `streamValidBlocks()`, `streamAffectedBlockNumbers()`
+  - **Blockchain full access**: `blockchain.streamValidChain()` or `blockchain.streamOrphanedBlocks()` for constant ~50MB memory
+  - **Benefit**: Constant memory (~50MB) regardless of blockchain size
+
+**Memory-safe example for accessing full blockchain:**
+```java
+// ✅ MEMORY-SAFE for ANY blockchain size
+try (Stream<Block> validBlocks = blockchain.streamValidChain()) {
+    validBlocks.forEach(block -> {
+        logger.debug("Valid block #{}", block.getBlockNumber());
+    });
+}
+```
+
 - **Transaction-Aware Methods**: Use `getLastBlock(EntityManager em)` inside transactions, `getLastBlock()` for external queries
   - See [Transaction-Aware Method Usage](#️-transaction-aware-method-usage) section for details
 
@@ -2617,12 +2640,12 @@ public ChainValidationResult validateChainDetailed()
 result = blockchain.validateChainDetailed();
 if (result.getInvalidBlocks() > 0) {
     System.err.println("Invalid blocks found:");
-    for (Block block : result.getInvalidBlocksList()) {
-        System.err.println(" - Block " + block.getBlockNumber() + " (" + block.getHash() + ")");
-    }
-}  // Get a summary of validation results
-  System.out.println("Validation summary: " + result.toString());
-  ```
+    result.streamInvalidBlocks()
+        .forEach(block -> System.err.println(" - Block " + block.getBlockNumber() + " (" + block.getHash() + ")"));
+}
+// Get a summary of validation results
+System.out.println("Validation summary: " + result.toString());
+```
   - Returns detailed information about any issues found, including lists of invalid and revoked blocks
 - **Example:**
   ```java

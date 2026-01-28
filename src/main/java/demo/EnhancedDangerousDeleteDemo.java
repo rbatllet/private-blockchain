@@ -3,11 +3,9 @@ package demo;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.validation.ChainValidationResult;
-import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.security.UserRole;
 
 import java.security.KeyPair;
-import java.util.List;
 
 /**
  * Enhanced demonstration of the new validation system
@@ -108,16 +106,16 @@ public class EnhancedDangerousDeleteDemo {
             boolean bobDeleted = blockchain.deleteAuthorizedKey(publicKey2);
             System.out.println("   Bob deletion result: " + (bobDeleted ? "✅ SUCCESS" : "❌ FAILED"));
             
-            ChainValidationResult afterBobResult = blockchain.validateChainDetailed();
-            System.out.println("   After Bob deletion: " + afterBobResult.getSummary());
-            
+            ChainValidationResult beforeCharlieResult = blockchain.validateChainDetailed();
+            System.out.println("   Before Charlie deletion: " + beforeCharlieResult.getSummary());
+
             // Scenario 5: FORCED dangerous deletion with detailed tracking
             System.out.println("\n💀 SCENARIO 5: Forced deletion with enhanced tracking");
             System.out.println("=====================================================");
-            
+
             System.out.println("   🔍 Before Charlie deletion:");
-            List<Block> orphanedBefore = blockchain.getOrphanedBlocks();
-            System.out.println("      Orphaned blocks before: " + orphanedBefore.size());
+            long orphanedBeforeCount = beforeCharlieResult.streamOrphanedBlocks().count();
+            System.out.println("      Orphaned blocks before: " + orphanedBeforeCount);
             
             System.out.println("\n   🔥 Performing FORCED deletion of Charlie...");
             // Create admin signature for the forced operation
@@ -139,20 +137,24 @@ public class EnhancedDangerousDeleteDemo {
             System.out.println("\n🔍 SCENARIO 7: Different chain perspectives");
             System.out.println("===========================================");
 
+            ChainValidationResult perspectivesResult = blockchain.validateChainDetailed();
             long fullChainSize = blockchain.getBlockCount();
-            List<Block> validChain = blockchain.getValidChain();
-            List<Block> orphanedBlocks = blockchain.getOrphanedBlocks();
+            long validChainCount = perspectivesResult.streamValidBlocks().count();
+            long orphanedCount = perspectivesResult.streamOrphanedBlocks().count();
 
             System.out.println("   📁 Full chain: " + fullChainSize + " blocks");
-            System.out.println("   ✅ Valid chain: " + validChain.size() + " blocks");
-            System.out.println("   ⚠️ Orphaned blocks: " + orphanedBlocks.size() + " blocks");
-            
-            if (!orphanedBlocks.isEmpty()) {
+            System.out.println("   ✅ Valid chain: " + validChainCount + " blocks");
+            System.out.println("   ⚠️ Orphaned blocks: " + orphanedCount + " blocks");
+
+            // Show orphaned block details if any
+            if (orphanedCount > 0) {
                 System.out.println("\n   🔍 Orphaned block details:");
-                for (Block block : orphanedBlocks) {
-                    System.out.println("      - Block #" + block.getBlockNumber() + 
-                                     " (timestamp: " + block.getTimestamp() + ")");
-                }
+                perspectivesResult.streamOrphanedBlocks()
+                    .limit(10) // Limit output for readability
+                    .forEach(block -> {
+                        System.out.println("      - Block #" + block.getBlockNumber() +
+                                         " (timestamp: " + block.getTimestamp() + ")");
+                    });
             }
             
             // Scenario 8: Validation method comparison

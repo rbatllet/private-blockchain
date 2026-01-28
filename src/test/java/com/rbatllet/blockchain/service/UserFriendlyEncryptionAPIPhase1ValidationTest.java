@@ -80,9 +80,10 @@ public class UserFriendlyEncryptionAPIPhase1ValidationTest {
         key1.setOwnerName("user1");
         key1.setPublicKey(CryptoUtil.publicKeyToString(testKeyPair.getPublic()));
         mockAuthorizedKeys.add(key1);
-        
+
         // Setup blockchain mock behavior
-        when(mockBlockchain.getValidChain()).thenReturn(mockBlocks);
+        // Use thenAnswer to create a new Stream each time (Streams can only be consumed once)
+        when(mockBlockchain.streamValidChain()).thenAnswer(invocation -> mockBlocks.stream());
         when(mockBlockchain.getBlockCount()).thenReturn((long) mockBlocks.size());
         when(mockBlockchain.getBlock(anyLong())).thenAnswer(invocation -> {
             Long blockNumber = invocation.getArgument(0);

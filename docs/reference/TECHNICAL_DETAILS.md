@@ -809,16 +809,17 @@ public boolean wasKeyAuthorizedAt(String publicKey, LocalDateTime timestamp)
  *   <li>All blocks were signed by authorized keys at the time of creation</li>
  *   <li>No blocks have been tampered with</li>
  * </ul>
- * 
+ *
  * @return ChainValidationResult containing detailed validation results, including:
  *         - isStructurallyIntact(): true if the blockchain structure is valid
  *         - isFullyCompliant(): true if all blocks are properly authorized
  *         - getInvalidBlocks(): count (long) of blocks with structural issues
- *         - getInvalidBlocksList(): list of blocks with structural issues
+ *         - streamInvalidBlocks(): stream of blocks with structural issues
  *         - getRevokedBlocks(): count (long) of blocks with authorization issues
- *         - getOrphanedBlocks(): list of blocks with authorization issues
+ *         - streamOrphanedBlocks(): stream of blocks with authorization issues
+ *         - streamAffectedBlockNumbers(): stream of affected block numbers
  *         - getValidationReport(): detailed validation report
- * 
+ *
  * @see ChainValidationResult for more information on the validation results
  */
 public ChainValidationResult validateChainDetailed()

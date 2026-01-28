@@ -77,32 +77,27 @@ Per request: _"find all fallbacks and investigate whether they may be hiding uni
 
 ## Critical Issues Fixed
 
-### 1. ✅ Memory-Unsafe Fallback (FIXED - Previously)
+### 1. ✅ Memory-Safe Streaming API (Implemented 2025-01-27)
 
-**Location:** `UserFriendlyEncryptionAPI.java:6914`
-
-**Problem:**
-```java
-// ❌ BEFORE - Memory bomb on large blockchains
-List<Block> allBlocks = blockchain.getValidChain(); // Loads entire chain!
-```
-
-**Risk:** OutOfMemoryError on blockchains with 100K+ blocks (~5-50GB memory usage)
+**Location:** `Blockchain.java` - Streaming methods for memory-safe chain access
 
 **Solution:**
 ```java
-// ✅ AFTER - Memory-safe paginated search
-int batchSize = MemorySafetyConstants.DEFAULT_BATCH_SIZE;
-for (long offset = blockCount - batchSize; offset >= 0; offset -= batchSize) {
-    List<Block> batch = blockchain.getBlocksPaginated(offset, batchSize);
-    // Search within batch...
+// ✅ Memory-safe streaming API with constant ~50MB usage
+try (Stream<Block> validBlocks = blockchain.streamValidChain()) {
+    validBlocks.forEach(block -> {
+        // Process valid blocks
+        searchWithinBlock(block);
+    });
 }
 ```
 
+**Implementation:** Custom Spliterator processes blocks in batches of 1000, validates on-the-fly. Constant memory usage regardless of blockchain size.
+
 **Impact:**
-- ✅ Prevents OutOfMemoryError
+- ✅ Prevents OutOfMemoryError on blockchains with 100K+ blocks
 - ✅ Constant ~50MB memory usage regardless of blockchain size
-- ✅ Maintains performance (searches from newest to oldest)
+- ✅ Maintains performance (processes from newest to oldest)
 - ✅ Aligns with architecture documented in CLAUDE.md
 
 ---
@@ -464,11 +459,10 @@ The principle _"A fallback should NEVER avoid implementing the architecture for 
 
 The following critical issues were resolved in earlier work:
 
-### Memory-Unsafe Fallback
-**Location:** `UserFriendlyEncryptionAPI.java:6914`  
-**Issue:** Calling `getValidChain()` loads entire blockchain into memory  
-**Solution:** Paginated search implementation  
-**Status:** Previously completed
+### Memory-Safe Chain Access (IMPLEMENTED)
+**Location:** `Blockchain.java`
+**Solution:** Implemented `streamValidChain()` and `streamOrphanedBlocks()` for constant memory usage
+**Status:** ✅ **COMPLETE** - All chain access now uses streaming API
 
 ### Nested Cache Warm-up
 **Location:** `UserFriendlyEncryptionAPI.java:8360-8374`  
@@ -659,8 +653,8 @@ public class FallbackMetrics {
 ### All Critical Violations Fixed:
 
 **Original Issues (Fixed 2025-11-03):**
-1. ✅ Memory-unsafe `getValidChain()` fallback → Fixed with pagination
-2. ✅ Nested cache warm-up fallback → Fixed with clear error reporting  
+1. ✅ Memory-unsafe chain access → Fixed with pagination, later **replaced with streaming API** (`streamValidChain()`, 2025-01-27)
+2. ✅ Nested cache warm-up fallback → Fixed with clear error reporting
 3. ✅ Triple-nested indexing fallback → Fixed with explicit strategy pattern
 4. ✅ Hardcoded cache warm-up terms → Fixed with fail-fast behavior
 

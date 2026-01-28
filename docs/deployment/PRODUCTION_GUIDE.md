@@ -879,7 +879,7 @@ fi
 2. **Invalid Previous Hash**
    - The `previousHash` of a block doesn't match the hash of the previous block
    - This usually indicates data corruption or tampering
-   - Use `getInvalidBlocksList()` to identify affected blocks
+   - Use `streamInvalidBlocks()` to identify affected blocks
 
 3. **Invalid Signatures**
    - Block signatures don't match the block data
@@ -891,7 +891,6 @@ fi
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.validation.ChainValidationResult;
 import com.rbatllet.blockchain.entity.Block;
-import java.util.List;
 
 Blockchain blockchain = new Blockchain();
 ChainValidationResult result = blockchain.validateChainDetailed();
@@ -899,9 +898,8 @@ ChainValidationResult result = blockchain.validateChainDetailed();
 if (!result.isStructurallyIntact()) {
     System.err.println("❌ Chain integrity compromised");
 
-    // Get list of invalid blocks
-    List<Block> invalidBlocks = result.getInvalidBlocksList();
-    invalidBlocks.forEach(block -> {
+    // Stream invalid blocks (memory-safe)
+    result.streamInvalidBlocks().forEach(block -> {
         System.err.println("Invalid Block #" + block.getBlockNumber());
         System.err.println("  Hash: " + block.getHash());
         System.err.println("  Previous Hash: " + block.getPreviousHash());
@@ -930,10 +928,11 @@ if (!result.isStructurallyIntact()) {
    ChainValidationResult result = blockchain.validateChainDetailed();
 
    if (!result.isFullyCompliant()) {
-       List<Block> revokedBlocks = result.getOrphanedBlocks();
-       System.out.println("⚠️ Blocks signed by revoked keys: " + revokedBlocks.size());
+       // ✅ MEMORY-SAFE: Stream orphaned blocks without loading all into memory
+       long revokedCount = result.streamOrphanedBlocks().count();
+       System.out.println("⚠️ Blocks signed by revoked keys: " + revokedCount);
 
-       revokedBlocks.forEach(block -> {
+       result.streamOrphanedBlocks().forEach(block -> {
            System.out.println("Block #" + block.getBlockNumber() +
                             " signed by revoked key: " + block.getSignerPublicKey());
        });

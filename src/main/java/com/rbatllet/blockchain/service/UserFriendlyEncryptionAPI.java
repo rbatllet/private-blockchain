@@ -5651,67 +5651,69 @@ public class UserFriendlyEncryptionAPI {
         logger.info("🔍 Starting comprehensive blockchain validation");
 
         try {
-            List<Block> allBlocks = blockchain.getValidChain();
-            long totalBlocks = allBlocks.size();
-            long validBlocks = 0;
-            long invalidBlocks = 0;
-            long offChainFiles = 0;
-            long corruptFiles = 0;
+            AtomicLong totalBlocks = new AtomicLong(0);
+            AtomicLong validBlocks = new AtomicLong(0);
+            AtomicLong invalidBlocks = new AtomicLong(0);
+            AtomicLong offChainFiles = new AtomicLong(0);
+            AtomicLong corruptFiles = new AtomicLong(0);
 
             ValidationReport report = new ValidationReport(
                 true,
                 "Comprehensive validation completed"
             );
 
-            // Validate each block
-            for (Block block : allBlocks) {
-                try {
-                    // Validate block structure and signatures
-                    boolean isValid = blockchain.validateSingleBlock(block);
+            // Validate each block using memory-safe streaming
+            try (Stream<Block> stream = blockchain.streamValidChain()) {
+                stream.forEach(block -> {
+                    totalBlocks.incrementAndGet();
+                    try {
+                        // Validate block structure and signatures
+                        boolean isValid = blockchain.validateSingleBlock(block);
 
-                    if (isValid) {
-                        validBlocks++;
+                        if (isValid) {
+                            validBlocks.incrementAndGet();
 
-                        // Check for off-chain data
-                        OffChainData offChainData = block.getOffChainData();
-                        if (offChainData != null) {
-                            offChainFiles++;
+                            // Check for off-chain data
+                            OffChainData offChainData = block.getOffChainData();
+                            if (offChainData != null) {
+                                offChainFiles.incrementAndGet();
 
-                            // Validate off-chain data integrity
-                            BlockValidationUtil.OffChainValidationResult offChainResult =
-                                BlockValidationUtil.validateOffChainDataDetailed(
-                                    block
-                                );
-                            if (!offChainResult.isValid()) {
-                                corruptFiles++;
-                                report.addIssue(
-                                    "OFF_CHAIN",
-                                    "Block " +
-                                    block.getBlockNumber() +
-                                    " has corrupt off-chain data",
-                                    "WARNING"
-                                );
+                                // Validate off-chain data integrity
+                                BlockValidationUtil.OffChainValidationResult offChainResult =
+                                    BlockValidationUtil.validateOffChainDataDetailed(
+                                        block
+                                    );
+                                if (!offChainResult.isValid()) {
+                                    corruptFiles.incrementAndGet();
+                                    report.addIssue(
+                                        "OFF_CHAIN",
+                                        "Block " +
+                                        block.getBlockNumber() +
+                                        " has corrupt off-chain data",
+                                        "WARNING"
+                                    );
+                                }
                             }
+                        } else {
+                            invalidBlocks.incrementAndGet();
+                            report.addIssue(
+                                "BLOCK_VALIDATION",
+                                "Block " + block.getBlockNumber() + " failed validation",
+                                "ERROR"
+                            );
                         }
-                    } else {
-                        invalidBlocks++;
+                    } catch (Exception e) {
+                        invalidBlocks.incrementAndGet();
                         report.addIssue(
-                            "BLOCK_VALIDATION",
-                            "Block " + block.getBlockNumber() + " failed validation",
+                            "BLOCK_ERROR",
+                            "Block " +
+                            block.getBlockNumber() +
+                            " validation error: " +
+                            e.getMessage(),
                             "ERROR"
                         );
                     }
-                } catch (Exception e) {
-                    invalidBlocks++;
-                    report.addIssue(
-                        "BLOCK_ERROR",
-                        "Block " +
-                        block.getBlockNumber() +
-                        " validation error: " +
-                        e.getMessage(),
-                        "ERROR"
-                    );
-                }
+                });
             }
 
             // Validate chain integrity
@@ -5735,31 +5737,31 @@ public class UserFriendlyEncryptionAPI {
 
             // Set metrics
             report.withMetrics(
-                totalBlocks,
-                validBlocks,
-                invalidBlocks,
-                offChainFiles,
-                corruptFiles
+                totalBlocks.get(),
+                validBlocks.get(),
+                invalidBlocks.get(),
+                offChainFiles.get(),
+                corruptFiles.get()
             );
 
             // Add additional details
             report.addDetail(
                 "Genesis Block Valid",
-                totalBlocks > 0 ? "Yes" : "No"
+                totalBlocks.get() > 0 ? "Yes" : "No"
             );
             report.addDetail(
                 "Off-Chain Integrity Rate",
-                offChainFiles > 0
+                offChainFiles.get() > 0
                     ? String.format(
                         "%.1f%%",
-                        ((double) (offChainFiles - corruptFiles) /
-                            offChainFiles) *
+                        ((double) (offChainFiles.get() - corruptFiles.get()) /
+                            offChainFiles.get()) *
                         100
                     )
                     : "N/A"
             );
 
-            boolean overallValid = invalidBlocks == 0 && corruptFiles == 0;
+            boolean overallValid = invalidBlocks.get() == 0 && corruptFiles.get() == 0;
             ValidationReport finalReport = new ValidationReport(
                 overallValid,
                 overallValid
@@ -5779,16 +5781,16 @@ public class UserFriendlyEncryptionAPI {
                 );
             report.getDetails().forEach(finalReport::addDetail);
             finalReport.withMetrics(
-                totalBlocks,
-                validBlocks,
-                invalidBlocks,
-                offChainFiles,
-                corruptFiles
+                totalBlocks.get(),
+                validBlocks.get(),
+                invalidBlocks.get(),
+                offChainFiles.get(),
+                corruptFiles.get()
             );
 
             logger.info(
                 "✅ Comprehensive validation completed - {} blocks validated",
-                totalBlocks
+                totalBlocks.get()
             );
             return finalReport;
         } catch (Exception e) {
@@ -5816,9 +5818,20 @@ public class UserFriendlyEncryptionAPI {
                 HealthReport.HealthStatus.EXCELLENT;
             StringBuilder healthSummary = new StringBuilder();
 
-            // Get basic metrics
-            List<Block> allBlocks = blockchain.getValidChain();
-            long chainLength = allBlocks.size();
+            // Get basic metrics using memory-safe streaming
+            AtomicLong chainLengthCounter = new AtomicLong(0);
+            AtomicLong offChainBlocksCounter = new AtomicLong(0);
+
+            try (Stream<Block> stream = blockchain.streamValidChain()) {
+                stream.forEach(block -> {
+                    chainLengthCounter.incrementAndGet();
+                    if (block.getOffChainData() != null) {
+                        offChainBlocksCounter.incrementAndGet();
+                    }
+                });
+            }
+            long chainLength = chainLengthCounter.get();
+            long offChainBlocks = offChainBlocksCounter.get();
 
             // Performance assessment
             double performanceScore = 100.0;
@@ -5897,19 +5910,16 @@ public class UserFriendlyEncryptionAPI {
 
             // Off-chain storage health
             try {
-                long offChainBlocks = allBlocks
-                    .stream()
-                    .filter(b -> b.getOffChainData() != null)
-                    .count();
-
                 if (offChainBlocks > 0) {
                     report.addSystemInfo("Off-Chain Blocks", offChainBlocks);
                     // Check for file existence issues
-                    long missingFiles = allBlocks
-                        .stream()
-                        .filter(b -> b.getOffChainData() != null)
-                        .filter(b -> !BlockValidationUtil.offChainFileExists(b))
-                        .count();
+                    AtomicLong missingFilesCounter = new AtomicLong(0);
+                    try (Stream<Block> stream = blockchain.streamValidChain()) {
+                        stream.filter(b -> b.getOffChainData() != null)
+                              .filter(b -> !BlockValidationUtil.offChainFileExists(b))
+                              .forEach(b -> missingFilesCounter.incrementAndGet());
+                    }
+                    long missingFiles = missingFilesCounter.get();
 
                     if (missingFiles > 0) {
                         report.addIssue(
@@ -6646,15 +6656,15 @@ public class UserFriendlyEncryptionAPI {
                 ? (Boolean) options.getOrDefault("efficientMode", false)
                 : false;
 
-            List<Block> allBlocks = blockchain.getValidChain();
-            long totalBlocks = allBlocks.size();
-            long validBlocks = 0;
-            long invalidBlocks = 0;
-            long offChainFiles = 0;
-            long corruptFiles = 0;
-            int totalChecks = 0;
-            int passedChecks = 0;
-            int errorCount = 0;
+            AtomicLong totalBlocks = new AtomicLong(0);
+            AtomicLong validBlocks = new AtomicLong(0);
+            AtomicLong invalidBlocks = new AtomicLong(0);
+            AtomicLong offChainFiles = new AtomicLong(0);
+            AtomicLong corruptFiles = new AtomicLong(0);
+            Set<String> uniqueHashes = Collections.synchronizedSet(new HashSet<>());
+            AtomicLong totalChecks = new AtomicLong(0);
+            AtomicLong passedChecks = new AtomicLong(0);
+            AtomicLong errorCount = new AtomicLong(0);
 
             String validationId = "validation_" + System.currentTimeMillis();
             ValidationReport report = new ValidationReport(
@@ -6662,140 +6672,150 @@ public class UserFriendlyEncryptionAPI {
                 "Comprehensive validation with advanced options completed"
             ).withValidationId(validationId);
 
+            // First pass: count total blocks and collect hashes
+            try (Stream<Block> stream = blockchain.streamValidChain()) {
+                stream.forEach(block -> {
+                    totalBlocks.incrementAndGet();
+                    uniqueHashes.add(block.getHash());
+                });
+            }
+
             // Basic block validation
-            totalChecks++;
-            if (allBlocks.isEmpty()) {
+            totalChecks.incrementAndGet();
+            if (totalBlocks.get() == 0) {
                 report.addIssue(
                     "EMPTY_CHAIN",
                     "Blockchain contains no blocks",
                     "WARNING"
                 );
-                errorCount++;
+                errorCount.incrementAndGet();
             } else {
-                passedChecks++;
-                report.addDetail("Total Blocks", totalBlocks);
+                passedChecks.incrementAndGet();
+                report.addDetail("Total Blocks", totalBlocks.get());
             }
 
             // Validate each block with configurable depth
-            for (Block block : allBlocks) {
-                try {
-                    totalChecks++;
+            try (Stream<Block> stream = blockchain.streamValidChain()) {
+                stream.forEach(block -> {
+                    try {
+                        totalChecks.incrementAndGet();
 
-                    // Basic validation
-                    boolean isValid = blockchain.validateSingleBlock(block);
+                        // Basic validation
+                        boolean isValid = blockchain.validateSingleBlock(block);
 
-                    if (isValid) {
-                        validBlocks++;
-                        passedChecks++;
+                        if (isValid) {
+                            validBlocks.incrementAndGet();
+                            passedChecks.incrementAndGet();
 
-                        // Deep scan additional checks
-                        if (deepScan) {
-                            totalChecks++;
-                            // Validate block timestamps
-                            if (
-                                block.getTimestamp() != null &&
-                                block
-                                    .getTimestamp()
-                                    .isAfter(LocalDateTime.now().plusMinutes(5))
-                            ) {
-                                report.addIssue(
-                                    "TIMESTAMP",
-                                    "Block " +
-                                    block.getBlockNumber() +
-                                    " has future timestamp",
-                                    "WARNING"
-                                );
-                                errorCount++;
-                            } else {
-                                passedChecks++;
-                            }
-
-                            totalChecks++;
-                            // Validate block data integrity
-                            if (
-                                block.getData() == null ||
-                                block.getData().trim().isEmpty()
-                            ) {
-                                report.addIssue(
-                                    "DATA_INTEGRITY",
-                                    "Block " +
-                                    block.getBlockNumber() +
-                                    " has empty data",
-                                    "WARNING"
-                                );
-                                errorCount++;
-                            } else {
-                                passedChecks++;
-                            }
-                        }
-
-                        // Check off-chain data if present
-                        OffChainData offChainData = block.getOffChainData();
-                        if (offChainData != null) {
-                            offChainFiles++;
-                            totalChecks++;
-
-                            // Validate off-chain data integrity
-                            BlockValidationUtil.OffChainValidationResult offChainResult =
-                                BlockValidationUtil.validateOffChainDataDetailed(
+                            // Deep scan additional checks
+                            if (deepScan) {
+                                totalChecks.incrementAndGet();
+                                // Validate block timestamps
+                                if (
+                                    block.getTimestamp() != null &&
                                     block
-                                );
-                            if (!offChainResult.isValid()) {
-                                corruptFiles++;
-                                errorCount++;
-                                report.addIssue(
-                                    "OFF_CHAIN",
-                                    "Block " +
-                                    block.getBlockNumber() +
-                                    " has corrupt off-chain data",
-                                    "WARNING"
-                                );
-                            } else {
-                                passedChecks++;
+                                        .getTimestamp()
+                                        .isAfter(LocalDateTime.now().plusMinutes(5))
+                                ) {
+                                    report.addIssue(
+                                        "TIMESTAMP",
+                                        "Block " +
+                                        block.getBlockNumber() +
+                                        " has future timestamp",
+                                        "WARNING"
+                                    );
+                                    errorCount.incrementAndGet();
+                                } else {
+                                    passedChecks.incrementAndGet();
+                                }
+
+                                totalChecks.incrementAndGet();
+                                // Validate block data integrity
+                                if (
+                                    block.getData() == null ||
+                                    block.getData().trim().isEmpty()
+                                ) {
+                                    report.addIssue(
+                                        "DATA_INTEGRITY",
+                                        "Block " +
+                                        block.getBlockNumber() +
+                                        " has empty data",
+                                        "WARNING"
+                                    );
+                                    errorCount.incrementAndGet();
+                                } else {
+                                    passedChecks.incrementAndGet();
+                                }
                             }
+
+                            // Check off-chain data if present
+                            OffChainData offChainData = block.getOffChainData();
+                            if (offChainData != null) {
+                                offChainFiles.incrementAndGet();
+                                totalChecks.incrementAndGet();
+
+                                // Validate off-chain data integrity
+                                BlockValidationUtil.OffChainValidationResult offChainResult =
+                                    BlockValidationUtil.validateOffChainDataDetailed(
+                                        block
+                                    );
+                                if (!offChainResult.isValid()) {
+                                    corruptFiles.incrementAndGet();
+                                    errorCount.incrementAndGet();
+                                    report.addIssue(
+                                        "OFF_CHAIN",
+                                        "Block " +
+                                        block.getBlockNumber() +
+                                        " has corrupt off-chain data",
+                                        "WARNING"
+                                    );
+                                } else {
+                                    passedChecks.incrementAndGet();
+                                }
+                            }
+                        } else {
+                            invalidBlocks.incrementAndGet();
+                            errorCount.incrementAndGet();
+                            report.addIssue(
+                                "BLOCK_VALIDATION",
+                                "Block " + block.getBlockNumber() + " failed validation",
+                                "ERROR"
+                            );
                         }
-                    } else {
-                        invalidBlocks++;
-                        errorCount++;
+                    } catch (Exception e) {
+                        invalidBlocks.incrementAndGet();
+                        errorCount.incrementAndGet();
+                        totalChecks.incrementAndGet();
                         report.addIssue(
-                            "BLOCK_VALIDATION",
-                            "Block " + block.getBlockNumber() + " failed validation",
+                            "BLOCK_ERROR",
+                            "Block " +
+                            block.getBlockNumber() +
+                            " validation error: " +
+                            e.getMessage(),
                             "ERROR"
                         );
                     }
-                } catch (Exception e) {
-                    invalidBlocks++;
-                    errorCount++;
-                    totalChecks++;
-                    report.addIssue(
-                        "BLOCK_ERROR",
-                        "Block " +
-                        block.getBlockNumber() +
-                        " validation error: " +
-                        e.getMessage(),
-                        "ERROR"
-                    );
-                }
+                });
             }
 
             // Chain integrity validation
             if (checkIntegrity) {
-                totalChecks++;
+                totalChecks.incrementAndGet();
                 try {
                     boolean chainValid = blockchain.validateChainWithRecovery();
                     if (!chainValid) {
-                        errorCount++;
+                        errorCount.incrementAndGet();
                         report.addIssue(
                             "CHAIN_INTEGRITY",
                             "Chain integrity validation failed",
                             "CRITICAL"
                         );
                     } else {
-                        passedChecks++;
+                        passedChecks.incrementAndGet();
                         report.addDetail("Chain Integrity", "Valid");
                     }
                 } catch (Exception e) {
-                    errorCount++;
+                    errorCount.incrementAndGet();
                     report.addIssue(
                         "CHAIN_ERROR",
                         "Chain validation error: " + e.getMessage(),
@@ -6806,7 +6826,7 @@ public class UserFriendlyEncryptionAPI {
 
             // Key management validation
             if (validateKeys) {
-                totalChecks++;
+                totalChecks.incrementAndGet();
                 try {
                     List<CryptoUtil.KeyInfo> keys = CryptoUtil.getActiveKeys();
                     long expiredKeys = keys
@@ -6817,18 +6837,18 @@ public class UserFriendlyEncryptionAPI {
                         .count();
 
                     if (expiredKeys > 0) {
-                        errorCount++;
+                        errorCount.incrementAndGet();
                         report.addIssue(
                             "KEY_MANAGEMENT",
                             expiredKeys + " expired keys found",
                             "WARNING"
                         );
                     } else {
-                        passedChecks++;
+                        passedChecks.incrementAndGet();
                         report.addDetail("Key Management", "All keys valid");
                     }
                 } catch (Exception e) {
-                    errorCount++;
+                    errorCount.incrementAndGet();
                     report.addIssue(
                         "KEY_ERROR",
                         "Key validation error: " + e.getMessage(),
@@ -6839,23 +6859,19 @@ public class UserFriendlyEncryptionAPI {
 
             // Consistency checks
             if (checkConsistency) {
-                totalChecks++;
+                totalChecks.incrementAndGet();
                 // Check for duplicate blocks
-                long uniqueHashes = allBlocks
-                    .stream()
-                    .map(Block::getHash)
-                    .distinct()
-                    .count();
+                long uniqueHashesCount = uniqueHashes.size();
 
-                if (uniqueHashes != totalBlocks) {
-                    errorCount++;
+                if (uniqueHashesCount != totalBlocks.get()) {
+                    errorCount.incrementAndGet();
                     report.addIssue(
                         "CONSISTENCY",
                         "Duplicate block hashes detected",
                         "ERROR"
                     );
                 } else {
-                    passedChecks++;
+                    passedChecks.incrementAndGet();
                     report.addDetail("Hash Consistency", "All unique");
                 }
             }
@@ -6868,17 +6884,17 @@ public class UserFriendlyEncryptionAPI {
             if (validationTime.toMillis() == 0) {
                 validationTime = Duration.ofMillis(1);
             }
-            double validationScore = totalChecks > 0
-                ? (double) passedChecks / totalChecks
+            double validationScore = totalChecks.get() > 0
+                ? (double) passedChecks.get() / totalChecks.get()
                 : 0.0;
-            boolean overallValid = errorCount == 0;
+            boolean overallValid = errorCount.get() == 0;
 
             // Create validation metrics
             ValidationReport.ValidationMetrics metrics =
                 new ValidationReport.ValidationMetrics(
-                    totalChecks,
-                    passedChecks,
-                    totalChecks - passedChecks,
+                    totalChecks.get(),
+                    passedChecks.get(),
+                    totalChecks.get() - passedChecks.get(),
                     validationTime.toMillis()
                 );
 
@@ -6891,7 +6907,7 @@ public class UserFriendlyEncryptionAPI {
                 .withValidationId(validationId)
                 .withValidationTime(validationTime)
                 .withValidationScore(validationScore)
-                .withErrorCount(errorCount)
+                .withErrorCount(errorCount.intValue())
                 .withValidationMetrics(metrics);
 
             // Copy data to final report
@@ -6906,11 +6922,11 @@ public class UserFriendlyEncryptionAPI {
                 );
             report.getDetails().forEach(finalReport::addDetail);
             finalReport.withMetrics(
-                totalBlocks,
-                validBlocks,
-                invalidBlocks,
-                offChainFiles,
-                corruptFiles
+                totalBlocks.get(),
+                validBlocks.get(),
+                invalidBlocks.get(),
+                offChainFiles.get(),
+                corruptFiles.get()
             );
 
             // Add configuration details
@@ -7314,8 +7330,13 @@ public class UserFriendlyEncryptionAPI {
 
             HealthReport.HealthStatus overallHealth =
                 HealthReport.HealthStatus.HEALTHY;
-            List<Block> allBlocks = blockchain.getValidChain();
-            long chainLength = allBlocks.size();
+
+            // Get chain length using memory-safe streaming
+            AtomicLong chainLengthCounter = new AtomicLong(0);
+            try (Stream<Block> stream = blockchain.streamValidChain()) {
+                stream.forEach(block -> chainLengthCounter.incrementAndGet());
+            }
+            long chainLength = chainLengthCounter.get();
 
             String reportId = "health_" + System.currentTimeMillis();
             HealthReport report = new HealthReport(
@@ -7423,23 +7444,28 @@ public class UserFriendlyEncryptionAPI {
 
             // Off-chain storage health
             try {
-                long offChainBlocks = allBlocks
-                    .stream()
-                    .filter(b -> b.getOffChainData() != null)
-                    .count();
+                AtomicLong offChainBlocksCounter = new AtomicLong(0);
+                try (Stream<Block> stream = blockchain.streamValidChain()) {
+                    stream.forEach(block -> {
+                        if (block.getOffChainData() != null) {
+                            offChainBlocksCounter.incrementAndGet();
+                        }
+                    });
+                }
+                long offChainBlocks = offChainBlocksCounter.get();
 
                 if (offChainBlocks > 0) {
                     report.addSystemInfo("Off-Chain Blocks", offChainBlocks);
 
                     if (deepHealthCheck) {
                         // Check for file existence issues
-                        long missingFiles = allBlocks
-                            .stream()
-                            .filter(b -> b.getOffChainData() != null)
-                            .filter(b ->
-                                !BlockValidationUtil.offChainFileExists(b)
-                            )
-                            .count();
+                        AtomicLong missingFilesCounter = new AtomicLong(0);
+                        try (Stream<Block> stream = blockchain.streamValidChain()) {
+                            stream.filter(b -> b.getOffChainData() != null)
+                                  .filter(b -> !BlockValidationUtil.offChainFileExists(b))
+                                  .forEach(b -> missingFilesCounter.incrementAndGet());
+                        }
+                        long missingFiles = missingFilesCounter.get();
 
                         if (missingFiles > 0) {
                             report.addIssue(
@@ -7476,31 +7502,32 @@ public class UserFriendlyEncryptionAPI {
             if (includeTrends) {
                 // Simplified trend analysis
                 if (chainLength > 10) {
-                    List<Block> recentBlocks = allBlocks.subList(
-                        Math.max(0, allBlocks.size() - 10),
-                        allBlocks.size()
-                    );
+                    // Get last 10 blocks efficiently using pagination
+                    long offset = Math.max(0, chainLength - 10);
+                    List<Block> recentBlocks = blockchain.getBlocksPaginated(offset, 10);
 
                     // Check for recent block creation rate
-                    LocalDateTime oldestRecent = recentBlocks
-                        .get(0)
-                        .getTimestamp();
-                    LocalDateTime newestRecent = recentBlocks
-                        .get(recentBlocks.size() - 1)
-                        .getTimestamp();
+                    if (!recentBlocks.isEmpty()) {
+                        LocalDateTime oldestRecent = recentBlocks
+                            .get(0)
+                            .getTimestamp();
+                        LocalDateTime newestRecent = recentBlocks
+                            .get(recentBlocks.size() - 1)
+                            .getTimestamp();
 
-                    if (oldestRecent != null && newestRecent != null) {
-                        Duration recentPeriod = Duration.between(
-                            oldestRecent,
-                            newestRecent
-                        );
-                        if (recentPeriod.toDays() > 7) {
-                            report.addIssue(
-                                "PERFORMANCE",
-                                "Slow block creation rate detected",
-                                "INFO",
-                                "Monitor blockchain activity and transaction processing"
+                        if (oldestRecent != null && newestRecent != null) {
+                            Duration recentPeriod = Duration.between(
+                                oldestRecent,
+                                newestRecent
                             );
+                            if (recentPeriod.toDays() > 7) {
+                                report.addIssue(
+                                    "PERFORMANCE",
+                                    "Slow block creation rate detected",
+                                    "INFO",
+                                    "Monitor blockchain activity and transaction processing"
+                                );
+                            }
                         }
                     }
                 }
@@ -8059,18 +8086,27 @@ public class UserFriendlyEncryptionAPI {
             .append(Runtime.getRuntime().availableProcessors())
             .append("\n");
 
-        // Blockchain statistics
+        // Blockchain statistics using memory-safe streaming
         try {
-            List<Block> allBlocks = blockchain.getValidChain();
-            long totalBlocks = allBlocks.size();
-            long encryptedBlocks = allBlocks
-                .stream()
-                .filter(b -> b.getData().startsWith("ENC:"))
-                .count();
-            long offChainBlocks = allBlocks
-                .stream()
-                .filter(b -> b.getOffChainData() != null)
-                .count();
+            AtomicLong totalBlocksCounter = new AtomicLong(0);
+            AtomicLong encryptedBlocksCounter = new AtomicLong(0);
+            AtomicLong offChainBlocksCounter = new AtomicLong(0);
+
+            try (Stream<Block> stream = blockchain.streamValidChain()) {
+                stream.forEach(block -> {
+                    totalBlocksCounter.incrementAndGet();
+                    if (block.getData() != null && block.getData().startsWith("ENC:")) {
+                        encryptedBlocksCounter.incrementAndGet();
+                    }
+                    if (block.getOffChainData() != null) {
+                        offChainBlocksCounter.incrementAndGet();
+                    }
+                });
+            }
+
+            long totalBlocks = totalBlocksCounter.get();
+            long encryptedBlocks = encryptedBlocksCounter.get();
+            long offChainBlocks = offChainBlocksCounter.get();
 
             report.append("\n📊 Blockchain Search Scope:\n");
             report.append("Total Blocks: ").append(totalBlocks).append("\n");

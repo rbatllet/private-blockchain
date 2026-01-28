@@ -12,6 +12,8 @@ import java.security.KeyPair;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -63,8 +65,8 @@ class BlockchainUncoveredMethodsTest {
     }
 
     @Nested
-    @DisplayName("🔍 getOrphanedBlocks() Tests")
-    class GetOrphanedBlocksTests {
+    @DisplayName("🔍 streamOrphanedBlocks() Tests")
+    class StreamOrphanedBlocksTests {
 
         @Test
         @Order(1)
@@ -74,7 +76,10 @@ class BlockchainUncoveredMethodsTest {
             blockchain.addBlock("Valid data 1", authorizedKeyPair.getPrivate(), authorizedKeyPair.getPublic());
             blockchain.addBlock("Valid data 2", authorizedKeyPair.getPrivate(), authorizedKeyPair.getPublic());
 
-            List<Block> orphanedBlocks = blockchain.getOrphanedBlocks();
+            List<Block> orphanedBlocks;
+            try (Stream<Block> stream = blockchain.streamOrphanedBlocks()) {
+                orphanedBlocks = stream.collect(Collectors.toList());
+            }
 
             assertNotNull(orphanedBlocks);
             assertTrue(orphanedBlocks.isEmpty(), "Should have no orphaned blocks in healthy chain");
@@ -89,7 +94,10 @@ class BlockchainUncoveredMethodsTest {
             blockchain.addBlock("Data before revocation 2", authorizedKeyPair.getPrivate(), authorizedKeyPair.getPublic());
 
             // Verify no orphaned blocks initially
-            List<Block> initialOrphaned = blockchain.getOrphanedBlocks();
+            List<Block> initialOrphaned;
+            try (Stream<Block> stream = blockchain.streamOrphanedBlocks()) {
+                initialOrphaned = stream.collect(Collectors.toList());
+            }
             assertTrue(initialOrphaned.isEmpty(), "Should have no orphaned blocks initially");
 
             // Revoke the key (dangerous deletion)
@@ -98,7 +106,10 @@ class BlockchainUncoveredMethodsTest {
             blockchain.dangerouslyDeleteAuthorizedKey(authorizedPublicKey, true, reason, adminSignature, adminPublicKey);
 
             // Check for orphaned blocks
-            List<Block> orphanedBlocks = blockchain.getOrphanedBlocks();
+            List<Block> orphanedBlocks;
+            try (Stream<Block> stream = blockchain.streamOrphanedBlocks()) {
+                orphanedBlocks = stream.collect(Collectors.toList());
+            }
 
             assertNotNull(orphanedBlocks);
             assertFalse(orphanedBlocks.isEmpty(), "Should have orphaned blocks after key revocation");
@@ -120,7 +131,10 @@ class BlockchainUncoveredMethodsTest {
             // Clear blockchain completely
             blockchain.clearAndReinitialize();
 
-            List<Block> orphanedBlocks = blockchain.getOrphanedBlocks();
+            List<Block> orphanedBlocks;
+            try (Stream<Block> stream = blockchain.streamOrphanedBlocks()) {
+                orphanedBlocks = stream.collect(Collectors.toList());
+            }
 
             assertNotNull(orphanedBlocks);
             assertTrue(orphanedBlocks.isEmpty(), "Empty blockchain should have no orphaned blocks");
