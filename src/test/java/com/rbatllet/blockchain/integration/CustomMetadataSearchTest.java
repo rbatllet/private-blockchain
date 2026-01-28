@@ -531,6 +531,9 @@ public class CustomMetadataSearchTest {
         block.setCustomMetadata(jsonMapper.writeValueAsString(largeMetadata));
         blockchain.updateBlock(block);
 
+        // CRITICAL: Wait for async indexing to complete before searching
+        IndexingCoordinator.getInstance().waitForCompletion();
+
         // Should still find the target field efficiently
         List<Block> results = api.searchByCustomMetadataKeyValue("target_field", "find_me");
         assertEquals(1, results.size(), "Should find block even with large metadata");
