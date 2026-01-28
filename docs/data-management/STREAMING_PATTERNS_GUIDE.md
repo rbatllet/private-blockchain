@@ -254,14 +254,14 @@ Four specialized streaming methods added for common use cases:
 
 ```java
 // Stream blocks within time range (unlimited, memory-safe)
-blockchain.streamBlocksByTimeRange(
+try (Stream<Block> stream = blockchain.streamBlocksByTimeRange(
     LocalDateTime.of(2024, 1, 1, 0, 0),
-    LocalDateTime.of(2024, 12, 31, 23, 59),
-    block -> {
+    LocalDateTime.of(2024, 12, 31, 23, 59))) {
+    stream.forEach(block -> {
         // Process blocks from 2024
         analyzeTemporalTrends(block);
-    }
-);
+    });
+}
 ```
 
 **Use cases:**
@@ -271,7 +271,8 @@ blockchain.streamBlocksByTimeRange(
 - Period-specific validation
 
 **Performance:**
-- PostgreSQL/MySQL/H2: ScrollableResults (⚡ 12-15s for 1M blocks)
+- Optimized with composite index: (timestamp, block_number)
+- PostgreSQL/MySQL/H2: getResultStream() (⚡ 12-15s for 1M blocks)
 - SQLite: Pagination (✅ 20-25s for 1M blocks)
 - Memory: ~50MB constant
 

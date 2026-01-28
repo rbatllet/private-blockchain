@@ -494,7 +494,7 @@ void setUp() {
 - 📊 **Chain Data Retrieval** (3 tests): Batch processing and pagination with thread safety (10 threads, 50 operations)
 - 🔍 **Search Functionality Security** (4 tests): `searchBlocksComplete()`, malicious input handling (SQL injection, XSS, path traversal)
 - 🔐 **Authorization and Compliance** (6 tests): `getAuthorizedKeyByOwner()`, `isFullyCompliant()` validation
-- 📅 **Time-Based Operations** (3 tests): `getBlocksByTimeRange()` with null parameters and invalid ranges
+- 📅 **Time-Based Operations** (3 tests): `streamBlocksByTimeRange()` with null parameters and invalid ranges
 - 🔒 **Encryption and Security Validation** (3 tests): `validateBlockSize()` with null data and extremely large inputs (10MB)
 - 🛡️ **Block Registration Security** (3 tests): Private method testing through public APIs and unauthorized key validation
 - 🔒 **Block Input Validation Security** (5 tests): `validateBlockInput()` through `addBlock()` testing (null data, keys, mismatched pairs)

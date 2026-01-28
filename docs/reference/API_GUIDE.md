@@ -2004,10 +2004,12 @@ public Block getLastBlock() {
     // SAFE FOR: read-only operations, tests, demos, queries outside transactions
 }
 
-// Get blocks within a time range (memory-efficient, max 10K results)
-public List<Block> getBlocksByTimeRange(LocalDateTime startTime, LocalDateTime endTime) {
-    // Returns blocks with timestamps between startTime and endTime (limited to 10,000 results)
-    // For more control, use: blockchain.getBlocksByTimeRangePaginated(start, end, offset, limit)
+// Stream blocks within a time range (unlimited size, memory-safe)
+// Use try-with-resources for automatic resource management
+public Stream<Block> streamBlocksByTimeRange(LocalDateTime startTime, LocalDateTime endTime) {
+    // Returns a Stream of blocks with timestamps between startTime and endTime
+    // Memory-efficient: processes millions of blocks with constant ~50MB usage
+    // Requires try-with-resources: try (Stream<Block> stream = blockchain.streamBlocksByTimeRange(start, end)) { ... }
 }
 
 // Get the total number of blocks
@@ -5760,24 +5762,25 @@ Four specialized streaming methods added for common use cases that previously re
  *
  * @param startTime Inclusive start timestamp
  * @param endTime Inclusive end timestamp
- * @param blockConsumer Callback invoked for each block
+ * @return Stream of blocks in the specified time range (must be closed)
  * @throws IllegalArgumentException if startTime or endTime is null
  */
-blockchain.streamBlocksByTimeRange(
+try (Stream<Block> stream = blockchain.streamBlocksByTimeRange(
     LocalDateTime.of(2024, 1, 1, 0, 0),
-    LocalDateTime.of(2024, 12, 31, 23, 59),
-    block -> {
+    LocalDateTime.of(2024, 12, 31, 23, 59))) {
+    stream.forEach(block -> {
         // Process blocks created in 2024
         analyzeBlock(block);
-    }
-);
+    });
+}
 ```
 
 **Benefits:**
 - ✅ Unlimited time range support
 - ✅ Constant memory usage (~50MB)
-- ✅ Database-optimized (ScrollableResults for PostgreSQL/H2/MySQL, pagination for SQLite)
+- ✅ Database-optimized with composite index (timestamp, block_number)
 - ✅ Ordered by block number ascending
+- ✅ Automatic resource management with try-with-resources
 
 #### 5. streamEncryptedBlocks() - Encryption Operations
 

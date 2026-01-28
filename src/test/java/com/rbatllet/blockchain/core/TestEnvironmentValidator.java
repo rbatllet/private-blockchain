@@ -56,7 +56,7 @@ public class TestEnvironmentValidator {
             boolean hasDeleteAuthorizedKey = false;
             boolean hasDangerouslyDeleteAuthorizedKey = false;
             boolean hasGetBlocksByDateRange = false;
-            boolean hasGetBlocksByTimeRange = false;
+            boolean hasStreamBlocksByTimeRange = false;
             boolean hasGetAuthorizedKeyByOwner = false;
             boolean hasGetAllAuthorizedKeys = false;
             boolean hasClearAndReinitialize = false;
@@ -73,7 +73,7 @@ public class TestEnvironmentValidator {
                     case "deleteAuthorizedKey" -> hasDeleteAuthorizedKey = true;
                     case "dangerouslyDeleteAuthorizedKey" -> hasDangerouslyDeleteAuthorizedKey = true;
                     case "getBlocksByDateRange" -> hasGetBlocksByDateRange = true;
-                    case "getBlocksByTimeRange" -> hasGetBlocksByTimeRange = true;
+                    case "streamBlocksByTimeRange" -> hasStreamBlocksByTimeRange = true;
                     case "getAuthorizedKeyByOwner" -> hasGetAuthorizedKeyByOwner = true;
                     case "getAllAuthorizedKeys" -> hasGetAllAuthorizedKeys = true;
                     case "clearAndReinitialize" -> hasClearAndReinitialize = true;
@@ -98,7 +98,7 @@ public class TestEnvironmentValidator {
             // Verify temporal query functions
             logger.info("\n⏰ Verifying temporal query functions...");
             allChecksPass &= checkMethod(hasGetBlocksByDateRange, "getBlocksByDateRange");
-            allChecksPass &= checkMethod(hasGetBlocksByTimeRange, "getBlocksByTimeRange");
+            allChecksPass &= checkMethod(hasStreamBlocksByTimeRange, "streamBlocksByTimeRange");
             
             // Verify additional functions
             logger.info("\n🔍 Verifying additional functions...");

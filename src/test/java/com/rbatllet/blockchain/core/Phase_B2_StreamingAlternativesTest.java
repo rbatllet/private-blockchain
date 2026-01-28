@@ -1,6 +1,7 @@
 package com.rbatllet.blockchain.core;
 
 import com.rbatllet.blockchain.config.DatabaseConfig;
+import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.indexing.IndexingCoordinator;
 import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.TestGenesisKeyManager;
@@ -14,6 +15,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -127,10 +129,12 @@ public class Phase_B2_StreamingAlternativesTest {
 
         AtomicInteger count = new AtomicInteger(0);
 
-        blockchain.streamBlocksByTimeRange(startTime, endTime, block -> {
-            count.incrementAndGet();
-            logger.info("  ✅ Block #" + block.getBlockNumber() + " - " + block.getTimestamp());
-        });
+        try (Stream<Block> stream = blockchain.streamBlocksByTimeRange(startTime, endTime)) {
+            stream.forEach(block -> {
+                count.incrementAndGet();
+                logger.info("  ✅ Block #" + block.getBlockNumber() + " - " + block.getTimestamp());
+            });
+        }
 
         // Should include genesis + 3 blocks = 4 total (all within range due to test timing)
         assertTrue(count.get() >= 3, "Should stream at least 3 blocks within time range");
@@ -144,11 +148,11 @@ public class Phase_B2_StreamingAlternativesTest {
         logger.info("\n🚀 TEST 2: streamBlocksByTimeRange() Null Parameter Validation");
 
         assertThrows(IllegalArgumentException.class, () -> {
-            blockchain.streamBlocksByTimeRange(null, LocalDateTime.now(), block -> {});
+            blockchain.streamBlocksByTimeRange(null, LocalDateTime.now());
         }, "Should reject null start time");
 
         assertThrows(IllegalArgumentException.class, () -> {
-            blockchain.streamBlocksByTimeRange(LocalDateTime.now(), null, block -> {});
+            blockchain.streamBlocksByTimeRange(LocalDateTime.now(), null);
         }, "Should reject null end time");
 
         logger.info("  ✅ Null parameter validation works correctly");
@@ -292,11 +296,11 @@ public class Phase_B2_StreamingAlternativesTest {
 
         // Test 1: streamBlocksByTimeRange
         AtomicInteger count1 = new AtomicInteger(0);
-        blockchain.streamBlocksByTimeRange(
+        try (Stream<Block> stream = blockchain.streamBlocksByTimeRange(
             LocalDateTime.now().minusHours(1),
-            LocalDateTime.now().plusHours(1),
-            block -> count1.incrementAndGet()
-        );
+            LocalDateTime.now().plusHours(1))) {
+            stream.forEach(block -> count1.incrementAndGet());
+        }
 
         long memoryAfterTimeRange = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
         long deltaTimeRange = memoryAfterTimeRange - initialMemory;

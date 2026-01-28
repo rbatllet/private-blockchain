@@ -16,6 +16,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -1310,9 +1312,9 @@ public class BlockchainRobustnessTest {
 
     @Test
     @Order(48)
-    @DisplayName("getBlocksByTimeRange should validate parameters")
+    @DisplayName("streamBlocksByTimeRange should validate parameters")
     void testGetBlocksByTimeRangeValidation() {
-        logTestContext("getBlocksByTimeRange", "parameter validation");
+        logTestContext("streamBlocksByTimeRange", "parameter validation");
 
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime yesterday = now.minusDays(1);
@@ -1323,24 +1325,27 @@ public class BlockchainRobustnessTest {
 
         // Test 1: Null start date
         assertThrows(Exception.class, () -> {
-            blockchain.getBlocksByTimeRange(null, tomorrow);
+            blockchain.streamBlocksByTimeRange(null, tomorrow);
         }, "Should throw exception for null start date");
 
         // Test 2: Null end date
         assertThrows(Exception.class, () -> {
-            blockchain.getBlocksByTimeRange(yesterday, null);
+            blockchain.streamBlocksByTimeRange(yesterday, null);
         }, "Should throw exception for null end date");
 
         // Test 3: Start after end
         assertThrows(Exception.class, () -> {
-            blockchain.getBlocksByTimeRange(tomorrow, yesterday);
+            blockchain.streamBlocksByTimeRange(tomorrow, yesterday);
         }, "Should throw exception when start is after end");
 
-        // Test 4: Valid time range
-        List<Block> validResults = blockchain.getBlocksByTimeRange(yesterday, tomorrow);
-        assertNotNull(validResults, "Results should not be null");
+        // Test 4: Valid time range with try-with-resources
+        try (Stream<Block> stream = blockchain.streamBlocksByTimeRange(yesterday, tomorrow)) {
+            List<Block> validResults = stream.collect(Collectors.toList());
+            assertNotNull(validResults, "Results should not be null");
+            assertFalse(validResults.isEmpty(), "Should find at least one block in time range");
+        }
 
-        logger.info("✅ getBlocksByTimeRange parameter validation passed");
+        logger.info("✅ streamBlocksByTimeRange parameter validation passed");
     }
 
     @Test

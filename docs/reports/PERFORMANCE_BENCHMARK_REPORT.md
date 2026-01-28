@@ -450,11 +450,11 @@ List<Block> q1Blocks = allBlocks.stream()
 **After** (Phase B.2):
 ```java
 // ✅ Stream only Q1 blocks
-blockchain.streamBlocksByTimeRange(
+try (Stream<Block> stream = blockchain.streamBlocksByTimeRange(
     LocalDateTime.of(2024, 1, 1, 0, 0),
-    LocalDateTime.of(2024, 3, 31, 23, 59),
-    block -> auditBlock(block)
-);
+    LocalDateTime.of(2024, 3, 31, 23, 59))) {
+    stream.forEach(block -> auditBlock(block));
+}
 ```
 
 **Performance** (PostgreSQL, 250K blocks in Q1):
@@ -668,7 +668,9 @@ long memoryBefore = Runtime.getRuntime().totalMemory() -
                     Runtime.getRuntime().freeMemory();
 
 // Execute operation
-blockchain.streamBlocksByTimeRange(start, end, block -> process(block));
+try (Stream<Block> stream = blockchain.streamBlocksByTimeRange(start, end)) {
+    stream.forEach(block -> process(block));
+}
 
 // Measure memory after operation
 long memoryAfter = Runtime.getRuntime().totalMemory() -

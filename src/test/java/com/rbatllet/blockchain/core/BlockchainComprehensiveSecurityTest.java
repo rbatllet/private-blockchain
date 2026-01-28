@@ -17,6 +17,8 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -343,7 +345,7 @@ class BlockchainComprehensiveSecurityTest {
 
         @Test
         @Order(16)
-        @DisplayName("getBlocksByTimeRange should find blocks in range")
+        @DisplayName("streamBlocksByTimeRange should find blocks in range")
         void testGetBlocksByTimeRangeValid() {
             // Arrange: Record time before adding blocks
             LocalDateTime startTime = LocalDateTime.now().minus(1, ChronoUnit.MINUTES);
@@ -353,43 +355,45 @@ class BlockchainComprehensiveSecurityTest {
 
             LocalDateTime endTime = LocalDateTime.now().plus(1, ChronoUnit.MINUTES);
 
-            // Act
-            List<Block> blocksInRange = blockchain.getBlocksByTimeRange(startTime, endTime);
+            // Act - Use try-with-resources with Stream API
+            try (Stream<Block> stream = blockchain.streamBlocksByTimeRange(startTime, endTime)) {
+                List<Block> blocksInRange = stream.collect(Collectors.toList());
 
-            // Assert
-            assertNotNull(blocksInRange, "Results should not be null");
-            assertTrue(blocksInRange.size() >= 2, "Should find the blocks we just added");
+                // Assert
+                assertNotNull(blocksInRange, "Results should not be null");
+                assertTrue(blocksInRange.size() >= 2, "Should find the blocks we just added");
+            }
         }
 
         @Test
         @Order(17)
-        @DisplayName("getBlocksByTimeRange should handle null parameters")
+        @DisplayName("streamBlocksByTimeRange should handle null parameters")
         void testGetBlocksByTimeRangeNullParams() {
             // Act & Assert - Should throw exceptions for null parameters (strict validation)
             assertThrows(IllegalArgumentException.class, () -> {
-                blockchain.getBlocksByTimeRange(null, LocalDateTime.now());
+                blockchain.streamBlocksByTimeRange(null, LocalDateTime.now());
             }, "Should throw exception for null start time");
-            
+
             assertThrows(IllegalArgumentException.class, () -> {
-                blockchain.getBlocksByTimeRange(LocalDateTime.now(), null);
+                blockchain.streamBlocksByTimeRange(LocalDateTime.now(), null);
             }, "Should throw exception for null end time");
-            
+
             assertThrows(IllegalArgumentException.class, () -> {
-                blockchain.getBlocksByTimeRange(null, null);
+                blockchain.streamBlocksByTimeRange(null, null);
             }, "Should throw exception for null parameters");
         }
 
         @Test
         @Order(18)
-        @DisplayName("getBlocksByTimeRange should handle invalid time range")
+        @DisplayName("streamBlocksByTimeRange should handle invalid time range")
         void testGetBlocksByTimeRangeInvalidRange() {
             // Arrange: End time before start time
             LocalDateTime endTime = LocalDateTime.now().minus(1, ChronoUnit.HOURS);
             LocalDateTime startTime = LocalDateTime.now();
 
-            // Act & Assert: UPDATED to match Robustness test standard - strict validation
+            // Act & Assert: Should throw exception for invalid range (start > end)
             assertThrows(IllegalArgumentException.class, () -> {
-                blockchain.getBlocksByTimeRange(startTime, endTime);
+                blockchain.streamBlocksByTimeRange(startTime, endTime);
             }, "Should throw exception for invalid range (start > end)");
         }
     }

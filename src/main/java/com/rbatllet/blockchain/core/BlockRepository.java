@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Package-private Repository for Block persistence operations
@@ -3317,100 +3318,39 @@ class BlockRepository {
      *
      * @param startTime Start time (inclusive)
      * @param endTime End time (inclusive)
-     * @param blockConsumer Consumer to process each block
-     *
-     * @since 2025-10-27 (Performance Optimization - Phase B.2)
+     * @return Stream of blocks in the specified time range (must be closed)
+     * @throws IllegalArgumentException if parameters are null or invalid
      */
-    public void streamBlocksByTimeRange(
+    public Stream<Block> streamBlocksByTimeRange(
             java.time.LocalDateTime startTime,
-            java.time.LocalDateTime endTime,
-            Consumer<Block> blockConsumer) {
+            java.time.LocalDateTime endTime) {
+
+        if (startTime == null || endTime == null) {
+            throw new IllegalArgumentException("Start time and end time cannot be null");
+        }
 
         EntityManager em = JPAUtil.getEntityManager();
-        String dbProduct = getDatabaseProductName(em);
 
-        if ("SQLite".equalsIgnoreCase(dbProduct)) {
-            streamTimeRangeWithPagination(startTime, endTime, blockConsumer, em);
-        } else {
-            streamTimeRangeWithScrollableResults(startTime, endTime, blockConsumer, em);
-        }
-    }
+        try {
+            TypedQuery<Block> query = em.createQuery(
+                "SELECT b FROM Block b WHERE b.timestamp BETWEEN :start AND :end ORDER BY b.blockNumber",
+                Block.class);
+            query.setParameter("start", startTime);
+            query.setParameter("end", endTime);
 
-    /**
-     * Streams blocks by time range using Hibernate ScrollableResults (PostgreSQL/MySQL/H2).
-     */
-    private void streamTimeRangeWithScrollableResults(
-            java.time.LocalDateTime startTime,
-            java.time.LocalDateTime endTime,
-            Consumer<Block> blockConsumer,
-            EntityManager em) {
-
-        Session session = em.unwrap(Session.class);
-
-        String hql = "SELECT b FROM Block b WHERE b.timestamp BETWEEN :start AND :end";
-
-        try (ScrollableResults<Block> results = session.createQuery(hql, Block.class)
-                .setParameter("start", startTime)
-                .setParameter("end", endTime)
-                .setReadOnly(true)
-                .setFetchSize(1000)
-                .scroll(ScrollMode.FORWARD_ONLY)) {
-
-            int count = 0;
-            while (results.next()) {
-                blockConsumer.accept(results.get());
-
-                // Periodic clear to prevent session cache accumulation
-                if (++count % 100 == 0) {
-                    session.clear();
+            // getResultStream() uses database cursor and returns a Stream
+            // The Stream must be closed to release database resources
+            return query.getResultStream().onClose(() -> {
+                if (!JPAUtil.hasActiveTransaction()) {
+                    em.close();
                 }
+            });
+
+        } catch (RuntimeException e) {
+            if (!JPAUtil.hasActiveTransaction()) {
+                em.close();
             }
-
-            logger.debug("✅ StreamTimeRange (ScrollableResults): Processed {} blocks", count);
-        }
-
-        if (!JPAUtil.hasActiveTransaction()) {
-            em.close();
-        }
-    }
-
-    /**
-     * Streams blocks by time range using manual pagination (SQLite compatible).
-     */
-    private void streamTimeRangeWithPagination(
-            java.time.LocalDateTime startTime,
-            java.time.LocalDateTime endTime,
-            Consumer<Block> blockConsumer,
-            EntityManager em) {
-
-        
-        long offset = 0;
-        boolean hasMore = true;
-
-        while (hasMore) {
-            List<Block> batch = getBlocksByTimeRangePaginated(startTime, endTime, offset, MemorySafetyConstants.DEFAULT_BATCH_SIZE);
-
-            if (batch.isEmpty()) {
-                break;
-            }
-
-            for (Block block : batch) {
-                blockConsumer.accept(block);
-            }
-
-            hasMore = (batch.size() == MemorySafetyConstants.DEFAULT_BATCH_SIZE);
-            offset += MemorySafetyConstants.DEFAULT_BATCH_SIZE;
-
-            // Clear persistence context to prevent memory accumulation
-            if (em.isOpen()) {
-                em.clear();
-            }
-        }
-
-        logger.debug("✅ StreamTimeRange (Pagination): Processed {} blocks", offset);
-
-        if (!JPAUtil.hasActiveTransaction()) {
-            em.close();
+            throw e;
         }
     }
 

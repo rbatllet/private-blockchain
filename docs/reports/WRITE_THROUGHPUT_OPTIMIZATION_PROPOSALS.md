@@ -1809,7 +1809,7 @@ public final class SearchConstants {
 - **Authorization queries**: 30-50% faster (indexed createdAt for temporal validation)
 
 **Specific optimizations**:
-1. `getBlocksByTimeRange()`: Uses `idx_blocks_timestamp` instead of full scan + sort
+1. `streamBlocksByTimeRange()`: Uses `idx_blocks_timestamp_blocknumber` composite index for filtering + ordering
 2. `getBlocksByCategory()`: Uses `idx_blocks_content_category` instead of filter + sort
 3. `getEncryptedBlocks()`: Uses `idx_blocks_is_encrypted` instead of full scan
 4. `getAuthorizedKeysAt()`: Uses `idx_authorized_keys_created_at` for temporal queries

@@ -1,6 +1,7 @@
 package demo;
 
 import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.config.DatabaseConfig;
 import com.rbatllet.blockchain.util.CryptoUtil;
 import com.rbatllet.blockchain.util.JPAUtil;
@@ -9,6 +10,7 @@ import java.security.KeyPair;
 import java.time.LocalDateTime;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Stream;
 
 /**
  * Streaming APIs Demo - Phase B.2 Features
@@ -163,23 +165,25 @@ public class StreamingApisDemo {
 
         long startMs = System.currentTimeMillis();
 
-        blockchain.streamBlocksByTimeRange(startTime, endTime, block -> {
-            int currentCount = count.incrementAndGet();
+        try (Stream<Block> stream = blockchain.streamBlocksByTimeRange(startTime, endTime)) {
+            stream.forEach(block -> {
+                int currentCount = count.incrementAndGet();
 
-            if (firstBlock.get() == -1) {
-                firstBlock.set(block.getBlockNumber());
-            }
-            lastBlock.set(block.getBlockNumber());
+                if (firstBlock.get() == -1) {
+                    firstBlock.set(block.getBlockNumber());
+                }
+                lastBlock.set(block.getBlockNumber());
 
-            // Show first 3 and last 3 blocks
-            if (currentCount <= 3 || currentCount > count.get() - 3) {
-                System.out.println("    ✅ Block #" + block.getBlockNumber() +
-                                 " - " + block.getTimestamp() +
-                                 " - " + truncate(block.getData(), 40));
-            } else if (currentCount == 4) {
-                System.out.println("    ...");
-            }
-        });
+                // Show first 3 and last 3 blocks
+                if (currentCount <= 3 || currentCount > count.get() - 3) {
+                    System.out.println("    ✅ Block #" + block.getBlockNumber() +
+                                     " - " + block.getTimestamp() +
+                                     " - " + truncate(block.getData(), 40));
+                } else if (currentCount == 4) {
+                    System.out.println("    ...");
+                }
+            });
+        }
 
         long elapsedMs = System.currentTimeMillis() - startMs;
 
@@ -333,11 +337,11 @@ public class StreamingApisDemo {
         // Run all streaming operations
         AtomicInteger totalProcessed = new AtomicInteger(0);
 
-        blockchain.streamBlocksByTimeRange(
+        try (Stream<Block> stream = blockchain.streamBlocksByTimeRange(
             LocalDateTime.now().minusDays(30),
-            LocalDateTime.now(),
-            block -> totalProcessed.incrementAndGet()
-        );
+            LocalDateTime.now())) {
+            stream.forEach(block -> totalProcessed.incrementAndGet());
+        }
 
         blockchain.streamEncryptedBlocks(block -> totalProcessed.incrementAndGet());
         blockchain.streamBlocksWithOffChainData(block -> totalProcessed.incrementAndGet());

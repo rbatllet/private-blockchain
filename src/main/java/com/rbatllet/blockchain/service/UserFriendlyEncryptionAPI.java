@@ -54,6 +54,7 @@ import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -8374,7 +8375,9 @@ public class UserFriendlyEncryptionAPI {
             if (useTemporalStreaming) {
                 // ✅ OPTIMIZED: Temporal query (99%+ reduction for recent date ranges)
                 logger.debug("🎯 Using streamBlocksByTimeRange({}, {})", startDate, endDate);
-                blockchain.streamBlocksByTimeRange(startDate, endDate, blockProcessor);
+                try (Stream<Block> stream = blockchain.streamBlocksByTimeRange(startDate, endDate)) {
+                    stream.forEach(blockProcessor);
+                }
 
             } else if (useEncryptedStreaming) {
                 // ✅ OPTIMIZED: Encrypted-only search (60% reduction)
@@ -9360,31 +9363,35 @@ public class UserFriendlyEncryptionAPI {
 
             // ✅ HOT TIER: Recent blocks (last 7 days) - frequent access
             logger.debug("🔥 Processing HOT tier (last 7 days)...");
-            blockchain.streamBlocksByTimeRange(hotThreshold, now, block -> {
-                hotTierBlocks.incrementAndGet();
-                totalBlocks.incrementAndGet();
+            try (Stream<Block> stream = blockchain.streamBlocksByTimeRange(hotThreshold, now)) {
+                stream.forEach(block -> {
+                    hotTierBlocks.incrementAndGet();
+                    totalBlocks.incrementAndGet();
 
-                // Migrate to HOT tier if not already there
-                StorageTieringManager.TieringResult result =
-                    tieringManager.migrateToTier(block, StorageTieringManager.StorageTier.HOT);
-                if (result.isSuccess()) {
-                    migratedCount.incrementAndGet();
-                }
-            });
+                    // Migrate to HOT tier if not already there
+                    StorageTieringManager.TieringResult result =
+                        tieringManager.migrateToTier(block, StorageTieringManager.StorageTier.HOT);
+                    if (result.isSuccess()) {
+                        migratedCount.incrementAndGet();
+                    }
+                });
+            }
 
             // ✅ WARM TIER: Mid-age blocks (7-90 days) - moderate access
             logger.debug("🌤️  Processing WARM tier (7-90 days ago)...");
-            blockchain.streamBlocksByTimeRange(warmThreshold, hotThreshold, block -> {
-                warmTierBlocks.incrementAndGet();
-                totalBlocks.incrementAndGet();
+            try (Stream<Block> stream = blockchain.streamBlocksByTimeRange(warmThreshold, hotThreshold)) {
+                stream.forEach(block -> {
+                    warmTierBlocks.incrementAndGet();
+                    totalBlocks.incrementAndGet();
 
-                // Migrate to WARM tier if not already there
-                StorageTieringManager.TieringResult result =
-                    tieringManager.migrateToTier(block, StorageTieringManager.StorageTier.WARM);
-                if (result.isSuccess()) {
-                    migratedCount.incrementAndGet();
-                }
-            });
+                    // Migrate to WARM tier if not already there
+                    StorageTieringManager.TieringResult result =
+                        tieringManager.migrateToTier(block, StorageTieringManager.StorageTier.WARM);
+                    if (result.isSuccess()) {
+                        migratedCount.incrementAndGet();
+                    }
+                });
+            }
 
             // ✅ COLD TIER: Old blocks (>90 days with off-chain data) - archival
             logger.debug("❄️  Processing COLD tier (>90 days with off-chain)...");

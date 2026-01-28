@@ -1003,7 +1003,7 @@ These methods use **manual pagination only** and could benefit from database-spe
 | Method | Line | Current | Streaming Alternative | Use Case |
 |--------|------|---------|----------------------|----------|
 | `getBlocksPaginated()` | 358 | Manual pagination | `streamAllBlocks(Consumer<Block>)` | Export/backup entire chain |
-| `getBlocksByTimeRangePaginated()` | 417 | Manual pagination | `streamBlocksByTimeRange(start, end, Consumer)` | Temporal audits |
+| `getBlocksByTimeRangePaginated()` | 417 | Manual pagination | `streamBlocksByTimeRange(start, end) → Stream<Block>` | Temporal audits |
 | `getBlocksWithOffChainDataPaginated()` | 462 | Manual pagination | `streamBlocksWithOffChainData(Consumer)` | Off-chain verification |
 | `getEncryptedBlocksPaginated()` | 502 | Manual pagination | `streamEncryptedBlocks(Consumer)` | Mass re-encryption |
 | `getBlocksAfterPaginated()` | 677 | Manual pagination | `streamBlocksAfter(blockNum, Consumer)` | Large rollbacks (>100K blocks) |
@@ -1107,14 +1107,15 @@ private void streamTimeRangeWithPagination(
  */
 public void streamBlocksByTimeRange(
     LocalDateTime startTime,
-    LocalDateTime endTime,
-    Consumer<Block> blockConsumer
+    LocalDateTime endTime
 ) {
     long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
     try {
-        blockRepository.streamBlocksByTimeRange(startTime, endTime, blockConsumer);
-    } finally {
+        return blockRepository.streamBlocksByTimeRange(startTime, endTime)
+            .onClose(() -> GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp));
+    } catch (Exception e) {
         GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
+        throw e;
     }
 }
 
@@ -1170,13 +1171,13 @@ void streamBlocksByCategory(String category, Consumer<Block> consumer)
 // BlockRepository.java
 void streamAllBlocksInBatches(Consumer<List<Block>> batchProcessor, int batchSize)  // 🔴 CRITICAL
 void streamAllBlocks(Consumer<Block> blockConsumer)
-void streamBlocksByTimeRange(LocalDateTime start, LocalDateTime end, Consumer<Block> consumer)
+Stream<Block> streamBlocksByTimeRange(LocalDateTime start, LocalDateTime end)  // Returns Stream<Block>
 void streamBlocksWithOffChainData(Consumer<Block> consumer)
 void streamEncryptedBlocks(Consumer<Block> consumer)
 void streamBlocksAfter(Long blockNumber, Consumer<Block> consumer)
 
 // Blockchain.java (public wrappers with locking)
-void streamBlocksByTimeRange(LocalDateTime start, LocalDateTime end, Consumer<Block> consumer)
+Stream<Block> streamBlocksByTimeRange(LocalDateTime start, LocalDateTime end)  // Returns Stream<Block>
 void streamEncryptedBlocks(Consumer<Block> consumer)
 void streamBlocksWithOffChainData(Consumer<Block> consumer)
 ```
