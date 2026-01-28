@@ -1,5 +1,6 @@
 package demo;
 
+import com.rbatllet.blockchain.config.MemorySafetyConstants;
 import com.rbatllet.blockchain.core.Blockchain;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.indexing.IndexingCoordinator;
@@ -12,6 +13,7 @@ import java.nio.file.Paths;
 import java.security.KeyPair;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.Stream;
 
 /**
  * Interactive demonstration of ADDITIONAL ADVANCED FUNCTIONS
@@ -152,8 +154,11 @@ public class AdditionalAdvancedFunctionsDemo {
             System.out.println("🔎 Search by date range:");
             LocalDate today = LocalDate.now();
             LocalDate yesterday = today.minusDays(1);
-            List<Block> recentBlocks = blockchain.getBlocksByDateRange(yesterday, today);
-            System.out.println("   ✅ Found " + recentBlocks.size() + " blocks from yesterday and today");
+            long recentCount;
+            try (Stream<Block> recentBlocks = blockchain.streamBlocksByDateRange(yesterday, today, MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS)) {
+                recentCount = recentBlocks.count();
+            }
+            System.out.println("   ✅ Found " + recentCount + " blocks from yesterday and today");
 
             System.out.println();
 

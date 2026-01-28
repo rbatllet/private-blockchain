@@ -2250,7 +2250,13 @@ List<Block> categoryResults = blockchain.searchByCategory("MEDICAL");
 // Memory-efficient search methods (automatically limited)
 List<Block> contentResults = blockchain.searchBlocksByContent("searchTerm");  // Max 10K
 Block hashResult = blockchain.getBlockByHash("hashString");
-List<Block> dateResults = blockchain.getBlocksByDateRange(startDate, endDate);  // Max 10K
+
+// Memory-safe streaming with explicit limit (recommended for large datasets)
+try (Stream<Block> dateStream = blockchain.streamBlocksByDateRange(startDate, endDate, maxResults)) {
+    List<Block> results = dateStream
+        .filter(b -> b.getData().contains("keyword"))
+        .collect(Collectors.toList());
+}
 
 // Add blocks with keywords and categories (auto-indexed by default)
 boolean success = blockchain.addBlockWithKeywords(data, manualKeywords, category, privateKey, publicKey);
@@ -2350,17 +2356,19 @@ testBlock.setContentCategory("PERFORMANCE_TEST");
 blockchain.updateBlock(testBlock); // Safe operation
 
 // ✅ EXAMPLE 3: Batch metadata update (ALLOWED)
-List<Block> blocks = blockchain.getBlocksByDateRange(startDate, endDate);
-for (Block block : blocks) {
-    // Add category based on content analysis
-    if (block.getData().contains("transaction")) {
-        block.setContentCategory("FINANCIAL");
-        block.setManualKeywords("transaction financial payment");
-    } else if (block.getData().contains("medical")) {
-        block.setContentCategory("MEDICAL");  
-        block.setManualKeywords("medical healthcare patient");
-    }
-    blockchain.updateBlock(block); // All safe operations
+// Use Stream API for memory-safe processing of large datasets
+try (Stream<Block> blocks = blockchain.streamBlocksByDateRange(startDate, endDate)) {
+    blocks.forEach(block -> {
+        // Add category based on content analysis
+        if (block.getData().contains("transaction")) {
+            block.setContentCategory("FINANCIAL");
+            block.setManualKeywords("transaction financial payment");
+        } else if (block.getData().contains("medical")) {
+            block.setContentCategory("MEDICAL");
+            block.setManualKeywords("medical healthcare patient");
+        }
+        blockchain.updateBlock(block); // All safe operations
+    });
 }
 
 // ❌ EXAMPLE 4: Dangerous operations (FORBIDDEN - will fail)
@@ -3026,12 +3034,42 @@ public Block getBlockByHash(String hash)
 - **Returns:** The block with matching hash, or null if not found
 
 ```java
-public List<Block> getBlocksByDateRange(LocalDate startDate, LocalDate endDate)
+public Stream<Block> streamBlocksByDateRange(LocalDate startDate, LocalDate endDate, int maxResults)
 ```
 - **Parameters:**
   - `startDate`: Start date (inclusive)
   - `endDate`: End date (inclusive)
-- **Returns:** List of blocks created within the date range
+  - `maxResults`: Maximum number of blocks to stream
+- **Returns:** Stream of blocks created within the date range (must be closed)
+- **Memory-Safe:** Uses server-side cursors for streaming with explicit limit
+
+```java
+public Stream<Block> streamBlocksByDateRange(LocalDate startDate, LocalDate endDate)
+```
+- **Parameters:**
+  - `startDate`: Start date (inclusive)
+  - `endDate`: End date (inclusive)
+- **Returns:** Stream of blocks created within the date range (must be closed)
+- **Memory-Safe:** Uses server-side cursors for unlimited results
+
+```java
+public Stream<Block> streamBlocksByTimeRange(LocalDateTime startTime, LocalDateTime endTime, int maxResults)
+```
+- **Parameters:**
+  - `startTime`: Start time (inclusive)
+  - `endTime`: End time (inclusive)
+  - `maxResults`: Maximum number of blocks to stream
+- **Returns:** Stream of blocks created within the time range (must be closed)
+- **Memory-Safe:** Uses server-side cursors for streaming with explicit limit
+
+```java
+public Stream<Block> streamBlocksByTimeRange(LocalDateTime startTime, LocalDateTime endTime)
+```
+- **Parameters:**
+  - `startTime`: Start time (inclusive)
+  - `endTime`: End time (inclusive)
+- **Returns:** Stream of blocks created within the time range (must be closed)
+- **Memory-Safe:** Uses server-side cursors for unlimited results
 
 #### Advanced Operations
 

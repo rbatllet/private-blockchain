@@ -5,6 +5,7 @@ import com.rbatllet.blockchain.entity.AuthorizedKey;
 import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.config.MemorySafetyConstants;
 import com.rbatllet.blockchain.validation.ChainValidationResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -17,6 +18,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 import org.slf4j.Logger;
@@ -29,7 +31,6 @@ import org.slf4j.LoggerFactory;
  */
 public class AdvancedThreadSafetyTest {
     private static final Logger logger = LoggerFactory.getLogger(AdvancedThreadSafetyTest.class);
-
 
     private Blockchain blockchain;
     private ExecutorService executorService;
@@ -451,10 +452,15 @@ public class AdvancedThreadSafetyTest {
     
     private void performSearchOperations(int threadId) {
         blockchain.searchBlocksByContent("Block");
-        blockchain.getBlocksByDateRange(
+        // Stream version with try-with-resources for thread-safe concurrent access
+        try (Stream<Block> stream = blockchain.streamBlocksByDateRange(
             LocalDateTime.now().minusDays(1).toLocalDate(),
-            LocalDateTime.now().toLocalDate()
-        );
+            LocalDateTime.now().toLocalDate(),
+            MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS
+        )) {
+            // Consume stream to trigger the query
+            stream.count();
+        }
     }
     
     private void validateFullChain(int threadId) {

@@ -9,6 +9,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🧹 Memory Safety - Stream API for Date Range Queries
+
+**Eliminated memory-unsafe List-based methods in favor of Stream API for date/time range queries.**
+
+#### Breaking Changes
+
+**Blockchain.java - Removed Methods:**
+- `getBlocksByDateRange(LocalDate, LocalDate)` - loaded all blocks into memory
+- `getBlocksByDateRange(LocalDate, LocalDate, int)` - loaded blocks into memory with limit
+- `getBlocksByTimeRange(LocalDateTime, LocalDateTime, int)` - loaded blocks into memory with limit
+
+**Migration Required:**
+```java
+// ❌ OLD (no longer available):
+List<Block> blocks = blockchain.getBlocksByDateRange(startDate, endDate, limit);
+
+// ✅ NEW (memory-safe streaming):
+try (Stream<Block> stream = blockchain.streamBlocksByDateRange(startDate, endDate, limit)) {
+    List<Block> blocks = stream.collect(Collectors.toList());
+}
+```
+
+#### New Stream API Methods
+
+**Memory-safe streaming with explicit limit:**
+- `streamBlocksByDateRange(LocalDate, LocalDate, int)` - stream with limit
+- `streamBlocksByTimeRange(LocalDateTime, LocalDateTime, int)` - stream with limit
+
+**Memory-safe streaming without limit (unlimited):**
+- `streamBlocksByDateRange(LocalDate, LocalDate)` - already existed
+- `streamBlocksByTimeRange(LocalDateTime, LocalDateTime)` - already existed
+
+#### Updated Files
+
+**Production Code:**
+- `Blockchain.java` - removed List-based methods, added Stream overloads
+- `UserFriendlyEncryptionAPI.java` - updated `findBlocksByDateRange()` to use Stream API
+
+**Tests:**
+- `BlockchainAdditionalAdvancedFunctionsTest.java` - updated tests to use Stream API
+- `AdvancedThreadSafetyTest.java` - updated concurrent search operations
+- `EdgeCaseThreadSafetyTest.java` - updated complex search operations
+
+**Demos:**
+- `AdditionalAdvancedFunctionsDemo.java` - updated date range search example
+
+**Documentation:**
+- `API_GUIDE.md` - updated method signatures and examples
+- `EXAMPLES.md` - updated supply chain tracking example
+
+#### Benefits
+
+- **Memory Safety**: All date/time range queries now use server-side cursors
+- **Scalability**: Can handle unlimited time ranges without memory issues
+- **Consistency**: All search methods now follow the same streaming pattern
+
+---
+
 ### 🔍 Search - SECURE Search Performance & Fuzzy Matching Fix
 
 **Fixed critical fuzzy matching false positives in SECURE search and optimized database access patterns.**
@@ -229,7 +287,7 @@ SELECT b FROM Block b WHERE b.timestamp BETWEEN ? AND ? ORDER BY b.block_number
 #### Test Updates
 
 **Updated Test Files:**
-- `TestEnvironmentValidator.java` - Now validates `streamBlocksByTimeRange` instead of `getBlocksByTimeRange`
+- `TestEnvironmentValidator.java` - Now validates `streamBlocksByTimeRange`
 - `BlockchainRobustnessTest.java` - DisplayName updated to match new API
 - `Phase_B2_StreamingAlternativesTest.java` - Converted to Stream API with try-with-resources
 

@@ -580,14 +580,17 @@ public class SupplyChainTracker {
             // Generate compliance report for the specified date range
             LocalDate startDate = LocalDate.of(2025, 6, 1);
             LocalDate endDate = LocalDate.of(2025, 6, 30);
-            List<Block> monthlyActivity = blockchain.getBlocksByDateRange(startDate, endDate);
-            
+            long monthlyCount;
+            try (var stream = blockchain.streamBlocksByDateRange(startDate, endDate, 10000)) {
+                monthlyCount = stream.count();
+            }
+
             // Add a verification block to the chain
-            blockchain.addBlock("COMPLIANCE_CHECK: Supply chain verified | Date: " + LocalDate.now() + 
-                             " | Status: " + (validation.isStructurallyIntact() ? "VALID" : "INVALID") + 
+            blockchain.addBlock("COMPLIANCE_CHECK: Supply chain verified | Date: " + LocalDate.now() +
+                             " | Status: " + (validation.isStructurallyIntact() ? "VALID" : "INVALID") +
                              " | Blocks: " + blockchain.getBlockCount(),
                              qualityControl.getPrivate(), qualityControl.getPublic());
-            System.out.println("June 2025 supply chain activity: " + monthlyActivity.size() + " events");
+            System.out.println("June 2025 supply chain activity: " + monthlyCount + " events");
             
         } catch (Exception e) {
             System.err.println("Supply chain tracking error: " + e.getMessage());

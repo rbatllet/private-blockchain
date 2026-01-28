@@ -5,6 +5,7 @@ import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.dto.ChainExportData;
 import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.config.MemorySafetyConstants;
 
 import tools.jackson.databind.ObjectMapper;
 
@@ -24,6 +25,7 @@ import java.security.KeyPair;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -513,28 +515,39 @@ public class BlockchainAdditionalAdvancedFunctionsTest {
         assertEquals(initialBlockCount + 2, blockchain.getBlockCount(), "Should have added exactly 2 blocks");
         
         // All blocks in the blockchain should be from today or have no old blocks from yesterday
-        List<Block> todayBlocks = blockchain.getBlocksByDateRange(today, today);
-        assertTrue(todayBlocks.size() >= 2, "Should find at least the 2 blocks we just added today");
+        long todayCount;
+        try (Stream<Block> todayBlocks = blockchain.streamBlocksByDateRange(today, today, MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS)) {
+            todayCount = todayBlocks.count();
+        }
+        assertTrue(todayCount >= 2, "Should find at least the 2 blocks we just added today");
 
         // Check yesterday - should be empty for a fresh blockchain, but might have old data
-        List<Block> yesterdayBlocks = blockchain.getBlocksByDateRange(yesterday, yesterday);
+        long yesterdayCount;
+        try (Stream<Block> yesterdayBlocks = blockchain.streamBlocksByDateRange(yesterday, yesterday, MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS)) {
+            yesterdayCount = yesterdayBlocks.count();
+        }
         // Instead of expecting exactly 0, we just check the count is reasonable
-        assertTrue(yesterdayBlocks.size() < blockchain.getBlockCount(), 
-                "Yesterday blocks should be less than total blocks (expected: <" + blockchain.getBlockCount() + " but was: " + yesterdayBlocks.size() + ")");
+        assertTrue(yesterdayCount < blockchain.getBlockCount(),
+                "Yesterday blocks should be less than total blocks (expected: <" + blockchain.getBlockCount() + " but was: " + yesterdayCount + ")");
 
         // Wide range should include all blocks
-        List<Block> wideRangeBlocks = blockchain.getBlocksByDateRange(yesterday, tomorrow);
-        assertEquals(blockchain.getBlockCount(), wideRangeBlocks.size(),
+        long wideRangeCount;
+        try (Stream<Block> wideRangeBlocks = blockchain.streamBlocksByDateRange(yesterday, tomorrow, MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS)) {
+            wideRangeCount = wideRangeBlocks.count();
+        }
+        assertEquals(blockchain.getBlockCount(), wideRangeCount,
                 "Wide range should include all blocks");
-        assertEquals(initialBlockCount + 2, wideRangeBlocks.size(),
+        assertEquals(initialBlockCount + 2, wideRangeCount,
                 "Wide range should include initial blocks plus our 2 new blocks");
 
-        // Test edge cases
-        List<Block> nullStartDate = blockchain.getBlocksByDateRange(null, today);
-        assertEquals(0, nullStartDate.size(), "Null start date should return empty list");
+        // Test edge cases - null parameters should throw IllegalArgumentException
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.streamBlocksByDateRange(null, today, MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS);
+        }, "Null start date should throw exception");
 
-        List<Block> nullEndDate = blockchain.getBlocksByDateRange(today, null);
-        assertEquals(0, nullEndDate.size(), "Null end date should return empty list");
+        assertThrows(IllegalArgumentException.class, () -> {
+            blockchain.streamBlocksByDateRange(today, null, MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS);
+        }, "Null end date should throw exception");
     }
 
     @Test
@@ -662,7 +675,6 @@ public class BlockchainAdditionalAdvancedFunctionsTest {
         // These methods should handle null gracefully (return null or empty)
         assertDoesNotThrow(() -> {
             blockchain.getBlockByHash(null);
-            blockchain.getBlocksByDateRange(null, null);
         }, "Some methods should handle errors gracefully without throwing exceptions");
     }
 

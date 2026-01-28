@@ -12333,14 +12333,13 @@ public class UserFriendlyEncryptionAPI {
 
             logger.debug("Searching blocks from {} to {}", startDate, endDate);
 
-            List<Block> results = blockchain.getBlocksByDateRange(
+            List<Block> results;
+            try (Stream<Block> stream = blockchain.streamBlocksByDateRange(
                 startDate,
-                endDate
-            );
-
-            if (results == null) {
-                logger.warn("Blockchain returned null for date range query");
-                return new ArrayList<>();
+                endDate,
+                MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS
+            )) {
+                results = stream.collect(Collectors.toList());
             }
 
             logger.info(

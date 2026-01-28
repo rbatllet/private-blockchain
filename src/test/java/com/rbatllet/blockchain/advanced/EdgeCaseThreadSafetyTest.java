@@ -1,20 +1,24 @@
 package com.rbatllet.blockchain.advanced;
 
 import com.rbatllet.blockchain.core.Blockchain;
+import com.rbatllet.blockchain.entity.Block;
 import com.rbatllet.blockchain.security.UserRole;
 import com.rbatllet.blockchain.util.CryptoUtil;
+import com.rbatllet.blockchain.config.MemorySafetyConstants;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
 import java.security.KeyPair;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 import org.slf4j.Logger;
@@ -244,9 +248,14 @@ public class EdgeCaseThreadSafetyTest {
     private void performComplexSearch(int threadId) {
         blockchain.searchBlocksByContent("Block");
         blockchain.searchBlocksByContent("T" + threadId);
-        blockchain.getBlocksByDateRange(
-            java.time.LocalDateTime.now().minusHours(1).toLocalDate(),
-            java.time.LocalDateTime.now().toLocalDate()
-        );
+        // Stream version with try-with-resources for thread-safe concurrent access
+        try (Stream<Block> stream = blockchain.streamBlocksByDateRange(
+            LocalDateTime.now().minusHours(1).toLocalDate(),
+            LocalDateTime.now().toLocalDate(),
+            MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS
+        )) {
+            // Consume stream to trigger the query
+            stream.count();
+        }
     }
 }

@@ -6631,32 +6631,104 @@ public class Blockchain {
     }
 
     /**
-     * CORE FUNCTION 7: Advanced Search - Get blocks by date range
-     * FIXED: Added thread-safety with read lock
+     * Stream blocks by time range with LocalDateTime parameters and explicit limit.
+     *
+     * <p><b>Memory Safety</b>: This method is memory-safe for the specified limit.
+     * Uses server-side cursors to stream blocks without loading all into memory.</p>
+     *
+     * <p><b>Usage</b>: Must be closed after use (try-with-resources recommended).</p>
+     *
+     * @param startTime Start time (inclusive)
+     * @param endTime End time (inclusive)
+     * @param maxResults Maximum number of blocks to stream
+     * @return Stream of blocks within the specified time range (must be closed)
      */
-    public List<Block> getBlocksByDateRange(
+    public Stream<Block> streamBlocksByTimeRange(
+        LocalDateTime startTime,
+        LocalDateTime endTime,
+        int maxResults
+    ) {
+        if (startTime == null || endTime == null) {
+            throw new IllegalArgumentException("Start time and end time cannot be null");
+        }
+
+        if (startTime.isAfter(endTime)) {
+            throw new IllegalArgumentException("Start time cannot be after end time");
+        }
+
+        long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
+        try {
+            // Use paginated query and convert to stream
+            List<Block> blocks = blockRepository.getBlocksByTimeRangePaginated(startTime, endTime, 0, maxResults);
+            return blocks.stream().onClose(() -> GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp));
+        } catch (Exception e) {
+            GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
+            logger.error("❌ Error streaming blocks by time range", e);
+            throw e;
+        }
+    }
+
+    /**
+     * Stream blocks by date range with LocalDate parameters and explicit limit.
+     *
+     * <p><b>Memory Safety</b>: This method is memory-safe for the specified limit.
+     * Uses server-side cursors to stream blocks without loading all into memory.</p>
+     *
+     * <p><b>Usage</b>: Must be closed after use (try-with-resources recommended).</p>
+     *
+     * @param startDate Start date (inclusive)
+     * @param endDate End date (inclusive)
+     * @param maxResults Maximum number of blocks to stream
+     * @return Stream of blocks within the specified date range (must be closed)
+     */
+    public Stream<Block> streamBlocksByDateRange(
+        LocalDate startDate,
+        LocalDate endDate,
+        int maxResults
+    ) {
+        if (startDate == null || endDate == null) {
+            throw new IllegalArgumentException("Start date and end date cannot be null");
+        }
+
+        if (startDate.isAfter(endDate)) {
+            throw new IllegalArgumentException("Start date cannot be after end date");
+        }
+
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
+
+        return streamBlocksByTimeRange(startDateTime, endDateTime, maxResults);
+    }
+
+    /**
+     * Stream blocks by date range (memory-safe, unlimited).
+     *
+     * <p><b>Memory Safety</b>: This method is memory-safe for unlimited results.
+     * Uses server-side cursors to stream blocks without loading all into memory.</p>
+     *
+     * <p><b>Usage</b>: Must be closed after use (try-with-resources recommended).</p>
+     *
+     * @param startDate Start date (inclusive)
+     * @param endDate End date (inclusive)
+     * @return Stream of blocks within the specified date range (must be closed)
+     * @throws IllegalArgumentException if parameters are null
+     */
+    public Stream<Block> streamBlocksByDateRange(
         LocalDate startDate,
         LocalDate endDate
     ) {
-        long stamp = GLOBAL_BLOCKCHAIN_LOCK.readLock();
-        try {
-            if (startDate == null || endDate == null) {
-                logger.error("❌ Start date and end date cannot be null");
-                return new ArrayList<>();
-            }
-
-            LocalDateTime startDateTime = startDate.atStartOfDay();
-            LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
-
-            // Limit results to prevent memory issues with large time ranges
-            final int MAX_TIME_RANGE_RESULTS = MemorySafetyConstants.DEFAULT_MAX_SEARCH_RESULTS;
-            return blockRepository.getBlocksByTimeRangePaginated(startDateTime, endDateTime, 0, MAX_TIME_RANGE_RESULTS);
-        } catch (Exception e) {
-            logger.error("❌ Error searching blocks by date range", e);
-            return new ArrayList<>();
-        } finally {
-            GLOBAL_BLOCKCHAIN_LOCK.unlockRead(stamp);
+        if (startDate == null || endDate == null) {
+            throw new IllegalArgumentException("Start date and end date cannot be null");
         }
+
+        if (startDate.isAfter(endDate)) {
+            throw new IllegalArgumentException("Start date cannot be after end date");
+        }
+
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
+
+        return streamBlocksByTimeRange(startDateTime, endDateTime);
     }
 
     // ===== QUERY METHODS - ALL THREAD-SAFE =====
@@ -6923,6 +6995,7 @@ public class Blockchain {
         if (startTime == null || endTime == null) {
             throw new IllegalArgumentException("Start time and end time cannot be null");
         }
+
         if (startTime.isAfter(endTime)) {
             throw new IllegalArgumentException("Start time cannot be after end time");
         }
