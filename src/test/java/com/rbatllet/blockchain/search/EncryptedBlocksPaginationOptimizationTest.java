@@ -464,7 +464,8 @@ public class EncryptedBlocksPaginationOptimizationTest {
                 sqlTime, memTime, (double) memTime / Math.max(sqlTime, 1));
 
             // SQL should be competitive or better (environment-dependent)
-            assertTrue(sqlTime > 0 && memTime > 0, "Both queries should complete");
+            // Note: In fast CI environments, queries may complete in <1ms, showing as 0ms
+            assertTrue(sqlTime >= 0 && memTime >= 0, "Both queries should complete");
 
             logger.info("✅ SQL exclusion provides competitive/better performance vs in-memory");
         }
